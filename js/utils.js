@@ -704,6 +704,45 @@ export function anoDeDataParcial(dataObj) {
     return dataObj && dataObj.ano ? dataObj.ano : null;
 }
 
+// Reduz uma data parcial a um instante (timestamp), preenchendo os
+// campos ausentes com o extremo que a torna mais favorável à
+// comparação pedida: 'inicio' assume o menor valor possível pra cada
+// campo em branco (mês 1, dia 1, 00:00), 'fim' assume o maior (mês 12,
+// último dia do mês, 23:59). Sem ano não dá pra posicionar a data em
+// nenhum instante com segurança, então retorna null.
+function extremoDeDataParcial(dataObj, extremo) {
+    if (!dataObj || dataObj.ano == null) return null;
+    const { ano } = dataObj;
+    const mes = dataObj.mes ?? (extremo === 'inicio' ? 1 : 12);
+    const ultimoDiaDoMes = new Date(ano, mes, 0).getDate();
+    const dia = dataObj.dia ?? (extremo === 'inicio' ? 1 : ultimoDiaDoMes);
+    const hora = dataObj.hora ?? (extremo === 'inicio' ? 0 : 23);
+    const minuto = dataObj.minuto ?? (extremo === 'inicio' ? 0 : 59);
+    return new Date(ano, mes - 1, dia, hora, minuto).getTime();
+}
+
+// Diz se `posterior` (ex.: data de publicação) é COM CERTEZA anterior a
+// `anterior` (ex.: data de escrita) — duas datas parciais, cada uma com
+// dia/mês/ano/hora/minuto independentes e opcionais.
+//
+// Só acusa violação quando não existe NENHUMA combinação de valores
+// ausentes que tornaria as duas datas compatíveis: compara o extremo
+// mais cedo possível de `anterior` com o extremo mais tarde possível
+// de `posterior`. Isso evita falso-positivo em datas ambíguas — ex.:
+// escrita só com o ano "2020" e publicação "01/2020" não é acusada,
+// porque é possível (embora não certo) que a escrita tenha sido em
+// janeiro também. Já escrita "2020" e publicação "2019" é sempre uma
+// violação, não importa o dia/mês que faltar preencher.
+//
+// Sem ano em algum dos dois lados, não dá pra garantir nada — retorna
+// false (não bloqueia).
+export function violaOrdemDeDatas(anterior, posterior) {
+    const minAnterior = extremoDeDataParcial(anterior, 'inicio');
+    const maxPosterior = extremoDeDataParcial(posterior, 'fim');
+    if (minAnterior == null || maxPosterior == null) return false;
+    return maxPosterior < minAnterior;
+}
+
 // ─── Época Retratada (intervalo De/Até, com N/A explícito) ─────
 // Diferente de dataEscrita/dataPublicacao (um ponto no tempo, parcial),
 // "a que época o poema se refere" já É um intervalo por natureza — por

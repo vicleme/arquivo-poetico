@@ -16,6 +16,7 @@ import {
     mostrarAviso,
     mostrarAvisoComAcao,
     criarRastreadorDeAlteracoes,
+    violaOrdemDeDatas,
 } from './utils.js';
 
 // Rastreadores de alterações não salvas dos formulários de texto longo
@@ -117,13 +118,22 @@ export function initFormLivro() {
             capaFinal = novoCapaId ?? capaAtual;
         }
 
+        const dataPublicacao = lerDataParcial('l-data');
+        const dataUltimaEdicao = lerDataParcial('l-ultima-edicao');
+        if (violaOrdemDeDatas(dataPublicacao, dataUltimaEdicao)) {
+            return mostrarAviso(
+                'A Data da Última Edição não pode ser anterior à Data de Primeira Publicação.',
+            );
+        }
+
         const dados = {
             id: id ? parseInt(id) : gerarId(),
             titulo: document.getElementById('l-titulo').value,
             sequencia: seqOuNull(document.getElementById('l-sequencia').value),
             siglaOficial: document.getElementById('l-sigla-oficial').value,
             siglaPessoal: document.getElementById('l-sigla-pessoal').value,
-            data: lerDataParcial('l-data'),
+            data: dataPublicacao,
+            dataUltimaEdicao,
             tipo: document.getElementById('l-tipo').value,
             fase: document.getElementById('l-fase').value,
             abertura: document.getElementById('l-abertura').value,
@@ -173,6 +183,7 @@ export async function editarLivro(id) {
 
     preencherCampos(l, MAPA_LIVRO);
     preencherDataParcial('l-data', l.data);
+    preencherDataParcial('l-ultima-edicao', l.dataUltimaEdicao);
     document.getElementById('l-remover-capa').checked = false;
     document.getElementById('modal-livro-titulo').innerText = 'Editar Livro';
     toggleModal('modal-livro');
@@ -392,6 +403,10 @@ export function initFormPoema() {
         // é assim, por isso o padrão é "não exata" (ver colunas.js/render-listas.js).
         if (dataEscrita) dataEscrita.exata = document.getElementById('p-data-esc-exata').checked;
 
+        if (violaOrdemDeDatas(dataEscrita, dataPublicacao)) {
+            return mostrarAviso('A Data de Primeira Publicação não pode ser anterior à Data de Escrita.');
+        }
+
         // Época Retratada é um intervalo (não um ponto no tempo), com um
         // terceiro estado além de "preenchido"/"vazio": N/A marcado é uma
         // exclusão deliberada, distinta de "ainda não categorizado" (o
@@ -606,6 +621,10 @@ export function initFormProsa() {
         const dataEscrita = lerDataParcial('pr-data-esc');
         const dataPublicacao = lerDataParcial('pr-data-pub');
         if (dataEscrita) dataEscrita.exata = document.getElementById('pr-data-esc-exata').checked;
+
+        if (violaOrdemDeDatas(dataEscrita, dataPublicacao)) {
+            return mostrarAviso('A Data de Primeira Publicação não pode ser anterior à Data de Escrita.');
+        }
 
         const dados = {
             id,

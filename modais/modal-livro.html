@@ -74,7 +74,7 @@
                     <input type="text" id="l-sigla-pessoal" />
                 </div>
                 <div class="md:col-span-2">
-                    <label class="form-label">Data de Publicação</label>
+                    <label class="form-label">Data de Primeira Publicação</label>
                     <div class="grid grid-cols-3 gap-1">
                         <input
                             type="number"
@@ -103,6 +103,39 @@
                     </div>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
                         Preencha só o que souber.
+                    </p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label">Data da Última Edição</label>
+                    <div class="grid grid-cols-3 gap-1">
+                        <input
+                            type="number"
+                            id="l-ultima-edicao-dia"
+                            placeholder="Dia"
+                            min="1"
+                            max="31"
+                            title="Dia"
+                        />
+                        <input
+                            type="number"
+                            id="l-ultima-edicao-mes"
+                            placeholder="Mês"
+                            min="1"
+                            max="12"
+                            title="Mês"
+                        />
+                        <input
+                            type="number"
+                            id="l-ultima-edicao-ano"
+                            placeholder="Ano"
+                            min="1900"
+                            max="2100"
+                            title="Ano"
+                        />
+                    </div>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                        Se você revisou o texto após a publicação (comum na impressão sob
+                        demanda). Deixe em branco se nunca editou.
                     </p>
                 </div>
                 <div>
