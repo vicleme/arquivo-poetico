@@ -866,7 +866,11 @@
             let versoesFiltradas = {}; // { "tipo:id" → { titulo, texto, nota } }  ← chave de sessão
             let modalItemKey = null; // chave do item aberto no modal
 
-            let tagsFiltro = [];
+            // "Conteúdo sensível" é a única tag padrão: cobre Prosa (que não tem
+            // campo dedicado, ao contrário do Poema) sem precisar de configuração
+            // manual em navegador zerado. Continua 100% editável/removível como
+            // qualquer tag da lista — ver carregarBanco() abaixo.
+            let tagsFiltro = ['Conteúdo sensível'];
 
             // ─── Persistência em localStorage ────────────────────────────────
             // O banco de versões é indexado por "tipo:id" (chave estável do item).
@@ -904,8 +908,10 @@
                 try {
                     const raw = localStorage.getItem(LS_KEY_VERSOES);
                     bancoVersoes = raw ? JSON.parse(raw) : {};
+                    // Só sobrescreve o default acima se a pessoa já tiver uma lista
+                    // salva (mesmo que vazia, por ter removido tudo de propósito).
                     const rawTags = localStorage.getItem(LS_KEY_TAGS);
-                    if (rawTags) tagsFiltro = JSON.parse(rawTags);
+                    if (rawTags !== null) tagsFiltro = JSON.parse(rawTags);
                 } catch (e) {
                     bancoVersoes = {};
                 }

@@ -5,8 +5,9 @@
 Local, backend-free app for organizing, editing, and exporting a collection of
 poems, prose pieces, books, and anthologies. Everything runs in the browser;
 text data is saved to `localStorage` and cover images to `IndexedDB`. The
-`.json` files are used for backup and data exchange — they don't include
-images.
+`.json` files are used for backup and data exchange — the full backup can
+embed covers as base64 (the "capas" checkbox next to "Download JSON"), but
+selective exports never include images.
 
 
 ---
@@ -21,7 +22,7 @@ server:
 - **Python:** `python -m http.server` in the project folder, then visit `http://localhost:8000`
 - **Node:** `npx serve .` in the project folder
 
-No dependencies need to be installed. Chart.js and Tailwind CSS are loaded via CDN.
+No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js and DOMPurify are vendored locally in `assets/js/`.
 
 ---
 
@@ -85,7 +86,7 @@ No dependencies need to be installed. Chart.js and Tailwind CSS are loaded via C
 │   ├── icons/
 │   │   └── favicon.svg, favicon-32.png, favicon-180.png
 │   ├── logo/
-│   │   └── Logo.png, Logo.ai, Logo (variations).png, Logo (with margin).png
+│   │   └── Logo.png, Logo.ai, Logo (variacoes).png, Logo (com margem).png
 │   └── screenshots/         → Screenshots used in the README
 │
 ├── js/                       → All app logic (ES Modules)
@@ -242,8 +243,10 @@ Object store `capas`: `{ id: string, blob: Blob }`. IDs are referenced by the
 automatically removes the corresponding cover.
 
 > **Portability**: when copying the `.json` backup to another machine, text
-> data arrives complete; covers don't travel with it (the `capa` field in
-> the JSON becomes an orphaned ID and the image simply doesn't appear).
+> data always arrives complete. Covers only travel with it if the "capas"
+> checkbox was checked when generating the file (embedded as base64);
+> otherwise, the `capa` field in the JSON becomes an orphaned ID and the
+> image simply doesn't appear.
 
 ---
 
@@ -261,21 +264,21 @@ out in the exported JSON.
 
 ### How a text is considered sensitive
 
-A poem/prose piece enters the review list when **either** of the two
-conditions below is true:
+A poem/prose piece enters the review list when **any** of the conditions
+below is true:
 
-1. It has, among its tags, one of the tags configured in "Filter tags"
-   (default: `Triggering vocabulary`); or
+1. It has, among its tags, one of the tags configured in "Filter tags" —
+   the list ships with `Sensitive content` as the single default tag (it
+   covers Prose, which has neither of the dedicated fields below). It's
+   fully editable: add, remove, or even empty it out, and the choice is
+   saved in the browser, even to turn the default off;
 2. It has the dedicated **Sensitive Content** field filled in (a Poem
-   field, see "Main features" above).
+   field, see "Main features" above); or
+3. It has the dedicated **Triggering Vocabulary** field filled in (a Poem
+   field).
 
-The `Sensitive content` tag used to be part of the default tag list too — it
-was removed from the default because it became redundant once the dedicated
-field was introduced: older items that already had this tag keep working
-normally (it just stopped being suggested by default in "Filter tags"; if
-you don't remove it manually from there, it still applies). The Sensitive
-Content field currently only exists for Poems — Prose still relies solely on
-tags.
+Both dedicated fields currently only exist for Poems — Prose relies solely
+on the "Filter tags" list.
 
 ### Naming distinction
 

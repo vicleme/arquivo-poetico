@@ -5,7 +5,9 @@
 Aplicativo local (sem backend) para organizar, editar e exportar um acervo de
 poemas, prosas, livros e coletâneas. Tudo roda no navegador; os dados textuais
 ficam salvos em `localStorage` e as capas (imagens) em `IndexedDB`. Os arquivos
-`.json` são usados para backup e troca de dados — eles não incluem imagens.
+`.json` são usados para backup e troca de dados — o backup completo pode
+embutir as capas como base64 (checkbox "capas" ao lado de "Baixar JSON"), mas
+as exportações seletivas nunca incluem imagens.
 
 
 ---
@@ -20,7 +22,7 @@ local estático:
 - **Python:** `python -m http.server` na pasta do projeto, depois acesse `http://localhost:8000`
 - **Node:** `npx serve .` na pasta do projeto
 
-Nenhuma dependência precisa ser instalada. Chart.js e Tailwind CSS são carregados via CDN.
+Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN; Chart.js e DOMPurify são vendorizados localmente em `assets/js/`.
 
 ---
 
@@ -84,7 +86,7 @@ Nenhuma dependência precisa ser instalada. Chart.js e Tailwind CSS são carrega
 │   ├── icons/
 │   │   └── favicon.svg, favicon-32.png, favicon-180.png
 │   ├── logo/
-│   │   └── Logo.png, Logo.ai, Logo (variações).png, Logo (com margem).png
+│   │   └── Logo.png, Logo.ai, Logo (variacoes).png, Logo (com margem).png
 │   └── screenshots/         → Capturas de tela para o README
 │
 ├── js/                       → Toda a lógica do app (ES Modules)
@@ -242,8 +244,10 @@ pelos campos `capa` em `livros`, `partes` e `secoes`. Ao excluir um item, a
 capa correspondente é removida automaticamente.
 
 > **Portabilidade**: ao copiar o backup `.json` para outra máquina, os dados
-> textuais chegam completos; as capas não acompanham (o campo `capa` no JSON
-> fica como ID órfão e a imagem simplesmente não aparece).
+> textuais sempre chegam completos. As capas só acompanham se o checkbox
+> "capas" estava marcado na hora de gerar o arquivo (embutidas como base64);
+> caso contrário, o campo `capa` no JSON fica como ID órfão e a imagem
+> simplesmente não aparece.
 
 ---
 
@@ -261,21 +265,21 @@ e **nunca sai no JSON exportado**.
 
 ### Como um texto é considerado sensível
 
-Um poema/prosa entra na lista de revisão quando **qualquer uma** das duas
+Um poema/prosa entra na lista de revisão quando **qualquer uma** das
 condições abaixo é verdadeira:
 
-1. Tem, em Sinalizações, alguma das tags configuráveis em "Tags de filtro"
-   (padrão: `Vocabulário hiperacionante`); ou
+1. Tem, em Sinalizações, alguma das tags configuráveis em "Tags de filtro" —
+   a lista já vem com `Conteúdo sensível` como única tag padrão (cobre
+   Prosa, que não tem os campos dedicados abaixo). É totalmente editável:
+   pode adicionar, remover ou até esvaziar, e a escolha fica salva no
+   navegador, mesmo que seja para tirar o default;
 2. Tem o campo dedicado **Conteúdo Sensível** preenchido (campo do Poema,
-   ver seção "Funcionalidades principais" acima).
+   ver seção "Funcionalidades principais" acima); ou
+3. Tem o campo dedicado **Vocabulário Hiperacionante** preenchido (campo do
+   Poema).
 
-Antes da tag `Conteúdo sensível` também entrava na lista padrão de tags —
-ela foi removida do padrão porque virou redundante depois que o campo
-dedicado passou a existir: itens antigos que já tinham essa tag em
-Sinalizações continuam funcionando normalmente (ela só deixou de ser
-sugerida por padrão em "Tags de filtro"; se você não a remover manualmente
-de lá, ela continua valendo). O campo Conteúdo Sensível existe hoje só em
-Poema — Prosas continuam dependendo só das tags.
+Os dois campos dedicados existem hoje só em Poema — Prosa depende só das
+tags de "Tags de filtro".
 
 ### Distinção de nomenclatura
 
