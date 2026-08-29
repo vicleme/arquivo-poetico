@@ -1,0 +1,190 @@
+/* --- Navegação por Abas --- */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.2s ease-out; /* Suaviza a troca */
+}
+
+.active-tab {
+    border-bottom: 3px solid #1d4ed8;
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+/* --- Formulários --- */
+.form-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+    display: block;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* input[type=search] tem aparência nativa própria (pill arredondado) em
+   Safari/Chrome — reseta pra herdar o mesmo visual dos outros campos. */
+input[type='search'] {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* Checkbox herdava width:100%/padding/margin-bottom do seletor genérico
+   acima, o que o esticava e deslocava do label ao lado (ex: "Remover
+   capa atual", "Publicado") — aqui ele só precisa do tamanho nativo. */
+input[type='checkbox'] {
+    width: 1rem;
+    height: 1rem;
+    padding: 0;
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+input[type='search']::-webkit-search-cancel-button {
+    cursor: pointer;
+}
+
+/* Bug do Chrome/Edge: com -webkit-appearance:none no próprio campo (acima),
+   o pseudo-elemento interno -webkit-search-decoration (que reservava espaço
+   pro ícone de lupa nativo) não é resetado junto — ele continua ocupando
+   uma faixa por cima do início do texto, e ao focar o campo essa faixa
+   ganha destaque visual que se sobrepõe ao primeiro caractere (some por
+   completo em letras finas como "i"). Resetando os pseudo-elementos de
+   busca também remove essa faixa fantasma. */
+input[type='search']::-webkit-search-decoration,
+input[type='search']::-webkit-search-results-button,
+input[type='search']::-webkit-search-results-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* O reset acima não bastou em todo navegador: o indicador nativo de foco
+   (mais visível ainda com color-scheme: dark, ver mais abaixo) continua
+   sendo desenhado colado na borda interna do campo, por cima do próprio
+   texto, em vez de por fora — some com o primeiro caractere se ele for
+   fino (ex.: "i"). Em vez de tentar prever/resetar cada variação nativa
+   dessa combinação (appearance:none + type=search + tema escuro), a
+   solução confiável é assumir o indicador de foco por conta própria:
+   desliga o nativo (outline: none) e desenha um anel via box-shadow, que
+   por definição fica por fora da caixa do campo — nunca por cima do
+   conteúdo, então o texto não pode mais ficar escondido atrás dele. */
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+/* --- Grid de Listagem (Livros e Partes) --- */
+#lista-livros,
+#lista-partes,
+#lista-secoes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding-top: 1rem;
+}
+
+/* Isso garante que a seleção apareça mesmo quando o textarea NÃO é o foco principal */
+#p-texto::selection {
+    background-color: #3b82f6 !important;
+    color: white !important;
+}
+
+/* Truque para navegadores que suportam a persistência visual */
+#p-texto:not(:focus)::selection {
+    background-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+/* --- Tabela de Poemas (Scroll horizontal no mobile) --- */
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+}
+
+/* --- Animação Simples --- */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- Scrollbar Customizada (Opcional, estilo do Arquivo Poético) --- */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+/* --- Hidden (substitui o atributo HTML hidden que o Five Server remove) --- */
+.hidden {
+    display: none !important;
+}
+
+/* --- Modo Escuro (ver js/theme.js) ---
+   Regras daqui são só pro que não é utilitário Tailwind (esses ganham dark:
+   direto na classe, no HTML/JS). Aqui: color-scheme nativo (scrollbar do SO,
+   date/time picker, checkbox) e o que já era CSS puro antes do modo escuro. */
+html.dark {
+    color-scheme: dark;
+}
+
+html.dark .form-label {
+    color: #94a3b8;
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+    color: #64748b;
+}
+
+html.dark .table-container {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+html.dark ::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
