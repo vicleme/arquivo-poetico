@@ -118,6 +118,18 @@ function itemParaMarkdown(item, indice) {
         });
         md += '\n';
     }
+    md += blocoTexto('Nota sobre o conjunto de anexos', item.anexosNotaGeral);
+
+    if (Array.isArray(item.anotacoesMarginais) && item.anotacoesMarginais.length) {
+        md += '### Anotações Marginais\n\n';
+        item.anotacoesMarginais.forEach((a) => {
+            const meta = [a.posicao, a.fonte].filter(Boolean).join(', ');
+            const trecho = a.trecho ? `*(${a.trecho})* ` : '';
+            const prefixo = meta ? `**${meta}:** ` : '';
+            md += `- ${trecho}${prefixo}${a.texto || ''}\n`;
+        });
+        md += '\n';
+    }
 
     // Conteúdo Sensível / Vocabulário Hiperacionante em destaque (blockquote),
     // já que sinalizam algo que quem lê deveria notar antes do texto em si.

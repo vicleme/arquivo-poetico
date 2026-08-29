@@ -43,6 +43,8 @@ import {
     carregarIntertextualidade,
     obterAnexos,
     carregarAnexos,
+    obterAnotacoes,
+    carregarAnotacoes,
     atualizarFiltroSecoesMigracao,
 } from './editor.js';
 
@@ -436,6 +438,8 @@ export function initFormPoema() {
             epocaRetratada,
             intertextualidade: obterIntertextualidade(),
             anexos: obterAnexos(),
+            anexosNotaGeral: document.getElementById('p-anexos-nota-geral').value,
+            anotacoesMarginais: obterAnotacoes(),
             descricaoVisual: document.getElementById('p-visual').value,
             contextoHistorico: document.getElementById('p-contexto').value,
             ocultacao: document.getElementById('p-ocultacao').value,
@@ -507,6 +511,7 @@ const MAPA_POEMA = {
     texto: 'p-texto',
     sequencia: 'p-sequencia',
     notas: 'p-notas',
+    anexosNotaGeral: 'p-anexos-nota-geral',
     status: 'p-status', // select — preencherCampos seta .value por já não ser checkbox
     descricaoVisual: 'p-visual',
     contextoHistorico: 'p-contexto',
@@ -538,6 +543,10 @@ export async function editarPoema(id) {
     document.getElementById('p-anexo-tipo').value = '';
     document.getElementById('p-anexo-link').value = '';
     carregarAnexos(p.anexos || p.ilustracoes || []);
+    document.getElementById('p-anotacao-trecho').value = '';
+    document.getElementById('p-anotacao-posicao').value = '';
+    document.getElementById('p-anotacao-fonte').value = '';
+    carregarAnotacoes(p.anotacoesMarginais || []);
     document.getElementById('p-cortado-livro').value = p.cortadoDe?.livro || '';
     document.getElementById('p-cortado-secao').value = p.cortadoDe?.secao || '';
     document.getElementById('p-lancado-livro').value = p.lancadoEm?.livro || '';

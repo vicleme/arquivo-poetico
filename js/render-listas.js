@@ -28,6 +28,7 @@ import {
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
 import { DEFINICAO_COLUNAS, getColunasAtivas, renderSeletorColunas } from './colunas.js';
+import { exportarSelecaoJson, exportarSelecaoMarkdown } from './exportar.js';
 
 // Sempre que uma coluna é ligada/desligada (ver colunas.js) a tabela
 // correspondente precisa recalcular cabeçalho + linhas.
@@ -524,6 +525,11 @@ function decorarCamposBusca(item, extraLivros = '') {
         _buscaAnexos: Array.isArray(item.anexos)
             ? item.anexos.map((it) => `${it.tipo || ''} ${it.texto || ''} ${it.link || ''}`).join(' ')
             : '',
+        _buscaAnotacoes: Array.isArray(item.anotacoesMarginais)
+            ? item.anotacoesMarginais
+                  .map((it) => `${it.trecho || ''} ${it.posicao || ''} ${it.fonte || ''} ${it.texto || ''}`)
+                  .join(' ')
+            : '',
         _buscaCortadoDe: item.cortadoDe
             ? `${item.cortadoDe.livro || ''} ${item.cortadoDe.secao || ''}`.trim()
             : '',
@@ -831,6 +837,10 @@ const COMPARADORES_ORDENACAO_POEMAS = {
     anexos: compararPorTexto((p) =>
         Array.isArray(p.anexos) ? p.anexos.map((it) => it.texto).join(' ') : '',
     ),
+    anexosNotaGeral: compararPorTexto((p) => p.anexosNotaGeral),
+    anotacoesMarginais: compararPorTexto((p) =>
+        Array.isArray(p.anotacoesMarginais) ? p.anotacoesMarginais.map((it) => it.texto).join(' ') : '',
+    ),
     descricaoVisual: compararPorTexto((p) => p.descricaoVisual),
     contextoHistorico: compararPorTexto((p) => p.contextoHistorico),
     etiquetas: compararPorTexto((p) => p.sinalizacoes),
@@ -1005,6 +1015,18 @@ export function excluirSelecaoPoemas() {
             selecaoPoemas.clear();
         },
     });
+}
+
+// Exporta só os poemas marcados na tabela — diferente da aba Exportação,
+// que filtra por atributos (pessoa/tema/data/status), aqui é exatamente
+// a seleção feita na listagem. Não limpa a seleção depois: exportar não
+// é destrutivo, então a pessoa pode baixar em JSON e depois em MD sem
+// re-marcar tudo de novo.
+export function exportarSelecaoPoemasJson() {
+    exportarSelecaoJson('poema', [...selecaoPoemas]);
+}
+export function exportarSelecaoPoemasMarkdown() {
+    exportarSelecaoMarkdown('poema', [...selecaoPoemas]);
 }
 
 // ─── Datas em massa (Poemas): Escrita / Publicação ─────────────
@@ -1388,6 +1410,13 @@ export function excluirSelecaoProsas() {
     });
 }
 
+export function exportarSelecaoProsasJson() {
+    exportarSelecaoJson('prosa', [...selecaoProsas]);
+}
+export function exportarSelecaoProsasMarkdown() {
+    exportarSelecaoMarkdown('prosa', [...selecaoProsas]);
+}
+
 // ─── Livros ──────────────────────────────────────────────────
 
 // Troca a sequência do livro com a de seu vizinho (acima/abaixo na
@@ -1731,6 +1760,22 @@ export function renderPoemas() {
                 .map((it) => {
                     const badge = it.tipo
                         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+                        : '';
+                    return `<div>${badge}${trechoNota(it.texto)}</div>`;
+                })
+                .join('');
+            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
+        },
+        anexosNotaGeral: (p) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.anexosNotaGeral)}</td>`,
+        anotacoesMarginais: (p) => {
+            const lista = Array.isArray(p.anotacoesMarginais) ? p.anotacoesMarginais : [];
+            if (!lista.length) return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            const html = lista
+                .map((it) => {
+                    const meta = [it.posicao, it.fonte].filter(Boolean).join(' · ');
+                    const badge = meta
+                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-[10px] font-bold align-middle">${escapeHtml(meta)}</span>`
                         : '';
                     return `<div>${badge}${trechoNota(it.texto)}</div>`;
                 })

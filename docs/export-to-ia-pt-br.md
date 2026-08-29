@@ -26,7 +26,7 @@ A vantagem aqui é que a hierarquia está explícita na forma do dado — a IA n
 
 ## Formato Flat (filtrado)
 
-Gerado pelo botão **"Baixar JSON filtrado"** na aba Exportação, ou pelo botão **"Exportar selecionados"** na aba Estrutura.
+Gerado pelo botão **"Baixar JSON filtrado"** na aba Exportação, pela seleção da listagem de Poemas/Prosas ("⬇ JSON" na barra de ações em massa), ou pelo botão **"Exportar selecionados"** na aba Estrutura (esse último numa estrutura própria, sem contexto resolvido — ver seção específica abaixo).
 
 A estrutura é uma lista plana de itens. Cada registro é autossuficiente: traz o texto, o contexto já resolvido como texto legível (nome do Livro, da Parte, da Seção), sinalizações, pessoas, datas. Não há aninhamento — é um array de objetos independentes.
 
@@ -46,17 +46,26 @@ Nesse caso o aninhamento seria contraproducente: para chegar a um poema específ
 
 ## Exportação pontual pela árvore
 
-Na aba **Estrutura**, é possível marcar itens individuais diretamente na árvore do livro (checkboxes em cada linha) e exportar só eles via **"Exportar selecionados"**. O resultado é um JSON flat com exatamente os itens marcados.
+Na aba **Estrutura**, é possível marcar itens individuais diretamente na árvore do livro (checkboxes em cada linha) e exportar só eles via **"Exportar selecionados"**. O resultado é um JSON estrutural (livros/partes/secoes/poemas/prosas/elementos como coleções separadas) com exatamente os itens marcados — sem contexto resolvido nem opção de Markdown.
 
 Use quando você quer escolher poemas ou seções específicos sem precisar descrever um filtro por atributo — por exemplo, "quero esses três poemas e aquela seção inteira, mas não o resto do livro".
 
 ---
 
+## Exportação pontual pela listagem de Poemas/Prosas
+
+Nas abas **Poemas** e **Prosas**, marcar itens pelas caixas de seleção da tabela e usar **"⬇ JSON"** ou **"⬇ MD"** na barra de ações em massa exporta só os itens marcados — na mesma estrutura flat da Exportação seletiva (`{ export_format: 'selecao', itens: [...] }`), com o contexto (Livro/Parte/Seção) já resolvido, e disponível também em Markdown. Diferente da exportação pontual pela árvore (que só gera JSON estrutural, sem contexto resolvido): aqui cada item já vem autoexplicativo, do mesmo jeito que na Exportação seletiva.
+
+Use quando os itens que você quer não formam um filtro fácil de descrever (ex.: "esses 4 poemas específicos, escritos em anos diferentes, sem tema em comum") e você já está navegando a listagem mesmo — ou quando quer o resultado em Markdown, que a exportação pela árvore não oferece.
+
+---
+
 ## Resumo rápido
 
-| Situação                                                   | Formato recomendado              |
-| ---------------------------------------------------------- | -------------------------------- |
-| Analisar estrutura, arco, progressão de um livro           | Aninhado (tudo)                  |
-| Processar textos um a um (comentar, traduzir, classificar) | Flat filtrado                    |
-| Escolher itens pontuais navegando a árvore                 | Flat via aba Estrutura           |
-| Acervo grande que não cabe no contexto do modelo           | Flat filtrado por livro/tema/ano |
+| Situação                                                                                    | Formato recomendado              |
+| ------------------------------------------------------------------------------------------- | -------------------------------- |
+| Analisar estrutura, arco, progressão de um livro                                            | Aninhado (tudo)                  |
+| Processar textos um a um (comentar, traduzir, classificar)                                  | Flat filtrado                    |
+| Escolher itens pontuais navegando a árvore                                                  | Flat via aba Estrutura           |
+| Escolher itens pontuais na listagem de Poemas/Prosas, com contexto resolvido ou em Markdown | Flat via listagem (JSON ou MD)   |
+| Acervo grande que não cabe no contexto do modelo                                            | Flat filtrado por livro/tema/ano |

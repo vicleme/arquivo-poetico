@@ -8,6 +8,7 @@ import {
     extrairSinalizacoesUnicas,
     extrairPessoasUnicas,
     extrairGenerosUnicos,
+    extrairValoresUnicosDeAnotacoes,
     escapeHtml,
     mostrarAviso,
 } from './utils.js';
@@ -172,17 +173,45 @@ const grupoGeneroProsa = criarGrupoDeTags({
 // texto+link). Diferente de criarGrupoDeTags: guarda
 // um array de verdade (não uma string separada por vírgula), porque
 // os valores podem conter vírgulas e/ou ter mais de um campo por item.
-function criarListaDeEntradas({ containerId, renderItem, nomeFuncaoRemover }) {
+//
+// Suporta edição in-place: iniciarEdicao(i) marca o item i como "em
+// edição" (destacado visualmente); a próxima chamada a salvar() atualiza
+// esse item em vez de adicionar um novo. cancelarEdicao() sai do modo
+// sem alterar nada. remover() sempre cancela edição em andamento, pra
+// não arriscar salvar num índice que mudou de posição.
+function criarListaDeEntradas({ containerId, renderItem, nomeFuncaoRemover, nomeFuncaoEditar }) {
     let itens = [];
+    let editando = null; // índice do item em edição, ou null
 
-    function adicionar(entrada) {
-        itens.push(entrada);
+    function salvar(entrada) {
+        if (editando !== null) {
+            itens[editando] = entrada;
+            editando = null;
+        } else {
+            itens.push(entrada);
+        }
         renderizar();
     }
 
     function remover(indice) {
         itens.splice(indice, 1);
+        editando = null; // evita salvar depois num índice que já mudou de posição
         renderizar();
+    }
+
+    function iniciarEdicao(indice) {
+        editando = indice;
+        renderizar();
+        return itens[indice];
+    }
+
+    function cancelarEdicao() {
+        editando = null;
+        renderizar();
+    }
+
+    function estaEditando() {
+        return editando !== null;
     }
 
     function renderizar() {
@@ -190,14 +219,23 @@ function criarListaDeEntradas({ containerId, renderItem, nomeFuncaoRemover }) {
         if (!container) return;
 
         container.innerHTML = itens
-            .map(
-                (item, i) => `
-            <div class="flex items-start justify-between gap-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded px-2 py-1.5 text-xs">
+            .map((item, i) => {
+                const emEdicao = i === editando;
+                return `
+            <div class="flex items-start justify-between gap-2 bg-white dark:bg-slate-900 border rounded px-2 py-1.5 text-xs ${
+                emEdicao
+                    ? 'border-blue-400 dark:border-blue-500 ring-1 ring-blue-300 dark:ring-blue-600'
+                    : 'border-gray-200 dark:border-slate-700'
+            }">
                 <div class="flex-1 min-w-0 whitespace-pre-wrap">${renderItem(item)}</div>
-                <button type="button" onclick="${nomeFuncaoRemover}(${i})"
-                    class="text-red-400 hover:text-red-600 dark:hover:text-red-400 font-bold flex-shrink-0 px-1" title="Remover">×</button>
-            </div>`,
-            )
+                <div class="flex items-center gap-1 flex-shrink-0">
+                    <button type="button" onclick="${nomeFuncaoEditar}(${i})"
+                        class="text-blue-400 hover:text-blue-600 dark:hover:text-blue-400 flex-shrink-0 px-1" title="Editar">✎</button>
+                    <button type="button" onclick="${nomeFuncaoRemover}(${i})"
+                        class="text-red-400 hover:text-red-600 dark:hover:text-red-400 font-bold flex-shrink-0 px-1" title="Remover">×</button>
+                </div>
+            </div>`;
+            })
             .join('');
     }
 
@@ -207,15 +245,27 @@ function criarListaDeEntradas({ containerId, renderItem, nomeFuncaoRemover }) {
 
     function carregar(lista) {
         itens = Array.isArray(lista) ? [...lista] : [];
+        editando = null;
         renderizar();
     }
 
     function reset() {
         itens = [];
+        editando = null;
         renderizar();
     }
 
-    return { adicionar, remover, renderizar, obterItens, carregar, reset };
+    return {
+        salvar,
+        remover,
+        renderizar,
+        obterItens,
+        carregar,
+        reset,
+        iniciarEdicao,
+        cancelarEdicao,
+        estaEditando,
+    };
 }
 
 // ─── Intertextualidade (lista de pares tipo+texto) ────────────
@@ -231,7 +281,16 @@ const listaIntertextoPoema = criarListaDeEntradas({
                 : ''
         }${escapeHtml(it.texto || '')}`,
     nomeFuncaoRemover: 'removerIntertexto',
+    nomeFuncaoEditar: 'editarIntertexto',
 });
+
+function atualizarBotaoIntertexto() {
+    const btnAdd = document.getElementById('p-intertexto-btn-add');
+    const btnCancelar = document.getElementById('p-intertexto-btn-cancelar');
+    const emEdicao = listaIntertextoPoema.estaEditando();
+    if (btnAdd) btnAdd.textContent = emEdicao ? '✓' : '+';
+    if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
+}
 
 export function adicionarIntertexto() {
     const tipoEl = document.getElementById('p-intertexto-tipo');
@@ -239,21 +298,42 @@ export function adicionarIntertexto() {
     const tipo = tipoEl?.value || '';
     const texto = (textoEl?.value || '').trim();
     if (!tipo && !texto) return;
-    listaIntertextoPoema.adicionar({ tipo, texto });
+    listaIntertextoPoema.salvar({ tipo, texto });
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
+    atualizarBotaoIntertexto();
+}
+export function editarIntertexto(indice) {
+    const item = listaIntertextoPoema.iniciarEdicao(indice);
+    const tipoEl = document.getElementById('p-intertexto-tipo');
+    const textoEl = document.getElementById('p-intertexto-texto');
+    if (tipoEl) tipoEl.value = item.tipo || '';
+    if (textoEl) textoEl.value = item.texto || '';
+    textoEl?.focus();
+    atualizarBotaoIntertexto();
+}
+export function cancelarEdicaoIntertexto() {
+    listaIntertextoPoema.cancelarEdicao();
+    const tipoEl = document.getElementById('p-intertexto-tipo');
+    const textoEl = document.getElementById('p-intertexto-texto');
+    if (tipoEl) tipoEl.value = '';
+    if (textoEl) textoEl.value = '';
+    atualizarBotaoIntertexto();
 }
 export function removerIntertexto(indice) {
     listaIntertextoPoema.remover(indice);
+    atualizarBotaoIntertexto();
 }
 export function obterIntertextualidade() {
     return listaIntertextoPoema.obterItens();
 }
 export function carregarIntertextualidade(lista) {
     listaIntertextoPoema.carregar(lista);
+    atualizarBotaoIntertexto();
 }
 export function resetIntertextualidade() {
     listaIntertextoPoema.reset();
+    atualizarBotaoIntertexto();
 }
 
 // ─── Anexos (lista de tipo+texto+link) ─────────────────────────
@@ -277,7 +357,16 @@ const listaAnexosPoema = criarListaDeEntradas({
         return `${badge}${escapeHtml(it.texto || '')}${link}`;
     },
     nomeFuncaoRemover: 'removerAnexo',
+    nomeFuncaoEditar: 'editarAnexo',
 });
+
+function atualizarBotaoAnexo() {
+    const btnAdd = document.getElementById('p-anexo-btn-add');
+    const btnCancelar = document.getElementById('p-anexo-btn-cancelar');
+    const emEdicao = listaAnexosPoema.estaEditando();
+    if (btnAdd) btnAdd.textContent = emEdicao ? '✓ Salvar edição' : '+ Adicionar anexo';
+    if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
+}
 
 export function adicionarAnexo(valor = null) {
     const tipoEl = document.getElementById('p-anexo-tipo');
@@ -295,13 +384,36 @@ export function adicionarAnexo(valor = null) {
         return;
     }
 
-    listaAnexosPoema.adicionar({ tipo, texto, link });
+    listaAnexosPoema.salvar({ tipo, texto, link });
     if (tipoEl) tipoEl.value = '';
     if (linkEl) linkEl.value = '';
     if (textoEl) textoEl.value = '';
+    atualizarBotaoAnexo();
+}
+export function editarAnexo(indice) {
+    const item = listaAnexosPoema.iniciarEdicao(indice);
+    const tipoEl = document.getElementById('p-anexo-tipo');
+    const linkEl = document.getElementById('p-anexo-link');
+    const textoEl = document.getElementById('p-anexo-input');
+    if (tipoEl) tipoEl.value = item.tipo || '';
+    if (linkEl) linkEl.value = item.link || '';
+    if (textoEl) textoEl.value = item.texto || '';
+    textoEl?.focus();
+    atualizarBotaoAnexo();
+}
+export function cancelarEdicaoAnexo() {
+    listaAnexosPoema.cancelarEdicao();
+    const tipoEl = document.getElementById('p-anexo-tipo');
+    const linkEl = document.getElementById('p-anexo-link');
+    const textoEl = document.getElementById('p-anexo-input');
+    if (tipoEl) tipoEl.value = '';
+    if (linkEl) linkEl.value = '';
+    if (textoEl) textoEl.value = '';
+    atualizarBotaoAnexo();
 }
 export function removerAnexo(indice) {
     listaAnexosPoema.remover(indice);
+    atualizarBotaoAnexo();
 }
 export function obterAnexos() {
     return listaAnexosPoema.obterItens();
@@ -312,9 +424,130 @@ export function carregarAnexos(lista) {
         ? lista.map((it) => (typeof it === 'string' ? { tipo: '', texto: it, link: '' } : it))
         : [];
     listaAnexosPoema.carregar(normalizada);
+    atualizarBotaoAnexo();
 }
 export function resetAnexos() {
     listaAnexosPoema.reset();
+    atualizarBotaoAnexo();
+}
+
+// ─── Anotações Marginais (lista de trecho+posição+fonte+texto) ─
+// Comentários de outra "voz" escritos por cima do texto — em geral
+// numa fonte cursiva diferente da do poema — associados a um verso ou
+// estrofe específico. Diferente de Intertextualidade (diálogo com algo
+// externo ao arquivo) e de Descrição Visual (o próprio poema disposto
+// de forma incomum no espaço): aqui é um comentário externo ao poema,
+// sobre um trecho dele.
+//
+// Posição e Fonte são texto livre (não um <select> fechado), porque a
+// posição pode ser composta ("abaixo e à esquerda") e a fonte, embora
+// costume ser a mesma, pode variar — ambas com autocompletar (ver
+// atualizarDatalistAnotacoes) alimentado pelo que já foi digitado antes,
+// pra puxar consistência sem travar o formato.
+//
+// Uma mesma referência (verso/estrofe) pode ter mais de uma anotação —
+// ex.: uma "à direita" e sua continuação "abaixo e à esquerda" — cada
+// lado é uma entrada própria, agrupadas na lista por aparecerem com a
+// mesma referência de trecho.
+
+const listaAnotacoesPoema = criarListaDeEntradas({
+    containerId: 'p-anotacoes-lista',
+    renderItem: (it) => {
+        const trecho = it.trecho
+            ? `<span class="block text-[11px] text-gray-400 dark:text-slate-500 italic mb-0.5">${escapeHtml(it.trecho)}</span>`
+            : '';
+        const meta = [it.posicao, it.fonte].filter(Boolean).map(escapeHtml).join(' · ');
+        const metaHtml = meta
+            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-[10px] font-bold align-middle">${meta}</span>`
+            : '';
+        return `${trecho}${metaHtml}${escapeHtml(it.texto || '')}`;
+    },
+    nomeFuncaoRemover: 'removerAnotacao',
+    nomeFuncaoEditar: 'editarAnotacao',
+});
+
+function atualizarBotaoAnotacao() {
+    const btnAdd = document.getElementById('p-anotacao-btn-add');
+    const btnCancelar = document.getElementById('p-anotacao-btn-cancelar');
+    const emEdicao = listaAnotacoesPoema.estaEditando();
+    if (btnAdd) btnAdd.textContent = emEdicao ? '✓ Salvar edição' : '+ Adicionar anotação';
+    if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
+}
+
+export function atualizarDatalistAnotacoes() {
+    const datalistPosicoes = document.getElementById('sugestoes-posicoes-anotacoes');
+    if (datalistPosicoes) {
+        datalistPosicoes.innerHTML = extrairValoresUnicosDeAnotacoes(db.poemas, 'posicao')
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    }
+    const datalistFontes = document.getElementById('sugestoes-fontes-anotacoes');
+    if (datalistFontes) {
+        datalistFontes.innerHTML = extrairValoresUnicosDeAnotacoes(db.poemas, 'fonte')
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    }
+}
+
+export function adicionarAnotacao() {
+    const trechoEl = document.getElementById('p-anotacao-trecho');
+    const posicaoEl = document.getElementById('p-anotacao-posicao');
+    const fonteEl = document.getElementById('p-anotacao-fonte');
+    const textoEl = document.getElementById('p-anotacao-texto');
+
+    const trecho = (trechoEl?.value || '').trim();
+    const posicao = (posicaoEl?.value || '').trim();
+    const fonte = (fonteEl?.value || '').trim();
+    const texto = (textoEl?.value || '').trim();
+    if (!trecho && !posicao && !fonte && !texto) return;
+
+    listaAnotacoesPoema.salvar({ trecho, posicao, fonte, texto });
+    if (trechoEl) trechoEl.value = '';
+    if (posicaoEl) posicaoEl.value = '';
+    if (fonteEl) fonteEl.value = '';
+    if (textoEl) textoEl.value = '';
+    atualizarBotaoAnotacao();
+    atualizarDatalistAnotacoes();
+}
+export function editarAnotacao(indice) {
+    const item = listaAnotacoesPoema.iniciarEdicao(indice);
+    const trechoEl = document.getElementById('p-anotacao-trecho');
+    const posicaoEl = document.getElementById('p-anotacao-posicao');
+    const fonteEl = document.getElementById('p-anotacao-fonte');
+    const textoEl = document.getElementById('p-anotacao-texto');
+    if (trechoEl) trechoEl.value = item.trecho || '';
+    if (posicaoEl) posicaoEl.value = item.posicao || '';
+    if (fonteEl) fonteEl.value = item.fonte || '';
+    if (textoEl) textoEl.value = item.texto || '';
+    trechoEl?.focus();
+    atualizarBotaoAnotacao();
+}
+export function cancelarEdicaoAnotacao() {
+    listaAnotacoesPoema.cancelarEdicao();
+    const trechoEl = document.getElementById('p-anotacao-trecho');
+    const posicaoEl = document.getElementById('p-anotacao-posicao');
+    const fonteEl = document.getElementById('p-anotacao-fonte');
+    const textoEl = document.getElementById('p-anotacao-texto');
+    if (trechoEl) trechoEl.value = '';
+    if (posicaoEl) posicaoEl.value = '';
+    if (fonteEl) fonteEl.value = '';
+    if (textoEl) textoEl.value = '';
+    atualizarBotaoAnotacao();
+}
+export function removerAnotacao(indice) {
+    listaAnotacoesPoema.remover(indice);
+    atualizarBotaoAnotacao();
+}
+export function obterAnotacoes() {
+    return listaAnotacoesPoema.obterItens();
+}
+export function carregarAnotacoes(lista) {
+    listaAnotacoesPoema.carregar(lista);
+    atualizarBotaoAnotacao();
+}
+export function resetAnotacoes() {
+    listaAnotacoesPoema.reset();
+    atualizarBotaoAnotacao();
 }
 
 // ─── Tags (Sinalizações) ─────────────────────────────────────
@@ -328,6 +561,7 @@ export function atualizarDatalist() {
     }
     atualizarDatalistPessoas();
     atualizarDatalistMigracao();
+    atualizarDatalistAnotacoes();
 }
 
 // Sugestões pros campos "Cortado de"/"Lançado em" (Livro e Parte/Seção)

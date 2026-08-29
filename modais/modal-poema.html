@@ -399,10 +399,19 @@
                         />
                         <button
                             type="button"
+                            id="p-intertexto-btn-add"
                             onclick="adicionarIntertexto()"
                             class="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-3 rounded text-xs font-bold flex-shrink-0"
                         >
                             +
+                        </button>
+                        <button
+                            type="button"
+                            id="p-intertexto-btn-cancelar"
+                            onclick="cancelarEdicaoIntertexto()"
+                            class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
+                        >
+                            Cancelar
                         </button>
                     </div>
                     <div
@@ -441,14 +450,93 @@
                         ></textarea>
                         <button
                             type="button"
+                            id="p-anexo-btn-add"
                             onclick="adicionarAnexo()"
                             class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded text-xs font-bold self-end"
                         >
                             + Adicionar anexo
                         </button>
+                        <button
+                            type="button"
+                            id="p-anexo-btn-cancelar"
+                            onclick="cancelarEdicaoAnexo()"
+                            class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs self-end px-1"
+                        >
+                            Cancelar edição
+                        </button>
                     </div>
                     <div
                         id="p-anexos-lista"
+                        class="space-y-1 mb-2 min-h-[12px]"
+                    ></div>
+                    <label class="form-label"
+                        >Nota sobre o conjunto
+                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                            >(quando os anexos se relacionam entre si — tema, estilo, unidade —
+                            não cada um isoladamente)</span
+                        ></label
+                    >
+                    <textarea id="p-anexos-nota-geral" class="text-sm h-20"></textarea>
+
+                    <label class="form-label"
+                        >Anotações Marginais
+                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                            >(comentário de outra voz escrito por cima do texto, associado a um
+                            verso ou estrofe — diferente de Intertextualidade, que dialoga com algo
+                            de fora do arquivo)</span
+                        ></label
+                    >
+                    <div class="flex gap-2 mb-2">
+                        <input
+                            type="text"
+                            id="p-anotacao-trecho"
+                            class="text-sm flex-1"
+                            placeholder="Verso ou estrofe de referência..."
+                        />
+                    </div>
+                    <div class="flex gap-2 mb-2">
+                        <input
+                            type="text"
+                            id="p-anotacao-posicao"
+                            list="sugestoes-posicoes-anotacoes"
+                            class="text-xs flex-1"
+                            placeholder="Posição (ex.: à direita, abaixo e à esquerda...)"
+                        />
+                        <input
+                            type="text"
+                            id="p-anotacao-fonte"
+                            list="sugestoes-fontes-anotacoes"
+                            class="text-xs flex-1"
+                            placeholder="Fonte (ex.: Baguet Script)"
+                        />
+                    </div>
+                    <datalist id="sugestoes-posicoes-anotacoes"></datalist>
+                    <datalist id="sugestoes-fontes-anotacoes"></datalist>
+                    <div class="flex flex-col gap-2 mb-2">
+                        <textarea
+                            id="p-anotacao-texto"
+                            class="text-sm h-20"
+                            placeholder="Texto da anotação..."
+                        ></textarea>
+                        <button
+                            type="button"
+                            id="p-anotacao-btn-add"
+                            onclick="adicionarAnotacao()"
+                            class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded text-xs font-bold self-end"
+                        >
+                            + Adicionar anotação
+                        </button>
+                        <button
+                            type="button"
+                            id="p-anotacao-btn-cancelar"
+                            onclick="cancelarEdicaoAnotacao()"
+                            class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs self-end px-1"
+                        >
+                            Cancelar edição
+                        </button>
+                    </div>
+                    <div
+                        id="p-anotacoes-lista"
                         class="space-y-1 mb-2 min-h-[12px]"
                     ></div>
 

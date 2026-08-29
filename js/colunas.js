@@ -38,6 +38,18 @@ export const DEFINICAO_COLUNAS = {
         },
         { key: 'anexos', label: 'Anexos', default: false, sortType: 'alfabetico' },
         {
+            key: 'anexosNotaGeral',
+            label: 'Nota Anexos',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'anotacoesMarginais',
+            label: 'Anotações Marginais',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
             key: 'descricaoVisual',
             label: 'Descrição Visual',
             default: false,

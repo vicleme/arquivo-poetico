@@ -47,6 +47,8 @@ import {
     toggleSelecaoTodosPoemas,
     limparSelecaoPoemas,
     excluirSelecaoPoemas,
+    exportarSelecaoPoemasJson,
+    exportarSelecaoPoemasMarkdown,
     aplicarPessoaEmMassa,
     removerPessoaEmMassa,
     aplicarSinalEmMassa,
@@ -57,6 +59,8 @@ import {
     toggleSelecaoTodosProsas,
     limparSelecaoProsas,
     excluirSelecaoProsas,
+    exportarSelecaoProsasJson,
+    exportarSelecaoProsasMarkdown,
     aplicarPessoaEmMassaProsa,
     removerPessoaEmMassaProsa,
     aplicarSinalEmMassaProsa,
@@ -121,8 +125,16 @@ import {
     removerGeneroProsa,
     adicionarIntertexto,
     removerIntertexto,
+    editarIntertexto,
+    cancelarEdicaoIntertexto,
     adicionarAnexo,
     removerAnexo,
+    editarAnexo,
+    cancelarEdicaoAnexo,
+    adicionarAnotacao,
+    removerAnotacao,
+    editarAnotacao,
+    cancelarEdicaoAnotacao,
 } from './editor.js';
 import {
     initFormLivro,
@@ -429,8 +441,16 @@ window.adicionarGeneroProsa = adicionarGeneroProsa;
 window.removerGeneroProsa = removerGeneroProsa;
 window.adicionarIntertexto = adicionarIntertexto;
 window.removerIntertexto = removerIntertexto;
+window.editarIntertexto = editarIntertexto;
+window.cancelarEdicaoIntertexto = cancelarEdicaoIntertexto;
 window.adicionarAnexo = adicionarAnexo;
 window.removerAnexo = removerAnexo;
+window.editarAnexo = editarAnexo;
+window.cancelarEdicaoAnexo = cancelarEdicaoAnexo;
+window.adicionarAnotacao = adicionarAnotacao;
+window.removerAnotacao = removerAnotacao;
+window.editarAnotacao = editarAnotacao;
+window.cancelarEdicaoAnotacao = cancelarEdicaoAnotacao;
 window.applyStyle = applyStyle;
 window.wrapText = wrapText;
 // Debounce de 200ms: cada tecla digitada dispara um renderPoemas()/
@@ -490,6 +510,8 @@ window.toggleCamposEpocaNa = toggleCamposEpocaNa;
 window.toggleSelecaoTodosPoemas = toggleSelecaoTodosPoemas;
 window.limparSelecaoPoemas = limparSelecaoPoemas;
 window.excluirSelecaoPoemas = excluirSelecaoPoemas;
+window.exportarSelecaoPoemasJson = exportarSelecaoPoemasJson;
+window.exportarSelecaoPoemasMarkdown = exportarSelecaoPoemasMarkdown;
 window.aplicarPessoaEmMassa = aplicarPessoaEmMassa;
 window.removerPessoaEmMassa = removerPessoaEmMassa;
 window.aplicarSinalEmMassa = aplicarSinalEmMassa;
@@ -500,6 +522,8 @@ window.limparDataEmMassa = limparDataEmMassa;
 window.toggleSelecaoTodosProsas = toggleSelecaoTodosProsas;
 window.limparSelecaoProsas = limparSelecaoProsas;
 window.excluirSelecaoProsas = excluirSelecaoProsas;
+window.exportarSelecaoProsasJson = exportarSelecaoProsasJson;
+window.exportarSelecaoProsasMarkdown = exportarSelecaoProsasMarkdown;
 window.aplicarPessoaEmMassaProsa = aplicarPessoaEmMassaProsa;
 window.removerPessoaEmMassaProsa = removerPessoaEmMassaProsa;
 window.aplicarSinalEmMassaProsa = aplicarSinalEmMassaProsa;

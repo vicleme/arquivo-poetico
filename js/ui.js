@@ -10,6 +10,7 @@ import {
     atualizarDatalist,
     resetIntertextualidade,
     resetAnexos,
+    resetAnotacoes,
 } from './editor.js';
 import { extrairFasesUnicas, escapeHtml } from './utils.js';
 import { toggleModal, garantirModal } from './modais.js';
@@ -358,6 +359,7 @@ export async function prepararNovo(tipo) {
         resetPessoas();
         resetIntertextualidade();
         resetAnexos();
+        resetAnotacoes();
         atualizarDatalist();
         const infoP = document.getElementById('p-coletaneas-info');
         if (infoP) infoP.innerHTML = '';

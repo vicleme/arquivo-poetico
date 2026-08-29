@@ -945,6 +945,11 @@ const CAMPOS_ATRIBUTO = {
     intertexto: '_buscaIntertexto',
     anexo: '_buscaAnexos',
     anexos: '_buscaAnexos',
+    notaanexos: 'anexosNotaGeral',
+    anotacao: '_buscaAnotacoes',
+    anotação: '_buscaAnotacoes',
+    anotacoes: '_buscaAnotacoes',
+    anotações: '_buscaAnotacoes',
     ocultacao: 'ocultacao',
     ocultação: 'ocultacao',
     sensivel: 'conteudoSensivel',
@@ -1043,6 +1048,8 @@ export function filtrarTextos(lista, query) {
             item.contextoHistorico,
             item._buscaIntertexto,
             item._buscaAnexos,
+            item.anexosNotaGeral,
+            item._buscaAnotacoes,
             item.ocultacao,
             item.conteudoSensivel,
             item.vocabularioHiperacionante,
@@ -1120,6 +1127,23 @@ export function extrairSinalizacoesUnicas(poemas) {
         }
     });
     return Array.from(sinais).sort();
+}
+
+// Sugestões de autocompletar pras Anotações Marginais (Posição e Fonte):
+// diferente de Pessoas/Sinalizações, não são strings separadas por vírgula
+// dentro do poema — cada poema tem uma lista de objetos
+// { trecho, posicao, fonte, texto } (ver criarListaDeEntradas em editor.js),
+// então extraímos o valor de `campo` de cada anotação de cada poema.
+export function extrairValoresUnicosDeAnotacoes(poemas, campo) {
+    const valores = new Set();
+    poemas.forEach((p) => {
+        if (Array.isArray(p.anotacoesMarginais)) {
+            p.anotacoesMarginais.forEach((a) => {
+                if (a && a[campo]) valores.add(a[campo]);
+            });
+        }
+    });
+    return Array.from(valores).sort();
 }
 
 // Retorna array [livroSeq, nivel, parteSeq, secaoSeq] para ordenação hierárquica.

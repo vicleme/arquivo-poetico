@@ -355,6 +355,53 @@ export function executarExportacaoSeletivaMarkdown() {
     }
 }
 
+// ─── Exportação por seleção (checkboxes da listagem de Poemas/Prosas) ──────
+// Diferente da exportação seletiva acima (que filtra por atributos — pessoa,
+// tema, data, status), esta exporta exatamente os itens que a pessoa marcou
+// na tabela de Poemas ou de Prosas, um tipo por vez (a seleção de cada
+// listagem é independente — ver selecaoPoemas/selecaoProsas em
+// render-listas.js). Reaproveita montarRegistro (mesmo formato/contexto
+// resolvido da exportação seletiva) e baixarMarkdown (mesmo documento .md).
+function itensDaSelecao(tipo, ids) {
+    const idsSet = new Set(ids);
+    const colecao = tipo === 'prosa' ? db.prosas : db.poemas;
+    return colecao.filter((item) => idsSet.has(item.id)).map((item) => montarRegistro(tipo, item));
+}
+
+export function exportarSelecaoJson(tipo, ids) {
+    const itens = itensDaSelecao(tipo, ids);
+    if (itens.length === 0) {
+        mostrarAviso('Nenhum item selecionado.');
+        return;
+    }
+
+    const saida = { export_format: 'selecao', itens };
+    const blob = new Blob([JSON.stringify(saida, null, 4)], {
+        type: 'application/json;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = `selecao_${tipo}s_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
+}
+
+export function exportarSelecaoMarkdown(tipo, ids) {
+    const itens = itensDaSelecao(tipo, ids);
+    if (itens.length === 0) {
+        mostrarAviso('Nenhum item selecionado.');
+        return;
+    }
+
+    baixarMarkdown(itens, `selecao_${tipo}s_${Date.now()}.md`);
+}
+
 // ─── Exportar Vários Livros Completos (dados do livro + conteúdo aninhado) ──
 // Mesma ideia de exportarLivroCompleto, mas pra todos os Livros marcados nos
 // checkboxes de #exp-livros-checks (os mesmos usados pelo filtro acima) —

@@ -115,8 +115,9 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
 │   ├── editor.js             → Toolbar de formatação do texto + tags/pessoas
 │   ├── coletaneas.js         → Lógica da aba de Coletâneas
 │   ├── estatisticas.js       → Painel de estatísticas (Chart.js)
-│   ├── exportar.js           → Exportação seletiva (por atributos) + exportações
-│   │                           aninhadas completas
+│   ├── exportar.js           → Exportação seletiva (por atributos) + exportação
+│   │                           da seleção nas listagens de Poemas/Prosas +
+│   │                           exportações aninhadas completas
 │   ├── nesting.js            → Lógica de encadeamento hierárquico (usada por
 │   │                           exportar.js)
 │   └── utils.js              → Funções puras sem dependências internas;
@@ -173,12 +174,25 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
 - **Intertextualidade** (Poema): lista de referências externas (música,
   livro, filme/série, vídeo, citação...), cada uma com tipo + texto — um
   poema pode dialogar com várias referências de tipos diferentes ao mesmo
-  tempo.
+  tempo. Cada item pode ser editado in-place (clique em ✎ pra reabrir um
+  item já salvo antes de excluí-lo).
 - **Anexos** (Poema): lista de itens que acompanham o texto — Ilustração,
   Foto, Lettering, Declamação em vídeo, Comentários em vídeo ou Outro —,
   cada um com tipo + descrição, e um link (obrigatório para os tipos de
   vídeo, opcional para os demais). Um poema pode ter um ou vários anexos
-  de tipos diferentes ao mesmo tempo.
+  de tipos diferentes ao mesmo tempo, cada um editável in-place como
+  Intertextualidade. Um campo de texto livre — **Nota Anexos** — cobre
+  observações sobre o conjunto (quando os anexos se relacionam entre si —
+  tema, estilo, unidade — e não cada um isoladamente).
+- **Anotações Marginais** (Poema): lista de comentários de outra "voz"
+  escritos por cima do texto — em geral numa fonte cursiva diferente da
+  do poema —, associados a um verso ou trecho específico. Cada item tem
+  trecho de referência + posição + fonte + texto; posição e fonte são
+  texto livre com sugestão por `<datalist>` (não um select fechado), já
+  que a posição pode ser composta (ex.: "abaixo e à esquerda") e a fonte,
+  embora costume se repetir, pode variar. Diferente de Intertextualidade
+  (diálogo com algo externo ao arquivo) e de Descrição Visual (o próprio
+  poema disposto de forma incomum no espaço, na mesma fonte do texto).
 - **Ocultação** (Poema): campo de notas livres sobre ocultação de dados.
 - **Conteúdo Sensível e Vocabulário Hiperacionante** (Poema): dois campos
   dedicados para notas sobre o próprio texto. Preencher qualquer um dos dois
@@ -195,6 +209,12 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
   mais o contexto (Livro/Parte/Seção) já resolvido em texto, sem necessidade
   de cruzar IDs. Disponível tanto em JSON (formato de trabalho, reimportável)
   quanto em Markdown (formato de leitura — ver seção própria abaixo).
+- **Exportação pela seleção da tabela** (Poemas/Prosas): marque itens pelas
+  caixas de seleção da própria listagem e exporte só esses, em JSON ou
+  Markdown, pela barra de ações em massa ("⬇ JSON" / "⬇ MD") — complementa
+  a Exportação seletiva (que filtra por atributo) e a exportação pontual da
+  aba Estrutura ("Exportar selecionados", que filtra pela árvore mas só sai
+  em JSON estrutural, sem contexto resolvido nem opção de Markdown).
 - **Versões Alternativas (`filtrar.html`)**: ferramenta separada (link no
   header do app) para revisar poemas/prosas marcados com tags sensíveis e
   cadastrar versões alternativas do texto antes de exportar para uma IA.
@@ -208,13 +228,14 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
 
 ## Formatos de JSON exportados
 
-O app gera quatro tipos distintos de JSON, cada um com um campo `export_format`
+O app gera cinco tipos distintos de JSON, cada um com um campo `export_format`
 que identifica o formato:
 
 | `export_format`       | Gerado por                              | Estrutura                                                                                                      |
 | --------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | _(ausente)_           | "Baixar JSON" no header                 | Backup completo: `{ livros, partes, secoes, poemas, prosas, ... }`                                             |
 | `exportacao_seletiva` | Aba Exportação → "Baixar JSON seletivo" | Flat enriquecido: `{ export_format, itens: [...], coletaneas: [...] }` — cada item já tem `contexto` resolvido |
+| `selecao`             | Listagem de Poemas/Prosas → seleção → "⬇ JSON" | Flat: `{ export_format, itens: [...] }` — mesmo item da Exportação seletiva (contexto resolvido), só com os marcados na tabela |
 | `deep_nesting`        | "Exportar tudo aninhado"                | Árvore completa: `{ export_format, data: [livros aninhados], avulsos, coletaneas }`                            |
 | _(livro individual)_  | "Baixar este livro completo"            | Objeto único de livro com toda a árvore aninhada                                                               |
 
