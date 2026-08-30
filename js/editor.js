@@ -9,6 +9,8 @@ import {
     extrairPessoasUnicas,
     extrairGenerosUnicos,
     extrairValoresUnicosDeAnotacoes,
+    extrairValoresUnicosDeIntertextualidade,
+    extrairNomesEpocaUnicos,
     escapeHtml,
     mostrarAviso,
 } from './utils.js';
@@ -292,6 +294,15 @@ function atualizarBotaoIntertexto() {
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
 
+export function atualizarDatalistIntertexto() {
+    const datalist = document.getElementById('sugestoes-intertexto');
+    if (datalist) {
+        datalist.innerHTML = extrairValoresUnicosDeIntertextualidade(db.poemas)
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    }
+}
+
 export function adicionarIntertexto() {
     const tipoEl = document.getElementById('p-intertexto-tipo');
     const textoEl = document.getElementById('p-intertexto-texto');
@@ -302,6 +313,7 @@ export function adicionarIntertexto() {
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
     atualizarBotaoIntertexto();
+    atualizarDatalistIntertexto();
 }
 export function editarIntertexto(indice) {
     const item = listaIntertextoPoema.iniciarEdicao(indice);
@@ -562,6 +574,17 @@ export function atualizarDatalist() {
     atualizarDatalistPessoas();
     atualizarDatalistMigracao();
     atualizarDatalistAnotacoes();
+    atualizarDatalistIntertexto();
+    atualizarDatalistEpoca();
+}
+
+export function atualizarDatalistEpoca() {
+    const datalist = document.getElementById('sugestoes-epoca-nome');
+    if (datalist) {
+        datalist.innerHTML = extrairNomesEpocaUnicos(db.poemas)
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    }
 }
 
 // Sugestões pros campos "Cortado de"/"Lançado em" (Livro e Parte/Seção)

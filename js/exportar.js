@@ -486,6 +486,70 @@ export function exportarLivroCompleto(livroId) {
     });
 }
 
+// ─── Exportar Tudo (flat) — acervo inteiro, sem passar pelo formulário ─────
+// Mesmo formato "flat" da exportação seletiva (registro por item, com
+// contexto de Livro/Parte/Seção já resolvido) e o mesmo .md legível — só
+// que sem filtro nenhum, pra quando a pessoa quer o acervo inteiro de uma
+// vez e não só marcar todos os checkboxes de Livro (que nem existe hoje) ou
+// deixar os filtros em branco na mão torcendo pra não esquecer nenhum.
+export function gerarTudoFlat() {
+    const itens = [
+        ...db.poemas.map((p) => montarRegistro('poema', p)),
+        ...db.prosas.map((p) => montarRegistro('prosa', p)),
+    ];
+    const coletaneas = db.livros
+        .filter((l) => l.tipo === 'Coletânea')
+        .map((col) => exportarColetaneaResolvida(col.id))
+        .filter(Boolean);
+    return { itens, coletaneas };
+}
+
+export function exportarTudoFlatJson() {
+    const { itens, coletaneas } = gerarTudoFlat();
+    if (itens.length === 0 && coletaneas.length === 0) {
+        mostrarAviso('Acervo vazio — nada pra exportar.');
+        return;
+    }
+
+    const saida = { export_format: 'tudo_flat', itens, coletaneas };
+    const blob = new Blob([JSON.stringify(saida, null, 4)], {
+        type: 'application/json;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = `arquivo_poetico_flat_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
+
+    const span = document.getElementById('exp-resultado');
+    if (span) {
+        span.innerText = `Acervo inteiro exportado em JSON flat (${itens.length} texto(s) + ${coletaneas.length} coletânea(s)).`;
+    }
+}
+
+// Coletâneas ficam de fora do .md por ora — mesma decisão de
+// executarExportacaoSeletivaMarkdown (ver comentário lá acima).
+export function exportarTudoFlatMarkdown() {
+    const { itens } = gerarTudoFlat();
+    if (itens.length === 0) {
+        mostrarAviso('Acervo vazio — nada pra exportar.');
+        return;
+    }
+
+    baixarMarkdown(itens, `arquivo_poetico_flat_${Date.now()}.md`);
+
+    const span = document.getElementById('exp-resultado');
+    if (span) {
+        span.innerText = `Acervo inteiro exportado em Markdown (${itens.length} texto(s)).`;
+    }
+}
+
 // Mantém os checkboxes de Livros/Coletâneas atualizados conforme o banco muda
 window.addEventListener('db:saved', popularSelecaoExportacao);
 

@@ -64,62 +64,72 @@
                     <label class="form-label">Sequência</label>
                     <input type="number" id="p-sequencia" />
 
-                    <div
-                        class="mt-2 mb-2 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
-                    >
-                        <div class="flex items-center justify-between">
-                            <label class="form-label mb-2">Data de Escrita</label>
-                            <label
-                                class="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400 cursor-pointer mb-2 whitespace-nowrap"
-                                title="Marque quando tiver certeza de que foi exatamente nessa data. Deixe desmarcado quando for uma estimativa (ex.: metadado de arquivo, ou data reconstruída pelo contexto)."
+                    <details class="campo-grupo" open>
+                        <summary>
+                            Data de escrita, publicação, época e contexto
+                            <span class="campo-grupo-dica"
+                                >(quando foi escrito, primeira publicação, época retratada,
+                                contexto)</span
                             >
-                                <input type="checkbox" id="p-data-esc-exata" />
-                                Data exata
-                            </label>
-                        </div>
-                        <div class="grid grid-cols-3 gap-1">
-                            <input
-                                type="number"
-                                id="p-data-esc-dia"
-                                placeholder="Dia"
-                                min="1"
-                                max="31"
-                                title="Dia"
-                            />
-                            <input
-                                type="number"
-                                id="p-data-esc-mes"
-                                placeholder="Mês"
-                                min="1"
-                                max="12"
-                                title="Mês"
-                            />
-                            <input
-                                type="number"
-                                id="p-data-esc-ano"
-                                placeholder="Ano"
-                                min="1900"
-                                max="2100"
-                                title="Ano"
-                            />
-                            <input
-                                type="number"
-                                id="p-data-esc-hora"
-                                placeholder="Hora"
-                                min="0"
-                                max="23"
-                                title="Hora"
-                            />
-                            <input
-                                type="number"
-                                id="p-data-esc-minuto"
-                                placeholder="Min"
-                                min="0"
-                                max="59"
-                                title="Minuto"
-                            />
-                        </div>
-                        <label class="form-label mb-2 mt-3">Data de Primeira Publicação</label>
+                        </summary>
+                        <div class="campo-grupo-corpo">
+                            <div class="flex items-center justify-between">
+                                <label class="form-label mb-2">Data de Escrita</label>
+                                <label
+                                    class="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400 cursor-pointer mb-2 whitespace-nowrap"
+                                    title="Marque quando tiver certeza de que foi exatamente nessa data. Deixe desmarcado quando for uma estimativa (ex.: metadado de arquivo, ou data reconstruída pelo contexto)."
+                                >
+                                    <input type="checkbox" id="p-data-esc-exata" />
+                                    Data exata
+                                </label>
+                            </div>
+                            <div class="grid grid-cols-3 gap-1">
+                                <input
+                                    type="number"
+                                    id="p-data-esc-dia"
+                                    placeholder="Dia"
+                                    min="1"
+                                    max="31"
+                                    title="Dia"
+                                />
+                                <input
+                                    type="number"
+                                    id="p-data-esc-mes"
+                                    placeholder="Mês"
+                                    min="1"
+                                    max="12"
+                                    title="Mês"
+                                />
+                                <input
+                                    type="number"
+                                    id="p-data-esc-ano"
+                                    placeholder="Ano"
+                                    min="1900"
+                                    max="2100"
+                                    title="Ano"
+                                />
+                            </div>
+                            <label class="form-label mb-2 mt-3">Hora de Escrita</label>
+                            <div class="grid grid-cols-3 gap-1">
+                                <input
+                                    type="number"
+                                    id="p-data-esc-hora"
+                                    placeholder="Hora"
+                                    min="0"
+                                    max="23"
+                                    title="Hora"
+                                />
+                                <input
+                                    type="number"
+                                    id="p-data-esc-minuto"
+                                    placeholder="Min"
+                                    min="0"
+                                    max="59"
+                                    title="Minuto"
+                                />
+                            </div>
+                            <label class="form-label mb-2 mt-3">Data de Primeira Publicação</label>
+
                         <div class="grid grid-cols-3 gap-1">
                             <input
                                 type="number"
@@ -172,6 +182,20 @@
                                 Não se aplica
                             </label>
                         </div>
+                        <input
+                            type="text"
+                            id="p-epoca-nome"
+                            list="sugestoes-epoca-nome"
+                            class="text-sm mb-2"
+                            placeholder="Nome do período (opcional) — ex.: Namoro com Fulano, Luto, Pandemia..."
+                            onchange="aplicarSugestaoEpoca()"
+                        />
+                        <datalist id="sugestoes-epoca-nome"></datalist>
+                        <p class="text-[10px] text-gray-400 dark:text-slate-500 -mt-1 mb-2">
+                            Repetir um nome já usado sugere as datas e o contexto do poema mais
+                            recente com esse nome — só nos campos que estiverem vazios, sem
+                            sobrescrever o que você já preencheu.
+                        </p>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <span class="text-[10px] text-gray-400 dark:text-slate-500"
@@ -236,7 +260,15 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+
+                        <label class="form-label mt-3">Contexto Histórico/Pessoal</label>
+                        <textarea
+                            id="p-contexto"
+                            class="text-sm h-20"
+                            placeholder="O que inspirou o texto — acontecimentos, eventos, vida pessoal..."
+                        ></textarea>
+                        </div>
+                    </details>
 
 
                     <label class="form-label">Texto</label>
@@ -331,11 +363,17 @@
                         id="p-texto"
                         class="h-96 font-serif leading-relaxed text-lg w-full border-t-0 rounded-t-none"
                     ></textarea>
+
+                    <label class="form-label mt-3">Notas</label>
+                    <textarea id="p-notas" class="text-sm h-20"></textarea>
                 </div>
 
                 <div
                     class="space-y-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg border border-gray-300 dark:border-slate-600"
                 >
+                    <details class="campo-grupo" open>
+                        <summary>Livros e destino</summary>
+                        <div class="campo-grupo-corpo">
                     <label class="form-label">Livros</label>
                     <select id="p-livros" multiple class="h-24 text-xs"></select>
                     <label
@@ -362,6 +400,14 @@
                         class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
                     ></select>
                     <div id="p-coletaneas-info"></div>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>
+                            Elos, referências e intertextualidade
+                        </summary>
+                        <div class="campo-grupo-corpo">
                     <label class="form-label">Elos</label>
                     <select
                         id="p-elos-select"
@@ -390,11 +436,13 @@
                             <option value="Filme/Série">Filme/Série</option>
                             <option value="Vídeo">Vídeo</option>
                             <option value="Citação">Citação</option>
+                            <option value="Conversa">Conversa</option>
                             <option value="Outro">Outro</option>
                         </select>
                         <input
                             type="text"
                             id="p-intertexto-texto"
+                            list="sugestoes-intertexto"
                             class="text-sm flex-1"
                             placeholder="Ex.: 'Águas de Março', Tom Jobim"
                         />
@@ -415,11 +463,17 @@
                             Cancelar
                         </button>
                     </div>
+                    <datalist id="sugestoes-intertexto"></datalist>
                     <div
                         id="p-intertexto-lista"
                         class="space-y-1 mb-2 min-h-[12px]"
                     ></div>
+                        </div>
+                    </details>
 
+                    <details class="campo-grupo">
+                        <summary>Anexos</summary>
+                        <div class="campo-grupo-corpo">
                     <label class="form-label"
                         >Anexos
                         <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
@@ -478,7 +532,12 @@
                         ></label
                     >
                     <textarea id="p-anexos-nota-geral" class="text-sm h-20"></textarea>
+                        </div>
+                    </details>
 
+                    <details class="campo-grupo">
+                        <summary>Anotações marginais e descrição visual</summary>
+                        <div class="campo-grupo-corpo">
                     <label class="form-label"
                         >Anotações Marginais
                         <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
@@ -547,14 +606,12 @@
                         class="text-sm h-20"
                         placeholder="Disposição espacial, forma, elementos concretistas..."
                     ></textarea>
-                    <label class="form-label">Contexto Histórico/Pessoal</label>
-                    <textarea
-                        id="p-contexto"
-                        class="text-sm h-20"
-                        placeholder="O que inspirou o texto — acontecimentos, eventos, vida pessoal..."
-                    ></textarea>
-                    <label class="form-label">Notas</label>
-                    <textarea id="p-notas" class="text-sm h-20"></textarea>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>Ocultação e conteúdo sensível</summary>
+                        <div class="campo-grupo-corpo">
                     <label class="form-label"
                         >Ocultação
                         <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
@@ -582,6 +639,12 @@
                         id="p-hiperacionante"
                         class="text-sm h-20 border-amber-300 dark:border-amber-700"
                     ></textarea>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>Sinalizações e dedicatória</summary>
+                        <div class="campo-grupo-corpo">
                     <label class="form-label">Sinalizações (Etiquetas)</label>
                     <div class="flex gap-2 mb-2">
                         <input
@@ -626,6 +689,12 @@
                         class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
                     ></div>
                     <input type="hidden" id="p-pessoas" />
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>Status, migração e descarte</summary>
+                        <div class="campo-grupo-corpo">
                     <div>
                         <label class="text-sm font-bold block mb-1">Status</label>
                         <select id="p-status">
@@ -699,6 +768,8 @@
                         id="p-descarte"
                         class="text-sm h-20 border-amber-300 dark:border-amber-700"
                     ></textarea>
+                        </div>
+                    </details>
                 </div>
 
                 <div

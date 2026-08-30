@@ -3,6 +3,7 @@
 // ============================================================
 
 import { abrirModalConfirmacao } from './utils.js';
+import { abrirBuscaEmCampo, fecharBuscaEmCampo, campoTemBuscaHabilitada } from './busca-campo.js';
 
 const PASTA_MODAIS = 'modais/';
 
@@ -101,6 +102,7 @@ function abrirEFocar(id, el) {
 }
 
 function fecharEDevolverFoco(id, el) {
+    fecharBuscaEmCampo();
     el.classList.add('hidden');
     const anterior = ultimoFocoPorModal[id];
     delete ultimoFocoPorModal[id];
@@ -162,6 +164,19 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         const form = topo.querySelector('form');
         if (form) form.requestSubmit();
+    }
+
+    // Ctrl+F com o foco num dos campos de texto longo (ver
+    // busca-campo.js): busca só ali, em vez do Ctrl+F nativo do
+    // navegador, que também acha ocorrências escondidas atrás do
+    // modal (na lista de poemas, por exemplo) e confunde mais do
+    // que ajuda.
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        const ativo = document.activeElement;
+        if (ativo?.tagName === 'TEXTAREA' && campoTemBuscaHabilitada(ativo.id)) {
+            e.preventDefault();
+            abrirBuscaEmCampo(ativo);
+        }
     }
 
     // Focus trap: Tab não deixa o foco escapar do modal do topo pra

@@ -13,6 +13,7 @@
 // ============================================================
 
 import { formatarDataParcial, formatarEpocaRetratada, estaPublicado } from './utils.js';
+import { db } from './db.js';
 
 const INFO_STATUS = {
     publicado: { emoji: '🟢', titulo: 'Publicado' },
@@ -63,6 +64,17 @@ function blocoTexto(titulo, texto) {
     return t ? `### ${titulo}\n\n${t}\n\n` : '';
 }
 
+// Elos e Referências guardam ids de outros poemas (conceitos.elos/
+// conceitos.referencias) — resolve pros títulos, igual titulosPoemasPorId
+// em render-listas.js, só que em texto puro (sem HTML) pro Markdown.
+function titulosPorIds(ids) {
+    if (!Array.isArray(ids) || !ids.length) return null;
+    const titulos = ids
+        .map((id) => db.poemas.find((p) => p.id == id)?.titulo)
+        .filter(Boolean);
+    return titulos.length ? titulos.join(', ') : null;
+}
+
 // ─── Um item (Poema ou Prosa) → seção Markdown ─────────────────────────
 function itemParaMarkdown(item, indice) {
     const tipoLabel = item.tipo === 'prosa' ? 'Prosa' : 'Poema';
@@ -92,6 +104,8 @@ function itemParaMarkdown(item, indice) {
     md += linhaMeta('Dedicado a / Sobre quem', item.pessoas || null);
     md += linhaMeta('Sinalizações', item.sinalizacoes || null);
     if (item.genero) md += linhaMeta('Gênero', item.genero);
+    md += linhaMeta('Elos', titulosPorIds(item.conceitos?.elos));
+    md += linhaMeta('Referências', titulosPorIds(item.conceitos?.referencias));
 
     md += '\n';
     md += blocoTexto('Texto', corpoParaMarkdown(item.texto));

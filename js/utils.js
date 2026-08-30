@@ -681,6 +681,20 @@ export function preencherDataParcial(prefixo, dataObj) {
     });
 }
 
+// Variante não-destrutiva de preencherDataParcial: só entra nos
+// subcampos (dia/mês/ano) que estiverem vazios — usada pela sugestão
+// automática de Época Retratada (ver aplicarSugestaoEpoca em forms.js),
+// pra nunca sobrescrever o que a pessoa já digitou. Mesmo idioma do
+// "if (el && !el.value)" já usado em ui.js pra sugerir data de
+// publicação a partir do Livro de destino.
+export function preencherDataParcialSeVazio(prefixo, dataObj) {
+    if (!dataObj) return;
+    ['dia', 'mes', 'ano'].forEach((c) => {
+        const el = document.getElementById(`${prefixo}-${c}`);
+        if (el && !el.value && dataObj[c] != null) el.value = dataObj[c];
+    });
+}
+
 export function formatarDataParcial(dataObj) {
     if (!dataObj) return '—';
     const { dia, mes, ano, hora, minuto } = dataObj;
@@ -753,6 +767,28 @@ export function violaOrdemDeDatas(anterior, posterior) {
 // categorizado" (o campo inteiro null). Ver epocaRetratada em forms.js.
 export function formatarEpocaRetratada(epoca) {
     if (!epoca) return '—';
+    if (epoca.na) return epoca.nome ? `${epoca.nome} (N/A)` : 'N/A';
+    const ini = formatarDataParcial(epoca.inicio);
+    const fim = formatarDataParcial(epoca.fim);
+    const intervalo =
+        ini !== '—' && fim !== '—'
+            ? `${ini} – ${fim}`
+            : ini !== '—'
+              ? `A partir de ${ini}`
+              : fim !== '—'
+                ? `Até ${fim}`
+                : '';
+    if (epoca.nome) return intervalo ? `${epoca.nome} (${intervalo})` : epoca.nome;
+    return intervalo || '—';
+}
+
+// Só o intervalo textual de Época Retratada, sem o nome do período —
+// usado onde o nome já é mostrado à parte, com destaque visual próprio
+// (ver render-listas.js, coluna Época Retratada). formatarEpocaRetratada
+// (acima) continua sendo a versão "tudo junto" usada na exportação em
+// Markdown, onde não há como colorir/destacar nada.
+export function formatarIntervaloEpocaRetratada(epoca) {
+    if (!epoca) return '—';
     if (epoca.na) return 'N/A';
     const ini = formatarDataParcial(epoca.inicio);
     const fim = formatarDataParcial(epoca.fim);
@@ -760,6 +796,43 @@ export function formatarEpocaRetratada(epoca) {
     if (ini !== '—') return `A partir de ${ini}`;
     if (fim !== '—') return `Até ${fim}`;
     return '—';
+}
+
+// Nomes de período já usados em Época Retratada, pra autocompletar o
+// campo "Nome do período" (ver p-epoca-nome em modal-poema.html) — mesma
+// lógica de extrairValoresUnicosDeIntertextualidade, só que sobre
+// epocaRetratada.nome.
+export function extrairNomesEpocaUnicos(poemas) {
+    const nomes = new Set();
+    poemas.forEach((p) => {
+        if (p.epocaRetratada?.nome) nomes.add(p.epocaRetratada.nome);
+    });
+    return Array.from(nomes).sort();
+}
+
+// Sugestão automática de datas e contexto pra um nome de período já
+// usado (ver aplicarSugestaoEpoca em forms.js): busca o poema mais
+// recente (maior id — id é timestamp de criação, ver gerarId) que tenha
+// esse mesmo nome em epocaRetratada.nome, e devolve as datas e o
+// contexto histórico/pessoal daquele poema como sugestão.
+//
+// É só um ponto de partida, nunca uma imposição — quem chama só aplica
+// nos campos que estiverem vazios (preencherDataParcialSeVazio). Um
+// mesmo nome de período pode, de propósito, ter datas diferentes de um
+// poema pro outro — ex.: "Luto" pode valer até um ponto num poema e se
+// estender mais adiante em outro.
+export function obterSugestaoEpocaPorNome(poemas, nome) {
+    if (!nome) return null;
+    const candidatos = poemas
+        .filter((p) => p.epocaRetratada?.nome === nome)
+        .sort((a, b) => b.id - a.id);
+    if (!candidatos.length) return null;
+    const maisRecente = candidatos[0];
+    return {
+        inicio: maisRecente.epocaRetratada.inicio || null,
+        fim: maisRecente.epocaRetratada.fim || null,
+        contextoHistorico: maisRecente.contextoHistorico || '',
+    };
 }
 
 // ─── Filtro por faixa de data (Escrita / Publicação) ───────────
@@ -1166,6 +1239,24 @@ export function extrairSinalizacoesUnicas(poemas) {
         }
     });
     return Array.from(sinais).sort();
+}
+
+// Sugestões de autocompletar pra Intertextualidade (campo Texto):
+// várias entradas de intertexto — de poemas diferentes, às vezes tipos
+// diferentes — costumam repetir a mesma referência (a mesma conversa, o
+// mesmo livro), daí o autocompletar evitar redigitar/variar a grafia.
+// Mesma lógica de extração de extrairValoresUnicosDeAnotacoes, só que
+// sobre `intertextualidade` em vez de `anotacoesMarginais`.
+export function extrairValoresUnicosDeIntertextualidade(poemas) {
+    const valores = new Set();
+    poemas.forEach((p) => {
+        if (Array.isArray(p.intertextualidade)) {
+            p.intertextualidade.forEach((it) => {
+                if (it && it.texto) valores.add(it.texto);
+            });
+        }
+    });
+    return Array.from(valores).sort();
 }
 
 // Sugestões de autocompletar pras Anotações Marginais (Posição e Fonte):

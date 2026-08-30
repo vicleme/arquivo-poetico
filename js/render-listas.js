@@ -15,7 +15,7 @@ import {
     filtrarTextos,
     filtrarPorConteudo,
     formatarDataParcial,
-    formatarEpocaRetratada,
+    formatarIntervaloEpocaRetratada,
     escapeHtml,
     sanitizarTextoRico,
     abrirModalConfirmacao,
@@ -758,21 +758,35 @@ function getListaVisivelPoemas() {
 // colunas "Escrito em" e "Publicação". Datas ausentes sempre vão pro
 // fim, independente da direção pedida.
 function compararPorData(pegarData) {
-    return (a, b, asc) => {
-        const da = pegarData(a),
-            db_ = pegarData(b);
-        if (!da && !db_) return 0;
-        if (!da) return 1;
-        if (!db_) return -1;
-        if (da.ano !== db_.ano) return asc ? da.ano - db_.ano : db_.ano - da.ano;
-        const mA = da.mes ?? Infinity,
-            mB = db_.mes ?? Infinity;
-        if (mA !== mB) return asc ? mA - mB : mB - mA;
-        const dA = da.dia ?? Infinity,
-            dB = db_.dia ?? Infinity;
-        if (dA !== dB) return asc ? dA - dB : dB - dA;
-        return 0;
-    };
+    return (a, b, asc) => compararDatasParciais(pegarData(a), pegarData(b), asc);
+}
+
+// Comparação cronológica de duas datas parciais (dia/mês/ano, cada um
+// opcional) — núcleo comum reaproveitado tanto por compararPorData
+// (um único campo de data) quanto por compararPorEpocaRetratada (que
+// precisa comparar dois campos, De e Até, em sequência).
+//
+// `ausenteComoMinimo` decide o que um mês/dia em branco representa: por
+// padrão (false — usado por Escrita/Publicação e pelo "Até" da Época
+// Retratada) um sub-campo ausente é tratado como o valor MÁXIMO dentro
+// do mês/ano conhecido (ex.: só o ano preenchido soa como "aconteceu no
+// fim daquele ano"; um "Até" só com mês soa como "durou até o fim do
+// mês"). Já pro "De" de um intervalo o raciocínio é o oposto: "não sei o
+// dia exato" deveria, na dúvida, contar como o começo mais cedo
+// possível — por isso compararPorEpocaRetratada passa true ali.
+function compararDatasParciais(da, db_, asc, ausenteComoMinimo = false) {
+    if (!da && !db_) return 0;
+    if (!da) return 1;
+    if (!db_) return -1;
+    if (da.ano !== db_.ano) return asc ? da.ano - db_.ano : db_.ano - da.ano;
+    const ausente = ausenteComoMinimo ? -Infinity : Infinity;
+    const mA = da.mes ?? ausente,
+        mB = db_.mes ?? ausente;
+    if (mA !== mB) return asc ? mA - mB : mB - mA;
+    const dA = da.dia ?? ausente,
+        dB = db_.dia ?? ausente;
+    if (dA !== dB) return asc ? dA - dB : dB - dA;
+    return 0;
 }
 
 // Comparador alfabético genérico (pt-BR, insensível a maiúscula/acento)
@@ -811,20 +825,34 @@ function textoTitulosPoemasPorId(ids) {
         .join(', ');
 }
 
-// Época Retratada ordena pelo início do intervalo (ou o fim, se só ele
-// estiver preenchido) — mesmo comparador cronológico usado por
-// Escrita/Publicação. N/A e "sem época atribuída" contam igualmente como
-// "sem valor" pra fins de ordenação, então ambos vão pro fim.
-function pegarDataEpoca(p) {
-    if (!p.epocaRetratada || p.epocaRetratada.na) return null;
-    return p.epocaRetratada.inicio || p.epocaRetratada.fim || null;
+// Época Retratada ordena pelo início do intervalo ("De") e, quando dois
+// itens empatam nele (mesmo mês/ano, ou ambos em branco), desempata pelo
+// fim ("Até") — sem isso, poemas com o mesmo "De" mas "Até" bem
+// diferentes ficavam embaralhados entre si, na ordem de inserção. N/A e
+// "sem época atribuída" contam igualmente como "sem valor", então ambos
+// vão pro fim, independente da direção.
+//
+// O "De" usa ausenteComoMinimo=true (mês/dia em branco = "começou o mais
+// cedo possível"); o "Até" usa o padrão (mês/dia em branco = "durou até
+// o mais tarde possível") — senão um período só com mês/ano no "De"
+// (ex.: "02/2023") aparecia ordenado depois de outro que já tem o dia
+// exato no mesmo mês, quando na verdade pode ter começado antes.
+function compararPorEpocaRetratada(a, b, asc) {
+    const ea = a.epocaRetratada && !a.epocaRetratada.na ? a.epocaRetratada : null;
+    const eb = b.epocaRetratada && !b.epocaRetratada.na ? b.epocaRetratada : null;
+    if (!ea && !eb) return 0;
+    if (!ea) return 1;
+    if (!eb) return -1;
+    const porInicio = compararDatasParciais(ea.inicio, eb.inicio, asc, true);
+    if (porInicio !== 0) return porInicio;
+    return compararDatasParciais(ea.fim, eb.fim, asc);
 }
 
 const COMPARADORES_ORDENACAO_POEMAS = {
     titulo: compararPorTexto((p) => p.titulo),
     dataEscrita: compararPorData((p) => p.dataEscrita),
     dataPublicacao: compararPorData((p) => p.dataPublicacao),
-    epocaRetratada: compararPorData(pegarDataEpoca),
+    epocaRetratada: compararPorEpocaRetratada,
     status: compararPorStatus,
     pessoas: compararPorTexto((p) => p.pessoas),
     elos: compararPorTexto((p) => textoTitulosPoemasPorId(p.conceitos?.elos)),
@@ -1737,8 +1765,12 @@ export function renderPoemas() {
         notas: (p) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.notas)}</td>`,
         epocaRetratada: (p) => {
-            const na = p.epocaRetratada?.na;
-            return `<td class="p-4 text-xs font-mono ${na ? 'text-gray-300 dark:text-slate-600 italic' : 'text-gray-400 dark:text-slate-500'}">${formatarEpocaRetratada(p.epocaRetratada)}</td>`;
+            const epoca = p.epocaRetratada;
+            const na = epoca?.na;
+            const nomeBadge = epoca?.nome
+                ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold align-middle">${escapeHtml(epoca.nome)}</span>`
+                : '';
+            return `<td class="p-4 text-xs ${na ? 'text-gray-300 dark:text-slate-600 italic' : 'text-gray-400 dark:text-slate-500'}">${nomeBadge}<span class="font-mono">${formatarIntervaloEpocaRetratada(epoca)}</span></td>`;
         },
         intertextualidade: (p) => {
             const lista = Array.isArray(p.intertextualidade) ? p.intertextualidade : [];

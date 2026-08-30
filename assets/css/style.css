@@ -147,6 +147,74 @@ textarea:focus {
     display: none !important;
 }
 
+/* --- Grupos de campos colapsáveis (ex.: modal de Poema/Prosa) ---
+   <details class="campo-grupo"><summary>Rótulo</summary><div class="campo-grupo-corpo">...</div></details>
+   Reaproveita o padrão nativo <details>/<summary> já usado em coletaneas.js
+   e render-estrutura.js, só que com um visual fixo em Tailwind-like CSS puro
+   (esses dois usam estilo inline porque são gerados via JS; aqui o HTML é
+   estático, então fica mais simples direto no CSS). */
+.campo-grupo {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    background: #fff;
+}
+.campo-grupo > summary {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.campo-grupo > summary::-webkit-details-marker {
+    display: none;
+}
+.campo-grupo > summary::before {
+    content: '▸';
+    display: inline-block;
+    font-size: 0.65rem;
+    transition: transform 0.15s;
+    color: #9ca3af;
+}
+.campo-grupo[open] > summary::before {
+    transform: rotate(90deg);
+}
+.campo-grupo > summary .campo-grupo-dica {
+    font-weight: 400;
+    text-transform: none;
+    color: #9ca3af;
+    font-size: 0.65rem;
+}
+.campo-grupo > .campo-grupo-corpo {
+    padding: 0 0.75rem 0.75rem;
+    border-top: 1px solid #f3f4f6;
+    padding-top: 0.75rem;
+}
+
+html.dark .campo-grupo {
+    background: #0f172a;
+    border-color: #334155;
+}
+html.dark .campo-grupo > summary {
+    color: #94a3b8;
+}
+html.dark .campo-grupo > summary::before {
+    color: #64748b;
+}
+html.dark .campo-grupo > summary .campo-grupo-dica {
+    color: #64748b;
+}
+html.dark .campo-grupo > .campo-grupo-corpo {
+    border-top-color: #1e293b;
+}
+
 /* --- Modo Escuro (ver js/theme.js) ---
    Regras daqui são só pro que não é utilitário Tailwind (esses ganham dark:
    direto na classe, no HTML/JS). Aqui: color-scheme nativo (scrollbar do SO,

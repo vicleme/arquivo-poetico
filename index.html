@@ -1721,6 +1721,30 @@
                         </p>
                     </div>
 
+                    <!-- Acervo inteiro no modelo flat (mesmo formato desta aba, sem filtro
+                     nenhum) — direto, sem precisar deixar os campos em branco na mão. -->
+                    <div class="pt-4 border-t border-dashed border-gray-200 dark:border-slate-700">
+                        <p class="text-xs text-gray-400 dark:text-slate-500 mb-2">
+                            Quer o acervo inteiro no modelo <strong>flat</strong> (mesmo formato
+                            desta aba, com contexto de Livro/Parte/Seção resolvido), sem mexer em
+                            filtro nenhum?
+                        </p>
+                        <div class="flex items-center gap-3">
+                            <button
+                                onclick="exportarTudoFlatJson()"
+                                class="bg-blue-700 dark:bg-blue-600 text-white px-4 py-2 rounded shadow font-bold text-sm"
+                            >
+                                Baixar tudo — JSON flat
+                            </button>
+                            <button
+                                onclick="exportarTudoFlatMarkdown()"
+                                class="bg-slate-700 dark:bg-slate-600 text-white px-4 py-2 rounded shadow font-bold text-sm"
+                            >
+                                Baixar tudo — .md
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Separador + backups automáticos (rede de segurança, não substitui o manual) -->
                     <div class="pt-4 border-t border-dashed border-gray-200 dark:border-slate-700">
                         <p class="text-xs text-gray-400 dark:text-slate-500 mb-3">

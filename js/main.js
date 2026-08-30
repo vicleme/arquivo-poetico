@@ -104,6 +104,8 @@ import {
     exportarTudoAninhado,
     exportarLivroCompleto,
     exportarLivrosCompletos,
+    exportarTudoFlatJson,
+    exportarTudoFlatMarkdown,
 } from './exportar.js';
 import { renderEstatisticas } from './estatisticas.js';
 import {
@@ -146,6 +148,7 @@ import {
     initFormPoema,
     editarPoema,
     toggleCamposEpocaNa,
+    aplicarSugestaoEpoca,
     initFormProsa,
     editarProsa,
     initFormElemento,
@@ -505,6 +508,7 @@ window.setFiltroDataRapidoProsasPublicacao = setFiltroDataRapidoProsasPublicacao
 window.limparFiltroDataPoemas = limparFiltroDataPoemas;
 window.limparFiltroDataProsas = limparFiltroDataProsas;
 window.toggleCamposEpocaNa = toggleCamposEpocaNa;
+window.aplicarSugestaoEpoca = aplicarSugestaoEpoca;
 // toggleSelecaoTodosPoemas segue em window: index.html ainda tem um
 // onclick estático nesse checkbox (fica pra quando migrarmos index.html).
 window.toggleSelecaoTodosPoemas = toggleSelecaoTodosPoemas;
@@ -546,6 +550,8 @@ window.renderEstatisticas = renderEstatisticas;
 window.exportarTudoAninhado = exportarTudoAninhado;
 window.exportarLivroCompleto = exportarLivroCompleto;
 window.exportarLivrosCompletos = exportarLivrosCompletos;
+window.exportarTudoFlatJson = exportarTudoFlatJson;
+window.exportarTudoFlatMarkdown = exportarTudoFlatMarkdown;
 
 window.toggleSelecaoEstrutura = toggleSelecaoEstrutura;
 window.marcarTodosEstrutura = marcarTodosEstrutura;

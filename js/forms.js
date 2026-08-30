@@ -10,6 +10,7 @@ import {
     getIrmaosPorEscopo,
     lerDataParcial,
     preencherDataParcial,
+    preencherDataParcialSeVazio,
     seqOuNull,
     gerarId,
     escapeHtml,
@@ -17,6 +18,7 @@ import {
     mostrarAvisoComAcao,
     criarRastreadorDeAlteracoes,
     violaOrdemDeDatas,
+    obterSugestaoEpocaPorNome,
 } from './utils.js';
 
 // Rastreadores de alterações não salvas dos formulários de texto longo
@@ -375,6 +377,24 @@ export function toggleCamposEpocaNa() {
     });
 }
 
+// Aplica a sugestão automática de datas/contexto ao repetir um nome de
+// período já usado (ver p-epoca-nome em modal-poema.html) — só entra
+// nos campos que estiverem vazios (De/Até de Época Retratada e Contexto
+// Histórico/Pessoal), nunca sobrescrevendo o que já foi digitado. Ver
+// obterSugestaoEpocaPorNome em utils.js pra critério de "mais recente".
+export function aplicarSugestaoEpoca() {
+    const nome = (document.getElementById('p-epoca-nome')?.value || '').trim();
+    if (!nome) return;
+    const sugestao = obterSugestaoEpocaPorNome(db.poemas, nome);
+    if (!sugestao) return;
+    preencherDataParcialSeVazio('p-epoca-ini', sugestao.inicio);
+    preencherDataParcialSeVazio('p-epoca-fim', sugestao.fim);
+    const contextoEl = document.getElementById('p-contexto');
+    if (contextoEl && !contextoEl.value.trim() && sugestao.contextoHistorico) {
+        contextoEl.value = sugestao.contextoHistorico;
+    }
+}
+
 export function initFormPoema() {
     const form = document.getElementById('form-poema');
     if (!form) return;
@@ -412,11 +432,17 @@ export function initFormPoema() {
         // exclusão deliberada, distinta de "ainda não categorizado" (o
         // campo inteiro fica null). Ver formatarEpocaRetratada em utils.js.
         const epocaNa = document.getElementById('p-epoca-na').checked;
+        const epocaNome = (document.getElementById('p-epoca-nome')?.value || '').trim();
         const epocaInicio = lerDataParcial('p-epoca-ini');
         const epocaFim = lerDataParcial('p-epoca-fim');
+
+        if (violaOrdemDeDatas(epocaInicio, epocaFim)) {
+            return mostrarAviso('O "Até" da Época Retratada não pode ser anterior ao "De".');
+        }
+
         const epocaRetratada =
-            epocaNa || epocaInicio || epocaFim
-                ? { na: epocaNa, inicio: epocaInicio, fim: epocaFim }
+            epocaNa || epocaInicio || epocaFim || epocaNome
+                ? { na: epocaNa, inicio: epocaInicio, fim: epocaFim, nome: epocaNome }
                 : null;
 
         const lerLivroSecao = (prefLivro, prefSecao) => {
@@ -551,6 +577,7 @@ export async function editarPoema(id) {
     preencherDataParcial('p-epoca-ini', p.epocaRetratada?.inicio);
     preencherDataParcial('p-epoca-fim', p.epocaRetratada?.fim);
     document.getElementById('p-epoca-na').checked = !!p.epocaRetratada?.na;
+    document.getElementById('p-epoca-nome').value = p.epocaRetratada?.nome || '';
     toggleCamposEpocaNa();
     document.getElementById('p-intertexto-tipo').value = '';
     document.getElementById('p-intertexto-texto').value = '';

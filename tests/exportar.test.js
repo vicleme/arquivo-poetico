@@ -5,7 +5,12 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { db } from '../js/db.js';
-import { dataEstaNoIntervalo, correspondeFiltro, gerarExportacaoSeletiva } from '../js/exportar.js';
+import {
+    dataEstaNoIntervalo,
+    correspondeFiltro,
+    gerarExportacaoSeletiva,
+    gerarTudoFlat,
+} from '../js/exportar.js';
 
 function resetarDb() {
     db.livros = [];
@@ -275,5 +280,53 @@ describe('gerarExportacaoSeletiva (monta o payload final: itens + coletâneas)',
             coletaneasIncluir: ['999'],
         });
         assert.deepEqual(coletaneas, []);
+    });
+});
+
+// ─── gerarTudoFlat ───────────────────────────────────────────────
+// "Exportar tudo" no modelo flat: mesmo formato de gerarExportacaoSeletiva,
+// mas sem passar pelas opções de filtro — pega o acervo inteiro direto.
+
+describe('gerarTudoFlat (acervo inteiro, sem filtro, no modelo flat)', () => {
+    beforeEach(() => {
+        resetarDb();
+        db.livros = [{ id: 1, titulo: 'Livro A' }];
+        db.poemas = [
+            { id: 10, titulo: 'Poema 1', paiTipo: 'livro', paiId: 1, sinalizacoes: 'mar' },
+            { id: 11, titulo: 'Poema 2', paiTipo: 'livro', paiId: 1, sinalizacoes: 'terra' },
+        ];
+        db.prosas = [{ id: 20, titulo: 'Prosa 1', paiTipo: 'livro', paiId: 1 }];
+    });
+
+    it('inclui todos os poemas e prosas do acervo, sem filtro nenhum', () => {
+        const { itens } = gerarTudoFlat();
+        assert.deepEqual(
+            itens.map((i) => i.id).sort(),
+            [10, 11, 20],
+        );
+    });
+
+    it('cada registro sai com `tipo` e `contexto` resolvidos, igual à exportação seletiva', () => {
+        const { itens } = gerarTudoFlat();
+        const poema1 = itens.find((i) => i.id === 10);
+        assert.equal(poema1.tipo, 'poema');
+        assert.equal(poema1.contexto.livro, 'Livro A');
+    });
+
+    it('inclui todas as Coletâneas cadastradas, sem precisar marcar nenhuma', () => {
+        db.livros.push({ id: 2, tipo: 'Coletânea', titulo: 'Seleta', sequencia: 1 });
+        db.partes = [{ id: 100, livroId: 2, titulo: 'Parte A', sequencia: 1 }];
+        db.itensColetanea = [
+            { id: 1, parteId: 100, titulo: 'Item', textoOverride: 'texto', sequencia: 1 },
+        ];
+
+        const { coletaneas } = gerarTudoFlat();
+        assert.equal(coletaneas.length, 1);
+        assert.equal(coletaneas[0].titulo, 'Seleta');
+    });
+
+    it('acervo vazio retorna listas vazias, sem quebrar', () => {
+        resetarDb();
+        assert.deepEqual(gerarTudoFlat(), { itens: [], coletaneas: [] });
     });
 });
