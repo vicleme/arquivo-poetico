@@ -215,9 +215,10 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
   a Exportação seletiva (que filtra por atributo) e a exportação pontual da
   aba Estrutura ("Exportar selecionados", que filtra pela árvore mas só sai
   em JSON estrutural, sem contexto resolvido nem opção de Markdown).
-- **Versões Alternativas (`filtrar.html`)**: ferramenta separada (link no
-  header do app) para revisar poemas/prosas marcados com tags sensíveis e
-  cadastrar versões alternativas do texto antes de exportar para uma IA.
+- **Versões Alternativas (`filtrar.html`)**: ferramenta separada (acessível
+  pelo grupo "Ferramentas" na nav do app) para revisar poemas/prosas
+  marcados com tags sensíveis e cadastrar versões alternativas do texto
+  antes de exportar para uma IA.
   Aceita tanto o backup completo quanto o JSON gerado pela Exportação seletiva.
   As versões cadastradas ficam salvas por título no navegador (banco próprio,
   separado do `localStorage` do app principal) e são reaplicadas

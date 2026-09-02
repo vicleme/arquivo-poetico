@@ -64,3 +64,17 @@ if (typeof globalThis.CustomEvent === 'undefined') {
         }
     };
 }
+
+// mostrarAviso()/_criarToastEl() (utils.js) chamam requestAnimationFrame
+// pra animar a entrada do toast — não existe no Node por padrão. Dispara
+// síncrono (não precisa simular o próximo frame de verdade, só evitar o
+// ReferenceError) — suficiente pra testar a lógica sem DOM real.
+if (typeof globalThis.requestAnimationFrame === 'undefined') {
+    globalThis.requestAnimationFrame = (cb) => {
+        cb();
+        return 0;
+    };
+}
+if (typeof globalThis.cancelAnimationFrame === 'undefined') {
+    globalThis.cancelAnimationFrame = noop;
+}

@@ -11,9 +11,14 @@ const LS_PREFIX = 'arquivoPoetico_colunas_';
 
 // Ordem de definição = ordem padrão de exibição (usada só até o
 // usuário reordenar manualmente pelo seletor — a partir daí quem
-// manda é a ordem salva no localStorage, ver lerEstado()).
-// `default: true` são as colunas que já existiam antes desse recurso
-// (mantidas ativas de cara); as demais começam desligadas.
+// manda é a ordem salva no localStorage, ver lerEstado()). A ordem
+// abaixo espelha a ordem dos campos no próprio modal de edição (ver
+// modal-poema.html/modal-prosa.html — mesma sequência de <details>
+// de cima pra baixo), pra quem já conhece o formulário reconhecer o
+// mesmo fluxo no seletor de colunas, em vez de uma lista que só foi
+// crescendo por ordem de chegada da feature. `default: true` são as
+// colunas que já existiam antes desse recurso (mantidas ativas de
+// cara); as demais começam desligadas.
 // `sortType` só existe nas colunas de Poemas (única tabela com cabeçalho
 // clicável por enquanto — ver thOrdenavel() em render-listas.js):
 //   'estrutura'  — ordem padrão (array já vem nessa ordem; desc = invertida)
@@ -22,12 +27,30 @@ const LS_PREFIX = 'arquivoPoetico_colunas_';
 //   'status'     — pelos três estados possíveis, ver ORDEM_STATUS
 export const DEFINICAO_COLUNAS = {
     poemas: [
+        // Campo simples logo abaixo de Título/Sequência no modal.
+        { key: 'idioma', label: 'Idioma', default: false, sortType: 'alfabetico' },
+        // Data de Escrita / Publicação / Época Retratada / Contexto —
+        // primeiro bloco do modal, já aberto por padrão.
         { key: 'dataEscrita', label: 'Escrito em', default: true, sortType: 'data' },
         { key: 'dataPublicacao', label: 'Publicação', default: true, sortType: 'data' },
-        { key: 'estrutura', label: 'Estrutura', default: true, sortType: 'estrutura' },
-        { key: 'status', label: 'Status', default: true, sortType: 'status' },
-        { key: 'pessoas', label: 'Dedicado a', default: true, sortType: 'alfabetico' },
         { key: 'epocaRetratada', label: 'Época Retratada', default: false, sortType: 'data' },
+        {
+            key: 'contextoHistorico',
+            label: 'Contexto Histórico/Pessoal',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        // Notas — logo depois do campo Texto no modal.
+        { key: 'notas', label: 'Notas', default: false, sortType: 'alfabetico' },
+        // Autoria — chip logo abaixo de Notas no modal (Autor/Coautor).
+        { key: 'autoria', label: 'Autoria', default: false },
+        // Envios e Reações — item 7, quando/pra quem o texto foi enviado.
+        { key: 'envios', label: 'Envios', default: false },
+        // Reconhecimentos — item 8, prêmios/menções recebidos pelo texto.
+        { key: 'reconhecimentos', label: 'Reconhecimentos', default: false },
+        // "Livros e destino" — vínculo estrutural.
+        { key: 'estrutura', label: 'Estrutura', default: true, sortType: 'estrutura' },
+        // "Elos, referências e intertextualidade".
         { key: 'elos', label: 'Elos', default: false, sortType: 'alfabetico' },
         { key: 'referencias', label: 'Referências', default: false, sortType: 'alfabetico' },
         {
@@ -36,6 +59,7 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'alfabetico',
         },
+        // "Anexos".
         { key: 'anexos', label: 'Anexos', default: false, sortType: 'alfabetico' },
         {
             key: 'anexosNotaGeral',
@@ -43,6 +67,7 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'alfabetico',
         },
+        // "Anotações marginais e descrição visual".
         {
             key: 'anotacoesMarginais',
             label: 'Anotações Marginais',
@@ -55,14 +80,7 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'alfabetico',
         },
-        {
-            key: 'contextoHistorico',
-            label: 'Contexto Histórico/Pessoal',
-            default: false,
-            sortType: 'alfabetico',
-        },
-        { key: 'etiquetas', label: 'Etiquetas', default: false, sortType: 'alfabetico' },
-        { key: 'notas', label: 'Notas', default: false, sortType: 'alfabetico' },
+        // "Ocultação e conteúdo sensível".
         { key: 'ocultacao', label: 'Ocultação', default: false, sortType: 'alfabetico' },
         {
             key: 'conteudoSensivel',
@@ -76,18 +94,75 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'alfabetico',
         },
-        { key: 'descarte', label: 'Descarte', default: false, sortType: 'alfabetico' },
+        // "Sinalizações e dedicatória" — sinalizações + pessoas (+ Grupos,
+        // que é característica da pessoa, ver criarGrupoDePessoas em
+        // editor.js — não tem seção própria no modal, mas mora aqui por
+        // andar sempre junto de Pessoas).
+        { key: 'etiquetas', label: 'Etiquetas', default: false, sortType: 'alfabetico' },
+        { key: 'pessoas', label: 'Pessoas', default: true, sortType: 'alfabetico' },
+        { key: 'grupos', label: 'Grupos', default: false, sortType: 'alfabetico' },
+        // "Status e Pendências".
+        { key: 'status', label: 'Status', default: true, sortType: 'status' },
         { key: 'cortadoDe', label: 'Cortado de', default: false, sortType: 'alfabetico' },
         { key: 'lancadoEm', label: 'Lançado em', default: false, sortType: 'alfabetico' },
+        {
+            key: 'justificativaMigracao',
+            label: 'Justificativa da Migração',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        { key: 'pendencia', label: 'Pendência', default: false, sortType: 'alfabetico' },
+        { key: 'descarte', label: 'Descarte', default: false, sortType: 'alfabetico' },
+        // Não corresponde a nenhum campo do modal — é uma métrica derivada
+        // (ver contarCamposPreenchidos em exportar-md.js), por isso mora no
+        // fim da lista em vez de emparelhada com alguma seção do formulário.
+        // Útil pra identificar rapidamente os textos com estrutura mais
+        // rica/complexa (mais campos preenchidos) sem abrir cada um.
+        {
+            key: 'camposPreenchidos',
+            label: 'Campos Preenchidos',
+            default: false,
+            sortType: 'numero',
+        },
     ],
     prosas: [
+        { key: 'idioma', label: 'Idioma', default: false },
         { key: 'dataEscrita', label: 'Data', default: true },
         { key: 'dataPublicacao', label: 'Publicação', default: true },
+        // Item 4: mesmas colunas novas de Poemas, na ordem em que os
+        // grupos aparecem no modal de Prosa (ver comentário no topo
+        // do arquivo — ordem espelha o modal).
+        { key: 'epocaRetratada', label: 'Época Retratada', default: false },
+        { key: 'contextoHistorico', label: 'Contexto Histórico/Pessoal', default: false },
         { key: 'vinculo', label: 'Vínculo', default: true },
-        { key: 'pessoas', label: 'Dedicado a', default: true },
         { key: 'genero', label: 'Gênero', default: true },
         { key: 'etiquetas', label: 'Etiquetas', default: false },
+        { key: 'pessoas', label: 'Pessoas', default: true },
+        { key: 'grupos', label: 'Grupos', default: false },
         { key: 'notas', label: 'Notas', default: false },
+        { key: 'autoria', label: 'Autoria', default: false },
+        { key: 'envios', label: 'Envios', default: false },
+        { key: 'reconhecimentos', label: 'Reconhecimentos', default: false },
+        // "Elos, referências e intertextualidade".
+        { key: 'elos', label: 'Elos', default: false },
+        { key: 'referencias', label: 'Referências', default: false },
+        { key: 'intertextualidade', label: 'Intertextualidade', default: false },
+        // "Anexos".
+        { key: 'anexos', label: 'Anexos', default: false },
+        { key: 'anexosNotaGeral', label: 'Nota Anexos', default: false },
+        // "Ocultação e conteúdo sensível".
+        { key: 'ocultacao', label: 'Ocultação', default: false },
+        { key: 'conteudoSensivel', label: 'Conteúdo Sensível', default: false },
+        { key: 'vocabularioHiperacionante', label: 'Vocabulário Hiperacionante', default: false },
+        // "Status e Pendências".
+        { key: 'status', label: 'Status', default: true },
+        { key: 'cortadoDe', label: 'Cortado de', default: false },
+        { key: 'lancadoEm', label: 'Lançado em', default: false },
+        { key: 'justificativaMigracao', label: 'Justificativa da Migração', default: false },
+        { key: 'pendencia', label: 'Pendência', default: false },
+        { key: 'descarte', label: 'Descarte', default: false },
+        // Ver comentário equivalente em poemas[] acima.
+        { key: 'camposPreenchidos', label: 'Campos Preenchidos', default: false },
     ],
 };
 
@@ -172,6 +247,18 @@ export function desmarcarTodasColunas(tabela) {
     disparaAlteracao(tabela);
 }
 
+// Descarta a personalização salva (ordem reordenada + colunas ligadas/desligadas
+// manualmente) e volta pro padrão de fábrica — mesmas colunas com default: true,
+// na ordem de definição. Basta apagar a chave do localStorage: lerEstado() já
+// recalcula ordem/ativas do zero a partir de DEFINICAO_COLUNAS sempre que não
+// encontra nada salvo (mesmo caminho usado pra JSON ausente/corrompido).
+export function resetarColunas(tabela) {
+    if (!DEFINICAO_COLUNAS[tabela]) return;
+
+    localStorage.removeItem(LS_PREFIX + tabela);
+    disparaAlteracao(tabela);
+}
+
 // Alterna uma coluna e dispara 'colunas:alteradas' pra quem estiver
 // escutando (render-listas.js) re-renderizar a tabela em questão.
 // Não mexe na ordem — só liga/desliga dentro dela.
@@ -226,6 +313,11 @@ export function renderSeletorColunas(tabela) {
             <button type="button" onclick="desmarcarTodasColunas('${tabela}')"
                 class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline">
                 Desmarcar todas
+            </button>
+            <button type="button" onclick="resetarColunas('${tabela}')"
+                title="Volta pras colunas e pra ordem padrão, descartando a personalização"
+                class="text-[10px] font-semibold text-gray-500 dark:text-slate-400 hover:underline ml-auto">
+                Restaurar padrão
             </button>
         </div>`;
 

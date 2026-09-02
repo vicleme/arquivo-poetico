@@ -13,6 +13,7 @@ import {
     abrirModalExclusao,
     mostrarAvisoComAcao,
     fecharAviso,
+    gerarId,
 } from './utils.js';
 import {
     salvarCapa,
@@ -45,10 +46,18 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     elementos: [],
     coletaneas: [], // legado, não usado pela aba Coletâneas atual — mantido só por compatibilidade na importação de backups antigos
     itensColetanea: [], // itens de Coletânea de fato (ver coletaneas.js); cada item referencia uma Parte via parteId
+    pessoas: [], // cadastro central de Pessoas ({ id, nome, grupoIds }) — ver migrarPessoasParaCadastro
+    grupos: [], // cadastro central de Grupos ({ id, nome }) — quem uma Pessoa é na vida de quem escreve, constante entre poemas
+    autores: [], // cadastro central de Autores ({ id, nome, sobre }) — quem escreveu o item, ver migrarAutoria
+    epocas: [], // cadastro central de Épocas ({ id, nome, contextoRelacao, notas }) — a que período um poema se refere, ver migrarEpocas
 };
 
-// Garante que dados importados de versões antigas tenham o campo coletaneas
+// Garante que dados importados de versões antigas tenham os campos novos
 if (!db.coletaneas) db.coletaneas = [];
+if (!db.pessoas) db.pessoas = [];
+if (!db.grupos) db.grupos = [];
+if (!db.autores) db.autores = [];
+if (!db.epocas) db.epocas = [];
 
 // Migração: em Poemas, o campo `publicado` (boolean) virou `status`, com
 // 3 valores — 'publicado' | 'completo' | 'incompleto' — pra diferenciar
@@ -82,6 +91,462 @@ function migrarIntertextualidadePoemas(poemas) {
     });
 }
 migrarIntertextualidadePoemas(db.poemas);
+
+// Migração: Sinalizações era um único campo `sinalizacoes` (string,
+// separada por vírgula) misturando 4 categorias semanticamente
+// diferentes — estilo, tema, relação e sensibilidade — mais um uso que
+// na prática era "tom/registro" (ex.: "Muito meloso"). Isso impedia
+// filtrar só por categoria (ver CAMPOS_ATRIBUTO em utils.js). Vira 5
+// campos: sinalizacoesEstilo / sinalizacoesTema / sinalizacoesRelacao /
+// sinalizacoesSensibilidade / sinalizacoesTom.
+//
+// "Conteúdo sensível" não migra pra nenhum campo novo — deixou de ser
+// tag solta porque já existe o campo `conteudoSensivel` (o parágrafo
+// descritivo), que é a fonte de verdade; exibir/filtrar por "tem
+// conteúdo sensível" passa a checar esse campo diretamente, não uma
+// tag redundante que podia dessincronizar dele.
+// "Rascunho" também não migra — o que ela tentava dizer já é coberto
+// pelo status 'incompleto', que já existe; manter os dois seria a mesma
+// informação disputando dois lugares.
+// Tags não reconhecidas (inclui, por ora, "Premiados", "Tradução" e
+// "Variações" — que vão virar Reconhecimentos e Elos tipados de
+// Derivação numa etapa seguinte) vão pra sinalizacoesOutros, pra não
+// perder o dado enquanto esses campos não existem ainda.
+const MAPA_MIGRACAO_SINALIZACOES = {
+    Concretista: 'sinalizacoesEstilo',
+    Brasil: 'sinalizacoesTema',
+    '∞ Pedrictor': 'sinalizacoesRelacao',
+    'Linguagem obscena': 'sinalizacoesSensibilidade',
+    'Muito meloso ( 🍯)': 'sinalizacoesTom',
+};
+const TAGS_DESCARTADAS_NA_MIGRACAO = new Set(['Conteúdo sensível', 'Rascunho']);
+
+export function migrarSinalizacoes(itens) {
+    itens.forEach((item) => {
+        if (item.sinalizacoes === undefined) return; // já migrado (ou nunca teve o campo)
+
+        const tags = (item.sinalizacoes || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+
+        const porCategoria = {
+            sinalizacoesEstilo: [],
+            sinalizacoesTema: [],
+            sinalizacoesRelacao: [],
+            sinalizacoesSensibilidade: [],
+            sinalizacoesTom: [],
+            sinalizacoesOutros: [],
+        };
+
+        tags.forEach((tag) => {
+            if (TAGS_DESCARTADAS_NA_MIGRACAO.has(tag)) return;
+            const campo = MAPA_MIGRACAO_SINALIZACOES[tag] || 'sinalizacoesOutros';
+            porCategoria[campo].push(tag);
+        });
+
+        Object.entries(porCategoria).forEach(([campo, lista]) => {
+            // Só cria o campo se já não existir (não sobrescreve nada
+            // preenchido manualmente numa rodada anterior de migração).
+            if (item[campo] === undefined) item[campo] = lista.join(', ');
+        });
+
+        delete item.sinalizacoes;
+    });
+}
+migrarSinalizacoes(db.poemas);
+migrarSinalizacoes(db.prosas);
+
+// Migração: Elos e Referências eram arrays de ID cru apontando pra outro
+// poema (ex.: [1776745104803]). Passam a ser arrays de objeto
+// { id, tipo, texto } — um elo/referência pode ter um tipo específico
+// (Reescrita de / Tradução de / Personagem em comum / etc., ver
+// TIPOS_ELO/TIPOS_REFERENCIA em utils.js) e uma nota livre opcional. Só se
+// aplica a Poema — Prosa ainda não tem `conceitos` (item 4 do schema,
+// paridade com Poema, ainda pendente).
+// Idempotente: entradas que já são objeto (rodada anterior de migração,
+// ou item criado depois que o item 1 já existia) passam intactas.
+function migrarElosReferencias(poemas) {
+    const migrarLista = (lista) => {
+        if (!Array.isArray(lista)) return lista;
+        return lista.map((entrada) => {
+            if (entrada && typeof entrada === 'object') return entrada; // já migrado
+            const id = typeof entrada === 'number' ? entrada : parseInt(entrada, 10);
+            return { id, tipo: '', texto: '' };
+        });
+    };
+    poemas.forEach((p) => {
+        if (!p.conceitos) return;
+        p.conceitos.elos = migrarLista(p.conceitos.elos);
+        p.conceitos.referencias = migrarLista(p.conceitos.referencias);
+    });
+}
+migrarElosReferencias(db.poemas);
+
+// Migração: Elos tinham um `tipo` de uma lista fechada de 11 valores
+// (Reescrita de, Continuação de, Tradução de, Traduzido para...) — um
+// valor por rótulo possível, com só 3 pares tendo o "outro lado"
+// nomeado. Passam a ter `{ relacao, direcao }`: Relação é uma das 8
+// relações (ver RELACOES_ELO em utils.js), Direção é 'origem' (texto
+// mais antigo/base) ou 'destino' (texto derivado/mais novo) — o rótulo
+// mostrado (ver rotuloElo em utils.js) já é derivado dos dois, sem
+// precisar de mapa de inverso. Referências NÃO entram nessa migração —
+// continuam só com `tipo` (schema unidirecional, sem Direção).
+// Idempotente: elo que já tem `relacao` (rodada anterior de migração,
+// ou elo criado depois que essa migração já existia) passa intacto.
+const MAPA_MIGRACAO_TIPO_ELO = {
+    'Reescrita de': { relacao: 'Reescrita', direcao: 'destino' },
+    'Continuação de': { relacao: 'Continuidade', direcao: 'destino' },
+    'Tradução de': { relacao: 'Tradução', direcao: 'destino' },
+    'Traduzido para': { relacao: 'Tradução', direcao: 'origem' },
+    'Variação de': { relacao: 'Variação', direcao: 'destino' },
+    'Versão anterior (descartada) de': { relacao: 'Versão', direcao: 'origem' },
+    'Versão oficial de': { relacao: 'Versão', direcao: 'destino' },
+    'Díptico com': { relacao: 'Díptico', direcao: '' },
+    'Resposta a': { relacao: 'Resposta', direcao: 'destino' },
+    'Respondido em': { relacao: 'Resposta', direcao: 'origem' },
+    Outro: { relacao: 'Outro', direcao: '' },
+};
+export function migrarElosParaRelacaoDirecao(poemas) {
+    poemas.forEach((p) => {
+        const elos = p.conceitos?.elos;
+        if (!Array.isArray(elos)) return;
+        p.conceitos.elos = elos.map((elo) => {
+            if (elo.relacao !== undefined) return elo; // já migrado
+            const mapeado = MAPA_MIGRACAO_TIPO_ELO[elo.tipo];
+            if (mapeado)
+                return {
+                    id: elo.id,
+                    relacao: mapeado.relacao,
+                    direcao: mapeado.direcao,
+                    texto: elo.texto || '',
+                };
+            // tipo vazio (nunca preenchido) ou tipo desconhecido/legado:
+            // sem tipo vira elo sem relação definida (mesmo estado de
+            // "não preenchido" de antes); tipo desconhecido cai em Outro,
+            // sem direção pra não inventar um lado que não dá pra inferir.
+            return {
+                id: elo.id,
+                relacao: elo.tipo ? 'Outro' : '',
+                direcao: '',
+                texto: elo.texto || '',
+            };
+        });
+    });
+}
+migrarElosParaRelacaoDirecao(db.poemas);
+
+// Migração: pessoas era string "Pedro, Dani" (por vírgula, misturando
+// nomes sem distinguir o tipo de vínculo com o texto). Passa a ser array
+// de objeto { nome, papel }: `papel` é um dos 4 valores fechados de
+// PAPEIS_PESSOA (Retratado(a)/Inspirado(a) por/Dedicatário(a)/Mencionado(a)/Aludido(a)) —
+// ou "" (não especificado). Todo nome migrado da string antiga vira
+// papel: "" (não dá pra inferir o papel a partir só do nome). Aplica a
+// Poema e Prosa (mesmo campo/schema nos dois).
+// Idempotente: item cujo `pessoas` já é array passa intacto.
+export function migrarPessoas(itens) {
+    itens.forEach((item) => {
+        if (Array.isArray(item.pessoas)) return; // já migrado
+        const nomes = (item.pessoas || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+        item.pessoas = nomes.map((nome) => ({ nome, papel: '' }));
+    });
+}
+migrarPessoas(db.poemas);
+migrarPessoas(db.prosas);
+
+// Migração: papel era string única fechada em PAPEIS_PESSOA — uma pessoa
+// só podia ocupar um papel por texto. Na prática, boa parte do acervo
+// (poemas de endereçamento direto) tem a mesma pessoa sendo Retratado(a),
+// Inspirado(a) por e Dedicatário(a) ao mesmo tempo — forçar escolha única
+// jogava fora essa distinção pro maior bloco de dados do acervo. Passa a
+// ser `papeis`: array (0+ valores de PAPEIS_PESSOA), na ordem em que
+// foram marcados no editor — não é uma hierarquia fixa por categoria,
+// é o que a pessoa achou mais forte, poema a poema (ver conversa que
+// definiu isso: a intensidade de cada papel varia por texto, não é
+// propriedade fixa da categoria).
+// Idempotente: item cuja pessoa já tem `papeis` (array) passa intacta.
+export function migrarPapeisPessoa(itens) {
+    itens.forEach((item) => {
+        if (!Array.isArray(item.pessoas)) return; // precisa de migrarPessoas rodar antes
+        item.pessoas = item.pessoas.map((p) => {
+            if (Array.isArray(p.papeis)) return p; // já migrado
+            const { papel, ...resto } = p;
+            return { ...resto, papeis: papel ? [papel] : [] };
+        });
+    });
+}
+migrarPapeisPessoa(db.poemas);
+migrarPapeisPessoa(db.prosas);
+
+// Migração: os nomes de 3 dos 5 valores de PAPEIS_PESSOA mudaram numa
+// sessão (padronização de gênero — ver status-acervo-poetico.md):
+// "Alusão" → "Aludido(a)", "Dedicatária" → "Dedicatário(a)", "Inspirado
+// por" → "Inspirado(a) por". A troca só mudou a constante e o código —
+// dado já salvo com o nome antigo (dentro de `papeis`, array de string)
+// não foi tocado, então ficava com uma string que não bate mais com
+// nenhuma opção do <select> (aparecia como papel "invisível": sem
+// marcação em nenhum item do dropdown, mas contando pra inicial exibida
+// e pra iniciaisPapeisPessoa) e, se a pessoa marcasse o papel novo
+// correspondente (ex. Aludido(a)) no mesmo item, os dois conviviam no
+// array (["Alusão", "Aludido(a)"]), gerando inicial duplicada ("A·A") na
+// coluna. Renomeia in-place os 3 valores antigos pros novos; roda depois
+// de migrarPapeisPessoa (precisa de `papeis` já ser array) e é seguro
+// rodar de novo (só troca o que ainda está no nome antigo).
+const RENOMEACOES_PAPEL = {
+    Alusão: 'Aludido(a)',
+    Dedicatária: 'Dedicatário(a)',
+    'Inspirado por': 'Inspirado(a) por',
+};
+export function migrarNomesDePapel(itens) {
+    itens.forEach((item) => {
+        if (!Array.isArray(item.pessoas)) return;
+        item.pessoas.forEach((p) => {
+            if (!Array.isArray(p.papeis)) return;
+            p.papeis = [...new Set(p.papeis.map((papel) => RENOMEACOES_PAPEL[papel] || papel))];
+        });
+    });
+}
+migrarNomesDePapel(db.poemas);
+migrarNomesDePapel(db.prosas);
+
+// Migração: Pessoa passa a ser entidade própria em `db.pessoas`
+// ({ id, nome, grupoIds }), em vez de nome solto repetido em cada
+// poema/prosa. `papel`/`papeis` é vínculo do texto com a pessoa (varia
+// por poema) e continua em `item.pessoas`; o que muda é a chave: de
+// `{ nome, papeis }` pra `{ pessoaId, papeis }` — quem a pessoa É
+// (nome, grupos) passa a morar só no cadastro central, uma vez.
+//
+// Dedup por nome exato (mesmo critério que extrairPessoasUnicas já
+// usava) — nomes que só diferem por acento/maiúscula/espaço extra
+// viram pessoas diferentes aqui. Isso é uma limitação conhecida, não
+// um bug: decidir se "Dani" e "dani " são a mesma pessoa é uma escolha
+// de quem usa o sistema, não algo pra migração adivinhar sozinha. Uma
+// função de mesclar pessoas (mover todas as referências de um id pra
+// outro e apagar o duplicado) fica pra quando o cadastro existir de
+// fato — nesse momento fica fácil ver os quase-duplicados e juntar.
+//
+// Idempotente: item cuja entrada de pessoa já tem `pessoaId` passa
+// intacta; nome que já tem pessoa cadastrada com esse nome reaproveita
+// o id em vez de duplicar.
+export function migrarPessoasParaCadastro(dbRef) {
+    const porNome = new Map(dbRef.pessoas.map((p) => [p.nome, p]));
+
+    function idParaNome(nome) {
+        let pessoa = porNome.get(nome);
+        if (!pessoa) {
+            pessoa = { id: gerarId(), nome, grupoIds: [] };
+            dbRef.pessoas.push(pessoa);
+            porNome.set(nome, pessoa);
+        }
+        return pessoa.id;
+    }
+
+    [dbRef.poemas, dbRef.prosas].forEach((itens) => {
+        itens.forEach((item) => {
+            if (!Array.isArray(item.pessoas)) return;
+            item.pessoas = item.pessoas.map((p) => {
+                if (p.pessoaId !== undefined) return p; // já migrado
+                return { pessoaId: idParaNome(p.nome), papeis: p.papeis || [] };
+            });
+        });
+    });
+}
+migrarPessoasParaCadastro(db);
+
+// Migração: campo `idioma` (item 9 do plano de schema) não existia antes
+// — complementa a Relação "Tradução" do item 1 (sem ele não dava pra
+// saber em que língua um texto traduzido está). Todo item sem o campo
+// recebe "pt-BR" (o idioma majoritário do acervo até aqui), não texto
+// vazio — evita ficar "sem valor" em toda a base retroativamente só
+// porque o campo é novo. Aplica a Poema e Prosa desde já (mesma
+// antecipação já feita em Sinalizações — Prosa ainda não tem Elos/
+// Tradução do item 4, mas ganha idioma junto).
+// Idempotente: só toca item sem `idioma` (não sobrescreve valor já
+// preenchido, seja o padrão ou uma escolha manual).
+export function migrarIdioma(itens) {
+    itens.forEach((item) => {
+        if (item.idioma === undefined) item.idioma = 'pt-BR';
+    });
+}
+migrarIdioma(db.poemas);
+migrarIdioma(db.prosas);
+
+// Migração: campo `reconhecimentos` — lista de prêmios/menções que um
+// texto recebeu (item 8 do plano de schema), separada de tag solta. Até
+// aqui, "Premiados" era uma tag genérica dentro do balde temporário
+// sinalizacoesOutros (ver MAPA_MIGRACAO_SINALIZACOES acima) — todo item
+// ganha `reconhecimentos: []`, e quem já tinha a tag "Premiados" ganha
+// uma entrada em branco (`{ premio: '', posicao: '', ano: null, texto: ''
+// }`) pra completar manualmente depois — o texto livre da tag e de Notas
+// não dá pra parsear com confiança em prêmio/posição/ano estruturados —,
+// com a tag removida de sinalizacoesOutros. Aplica a Poema e Prosa desde
+// já (mesma antecipação de Idioma/Autoria/Envios).
+// Idempotente: só toca item sem `reconhecimentos` (undefined, não
+// sobrescreve preenchimento manual de uma rodada anterior); a remoção da
+// tag "Premiados" também é idempotente por natureza — rodar de novo não
+// encontra mais a tag pra remover nem cria uma segunda entrada em branco.
+export function migrarReconhecimentos(itens) {
+    itens.forEach((item) => {
+        if (item.reconhecimentos !== undefined) return; // já migrado
+
+        const tags = (item.sinalizacoesOutros || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+        const tinhaTagPremiados = tags.includes('Premiados');
+
+        item.reconhecimentos = tinhaTagPremiados
+            ? [{ premio: '', posicao: '', ano: null, texto: '' }]
+            : [];
+
+        if (tinhaTagPremiados) {
+            item.sinalizacoesOutros = tags.filter((t) => t !== 'Premiados').join(', ');
+        }
+    });
+}
+migrarReconhecimentos(db.poemas);
+migrarReconhecimentos(db.prosas);
+
+// Migração: campo `autoria` — de quem é a responsabilidade autoral por
+// cada item (nem tudo no acervo é necessariamente solo — coautoria
+// acontece). Cadastro central de Autores (db.autores: { id, nome,
+// sobre }), à parte do de Pessoas — autoria é vínculo de autoria, bem
+// diferente do papel que uma Pessoa ocupa NO texto (Retratado(a)/
+// Dedicatário(a)/etc.). Todo item do acervo até aqui foi escrito pelo
+// Victor Leme, então a migração garante esse autor no cadastro (criando
+// só se ainda não existir, e só quando de fato há item pra migrar — não
+// resgata um "Victor Leme" apagado manualmente se não sobrar nenhum
+// item sem `autoria`) e vincula como Autor todo item que ainda não tem
+// o campo — evita 305 itens ficarem "sem autoria" retroativamente só
+// porque o campo é novo (mesmo raciocínio de migrarIdioma). Aplica a
+// Poema e Prosa desde já.
+// Idempotente: só toca item sem `autoria` (undefined); reaproveita o
+// Victor Leme já cadastrado em vez de duplicar se a função rodar de novo.
+export function migrarAutoria(dbRef) {
+    let victorId = null;
+    function obterVictorId() {
+        if (victorId !== null) return victorId;
+        let victor = dbRef.autores.find((a) => a.nome === 'Victor Leme');
+        if (!victor) {
+            victor = { id: gerarId(), nome: 'Victor Leme', sobre: '' };
+            dbRef.autores.push(victor);
+        }
+        victorId = victor.id;
+        return victorId;
+    }
+
+    [dbRef.poemas, dbRef.prosas].forEach((itens) => {
+        itens.forEach((item) => {
+            if (item.autoria === undefined) {
+                item.autoria = [{ autorId: obterVictorId(), papel: 'Autor' }];
+            }
+        });
+    });
+}
+migrarAutoria(db);
+
+// Migração: item 3 do plano de schema. `epocaRetratada.nome` era texto
+// livre repetido em cada poema — vira referência (`epocaId`) a um
+// cadastro central próprio, `db.epocas` ({ id, nome, contextoRelacao,
+// notas }), mesmo padrão de Pessoas/Autores acima. O que muda é só a
+// chave: de `{ nome, inicio, fim, na }` pra `{ epocaId, inicio, fim,
+// recorte, na }` — as datas/N-A continuam por item (o mesmo período
+// pode valer datas diferentes num poema e noutro, ver
+// obterSugestaoEpocaPorId em utils.js), só o nome passa a morar uma vez
+// só no cadastro; `recorte` (RECORTES_EPOCA em utils.js) é campo novo,
+// sem tentativa de adivinhar a partir do nome antigo — fica null pra
+// preencher manualmente (mesmo raciocínio de migrarReconhecimentos:
+// texto livre não dá pra parsear com confiança).
+//
+// Dedup por nome exato (mesmo critério/mesma limitação conhecida de
+// migrarPessoasParaCadastro) — inclusive entre nomes que hoje
+// distinguem "X" de "X e Pós" como strings diferentes: cada string
+// única vira uma Época própria aqui; juntar as duas manualmente (se for
+// o caso) fica pra uma função de mesclar Épocas, mesma pendência já
+// registrada pra Pessoas.
+//
+// Só se aplica a Poema — Prosa ainda não tem epocaRetratada (item 4).
+// Idempotente: item cuja epocaRetratada já tem `epocaId` passa intacta;
+// nome que já tem Época cadastrada com esse nome reaproveita o id.
+export function migrarEpocas(dbRef) {
+    const porNome = new Map(dbRef.epocas.map((e) => [e.nome, e]));
+
+    function idParaNome(nome) {
+        let epoca = porNome.get(nome);
+        if (!epoca) {
+            epoca = { id: gerarId(), nome, contextoRelacao: '', notas: '' };
+            dbRef.epocas.push(epoca);
+            porNome.set(nome, epoca);
+        }
+        return epoca.id;
+    }
+
+    (dbRef.poemas || []).forEach((p) => {
+        const epoca = p.epocaRetratada;
+        if (!epoca || epoca.epocaId !== undefined) return; // vazio ou já migrado
+        const nome = (epoca.nome || '').trim();
+        p.epocaRetratada = {
+            epocaId: nome ? idParaNome(nome) : null,
+            inicio: epoca.inicio || null,
+            fim: epoca.fim || null,
+            recorte: epoca.recorte ?? null,
+            na: !!epoca.na,
+        };
+    });
+}
+migrarEpocas(db);
+
+// Resolve nome → Autor no cadastro central, criando um novo se ainda
+// não existir (dedup por nome exato, mesmo critério de
+// obterOuCriarPessoaPorNome logo abaixo). Usado por editor.js: caminho
+// de confirmação explícita do usuário ao digitar um nome novo no chip
+// de Autoria (ver criarGrupoDeAutoria).
+export function obterOuCriarAutorPorNome(nome) {
+    const nomeLimpo = String(nome ?? '').trim();
+    let autor = db.autores.find((a) => a.nome === nomeLimpo);
+    if (!autor) {
+        autor = { id: gerarId(), nome: nomeLimpo, sobre: '' };
+        db.autores.push(autor);
+    }
+    return autor;
+}
+
+// Resolve nome → Pessoa no cadastro central, criando uma nova se ainda
+// não existir (dedup por nome exato, mesmo critério de
+// migrarPessoasParaCadastro acima). Usada por editor.js: tanto no
+// caminho de confirmação explícita do usuário (criarGrupoDePessoas →
+// adicionar) quanto no caminho defensivo de carregar dado ainda não
+// migrado ({nome, papeis} ou string solta) pro formato {pessoaId,
+// papeis} atual.
+export function obterOuCriarPessoaPorNome(nome) {
+    const nomeLimpo = String(nome ?? '').trim();
+    let pessoa = db.pessoas.find((p) => p.nome === nomeLimpo);
+    if (!pessoa) {
+        pessoa = { id: gerarId(), nome: nomeLimpo, grupoIds: [] };
+        db.pessoas.push(pessoa);
+    }
+    return pessoa;
+}
+
+// Resolve nome → Época no cadastro central, criando uma nova se ainda
+// não existir (dedup por nome exato, mesmo critério de
+// obterOuCriarPessoaPorNome acima). Usada por forms.js ao gravar o
+// campo "Época" do modal de Poema — texto digitado, resolvido/criado no
+// submit, mesmo caminho de obterOuCriarAutorPorNome (não chip de lista,
+// já que só existe uma Época por poema).
+export function obterOuCriarEpocaPorNome(nome) {
+    const nomeLimpo = String(nome ?? '').trim();
+    if (!nomeLimpo) return null;
+    let epoca = db.epocas.find((e) => e.nome === nomeLimpo);
+    if (!epoca) {
+        epoca = { id: gerarId(), nome: nomeLimpo, contextoRelacao: '', notas: '' };
+        db.epocas.push(epoca);
+    }
+    return epoca;
+}
 
 // ─── Ordenações ──────────────────────────────────────────────
 // Recebem os arrays como parâmetro (em vez de fechar sobre o `db` do
@@ -237,8 +702,31 @@ export async function importarDB(novoDb) {
     db.elementos = novoDb.elementos || [];
     db.coletaneas = novoDb.coletaneas || [];
     db.itensColetanea = novoDb.itensColetanea || [];
+    db.pessoas = novoDb.pessoas || [];
+    db.grupos = novoDb.grupos || [];
+    db.autores = novoDb.autores || [];
+    db.epocas = novoDb.epocas || [];
     migrarStatusPoemas(db.poemas);
     migrarIntertextualidadePoemas(db.poemas);
+    migrarSinalizacoes(db.poemas);
+    migrarSinalizacoes(db.prosas);
+    migrarPessoas(db.poemas);
+    migrarPessoas(db.prosas);
+    migrarPapeisPessoa(db.poemas);
+    migrarPapeisPessoa(db.prosas);
+    migrarNomesDePapel(db.poemas);
+    migrarNomesDePapel(db.prosas);
+    migrarPessoasParaCadastro(db);
+    migrarIdioma(db.poemas);
+    migrarIdioma(db.prosas);
+    migrarAutoria(db);
+    // migrarReconhecimentos tinha ficado de fora daqui (só rodava no
+    // load do módulo) — mesmo padrão de risco de "arquivo/chamada que
+    // fica pra trás" já documentado no status-acervo-poetico.md; pego
+    // ao mexer neste bloco pra Épocas, sem relação direta com o item 3.
+    migrarReconhecimentos(db.poemas);
+    migrarReconhecimentos(db.prosas);
+    migrarEpocas(db);
 
     // Se o backup foi gerado com "incluir capas" marcado, ele traz um
     // _capasBase64 com as imagens embutidas — restaura pro IndexedDB
@@ -359,6 +847,10 @@ const ROTULOS_COL = {
     elementos: 'Elemento',
     itensColetanea: 'Item de Coletânea',
     coletaneas: 'Coletânea',
+    pessoas: 'Pessoa',
+    grupos: 'Grupo',
+    autores: 'Autor',
+    epocas: 'Época',
 };
 
 // Plural + particípio com concordância de gênero certa pro toast de
@@ -388,6 +880,153 @@ export function calcularCascataColetanea(dbRef, livroId) {
         .filter((i) => partesIds.includes(i.parteId))
         .map((i) => i.id);
     return { partesIds, itensIds };
+}
+
+/**
+ * Quem referencia a Pessoa `pessoaId` — poemas e prosas onde ela está
+ * vinculada (independente do papel). Usado tanto pra avisar quantos
+ * textos serão afetados (deleteItem) quanto pra de fato desvincular na
+ * exclusão (_removerParaExclusao), garantindo que os dois nunca divirjam
+ * (mesmo espírito de calcularCascataColetanea acima).
+ */
+export function calcularImpactoExclusaoPessoa(dbRef, pessoaId) {
+    const acha = (item) => (item.pessoas || []).some((p) => p.pessoaId == pessoaId);
+    return {
+        poemasIds: (dbRef.poemas || []).filter(acha).map((p) => p.id),
+        prosasIds: (dbRef.prosas || []).filter(acha).map((p) => p.id),
+    };
+}
+
+/**
+ * Quem referencia o Grupo `grupoId` — pessoas do cadastro que pertencem
+ * a ele. Excluir o Grupo não exclui a Pessoa, só tira ela desse grupo
+ * (ela pode pertencer a vários — sobreposição é o ponto do campo).
+ */
+export function calcularImpactoExclusaoGrupo(dbRef, grupoId) {
+    const pessoasIds = (dbRef.pessoas || [])
+        .filter((p) => (p.grupoIds || []).includes(grupoId))
+        .map((p) => p.id);
+    return { pessoasIds };
+}
+
+/**
+ * Quem referencia o Autor `autorId` — poemas e prosas onde ele está
+ * vinculado (independente do papel). Mesmo espírito de
+ * calcularImpactoExclusaoPessoa acima.
+ */
+export function calcularImpactoExclusaoAutor(dbRef, autorId) {
+    const acha = (item) => (item.autoria || []).some((a) => a.autorId == autorId);
+    return {
+        poemasIds: (dbRef.poemas || []).filter(acha).map((p) => p.id),
+        prosasIds: (dbRef.prosas || []).filter(acha).map((p) => p.id),
+    };
+}
+
+/**
+ * Quem referencia a Época `epocaId` — poemas e prosas cuja
+ * epocaRetratada aponta pra ela. Mesmo espírito de
+ * calcularImpactoExclusaoPessoa/Autor acima: excluir a Época não exclui
+ * o texto, só desvincula.
+ *
+ * Corrigido numa sessão posterior: só checava `dbRef.poemas` — resquício
+ * de comentário desatualizado (dizia "Prosa ainda não tem epocaRetratada,
+ * ver item 4", mas o item 4 já deu Prosa o campo há sessões). Prosa com
+ * Época vinculada não entrava na contagem de impacto nem era desvinculada
+ * ao excluir/mesclar a Época — ficava com um `epocaId` órfão apontando
+ * pra uma Época já removida do cadastro. Ver histórico no .md de status.
+ */
+export function calcularImpactoExclusaoEpoca(dbRef, epocaId) {
+    const acha = (item) => item.epocaRetratada?.epocaId == epocaId;
+    return {
+        poemasIds: (dbRef.poemas || []).filter(acha).map((p) => p.id),
+        prosasIds: (dbRef.prosas || []).filter(acha).map((p) => p.id),
+    };
+}
+
+// ─── Mesclar (Pessoa/Época) ────────────────────────────────────
+// Pedido do Victor: renomear uma Pessoa/Época pra igual a outra não
+// mescla nada sozinho — só deixa duas entradas com nome (e, no caso de
+// Época, Contexto do relacionamento) idênticos, cada uma com seu
+// cadastro e vínculos próprios. A dedup automática (migrarPessoas/
+// migrarEpocas, obterOuCriarPessoaPorNome/obterOuCriarEpocaPorNome) só
+// cobre o momento em que o nome é criado (migração ou digitação no
+// modal de Poema/Prosa) — nunca o caso de duas entradas que já existiam
+// separadas e só ficaram "iguais" depois, por uma delas ser renomeada
+// na aba de gestão. Mesma lacuna já registrada no .md de status como
+// "mesclar Pessoas" pendente — implementada agora pra Pessoa e Época
+// junto (mesma mecânica pros dois).
+//
+// `origemId` "morre" (some do cadastro); `destinoId` "sobrevive" e
+// herda todos os vínculos da origem. Função pura (só muda `dbRef`,
+// não chama save() nem toca DOM) — mesmo critério de migrarPessoas/
+// migrarEpocas, quem chama decide quando persistir (ver abrirModalMesclar
+// em forms.js).
+
+/**
+ * Reatribui pra `destinoId` todo vínculo de Pessoa que apontava pra
+ * `origemId` (em `item.pessoas`, Poema e Prosa), une `grupoIds` das
+ * duas (sem duplicar) e remove a origem do cadastro. Se um mesmo item
+ * já vinculava as duas pessoas (raro, mas possível — ex. cadastradas
+ * separadamente antes de alguém perceber que eram a mesma), os `papeis`
+ * das duas entradas são unidos numa só, em vez de deixar duas entradas
+ * pra mesma pessoa (agora idêntica) no mesmo item.
+ */
+export function mesclarPessoas(dbRef, origemId, destinoId) {
+    if (origemId == destinoId) return;
+    const origem = dbRef.pessoas?.find((p) => p.id == origemId);
+    const destino = dbRef.pessoas?.find((p) => p.id == destinoId);
+    if (!origem || !destino) return;
+
+    ['poemas', 'prosas'].forEach((col) => {
+        (dbRef[col] || []).forEach((it) => {
+            if (!Array.isArray(it.pessoas)) return;
+            const entradaOrigem = it.pessoas.find((p) => p.pessoaId == origemId);
+            if (!entradaOrigem) return;
+            const entradaDestino = it.pessoas.find((p) => p.pessoaId == destinoId);
+            if (entradaDestino) {
+                entradaDestino.papeis = [
+                    ...new Set([...(entradaDestino.papeis || []), ...(entradaOrigem.papeis || [])]),
+                ];
+                it.pessoas = it.pessoas.filter((p) => p.pessoaId != origemId);
+            } else {
+                entradaOrigem.pessoaId = destinoId;
+            }
+        });
+    });
+
+    destino.grupoIds = [...new Set([...(destino.grupoIds || []), ...(origem.grupoIds || [])])];
+    dbRef.pessoas = dbRef.pessoas.filter((p) => p.id != origemId);
+}
+
+/**
+ * Reatribui pra `destinoId` todo `epocaRetratada.epocaId` que apontava
+ * pra `origemId` (Poema e Prosa) e remove a origem do cadastro.
+ * Contexto do relacionamento/Notas da origem preenchem o destino só se
+ * o destino estiver com o campo vazio — nunca sobrescreve o que a
+ * sobrevivente já tinha preenchido (mesmo critério de "só entra se
+ * estiver vazio" já usado em aplicarSugestaoEpoca, forms.js).
+ */
+export function mesclarEpocas(dbRef, origemId, destinoId) {
+    if (origemId == destinoId) return;
+    const origem = dbRef.epocas?.find((e) => e.id == origemId);
+    const destino = dbRef.epocas?.find((e) => e.id == destinoId);
+    if (!origem || !destino) return;
+
+    ['poemas', 'prosas'].forEach((col) => {
+        (dbRef[col] || []).forEach((it) => {
+            if (it.epocaRetratada?.epocaId == origemId) {
+                it.epocaRetratada.epocaId = destinoId;
+            }
+        });
+    });
+
+    if (!destino.contextoRelacao && origem.contextoRelacao) {
+        destino.contextoRelacao = origem.contextoRelacao;
+    }
+    if (!destino.notas && origem.notas) {
+        destino.notas = origem.notas;
+    }
+    dbRef.epocas = dbRef.epocas.filter((e) => e.id != origemId);
 }
 
 // ─── Exclusão com "desfazer" ───────────────────────────────────
@@ -439,6 +1078,88 @@ function _removerParaExclusao(col, id) {
         db.itensColetanea = (db.itensColetanea || []).filter((i) => !itensIds.includes(i.id));
     }
 
+    // Excluir Pessoa: some do cadastro (já feito pelo splice acima) e
+    // precisa deixar de aparecer em todo poema/prosa que a referenciava
+    // — senão sobra um pessoaId órfão apontando pra ninguém. Guarda
+    // cada vínculo removido (com o papel que tinha) pra restaurar no
+    // "Desfazer"; a ordem dentro de item.pessoas não é significativa
+    // (diferente de `papeis`, que preserva ordem de marcação), então
+    // restaurar no fim do array é suficiente.
+    let vinculosPessoaRemovidos = [];
+    if (col === 'pessoas') {
+        ['poemas', 'prosas'].forEach((itemCol) => {
+            (db[itemCol] || []).forEach((it) => {
+                if (!Array.isArray(it.pessoas)) return;
+                for (let i = it.pessoas.length - 1; i >= 0; i--) {
+                    if (it.pessoas[i].pessoaId == id) {
+                        vinculosPessoaRemovidos.push({
+                            itemCol,
+                            itemId: it.id,
+                            entrada: it.pessoas[i],
+                        });
+                        it.pessoas.splice(i, 1);
+                    }
+                }
+            });
+        });
+    }
+
+    // Excluir Autor: some do cadastro e precisa deixar de aparecer em
+    // todo poema/prosa que o referenciava — senão sobra um autorId
+    // órfão apontando pra ninguém. Mesmo padrão de vinculosPessoaRemovidos
+    // acima, mas em `item.autoria` (vínculo { autorId, papel }).
+    let vinculosAutoriaRemovidos = [];
+    if (col === 'autores') {
+        ['poemas', 'prosas'].forEach((itemCol) => {
+            (db[itemCol] || []).forEach((it) => {
+                if (!Array.isArray(it.autoria)) return;
+                for (let i = it.autoria.length - 1; i >= 0; i--) {
+                    if (it.autoria[i].autorId == id) {
+                        vinculosAutoriaRemovidos.push({
+                            itemCol,
+                            itemId: it.id,
+                            entrada: it.autoria[i],
+                        });
+                        it.autoria.splice(i, 1);
+                    }
+                }
+            });
+        });
+    }
+
+    // Excluir Época: some do cadastro e o `epocaId` de todo poema/prosa
+    // que a referenciava volta pra null — o texto continua existindo, só
+    // "perde" a referência ao período (mesmo espírito de vínculos de
+    // Autor/Pessoa acima). Guarda `itemCol` (poemas ou prosas) igual aos
+    // dois padrões acima — corrigido junto com calcularImpactoExclusaoEpoca
+    // (ver comentário lá): antes só varria `db.poemas`.
+    let vinculosEpocaRemovidos = [];
+    if (col === 'epocas') {
+        ['poemas', 'prosas'].forEach((itemCol) => {
+            (db[itemCol] || []).forEach((it) => {
+                if (it.epocaRetratada?.epocaId == id) {
+                    vinculosEpocaRemovidos.push({ itemCol, itemId: it.id, epocaId: id });
+                    it.epocaRetratada.epocaId = null;
+                }
+            });
+        });
+    }
+
+    // Excluir Grupo: some do cadastro e some de `grupoIds` de toda
+    // Pessoa que pertencia a ele — a Pessoa continua existindo, só deixa
+    // de fazer parte desse grupo específico (ela pode estar em outros).
+    let vinculosGrupoRemovidos = [];
+    if (col === 'grupos') {
+        (db.pessoas || []).forEach((p) => {
+            if (!Array.isArray(p.grupoIds)) return;
+            const idx = p.grupoIds.indexOf(id);
+            if (idx !== -1) {
+                vinculosGrupoRemovidos.push({ pessoaId: p.id });
+                p.grupoIds.splice(idx, 1);
+            }
+        });
+    }
+
     // Fecha o buraco deixado na numeração do grupo de onde o item saiu
     // (mesma lógica de sempre — só guardamos os "irmãos" pra poder
     // reverter com abrirEspaco() se a exclusão for desfeita).
@@ -457,14 +1178,37 @@ function _removerParaExclusao(col, id) {
     }
     if (irmaos) fecharEspaco(irmaos, posicaoRemovida);
 
-    return { col, item, partesRemovidas, itensRemovidos, capasParaDescartar, posicaoRemovida, irmaos };
+    return {
+        col,
+        item,
+        partesRemovidas,
+        itensRemovidos,
+        vinculosPessoaRemovidos,
+        vinculosAutoriaRemovidos,
+        vinculosGrupoRemovidos,
+        vinculosEpocaRemovidos,
+        capasParaDescartar,
+        posicaoRemovida,
+        irmaos,
+    };
 }
 
 // Devolve o item (e cascata) pros arrays do db, reabrindo o espaço na
 // numeração que fecharEspaco tinha fechado. Não salva sozinho — ver
 // comentário em _removerParaExclusao.
 function _restaurar(removido) {
-    const { col, item, partesRemovidas, itensRemovidos, posicaoRemovida, irmaos } = removido;
+    const {
+        col,
+        item,
+        partesRemovidas,
+        itensRemovidos,
+        vinculosPessoaRemovidos,
+        vinculosAutoriaRemovidos,
+        vinculosGrupoRemovidos,
+        vinculosEpocaRemovidos,
+        posicaoRemovida,
+        irmaos,
+    } = removido;
 
     if (irmaos) abrirEspaco(irmaos, posicaoRemovida);
 
@@ -473,6 +1217,22 @@ function _restaurar(removido) {
     if (itensRemovidos.length) {
         db.itensColetanea = [...(db.itensColetanea || []), ...itensRemovidos];
     }
+    (vinculosPessoaRemovidos || []).forEach(({ itemCol, itemId, entrada }) => {
+        const it = db[itemCol]?.find((i) => i.id == itemId);
+        if (it) (it.pessoas ||= []).push(entrada);
+    });
+    (vinculosAutoriaRemovidos || []).forEach(({ itemCol, itemId, entrada }) => {
+        const it = db[itemCol]?.find((i) => i.id == itemId);
+        if (it) (it.autoria ||= []).push(entrada);
+    });
+    (vinculosGrupoRemovidos || []).forEach(({ pessoaId }) => {
+        const p = db.pessoas?.find((i) => i.id == pessoaId);
+        if (p) (p.grupoIds ||= []).push(item.id);
+    });
+    (vinculosEpocaRemovidos || []).forEach(({ itemCol, itemId, epocaId }) => {
+        const it = db[itemCol]?.find((i) => i.id == itemId);
+        if (it && it.epocaRetratada) it.epocaRetratada.epocaId = epocaId;
+    });
 }
 
 // Confirma a exclusão pendente de vez: apaga a(s) capa(s) do IndexedDB.
@@ -506,7 +1266,7 @@ function _desfazerExclusaoPendente() {
 
 export function deleteItem(col, id) {
     const item = db[col]?.find((i) => i.id == id);
-    const titulo = item?.titulo || item?.tipo || `#${id}`;
+    const titulo = item?.titulo || item?.tipo || item?.nome || `#${id}`;
     let rotulo = ROTULOS_COL[col] || col;
 
     // Para coletâneas, informa quantas partes e itens serão removidos em cascata
@@ -519,6 +1279,50 @@ export function deleteItem(col, id) {
         } else {
             rotulo = 'Coletânea';
         }
+    }
+
+    // Para Pessoa, avisa em quantos poemas/prosas ela vai deixar de
+    // aparecer (o vínculo some, o texto em si não é afetado).
+    if (col === 'pessoas') {
+        const { poemasIds, prosasIds } = calcularImpactoExclusaoPessoa(db, id);
+        const total = poemasIds.length + prosasIds.length;
+        rotulo =
+            total > 0
+                ? `Pessoa · deixará de aparecer em ${total} texto${total !== 1 ? 's' : ''}`
+                : 'Pessoa';
+    }
+
+    // Para Autor, avisa em quantos poemas/prosas ele vai deixar de
+    // aparecer (o vínculo some, o texto em si não é afetado).
+    if (col === 'autores') {
+        const { poemasIds, prosasIds } = calcularImpactoExclusaoAutor(db, id);
+        const total = poemasIds.length + prosasIds.length;
+        rotulo =
+            total > 0
+                ? `Autor · deixará de aparecer em ${total} texto${total !== 1 ? 's' : ''}`
+                : 'Autor';
+    }
+
+    // Para Época, avisa em quantos poemas/prosas ela vai deixar de
+    // aparecer (o vínculo some — epocaId volta pra null —, o texto em
+    // si não é afetado). Mesmo padrão de Pessoa/Autor acima.
+    if (col === 'epocas') {
+        const { poemasIds, prosasIds } = calcularImpactoExclusaoEpoca(db, id);
+        const total = poemasIds.length + prosasIds.length;
+        rotulo =
+            total > 0
+                ? `Época · deixará de aparecer em ${total} texto${total !== 1 ? 's' : ''}`
+                : 'Época';
+    }
+
+    // Para Grupo, avisa quantas pessoas deixarão de pertencer a ele.
+    if (col === 'grupos') {
+        const { pessoasIds } = calcularImpactoExclusaoGrupo(db, id);
+        const total = pessoasIds.length;
+        rotulo =
+            total > 0
+                ? `Grupo · ${total} pessoa${total !== 1 ? 's' : ''} deixará de pertencer a ele`
+                : 'Grupo';
     }
 
     abrirModalExclusao(titulo, rotulo, () => {
@@ -560,10 +1364,8 @@ export function deleteItemsEmMassa(col, ids) {
         plural: `${(ROTULOS_COL[col] || col).toLowerCase()}s`,
         participio: 'excluídos',
     };
-    const toast = mostrarAvisoComAcao(
-        `${n} ${info.plural} ${info.participio}`,
-        'Desfazer',
-        () => _desfazerExclusaoPendente(),
+    const toast = mostrarAvisoComAcao(`${n} ${info.plural} ${info.participio}`, 'Desfazer', () =>
+        _desfazerExclusaoPendente(),
     );
     const timeoutId = setTimeout(_finalizarExclusaoPendente, 6000);
     _pendingExclusao = { removidos, timeoutId, toast };

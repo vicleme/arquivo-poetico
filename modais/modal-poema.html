@@ -64,6 +64,10 @@
                     <label class="form-label">Sequência</label>
                     <input type="number" id="p-sequencia" />
 
+                    <label class="form-label">Idioma</label>
+                    <input type="text" id="p-idioma" list="sugestoes-idioma" value="pt-BR" />
+                    <datalist id="sugestoes-idioma"></datalist>
+
                     <details class="campo-grupo" open>
                         <summary>
                             Data de escrita, publicação, época e contexto
@@ -130,146 +134,160 @@
                             </div>
                             <label class="form-label mb-2 mt-3">Data de Primeira Publicação</label>
 
-                        <div class="grid grid-cols-3 gap-1">
-                            <input
-                                type="number"
-                                id="p-data-pub-dia"
-                                placeholder="Dia"
-                                min="1"
-                                max="31"
-                                title="Dia"
-                            />
-                            <input
-                                type="number"
-                                id="p-data-pub-mes"
-                                placeholder="Mês"
-                                min="1"
-                                max="12"
-                                title="Mês"
-                            />
-                            <input
-                                type="number"
-                                id="p-data-pub-ano"
-                                placeholder="Ano"
-                                min="1900"
-                                max="2100"
-                                title="Ano"
-                            />
-                        </div>
-                        <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
-                            Preencha só o que souber — qualquer campo pode ficar em branco. O ano de
-                            publicação é sugerido automaticamente se o Destino escolhido pertencer a
-                            um livro já publicado.
-                        </p>
-
-                        <div class="flex items-center justify-between mt-3">
-                            <label class="form-label mb-2"
-                                >Época Retratada
-                                <span
-                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                                    >(a que época o poema se refere — não quando foi escrito)</span
-                                ></label
-                            >
-                            <label
-                                class="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400 cursor-pointer mb-2 whitespace-nowrap"
-                                title="Marque quando o poema não se referir a uma época específica — diferente de deixar em branco, que significa 'ainda não categorizado'."
-                            >
+                            <div class="grid grid-cols-3 gap-1">
                                 <input
-                                    type="checkbox"
-                                    id="p-epoca-na"
-                                    onchange="toggleCamposEpocaNa()"
+                                    type="number"
+                                    id="p-data-pub-dia"
+                                    placeholder="Dia"
+                                    min="1"
+                                    max="31"
+                                    title="Dia"
                                 />
-                                Não se aplica
-                            </label>
-                        </div>
-                        <input
-                            type="text"
-                            id="p-epoca-nome"
-                            list="sugestoes-epoca-nome"
-                            class="text-sm mb-2"
-                            placeholder="Nome do período (opcional) — ex.: Namoro com Fulano, Luto, Pandemia..."
-                            onchange="aplicarSugestaoEpoca()"
-                        />
-                        <datalist id="sugestoes-epoca-nome"></datalist>
-                        <p class="text-[10px] text-gray-400 dark:text-slate-500 -mt-1 mb-2">
-                            Repetir um nome já usado sugere as datas e o contexto do poema mais
-                            recente com esse nome — só nos campos que estiverem vazios, sem
-                            sobrescrever o que você já preencheu.
-                        </p>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <span class="text-[10px] text-gray-400 dark:text-slate-500"
-                                    >De</span
-                                >
-                                <div class="grid grid-cols-3 gap-1">
-                                    <input
-                                        type="number"
-                                        id="p-epoca-ini-dia"
-                                        placeholder="Dia"
-                                        min="1"
-                                        max="31"
-                                        title="Dia"
-                                    />
-                                    <input
-                                        type="number"
-                                        id="p-epoca-ini-mes"
-                                        placeholder="Mês"
-                                        min="1"
-                                        max="12"
-                                        title="Mês"
-                                    />
-                                    <input
-                                        type="number"
-                                        id="p-epoca-ini-ano"
-                                        placeholder="Ano"
-                                        min="1900"
-                                        max="2100"
-                                        title="Ano"
-                                    />
-                                </div>
+                                <input
+                                    type="number"
+                                    id="p-data-pub-mes"
+                                    placeholder="Mês"
+                                    min="1"
+                                    max="12"
+                                    title="Mês"
+                                />
+                                <input
+                                    type="number"
+                                    id="p-data-pub-ano"
+                                    placeholder="Ano"
+                                    min="1900"
+                                    max="2100"
+                                    title="Ano"
+                                />
                             </div>
-                            <div>
-                                <span class="text-[10px] text-gray-400 dark:text-slate-500"
-                                    >Até</span
-                                >
-                                <div class="grid grid-cols-3 gap-1">
-                                    <input
-                                        type="number"
-                                        id="p-epoca-fim-dia"
-                                        placeholder="Dia"
-                                        min="1"
-                                        max="31"
-                                        title="Dia"
-                                    />
-                                    <input
-                                        type="number"
-                                        id="p-epoca-fim-mes"
-                                        placeholder="Mês"
-                                        min="1"
-                                        max="12"
-                                        title="Mês"
-                                    />
-                                    <input
-                                        type="number"
-                                        id="p-epoca-fim-ano"
-                                        placeholder="Ano"
-                                        min="1900"
-                                        max="2100"
-                                        title="Ano"
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                            <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                                Preencha só o que souber — qualquer campo pode ficar em branco. O
+                                ano de publicação é sugerido automaticamente se o Destino escolhido
+                                pertencer a um livro já publicado.
+                            </p>
 
-                        <label class="form-label mt-3">Contexto Histórico/Pessoal</label>
-                        <textarea
-                            id="p-contexto"
-                            class="text-sm h-20"
-                            placeholder="O que inspirou o texto — acontecimentos, eventos, vida pessoal..."
-                        ></textarea>
+                            <div class="flex items-center justify-between mt-3">
+                                <label class="form-label mb-2"
+                                    >Época Retratada
+                                    <span
+                                        class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                        >(a que época o poema se refere — não quando foi
+                                        escrito)</span
+                                    ></label
+                                >
+                                <label
+                                    class="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400 cursor-pointer mb-2 whitespace-nowrap"
+                                    title="Marque quando o poema não se referir a uma época específica — diferente de deixar em branco, que significa 'ainda não categorizado'."
+                                >
+                                    <input
+                                        type="checkbox"
+                                        id="p-epoca-na"
+                                        onchange="toggleCamposEpocaNa()"
+                                    />
+                                    Não se aplica
+                                </label>
+                            </div>
+                            <input
+                                type="text"
+                                id="p-epoca-nome"
+                                list="sugestoes-epoca-nome"
+                                class="text-sm mb-2"
+                                placeholder="Nome do período (opcional) — ex.: Namoro com Fulano, Luto, Pandemia..."
+                                onchange="aplicarSugestaoEpoca()"
+                            />
+                            <datalist id="sugestoes-epoca-nome"></datalist>
+                            <p class="text-[10px] text-gray-400 dark:text-slate-500 -mt-1 mb-2">
+                                Repetir um nome já usado sugere as datas e o contexto do poema mais
+                                recente com esse nome — só nos campos que estiverem vazios, sem
+                                sobrescrever o que você já preencheu.
+                            </p>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span class="text-[10px] text-gray-400 dark:text-slate-500"
+                                        >De</span
+                                    >
+                                    <div class="grid grid-cols-3 gap-1">
+                                        <input
+                                            type="number"
+                                            id="p-epoca-ini-dia"
+                                            placeholder="Dia"
+                                            min="1"
+                                            max="31"
+                                            title="Dia"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="p-epoca-ini-mes"
+                                            placeholder="Mês"
+                                            min="1"
+                                            max="12"
+                                            title="Mês"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="p-epoca-ini-ano"
+                                            placeholder="Ano"
+                                            min="1900"
+                                            max="2100"
+                                            title="Ano"
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-gray-400 dark:text-slate-500"
+                                        >Até</span
+                                    >
+                                    <div class="grid grid-cols-3 gap-1">
+                                        <input
+                                            type="number"
+                                            id="p-epoca-fim-dia"
+                                            placeholder="Dia"
+                                            min="1"
+                                            max="31"
+                                            title="Dia"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="p-epoca-fim-mes"
+                                            placeholder="Mês"
+                                            min="1"
+                                            max="12"
+                                            title="Mês"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="p-epoca-fim-ano"
+                                            placeholder="Ano"
+                                            min="1900"
+                                            max="2100"
+                                            title="Ano"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <label
+                                class="text-[10px] text-gray-400 dark:text-slate-500 mt-2 block"
+                                for="p-epoca-recorte"
+                                >Recorte</label
+                            >
+                            <select id="p-epoca-recorte" class="text-sm">
+                                <option value="">Não especificado</option>
+                                <option value="momento">Momento</option>
+                                <option value="repercussão">Momento e Repercussão</option>
+                            </select>
+                            <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                                O poema retrata o evento em si, ou o efeito dele depois?
+                            </p>
+
+                            <label class="form-label mt-3">Contexto Histórico/Pessoal</label>
+                            <textarea
+                                id="p-contexto"
+                                class="text-sm h-20"
+                                placeholder="O que inspirou o texto — acontecimentos, eventos, vida pessoal..."
+                            ></textarea>
                         </div>
                     </details>
-
 
                     <label class="form-label">Texto</label>
                     <div
@@ -366,6 +384,28 @@
 
                     <label class="form-label mt-3">Notas</label>
                     <textarea id="p-notas" class="text-sm h-20"></textarea>
+
+                    <label class="form-label mt-3">Autoria</label>
+                    <div class="flex gap-2 mb-2">
+                        <input
+                            type="text"
+                            id="p-autor-input"
+                            list="sugestoes-autores"
+                            class="text-sm flex-1"
+                            placeholder="Nome do autor..."
+                        />
+                        <button
+                            type="button"
+                            onclick="adicionarAutoria()"
+                            class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                        >
+                            +
+                        </button>
+                    </div>
+                    <div
+                        id="p-autoria-container"
+                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                    ></div>
                 </div>
 
                 <div
@@ -374,400 +414,802 @@
                     <details class="campo-grupo" open>
                         <summary>Livros e destino</summary>
                         <div class="campo-grupo-corpo">
-                    <label class="form-label">Livros</label>
-                    <select id="p-livros" multiple class="h-24 text-xs"></select>
-                    <label
-                        class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
-                        >Filtrar por Livro (opcional)</label
-                    >
-                    <select
-                        id="p-destino-filtro"
-                        onchange="filtrarDestinoPoema(this.value)"
-                        class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs mb-2"
-                    >
-                        <option value="">-- Todos os livros --</option>
-                    </select>
-                    <label
-                        class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
-                        >Destino (Parte ou Seção)</label
-                    >
-                    <select
-                        id="p-destino"
-                        onchange="
-                            sugerirSequencia();
-                            autoPreencherDataPublicacao(this.value, 'p');
-                        "
-                        class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-                    ></select>
-                    <div id="p-coletaneas-info"></div>
+                            <label class="form-label">Livros</label>
+                            <select id="p-livros" multiple class="h-24 text-xs"></select>
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                                >Filtrar por Livro (opcional)</label
+                            >
+                            <select
+                                id="p-destino-filtro"
+                                onchange="filtrarDestinoPoema(this.value)"
+                                class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs mb-2"
+                            >
+                                <option value="">-- Todos os livros --</option>
+                            </select>
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                                >Destino (Parte ou Seção)</label
+                            >
+                            <select
+                                id="p-destino"
+                                onchange="
+                                    sugerirSequencia();
+                                    autoPreencherDataPublicacao(this.value, 'p');
+                                "
+                                class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                            ></select>
+                            <div id="p-coletaneas-info"></div>
                         </div>
                     </details>
 
                     <details class="campo-grupo">
-                        <summary>
-                            Elos, referências e intertextualidade
-                        </summary>
+                        <summary>Elos, referências e intertextualidade</summary>
                         <div class="campo-grupo-corpo">
-                    <label class="form-label">Elos</label>
-                    <select
-                        id="p-elos-select"
-                        multiple
-                        class="h-24 text-xs bg-blue-50 dark:bg-blue-950"
-                    ></select>
-                    <label class="form-label">Referências</label>
-                    <select
-                        id="p-refs-select"
-                        multiple
-                        class="h-24 text-xs bg-blue-50 dark:bg-blue-950"
-                    ></select>
-                    <label class="form-label"
-                        >Intertextualidade
-                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(diálogo com algo externo ao arquivo — música, livro, série... pode ter
-                            mais de uma referência, de tipos diferentes)</span
-                        ></label
-                    >
-                    <div class="flex gap-2 mb-2">
-                        <select id="p-intertexto-tipo" class="text-xs w-28 flex-shrink-0">
-                            <option value="">Tipo...</option>
-                            <option value="Livro">Livro</option>
-                            <option value="Texto">Texto</option>
-                            <option value="Música">Música</option>
-                            <option value="Filme/Série">Filme/Série</option>
-                            <option value="Vídeo">Vídeo</option>
-                            <option value="Citação">Citação</option>
-                            <option value="Conversa">Conversa</option>
-                            <option value="Outro">Outro</option>
-                        </select>
-                        <input
-                            type="text"
-                            id="p-intertexto-texto"
-                            list="sugestoes-intertexto"
-                            class="text-sm flex-1"
-                            placeholder="Ex.: 'Águas de Março', Tom Jobim"
-                        />
-                        <button
-                            type="button"
-                            id="p-intertexto-btn-add"
-                            onclick="adicionarIntertexto()"
-                            class="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-3 rounded text-xs font-bold flex-shrink-0"
-                        >
-                            +
-                        </button>
-                        <button
-                            type="button"
-                            id="p-intertexto-btn-cancelar"
-                            onclick="cancelarEdicaoIntertexto()"
-                            class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
-                        >
-                            Cancelar
-                        </button>
-                    </div>
-                    <datalist id="sugestoes-intertexto"></datalist>
-                    <div
-                        id="p-intertexto-lista"
-                        class="space-y-1 mb-2 min-h-[12px]"
-                    ></div>
+                            <label class="form-label"
+                                >Elos
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(ligação estrutural com outro poema do acervo — reescrita,
+                                    tradução, continuação...)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-1">
+                                <select
+                                    id="p-elo-relacao"
+                                    class="text-xs w-28 flex-shrink-0"
+                                    onchange="onRelacaoEloAlterada()"
+                                ></select>
+                                <select id="p-elo-poema" class="text-xs flex-1"></select>
+                                <button
+                                    type="button"
+                                    id="p-elo-btn-add"
+                                    onclick="adicionarElo()"
+                                    class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 rounded text-xs font-bold flex-shrink-0"
+                                >
+                                    +
+                                </button>
+                                <button
+                                    type="button"
+                                    id="p-elo-btn-cancelar"
+                                    onclick="cancelarEdicaoElo()"
+                                    class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                            <div class="flex gap-2 mb-2 items-center">
+                                <span
+                                    class="text-[10px] text-gray-400 dark:text-slate-500 flex-shrink-0"
+                                    >Este poema é:</span
+                                >
+                                <button
+                                    type="button"
+                                    id="p-elo-direcao-origem"
+                                    onclick="selecionarDirecaoElo('origem')"
+                                    class="elo-direcao-btn text-xs flex-1 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-gray-500 dark:text-slate-400"
+                                >
+                                    Origem
+                                </button>
+                                <button
+                                    type="button"
+                                    id="p-elo-direcao-destino"
+                                    onclick="selecionarDirecaoElo('destino')"
+                                    class="elo-direcao-btn text-xs flex-1 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-gray-500 dark:text-slate-400"
+                                >
+                                    Destino
+                                </button>
+                                <input type="hidden" id="p-elo-direcao" value="" />
+                            </div>
+                            <input
+                                type="text"
+                                id="p-elo-texto"
+                                class="text-sm w-full mb-2"
+                                placeholder="Nota opcional sobre esse elo..."
+                            />
+                            <div id="p-elos-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
+                            <div id="p-elos-derivados" class="space-y-1 mb-2 hidden"></div>
+
+                            <label class="form-label"
+                                >Referências
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(ligação mais solta com outro poema — personagem em comum,
+                                    imagem compartilhada...)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <select id="p-ref-tipo" class="text-xs w-28 flex-shrink-0"></select>
+                                <select id="p-ref-poema" class="text-xs flex-1"></select>
+                                <button
+                                    type="button"
+                                    id="p-ref-btn-add"
+                                    onclick="adicionarReferencia()"
+                                    class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 rounded text-xs font-bold flex-shrink-0"
+                                >
+                                    +
+                                </button>
+                                <button
+                                    type="button"
+                                    id="p-ref-btn-cancelar"
+                                    onclick="cancelarEdicaoReferencia()"
+                                    class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                            <input
+                                type="text"
+                                id="p-ref-texto"
+                                class="text-sm w-full mb-2"
+                                placeholder="Nota opcional sobre essa referência..."
+                            />
+                            <div id="p-refs-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
+                            <label class="form-label"
+                                >Intertextualidade
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(diálogo com algo externo ao arquivo — música, livro, série...
+                                    pode ter mais de uma referência, de tipos diferentes)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <select id="p-intertexto-tipo" class="text-xs w-28 flex-shrink-0">
+                                    <option value="">Tipo...</option>
+                                    <option value="Livro">Livro</option>
+                                    <option value="Texto">Texto</option>
+                                    <option value="Música">Música</option>
+                                    <option value="Filme/Série">Filme/Série</option>
+                                    <option value="Vídeo">Vídeo</option>
+                                    <option value="Citação">Citação</option>
+                                    <option value="Conversa">Conversa</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                                <input
+                                    type="text"
+                                    id="p-intertexto-texto"
+                                    list="sugestoes-intertexto"
+                                    class="text-sm flex-1"
+                                    placeholder="Ex.: 'Águas de Março', Tom Jobim"
+                                />
+                                <button
+                                    type="button"
+                                    id="p-intertexto-btn-add"
+                                    onclick="adicionarIntertexto()"
+                                    class="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-3 rounded text-xs font-bold flex-shrink-0"
+                                >
+                                    +
+                                </button>
+                                <button
+                                    type="button"
+                                    id="p-intertexto-btn-cancelar"
+                                    onclick="cancelarEdicaoIntertexto()"
+                                    class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                            <datalist id="sugestoes-intertexto"></datalist>
+                            <div id="p-intertexto-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
                         </div>
                     </details>
 
                     <details class="campo-grupo">
                         <summary>Anexos</summary>
                         <div class="campo-grupo-corpo">
-                    <label class="form-label"
-                        >Anexos
-                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(imagens, letterings, vídeos... que acompanham o texto — uma ou vários, de tipos diferentes)</span
-                        ></label
-                    >
-                    <div class="flex gap-2 mb-2">
-                        <select id="p-anexo-tipo" class="text-xs w-36 flex-shrink-0">
-                            <option value="">Tipo...</option>
-                            <option value="Ilustração">Ilustração</option>
-                            <option value="Foto">Foto</option>
-                            <option value="Lettering">Lettering</option>
-                            <option value="Declamação em vídeo">Declamação em vídeo</option>
-                            <option value="Comentários em vídeo">Comentários em vídeo</option>
-                            <option value="Outro">Outro</option>
-                        </select>
-                        <input
-                            type="text"
-                            id="p-anexo-link"
-                            class="text-sm flex-1"
-                            placeholder="Link (obrigatório para vídeo)"
-                        />
-                    </div>
-                    <div class="flex flex-col gap-2 mb-2">
-                        <textarea
-                            id="p-anexo-input"
-                            class="text-sm h-20"
-                            placeholder="Descrição do anexo..."
-                        ></textarea>
-                        <button
-                            type="button"
-                            id="p-anexo-btn-add"
-                            onclick="adicionarAnexo()"
-                            class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded text-xs font-bold self-end"
-                        >
-                            + Adicionar anexo
-                        </button>
-                        <button
-                            type="button"
-                            id="p-anexo-btn-cancelar"
-                            onclick="cancelarEdicaoAnexo()"
-                            class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs self-end px-1"
-                        >
-                            Cancelar edição
-                        </button>
-                    </div>
-                    <div
-                        id="p-anexos-lista"
-                        class="space-y-1 mb-2 min-h-[12px]"
-                    ></div>
-                    <label class="form-label"
-                        >Nota sobre o conjunto
-                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(quando os anexos se relacionam entre si — tema, estilo, unidade —
-                            não cada um isoladamente)</span
-                        ></label
-                    >
-                    <textarea id="p-anexos-nota-geral" class="text-sm h-20"></textarea>
+                            <label class="form-label"
+                                >Anexos
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(imagens, letterings, vídeos... que acompanham o texto — uma ou
+                                    vários, de tipos diferentes)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <select id="p-anexo-tipo" class="text-xs w-36 flex-shrink-0">
+                                    <option value="">Tipo...</option>
+                                    <option value="Ilustração">Ilustração</option>
+                                    <option value="Foto">Foto</option>
+                                    <option value="Lettering">Lettering</option>
+                                    <option value="Declamação em vídeo">Declamação em vídeo</option>
+                                    <option value="Comentários em vídeo">
+                                        Comentários em vídeo
+                                    </option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                                <input
+                                    type="text"
+                                    id="p-anexo-link"
+                                    class="text-sm flex-1"
+                                    placeholder="Link (obrigatório para vídeo)"
+                                />
+                            </div>
+                            <div class="flex flex-col gap-2 mb-2">
+                                <textarea
+                                    id="p-anexo-input"
+                                    class="text-sm h-20"
+                                    placeholder="Descrição do anexo..."
+                                ></textarea>
+                                <button
+                                    type="button"
+                                    id="p-anexo-btn-add"
+                                    onclick="adicionarAnexo()"
+                                    class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded text-xs font-bold self-end"
+                                >
+                                    + Adicionar anexo
+                                </button>
+                                <button
+                                    type="button"
+                                    id="p-anexo-btn-cancelar"
+                                    onclick="cancelarEdicaoAnexo()"
+                                    class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs self-end px-1"
+                                >
+                                    Cancelar edição
+                                </button>
+                            </div>
+                            <div id="p-anexos-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
+                            <label class="form-label"
+                                >Nota sobre o conjunto
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(quando os anexos se relacionam entre si — tema, estilo,
+                                    unidade — não cada um isoladamente)</span
+                                ></label
+                            >
+                            <textarea id="p-anexos-nota-geral" class="text-sm h-20"></textarea>
                         </div>
                     </details>
 
                     <details class="campo-grupo">
                         <summary>Anotações marginais e descrição visual</summary>
                         <div class="campo-grupo-corpo">
-                    <label class="form-label"
-                        >Anotações Marginais
-                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(comentário de outra voz escrito por cima do texto, associado a um
-                            verso ou estrofe — diferente de Intertextualidade, que dialoga com algo
-                            de fora do arquivo)</span
-                        ></label
-                    >
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="p-anotacao-trecho"
-                            class="text-sm flex-1"
-                            placeholder="Verso ou estrofe de referência..."
-                        />
-                    </div>
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="p-anotacao-posicao"
-                            list="sugestoes-posicoes-anotacoes"
-                            class="text-xs flex-1"
-                            placeholder="Posição (ex.: à direita, abaixo e à esquerda...)"
-                        />
-                        <input
-                            type="text"
-                            id="p-anotacao-fonte"
-                            list="sugestoes-fontes-anotacoes"
-                            class="text-xs flex-1"
-                            placeholder="Fonte (ex.: Baguet Script)"
-                        />
-                    </div>
-                    <datalist id="sugestoes-posicoes-anotacoes"></datalist>
-                    <datalist id="sugestoes-fontes-anotacoes"></datalist>
-                    <div class="flex flex-col gap-2 mb-2">
-                        <textarea
-                            id="p-anotacao-texto"
-                            class="text-sm h-20"
-                            placeholder="Texto da anotação..."
-                        ></textarea>
-                        <button
-                            type="button"
-                            id="p-anotacao-btn-add"
-                            onclick="adicionarAnotacao()"
-                            class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded text-xs font-bold self-end"
-                        >
-                            + Adicionar anotação
-                        </button>
-                        <button
-                            type="button"
-                            id="p-anotacao-btn-cancelar"
-                            onclick="cancelarEdicaoAnotacao()"
-                            class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs self-end px-1"
-                        >
-                            Cancelar edição
-                        </button>
-                    </div>
-                    <div
-                        id="p-anotacoes-lista"
-                        class="space-y-1 mb-2 min-h-[12px]"
-                    ></div>
+                            <label class="form-label"
+                                >Anotações Marginais
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(comentário de outra voz escrito por cima do texto, associado a
+                                    um verso ou estrofe — diferente de Intertextualidade, que
+                                    dialoga com algo de fora do arquivo)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-anotacao-trecho"
+                                    class="text-sm flex-1"
+                                    placeholder="Verso ou estrofe de referência..."
+                                />
+                            </div>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-anotacao-posicao"
+                                    list="sugestoes-posicoes-anotacoes"
+                                    class="text-xs flex-1"
+                                    placeholder="Posição (ex.: à direita, abaixo e à esquerda...)"
+                                />
+                                <input
+                                    type="text"
+                                    id="p-anotacao-fonte"
+                                    list="sugestoes-fontes-anotacoes"
+                                    class="text-xs flex-1"
+                                    placeholder="Fonte (ex.: Baguet Script)"
+                                />
+                            </div>
+                            <datalist id="sugestoes-posicoes-anotacoes"></datalist>
+                            <datalist id="sugestoes-fontes-anotacoes"></datalist>
+                            <div class="flex flex-col gap-2 mb-2">
+                                <textarea
+                                    id="p-anotacao-texto"
+                                    class="text-sm h-20"
+                                    placeholder="Texto da anotação..."
+                                ></textarea>
+                                <button
+                                    type="button"
+                                    id="p-anotacao-btn-add"
+                                    onclick="adicionarAnotacao()"
+                                    class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded text-xs font-bold self-end"
+                                >
+                                    + Adicionar anotação
+                                </button>
+                                <button
+                                    type="button"
+                                    id="p-anotacao-btn-cancelar"
+                                    onclick="cancelarEdicaoAnotacao()"
+                                    class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs self-end px-1"
+                                >
+                                    Cancelar edição
+                                </button>
+                            </div>
+                            <div id="p-anotacoes-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
 
-                    <label class="form-label">Descrição Visual</label>
-                    <textarea
-                        id="p-visual"
-                        class="text-sm h-20"
-                        placeholder="Disposição espacial, forma, elementos concretistas..."
-                    ></textarea>
+                            <label class="form-label">Descrição Visual</label>
+                            <textarea
+                                id="p-visual"
+                                class="text-sm h-20"
+                                placeholder="Disposição espacial, forma, elementos concretistas..."
+                            ></textarea>
                         </div>
                     </details>
 
                     <details class="campo-grupo">
                         <summary>Ocultação e conteúdo sensível</summary>
                         <div class="campo-grupo-corpo">
-                    <label class="form-label"
-                        >Ocultação
-                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(notas sobre ocultação de dados)</span
-                        ></label
-                    >
-                    <textarea id="p-ocultacao" class="text-sm h-20"></textarea>
-                    <label class="form-label"
-                        >Conteúdo Sensível
-                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(preencher marca o texto para revisão em Versões Alternativas)</span
-                        ></label
-                    >
-                    <textarea
-                        id="p-sensivel"
-                        class="text-sm h-20 border-amber-300 dark:border-amber-700"
-                    ></textarea>
-                    <label class="form-label"
-                        >Vocabulário Hiperacionante
-                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(preencher marca o texto para revisão em Versões Alternativas)</span
-                        ></label
-                    >
-                    <textarea
-                        id="p-hiperacionante"
-                        class="text-sm h-20 border-amber-300 dark:border-amber-700"
-                    ></textarea>
+                            <label class="form-label"
+                                >Ocultação
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(notas sobre ocultação de dados)</span
+                                ></label
+                            >
+                            <textarea id="p-ocultacao" class="text-sm h-20"></textarea>
+                            <label class="form-label"
+                                >Conteúdo Sensível
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(preencher marca o texto para revisão em Versões
+                                    Alternativas)</span
+                                ></label
+                            >
+                            <textarea
+                                id="p-sensivel"
+                                class="text-sm h-20 border-amber-300 dark:border-amber-700"
+                            ></textarea>
+                            <label class="form-label"
+                                >Vocabulário Hiperacionante
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(preencher marca o texto para revisão em Versões
+                                    Alternativas)</span
+                                ></label
+                            >
+                            <textarea
+                                id="p-hiperacionante"
+                                class="text-sm h-20 border-amber-300 dark:border-amber-700"
+                            ></textarea>
                         </div>
                     </details>
 
                     <details class="campo-grupo">
                         <summary>Sinalizações e dedicatória</summary>
                         <div class="campo-grupo-corpo">
-                    <label class="form-label">Sinalizações (Etiquetas)</label>
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="p-sinal-input"
-                            list="sugestoes-sinais"
-                            class="text-sm flex-1"
-                            placeholder="Nova etiqueta..."
-                        />
-                        <button
-                            type="button"
-                            onclick="adicionarTag()"
-                            class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 rounded text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                    <div
-                        id="p-tags-container"
-                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
-                    ></div>
-                    <input type="hidden" id="p-sinal" />
-                    <label class="form-label">Dedicado a / Sobre quem (Pessoas)</label>
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="p-pessoa-input"
-                            list="sugestoes-pessoas"
-                            class="text-sm flex-1"
-                            placeholder="Nome da pessoa..."
-                        />
-                        <button
-                            type="button"
-                            onclick="adicionarPessoa()"
-                            class="bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 px-3 rounded text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                    <div
-                        id="p-pessoas-container"
-                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
-                    ></div>
-                    <input type="hidden" id="p-pessoas" />
+                            <label class="form-label">Sinalizações — Estilo</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-sinal-estilo-input"
+                                    list="sugestoes-sinais-estilo"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de estilo..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalEstilo()"
+                                    class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-sinal-estilo-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <input type="hidden" id="p-sinal-estilo" />
+
+                            <label class="form-label">Sinalizações — Tema</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-sinal-tema-input"
+                                    list="sugestoes-sinais-tema"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de tema..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalTema()"
+                                    class="bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-sinal-tema-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <input type="hidden" id="p-sinal-tema" />
+
+                            <label class="form-label">Sinalizações — Relação</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-sinal-relacao-input"
+                                    list="sugestoes-sinais-relacao"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de relação..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalRelacao()"
+                                    class="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-sinal-relacao-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <input type="hidden" id="p-sinal-relacao" />
+
+                            <label class="form-label">Sinalizações — Sensibilidade</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-sinal-sensibilidade-input"
+                                    list="sugestoes-sinais-sensibilidade"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de sensibilidade..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalSensibilidade()"
+                                    class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-sinal-sensibilidade-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <input type="hidden" id="p-sinal-sensibilidade" />
+
+                            <label class="form-label">Sinalizações — Tom</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-sinal-tom-input"
+                                    list="sugestoes-sinais-tom"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de tom..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalTom()"
+                                    class="bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-sinal-tom-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <input type="hidden" id="p-sinal-tom" />
+
+                            <label class="form-label"
+                                >Sinalizações — Outros
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(balde temporário; ver "Reconhecimentos" e Elos de
+                                    Derivação)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-sinal-outros-input"
+                                    list="sugestoes-sinais-outros"
+                                    class="text-sm flex-1"
+                                    placeholder="Etiqueta ainda sem categoria..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalOutros()"
+                                    class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-sinal-outros-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <input type="hidden" id="p-sinal-outros" />
+
+                            <label class="form-label">Pessoas</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-pessoa-input"
+                                    list="sugestoes-pessoas"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome da pessoa..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarPessoa()"
+                                    class="bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-pessoas-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <div
+                                id="p-pessoas-grupos-info"
+                                class="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5"
+                            ></div>
                         </div>
                     </details>
 
                     <details class="campo-grupo">
-                        <summary>Status, migração e descarte</summary>
+                        <summary>Envios e Reações</summary>
                         <div class="campo-grupo-corpo">
-                    <div>
-                        <label class="text-sm font-bold block mb-1">Status</label>
-                        <select id="p-status">
-                            <option value="incompleto">🟡 Incompleto</option>
-                            <option value="completo" selected>⚪ Completo</option>
-                            <option value="publicado">🟢 Publicado</option>
-                            <option value="migrado">🔵 Migrado</option>
-                            <option value="descartado">🔴 Descartado</option>
-                        </select>
-                    </div>
-
-                    <div
-                        class="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
-                    >
-                        <label class="form-label mb-2"
-                            >Migração entre livros
-                            <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                                >(preencha para textos 🔵 Migrados de um livro/seção para
-                                outro)</span
-                            ></label
-                        >
-                        <span class="text-[10px] text-gray-400 dark:text-slate-500">Cortado de</span>
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                            <input
-                                type="text"
-                                id="p-cortado-livro"
-                                list="sugestoes-livros-migracao"
-                                placeholder="Livro de origem"
-                            />
-                            <input
-                                type="text"
-                                id="p-cortado-secao"
-                                list="sugestoes-secoes-migracao-cortado"
-                                placeholder="Parte/Seção de origem"
-                            />
+                            <label class="form-label"
+                                >Envios
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(quando o texto foi enviado/mostrado pra alguém, e como essa
+                                    pessoa reagiu — pode haver mais de um envio pro mesmo
+                                    texto)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-envio-pessoa"
+                                    list="sugestoes-pessoas"
+                                    class="text-sm flex-1"
+                                    placeholder="Pra quem..."
+                                />
+                                <input
+                                    type="text"
+                                    id="p-envio-meio"
+                                    list="sugestoes-meios-envio"
+                                    class="text-sm flex-1"
+                                    placeholder="Meio (ex.: WhatsApp)"
+                                />
+                            </div>
+                            <div class="grid grid-cols-3 gap-1 mb-2">
+                                <input
+                                    type="number"
+                                    id="p-envio-dia"
+                                    placeholder="Dia"
+                                    min="1"
+                                    max="31"
+                                    title="Dia"
+                                />
+                                <input
+                                    type="number"
+                                    id="p-envio-mes"
+                                    placeholder="Mês"
+                                    min="1"
+                                    max="12"
+                                    title="Mês"
+                                />
+                                <input
+                                    type="number"
+                                    id="p-envio-ano"
+                                    placeholder="Ano"
+                                    min="1900"
+                                    max="2100"
+                                    title="Ano"
+                                />
+                            </div>
+                            <datalist id="sugestoes-meios-envio"></datalist>
+                            <div class="flex flex-col gap-2 mb-2">
+                                <textarea
+                                    id="p-envio-reacao"
+                                    class="text-sm h-16"
+                                    placeholder="Reação..."
+                                ></textarea>
+                                <textarea
+                                    id="p-envio-notas"
+                                    class="text-xs h-14"
+                                    placeholder="Notas (opcional)..."
+                                ></textarea>
+                                <div class="flex items-center gap-2 self-end">
+                                    <button
+                                        type="button"
+                                        id="p-envio-btn-cancelar"
+                                        onclick="cancelarEdicaoEnvio()"
+                                        class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs px-1"
+                                    >
+                                        Cancelar edição
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="p-envio-btn-add"
+                                        onclick="adicionarEnvio()"
+                                        class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold"
+                                    >
+                                        + Adicionar envio
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="p-envios-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
                         </div>
-                        <span class="text-[10px] text-gray-400 dark:text-slate-500">Lançado em</span>
-                        <div class="grid grid-cols-2 gap-2">
-                            <input
-                                type="text"
-                                id="p-lancado-livro"
-                                list="sugestoes-livros-migracao"
-                                placeholder="Livro de destino"
-                            />
-                            <input
-                                type="text"
-                                id="p-lancado-secao"
-                                list="sugestoes-secoes-migracao-lancado"
-                                placeholder="Parte/Seção de destino"
-                            />
-                        </div>
-                        <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
-                            Texto livre — aceita sugestões de livros/partes/seções já cadastrados,
-                            mas também aceita algo que não exista no arquivo (ex.: um livro de
-                            origem nunca cadastrado aqui). Escolher uma Seção já cadastrada
-                            preenche o Livro sozinho; escolher o Livro filtra as Seções sugeridas
-                            pra só as daquele livro.
-                        </p>
-                        <datalist id="sugestoes-livros-migracao"></datalist>
-                        <datalist id="sugestoes-secoes-migracao-cortado"></datalist>
-                        <datalist id="sugestoes-secoes-migracao-lancado"></datalist>
-                    </div>
+                    </details>
 
-                    <label class="form-label"
-                        >Descarte
-                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(preencha a justificativa para textos 🔴 Descartados)</span
-                        ></label
-                    >
-                    <textarea
-                        id="p-descarte"
-                        class="text-sm h-20 border-amber-300 dark:border-amber-700"
-                    ></textarea>
+                    <details class="campo-grupo">
+                        <summary>Reconhecimentos</summary>
+                        <div class="campo-grupo-corpo">
+                            <label class="form-label"
+                                >Prêmios e menções
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(concursos, prêmios ou menções que este texto recebeu)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-reconhecimento-premio"
+                                    list="sugestoes-premios"
+                                    class="text-sm flex-1"
+                                    placeholder="Prêmio/concurso..."
+                                />
+                                <input
+                                    type="text"
+                                    id="p-reconhecimento-posicao"
+                                    class="text-sm flex-1"
+                                    placeholder="Posição (ex.: 1º lugar)"
+                                />
+                                <input
+                                    type="number"
+                                    id="p-reconhecimento-ano"
+                                    class="text-sm w-24"
+                                    placeholder="Ano"
+                                    min="1900"
+                                    max="2100"
+                                    title="Ano"
+                                />
+                            </div>
+                            <datalist id="sugestoes-premios"></datalist>
+                            <div class="flex flex-col gap-2 mb-2">
+                                <textarea
+                                    id="p-reconhecimento-texto"
+                                    class="text-xs h-14"
+                                    placeholder="Notas (opcional)..."
+                                ></textarea>
+                                <div class="flex items-center gap-2 self-end">
+                                    <button
+                                        type="button"
+                                        id="p-reconhecimento-btn-cancelar"
+                                        onclick="cancelarEdicaoReconhecimento()"
+                                        class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs px-1"
+                                    >
+                                        Cancelar edição
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="p-reconhecimento-btn-add"
+                                        onclick="adicionarReconhecimento()"
+                                        class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded text-xs font-bold"
+                                    >
+                                        + Adicionar reconhecimento
+                                    </button>
+                                </div>
+                            </div>
+                            <div
+                                id="p-reconhecimentos-lista"
+                                class="space-y-1 mb-2 min-h-[12px]"
+                            ></div>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>Status e Pendências</summary>
+                        <div class="campo-grupo-corpo">
+                            <div>
+                                <label class="text-sm font-bold block mb-1">Status</label>
+                                <select id="p-status">
+                                    <option value="incompleto">🟡 Incompleto</option>
+                                    <option value="completo" selected>⚪ Completo</option>
+                                    <option value="publicado">🟢 Publicado</option>
+                                    <option value="migrado">🔵 Migrado</option>
+                                    <option value="descartado">🔴 Descartado</option>
+                                </select>
+                            </div>
+
+                            <div
+                                class="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+                            >
+                                <label class="form-label mb-2"
+                                    >Migração entre livros
+                                    <span
+                                        class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                        >(preencha para textos 🔵 Migrados de um livro/seção para
+                                        outro)</span
+                                    ></label
+                                >
+                                <span class="text-[10px] text-gray-400 dark:text-slate-500"
+                                    >Cortado de</span
+                                >
+                                <div class="grid grid-cols-2 gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="p-cortado-livro"
+                                        list="sugestoes-livros-migracao"
+                                        placeholder="Livro de origem"
+                                    />
+                                    <input
+                                        type="text"
+                                        id="p-cortado-secao"
+                                        list="sugestoes-secoes-migracao-cortado"
+                                        placeholder="Parte/Seção de origem"
+                                    />
+                                </div>
+                                <span class="text-[10px] text-gray-400 dark:text-slate-500"
+                                    >Lançado em</span
+                                >
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input
+                                        type="text"
+                                        id="p-lancado-livro"
+                                        list="sugestoes-livros-migracao"
+                                        placeholder="Livro de destino"
+                                    />
+                                    <input
+                                        type="text"
+                                        id="p-lancado-secao"
+                                        list="sugestoes-secoes-migracao-lancado"
+                                        placeholder="Parte/Seção de destino"
+                                    />
+                                </div>
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                                    Texto livre — aceita sugestões de livros/partes/seções já
+                                    cadastrados, mas também aceita algo que não exista no arquivo
+                                    (ex.: um livro de origem nunca cadastrado aqui). Escolher uma
+                                    Seção já cadastrada preenche o Livro sozinho; escolher o Livro
+                                    filtra as Seções sugeridas pra só as daquele livro.
+                                </p>
+                                <datalist id="sugestoes-livros-migracao"></datalist>
+                                <datalist id="sugestoes-secoes-migracao-cortado"></datalist>
+                                <datalist id="sugestoes-secoes-migracao-lancado"></datalist>
+
+                                <label
+                                    class="text-[10px] text-gray-400 dark:text-slate-500 block mt-2"
+                                    >Justificativa
+                                    <span class="normal-case"
+                                        >(razão do arquivamento original, da migração/recuperação,
+                                        ou ambos)</span
+                                    ></label
+                                >
+                                <textarea
+                                    id="p-migracao-justificativa"
+                                    class="text-sm h-20 border-blue-300 dark:border-blue-700"
+                                ></textarea>
+                            </div>
+
+                            <label class="form-label"
+                                >Pendência
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(preencha o que falta resolver — o 🟠 aparece sozinho ao lado
+                                    do status enquanto houver texto aqui)</span
+                                ></label
+                            >
+                            <textarea
+                                id="p-pendencia"
+                                class="text-sm h-20 border-orange-300 dark:border-orange-700"
+                            ></textarea>
+
+                            <label class="form-label"
+                                >Descarte
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(preencha a justificativa para textos 🔴 Descartados)</span
+                                ></label
+                            >
+                            <textarea
+                                id="p-descarte"
+                                class="text-sm h-20 border-amber-300 dark:border-amber-700"
+                            ></textarea>
                         </div>
                     </details>
                 </div>

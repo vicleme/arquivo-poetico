@@ -14,8 +14,9 @@
 
 import { db } from './db.js';
 import { exportarColetaneaResolvida } from './coletaneas.js';
-import { escapeHtml, mostrarAviso, estaPublicado } from './utils.js';
+import { escapeHtml, mostrarAviso, estaPublicado, sinalizacoesCombinadas, nomesPessoas } from './utils.js';
 import { baixarMarkdown } from './exportar-md.js';
+import { baixarPdf } from './exportar-pdf.js';
 
 function listaDeCampo(valor) {
     if (!valor) return [];
@@ -180,15 +181,19 @@ export function correspondeFiltro(item, opcoes) {
         if (!livroId || !opcoes.livrosIncluir.includes(String(livroId))) return false;
     }
     if (opcoes.pessoasIncluir.length) {
-        const pessoasItem = listaDeCampo(item.pessoas);
+        const pessoasItem = nomesPessoas(item, db.pessoas).map((n) => n.toLowerCase());
         if (!opcoes.pessoasIncluir.some((p) => pessoasItem.includes(p))) return false;
     }
     if (opcoes.temasIncluir.length) {
-        const temasItem = listaDeCampo(item.sinalizacoes);
+        // Filtro de exportação por "tema" já olhava pro campo de
+        // Sinalizações inteiro (não só a categoria Tema) — mantido assim
+        // com sinalizacoesCombinadas() pra não mudar o que a pessoa já
+        // espera desse filtro (ver contarPorTema em estatisticas.js).
+        const temasItem = listaDeCampo(sinalizacoesCombinadas(item));
         if (!opcoes.temasIncluir.some((t) => temasItem.includes(t))) return false;
     }
     if (opcoes.temasExcluir.length) {
-        const temasItem = listaDeCampo(item.sinalizacoes);
+        const temasItem = listaDeCampo(sinalizacoesCombinadas(item));
         if (opcoes.temasExcluir.some((t) => temasItem.includes(t))) return false;
     }
     if (!dataEstaNoIntervalo(item.dataEscrita, opcoes.dataDe, opcoes.dataAte)) return false;
@@ -197,6 +202,7 @@ export function correspondeFiltro(item, opcoes) {
     if (opcoes.status === 'completos' && item.status !== 'completo') return false;
     if (opcoes.status === 'incompletos' && item.status !== 'incompleto') return false;
     if (opcoes.status === 'migrados' && item.status !== 'migrado') return false;
+    if (opcoes.status === 'pendentes' && !item.pendencia?.trim()) return false;
     if (opcoes.status === 'descartados' && item.status !== 'descartado') return false;
     return true;
 }
@@ -362,7 +368,7 @@ export function executarExportacaoSeletivaMarkdown() {
 // listagem é independente — ver selecaoPoemas/selecaoProsas em
 // render-listas.js). Reaproveita montarRegistro (mesmo formato/contexto
 // resolvido da exportação seletiva) e baixarMarkdown (mesmo documento .md).
-function itensDaSelecao(tipo, ids) {
+export function itensDaSelecao(tipo, ids) {
     const idsSet = new Set(ids);
     const colecao = tipo === 'prosa' ? db.prosas : db.poemas;
     return colecao.filter((item) => idsSet.has(item.id)).map((item) => montarRegistro(tipo, item));
@@ -400,6 +406,84 @@ export function exportarSelecaoMarkdown(tipo, ids) {
     }
 
     baixarMarkdown(itens, `selecao_${tipo}s_${Date.now()}.md`);
+}
+
+// Mesmo padrão de exportarSelecaoMarkdown acima, só que em PDF — usa o
+// try/catch de exportarItem (baixo) porque a lib jsPDF é carregada via
+// CDN (ver comentário em exportar-pdf.js) e pode não ter chegado a
+// tempo (conexão lenta/caiu bem na hora do clique).
+export function exportarSelecaoPdf(tipo, ids) {
+    const itens = itensDaSelecao(tipo, ids);
+    if (itens.length === 0) {
+        mostrarAviso('Nenhum item selecionado.');
+        return;
+    }
+
+    try {
+        baixarPdf(itens, `selecao_${tipo}s_${Date.now()}.pdf`);
+    } catch (err) {
+        mostrarAviso(err.message || 'Não foi possível gerar o PDF.');
+    }
+}
+
+// Nome de arquivo a partir do título do item — sem acentos, minúsculo,
+// só letras/números/hífen. Usado pelo download individual abaixo, pra
+// gerar algo como "meu-poema.pdf" em vez de "selecao_poemas_169...json".
+function nomeArquivoSeguro(texto) {
+    const base = (texto || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    return base || 'sem-titulo';
+}
+
+// ─── Download individual (botão "Baixar" da coluna Ações e modal de
+// Visualização) ────────────────────────────────────────────────────
+// `formato` é 'md' | 'pdf' | 'json' — na coluna Ações vem da configuração
+// salva por tabela (ver getFormatoBaixar em acoes-coluna.js); no modal
+// de Visualização, do botão que a pessoa clicou (os três ficam sempre
+// visíveis ali, ver visualizar.js). Reaproveita itensDaSelecao (mesmo
+// registro/contexto resolvido das demais exportações).
+export function exportarItem(tipo, id, formato) {
+    const itens = itensDaSelecao(tipo, [id]);
+    if (itens.length === 0) {
+        mostrarAviso('Item não encontrado.');
+        return;
+    }
+
+    const nomeBase = nomeArquivoSeguro(itens[0].titulo);
+
+    if (formato === 'json') {
+        const saida = { export_format: 'selecao', itens };
+        const blob = new Blob([JSON.stringify(saida, null, 4)], {
+            type: 'application/json;charset=utf-8',
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `${nomeBase}.json`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+        return;
+    }
+
+    if (formato === 'pdf') {
+        try {
+            baixarPdf(itens, `${nomeBase}.pdf`);
+        } catch (err) {
+            mostrarAviso(err.message || 'Não foi possível gerar o PDF.');
+        }
+        return;
+    }
+
+    baixarMarkdown(itens, `${nomeBase}.md`);
 }
 
 // ─── Exportar Vários Livros Completos (dados do livro + conteúdo aninhado) ──
@@ -550,8 +634,60 @@ export function exportarTudoFlatMarkdown() {
     }
 }
 
+// Mesma seleção/filtros de executarExportacaoSeletiva, mas em PDF. Coletâneas
+// ficam de fora por ora — mesma decisão de executarExportacaoSeletivaMarkdown
+// (ver comentário lá acima); PDF segue a mesma lista de itens que o .md usa.
+// try/catch por causa da mesma corrida com o carregamento do jsPDF via CDN
+// tratada em exportarSelecaoPdf (ver comentário lá).
+export function executarExportacaoSeletivaPdf() {
+    const opcoes = lerFiltrosDoFormulario();
+    const { itens } = gerarExportacaoSeletiva(opcoes);
+
+    if (itens.length === 0) {
+        const span = document.getElementById('exp-resultado');
+        if (span) span.innerText = 'Nenhum item encontrado com esses filtros — nada pra baixar.';
+        return;
+    }
+
+    try {
+        baixarPdf(itens, `exportacao_seletiva_${Date.now()}.pdf`);
+    } catch (err) {
+        mostrarAviso(err.message || 'Não foi possível gerar o PDF.');
+        return;
+    }
+
+    const span = document.getElementById('exp-resultado');
+    if (span) {
+        span.innerText = `${itens.length} item(ns) exportado(s) em PDF.`;
+    }
+}
+
 // Mantém os checkboxes de Livros/Coletâneas atualizados conforme o banco muda
 window.addEventListener('db:saved', popularSelecaoExportacao);
+
+// Coletâneas ficam de fora do PDF por ora — mesma decisão de
+// exportarTudoFlatMarkdown (ver comentário lá acima). Mesmo try/catch de
+// executarExportacaoSeletivaPdf, pela mesma corrida com o carregamento do
+// jsPDF via CDN (ver exportarSelecaoPdf).
+export function exportarTudoFlatPdf() {
+    const { itens } = gerarTudoFlat();
+    if (itens.length === 0) {
+        mostrarAviso('Acervo vazio — nada pra exportar.');
+        return;
+    }
+
+    try {
+        baixarPdf(itens, `arquivo_poetico_flat_${Date.now()}.pdf`);
+    } catch (err) {
+        mostrarAviso(err.message || 'Não foi possível gerar o PDF.');
+        return;
+    }
+
+    const span = document.getElementById('exp-resultado');
+    if (span) {
+        span.innerText = `Acervo inteiro exportado em PDF (${itens.length} texto(s)).`;
+    }
+}
 
 // ─── Exportar Tudo Aninhado (absorvido do encadeia.html) ─────────────────────
 // Gera a mesma estrutura profunda (Livro → Parte → Seção → Poema) que o

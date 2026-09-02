@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 document.body.innerHTML = `
     <main>
         <div id="lista-livros"></div>
+        <div id="lista-grupos"></div>
 
         <div id="barra-acoes-poemas" class="hidden">
             <span id="contador-selecao-poemas"></span>
@@ -26,7 +27,9 @@ document.body.innerHTML = `
 `;
 
 const { db } = await import('../js/db.js');
-const { renderLivros, renderPoemas, toggleSelecaoPoema } = await import('../js/render-listas.js');
+const { renderLivros, renderPoemas, renderGrupos, toggleSelecaoPoema } =
+    await import('../js/render-listas.js');
+const { toggleColuna } = await import('../js/colunas.js');
 await import('../js/main.js');
 
 function limparDb() {
@@ -113,3 +116,79 @@ function excluirSelecaoPoemasGlobal() {
     // onclick="excluirSelecaoPoemas()" no index.html.
     window.excluirSelecaoPoemas();
 }
+
+describe('Grupos — bolinha de cor no card (DOM real via happy-dom)', () => {
+    beforeEach(() => {
+        db.grupos.length = 0;
+        db.pessoas.length = 0;
+    });
+
+    it('mostra a bolinha com a cor cadastrada do grupo', () => {
+        db.grupos.push({ id: 1, nome: 'Amigos', cor: 'emerald' });
+        renderGrupos();
+
+        const ponto = document.querySelector('[title="Cor do grupo"]');
+        assert.ok(ponto, 'a bolinha de cor deveria estar no card do grupo');
+        assert.match(ponto.className, /bg-emerald-500/);
+    });
+
+    it('grupo sem cor salva (dado anterior à feature) cai no padrão, sem quebrar', () => {
+        db.grupos.push({ id: 1, nome: 'Legado' });
+        renderGrupos();
+
+        const ponto = document.querySelector('[title="Cor do grupo"]');
+        assert.ok(ponto);
+        assert.match(ponto.className, /bg-blue-500/);
+    });
+});
+
+describe('Poemas — coluna "Grupos" (DOM real via happy-dom)', () => {
+    beforeEach(() => {
+        limparDb();
+        db.pessoas.length = 0;
+        db.grupos.length = 0;
+        localStorage.clear(); // estado de colunas salvo (ver colunas.js) começaria "vazado" entre testes
+    });
+
+    it('coluna desligada por padrão: cabeçalho "Grupos" não aparece', () => {
+        db.poemas.push({ id: 1, titulo: 'Poema A', sequencia: 1 });
+        renderPoemas();
+
+        assert.doesNotMatch(document.getElementById('cabecalho-poemas').textContent, /Grupos/);
+    });
+
+    it('ligar a coluna via toggleColuna mostra o cabeçalho e um badge "Grupo (Pessoa)" por vínculo', () => {
+        db.grupos.push({ id: 10, nome: 'Namorado', cor: 'blue' });
+        db.pessoas.push({ id: 1, nome: 'Dalton', grupoIds: [10] });
+        db.poemas.push({
+            id: 1,
+            titulo: 'Poema A',
+            sequencia: 1,
+            pessoas: [{ pessoaId: 1, papeis: [] }],
+        });
+
+        toggleColuna('poemas', 'grupos', true);
+        renderPoemas();
+
+        assert.match(document.getElementById('cabecalho-poemas').textContent, /Grupos/);
+        const celula = document.getElementById('lista-poemas').textContent;
+        assert.match(celula, /Namorado/);
+        assert.match(celula, /Dalton/);
+    });
+
+    it('poema sem ninguém em grupo mostra "—" na coluna, mesmo com pessoas atribuídas', () => {
+        db.pessoas.push({ id: 1, nome: 'Sem Grupo', grupoIds: [] });
+        db.poemas.push({
+            id: 1,
+            titulo: 'Poema A',
+            sequencia: 1,
+            pessoas: [{ pessoaId: 1, papeis: [] }],
+        });
+
+        toggleColuna('poemas', 'grupos', true);
+        renderPoemas();
+
+        const linha = document.querySelector('#lista-poemas tr');
+        assert.match(linha.textContent, /—/);
+    });
+});

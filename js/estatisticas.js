@@ -4,7 +4,7 @@
 // ============================================================
 
 import { db } from './db.js';
-import { escapeHtml, anoDeDataParcial } from './utils.js';
+import { escapeHtml, anoDeDataParcial, sinalizacoesCombinadas, nomesPessoas } from './utils.js';
 
 const STOPWORDS = new Set([
     'a',
@@ -377,7 +377,10 @@ export function contarPorLivro() {
 export function contarPorTema(top = 12) {
     const contagem = {};
     todosOsTextos().forEach((t) => {
-        listaDeCampo(t.sinalizacoes).forEach((tag) => {
+        // Etiquetas mais frequentes = as 6 categorias de Sinalizações
+        // combinadas (ver sinalizacoesCombinadas em utils.js), igual já
+        // era quando isso era um campo único — só mudou onde o dado mora.
+        listaDeCampo(sinalizacoesCombinadas(t)).forEach((tag) => {
             contagem[tag] = (contagem[tag] || 0) + 1;
         });
     });
@@ -390,7 +393,7 @@ export function contarPorTema(top = 12) {
 export function contarPorPessoa(top = 12) {
     const contagem = {};
     todosOsTextos().forEach((t) => {
-        listaDeCampo(t.pessoas).forEach((nome) => {
+        nomesPessoas(t, db.pessoas).forEach((nome) => {
             contagem[nome] = (contagem[nome] || 0) + 1;
         });
     });

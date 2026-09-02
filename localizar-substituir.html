@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="pt-br">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Arquivo Poético — Localizar e Substituir</title>
+        <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg" />
+        <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png" />
+        <link rel="apple-touch-icon" href="assets/icons/favicon-180.png" />
+        <script>
+            // Aplica o tema ANTES do primeiro paint, igual ao index.html/filtrar.html —
+            // evita piscar claro e depois escurecer.
+            (function () {
+                var pref = localStorage.getItem('arquivoPoetico_tema') || 'auto';
+                var escuro =
+                    pref === 'escuro' ||
+                    (pref === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (escuro) document.documentElement.classList.add('dark');
+            })();
+        </script>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = { darkMode: 'class' };
+        </script>
+        <style>
+            :root {
+                --color-accent: #1d4ed8;
+                --color-accent-light: #eff6ff;
+                --color-warn: #d97706;
+                --color-warn-light: #fffbeb;
+                --color-danger: #dc2626;
+                --color-danger-light: #fef2f2;
+                --color-ok: #16a34a;
+                --color-ok-light: #f0fdf4;
+            }
+
+            .card {
+                background: white;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+            }
+
+            .badge {
+                font-size: 10px;
+                font-weight: 600;
+                padding: 2px 8px;
+                border-radius: 9999px;
+                white-space: nowrap;
+            }
+            .badge-neutral {
+                background: #f3f4f6;
+                color: #374151;
+            }
+            .badge-ok {
+                background: #dcfce7;
+                color: #166534;
+            }
+
+            mark.diff-old {
+                background: #fee2e2;
+                color: #991b1b;
+                text-decoration: line-through;
+                border-radius: 2px;
+                padding: 0 2px;
+            }
+            mark.diff-new {
+                background: #dcfce7;
+                color: #166534;
+                border-radius: 2px;
+                padding: 0 2px;
+                font-weight: 600;
+            }
+
+            .snippet {
+                font-family: 'Georgia', serif;
+                font-size: 12.5px;
+                line-height: 1.6;
+                word-break: break-word;
+            }
+
+            #tabela-resultados tr:not(:last-child) td {
+                border-bottom: 1px solid #e5e7eb;
+            }
+
+            ::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+            }
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #d1d5db;
+                border-radius: 3px;
+            }
+
+            /* --- Modo Escuro (mesma chave de localStorage do index.html) --- */
+            html.dark {
+                color-scheme: dark;
+            }
+            html.dark .card {
+                background: #1e293b;
+                border-color: #334155;
+            }
+            html.dark .badge-neutral {
+                background: #334155;
+                color: #cbd5e1;
+            }
+            html.dark .badge-ok {
+                background: #052e16;
+                color: #86efac;
+            }
+            html.dark mark.diff-old {
+                background: #450a0a;
+                color: #fca5a5;
+            }
+            html.dark mark.diff-new {
+                background: #052e16;
+                color: #86efac;
+            }
+            html.dark #tabela-resultados tr:not(:last-child) td {
+                border-bottom-color: #334155;
+            }
+            html.dark input,
+            html.dark select,
+            html.dark textarea {
+                background-color: #1e293b;
+                border-color: #334155;
+                color: #e2e8f0;
+            }
+            html.dark ::-webkit-scrollbar-thumb {
+                background: #475569;
+            }
+        </style>
+    </head>
+    <body
+        class="bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-sans pb-24 min-h-screen"
+    >
+        <!-- ── HEADER ─────────────────────────────────────────────────── -->
+        <header
+            class="bg-white dark:bg-slate-900 border-b shadow-sm p-5 mb-8 sticky top-0 z-30 border-gray-200 dark:border-slate-700"
+        >
+            <div class="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-3">
+                <div>
+                    <h1 class="text-xl font-light tracking-tight">
+                        Arquivo
+                        <span class="font-bold text-blue-700 dark:text-blue-300">Poético</span>
+                        <span class="text-gray-400 dark:text-slate-500 font-light ml-2"
+                            >— Localizar e Substituir</span
+                        >
+                    </h1>
+                    <p class="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+                        Busca um trecho em Poemas e/ou Prosas, mostra as ocorrências antes/depois
+                        e só aplica no que você confirmar.
+                    </p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <button
+                            id="btn-tema"
+                            type="button"
+                            onclick="togglePainelTema()"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 transition text-sm font-medium"
+                        >
+                            🌓 Tema
+                        </button>
+                        <div
+                            id="painel-tema"
+                            class="hidden absolute right-0 mt-1 w-36 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1 z-20"
+                        ></div>
+                    </div>
+                    <a
+                        href="index.html"
+                        class="text-sm text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950 transition"
+                    >
+                        ← Voltar ao Arquivo
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-5xl mx-auto px-4">
+            <!-- ── AVISO DE BACKUP ──────────────────────────────────────── -->
+            <div
+                id="aviso-backup"
+                class="hidden text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-lg px-4 py-2 mb-6"
+            ></div>
+
+            <!-- ── ETAPA 1: BUSCA ───────────────────────────────────────── -->
+            <section class="card p-6 mb-6">
+                <h2 class="font-semibold text-lg mb-4">1. O que buscar</h2>
+
+                <div class="grid sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="form-label text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
+                            >Buscar por</label
+                        >
+                        <input
+                            id="campo-termo"
+                            type="text"
+                            placeholder="trecho a localizar"
+                            class="w-full border border-gray-300 dark:border-slate-600 rounded-md px-3 py-2 mt-1"
+                        />
+                    </div>
+                    <div>
+                        <label class="form-label text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
+                            >Substituir por
+                            <span class="font-normal normal-case text-gray-400"
+                                >(deixe vazio pra remover o trecho)</span
+                            ></label
+                        >
+                        <input
+                            id="campo-novo-termo"
+                            type="text"
+                            placeholder="texto de substituição"
+                            class="w-full border border-gray-300 dark:border-slate-600 rounded-md px-3 py-2 mt-1"
+                        />
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 mb-5">
+                    <input type="checkbox" id="campo-case-sensitive" class="w-4 h-4" />
+                    <label for="campo-case-sensitive" class="text-sm"
+                        >Diferenciar maiúsculas de minúsculas</label
+                    >
+                </div>
+
+                <div class="mb-5">
+                    <label class="form-label text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2 block"
+                        >Escopo</label
+                    >
+                    <div class="flex flex-wrap gap-4 text-sm">
+                        <label class="flex items-center gap-1.5">
+                            <input type="radio" name="escopo" value="ambos" checked /> Poemas e
+                            Prosas
+                        </label>
+                        <label class="flex items-center gap-1.5">
+                            <input type="radio" name="escopo" value="poemas" /> Só Poemas
+                        </label>
+                        <label class="flex items-center gap-1.5">
+                            <input type="radio" name="escopo" value="prosas" /> Só Prosas
+                        </label>
+                    </div>
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-6 mb-5">
+                    <div id="grupo-campos-poema">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
+                                >Campos em Poemas</label
+                            >
+                            <div class="text-[10px] flex gap-2">
+                                <button
+                                    type="button"
+                                    onclick="marcarTodosCampos('grupo-campos-poema', true)"
+                                    class="text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                    todos
+                                </button>
+                                <button
+                                    type="button"
+                                    onclick="marcarTodosCampos('grupo-campos-poema', false)"
+                                    class="text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                    nenhum
+                                </button>
+                            </div>
+                        </div>
+                        <div
+                            id="lista-campos-poema"
+                            class="flex flex-wrap gap-x-4 gap-y-1.5 text-sm bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg p-3 max-h-40 overflow-y-auto"
+                        ></div>
+                    </div>
+                    <div id="grupo-campos-prosa">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
+                                >Campos em Prosas</label
+                            >
+                            <div class="text-[10px] flex gap-2">
+                                <button
+                                    type="button"
+                                    onclick="marcarTodosCampos('grupo-campos-prosa', true)"
+                                    class="text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                    todos
+                                </button>
+                                <button
+                                    type="button"
+                                    onclick="marcarTodosCampos('grupo-campos-prosa', false)"
+                                    class="text-blue-600 dark:text-blue-400 hover:underline"
+                                >
+                                    nenhum
+                                </button>
+                            </div>
+                        </div>
+                        <div
+                            id="lista-campos-prosa"
+                            class="flex flex-wrap gap-x-4 gap-y-1.5 text-sm bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg p-3 max-h-40 overflow-y-auto"
+                        ></div>
+                    </div>
+                </div>
+
+                <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
+                    A busca cobre só os campos de texto do próprio Poema/Prosa listados acima — não
+                    entra em listas aninhadas (Elos, Referências, Intertextualidade, Anexos,
+                    Anotações Marginais, Autoria, Pessoas, Envios, Reconhecimentos).
+                </p>
+
+                <button
+                    onclick="buscar()"
+                    class="bg-blue-700 hover:bg-blue-800 text-white px-5 py-2.5 rounded-md font-semibold text-sm"
+                >
+                    🔍 Buscar ocorrências
+                </button>
+            </section>
+
+            <!-- ── ETAPA 2: RESULTADOS ──────────────────────────────────── -->
+            <section id="sec-resultados" class="card p-6 mb-6 hidden">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <h2 class="font-semibold text-lg">2. Ocorrências encontradas</h2>
+                    <div id="resumo-resultados" class="text-sm text-gray-500 dark:text-slate-400"></div>
+                </div>
+
+                <div id="sem-resultados" class="hidden text-sm text-gray-500 dark:text-slate-400 py-6 text-center">
+                    Nenhuma ocorrência encontrada com esses critérios.
+                </div>
+
+                <div id="bloco-tabela" class="hidden">
+                    <div class="flex gap-3 text-[11px] mb-2">
+                        <button
+                            type="button"
+                            onclick="marcarTodasLinhas(true)"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            Marcar todas
+                        </button>
+                        <button
+                            type="button"
+                            onclick="marcarTodasLinhas(false)"
+                            class="text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            Desmarcar todas
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto -mx-2">
+                        <table class="w-full text-sm" id="tabela-resultados">
+                            <thead>
+                                <tr class="text-left text-[10px] uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                                    <th class="px-2 py-2 w-8"></th>
+                                    <th class="px-2 py-2">Item</th>
+                                    <th class="px-2 py-2">Campo</th>
+                                    <th class="px-2 py-2 w-20">Ocorr.</th>
+                                    <th class="px-2 py-2 w-[32%]">Antes</th>
+                                    <th class="px-2 py-2 w-[32%]">Depois</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpo-tabela"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex items-center gap-3 mt-5 pt-4 border-t border-gray-200 dark:border-slate-700">
+                        <button
+                            onclick="aplicarSelecionadas()"
+                            class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-md font-semibold text-sm"
+                        >
+                            ✓ Aplicar selecionadas
+                        </button>
+                        <button
+                            onclick="cancelarResultados()"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-5 py-2.5 rounded-md font-semibold text-sm hover:bg-gray-50 dark:hover:bg-slate-700"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <div id="status-aplicacao" class="hidden text-sm rounded-lg px-4 py-3 mb-6"></div>
+        </main>
+
+        <script>
+            // ─── Tema ────────────────────────────────────────────────────────
+            import('./js/theme.js').then((m) => {
+                window.setTema = m.setTema;
+                m.initTema();
+            });
+            window.togglePainelTema = function () {
+                document.getElementById('painel-tema')?.classList.toggle('hidden');
+            };
+            document.addEventListener('click', (e) => {
+                const painel = document.getElementById('painel-tema');
+                const botao = document.getElementById('btn-tema');
+                if (
+                    painel &&
+                    !painel.classList.contains('hidden') &&
+                    !painel.contains(e.target) &&
+                    e.target !== botao
+                ) {
+                    painel.classList.add('hidden');
+                }
+            });
+
+            // ─── Módulos compartilhados com o app principal ───────────────────
+            // Esta página não é um módulo ES (tem onclick="" inline em escopo
+            // global, mesmo padrão do filtrar.html) — por isso os imports abaixo
+            // são dinâmicos. Reaproveitamos js/db.js direto (em vez de reimplementar
+            // leitura/gravação do localStorage) pra herdar de graça as migrações,
+            // a ordenação e o tratamento de erro de quota que já existem lá.
+            let db = null;
+            let salvarDb = null;
+            let escapeHtml = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+            let mostrarAviso = (msg) => alert(msg);
+            let getUltimoBackup = () => null;
+
+            const pronto = Promise.all([
+                import('./js/db.js').then((m) => {
+                    db = m.db;
+                    salvarDb = m.save;
+                    getUltimoBackup = m.getUltimoBackup;
+                }),
+                import('./js/utils.js').then((m) => {
+                    escapeHtml = m.escapeHtml;
+                    mostrarAviso = m.mostrarAviso;
+                }),
+            ]).then(() => {
+                renderizarListasDeCampos();
+                mostrarAvisoBackup();
+            });
+
+            function mostrarAvisoBackup() {
+                const el = document.getElementById('aviso-backup');
+                try {
+                    const info = getUltimoBackup && getUltimoBackup();
+                    el.textContent = info
+                        ? `💾 Este acervo tem ${db.poemas.length + db.prosas.length} textos (Poemas + Prosas). Antes de aplicar substituições em massa, considere baixar um backup em JSON (aba Exportar do app principal).`
+                        : `💾 Não encontramos registro de um backup manual ainda. Antes de aplicar substituições em massa, considere baixar um JSON (aba Exportar do app principal).`;
+                    el.classList.remove('hidden');
+                } catch (e) {
+                    /* aviso é best-effort, não bloqueia o uso da ferramenta */
+                }
+            }
+
+            // ─── Campos considerados na busca ──────────────────────────────────
+            // Só campos de texto de nível superior do próprio Poema/Prosa — ver
+            // aviso na tela sobre listas aninhadas ficarem de fora.
+            const CAMPOS_POEMA = [
+                { key: 'titulo', label: 'Título' },
+                { key: 'texto', label: 'Texto' },
+                { key: 'notas', label: 'Notas' },
+                { key: 'contextoHistorico', label: 'Contexto Histórico' },
+                { key: 'descricaoVisual', label: 'Descrição Visual' },
+                { key: 'ocultacao', label: 'Ocultação' },
+                { key: 'conteudoSensivel', label: 'Conteúdo Sensível' },
+                { key: 'vocabularioHiperacionante', label: 'Vocabulário Hiperacionante' },
+                { key: 'anexosNotaGeral', label: 'Nota Geral de Anexos' },
+                { key: 'justificativaMigracao', label: 'Justificativa de Migração' },
+                { key: 'descarte', label: 'Descarte' },
+                { key: 'pendencia', label: 'Pendência' },
+                { key: 'sinalizacoesEstilo', label: 'Sinalizações — Estilo' },
+                { key: 'sinalizacoesTema', label: 'Sinalizações — Tema' },
+                { key: 'sinalizacoesRelacao', label: 'Sinalizações — Relação' },
+                { key: 'sinalizacoesSensibilidade', label: 'Sinalizações — Sensibilidade' },
+                { key: 'sinalizacoesTom', label: 'Sinalizações — Tom' },
+                { key: 'sinalizacoesOutros', label: 'Sinalizações — Outros' },
+            ];
+
+            const CAMPOS_PROSA = [
+                { key: 'titulo', label: 'Título' },
+                { key: 'texto', label: 'Texto' },
+                { key: 'notas', label: 'Notas' },
+                { key: 'genero', label: 'Gênero' },
+                { key: 'sinalizacoesEstilo', label: 'Sinalizações — Estilo' },
+                { key: 'sinalizacoesTema', label: 'Sinalizações — Tema' },
+                { key: 'sinalizacoesRelacao', label: 'Sinalizações — Relação' },
+                { key: 'sinalizacoesSensibilidade', label: 'Sinalizações — Sensibilidade' },
+                { key: 'sinalizacoesTom', label: 'Sinalizações — Tom' },
+                { key: 'sinalizacoesOutros', label: 'Sinalizações — Outros' },
+            ];
+
+            function renderizarListasDeCampos() {
+                const montar = (campos, prefixo, containerId) => {
+                    const container = document.getElementById(containerId);
+                    container.innerHTML = campos
+                        .map(
+                            (c) => `
+                        <label class="flex items-center gap-1.5 whitespace-nowrap">
+                            <input type="checkbox" class="chk-campo" data-prefixo="${prefixo}" value="${c.key}" checked />
+                            ${escapeHtml(c.label)}
+                        </label>`,
+                        )
+                        .join('');
+                };
+                montar(CAMPOS_POEMA, 'poema', 'lista-campos-poema');
+                montar(CAMPOS_PROSA, 'prosa', 'lista-campos-prosa');
+            }
+
+            window.marcarTodosCampos = function (grupoId, valor) {
+                document
+                    .querySelectorAll(`#${grupoId} .chk-campo`)
+                    .forEach((chk) => (chk.checked = valor));
+            };
+
+            // Mostra/esconde os grupos de campo conforme o escopo escolhido.
+            document.addEventListener('change', (e) => {
+                if (e.target.name !== 'escopo') return;
+                const escopo = e.target.value;
+                document
+                    .getElementById('grupo-campos-poema')
+                    .classList.toggle('hidden', escopo === 'prosas');
+                document
+                    .getElementById('grupo-campos-prosa')
+                    .classList.toggle('hidden', escopo === 'poemas');
+            });
+
+            // ─── Busca literal ──────────────────────────────────────────────
+            function encontrarPosicoes(texto, termo, caseSensitive) {
+                if (!termo) return [];
+                const t = caseSensitive ? texto : texto.toLowerCase();
+                const q = caseSensitive ? termo : termo.toLowerCase();
+                const posicoes = [];
+                let i = 0;
+                while (true) {
+                    const pos = t.indexOf(q, i);
+                    if (pos === -1) break;
+                    posicoes.push(pos);
+                    i = pos + q.length;
+                }
+                return posicoes;
+            }
+
+            function substituirLiteral(texto, termo, novoTermo, caseSensitive) {
+                if (!termo) return texto;
+                const t = caseSensitive ? texto : texto.toLowerCase();
+                const q = caseSensitive ? termo : termo.toLowerCase();
+                let resultado = '';
+                let i = 0;
+                while (true) {
+                    const pos = t.indexOf(q, i);
+                    if (pos === -1) {
+                        resultado += texto.slice(i);
+                        break;
+                    }
+                    resultado += texto.slice(i, pos) + novoTermo;
+                    i = pos + termo.length;
+                }
+                return resultado;
+            }
+
+            const CONTEXTO_CHARS = 28;
+            const MAX_OCORRENCIAS_NO_SNIPPET = 2;
+
+            function gerarSnippets(texto, posicoes, termoLen, novoTermo) {
+                const partesAntes = [];
+                const partesDepois = [];
+                const mostrar = posicoes.slice(0, MAX_OCORRENCIAS_NO_SNIPPET);
+                mostrar.forEach((pos) => {
+                    const ini = Math.max(0, pos - CONTEXTO_CHARS);
+                    const fim = Math.min(texto.length, pos + termoLen + CONTEXTO_CHARS);
+                    const prefixo = (ini > 0 ? '…' : '') + escapeHtml(texto.slice(ini, pos));
+                    const sufixo = escapeHtml(texto.slice(pos + termoLen, fim)) + (fim < texto.length ? '…' : '');
+                    const trechoOriginal = escapeHtml(texto.slice(pos, pos + termoLen));
+
+                    partesAntes.push(`${prefixo}<mark class="diff-old">${trechoOriginal}</mark>${sufixo}`);
+
+                    const trechoNovo = novoTermo
+                        ? `<mark class="diff-new">${escapeHtml(novoTermo)}</mark>`
+                        : `<span class="text-gray-400 dark:text-slate-500 italic">(removido)</span>`;
+                    partesDepois.push(`${prefixo}${trechoNovo}${sufixo}`);
+                });
+                const resto = posicoes.length - mostrar.length;
+                const nota = resto > 0 ? ` <span class="text-gray-400">(+${resto} ocorrência${resto > 1 ? 's' : ''})</span>` : '';
+                return {
+                    antes: partesAntes.join(' <span class="text-gray-300 dark:text-slate-600">/</span> ') + nota,
+                    depois: partesDepois.join(' <span class="text-gray-300 dark:text-slate-600">/</span> ') + nota,
+                };
+            }
+
+            // ─── Estado dos resultados ──────────────────────────────────────
+            let resultadosAtuais = []; // [{ chave, tipo, id, titulo, campoKey, campoLabel, count, antesHtml, depoisHtml }]
+            let ultimaBusca = null; // parâmetros da última busca, pra poder re-rodar após aplicar
+
+            window.buscar = async function () {
+                await pronto;
+                const termo = document.getElementById('campo-termo').value;
+                const novoTermo = document.getElementById('campo-novo-termo').value;
+                const caseSensitive = document.getElementById('campo-case-sensitive').checked;
+                const escopo = document.querySelector('input[name="escopo"]:checked').value;
+
+                if (!termo) {
+                    mostrarAviso('Digite o trecho que você quer buscar.');
+                    return;
+                }
+
+                const camposPoemaSelecionados = escopo === 'prosas'
+                    ? []
+                    : Array.from(document.querySelectorAll('#grupo-campos-poema .chk-campo:checked')).map((c) => c.value);
+                const camposProsaSelecionados = escopo === 'poemas'
+                    ? []
+                    : Array.from(document.querySelectorAll('#grupo-campos-prosa .chk-campo:checked')).map((c) => c.value);
+
+                if (camposPoemaSelecionados.length === 0 && camposProsaSelecionados.length === 0) {
+                    mostrarAviso('Selecione pelo menos um campo para buscar.');
+                    return;
+                }
+
+                ultimaBusca = { termo, novoTermo, caseSensitive, escopo, camposPoemaSelecionados, camposProsaSelecionados };
+
+                const resultados = [];
+                const varrer = (colecao, tipo, campos, labelPorKey) => {
+                    colecao.forEach((item) => {
+                        campos.forEach((campoKey) => {
+                            const valor = item[campoKey];
+                            if (typeof valor !== 'string' || !valor) return;
+                            const posicoes = encontrarPosicoes(valor, termo, caseSensitive);
+                            if (posicoes.length === 0) return;
+                            const { antes, depois } = gerarSnippets(valor, posicoes, termo.length, novoTermo);
+                            resultados.push({
+                                chave: `${tipo}:${item.id}:${campoKey}`,
+                                tipo,
+                                id: item.id,
+                                titulo: item.titulo || '(sem título)',
+                                campoKey,
+                                campoLabel: labelPorKey[campoKey],
+                                count: posicoes.length,
+                                antesHtml: antes,
+                                depoisHtml: depois,
+                            });
+                        });
+                    });
+                };
+
+                const labelPoema = Object.fromEntries(CAMPOS_POEMA.map((c) => [c.key, c.label]));
+                const labelProsa = Object.fromEntries(CAMPOS_PROSA.map((c) => [c.key, c.label]));
+
+                if (camposPoemaSelecionados.length) varrer(db.poemas, 'poema', camposPoemaSelecionados, labelPoema);
+                if (camposProsaSelecionados.length) varrer(db.prosas, 'prosa', camposProsaSelecionados, labelProsa);
+
+                resultadosAtuais = resultados;
+                renderizarResultados();
+                document.getElementById('status-aplicacao').classList.add('hidden');
+            };
+
+            function renderizarResultados() {
+                document.getElementById('sec-resultados').classList.remove('hidden');
+                const semResultados = document.getElementById('sem-resultados');
+                const blocoTabela = document.getElementById('bloco-tabela');
+                const resumo = document.getElementById('resumo-resultados');
+
+                if (resultadosAtuais.length === 0) {
+                    semResultados.classList.remove('hidden');
+                    blocoTabela.classList.add('hidden');
+                    resumo.textContent = '';
+                    return;
+                }
+                semResultados.classList.add('hidden');
+                blocoTabela.classList.remove('hidden');
+
+                const totalOcorrencias = resultadosAtuais.reduce((soma, r) => soma + r.count, 0);
+                const itensUnicos = new Set(resultadosAtuais.map((r) => `${r.tipo}:${r.id}`)).size;
+                resumo.textContent = `${totalOcorrencias} ocorrência${totalOcorrencias > 1 ? 's' : ''} em ${resultadosAtuais.length} campo${resultadosAtuais.length > 1 ? 's' : ''} (${itensUnicos} ite${itensUnicos > 1 ? 'ns' : 'm'})`;
+
+                const corpo = document.getElementById('corpo-tabela');
+                corpo.innerHTML = resultadosAtuais
+                    .map(
+                        (r) => `
+                    <tr data-chave="${r.chave}">
+                        <td class="px-2 py-2 align-top">
+                            <input type="checkbox" class="chk-linha w-4 h-4" data-chave="${r.chave}" checked />
+                        </td>
+                        <td class="px-2 py-2 align-top">
+                            <span class="badge badge-neutral mr-1">${r.tipo === 'poema' ? 'Poema' : 'Prosa'}</span>
+                            <div class="mt-1">${escapeHtml(r.titulo)}</div>
+                        </td>
+                        <td class="px-2 py-2 align-top text-gray-600 dark:text-slate-300">${escapeHtml(r.campoLabel)}</td>
+                        <td class="px-2 py-2 align-top">${r.count}</td>
+                        <td class="px-2 py-2 align-top snippet">${r.antesHtml}</td>
+                        <td class="px-2 py-2 align-top snippet">${r.depoisHtml}</td>
+                    </tr>`,
+                    )
+                    .join('');
+            }
+
+            window.marcarTodasLinhas = function (valor) {
+                document.querySelectorAll('.chk-linha').forEach((chk) => (chk.checked = valor));
+            };
+
+            window.cancelarResultados = function () {
+                resultadosAtuais = [];
+                document.getElementById('sec-resultados').classList.add('hidden');
+                document.getElementById('status-aplicacao').classList.add('hidden');
+            };
+
+            window.aplicarSelecionadas = async function () {
+                await pronto;
+                const chavesSelecionadas = new Set(
+                    Array.from(document.querySelectorAll('.chk-linha:checked')).map((c) => c.dataset.chave),
+                );
+                if (chavesSelecionadas.size === 0) {
+                    mostrarAviso('Marque ao menos uma linha para aplicar.');
+                    return;
+                }
+
+                const linhas = resultadosAtuais.filter((r) => chavesSelecionadas.has(r.chave));
+                const confirmou = confirm(
+                    `Aplicar a substituição em ${linhas.length} campo${linhas.length > 1 ? 's' : ''}, tocando ${linhas.reduce((s, r) => s + r.count, 0)} ocorrência${linhas.reduce((s, r) => s + r.count, 0) > 1 ? 's' : ''}? Essa ação grava direto no acervo salvo neste navegador.`,
+                );
+                if (!confirmou) return;
+
+                const { termo, novoTermo, caseSensitive } = ultimaBusca;
+                let ocorrenciasAplicadas = 0;
+
+                linhas.forEach((r) => {
+                    const colecao = r.tipo === 'poema' ? db.poemas : db.prosas;
+                    const item = colecao.find((x) => x.id == r.id);
+                    if (!item || typeof item[r.campoKey] !== 'string') return;
+                    item[r.campoKey] = substituirLiteral(item[r.campoKey], termo, novoTermo, caseSensitive);
+                    ocorrenciasAplicadas += r.count;
+                });
+
+                salvarDb();
+
+                const status = document.getElementById('status-aplicacao');
+                status.className = 'text-sm rounded-lg px-4 py-3 mb-6 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900';
+                status.textContent = `✓ ${ocorrenciasAplicadas} ocorrência${ocorrenciasAplicadas > 1 ? 's' : ''} substituída${ocorrenciasAplicadas > 1 ? 's' : ''} em ${linhas.length} campo${linhas.length > 1 ? 's' : ''}. Se o app principal estiver aberto em outra aba, atualize-o pra ver os dados novos.`;
+                status.classList.remove('hidden');
+
+                // Reexecuta a mesma busca pra refletir o que ainda restou
+                // (linhas não marcadas continuam aparecendo normalmente).
+                await window.buscar();
+            };
+        </script>
+    </body>
+</html>

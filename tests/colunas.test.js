@@ -23,8 +23,14 @@ globalThis.CustomEvent = class CustomEvent {
     }
 };
 
-const { DEFINICAO_COLUNAS, getColunasAtivas, isColunaAtiva, toggleColuna, moverColuna } =
-    await import('../js/colunas.js');
+const {
+    DEFINICAO_COLUNAS,
+    getColunasAtivas,
+    isColunaAtiva,
+    toggleColuna,
+    moverColuna,
+    resetarColunas,
+} = await import('../js/colunas.js');
 
 // Mesmo prefixo usado internamente em colunas.js (LS_PREFIX, não
 // exportado) — duplicado aqui de propósito pra poder inspecionar e
@@ -73,15 +79,16 @@ describe('getColunasAtivas (sem nada salvo ainda — estado padrão)', () => {
                 'dataEscrita',
                 'dataPublicacao',
                 'estrutura',
-                'status',
                 'pessoas',
+                'status',
             ]);
             assert.deepEqual(getColunasAtivas('prosas'), [
                 'dataEscrita',
                 'dataPublicacao',
                 'vinculo',
-                'pessoas',
                 'genero',
+                'pessoas',
+                'status',
             ]);
         },
     );
@@ -114,8 +121,8 @@ describe('getColunasAtivas (com estado salvo no localStorage)', () => {
             'dataEscrita',
             'dataPublicacao',
             'estrutura',
-            'status',
             'pessoas',
+            'status',
         ]);
     });
 
@@ -125,8 +132,8 @@ describe('getColunasAtivas (com estado salvo no localStorage)', () => {
             'dataEscrita',
             'dataPublicacao',
             'estrutura',
-            'status',
             'pessoas',
+            'status',
         ]);
     });
 
@@ -201,14 +208,14 @@ describe('toggleColuna', () => {
     });
 
     it('ligar uma coluna respeita a ordem de definição, não vai pro fim da lista', () => {
-        toggleColuna('poemas', 'elos', true); // "elos" vem depois de "status"/"pessoas" na ordem padrão
+        toggleColuna('poemas', 'elos', true); // "elos" vem antes de "pessoas"/"status" na ordem padrão
         assert.deepEqual(getColunasAtivas('poemas'), [
             'dataEscrita',
             'dataPublicacao',
             'estrutura',
-            'status',
-            'pessoas',
             'elos',
+            'pessoas',
+            'status',
         ]);
     });
 
@@ -242,26 +249,37 @@ describe('moverColuna', () => {
     beforeEach(resetar);
 
     it('"up" troca de posição com o vizinho anterior', () => {
-        // ordem padrão: dataEscrita, dataPublicacao, estrutura, status, pessoas, elos, referencias, etiquetas, notas
-        moverColuna('poemas', 'estrutura', 'up');
+        // ordem padrão (início): idioma, dataEscrita, dataPublicacao, epocaRetratada, contextoHistorico, notas, autoria, envios, reconhecimentos, estrutura, elos...
+        moverColuna('poemas', 'notas', 'up');
         const estado = JSON.parse(localStorage.getItem(LS_PREFIX + 'poemas'));
-        assert.deepEqual(estado.ordem.slice(0, 3), ['dataEscrita', 'estrutura', 'dataPublicacao']);
+        assert.deepEqual(estado.ordem.slice(0, 10), [
+            'idioma',
+            'dataEscrita',
+            'dataPublicacao',
+            'epocaRetratada',
+            'notas',
+            'contextoHistorico',
+            'autoria',
+            'envios',
+            'reconhecimentos',
+            'estrutura',
+        ]);
     });
 
     it('"down" troca de posição com o vizinho seguinte', () => {
-        moverColuna('poemas', 'dataEscrita', 'down');
+        moverColuna('poemas', 'idioma', 'down');
         const estado = JSON.parse(localStorage.getItem(LS_PREFIX + 'poemas'));
-        assert.deepEqual(estado.ordem.slice(0, 2), ['dataPublicacao', 'dataEscrita']);
+        assert.deepEqual(estado.ordem.slice(0, 2), ['dataEscrita', 'idioma']);
     });
 
     it('mover a primeira coluna pra "up" não faz nada (já está no topo)', () => {
-        moverColuna('poemas', 'dataEscrita', 'up');
+        moverColuna('poemas', 'idioma', 'up');
         const estado = JSON.parse(localStorage.getItem(LS_PREFIX + 'poemas'));
         assert.equal(estado, null, 'nem chega a salvar, porque a posição-alvo é inválida');
     });
 
     it('mover a última coluna pra "down" não faz nada (já está no fim)', () => {
-        moverColuna('poemas', 'lancadoEm', 'down');
+        moverColuna('poemas', 'camposPreenchidos', 'down');
         assert.equal(localStorage.getItem(LS_PREFIX + 'poemas'), null);
     });
 
@@ -288,9 +306,64 @@ describe('moverColuna', () => {
     });
 
     it('NÃO dispara evento quando o movimento é inválido (limite, key/tabela inexistente)', () => {
-        moverColuna('poemas', 'dataEscrita', 'up'); // já está no topo
+        moverColuna('poemas', 'idioma', 'up'); // já está no topo
         moverColuna('poemas', 'coluna-fantasma', 'up');
         moverColuna('tabela-fantasma', 'x', 'up');
+        assert.equal(window._eventos.length, 0);
+    });
+});
+
+// ─── resetarColunas ────────────────────────────────────────────────
+
+describe('resetarColunas', () => {
+    beforeEach(resetar);
+
+    it('sem nada personalizado, não quebra e mantém o padrão', () => {
+        resetarColunas('poemas');
+        assert.deepEqual(getColunasAtivas('poemas'), [
+            'dataEscrita',
+            'dataPublicacao',
+            'estrutura',
+            'pessoas',
+            'status',
+        ]);
+    });
+
+    it('descarta reordenação e seleção personalizadas, voltando ao padrão de fábrica', () => {
+        salvarEstado(
+            'poemas',
+            ['status', 'dataEscrita', 'dataPublicacao', 'estrutura', 'elos', 'referencias'],
+            ['status', 'elos'],
+        );
+        resetarColunas('poemas');
+        assert.deepEqual(getColunasAtivas('poemas'), [
+            'dataEscrita',
+            'dataPublicacao',
+            'estrutura',
+            'pessoas',
+            'status',
+        ]);
+    });
+
+    it('mexe só na tabela indicada, não na outra', () => {
+        salvarEstado('prosas', ['dataEscrita', 'genero', 'vinculo'], ['genero']);
+        resetarColunas('poemas');
+        assert.deepEqual(getColunasAtivas('prosas'), ['genero']);
+    });
+
+    it('tabela desconhecida não quebra e não mexe em nada', () => {
+        assert.doesNotThrow(() => resetarColunas('tabela-fantasma'));
+    });
+
+    it('dispara o evento "colunas:alteradas" com a tabela certa no detail', () => {
+        resetarColunas('prosas');
+        assert.equal(window._eventos.length, 1);
+        assert.equal(window._eventos[0].type, 'colunas:alteradas');
+        assert.equal(window._eventos[0].detail.tabela, 'prosas');
+    });
+
+    it('tabela desconhecida NÃO dispara evento', () => {
+        resetarColunas('tabela-fantasma');
         assert.equal(window._eventos.length, 0);
     });
 });

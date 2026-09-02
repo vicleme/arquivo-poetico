@@ -339,6 +339,13 @@ export function getPosicaoElemento(el, db) {
 // render-listas.js). Vive aqui por ser uma utilidade genérica de UI
 // sem dependência de estado interno — qualquer módulo pode importar.
 //
+// `acaoSecundaria` é opcional — usado quando a decisão não é um
+// simples sim/não, mas tem uma terceira saída além de "Confirmar" e
+// "Cancelar" (ex.: nome duplicado ao editar Pessoa/Época, ver
+// initFormPessoa/initFormEpoca em forms.js: "Mesclar agora" vs "Salvar
+// mesmo assim" vs "Cancelar"). Fica escondido quando não informado —
+// quem já chama abrirModalConfirmacao sem essa opção não muda nada.
+//
 // Uso:
 //   abrirModalConfirmacao({
 //       titulo: 'Título do item',
@@ -346,15 +353,17 @@ export function getPosicaoElemento(el, db) {
 //       mensagem: 'Descrição do que vai acontecer.',
 //       textoConfirmar: 'Confirmar',
 //       corConfirmar: '#dc2626',
+//       acaoSecundaria: { texto: 'Fazer outra coisa', onClick: () => {} },
 //       onConfirmar: () => { /* executa a ação */ }
 //   });
 
 export function abrirModalConfirmacao({
     titulo,
     rotulo,
-    mensagem = 'Esta ação é permanente e não pode ser desfeita.',
+    mensagem = 'Você terá alguns segundos pra desfazer depois de confirmar — passado esse tempo, a exclusão é permanente.',
     textoConfirmar = 'Confirmar',
     corConfirmar = '#dc2626',
+    acaoSecundaria = null,
     onConfirmar,
 }) {
     let overlay = document.getElementById('modal-confirmar-exclusao');
@@ -385,12 +394,17 @@ export function abrirModalConfirmacao({
                 id="excl-titulo"></h3>
             <p style="margin:0 0 24px; font-size:13px; color:#6b7280;"
                id="excl-mensagem"></p>
-            <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
                 <button id="excl-cancelar"
                     style="padding:8px 18px; border-radius:8px; border:1px solid #e5e7eb;
                            background:#fff; color:#374151; font-size:13px; font-weight:600;
                            cursor:pointer;">
                     Cancelar
+                </button>
+                <button id="excl-secundaria"
+                    style="display:none; padding:8px 18px; border-radius:8px; border:1px solid #e5e7eb;
+                           background:#fff; color:#374151; font-size:13px; font-weight:600;
+                           cursor:pointer;">
                 </button>
                 <button id="excl-confirmar"
                     style="padding:8px 18px; border-radius:8px; border:none;
@@ -414,6 +428,7 @@ export function abrirModalConfirmacao({
     document.getElementById('excl-mensagem').textContent = mensagem;
 
     const btnCancelar = document.getElementById('excl-cancelar');
+    const btnSecundaria = document.getElementById('excl-secundaria');
     const btnConfirmar = document.getElementById('excl-confirmar');
     btnCancelar.onclick = _fecharModalExclusao;
     btnConfirmar.onclick = () => {
@@ -422,6 +437,18 @@ export function abrirModalConfirmacao({
     };
     btnConfirmar.textContent = textoConfirmar;
     btnConfirmar.style.background = corConfirmar;
+
+    if (acaoSecundaria) {
+        btnSecundaria.style.display = '';
+        btnSecundaria.textContent = acaoSecundaria.texto;
+        btnSecundaria.onclick = () => {
+            _fecharModalExclusao();
+            acaoSecundaria.onClick();
+        };
+    } else {
+        btnSecundaria.style.display = 'none';
+        btnSecundaria.onclick = null;
+    }
 
     overlay.style.display = 'flex';
     setTimeout(() => btnCancelar.focus(), 0);
@@ -765,9 +792,57 @@ export function violaOrdemDeDatas(anterior, posterior) {
 // terceiro estado além de "preenchido"/"vazio": `na: true` significa
 // "não se aplica" (marcado deliberadamente), distinto de "ainda não
 // categorizado" (o campo inteiro null). Ver epocaRetratada em forms.js.
-export function formatarEpocaRetratada(epoca) {
+//
+// Item 3 do plano de schema: Época deixou de guardar o nome como texto
+// livre (`epocaRetratada.nome`) e passou a referenciar por ID um
+// cadastro central próprio (`db.epocas`, `{id, nome, contextoRelacao,
+// notas}` — ver migrarEpocas/obterOuCriarEpocaPorNome em db.js), mesmo
+// padrão já validado em Pessoas/Autores. `epocaRetratada` guarda só
+// `{ epocaId, inicio, fim, recorte, na }` — quem a época É (nome,
+// contexto do relacionamento, notas) mora uma vez só no cadastro; o
+// recorte de "momento vs. repercussão" (ver RECORTES_EPOCA abaixo)
+// continua por item, já que o mesmo período pode ser retratado como
+// evento pontual num poema e como efeito posterior noutro.
+export const RECORTES_EPOCA = ['momento', 'repercussão'];
+
+export const ROTULOS_RECORTE_EPOCA = {
+    momento: 'Momento',
+    repercussão: 'Momento e Repercussão',
+};
+
+// Resolve epocaRetratada.epocaId pro nome cadastrado — dado ainda não
+// migrado (schema antigo, `.nome` cru) cai no fallback direto, mesmo
+// critério defensivo já usado em nomesPessoas/paresAutoria pra dado que
+// ainda não passou pela migração.
+export function nomeEpoca(epoca, epocasCadastro = []) {
+    if (!epoca) return '';
+    if (epoca.epocaId) {
+        return epocasCadastro.find((e) => e.id == epoca.epocaId)?.nome || '';
+    }
+    return epoca.nome || '';
+}
+
+// Resolve epocaRetratada.epocaId pro Contexto do relacionamento
+// cadastrado (db.epocas.contextoRelacao, ex. "Pedro e Victor" — ver
+// modal-epoca.html). Dado ainda não migrado (schema antigo, sem
+// epocaId) não tem cadastro pra resolver, então não tem contexto.
+// Mesmo critério defensivo de nomeEpoca.
+export function contextoRelacaoEpoca(epoca, epocasCadastro = []) {
+    if (!epoca?.epocaId) return '';
+    return epocasCadastro.find((e) => e.id == epoca.epocaId)?.contextoRelacao || '';
+}
+
+export function formatarEpocaRetratada(epoca, epocasCadastro = []) {
     if (!epoca) return '—';
-    if (epoca.na) return epoca.nome ? `${epoca.nome} (N/A)` : 'N/A';
+    const nome = nomeEpoca(epoca, epocasCadastro);
+    // Contexto do relacionamento entra na frente, separado por "•"
+    // (mesmo padrão pedido pro badge da coluna, só que aqui sempre
+    // visível — na exportação/Visualização não há espaço de tabela
+    // pra restringir, nem hover pra esconder atrás). Ex.: "Pedro e
+    // Victor • Namoro (2019 – 2021)".
+    const contexto = contextoRelacaoEpoca(epoca, epocasCadastro);
+    const prefixo = contexto ? `${contexto} • ` : '';
+    if (epoca.na) return nome ? `${prefixo}${nome} (N/A)` : 'N/A';
     const ini = formatarDataParcial(epoca.inicio);
     const fim = formatarDataParcial(epoca.fim);
     const intervalo =
@@ -778,8 +853,34 @@ export function formatarEpocaRetratada(epoca) {
               : fim !== '—'
                 ? `Até ${fim}`
                 : '';
-    if (epoca.nome) return intervalo ? `${epoca.nome} (${intervalo})` : epoca.nome;
-    return intervalo || '—';
+    // "repercussão" (rótulo "Momento e Repercussão") é marcado inline,
+    // logo depois do nome e antes do parênteses de datas ("Nome e pós
+    // (datas)") — não mais num colchete solto no fim ("Nome (datas)
+    // [Repercussão (e Pós)]"), que lia como se o colchete falasse da
+    // repercussão em si e de um "pós-repercussão", em vez de "o
+    // momento e o que veio depois dele". "momento" (só o evento) segue
+    // marcado em colchete no fim, já que não tem ambiguidade de leitura.
+    const posRepercussao = epoca.recorte === 'repercussão' ? ' e pós' : '';
+    const recorte =
+        epoca.recorte && epoca.recorte !== 'repercussão'
+            ? ` [${ROTULOS_RECORTE_EPOCA[epoca.recorte] || epoca.recorte}]`
+            : '';
+    if (nome) {
+        return (
+            prefixo +
+            (intervalo ? `${nome}${posRepercussao} (${intervalo})` : `${nome}${posRepercussao}`) +
+            recorte
+        );
+    }
+    // Sem nome, o contexto (se houver) fica sozinho — caso raro, época
+    // sem nome só existe em dado legado não migrado, que também não
+    // teria epocaId pra resolver contexto, então `prefixo` é sempre ''
+    // aqui na prática; mantido por simetria caso o schema mude.
+    return (
+        prefixo +
+        (intervalo ? `${intervalo}${posRepercussao}` : posRepercussao ? 'e pós' : '—') +
+        recorte
+    );
 }
 
 // Só o intervalo textual de Época Retratada, sem o nome do período —
@@ -798,33 +899,21 @@ export function formatarIntervaloEpocaRetratada(epoca) {
     return '—';
 }
 
-// Nomes de período já usados em Época Retratada, pra autocompletar o
-// campo "Nome do período" (ver p-epoca-nome em modal-poema.html) — mesma
-// lógica de extrairValoresUnicosDeIntertextualidade, só que sobre
-// epocaRetratada.nome.
-export function extrairNomesEpocaUnicos(poemas) {
-    const nomes = new Set();
-    poemas.forEach((p) => {
-        if (p.epocaRetratada?.nome) nomes.add(p.epocaRetratada.nome);
-    });
-    return Array.from(nomes).sort();
-}
-
-// Sugestão automática de datas e contexto pra um nome de período já
-// usado (ver aplicarSugestaoEpoca em forms.js): busca o poema mais
-// recente (maior id — id é timestamp de criação, ver gerarId) que tenha
-// esse mesmo nome em epocaRetratada.nome, e devolve as datas e o
-// contexto histórico/pessoal daquele poema como sugestão.
+// Sugestão automática de datas e contexto pra uma Época já cadastrada
+// (ver aplicarSugestaoEpoca em forms.js): entre os poemas que já
+// referenciam essa mesma `epocaId`, busca o mais recente (maior id — id
+// é timestamp de criação, ver gerarId) e devolve as datas e o contexto
+// histórico/pessoal dele como sugestão.
 //
 // É só um ponto de partida, nunca uma imposição — quem chama só aplica
-// nos campos que estiverem vazios (preencherDataParcialSeVazio). Um
-// mesmo nome de período pode, de propósito, ter datas diferentes de um
-// poema pro outro — ex.: "Luto" pode valer até um ponto num poema e se
-// estender mais adiante em outro.
-export function obterSugestaoEpocaPorNome(poemas, nome) {
-    if (!nome) return null;
+// nos campos que estiverem vazios (preencherDataParcialSeVazio). Uma
+// mesma Época pode, de propósito, ter datas diferentes de um poema pro
+// outro — ex.: "Luto" pode valer até um ponto num poema e se estender
+// mais adiante em outro.
+export function obterSugestaoEpocaPorId(poemas, epocaId) {
+    if (!epocaId) return null;
     const candidatos = poemas
-        .filter((p) => p.epocaRetratada?.nome === nome)
+        .filter((p) => p.epocaRetratada?.epocaId == epocaId)
         .sort((a, b) => b.id - a.id);
     if (!candidatos.length) return null;
     const maisRecente = candidatos[0];
@@ -1021,37 +1110,190 @@ export function estaPublicado(item) {
     return item.status ? item.status === 'publicado' : !!item.publicado;
 }
 
-// Recebe o array db.poemas e retorna todos os nomes de pessoas únicos ordenados
-export function extrairPessoasUnicas(poemas) {
-    const nomes = new Set();
-    poemas.forEach((p) => {
-        if (p.pessoas) {
-            const lista = Array.isArray(p.pessoas)
-                ? p.pessoas
-                : p.pessoas.split(',').map((s) => s.trim());
-            lista.forEach((n) => {
-                if (n) nomes.add(n);
-            });
-        }
+// Nomes de pessoas de um item (poema/prosa), resolvidos via o cadastro
+// central `db.pessoas` — desde a migração pra Pessoa como entidade
+// própria (ver migrarPessoasParaCadastro em db.js), item.pessoas guarda
+// `{ pessoaId, papeis }`, não mais `{ nome, papeis }`; quem sabe o nome
+// agora é só o cadastro. Recebe `pessoasCadastro` (normalmente
+// `db.pessoas`) em vez de fechar sobre `db` pra continuar testável com
+// dados de mentira, mesmo padrão do resto deste arquivo. pessoaId sem
+// correspondência no cadastro (não deveria acontecer, mas dado
+// importado de fora pode vir incompleto) é ignorado, não quebra a
+// lista pros demais.
+export function nomesPessoas(item, pessoasCadastro = []) {
+    if (!Array.isArray(item.pessoas)) return [];
+    const porId = new Map(pessoasCadastro.map((p) => [p.id, p.nome]));
+    return item.pessoas.map((p) => porId.get(p.pessoaId)).filter(Boolean);
+}
+
+// Nomes dos grupos que uma Pessoa pertence, resolvidos via o cadastro
+// central `db.grupos` — mesmo padrão de nomesPessoas acima, mas um
+// nível abaixo: Grupo é característica da Pessoa (constante entre
+// poemas), não do vínculo poema↔pessoa (esse é o papel, que continua
+// em item.pessoas — ver comentário ali).
+export function nomesGrupos(pessoa, gruposCadastro = []) {
+    if (!pessoa || !Array.isArray(pessoa.grupoIds)) return [];
+    const porId = new Map(gruposCadastro.map((g) => [g.id, g.nome]));
+    return pessoa.grupoIds.map((id) => porId.get(id)).filter(Boolean);
+}
+
+// Pares (Grupo, Pessoa) de um item (poema/prosa) — resolve
+// item.pessoas → cada pessoa → cada grupo que ela pertence, achatando
+// tudo numa lista única. Usado tanto pela exportação em Markdown
+// ("Grupos: Namorado (Dalton), Ex-namorado (Pedro)") quanto pela
+// coluna "Grupos" das tabelas e pelo painel somente-leitura do modal
+// (ver renderPainelGruposDoChip em editor.js) — uma pessoa em mais de
+// um grupo gera um par por grupo, não uma linha combinada. pessoaId
+// ou grupoId sem correspondência no cadastro é ignorado, mesmo
+// critério de nomesPessoas/nomesGrupos acima.
+export function paresGrupoPessoa(item, pessoasCadastro = [], gruposCadastro = []) {
+    if (!Array.isArray(item.pessoas)) return [];
+    const porPessoaId = new Map(pessoasCadastro.map((p) => [p.id, p]));
+    const porGrupoId = new Map(gruposCadastro.map((g) => [g.id, g]));
+    const pares = [];
+    item.pessoas.forEach((p) => {
+        const pessoa = porPessoaId.get(p.pessoaId);
+        if (!pessoa || !Array.isArray(pessoa.grupoIds)) return;
+        pessoa.grupoIds.forEach((grupoId) => {
+            const grupo = porGrupoId.get(grupoId);
+            if (grupo) pares.push({ grupo, pessoa });
+        });
     });
-    return Array.from(nomes).sort();
+    return pares;
+}
+
+// ─── Cor de Grupo ──────────────────────────────────────────────
+// Paleta curada (não cor livre via input[type=color]): cada Grupo
+// escolhe uma destas chaves, salva em `grupo.cor`. Curada em vez de
+// hex livre por dois motivos — cada entrada já garante contraste
+// correto claro/escuro (par bg-100/900 + text-600/400, mesmo padrão
+// de badge do resto do app), e evita repetir a cor que já identifica
+// "isto é uma Pessoa" nas tabelas (rose, ver badgesPessoas em
+// render-listas.js) — por isso rose não faz parte da paleta de Grupo,
+// pra badge de Pessoa e badge de Grupo nunca se confundirem visualmente
+// só de bater o olho. `CORES_GRUPO` é a fonte única (paleta do seletor
+// no modal + resolução de classes); grupo sem `cor` (dado de antes
+// dessa feature) cai no `PADRAO`.
+export const CORES_GRUPO = [
+    { chave: 'blue', rotulo: 'Azul' },
+    { chave: 'emerald', rotulo: 'Verde' },
+    { chave: 'amber', rotulo: 'Âmbar' },
+    { chave: 'violet', rotulo: 'Violeta' },
+    { chave: 'cyan', rotulo: 'Ciano' },
+    { chave: 'fuchsia', rotulo: 'Fúcsia' },
+    { chave: 'orange', rotulo: 'Laranja' },
+    { chave: 'teal', rotulo: 'Verde-azulado' },
+    { chave: 'indigo', rotulo: 'Índigo' },
+    { chave: 'slate', rotulo: 'Cinza' },
+];
+export const CORES_GRUPO_PADRAO = 'blue';
+
+// Classes completas por cor, escritas por extenso (não construídas com
+// template string tipo `bg-${chave}-100`) — o Tailwind Play CDN deste
+// projeto escaneia o DOM renderizado atrás de nomes de classe
+// literais; string montada em runtime some do JS-fonte antes de
+// chegar lá, então cada combinação precisa existir escrita por
+// inteiro em algum lugar que o scanner veja. Mesmo padrão que o resto
+// do app já segue (`corClasse: 'bg-rose-500'`, sempre literal, nunca
+// interpolado).
+const CLASSES_POR_COR_GRUPO = {
+    blue: 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400',
+    emerald: 'bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400',
+    amber: 'bg-amber-100 dark:bg-amber-900 text-amber-600 dark:text-amber-400',
+    violet: 'bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-400',
+    cyan: 'bg-cyan-100 dark:bg-cyan-900 text-cyan-600 dark:text-cyan-400',
+    fuchsia: 'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-600 dark:text-fuchsia-400',
+    orange: 'bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400',
+    teal: 'bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-400',
+    indigo: 'bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400',
+    slate: 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400',
+};
+
+// Classes Tailwind (bg/text, claro+escuro) pra badge de um Grupo. Cor
+// desconhecida ou ausente (dado de antes da feature de cor) cai no
+// padrão, sem quebrar a renderização.
+export function classesCorGrupo(cor) {
+    return CLASSES_POR_COR_GRUPO[cor] || CLASSES_POR_COR_GRUPO[CORES_GRUPO_PADRAO];
+}
+
+// Bolinha sólida (dot) por cor — usada tanto no seletor de cor do
+// formulário de Grupo (ver renderSeletorCorGrupo em forms.js) quanto no
+// card da própria aba Grupos (ver renderGrupos em render-listas.js), pra
+// bater o olho na cor sem precisar abrir "Editar". Mapa à parte de
+// CLASSES_POR_COR_GRUPO (que é bg claro + texto, pensado pra badge com
+// nome dentro) porque aqui o preenchimento é sólido (-500), sem par
+// claro/escuro — é só uma bolinha, não precisa de contraste de texto.
+// Escrito por extenso pelo mesmo motivo de CLASSES_POR_COR_GRUPO acima
+// (Tailwind Play CDN escaneia classe literal no DOM).
+const PONTO_POR_COR_GRUPO = {
+    blue: 'bg-blue-500',
+    emerald: 'bg-emerald-500',
+    amber: 'bg-amber-500',
+    violet: 'bg-violet-500',
+    cyan: 'bg-cyan-500',
+    fuchsia: 'bg-fuchsia-500',
+    orange: 'bg-orange-500',
+    teal: 'bg-teal-500',
+    indigo: 'bg-indigo-500',
+    slate: 'bg-slate-500',
+};
+
+export function pontoCorGrupo(cor) {
+    return PONTO_POR_COR_GRUPO[cor] || PONTO_POR_COR_GRUPO[CORES_GRUPO_PADRAO];
+}
+
+// Remove acentos e caixa alta pra comparação de busca (título, texto do
+// prefixo "campo:" e valores dos campos). Usada em vez de um simples
+// toLowerCase() pra que "arvore" ache "árvore", "coracao" ache "coração",
+// etc. — mesma técnica (NFD + strip de diacríticos) já usada em
+// exportarLivroCompleto (exportar.js) pra gerar nome de arquivo, só que
+// aplicada aqui à busca em vez de a um nome de arquivo.
+export function normalizarBusca(s) {
+    if (s == null) return '';
+    return String(s)
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
 }
 
 // Nomes de atributo aceitos no prefixo "campo:valor" (ver filtrarTextos
 // abaixo) → chave correspondente no item já decorado. livro/parte/secao
 // são preenchidos por decorarCamposBusca() em render-listas.js a partir
 // do vínculo estrutural (paiTipo/paiId) do poema/prosa.
+// Como o nome do prefixo agora passa por normalizarBusca() antes do
+// lookup (ver parseConsultaBusca), não precisa mais duplicar cada chave
+// com/sem acento (título/titulo, relação/relacao, etc.) — um único nome
+// sem acento já casa com as duas formas digitadas.
 const CAMPOS_ATRIBUTO = {
     titulo: 'titulo',
-    título: 'titulo',
     texto: 'texto',
-    etiqueta: 'sinalizacoes',
-    pessoa: 'pessoas',
+    etiqueta: '_buscaSinalizacoes',
+    estilo: 'sinalizacoesEstilo',
+    tema: 'sinalizacoesTema',
+    relacao: 'sinalizacoesRelacao',
+    tom: 'sinalizacoesTom',
+    // Diferente de sensivel: (abaixo), que busca no parágrafo descritivo
+    // de conteudoSensivel — aqui é a tag solta de Sensibilidade
+    // (ex.: "Linguagem obscena").
+    sensibilidade: 'sinalizacoesSensibilidade',
+    // Balde temporário de tags migradas sem categoria própria ainda
+    // (ver SINAL_CATEGORIAS em editor.js) — não é uma categoria de
+    // verdade, só dá pra buscar nela enquanto ela existir.
+    outros: 'sinalizacoesOutros',
+    pessoa: '_buscaPessoas',
+    papel: '_buscaPapeis',
+    grupo: '_buscaGrupos',
+    // Só se aplica a Prosa (ver extrairGenerosUnicos) — em Poema, o
+    // campo simplesmente não existe, então o prefixo não acha nada lá.
+    genero: 'genero',
+    idioma: 'idioma',
+    epoca: '_buscaEpoca',
+    autor: '_buscaAutoria',
+    envio: '_buscaEnvios',
     nota: 'notas',
     livro: '_buscaLivro',
     parte: '_buscaParte',
     secao: '_buscaSecao',
-    seção: '_buscaSecao',
     visual: 'descricaoVisual',
     contexto: 'contextoHistorico',
     intertexto: '_buscaIntertexto',
@@ -1059,18 +1301,64 @@ const CAMPOS_ATRIBUTO = {
     anexos: '_buscaAnexos',
     notaanexos: 'anexosNotaGeral',
     anotacao: '_buscaAnotacoes',
-    anotação: '_buscaAnotacoes',
     anotacoes: '_buscaAnotacoes',
-    anotações: '_buscaAnotacoes',
     ocultacao: 'ocultacao',
-    ocultação: 'ocultacao',
     sensivel: 'conteudoSensivel',
-    sensível: 'conteudoSensivel',
     hiperacionante: 'vocabularioHiperacionante',
     cortado: '_buscaCortadoDe',
     lancado: '_buscaLancadoEm',
-    lançado: '_buscaLancadoEm',
     descarte: 'descarte',
+    pendencia: 'pendencia',
+    elo: '_buscaElos',
+    elos: '_buscaElos',
+    referencia: '_buscaReferencias',
+    referencias: '_buscaReferencias',
+    reconhecimento: '_buscaReconhecimentos',
+    reconhecimentos: '_buscaReconhecimentos',
+};
+
+// Lista, pra uso da UI (legenda de ajuda, atalho de clique no cabeçalho
+// da coluna — ver render-listas.js), dos prefixos "canônicos" — um por
+// campo de destino, preferindo a forma mais curta/comum quando um campo
+// tem mais de um nome aceito (ex.: "anexo" em vez de "anexos").
+export const PREFIXOS_CANONICOS_POR_CAMPO = {
+    titulo: 'titulo',
+    texto: 'texto',
+    _buscaSinalizacoes: 'etiqueta',
+    sinalizacoesEstilo: 'estilo',
+    sinalizacoesTema: 'tema',
+    sinalizacoesRelacao: 'relacao',
+    sinalizacoesTom: 'tom',
+    sinalizacoesSensibilidade: 'sensibilidade',
+    sinalizacoesOutros: 'outros',
+    _buscaPessoas: 'pessoa',
+    _buscaPapeis: 'papel',
+    _buscaGrupos: 'grupo',
+    genero: 'genero',
+    idioma: 'idioma',
+    _buscaEpoca: 'epoca',
+    _buscaAutoria: 'autor',
+    _buscaEnvios: 'envio',
+    notas: 'nota',
+    _buscaLivro: 'livro',
+    _buscaParte: 'parte',
+    _buscaSecao: 'secao',
+    descricaoVisual: 'visual',
+    contextoHistorico: 'contexto',
+    _buscaIntertexto: 'intertexto',
+    _buscaAnexos: 'anexo',
+    anexosNotaGeral: 'notaanexos',
+    _buscaAnotacoes: 'anotacao',
+    ocultacao: 'ocultacao',
+    conteudoSensivel: 'sensivel',
+    vocabularioHiperacionante: 'hiperacionante',
+    _buscaCortadoDe: 'cortado',
+    _buscaLancadoEm: 'lancado',
+    descarte: 'descarte',
+    pendencia: 'pendencia',
+    _buscaElos: 'elo',
+    _buscaReferencias: 'referencia',
+    _buscaReconhecimentos: 'reconhecimento',
 };
 
 // Interpreta uma consulta de busca no estilo Google e devolve os grupos de
@@ -1087,13 +1375,25 @@ const CAMPOS_ATRIBUTO = {
 //     o lado do "ou" em que está
 //   - um prefixo "campo:" restringe o termo a um atributo (ver
 //     CAMPOS_ATRIBUTO acima); sem prefixo, busca nos campos gerais
+//   - "campo:*" (asterisco sozinho, só faz sentido com prefixo de campo)
+//     não busca o caractere "*" — significa "esse campo está preenchido,
+//     não importa com o quê". "-campo:*" inverte: "esse campo está
+//     vazio". Sem prefixo, um "*" solto é tratado como termo literal
+//     (não tem campo único pra checar presença).
+//   - acentos não importam nem no termo nem no nome do prefixo (ver
+//     normalizarBusca acima): "arvore"/"árvore" e "sensivel:"/"sensível:"
+//     casam do mesmo jeito.
 // Ex.: Dalton -rascunho            → menciona Dalton, mas não a tag "rascunho"
 //      Dalton ou Gabriela          → menciona Dalton OU Gabriela
 //      -2023                       → tudo, exceto o que tiver "2023"
 //      "beira do mar"              → só o que tiver essa sequência exata
-//      pessoa:Dalton               → só onde "Dalton" aparece em Pessoas
+//      pessoa:Dalton               → só onde "Dalton" aparece em Pessoas (nome OU papel)
+//      papel:Melhor Amiga          → só quem tem alguém marcado com esse papel específico
+//      grupo:Família               → só quem menciona alguém que pertence a esse Grupo
 //      -etiqueta:rascunho          → exclui quem tem a etiqueta "rascunho"
 //      secao:"Fragmentos do Fim"   → só quem está dentro dessa seção
+//      sensivel:*                  → só quem tem Conteúdo Sensível preenchido
+//      -sensivel:*                 → só quem NÃO tem Conteúdo Sensível preenchido
 function parseConsultaBusca(query) {
     // Cada match é, opcionalmente, um prefixo "campo:" seguido de uma
     // frase entre aspas ou uma palavra solta, com "-" opcional na frente
@@ -1119,8 +1419,8 @@ function parseConsultaBusca(query) {
 
         let campo = null;
         const casouCampo = resto.match(/^([a-zA-Zà-úÀ-Ú]+):([\s\S]*)$/);
-        if (casouCampo && CAMPOS_ATRIBUTO[casouCampo[1].toLowerCase()]) {
-            campo = CAMPOS_ATRIBUTO[casouCampo[1].toLowerCase()];
+        if (casouCampo && CAMPOS_ATRIBUTO[normalizarBusca(casouCampo[1])]) {
+            campo = CAMPOS_ATRIBUTO[normalizarBusca(casouCampo[1])];
             resto = casouCampo[2];
         }
 
@@ -1128,10 +1428,16 @@ function parseConsultaBusca(query) {
         if (termo.startsWith('"') && termo.endsWith('"') && termo.length >= 2) {
             termo = termo.slice(1, -1); // tira as aspas, mantém os espaços de dentro
         }
-        termo = termo.trim().toLowerCase();
+        termo = termo.trim();
         if (!termo) return;
 
-        (excluir ? termosExcluir : grupoAtual).push({ campo, termo });
+        // Presença de campo ("campo:*"): só faz sentido com um campo
+        // restrito e o asterisco sozinho — "campo:*algo*" ou um "*" sem
+        // prefixo continuam sendo termo literal, não presença.
+        const presenca = campo && termo === '*';
+        termo = presenca ? '*' : normalizarBusca(termo);
+
+        (excluir ? termosExcluir : grupoAtual).push({ campo, termo, presenca });
     });
     if (grupoAtual.length) gruposIncluir.push(grupoAtual);
 
@@ -1139,50 +1445,61 @@ function parseConsultaBusca(query) {
 }
 
 // Filtra uma lista de textos (poemas/prosas) por uma busca livre que
-// procura em título, ano, sinalizações, pessoas, livros, descrição
-// visual, contexto histórico/pessoal e intertextualidade ao mesmo tempo
-// — ou, opcionalmente, restrita a um atributo específico. Ver
+// procura em título, ano, sinalizações, pessoas, autoria, grupos,
+// papéis, época retratada, livros, descrição visual, contexto
+// histórico/pessoal e intertextualidade ao mesmo tempo — ou,
+// opcionalmente, restrita a um atributo específico. Ver
 // parseConsultaBusca acima pra sintaxe completa.
 export function filtrarTextos(lista, query) {
     if (!query || !query.trim()) return lista;
     const { gruposIncluir, termosExcluir } = parseConsultaBusca(query);
 
     return lista.filter((item) => {
-        const camposGerais = [
-            item.titulo,
-            item.ano,
-            item.sinalizacoes,
-            item.pessoas,
-            item.genero,
-            item.notas,
-            item._livros,
-            item.descricaoVisual,
-            item.contextoHistorico,
-            item._buscaIntertexto,
-            item._buscaAnexos,
-            item.anexosNotaGeral,
-            item._buscaAnotacoes,
-            item.ocultacao,
-            item.conteudoSensivel,
-            item.vocabularioHiperacionante,
-            item._buscaCortadoDe,
-            item._buscaLancadoEm,
-            item.descarte,
-        ]
-            .filter(Boolean)
-            .join(' ')
-            .toLowerCase();
+        const camposGerais = normalizarBusca(
+            [
+                item.titulo,
+                item.ano,
+                item._buscaSinalizacoes,
+                item._buscaPessoas,
+                item._buscaAutoria,
+                item._buscaGrupos,
+                item._buscaPapeis,
+                item._buscaEpoca,
+                item.genero,
+                item.notas,
+                item._livros,
+                item.descricaoVisual,
+                item.contextoHistorico,
+                item._buscaIntertexto,
+                item._buscaAnexos,
+                item.anexosNotaGeral,
+                item._buscaAnotacoes,
+                item.ocultacao,
+                item.conteudoSensivel,
+                item.vocabularioHiperacionante,
+                item._buscaCortadoDe,
+                item._buscaLancadoEm,
+                item.descarte,
+                item.pendencia,
+            ]
+                .filter(Boolean)
+                .join(' '),
+        );
 
         const valorDoTermo = (t) => {
             if (!t.campo) return camposGerais;
             const v = item[t.campo];
-            return v == null ? '' : String(v).toLowerCase();
+            return v == null ? '' : normalizarBusca(String(v));
         };
 
+        // "campo:*" checa presença (valor não-vazio), ignorando o texto
+        // do campo — o resto continua sendo substring normal.
+        const bateTermo = (t) =>
+            t.presenca ? valorDoTermo(t) !== '' : valorDoTermo(t).includes(t.termo);
+
         const combinaInclusao =
-            gruposIncluir.length === 0 ||
-            gruposIncluir.some((grupo) => grupo.every((t) => valorDoTermo(t).includes(t.termo)));
-        const combinaExclusao = termosExcluir.some((t) => valorDoTermo(t).includes(t.termo));
+            gruposIncluir.length === 0 || gruposIncluir.some((grupo) => grupo.every(bateTermo));
+        const combinaExclusao = termosExcluir.some(bateTermo);
 
         return combinaInclusao && !combinaExclusao;
     });
@@ -1196,12 +1513,13 @@ export function filtrarPorConteudo(lista, query) {
     const { gruposIncluir, termosExcluir } = parseConsultaBusca(query);
 
     return lista.filter((item) => {
-        const texto = (item.texto == null ? '' : String(item.texto)).toLowerCase();
+        const texto = normalizarBusca(item.texto == null ? '' : String(item.texto));
+
+        const bateTermo = (t) => (t.presenca ? texto !== '' : texto.includes(t.termo));
 
         const combinaInclusao =
-            gruposIncluir.length === 0 ||
-            gruposIncluir.some((grupo) => grupo.every((t) => texto.includes(t.termo)));
-        const combinaExclusao = termosExcluir.some((t) => texto.includes(t.termo));
+            gruposIncluir.length === 0 || gruposIncluir.some((grupo) => grupo.every(bateTermo));
+        const combinaExclusao = termosExcluir.some(bateTermo);
 
         return combinaInclusao && !combinaExclusao;
     });
@@ -1226,19 +1544,292 @@ export function extrairGenerosUnicos(prosas) {
     return Array.from(generos).sort();
 }
 
-export function extrairSinalizacoesUnicas(poemas) {
+// Sinalizações viraram 5 campos por categoria (Estilo/Tema/Relação/
+// Sensibilidade/Tom — ver SINALIZACOES_CATEGORIAS) em vez de um campo
+// único misturando tudo (ver migrarSinalizacoes em db.js). `campo`
+// aceita qualquer um desses nomes de campo — a função é genérica, não
+// hardcoded pra sinalizacoesEstilo especificamente — pra poder ser
+// reaproveitada por cada datalist de categoria em editor.js.
+export function extrairSinalizacoesUnicas(itens, campo = 'sinalizacoesTema') {
     const sinais = new Set();
-    poemas.forEach((p) => {
-        if (p.sinalizacoes) {
-            const lista = Array.isArray(p.sinalizacoes)
-                ? p.sinalizacoes
-                : p.sinalizacoes.split(',').map((s) => s.trim());
+    itens.forEach((p) => {
+        const valor = p[campo];
+        if (valor) {
+            const lista = Array.isArray(valor) ? valor : valor.split(',').map((s) => s.trim());
             lista.forEach((s) => {
                 if (s) sinais.add(s);
             });
         }
     });
     return Array.from(sinais).sort();
+}
+
+// Nomes de campo das categorias de Sinalizações, na ordem em que
+// aparecem no modal. "Conteúdo sensível" não é mais um valor dentro de
+// Sensibilidade — passou a ser derivado da presença do campo
+// `conteudoSensivel` (ver badgeConteudoSensivel em render-listas.js).
+// "outros" é o balde temporário de tags migradas sem categoria própria
+// ainda (Premiados/Tradução/Variações — ver editor.js e o plano em
+// Análise de estrutura e metadados poéticos); não é uma 6ª categoria
+// definitiva, é onde elas ficam visíveis até virar Reconhecimentos e
+// Elos tipados de Derivação.
+export const SINALIZACOES_CATEGORIAS = {
+    estilo: 'sinalizacoesEstilo',
+    tema: 'sinalizacoesTema',
+    relacao: 'sinalizacoesRelacao',
+    sensibilidade: 'sinalizacoesSensibilidade',
+    tom: 'sinalizacoesTom',
+    outros: 'sinalizacoesOutros',
+};
+
+// Uma única string combinando as categorias acima — pra busca geral, export
+// em .md (linha resumo) e estatísticas, que não precisam saber de
+// categoria, só "quais tags esse item tem". Cada consumidor que SE
+// importa com categoria (o modal de edição, o filtro por prefixo
+// estilo:/tema:/etc.) usa os campos individuais direto.
+export function sinalizacoesCombinadas(item) {
+    return Object.values(SINALIZACOES_CATEGORIAS)
+        .map((campo) => item[campo])
+        .filter(Boolean)
+        .join(', ');
+}
+
+// ─── Elos / Referências tipados (item 1 do plano de schema) ────
+// Duas listas fechadas separadas — porque Elos e Referências têm
+// natureza diferente — e, desde o redesenho Relação+Direção, Elos usa
+// um schema à parte de Referências (ver mais abaixo).
+//
+// PAPEIS_PESSOA: papel de cada pessoa vinculada a um texto (item 2 do
+// plano de schema — "Pedro, Dani" comma-string vira array de objeto
+// { nome, papel }). Fechado (não texto livre) pra dar consistência de
+// filtro/estatística; "" (vazio) é o valor de "não especificado" — todo
+// nome migrado da string antiga cai aqui (ver migrarPessoas em db.js),
+// e continua sendo uma opção válida pra quem não quiser categorizar.
+export const PAPEIS_PESSOA = [
+    'Retratado(a)',
+    'Inspirado(a) por',
+    'Dedicatário(a)',
+    'Mencionado(a)',
+    'Aludido(a)',
+];
+
+// Iniciais de PAPEIS_PESSOA pra exibição compacta (modal e coluna da
+// tabela — ver badgesPessoas em render-listas.js e o chip de papéis em
+// editor.js). As 5 iniciais não colidem (R/I/D/M/A), então não precisa de
+// abreviação tipo "Re/In/De/Me". Mantém a ordem em que os papéis foram
+// marcados (não é hierarquia fixa por categoria — ver alternarPapel em
+// editor.js), só troca o nome por extenso pela inicial; "·" (ponto
+// médio) como separador entre elas, escolhido por ser mais leve que "-"
+// ou espaço sem ficar ambíguo tipo "RDIM" grudado. Exportação pra MD
+// mantém os papéis por extenso (ver exportar-md.js) — a abreviação é só
+// pra UI, onde passar o mouse por cima do chip já mostra o papel por
+// extenso via `title` (ver badgesPessoas em render-listas.js).
+export function iniciaisPapeisPessoa(papeis) {
+    if (!Array.isArray(papeis) || !papeis.length) return '';
+    return papeis.map((p) => p.charAt(0)).join('·');
+}
+
+// ─── Autoria ─────────────────────────────────────────────────────
+// AUTORIA_PAPEIS: papel de cada Autor vinculado a um texto — lista
+// fechada própria (não reaproveita PAPEIS_PESSOA acima), já que
+// Autor/Coautor é um vínculo single-role por texto (um autor só pode
+// estar marcado como UM dos dois num mesmo poema/prosa), diferente de
+// Pessoa, onde os papéis se acumulam. `item.autoria` é um array de
+// `{ autorId, papel }`, resolvido contra o cadastro central
+// `db.autores` (nome + sobre — ver criarGrupoDeAutoria em editor.js e
+// migrarAutoria/obterOuCriarAutorPorNome em db.js).
+export const AUTORIA_PAPEIS = ['Autor', 'Coautor'];
+
+// Pares (Autor, papel) de um item (poema/prosa) — resolve
+// item.autoria → cada vínculo { autorId, papel } → o Autor
+// correspondente no cadastro central, mesmo padrão de paresGrupoPessoa
+// acima. Usado pela exportação em Markdown (ver textoAutoria em
+// exportar-md.js), pela coluna "Autoria" das tabelas (ver
+// badgesAutoria em render-listas.js) e por `_buscaAutoria` (nome +
+// papel, alimenta o prefixo de busca `autor:`). autorId sem
+// correspondência no cadastro (autor excluído) é ignorado, mesmo
+// critério de nomesPessoas/paresGrupoPessoa; `item.autoria` ausente ou
+// não-array (dado ainda não migrado) devolve lista vazia sem quebrar.
+export function paresAutoria(item, autoresCadastro = []) {
+    if (!Array.isArray(item.autoria)) return [];
+    const porId = new Map(autoresCadastro.map((a) => [a.id, a]));
+    const pares = [];
+    item.autoria.forEach((v) => {
+        const autor = porId.get(v.autorId);
+        if (autor) pares.push({ autor, papel: v.papel });
+    });
+    return pares;
+}
+
+// IDIOMA: campo simples em Poema/Prosa (item 9 do plano de schema),
+// padrão "pt-BR" — complementa a Relação "Tradução" do item 1 (sem ele
+// não dava pra saber em que língua um texto traduzido está). Texto
+// livre com autocomplete (não select fechado — um texto pode estar em
+// qualquer idioma, inclusive misto/dialeto, não faz sentido fechar a
+// lista), então não é uma constante fechada como PAPEIS_PESSOA. Códigos
+// BCP-47 (pt-BR, en, es...) só por convenção de concisão; texto livre
+// aceita qualquer valor.
+//
+// IDIOMAS_SUGERIDOS é só a semente inicial do datalist — antes de
+// qualquer poema/prosa ter um idioma diferente de pt-BR salvo, o campo
+// ainda precisa sugerir algo além do próprio valor padrão. Ver
+// extrairIdiomasUnicos abaixo, que soma isso ao que já está salvo no
+// acervo (mesmo padrão de atualizarDatalistEpoca em editor.js).
+export const IDIOMAS_SUGERIDOS = ['pt-BR', 'en', 'es', 'fr', 'it', 'de'];
+
+// Idiomas já usados no acervo (Poemas + Prosas juntos, mesmo motivo de
+// atualizarDatalistEpoca somar as duas fontes: um idioma digitado numa
+// prosa deve sugerir numa próxima edição de poema e vice-versa), somado
+// à semente de IDIOMAS_SUGERIDOS pra não começar vazio.
+export function extrairIdiomasUnicos(itens) {
+    const idiomas = new Set(IDIOMAS_SUGERIDOS);
+    itens.forEach((item) => {
+        if (item.idioma) idiomas.add(item.idioma);
+    });
+    return Array.from(idiomas).sort();
+}
+
+// ─── Envios e Reações ──────────────────────────────────────────
+// ENVIOS: item 7 do plano de schema. Registro de quando um texto foi
+// enviado/mostrado pra alguém e como essa pessoa reagiu — lista (não
+// campo único), porque o mesmo poema pode ter sido enviado mais de uma
+// vez, pra pessoas diferentes, em momentos diferentes. Poema + Prosa
+// desde já (mesma antecipação do item 9/Idioma e do campo Autoria).
+//
+// `item.envios` é array de `{ pessoa, data, meio, reacao, notas }`:
+//   - `pessoa`: texto livre (não referência a `db.pessoas` por id) —
+//     reaproveita só o *datalist* de nomes já cadastrados como sugestão
+//     de digitação (mesmo padrão de `meio` abaixo), sem virar vínculo
+//     estrutural; não faz sentido forçar cadastro central só pra
+//     registrar "mandei pro Instagram da Dani".
+//   - `data`: data parcial (dia/mês/ano — ver lerDataParcial/
+//     preencherDataParcial/formatarDataParcial acima), o dia do envio,
+//     não de escrita/publicação.
+//   - `meio`: texto livre com autocomplete (WhatsApp, Instagram,
+//     presencial...) — ver extrairMeiosEnviosUnicos abaixo, mesmo
+//     motivo de IDIOMAS_SUGERIDOS não fechar a lista: o meio de envio
+//     não é uma categoria fixa e finita.
+//   - `reacao`/`notas`: texto livre — o que a pessoa disse/fez, e uma
+//     nota própria à parte (contexto adicional, não a reação em si).
+//
+// Meios já usados no acervo (Poemas + Prosas juntos, mesmo motivo de
+// extrairIdiomasUnicos somar as duas fontes), sem semente fixa — ao
+// contrário de IDIOMAS_SUGERIDOS, não há um punhado óbvio de meios pra
+// sugerir antes do primeiro envio salvo (WhatsApp/Instagram/presencial
+// variam demais por acervo).
+export function extrairMeiosEnviosUnicos(itens) {
+    const meios = new Set();
+    itens.forEach((item) => {
+        if (Array.isArray(item.envios)) {
+            item.envios.forEach((e) => {
+                if (e && e.meio) meios.add(e.meio);
+            });
+        }
+    });
+    return Array.from(meios).sort();
+}
+
+// ─── Reconhecimentos ─────────────────────────────────────────────
+// RECONHECIMENTOS: item 8 do plano de schema. Entidade tipo lista,
+// separada de tag solta (a tag "Premiados" que hoje ficava num balde
+// temporário em sinalizacoesOutros — ver MAPA_MIGRACAO_SINALIZACOES em
+// db.js — migra pra cá, ver migrarReconhecimentos em db.js). Poema +
+// Prosa desde já (mesma antecipação de Idioma/Autoria/Envios).
+//
+// `item.reconhecimentos` é array de `{ premio, posicao, ano, texto }`:
+//   - `premio`: texto livre (nome do concurso/prêmio/menção) — reaproveita
+//     só o *datalist* dos nomes já cadastrados como sugestão de digitação
+//     (ver extrairPremiosUnicos abaixo), mesmo padrão de `meio` em Envios:
+//     não há uma lista fechada de prêmios possíveis.
+//   - `posicao`: texto livre (ex.: "1º lugar", "Menção honrosa") — não é
+//     um valor fechado, prêmios diferentes nomeiam colocação de formas
+//     diferentes.
+//   - `ano`: número (ano da premiação), pode ficar em branco.
+//   - `texto`: nota livre opcional (contexto adicional sobre o prêmio).
+//
+// Prêmios já usados no acervo (Poemas + Prosas juntos, mesmo motivo de
+// extrairMeiosEnviosUnicos acima), sem semente fixa.
+export function extrairPremiosUnicos(itens) {
+    const premios = new Set();
+    itens.forEach((item) => {
+        if (Array.isArray(item.reconhecimentos)) {
+            item.reconhecimentos.forEach((r) => {
+                if (r && r.premio) premios.add(r.premio);
+            });
+        }
+    });
+    return Array.from(premios).sort();
+}
+
+// TIPOS_REFERENCIA: relações sempre UNIDIRECIONAIS (mais novo → mais
+// antigo), sem par estrutural fechado — por isso sem painel derivado
+// (não há "outro lado" a inferir). "Imagem central compartilhada" é um
+// motivo recorrendo ao longo do corpus sem relação de par fechado
+// (diferente de Elos, que é bilateral). "Aceno a" é um gesto mais
+// solto, sem exigir reciprocidade nem pertencer a um tipo mais
+// específico.
+export const TIPOS_REFERENCIA = [
+    'Personagem em comum',
+    'Imagem central compartilhada',
+    'Aceno a',
+    'Outro',
+];
+
+// RELACOES_ELO: relações BILATERAIS entre dois poemas (par estrutural —
+// reescrita, tradução, resposta...), redesenhadas pra separar a
+// Relação em si (8 valores fixos) da Direção (Origem/Destino) de cada
+// lado — em vez do schema antigo (`TIPOS_ELO` fixo com 11 rótulos, um
+// por lado possível, e um mapa `TIPO_INVERSO_ELO` só pros 3 pares que
+// tinham nome pros dois lados). Com Relação+Direção, todo par vira
+// automaticamente nomeado nos dois sentidos (ver ROTULOS_RELACAO_ELO
+// logo abaixo), sem precisar de mapa de inverso.
+export const RELACOES_ELO = [
+    'Reescrita',
+    'Continuidade',
+    'Tradução',
+    'Variação',
+    'Versão',
+    'Resposta',
+    'Díptico',
+    'Outro',
+];
+
+// Rótulo de exibição por Relação e lado (Origem = texto mais
+// antigo/base, Destino = texto derivado/mais novo). Relações
+// assimétricas (Reescrita, Continuidade, Tradução, Variação, Versão,
+// Resposta) têm um rótulo diferente por lado; Díptico e Outro não têm
+// uma direção real, então usam o mesmo rótulo dos dois lados. "Versão"
+// não carrega mais "descartada" no rótulo (antes "Versão anterior
+// (descartada) de") — decisão de simplificar o texto.
+export const ROTULOS_RELACAO_ELO = {
+    Reescrita: { origem: 'Reescrito em', destino: 'Reescrita de' },
+    Continuidade: { origem: 'Continuado em', destino: 'Continuação de' },
+    Tradução: { origem: 'Traduzido para', destino: 'Tradução de' },
+    Variação: { origem: 'Variado em', destino: 'Variação de' },
+    Versão: { origem: 'Versão anterior de', destino: 'Versão oficial de' },
+    Resposta: { origem: 'Respondido em', destino: 'Resposta a' },
+    Díptico: { origem: 'Díptico com', destino: 'Díptico com' },
+    Outro: { origem: 'Outro', destino: 'Outro' },
+};
+
+// Rótulo mostrado pra um elo, dada sua Relação e Direção — usado no
+// modal (botões de direção, ver atualizarRotulosDirecaoElo em
+// editor.js), na coluna da tabela (render-listas.js) e na exportação
+// (exportar-md.js). Relação vazia/desconhecida (elo legado sem
+// migração aplicada, ou dado corrompido) devolve string vazia em vez
+// de inventar um rótulo.
+export function rotuloElo(relacao, direcao) {
+    return ROTULOS_RELACAO_ELO[relacao]?.[direcao] || '';
+}
+
+// Direção oposta — usada pelo painel derivado (elosDerivados em
+// editor.js) pra mostrar o rótulo certo do lado que ainda não foi
+// cadastrado manualmente. Valores vazios/desconhecidos passam direto,
+// sem inventar uma direção que não existe.
+export function direcaoInversa(direcao) {
+    if (direcao === 'origem') return 'destino';
+    if (direcao === 'destino') return 'origem';
+    return direcao;
 }
 
 // Sugestões de autocompletar pra Intertextualidade (campo Texto):

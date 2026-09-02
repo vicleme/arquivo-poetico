@@ -20,6 +20,13 @@ globalThis.Event = window.Event;
 globalThis.HTMLElement = window.HTMLElement;
 globalThis.MouseEvent = window.MouseEvent;
 globalThis.Node = window.Node;
+// mostrarAviso()/_criarToastEl() (utils.js) chamam requestAnimationFrame pra
+// animar a entrada do toast — happy-dom implementa isso no objeto `window`
+// (ver console.log('requestAnimationFrame' in window) => true), mas não o
+// expõe em globalThis sozinho, então precisa ser copiado aqui como os
+// outros globais acima (mesmo raciocínio do stub em dom-shim.js).
+globalThis.requestAnimationFrame = window.requestAnimationFrame.bind(window);
+globalThis.cancelAnimationFrame = window.cancelAnimationFrame.bind(window);
 
 // Nota: rodar ações que chamam save() (ex.: excluir um item) imprime um
 // aviso do autobackup.js ("Não foi possível gravar o snapshot automático:

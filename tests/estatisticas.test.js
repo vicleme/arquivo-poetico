@@ -24,6 +24,8 @@ function resetarDb() {
     db.elementos = [];
     db.coletaneas = [];
     db.itensColetanea = [];
+    db.pessoas = [];
+    db.grupos = [];
 }
 
 // ─── contarPorAno ───────────────────────────────────────────────
@@ -149,31 +151,45 @@ describe('contarPorTema', () => {
     beforeEach(resetarDb);
 
     it('separa a lista de temas por vírgula, ignorando espaços em volta', () => {
-        db.poemas = [{ sinalizacoes: 'mar, noite' }, { sinalizacoes: 'mar' }];
+        db.poemas = [{ sinalizacoesTema: 'mar, noite' }, { sinalizacoesTema: 'mar' }];
         const { labels, data } = contarPorTema();
         assert.deepEqual(labels, ['mar', 'noite']);
         assert.deepEqual(data, [2, 1]);
     });
 
     it('item sem sinalizações não contribui em nada', () => {
-        db.poemas = [{ sinalizacoes: '' }, { sinalizacoes: null }, { sinalizacoes: undefined }];
+        db.poemas = [
+            { sinalizacoesTema: '' },
+            { sinalizacoesTema: null },
+            { sinalizacoesTema: undefined },
+        ];
         assert.deepEqual(contarPorTema(), { labels: [], data: [] });
+    });
+
+    it('combina as 6 categorias de Sinalizações na mesma contagem', () => {
+        db.poemas = [
+            { sinalizacoesEstilo: 'Concretista', sinalizacoesTema: 'mar' },
+            { sinalizacoesRelacao: '∞ Pedrictor', sinalizacoesTom: 'mar' },
+        ];
+        const { labels, data } = contarPorTema();
+        assert.deepEqual(labels.slice().sort(), ['Concretista', '∞ Pedrictor', 'mar'].sort());
+        assert.deepEqual(data[labels.indexOf('mar')], 2);
     });
 
     it('respeita o parâmetro `top`, cortando os menos frequentes', () => {
         db.poemas = [
-            { sinalizacoes: 'a' },
-            { sinalizacoes: 'a' },
-            { sinalizacoes: 'a' },
-            { sinalizacoes: 'b' },
-            { sinalizacoes: 'b' },
-            { sinalizacoes: 'c' },
+            { sinalizacoesTema: 'a' },
+            { sinalizacoesTema: 'a' },
+            { sinalizacoesTema: 'a' },
+            { sinalizacoesTema: 'b' },
+            { sinalizacoesTema: 'b' },
+            { sinalizacoesTema: 'c' },
         ];
         assert.deepEqual(contarPorTema(2), { labels: ['a', 'b'], data: [3, 2] });
     });
 
     it('valor padrão de `top` é 12', () => {
-        db.poemas = Array.from({ length: 15 }, (_, i) => ({ sinalizacoes: `tema${i}` }));
+        db.poemas = Array.from({ length: 15 }, (_, i) => ({ sinalizacoesTema: `tema${i}` }));
         assert.equal(contarPorTema().labels.length, 12);
     });
 });
@@ -181,8 +197,15 @@ describe('contarPorTema', () => {
 describe('contarPorPessoa', () => {
     beforeEach(resetarDb);
 
-    it('mesma lógica de contarPorTema, aplicada ao campo pessoas', () => {
-        db.poemas = [{ pessoas: 'Dalton, Dani' }, { pessoas: 'Dalton' }];
+    it('mesma lógica de contarPorTema, aplicada ao campo pessoas (resolvido via cadastro central)', () => {
+        db.pessoas = [
+            { id: 1, nome: 'Dalton', grupoIds: [] },
+            { id: 2, nome: 'Dani', grupoIds: [] },
+        ];
+        db.poemas = [
+            { pessoas: [{ pessoaId: 1, papeis: [] }, { pessoaId: 2, papeis: [] }] },
+            { pessoas: [{ pessoaId: 1, papeis: ['Dedicatário(a)'] }] },
+        ];
         assert.deepEqual(contarPorPessoa(), { labels: ['Dalton', 'Dani'], data: [2, 1] });
     });
 });

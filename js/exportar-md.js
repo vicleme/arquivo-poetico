@@ -12,10 +12,18 @@
 // volta pro acervo.
 // ============================================================
 
-import { formatarDataParcial, formatarEpocaRetratada, estaPublicado } from './utils.js';
+import {
+    formatarDataParcial,
+    formatarEpocaRetratada,
+    estaPublicado,
+    sinalizacoesCombinadas,
+    rotuloElo,
+    paresGrupoPessoa,
+    paresAutoria,
+} from './utils.js';
 import { db } from './db.js';
 
-const INFO_STATUS = {
+export const INFO_STATUS = {
     publicado: { emoji: '🟢', titulo: 'Publicado' },
     incompleto: { emoji: '🟡', titulo: 'Incompleto' },
     migrado: { emoji: '🔵', titulo: 'Migrado' },
@@ -49,7 +57,7 @@ function corpoParaMarkdown(texto) {
 
 // ─── Campos auxiliares ─────────────────────────────────────────────────
 
-function livroSecaoStr(ls) {
+export function livroSecaoStr(ls) {
     if (!ls) return null;
     const partes = [ls.livro, ls.secao].filter(Boolean);
     return partes.length ? partes.join(' / ') : null;
@@ -64,25 +72,156 @@ function blocoTexto(titulo, texto) {
     return t ? `### ${titulo}\n\n${t}\n\n` : '';
 }
 
-// Elos e Referências guardam ids de outros poemas (conceitos.elos/
-// conceitos.referencias) — resolve pros títulos, igual titulosPoemasPorId
-// em render-listas.js, só que em texto puro (sem HTML) pro Markdown.
-function titulosPorIds(ids) {
-    if (!Array.isArray(ids) || !ids.length) return null;
-    const titulos = ids
-        .map((id) => db.poemas.find((p) => p.id == id)?.titulo)
+// Elos guarda { id, relacao, direcao, texto } (redesenho Relação+Direção,
+// ver rotuloElo em utils.js); Referências guarda { id, tipo, texto }
+// (schema mais simples, sem Direção — não mudou). Resolve pros títulos,
+// igual titulosPoemasPorId em render-listas.js, só que em texto puro
+// (sem HTML) pro Markdown. O rótulo entra como prefixo quando existe, e
+// a nota livre (texto) vai entre parênteses no fim.
+export function titulosPorIds(lista) {
+    if (!Array.isArray(lista) || !lista.length) return null;
+    const partes = lista
+        .map((entrada) => {
+            // Item 4: o alvo pode ser Poema ou Prosa (ver resolverItemVinculado
+            // em editor.js / resolverTituloPoemaOuProsa em render-listas.js —
+            // mesmo critério aqui: ids nunca colidem entre os dois arrays).
+            const titulo = (
+                db.poemas.find((p) => p.id == entrada.id) ||
+                (db.prosas || []).find((pr) => pr.id == entrada.id)
+            )?.titulo;
+            if (!titulo) return null;
+            const rotulo =
+                entrada.relacao !== undefined
+                    ? rotuloElo(entrada.relacao, entrada.direcao)
+                    : entrada.tipo;
+            let s = rotulo ? `${rotulo}: ${titulo}` : titulo;
+            if (entrada.texto) s += ` (${entrada.texto})`;
+            return s;
+        })
         .filter(Boolean);
-    return titulos.length ? titulos.join(', ') : null;
+    return partes.length ? partes.join(', ') : null;
 }
 
+// ─── Quantos campos estão preenchidos ──────────────────────────────────
+// Mesma lista de campos que itemParaMarkdown() considera (mesma ordem,
+// só que aqui cada um vira um true/false em vez de virar texto) — usada
+// pela coluna "Campos Preenchidos" (ver colunas.js/render-listas.js) pra
+// identificar rapidamente os textos com estrutura mais rica/complexa.
+// Uma lista só, testada e referenciada nos dois lugares (contagem e
+// TOTAL_CAMPOS_CONSIDERADOS), pra não divergir com o tempo de quais
+// campos "contam".
+function verificacoesDeCampos(item) {
+    const ctx = item.contexto || {};
+    return [
+        !!(ctx.livro || ctx.parte || ctx.secao),
+        !!item.status,
+        !!item.dataEscrita,
+        !!item.dataPublicacao,
+        !!item.epocaRetratada,
+        !!textoPessoas(item),
+        !!textoGrupos(item),
+        !!sinalizacoesCombinadas(item),
+        !!item.genero,
+        !!titulosPorIds(item.conceitos?.elos),
+        !!titulosPorIds(item.conceitos?.referencias),
+        !!(item.texto || '').trim(),
+        !!(item.notas || '').trim(),
+        !!(item.descricaoVisual || '').trim(),
+        !!(item.contextoHistorico || '').trim(),
+        !!(item.ocultacao || '').trim(),
+        Array.isArray(item.intertextualidade) && item.intertextualidade.length > 0,
+        Array.isArray(item.anexos) && item.anexos.length > 0,
+        !!(item.anexosNotaGeral || '').trim(),
+        Array.isArray(item.anotacoesMarginais) && item.anotacoesMarginais.length > 0,
+        Array.isArray(item.envios) && item.envios.length > 0,
+        Array.isArray(item.reconhecimentos) && item.reconhecimentos.length > 0,
+        !!(item.conteudoSensivel || '').trim(),
+        !!(item.vocabularioHiperacionante || '').trim(),
+        !!livroSecaoStr(item.cortadoDe),
+        !!livroSecaoStr(item.lancadoEm),
+        !!(item.justificativaMigracao || '').trim(),
+        !!(item.pendencia || '').trim(),
+        !!(item.descarte || '').trim(),
+    ];
+}
+
+export function contarCamposPreenchidos(item) {
+    return verificacoesDeCampos(item).filter(Boolean).length;
+}
+
+// Total de campos considerados na contagem acima — calculado a partir de
+// um item vazio (em vez de um número fixo) pra nunca ficar dessincronizado
+// se verificacoesDeCampos() ganhar/perder alguma verificação.
+export const TOTAL_CAMPOS_CONSIDERADOS = verificacoesDeCampos({}).length;
+
 // ─── Um item (Poema ou Prosa) → seção Markdown ─────────────────────────
-function itemParaMarkdown(item, indice) {
+// pessoas é array de objeto {pessoaId, papeis} (papeis: array, desde o
+// multi-select — ver migrarPapeisPessoa em db.js); o nome não mora mais
+// no item, mora no cadastro central db.pessoas (ver
+// migrarPessoasParaCadastro em db.js) — resolve pessoaId → nome antes
+// de montar o texto. Mostra "Nome (Papel1, Papel2)" quando há papéis
+// marcados, na ordem em que foram marcados no editor, só o nome quando
+// não há nenhum (mesmo critério de exibição do resto do app — ver
+// badgesPessoas em render-listas.js). pessoaId sem correspondência no
+// cadastro (não deveria acontecer, mas dado importado de fora pode vir
+// incompleto) é ignorado, não quebra a lista pros demais.
+export function textoPessoas(item) {
+    if (!Array.isArray(item.pessoas)) return null;
+    const partes = item.pessoas
+        .map((p) => ({ nome: db.pessoas.find((x) => x.id == p.pessoaId)?.nome, papeis: p.papeis }))
+        .filter((p) => p.nome)
+        .map((p) => (p.papeis && p.papeis.length ? `${p.nome} (${p.papeis.join(', ')})` : p.nome));
+    return partes.length ? partes.join(', ') : null;
+}
+
+// Grupo a que cada pessoa do item pertence (não é o mesmo dado de
+// textoPessoas acima: ali é o papel da pessoa NESTE texto — Retratado(a)/
+// Dedicatária/etc.; aqui é o Grupo, característica da própria Pessoa,
+// constante entre textos — ver paresGrupoPessoa em utils.js, mesma
+// resolução usada na coluna "Grupos" das tabelas — ver badgesGrupos em
+// render-listas.js — e no painel do modal — ver renderPainelGrupos em
+// editor.js). Formato "Grupo (Pessoa)", não "Pessoa (Grupo)": o pedido
+// original foi por essa ordem, pra não confundir com o parêntese de
+// papel de textoPessoas.
+export function textoGrupos(item) {
+    const pares = paresGrupoPessoa(item, db.pessoas, db.grupos);
+    if (!pares.length) return null;
+    return pares.map(({ grupo, pessoa }) => `${grupo.nome} (${pessoa.nome})`).join(', ');
+}
+
+// Autoria: array {autorId, papel} (ver migrarAutoria em db.js) —
+// resolve autorId → nome no cadastro central db.autores (ver
+// paresAutoria em utils.js). Papel aqui é sempre único e sempre
+// preenchido (migração garante isso), então sempre mostra "Nome
+// (Papel)" por extenso — diferente de textoPessoas, que só parentiza
+// quando há papéis marcados.
+export function textoAutoria(item) {
+    const pares = paresAutoria(item, db.autores);
+    if (!pares.length) return null;
+    return pares.map(({ autor, papel }) => `${autor.nome} (${papel})`).join(', ');
+}
+
+// `indice` é opcional — omitido (ou falsy), o cabeçalho sai sem
+// numeração, útil pra gerar o Markdown de um único item avulso (ex.:
+// modal de Visualização) fora do contexto de uma lista exportada.
+// Dividido em "antes"/"depois" do bloco de Texto (ver itemParaMarkdownPartes
+// logo abaixo) — quem só quer o Markdown final (gerarMarkdownExportacao,
+// gerarMarkdownItem) simplesmente concatena os três pedaços, então esse
+// refactor não muda o Markdown gerado em nada. O motivo de existir a
+// versão dividida: exportar-pdf.js precisa renderizar o corpo do Texto a
+// partir do HTML/Markdown híbrido original (cores, negrito, sublinhado,
+// itálico — ver corpoParaMarkdown acima, que descarta tudo isso), então
+// só reaproveita este Markdown pra tudo em volta do Texto, não pro Texto
+// em si.
+function itemParaMarkdownAntesDoTexto(item, indice) {
     const tipoLabel = item.tipo === 'prosa' ? 'Prosa' : 'Poema';
-    let md = `## ${indice}. "${item.titulo || '(sem título)'}" *(${tipoLabel})*\n\n`;
+    const prefixoNumero = indice ? `${indice}. ` : '';
+    let md = `## ${prefixoNumero}"${item.titulo || '(sem título)'}" *(${tipoLabel})*\n\n`;
 
     const ctx = item.contexto || {};
     const caminho = [ctx.livro, ctx.parte, ctx.secao].filter(Boolean).join(' → ');
     md += linhaMeta('Localização', caminho || null);
+    md += linhaMeta('Idioma', item.idioma || null);
 
     if (item.status) {
         const info = INFO_STATUS[item.status] || { emoji: '⚪', titulo: item.status };
@@ -99,17 +238,25 @@ function itemParaMarkdown(item, indice) {
         md += linhaMeta('Primeira publicação', formatarDataParcial(item.dataPublicacao));
     }
     if (item.epocaRetratada) {
-        md += linhaMeta('Época retratada', formatarEpocaRetratada(item.epocaRetratada));
+        md += linhaMeta('Época retratada', formatarEpocaRetratada(item.epocaRetratada, db.epocas));
     }
-    md += linhaMeta('Dedicado a / Sobre quem', item.pessoas || null);
-    md += linhaMeta('Sinalizações', item.sinalizacoes || null);
+    md += linhaMeta('Pessoas', textoPessoas(item));
+    md += linhaMeta('Grupos', textoGrupos(item));
+    md += linhaMeta('Sinalizações', sinalizacoesCombinadas(item) || null);
     if (item.genero) md += linhaMeta('Gênero', item.genero);
     md += linhaMeta('Elos', titulosPorIds(item.conceitos?.elos));
     md += linhaMeta('Referências', titulosPorIds(item.conceitos?.referencias));
 
     md += '\n';
     md += blocoTexto('Texto', corpoParaMarkdown(item.texto));
+
+    return md;
+}
+
+function itemParaMarkdownDepoisDoTexto(item) {
+    let md = '';
     md += blocoTexto('Notas', item.notas);
+    md += linhaMeta('Autoria', textoAutoria(item));
     md += blocoTexto('Descrição Visual', item.descricaoVisual);
     md += blocoTexto('Contexto Histórico/Pessoal', item.contextoHistorico);
     md += blocoTexto('Ocultação', item.ocultacao);
@@ -145,6 +292,34 @@ function itemParaMarkdown(item, indice) {
         md += '\n';
     }
 
+    if (Array.isArray(item.envios) && item.envios.length) {
+        md += '### Envios e Reações\n\n';
+        item.envios.forEach((e) => {
+            const partes = [
+                e.pessoa,
+                e.meio ? `via ${e.meio}` : '',
+                e.data && formatarDataParcial(e.data) !== '—' ? formatarDataParcial(e.data) : '',
+            ]
+                .filter(Boolean)
+                .join(', ');
+            const prefixo = partes ? `**${partes}:** ` : '';
+            const notas = e.notas ? ` *(${e.notas})*` : '';
+            md += `- ${prefixo}${e.reacao || ''}${notas}\n`;
+        });
+        md += '\n';
+    }
+
+    if (Array.isArray(item.reconhecimentos) && item.reconhecimentos.length) {
+        md += '### Reconhecimentos\n\n';
+        item.reconhecimentos.forEach((r) => {
+            const ano = r.ano || r.ano === 0 ? String(r.ano) : '';
+            const meta = [r.premio, r.posicao, ano].filter(Boolean).join(', ');
+            const prefixo = meta ? `**${meta}:** ` : '';
+            md += `- ${prefixo}${r.texto || ''}\n`;
+        });
+        md += '\n';
+    }
+
     // Conteúdo Sensível / Vocabulário Hiperacionante em destaque (blockquote),
     // já que sinalizam algo que quem lê deveria notar antes do texto em si.
     if ((item.conteudoSensivel || '').trim()) {
@@ -162,10 +337,35 @@ function itemParaMarkdown(item, indice) {
         if (lancado) md += `- Lançado em: ${lancado}\n`;
         md += '\n';
     }
+    md += blocoTexto('Justificativa da Migração', item.justificativaMigracao);
 
+    md += blocoTexto('Pendência', item.pendencia);
     md += blocoTexto('Descarte', item.descarte);
 
     return md;
+}
+
+// { antesDoTexto, depoisDoTexto } — ver comentário de
+// itemParaMarkdownAntesDoTexto acima. gerarPdfExportacao (exportar-pdf.js)
+// é quem usa a versão dividida; itemParaMarkdown (abaixo) é só as duas
+// metades coladas, pro resto do app continuar chamando uma função só.
+export function itemParaMarkdownPartes(item, indice) {
+    return {
+        antesDoTexto: itemParaMarkdownAntesDoTexto(item, indice),
+        depoisDoTexto: itemParaMarkdownDepoisDoTexto(item),
+    };
+}
+
+export function itemParaMarkdown(item, indice) {
+    const { antesDoTexto, depoisDoTexto } = itemParaMarkdownPartes(item, indice);
+    return antesDoTexto + depoisDoTexto;
+}
+
+// Markdown de um único item avulso, sem numeração nem cabeçalho de
+// "Exportação Poética" — usado pelo modal de Visualização (ver
+// visualizar.js) e por baixarMarkdown() quando chamado com 1 item só.
+export function gerarMarkdownItem(item) {
+    return itemParaMarkdown(item);
 }
 
 // ─── Documento completo ─────────────────────────────────────────────────

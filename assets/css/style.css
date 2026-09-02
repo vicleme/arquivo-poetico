@@ -14,6 +14,97 @@
     font-weight: 700;
 }
 
+/* Mesmo reforço de z-index do .nav-dropdown acima, pros outros dois
+   popups da página com o mesmo risco de ficar atrás da tabela com
+   scroll (#painel-tema no header, #painel-menu-mobile no menu mobile). */
+#painel-tema,
+#painel-menu-mobile {
+    z-index: 9999 !important;
+}
+
+/* --- Dropdowns de grupo na nav desktop (abrem no hover) ---
+   Mesma armadilha do .hidden (ver bloco "Hidden" mais abaixo): não dá
+   pra usar a classe hidden do Tailwind + :hover pra isso, porque o
+   !important do workaround do Five Server venceria sempre — por isso
+   uma classe própria, sem depender de .hidden. :focus-within cobre
+   navegação por teclado (tab até o botão do grupo, ou direto num item
+   de dentro). */
+.nav-dropdown {
+    display: none;
+    /* z-index bem acima de qualquer outra coisa na página (as tabelas
+       com scroll usam no máximo 0, ver .overflow-auto abaixo) — sem
+       isso, o menu abre por trás da tabela em vez de por cima; ver
+       relato do usuário com print em 2026-09-02. !important porque o
+       Tailwind CDN injeta o .z-20 dele em runtime, então a ordem das
+       tags no <head> não garante quem vence. */
+    z-index: 9999 !important;
+}
+.nav-dropdown-wrap:hover .nav-dropdown,
+.nav-dropdown-wrap:focus-within .nav-dropdown {
+    display: block;
+}
+
+/* Fechamento forçado logo depois de clicar num item: sem isso, o mouse
+   continua fisicamente em cima da área ao navegar, e o :hover acima
+   mantém o dropdown aberto por cima da aba nova. abrirAba() (ui.js)
+   adiciona essa classe no wrapper no clique e só a remove quando o
+   mouse de fato sai da área (mouseleave), voltando ao comportamento
+   normal de hover pra próxima vez. Mesma especificidade da regra de
+   hover acima (3 seletores de classe cada) — como esta vem depois no
+   arquivo, ela vence sem precisar de !important. */
+.nav-dropdown-wrap.dropdown-fechado-manual .nav-dropdown {
+    display: none;
+}
+
+/* Blindagem contra bug de empilhamento entre os dropdowns da nav e os
+   contêineres de tabela com scroll (.overflow-auto, usado em Livros,
+   Coletâneas, Partes etc.) — sem z-index/position explícitos, esses
+   contêineres (que também têm `rounded` + `shadow`) ficam com camada
+   de composição implícita, e alguns navegadores erram a ordem de
+   pintura e desenham a tabela por cima do dropdown mesmo ele tendo
+   z-index maior. Fixando z-index:0 explícito aqui tira essa
+   ambiguidade — visualmente não muda nada (não move nada na tela),
+   só garante que o dropdown (9999 acima) sempre vença. */
+.overflow-auto {
+    position: relative;
+    z-index: 0;
+}
+
+/* Indicador do grupo ativo (quando a aba aberta mora dentro dele) —
+   mesmo visual do .active-tab, só que no botão do grupo em vez de
+   cada item. */
+.nav-grupo-ativo {
+    border-bottom: 3px solid #1d4ed8;
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+/* Item dentro do dropdown: é uma lista vertical, então a borda embaixo
+   do .active-tab (pensada pra nav horizontal) fica estranha — troca
+   por fundo destacado, mesmo padrão do painel de tema (theme.js). */
+.nav-dropdown .active-tab {
+    border-bottom: none;
+    background-color: #eff6ff;
+}
+html.dark .nav-dropdown .active-tab {
+    background-color: rgba(29, 78, 216, 0.25);
+}
+
+/* Hover nos itens do dropdown: mesmo par cinza (hover) / azul (ativo)
+   já usado no menu mobile (ver renderMenuMobile em ui.js), pra manter
+   os dois hovers consistentes e não deixar o item sob o mouse parecer
+   a aba já aberta. :not(.active-tab) evita que o cinza sobreponha o
+   fundo azul do item ativo ao passar o mouse por cima dele. */
+.nav-dropdown .tab-btn {
+    transition: background-color 150ms ease;
+}
+.nav-dropdown .tab-btn:hover:not(.active-tab) {
+    background-color: #f9fafb;
+}
+html.dark .nav-dropdown .tab-btn:hover:not(.active-tab) {
+    background-color: #334155;
+}
+
 /* --- Formulários --- */
 .form-label {
     font-size: 0.75rem;
@@ -147,6 +238,20 @@ textarea:focus {
     display: none !important;
 }
 
+/* --- Nav de abas (desktop) ---
+   Abaixo do breakpoint md (768px) ela cede lugar ao menu hambúrguer
+   (index.html/js/ui.js). Não pode reaproveitar a classe .hidden do
+   Tailwind (+ "md:flex") pra isso: o !important do .hidden acima
+   (necessário pro workaround do Five Server) vence o md:flex em
+   qualquer largura, deixando a nav escondida pra sempre em vez de só
+   abaixo do breakpoint. Por isso um seletor próprio, sem !important,
+   escondido só dentro do media query. */
+@media (max-width: 767px) {
+    .nav-abas-desktop {
+        display: none;
+    }
+}
+
 /* --- Grupos de campos colapsáveis (ex.: modal de Poema/Prosa) ---
    <details class="campo-grupo"><summary>Rótulo</summary><div class="campo-grupo-corpo">...</div></details>
    Reaproveita o padrão nativo <details>/<summary> já usado em coletaneas.js
@@ -255,4 +360,69 @@ html.dark ::-webkit-scrollbar-thumb {
 
 html.dark ::-webkit-scrollbar-thumb:hover {
     background: #64748b;
+}
+
+/* --- Diagrama de Referências (aba Conexões) ---
+   Grafo desenhado em SVG puro, embutido via innerHTML (sem lib de
+   layout). Cores via classe CSS, não via JS/tema — mesmo padrão do
+   .nav-dropdown/.campo-grupo acima: o SVG já embutido reage sozinho
+   à troca de tema (theme.js só alterna a classe `dark` na <html>),
+   sem precisar recalcular nada em JS a cada troca (diferente do
+   gráfico de Estatísticas, que usa Chart.js/canvas e por isso *precisa*
+   ler o tema em JS — ver comentário em estatisticas.js). */
+.grafo-no {
+    cursor: pointer;
+}
+
+.grafo-no-caixa {
+    fill: #ffffff;
+    stroke: #e5e7eb;
+    stroke-width: 1;
+}
+html.dark .grafo-no-caixa {
+    fill: #0f172a; /* slate-900, mesmo tom dos cards da aba */
+    stroke: #334155; /* slate-700 */
+}
+
+.grafo-no-titulo {
+    fill: #374151; /* gray-700 */
+}
+html.dark .grafo-no-titulo {
+    fill: #cbd5e1; /* slate-300 */
+}
+.grafo-no:hover .grafo-no-titulo {
+    fill: #1d4ed8; /* mesmo azul do .active-tab */
+    text-decoration: underline;
+}
+html.dark .grafo-no:hover .grafo-no-titulo {
+    fill: #60a5fa;
+}
+
+.grafo-aresta-linha {
+    stroke: #d1d5db; /* gray-300 */
+    stroke-width: 1.5;
+}
+html.dark .grafo-aresta-linha {
+    stroke: #475569; /* slate-600 */
+}
+
+.grafo-aresta-marcador {
+    fill: #d1d5db;
+}
+html.dark .grafo-aresta-marcador {
+    fill: #475569;
+}
+
+.grafo-aresta-rotulo-fundo {
+    fill: #fae8ff; /* fuchsia-100 — mesmo badge usado no resto da aba Conexões */
+}
+html.dark .grafo-aresta-rotulo-fundo {
+    fill: #701a75; /* fuchsia-900 */
+}
+
+.grafo-aresta-rotulo-texto {
+    fill: #a21caf; /* fuchsia-700 */
+}
+html.dark .grafo-aresta-rotulo-texto {
+    fill: #f0abfc; /* fuchsia-300 */
 }

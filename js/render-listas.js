@@ -8,7 +8,16 @@
 // via preencherCapas).
 // ============================================================
 
-import { db, save, deleteItemsEmMassa } from './db.js';
+import {
+    db,
+    save,
+    deleteItemsEmMassa,
+    calcularImpactoExclusaoPessoa,
+    calcularImpactoExclusaoGrupo,
+    calcularImpactoExclusaoAutor,
+    calcularImpactoExclusaoEpoca,
+    obterOuCriarPessoaPorNome,
+} from './db.js';
 import {
     getElementHierarchy,
     getPosicaoElemento,
@@ -16,6 +25,8 @@ import {
     filtrarPorConteudo,
     formatarDataParcial,
     formatarIntervaloEpocaRetratada,
+    nomeEpoca,
+    ROTULOS_RECORTE_EPOCA,
     escapeHtml,
     sanitizarTextoRico,
     abrirModalConfirmacao,
@@ -25,14 +36,35 @@ import {
     parseFiltroDataRapido,
     itemBateFiltroEpoca,
     itemFaltaEpocaParaFiltro,
+    sinalizacoesCombinadas,
+    SINALIZACOES_CATEGORIAS,
+    PREFIXOS_CANONICOS_POR_CAMPO,
+    rotuloElo,
+    nomesPessoas,
+    iniciaisPapeisPessoa,
+    paresGrupoPessoa,
+    classesCorGrupo,
+    pontoCorGrupo,
+    paresAutoria,
+    estaPublicado,
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
 import { DEFINICAO_COLUNAS, getColunasAtivas, renderSeletorColunas } from './colunas.js';
-import { exportarSelecaoJson, exportarSelecaoMarkdown } from './exportar.js';
+import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
+import { exportarSelecaoJson, exportarSelecaoMarkdown, exportarSelecaoPdf } from './exportar.js';
+import { contarCamposPreenchidos, TOTAL_CAMPOS_CONSIDERADOS } from './exportar-md.js';
 
 // Sempre que uma coluna é ligada/desligada (ver colunas.js) a tabela
 // correspondente precisa recalcular cabeçalho + linhas.
 window.addEventListener('colunas:alteradas', (ev) => {
+    if (ev.detail?.tabela === 'poemas') renderPoemas();
+    if (ev.detail?.tabela === 'prosas') renderProsas();
+});
+
+// O mesmo vale pra coluna Ações (ver acoes-coluna.js) — trocar quais
+// botões aparecem, ou o formato do Baixar, também exige recalcular a
+// linha inteira (a célula de Ações é montada junto no template).
+window.addEventListener('acoes-coluna:alteradas', (ev) => {
     if (ev.detail?.tabela === 'poemas') renderPoemas();
     if (ev.detail?.tabela === 'prosas') renderProsas();
 });
@@ -42,6 +74,42 @@ window.addEventListener('colunas:alteradas', (ev) => {
 // template strings dos cards, junto com o resto do HTML.
 const ICONE_EDITAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M12.5 3.5l4 4L6.5 17.5H2.5v-4L12.5 3.5Z"/><path d="M10.5 5.5l4 4"/></svg>`;
 const ICONE_EXCLUIR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M4 6h12"/><path d="M8 6V4.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V6"/><path d="M5.5 6l.6 9.5a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4L14.5 6"/><path d="M8.5 9v5"/><path d="M11.5 9v5"/></svg>`;
+// Duas linhas convergindo num ponto só — mesmo espírito visual de
+// "mesclar" em apps de versionamento (git merge), usado no botão de
+// Mesclar de Pessoas/Épocas (ver renderPessoas/renderEpocas abaixo).
+const ICONE_MESCLAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M4 3v5a4 4 0 0 0 4 4h0"/><path d="M16 3v5a4 4 0 0 1-4 4h0"/><path d="M10 12v5"/><path d="M7.5 14.5l2.5 2.5 2.5-2.5"/></svg>`;
+// Ver = olho; Baixar = seta pra baixo com bandeja — só usados nas linhas
+// de Poemas/Prosas (ver acoes-coluna.js), por isso ficam ao lado dos
+// outros dois em vez de nos outros CELULAS_* deste arquivo.
+const ICONE_VER = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z"/><circle cx="10" cy="10" r="2.25"/></svg>`;
+const ICONE_BAIXAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M10 3v9.5"/><path d="M6 9l4 4 4-4"/><path d="M3.5 15.5h13"/></svg>`;
+
+// Botões da coluna Ações de Poemas/Prosas (Ver/Baixar/Editar/Excluir,
+// ver acoes-coluna.js), montados conforme a configuração salva de cada
+// tabela — só entram os habilitados, na ordem fixa de DEFINICAO_ACOES.
+// `tipo` é 'poema'/'prosa' (usado por ver-item/baixar-item em
+// main.js e por deleteItem, que espera 'poemas'/'prosas').
+function celulaAcoesItem(tabela, tipo, tipoPlural, id) {
+    const ativas = new Set(getAcoesAtivas(tabela));
+    const botoes = [];
+    if (ativas.has('ver'))
+        botoes.push(
+            `<button data-action="ver-item" data-tipo="${tipo}" data-id="${id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>`,
+        );
+    if (ativas.has('baixar'))
+        botoes.push(
+            `<button data-action="baixar-item" data-tabela="${tabela}" data-tipo="${tipo}" data-id="${id}" title="Baixar" aria-label="Baixar" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_BAIXAR}</button>`,
+        );
+    if (ativas.has('editar'))
+        botoes.push(
+            `<button data-action="editar-${tipo}" data-id="${id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 p-1.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800">${ICONE_EDITAR}</button>`,
+        );
+    if (ativas.has('excluir'))
+        botoes.push(
+            `<button data-action="excluir-item" data-tipo="${tipoPlural}" data-id="${id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>`,
+        );
+    return botoes.join('');
+}
 
 let filtroPoemas = '';
 let filtroProsas = '';
@@ -69,6 +137,13 @@ let ordenacaoPoemas = { campo: 'estrutura', direcao: 'asc' };
 let statusPoemas = 'todos';
 let selecaoPoemas = new Set();
 let selecaoProsas = new Set();
+// Âncora do último checkbox marcado/desmarcado em cada aba — usada pro
+// shift-click estender a seleção pro intervalo entre ele e o anterior
+// (ver toggleSelecaoPoema/toggleSelecaoProsa). null = nenhum clique
+// ainda nesta sessão, ou o último clique não fez parte do intervalo
+// visível atual (filtro/ordenação mudou no meio do caminho).
+let ultimoCheckPoema = null;
+let ultimoCheckProsa = null;
 let filtroLivroPartes = '';
 let filtroLivroSecoes = '';
 let filtroParteSecoes = '';
@@ -227,6 +302,26 @@ export function setFiltroProsas(valor) {
     filtroProsas = valor;
     paginaProsas = 1;
     renderProsas();
+}
+
+// Atalho de clique no cabeçalho da coluna (ver thOrdenavel/thComLupa):
+// joga o prefixo "campo:" correspondente pronto no campo de busca de
+// metadados (de Poemas ou de Prosas, conforme `tabela`) e foca nele —
+// pra quem não lembra a sintaxe de prefixo não precisar decorar nada, só
+// clicar na coluna que já está olhando. Se já houver algo digitado, o
+// prefixo é acrescentado ao final (separado por espaço) em vez de
+// substituir, pra permitir combinar com outros termos.
+export function buscarPorPrefixo(tabela, campoItem) {
+    const prefixo = PREFIXOS_CANONICOS_POR_CAMPO[campoItem];
+    if (!prefixo) return;
+    const input = document.getElementById(`busca-${tabela}`);
+    if (!input) return;
+    const atual = input.value.trim();
+    const novo = atual ? `${atual} ${prefixo}:` : `${prefixo}:`;
+    input.value = novo;
+    (tabela === 'prosas' ? setFiltroProsas : setFiltroPoemas)(novo);
+    input.focus();
+    input.setSelectionRange(novo.length, novo.length);
 }
 
 export function setFiltroConteudoPoemas(valor) {
@@ -523,11 +618,16 @@ function decorarCamposBusca(item, extraLivros = '') {
             ? item.intertextualidade.map((it) => `${it.tipo || ''} ${it.texto || ''}`).join(' ')
             : '',
         _buscaAnexos: Array.isArray(item.anexos)
-            ? item.anexos.map((it) => `${it.tipo || ''} ${it.texto || ''} ${it.link || ''}`).join(' ')
+            ? item.anexos
+                  .map((it) => `${it.tipo || ''} ${it.texto || ''} ${it.link || ''}`)
+                  .join(' ')
             : '',
         _buscaAnotacoes: Array.isArray(item.anotacoesMarginais)
             ? item.anotacoesMarginais
-                  .map((it) => `${it.trecho || ''} ${it.posicao || ''} ${it.fonte || ''} ${it.texto || ''}`)
+                  .map(
+                      (it) =>
+                          `${it.trecho || ''} ${it.posicao || ''} ${it.fonte || ''} ${it.texto || ''}`,
+                  )
                   .join(' ')
             : '',
         _buscaCortadoDe: item.cortadoDe
@@ -535,6 +635,103 @@ function decorarCamposBusca(item, extraLivros = '') {
             : '',
         _buscaLancadoEm: item.lancadoEm
             ? `${item.lancadoEm.livro || ''} ${item.lancadoEm.secao || ''}`.trim()
+            : '',
+        // Elos/Referências apontam pra "outro texto do acervo (poema ou
+        // prosa)" — ids são gerados por um contador global único
+        // (gerarId()), então um id de poema nunca colide com um id de
+        // prosa; resolver o título é só checar os dois arrays (ver
+        // resolverTituloPoemaOuProsa acima).
+        _buscaElos: Array.isArray(item.conceitos?.elos)
+            ? item.conceitos.elos
+                  .map(
+                      (it) =>
+                          `${rotuloElo(it.relacao, it.direcao)} ${it.relacao || ''} ${it.texto || ''} ${resolverTituloPoemaOuProsa(it.id)}`,
+                  )
+                  .join(' ')
+            : '',
+        _buscaReferencias: Array.isArray(item.conceitos?.referencias)
+            ? item.conceitos.referencias
+                  .map(
+                      (it) =>
+                          `${it.tipo || ''} ${it.texto || ''} ${resolverTituloPoemaOuProsa(it.id)}`,
+                  )
+                  .join(' ')
+            : '',
+        // Sinalizações combinadas das 5 categorias — só pra busca geral
+        // "etiqueta:"; quem quer restringir por categoria usa
+        // estilo:/tema:/relacao:/sensibilidade:/tom: direto (ver
+        // CAMPOS_ATRIBUTO em utils.js).
+        _buscaSinalizacoes: sinalizacoesCombinadas(item),
+        // pessoas é array de objeto {pessoaId, papeis} (nome mora no
+        // cadastro central db.pessoas desde migrarPessoasParaCadastro —
+        // ver db.js; papeis: array, desde o multi-select, ver
+        // migrarPapeisPessoa) — nome e papéis entram na busca geral e no
+        // prefixo "pessoa:" (ver CAMPOS_ATRIBUTO em utils.js), assim
+        // "pessoa:dedicatária" também acha alguém por qualquer um dos
+        // papéis marcados, não só pelo nome.
+        _buscaPessoas: Array.isArray(item.pessoas)
+            ? item.pessoas
+                  .map((p) => {
+                      const nome = db.pessoas.find((x) => x.id == p.pessoaId)?.nome || '';
+                      return `${nome} ${(p.papeis || []).join(' ')}`;
+                  })
+                  .join(' ')
+            : '',
+        // Só os papéis (sem nome) — pro prefixo "papel:" (ver
+        // CAMPOS_ATRIBUTO em utils.js), pra quem quer restringir por
+        // papel especificamente, sem risco de um termo bater só porque é
+        // parecido com o nome de alguém marcado no texto.
+        _buscaPapeis: Array.isArray(item.pessoas)
+            ? item.pessoas.flatMap((p) => p.papeis || []).join(' ')
+            : '',
+        // Grupo é característica da Pessoa (constante entre poemas), não
+        // do vínculo poema↔pessoa — ver comentário de nomesGrupos/
+        // paresGrupoPessoa em utils.js. Resolvido aqui pro prefixo
+        // "grupo:", que acha o texto pelo grupo de alguém mencionado
+        // (ex.: "grupo:família"), mesmo sem citar o nome da pessoa.
+        _buscaGrupos: [
+            ...new Set(paresGrupoPessoa(item, db.pessoas, db.grupos).map((par) => par.grupo.nome)),
+        ].join(' '),
+        // autoria é array {autorId, papel} (nome mora no cadastro
+        // central db.autores — ver migrarAutoria em db.js); nome e papel
+        // entram na busca geral e no prefixo "autor:" (ver
+        // CAMPOS_ATRIBUTO em utils.js), mesmo padrão de _buscaPessoas.
+        _buscaAutoria: paresAutoria(item, db.autores)
+            .map(({ autor, papel }) => `${autor.nome} ${papel || ''}`)
+            .join(' '),
+        // epocaRetratada guarda só epocaId (nome mora no cadastro central
+        // db.epocas — ver migrarEpocas em db.js); nome e recorte entram na
+        // busca geral e no prefixo "epoca:" (ver CAMPOS_ATRIBUTO em
+        // utils.js), mesmo padrão de _buscaAutoria acima.
+        _buscaEpoca: item.epocaRetratada
+            ? [
+                  nomeEpoca(item.epocaRetratada, db.epocas),
+                  ROTULOS_RECORTE_EPOCA[item.epocaRetratada.recorte] || '',
+              ]
+                  .filter(Boolean)
+                  .join(' ')
+            : '',
+        // envios é array {pessoa, data, meio, reacao, notas} — pessoa/meio
+        // são texto livre (não vínculo por id), entram na busca geral e
+        // no prefixo "envio:" junto de reação/notas (ver CAMPOS_ATRIBUTO
+        // em utils.js), mesmo padrão de _buscaAnotacoes acima.
+        _buscaEnvios: Array.isArray(item.envios)
+            ? item.envios
+                  .map(
+                      (e) => `${e.pessoa || ''} ${e.meio || ''} ${e.reacao || ''} ${e.notas || ''}`,
+                  )
+                  .join(' ')
+            : '',
+        // reconhecimentos é array {premio, posicao, ano, texto} — premio é
+        // texto livre (não vínculo por id), entram na busca geral e no
+        // prefixo "reconhecimento:"/"reconhecimentos:" (ver CAMPOS_ATRIBUTO
+        // em utils.js), mesmo padrão de _buscaEnvios acima.
+        _buscaReconhecimentos: Array.isArray(item.reconhecimentos)
+            ? item.reconhecimentos
+                  .map(
+                      (r) => `${r.premio || ''} ${r.posicao || ''} ${r.ano || ''} ${r.texto || ''}`,
+                  )
+                  .join(' ')
             : '',
     };
 }
@@ -561,12 +758,178 @@ function badgesEtiquetas(
     );
 }
 
-// Títulos dos poemas referenciados por uma lista de IDs (Elos/Referências)
-function titulosPoemasPorId(ids) {
-    if (!ids || !ids.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    const titulos = ids.map((id) => db.poemas.find((p) => p.id == id)?.titulo).filter(Boolean);
-    if (!titulos.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    return titulos.map((t) => escapeHtml(t)).join(', ');
+// Coluna de Pessoas: pessoas é array de objeto {pessoaId, papeis} —
+// nome vem do cadastro central db.pessoas (ver migrarPessoasParaCadastro
+// em db.js); papeis é array, desde o multi-select (ver migrarPapeisPessoa)
+// — cada chip mostra o nome e, quando há papéis marcados, as iniciais
+// deles (R/I/D/M/A — ver iniciaisPapeisPessoa em utils.js) separadas por
+// "·", na ordem em que foram marcados no editor (não é hierarquia fixa
+// por categoria — ver alternarPapel em editor.js). Iniciais em vez do
+// nome por extenso pra caber na coluna sem poluir; passar o mouse por
+// cima do chip mostra "Nome (Papel1, Papel2)" por extenso via `title`
+// (mesmo padrão da bolinha de status/pendência, ver DEFINICAO_COLUNAS
+// mais abaixo). Sem papel marcado, o title mostra só o nome — não faz
+// sentido escrever "(sem papel)" ali. Exportação pra MD também mantém os
+// papéis por extenso (ver exportar-md.js). pessoaId sem correspondência
+// no cadastro (não deveria acontecer) não gera chip, em vez de mostrar
+// "undefined".
+function badgesPessoas(pessoas) {
+    if (!Array.isArray(pessoas) || !pessoas.length)
+        return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    return pessoas
+        .map((p) => {
+            const nome = db.pessoas.find((x) => x.id == p.pessoaId)?.nome;
+            if (!nome) return '';
+            const papeis = Array.isArray(p.papeis) ? p.papeis.filter(Boolean) : [];
+            const iniciais = escapeHtml(iniciaisPapeisPessoa(papeis));
+            const title = papeis.length ? `${nome} (${papeis.join(', ')})` : nome;
+            return `<span title="${escapeHtml(title)}" class="text-[9px] bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(nome)}${iniciais ? ` <span class="opacity-70">${iniciais}</span>` : ''}</span>`;
+        })
+        .join('');
+}
+
+// Coluna de Grupos: um badge por par (Grupo, Pessoa) — ver paresGrupoPessoa
+// em utils.js (mesma resolução usada no painel do modal — ver
+// renderPainelGruposDoChip em editor.js — e na exportação em Markdown —
+// ver exportar-md.js). Cada badge usa a cor própria daquele grupo
+// (classesCorGrupo) e mostra "Grupo (Pessoa)" pra não perder de quem é
+// o vínculo quando o item tem mais de uma pessoa em grupos diferentes.
+function badgesGrupos(item) {
+    const pares = paresGrupoPessoa(item, db.pessoas, db.grupos);
+    if (!pares.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    return pares
+        .map(
+            ({ grupo, pessoa }) =>
+                `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)} <span class="opacity-70">(${escapeHtml(pessoa.nome)})</span></span>`,
+        )
+        .join('');
+}
+
+// Coluna de Autoria: um badge por par (Autor, papel) — ver paresAutoria
+// em utils.js. Diferente de badgesPessoas, papel aqui é sempre único e
+// sempre marcado (todo item.autoria vem preenchido pela migração — ver
+// migrarAutoria em db.js), então o badge sempre mostra "Nome (Papel)"
+// por extenso — não precisa reduzir a iniciais como em Pessoas, já que
+// não acumula mais de um papel por autor no mesmo texto.
+function badgesAutoria(item) {
+    const pares = paresAutoria(item, db.autores);
+    if (!pares.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    return pares
+        .map(
+            ({ autor, papel }) =>
+                `<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(autor.nome)} <span class="opacity-70">(${escapeHtml(papel)})</span></span>`,
+        )
+        .join('');
+}
+
+// Coluna de Envios: um badge por envio, "pessoa · data" no chip (com
+// meio no title, hover) — igual espírito de badgesAutoria, mas sem
+// cadastro central por trás (pessoa/meio são texto livre — ver
+// comentário em criarListaDeEntradas/utils.js). A reação em si não
+// cabe no chip (pode ser longa); fica só no modal/exportação — aqui é
+// só "pra quem e quando", suficiente pra escanear a tabela.
+function badgesEnvios(item) {
+    if (!Array.isArray(item.envios) || !item.envios.length) {
+        return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    }
+    return item.envios
+        .map((e) => {
+            const rotulo = [e.pessoa, formatarDataParcial(e.data)]
+                .filter((v) => v && v !== '—')
+                .map(escapeHtml)
+                .join(' · ');
+            const title = e.meio ? ` title="via ${escapeHtml(e.meio)}"` : '';
+            return `<span class="text-[9px] bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block"${title}>${rotulo || '(sem dados)'}</span>`;
+        })
+        .join('');
+}
+
+// Coluna de Reconhecimentos: um badge por prêmio/menção, "prêmio ·
+// posição · ano" no chip — mesmo espírito de badgesEnvios (sem
+// cadastro central, premio/posicao são texto livre). O texto/nota em
+// si não cabe no chip; fica só no modal/exportação.
+function badgesReconhecimentos(item) {
+    if (!Array.isArray(item.reconhecimentos) || !item.reconhecimentos.length) {
+        return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    }
+    return item.reconhecimentos
+        .map((r) => {
+            const rotulo = [r.premio, r.posicao, r.ano]
+                .filter((v) => v || v === 0)
+                .map((v) => escapeHtml(String(v)))
+                .join(' · ');
+            return `<span class="text-[9px] bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${rotulo || '(sem dados)'}</span>`;
+        })
+        .join('');
+}
+
+// Badge do nome de Época na coluna Época Retratada (Poemas e Prosas —
+// mesmo helper pras duas tabelas, ver CELULAS_POEMAS/CELULAS_PROSAS
+// abaixo). Pedido do Victor: o "e pós" do recorte "repercussão" (ver
+// ROTULOS_RECORTE_EPOCA em utils.js) precisa aparecer direto no badge,
+// não só na exportação — mesmo texto que formatarEpocaRetratada já
+// usa ("Nome e pós"). O Contexto do relacionamento (`contextoRelacao`,
+// campo do cadastro central db.epocas — ver modal-epoca.html) não cabe
+// no espaço do badge, então entra como `title` (hover), mesmo padrão
+// já usado em badgesPessoas/badgesEnvios pra informação secundária que
+// não precisa estar sempre visível.
+function badgeEpocaRetratada(epoca) {
+    const nome = nomeEpoca(epoca, db.epocas);
+    if (!nome) return '';
+    const posRepercussao = epoca?.recorte === 'repercussão' ? ' e pós' : '';
+    const contexto = epoca?.epocaId
+        ? db.epocas.find((e) => e.id == epoca.epocaId)?.contextoRelacao
+        : '';
+    const title = contexto ? ` title="${escapeHtml(contexto)}"` : '';
+    return `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold align-middle"${title}>${escapeHtml(nome)}${posRepercussao}</span>`;
+}
+
+// Resolve o título de um Elo/Referência-alvo, que pode ser um poema OU
+// uma prosa — ids são gerados por um contador global único (gerarId()
+// em utils.js), então nunca colidem entre os dois arrays; basta checar
+// os dois. Usado por titulosPoemasPorId/textoTitulosPoemasPorId
+// (tabela) e por _buscaElos/_buscaReferencias (decorarCamposBusca).
+function resolverTituloPoemaOuProsa(id) {
+    return db.poemas.find((p) => p.id == id)?.titulo || db.prosas.find((pr) => pr.id == id)?.titulo;
+}
+
+// Títulos dos poemas referenciados por uma lista de Elos/Referências.
+// Elos guarda { id, relacao, direcao, texto } (ver migrarElosParaRelacaoDirecao
+// em db.js — redesenho Relação+Direção); Referências guarda { id, tipo, texto }
+// (schema mais simples, não mudou). `resolverRotulo` isola essa diferença:
+// cada chamador passa a função certa pra extrair o rótulo de exibição de
+// uma entrada. O rótulo vira uma badge (mesmo padrão de Intertextualidade/
+// Anexos logo abaixo), uma linha por vínculo — assim o tipo da relação não
+// se confunde com o título do poema só de bater o olho na coluna.
+// `corClasse` deixa Elos e Referências com uma cor de badge própria cada.
+function titulosPoemasPorId(
+    lista,
+    resolverRotulo,
+    corClasse = 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300',
+) {
+    if (!lista || !lista.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    const linhas = lista
+        .map((entrada) => {
+            const titulo = resolverTituloPoemaOuProsa(entrada.id);
+            if (!titulo) return null;
+            const rotulo = resolverRotulo(entrada);
+            const badge = rotulo
+                ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded ${corClasse} text-[10px] font-bold uppercase align-middle">${escapeHtml(rotulo)}</span>`
+                : '';
+            return `<div>${badge}${escapeHtml(titulo)}</div>`;
+        })
+        .filter(Boolean);
+    if (!linhas.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    return linhas.join('');
+}
+
+// Resolvedores de rótulo pra cada natureza de entrada — ver
+// titulosPoemasPorId acima e textoTitulosPoemasPorId abaixo.
+function rotuloEntradaElo(entrada) {
+    return entrada.relacao ? rotuloElo(entrada.relacao, entrada.direcao) : '';
+}
+function rotuloEntradaReferencia(entrada) {
+    return entrada.tipo || '';
 }
 
 function trechoNota(notas) {
@@ -574,6 +937,23 @@ function trechoNota(notas) {
     const limpo = notas.trim();
     const trecho = limpo.length > 80 ? limpo.slice(0, 80) + '…' : limpo;
     return `<span title="${escapeHtml(limpo)}">${escapeHtml(trecho)}</span>`;
+}
+
+// Célula da coluna "Campos Preenchidos" (ver contarCamposPreenchidos em
+// exportar-md.js) — compartilhada entre Poemas e Prosas. Mostra "N/TOTAL"
+// mais uma barrinha de preenchimento, pra bater o olho e comparar a
+// riqueza/complexidade estrutural entre os textos sem abrir cada um.
+function celulaCamposPreenchidos(item) {
+    const preenchidos = contarCamposPreenchidos(item);
+    const proporcao = Math.round((preenchidos / TOTAL_CAMPOS_CONSIDERADOS) * 100);
+    return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400" title="${preenchidos} de ${TOTAL_CAMPOS_CONSIDERADOS} campos preenchidos">
+        <div class="flex items-center gap-2">
+            <span class="font-mono">${preenchidos}/${TOTAL_CAMPOS_CONSIDERADOS}</span>
+            <span class="w-10 h-1.5 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
+                <span class="block h-full bg-indigo-400 dark:bg-indigo-500" style="width: ${proporcao}%"></span>
+            </span>
+        </div>
+    </td>`;
 }
 
 // Monta o <thead> de Poemas ou Prosas de acordo com as colunas ativas.
@@ -628,55 +1008,173 @@ function iconeOrdenacao(ativo, direcao) {
     return `<span class="inline-block w-3 text-blue-600 dark:text-blue-400">${direcao === 'asc' ? '▲' : '▼'}</span>`;
 }
 
+// Coluna → campo do item decorado usado pela busca (ver decorarCamposBusca
+// acima e CAMPOS_ATRIBUTO em utils.js), uma por tabela. Só entram aqui as
+// colunas que têm um prefixo "campo:" correspondente — em Poemas, Status
+// e Datas ficam de fora de propósito: já têm filtro estruturado próprio
+// (dropdown/painel de data). Elos/Referências (item 1 do schema ainda
+// pendente) ficam de fora porque ainda não têm texto decorado pra
+// buscar. Em Prosas, Datas e Vínculo (posição estrutural, não um campo
+// de texto único) ficam de fora pelo mesmo motivo das Datas de Poemas.
+// Época Retratada entrou (item 3) apesar de ter filtro estruturado de
+// data próprio — mesmo assim, com nome agora resolvido via cadastro
+// central (_buscaEpoca), faz sentido ter a lupa de atalho pro prefixo
+// "epoca:", igual autoria — a data continua só pelo painel dedicado.
+// pessoas aponta pro campo decorado "_buscaPessoas" (não pro nome cru da
+// coluna) — mesma convenção de todas as outras entradas aqui; sem isso a
+// lupa da coluna Pessoas não teria prefixo correspondente em
+// PREFIXOS_CANONICOS_POR_CAMPO (utils.js) e não apareceria.
+const COLUNA_CAMPO_BUSCA = {
+    poemas: {
+        titulo: 'titulo',
+        pessoas: '_buscaPessoas',
+        grupos: '_buscaGrupos',
+        intertextualidade: '_buscaIntertexto',
+        anexos: '_buscaAnexos',
+        anexosNotaGeral: 'anexosNotaGeral',
+        anotacoesMarginais: '_buscaAnotacoes',
+        descricaoVisual: 'descricaoVisual',
+        contextoHistorico: 'contextoHistorico',
+        etiquetas: '_buscaSinalizacoes',
+        notas: 'notas',
+        ocultacao: 'ocultacao',
+        conteudoSensivel: 'conteudoSensivel',
+        vocabularioHiperacionante: 'vocabularioHiperacionante',
+        descarte: 'descarte',
+        pendencia: 'pendencia',
+        cortadoDe: '_buscaCortadoDe',
+        lancadoEm: '_buscaLancadoEm',
+        justificativaMigracao: 'justificativaMigracao',
+        elos: '_buscaElos',
+        referencias: '_buscaReferencias',
+        autoria: '_buscaAutoria',
+        envios: '_buscaEnvios',
+        reconhecimentos: '_buscaReconhecimentos',
+        epocaRetratada: '_buscaEpoca',
+    },
+    prosas: {
+        titulo: 'titulo',
+        pessoas: '_buscaPessoas',
+        grupos: '_buscaGrupos',
+        genero: 'genero',
+        etiquetas: '_buscaSinalizacoes',
+        notas: 'notas',
+        autoria: '_buscaAutoria',
+        envios: '_buscaEnvios',
+        reconhecimentos: '_buscaReconhecimentos',
+        // Item 4: mesmas entradas de Poemas para os campos que Prosa
+        // acabou de ganhar (ver decorarCamposBusca acima — já genérico,
+        // roda igual pras duas tabelas, então os campos decorados
+        // _busca* já existem pra Prosa desde sempre).
+        intertextualidade: '_buscaIntertexto',
+        anexos: '_buscaAnexos',
+        anexosNotaGeral: 'anexosNotaGeral',
+        contextoHistorico: 'contextoHistorico',
+        ocultacao: 'ocultacao',
+        conteudoSensivel: 'conteudoSensivel',
+        vocabularioHiperacionante: 'vocabularioHiperacionante',
+        descarte: 'descarte',
+        pendencia: 'pendencia',
+        cortadoDe: '_buscaCortadoDe',
+        lancadoEm: '_buscaLancadoEm',
+        justificativaMigracao: 'justificativaMigracao',
+        elos: '_buscaElos',
+        referencias: '_buscaReferencias',
+        epocaRetratada: '_buscaEpoca',
+    },
+};
+
+// Ícone de atalho pra busca por essa coluna (ver buscarPorPrefixo) — só
+// aparece quando a coluna tem um prefixo "campo:" correspondente.
+// mousedown+preventDefault (não click) pelo mesmo motivo do resto da UI de
+// busca: evita que o botão roube o foco antes do input.focus() dentro da
+// própria função.
+function iconeBuscaColuna(tabela, campoItem) {
+    if (!campoItem || !PREFIXOS_CANONICOS_POR_CAMPO[campoItem]) return '';
+    const prefixo = PREFIXOS_CANONICOS_POR_CAMPO[campoItem];
+    return `<span onmousedown="event.preventDefault(); event.stopPropagation(); buscarPorPrefixo('${tabela}', '${campoItem}')"
+        class="text-gray-300 dark:text-slate-600 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+        title="Buscar por ${prefixo}:">🔍</span>`;
+}
+
 // <th> clicável: alterna a ordenação da tabela de Poemas pra essa coluna
 // (ver ordenarPoemasPor). `campo` é a key usada em COMPARADORES_ORDENACAO_POEMAS
-// (ou 'titulo'/'estrutura', os dois casos especiais).
+// (ou 'titulo'/'estrutura', os dois casos especiais). `campoItem`, quando
+// informado, é o campo decorado usado pela busca (ver COLUNA_CAMPO_BUSCA)
+// — controla se a lupa de atalho aparece.
 // `sticky top-0` vai direto em cada <th> (não no <thead>, nem no <tr>) —
 // em vários navegadores, sticky em table-row-group/table-row é ignorado ou
 // inconsistente, ainda mais combinado com border-collapse; em <th>
 // (table-cell) funciona de forma confiável, então é aí que a regra mora.
-function thOrdenavel(campo, label, estado, classeExtra = '') {
+function thOrdenavel(campo, label, estado, classeExtra = '', campoItem = null) {
     const ativo = estado.campo === campo;
     return `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700 ${classeExtra}">
-        <button type="button" onclick="ordenarPoemasPor('${campo}')"
-            class="flex items-center gap-1 font-semibold hover:text-blue-600 dark:hover:text-blue-400 select-none"
-            title="Ordenar por ${escapeHtml(label)}">
-            <span>${label}</span>
-            ${iconeOrdenacao(ativo, estado.direcao)}
-        </button>
+        <span class="flex items-center gap-1">
+            <button type="button" onclick="ordenarPoemasPor('${campo}')"
+                class="flex items-center gap-1 font-semibold hover:text-blue-600 dark:hover:text-blue-400 select-none"
+                title="Ordenar por ${escapeHtml(label)}">
+                <span>${label}</span>
+                ${iconeOrdenacao(ativo, estado.direcao)}
+            </button>
+            ${iconeBuscaColuna('poemas', campoItem)}
+        </span>
     </th>`;
 }
 
-function montarCabecalho(tabela, celulaCheck, celulaTitulo, celulaAcoes) {
+// <th> não-ordenável (Prosas não tem cabeçalho clicável pra ordenação —
+// ver comentário em montarCabecalho), mas que ainda ganha a lupa de
+// atalho quando a coluna tem prefixo de busca correspondente (ver
+// COLUNA_CAMPO_BUSCA).
+function thComLupa(label, campoItem, classeExtra = '') {
+    return `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700 ${classeExtra}">
+        <span class="flex items-center gap-1">
+            <span class="font-semibold">${label}</span>
+            ${iconeBuscaColuna('prosas', campoItem)}
+        </span>
+    </th>`;
+}
+
+function montarCabecalho(tabela, celulaCheck, celulaAcoes) {
     const ativas = getColunasAtivas(tabela);
     const def = DEFINICAO_COLUNAS[tabela];
+    const camposBusca = COLUNA_CAMPO_BUSCA[tabela] || {};
 
-    // Só Poemas tem cabeçalho clicável por enquanto (ver DEFINICAO_COLUNAS —
-    // é a única tabela cujas colunas têm sortType definido).
+    // Só Poemas tem cabeçalho ordenável por enquanto (ver DEFINICAO_COLUNAS —
+    // é a única tabela cujas colunas têm sortType definido). Prosas ainda
+    // ganha a lupa de atalho por coluna (ver thComLupa), só não a ordenação.
     if (tabela === 'poemas') {
-        const tituloOrdenavel = thOrdenavel('titulo', 'ID / Título', ordenacaoPoemas, 'left-8');
+        const tituloOrdenavel = thOrdenavel(
+            'titulo',
+            'ID / Título',
+            ordenacaoPoemas,
+            'left-8',
+            camposBusca.titulo,
+        );
         const meio = ativas
             .map((key) => def.find((c) => c.key === key))
             .filter(Boolean)
-            .map((c) => thOrdenavel(c.key, c.label, ordenacaoPoemas))
+            .map((c) => thOrdenavel(c.key, c.label, ordenacaoPoemas, '', camposBusca[c.key]))
             .join('');
         return celulaCheck + tituloOrdenavel + meio + celulaAcoes;
     }
 
+    const tituloComLupa = thComLupa('Título', camposBusca.titulo, 'sticky left-8');
     const meio = ativas
         .map((key) => def.find((c) => c.key === key))
         .filter(Boolean)
-        .map(
-            (c) =>
-                `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700">${c.label}</th>`,
-        )
+        .map((c) => thComLupa(c.label, camposBusca[c.key]))
         .join('');
-    return celulaCheck + celulaTitulo + meio + celulaAcoes;
+    return celulaCheck + tituloComLupa + meio + celulaAcoes;
 }
 
 function atualizarPainelColunas(tabela, painelId) {
     const painel = document.getElementById(painelId);
     if (painel) painel.innerHTML = renderSeletorColunas(tabela);
+}
+
+function atualizarPainelAcoes(tabela, painelId) {
+    const painel = document.getElementById(painelId);
+    if (painel) painel.innerHTML = renderSeletorAcoes(tabela);
 }
 
 // ─── Seleção múltipla de Poemas (ações em massa) ──────────────
@@ -691,6 +1189,7 @@ function getListaVisivelPoemas() {
     else if (statusPoemas === 'completos') base = base.filter((p) => p.status === 'completo');
     else if (statusPoemas === 'incompletos') base = base.filter((p) => p.status === 'incompleto');
     else if (statusPoemas === 'migrados') base = base.filter((p) => p.status === 'migrado');
+    else if (statusPoemas === 'pendentes') base = base.filter((p) => p.pendencia?.trim());
     else if (statusPoemas === 'descartados') base = base.filter((p) => p.status === 'descartado');
 
     if (filtroLivroPoemas) {
@@ -816,11 +1315,17 @@ function compararPorStatus(a, b, asc) {
 
 // Texto puro (sem HTML) dos títulos ligados por Elos/Referências — usado
 // só pra ordenação; a célula em si (titulosPoemasPorId) escapa e formata
-// à parte.
-function textoTitulosPoemasPorId(ids) {
-    if (!ids || !ids.length) return '';
-    return ids
-        .map((id) => db.poemas.find((p) => p.id == id)?.titulo)
+// à parte. `resolverRotulo` mesma função passada pra titulosPoemasPorId,
+// pra ordenar pelo mesmo texto que aparece na coluna.
+function textoTitulosPoemasPorId(lista, resolverRotulo) {
+    if (!lista || !lista.length) return '';
+    return lista
+        .map((entrada) => {
+            const titulo = resolverTituloPoemaOuProsa(entrada.id);
+            if (!titulo) return null;
+            const rotulo = resolverRotulo(entrada);
+            return rotulo ? `${rotulo}: ${titulo}` : titulo;
+        })
         .filter(Boolean)
         .join(', ');
 }
@@ -850,13 +1355,34 @@ function compararPorEpocaRetratada(a, b, asc) {
 
 const COMPARADORES_ORDENACAO_POEMAS = {
     titulo: compararPorTexto((p) => p.titulo),
+    idioma: compararPorTexto((p) => p.idioma),
     dataEscrita: compararPorData((p) => p.dataEscrita),
     dataPublicacao: compararPorData((p) => p.dataPublicacao),
     epocaRetratada: compararPorEpocaRetratada,
     status: compararPorStatus,
-    pessoas: compararPorTexto((p) => p.pessoas),
-    elos: compararPorTexto((p) => textoTitulosPoemasPorId(p.conceitos?.elos)),
-    referencias: compararPorTexto((p) => textoTitulosPoemasPorId(p.conceitos?.referencias)),
+    pessoas: compararPorTexto((p) => nomesPessoas(p, db.pessoas).join(', ')),
+    grupos: compararPorTexto((p) =>
+        paresGrupoPessoa(p, db.pessoas, db.grupos)
+            .map(({ grupo }) => grupo.nome)
+            .join(', '),
+    ),
+    autoria: compararPorTexto((p) =>
+        paresAutoria(p, db.autores)
+            .map(({ autor }) => autor.nome)
+            .join(', '),
+    ),
+    envios: compararPorTexto((p) =>
+        Array.isArray(p.envios) ? p.envios.map((e) => e.pessoa || '').join(', ') : '',
+    ),
+    reconhecimentos: compararPorTexto((p) =>
+        Array.isArray(p.reconhecimentos)
+            ? p.reconhecimentos.map((r) => r.premio || '').join(', ')
+            : '',
+    ),
+    elos: compararPorTexto((p) => textoTitulosPoemasPorId(p.conceitos?.elos, rotuloEntradaElo)),
+    referencias: compararPorTexto((p) =>
+        textoTitulosPoemasPorId(p.conceitos?.referencias, rotuloEntradaReferencia),
+    ),
     intertextualidade: compararPorTexto((p) =>
         Array.isArray(p.intertextualidade)
             ? p.intertextualidade.map((it) => it.texto).join(' ')
@@ -867,23 +1393,58 @@ const COMPARADORES_ORDENACAO_POEMAS = {
     ),
     anexosNotaGeral: compararPorTexto((p) => p.anexosNotaGeral),
     anotacoesMarginais: compararPorTexto((p) =>
-        Array.isArray(p.anotacoesMarginais) ? p.anotacoesMarginais.map((it) => it.texto).join(' ') : '',
+        Array.isArray(p.anotacoesMarginais)
+            ? p.anotacoesMarginais.map((it) => it.texto).join(' ')
+            : '',
     ),
     descricaoVisual: compararPorTexto((p) => p.descricaoVisual),
     contextoHistorico: compararPorTexto((p) => p.contextoHistorico),
-    etiquetas: compararPorTexto((p) => p.sinalizacoes),
+    etiquetas: compararPorTexto((p) => sinalizacoesCombinadas(p)),
     notas: compararPorTexto((p) => p.notas),
     ocultacao: compararPorTexto((p) => p.ocultacao),
     conteudoSensivel: compararPorTexto((p) => p.conteudoSensivel),
     vocabularioHiperacionante: compararPorTexto((p) => p.vocabularioHiperacionante),
-    cortadoDe: compararPorTexto((p) => [p.cortadoDe?.livro, p.cortadoDe?.secao].filter(Boolean).join(' ')),
-    lancadoEm: compararPorTexto((p) => [p.lancadoEm?.livro, p.lancadoEm?.secao].filter(Boolean).join(' ')),
+    cortadoDe: compararPorTexto((p) =>
+        [p.cortadoDe?.livro, p.cortadoDe?.secao].filter(Boolean).join(' '),
+    ),
+    lancadoEm: compararPorTexto((p) =>
+        [p.lancadoEm?.livro, p.lancadoEm?.secao].filter(Boolean).join(' '),
+    ),
+    justificativaMigracao: compararPorTexto((p) => p.justificativaMigracao),
     descarte: compararPorTexto((p) => p.descarte),
+    pendencia: compararPorTexto((p) => p.pendencia),
+    camposPreenchidos: (a, b, asc) => {
+        const diff = contarCamposPreenchidos(a) - contarCamposPreenchidos(b);
+        return asc ? diff : -diff;
+    },
 };
 
-export function toggleSelecaoPoema(checked, id) {
+// shiftKey estende a seleção pro intervalo entre este checkbox e o
+// último clicado (ordem da lista filtrada/ordenada atual, não a ordem
+// de estrutura fixa — o intervalo é sempre "o que está entre as duas
+// linhas na tela"). Marca ou desmarca o intervalo inteiro com o mesmo
+// `checked` do checkbox que disparou o shift-click, replicando o
+// padrão do Gmail/Finder. Se a âncora não estiver mais na lista visível
+// (filtro mudou, ou é o primeiro clique da sessão), cai pro
+// comportamento normal de um clique só.
+export function toggleSelecaoPoema(checked, id, shiftKey) {
+    if (shiftKey && ultimoCheckPoema !== null && ultimoCheckPoema !== id) {
+        const visiveis = getListaVisivelPoemas().map((p) => p.id);
+        const iAncora = visiveis.indexOf(ultimoCheckPoema);
+        const iAtual = visiveis.indexOf(id);
+        if (iAncora !== -1 && iAtual !== -1) {
+            const [ini, fim] = iAncora < iAtual ? [iAncora, iAtual] : [iAtual, iAncora];
+            const intervalo = visiveis.slice(ini, fim + 1);
+            if (checked) intervalo.forEach((pid) => selecaoPoemas.add(pid));
+            else intervalo.forEach((pid) => selecaoPoemas.delete(pid));
+            ultimoCheckPoema = id;
+            renderPoemas();
+            return;
+        }
+    }
     if (checked) selecaoPoemas.add(id);
     else selecaoPoemas.delete(id);
+    ultimoCheckPoema = id;
     atualizarBarraSelecao();
 }
 
@@ -931,6 +1492,24 @@ function removerValorDeCampo(poema, campo, valor) {
     poema[campo] = atuais.filter((v) => v !== valor).join(', ');
 }
 
+// Variantes pra Pessoas (array de objeto {pessoaId, papeis} desde a
+// virada pro cadastro central — as duas funções genéricas acima
+// continuam servindo Sinalizações e Gênero, que não mudaram de
+// formato). Adicionar via edição em massa sempre entra com papeis: []
+// (nenhum marcado) — o bulk-edit só pede o nome, não os papéis; quem
+// quiser categorizar edita no modal do item, onde o chip já tem os
+// checkboxes.
+function adicionarPessoaEmCampo(item, pessoaId) {
+    const atuais = Array.isArray(item.pessoas) ? item.pessoas : [];
+    if (!atuais.some((p) => p.pessoaId === pessoaId)) atuais.push({ pessoaId, papeis: [] });
+    item.pessoas = atuais;
+}
+
+function removerPessoaEmCampo(item, pessoaId) {
+    if (!Array.isArray(item.pessoas)) return;
+    item.pessoas = item.pessoas.filter((p) => p.pessoaId !== pessoaId);
+}
+
 export function aplicarPessoaEmMassa() {
     const input = document.getElementById('bulk-pessoa-input');
     const nome = (input?.value || '').trim();
@@ -944,8 +1523,9 @@ export function aplicarPessoaEmMassa() {
         textoConfirmar: 'Aplicar',
         corConfirmar: '#e11d48',
         onConfirmar: () => {
+            const pessoa = obterOuCriarPessoaPorNome(nome);
             db.poemas.forEach((p) => {
-                if (selecaoPoemas.has(p.id)) adicionarValorEmCampo(p, 'pessoas', nome);
+                if (selecaoPoemas.has(p.id)) adicionarPessoaEmCampo(p, pessoa.id);
             });
             if (input) input.value = '';
             selecaoPoemas.clear();
@@ -959,6 +1539,15 @@ export function removerPessoaEmMassa() {
     const nome = (input?.value || '').trim();
     if (!nome || selecaoPoemas.size === 0) return;
 
+    const pessoa = db.pessoas.find((p) => p.nome === nome);
+    if (!pessoa) {
+        // Nome não bate com nenhuma pessoa cadastrada — nada a remover
+        // (diferente de "adicionar", aqui não faz sentido criar só pra
+        // desvincular em seguida).
+        if (input) input.value = '';
+        return;
+    }
+
     const n = selecaoPoemas.size;
     abrirModalConfirmacao({
         titulo: `Remover "${nome}"`,
@@ -968,7 +1557,7 @@ export function removerPessoaEmMassa() {
         corConfirmar: '#dc2626',
         onConfirmar: () => {
             db.poemas.forEach((p) => {
-                if (selecaoPoemas.has(p.id)) removerValorDeCampo(p, 'pessoas', nome);
+                if (selecaoPoemas.has(p.id)) removerPessoaEmCampo(p, pessoa.id);
             });
             if (input) input.value = '';
             selecaoPoemas.clear();
@@ -977,8 +1566,24 @@ export function removerPessoaEmMassa() {
     });
 }
 
+// Mapa campo→slug de DOM, pra achar o datalist certo
+// (sugestoes-sinais-{slug}-bulk[-prosa]) quando a pessoa troca a
+// categoria no seletor da edição em massa — ver SINALIZACOES_CATEGORIAS
+// em utils.js e SINAL_CATEGORIAS em editor.js (mesmo slug nos dois).
+const SLUG_POR_CAMPO_SINAL = Object.fromEntries(
+    Object.entries(SINALIZACOES_CATEGORIAS).map(([slug, campo]) => [campo, slug]),
+);
+
+export function atualizarListaSinalBulk(selectEl, inputId, sufixo = '') {
+    const input = document.getElementById(inputId);
+    if (!input || !selectEl) return;
+    const slug = SLUG_POR_CAMPO_SINAL[selectEl.value] || 'estilo';
+    input.setAttribute('list', `sugestoes-sinais-${slug}-bulk${sufixo}`);
+}
+
 export function aplicarSinalEmMassa() {
     const input = document.getElementById('bulk-sinal-input');
+    const campo = document.getElementById('bulk-sinal-categoria')?.value || 'sinalizacoesEstilo';
     const tag = (input?.value || '').trim();
     if (!tag || selecaoPoemas.size === 0) return;
 
@@ -991,7 +1596,7 @@ export function aplicarSinalEmMassa() {
         corConfirmar: '#2563eb',
         onConfirmar: () => {
             db.poemas.forEach((p) => {
-                if (selecaoPoemas.has(p.id)) adicionarValorEmCampo(p, 'sinalizacoes', tag);
+                if (selecaoPoemas.has(p.id)) adicionarValorEmCampo(p, campo, tag);
             });
             if (input) input.value = '';
             selecaoPoemas.clear();
@@ -1002,6 +1607,7 @@ export function aplicarSinalEmMassa() {
 
 export function removerSinalEmMassa() {
     const input = document.getElementById('bulk-sinal-input');
+    const campo = document.getElementById('bulk-sinal-categoria')?.value || 'sinalizacoesEstilo';
     const tag = (input?.value || '').trim();
     if (!tag || selecaoPoemas.size === 0) return;
 
@@ -1014,7 +1620,7 @@ export function removerSinalEmMassa() {
         corConfirmar: '#dc2626',
         onConfirmar: () => {
             db.poemas.forEach((p) => {
-                if (selecaoPoemas.has(p.id)) removerValorDeCampo(p, 'sinalizacoes', tag);
+                if (selecaoPoemas.has(p.id)) removerValorDeCampo(p, campo, tag);
             });
             if (input) input.value = '';
             selecaoPoemas.clear();
@@ -1055,6 +1661,9 @@ export function exportarSelecaoPoemasJson() {
 }
 export function exportarSelecaoPoemasMarkdown() {
     exportarSelecaoMarkdown('poema', [...selecaoPoemas]);
+}
+export function exportarSelecaoPoemasPdf() {
+    exportarSelecaoPdf('poema', [...selecaoPoemas]);
 }
 
 // ─── Datas em massa (Poemas): Escrita / Publicação ─────────────
@@ -1171,9 +1780,25 @@ function getListaVisivelProsas() {
     return lista;
 }
 
-export function toggleSelecaoProsa(checked, id) {
+// Ver toggleSelecaoPoema — mesma lógica de shift-click, espelhada pra Prosas.
+export function toggleSelecaoProsa(checked, id, shiftKey) {
+    if (shiftKey && ultimoCheckProsa !== null && ultimoCheckProsa !== id) {
+        const visiveis = getListaVisivelProsas().map((pr) => pr.id);
+        const iAncora = visiveis.indexOf(ultimoCheckProsa);
+        const iAtual = visiveis.indexOf(id);
+        if (iAncora !== -1 && iAtual !== -1) {
+            const [ini, fim] = iAncora < iAtual ? [iAncora, iAtual] : [iAtual, iAncora];
+            const intervalo = visiveis.slice(ini, fim + 1);
+            if (checked) intervalo.forEach((pid) => selecaoProsas.add(pid));
+            else intervalo.forEach((pid) => selecaoProsas.delete(pid));
+            ultimoCheckProsa = id;
+            renderProsas();
+            return;
+        }
+    }
     if (checked) selecaoProsas.add(id);
     else selecaoProsas.delete(id);
+    ultimoCheckProsa = id;
     atualizarBarraSelecaoProsas();
 }
 
@@ -1214,8 +1839,9 @@ export function aplicarPessoaEmMassaProsa() {
         textoConfirmar: 'Aplicar',
         corConfirmar: '#e11d48',
         onConfirmar: () => {
+            const pessoa = obterOuCriarPessoaPorNome(nome);
             db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) adicionarValorEmCampo(pr, 'pessoas', nome);
+                if (selecaoProsas.has(pr.id)) adicionarPessoaEmCampo(pr, pessoa.id);
             });
             if (input) input.value = '';
             selecaoProsas.clear();
@@ -1229,6 +1855,12 @@ export function removerPessoaEmMassaProsa() {
     const nome = (input?.value || '').trim();
     if (!nome || selecaoProsas.size === 0) return;
 
+    const pessoa = db.pessoas.find((p) => p.nome === nome);
+    if (!pessoa) {
+        if (input) input.value = '';
+        return;
+    }
+
     const n = selecaoProsas.size;
     abrirModalConfirmacao({
         titulo: `Remover "${nome}"`,
@@ -1238,7 +1870,7 @@ export function removerPessoaEmMassaProsa() {
         corConfirmar: '#dc2626',
         onConfirmar: () => {
             db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) removerValorDeCampo(pr, 'pessoas', nome);
+                if (selecaoProsas.has(pr.id)) removerPessoaEmCampo(pr, pessoa.id);
             });
             if (input) input.value = '';
             selecaoProsas.clear();
@@ -1249,6 +1881,8 @@ export function removerPessoaEmMassaProsa() {
 
 export function aplicarSinalEmMassaProsa() {
     const input = document.getElementById('bulk-sinal-input-prosa');
+    const campo =
+        document.getElementById('bulk-sinal-categoria-prosa')?.value || 'sinalizacoesEstilo';
     const tag = (input?.value || '').trim();
     if (!tag || selecaoProsas.size === 0) return;
 
@@ -1261,7 +1895,7 @@ export function aplicarSinalEmMassaProsa() {
         corConfirmar: '#2563eb',
         onConfirmar: () => {
             db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) adicionarValorEmCampo(pr, 'sinalizacoes', tag);
+                if (selecaoProsas.has(pr.id)) adicionarValorEmCampo(pr, campo, tag);
             });
             if (input) input.value = '';
             selecaoProsas.clear();
@@ -1272,6 +1906,8 @@ export function aplicarSinalEmMassaProsa() {
 
 export function removerSinalEmMassaProsa() {
     const input = document.getElementById('bulk-sinal-input-prosa');
+    const campo =
+        document.getElementById('bulk-sinal-categoria-prosa')?.value || 'sinalizacoesEstilo';
     const tag = (input?.value || '').trim();
     if (!tag || selecaoProsas.size === 0) return;
 
@@ -1284,7 +1920,7 @@ export function removerSinalEmMassaProsa() {
         corConfirmar: '#dc2626',
         onConfirmar: () => {
             db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) removerValorDeCampo(pr, 'sinalizacoes', tag);
+                if (selecaoProsas.has(pr.id)) removerValorDeCampo(pr, campo, tag);
             });
             if (input) input.value = '';
             selecaoProsas.clear();
@@ -1443,6 +2079,9 @@ export function exportarSelecaoProsasJson() {
 }
 export function exportarSelecaoProsasMarkdown() {
     exportarSelecaoMarkdown('prosa', [...selecaoProsas]);
+}
+export function exportarSelecaoProsasPdf() {
+    exportarSelecaoPdf('prosa', [...selecaoProsas]);
 }
 
 // ─── Livros ──────────────────────────────────────────────────
@@ -1671,13 +2310,13 @@ export function renderPoemas() {
 
     const colunasAtivas = getColunasAtivas('poemas');
     atualizarPainelColunas('poemas', 'painel-colunas-poemas');
+    atualizarPainelAcoes('poemas', 'painel-acoes-poemas');
 
     const cabecalho = document.getElementById('cabecalho-poemas');
     if (cabecalho) {
         cabecalho.innerHTML = montarCabecalho(
             'poemas',
             `<th class="p-4 border-b w-8 border-gray-200 dark:border-slate-700 sticky left-0 top-0 z-20 bg-gray-100 dark:bg-slate-700"><input type="checkbox" id="check-todos-poemas" data-action="toggle-todos-poemas"></th>`,
-            `<th class="p-4 border-b border-gray-200 dark:border-slate-700">ID / Título</th>`,
             `<th class="p-4 border-b text-right border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700">Ações</th>`,
         );
         // O checkbox mestre é recriado a cada render do cabeçalho — reaplica o estado
@@ -1720,6 +2359,8 @@ export function renderPoemas() {
         );
 
     const CELULAS_POEMAS = {
+        idioma: (p) =>
+            `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${escapeHtml(p.idioma || 'pt-BR')}</td>`,
         dataEscrita: (p) => {
             const aproximada = !!(p.dataEscrita && !p.dataEscrita.exata);
             const dicas = [];
@@ -1751,30 +2392,38 @@ export function renderPoemas() {
                 descartado: { emoji: '🔴', titulo: 'Descartado' },
             };
             const { emoji, titulo } = INFO_STATUS[p.status] || { emoji: '⚪', titulo: 'Completo' };
-            return `<td class="p-4" title="${titulo}">${emoji}</td>`;
+            // Pendência agora é um campo independente do status — o 🟠 é
+            // exibido junto do círculo de status normal (não no lugar dele)
+            // sempre que houver texto preenchido em item.pendencia.
+            const temPendencia = !!p.pendencia?.trim();
+            const badgePendencia = temPendencia
+                ? `<span title="Pendente: ${escapeHtml(p.pendencia.trim())}">🟠</span>`
+                : '';
+            return `<td class="p-4" title="${titulo}"><span class="inline-flex items-center gap-1">${emoji}${badgePendencia}</span></td>`;
         },
         dataPublicacao: (p) =>
             `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${p.dataPublicacao ? formatarDataParcial(p.dataPublicacao) : '—'}</td>`,
-        pessoas: (p) =>
-            `<td class="p-4">${badgesEtiquetas(p.pessoas, 'bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400')}</td>`,
+        pessoas: (p) => `<td class="p-4">${badgesPessoas(p.pessoas)}</td>`,
+        grupos: (p) => `<td class="p-4">${badgesGrupos(p)}</td>`,
+        autoria: (p) => `<td class="p-4">${badgesAutoria(p)}</td>`,
+        envios: (p) => `<td class="p-4">${badgesEnvios(p)}</td>`,
+        reconhecimentos: (p) => `<td class="p-4">${badgesReconhecimentos(p)}</td>`,
         elos: (p) =>
-            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400">${titulosPoemasPorId(p.conceitos?.elos)}</td>`,
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(p.conceitos?.elos, rotuloEntradaElo, 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300')}</td>`,
         referencias: (p) =>
-            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400">${titulosPoemasPorId(p.conceitos?.referencias)}</td>`,
-        etiquetas: (p) => `<td class="p-4">${badgesEtiquetas(p.sinalizacoes)}</td>`,
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(p.conceitos?.referencias, rotuloEntradaReferencia, 'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-700 dark:text-fuchsia-300')}</td>`,
+        etiquetas: (p) => `<td class="p-4">${badgesEtiquetas(sinalizacoesCombinadas(p))}</td>`,
         notas: (p) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.notas)}</td>`,
         epocaRetratada: (p) => {
             const epoca = p.epocaRetratada;
             const na = epoca?.na;
-            const nomeBadge = epoca?.nome
-                ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold align-middle">${escapeHtml(epoca.nome)}</span>`
-                : '';
-            return `<td class="p-4 text-xs ${na ? 'text-gray-300 dark:text-slate-600 italic' : 'text-gray-400 dark:text-slate-500'}">${nomeBadge}<span class="font-mono">${formatarIntervaloEpocaRetratada(epoca)}</span></td>`;
+            return `<td class="p-4 text-xs ${na ? 'text-gray-300 dark:text-slate-600 italic' : 'text-gray-400 dark:text-slate-500'}">${badgeEpocaRetratada(epoca)}<span class="font-mono">${formatarIntervaloEpocaRetratada(epoca)}</span></td>`;
         },
         intertextualidade: (p) => {
             const lista = Array.isArray(p.intertextualidade) ? p.intertextualidade : [];
-            if (!lista.length) return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            if (!lista.length)
+                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
             const html = lista
                 .map((it) => {
                     const badge = it.tipo
@@ -1787,7 +2436,8 @@ export function renderPoemas() {
         },
         anexos: (p) => {
             const lista = Array.isArray(p.anexos) ? p.anexos : [];
-            if (!lista.length) return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            if (!lista.length)
+                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
             const html = lista
                 .map((it) => {
                     const badge = it.tipo
@@ -1802,7 +2452,8 @@ export function renderPoemas() {
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.anexosNotaGeral)}</td>`,
         anotacoesMarginais: (p) => {
             const lista = Array.isArray(p.anotacoesMarginais) ? p.anotacoesMarginais : [];
-            if (!lista.length) return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            if (!lista.length)
+                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
             const html = lista
                 .map((it) => {
                     const meta = [it.posicao, it.fonte].filter(Boolean).join(' · ');
@@ -1834,8 +2485,13 @@ export function renderPoemas() {
                 return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${escapeHtml([p.lancadoEm.livro, p.lancadoEm.secao].filter(Boolean).join(' / '))}</td>`;
         },
+        justificativaMigracao: (p) =>
+            `<td class="p-4 text-xs max-w-xs ${p.justificativaMigracao ? 'text-blue-700 dark:text-blue-400 border-l-2 border-blue-300 dark:border-blue-700' : 'text-gray-300 dark:text-slate-600'}">${p.justificativaMigracao ? trechoNota(p.justificativaMigracao) : '—'}</td>`,
         descarte: (p) =>
             `<td class="p-4 text-xs max-w-xs ${p.descarte ? 'text-amber-700 dark:text-amber-400 border-l-2 border-amber-300 dark:border-amber-700' : 'text-gray-300 dark:text-slate-600'}">${p.descarte ? trechoNota(p.descarte) : '—'}</td>`,
+        pendencia: (p) =>
+            `<td class="p-4 text-xs max-w-xs ${p.pendencia ? 'text-orange-700 dark:text-orange-400 border-l-2 border-orange-300 dark:border-orange-700' : 'text-gray-300 dark:text-slate-600'}">${p.pendencia ? trechoNota(p.pendencia) : '—'}</td>`,
+        camposPreenchidos: (p) => celulaCamposPreenchidos(p),
     };
 
     container.innerHTML = listaPagina
@@ -1856,8 +2512,7 @@ export function renderPoemas() {
             </td>
             ${celulasMeio}
             <td class="p-4 text-right space-x-2">
-                <button data-action="editar-poema" data-id="${p.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 p-1.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800">${ICONE_EDITAR}</button>
-                <button data-action="excluir-item" data-tipo="poemas" data-id="${p.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+                ${celulaAcoesItem('poemas', 'poema', 'poemas', p.id)}
             </td>
         </tr>`;
         })
@@ -1902,13 +2557,13 @@ export function renderProsas() {
 
     const colunasAtivas = getColunasAtivas('prosas');
     atualizarPainelColunas('prosas', 'painel-colunas-prosas');
+    atualizarPainelAcoes('prosas', 'painel-acoes-prosas');
 
     const cabecalho = document.getElementById('cabecalho-prosas');
     if (cabecalho) {
         cabecalho.innerHTML = montarCabecalho(
             'prosas',
             `<th class="p-4 border-b w-8 border-gray-200 dark:border-slate-700 sticky left-0 top-0 z-20 bg-gray-100 dark:bg-slate-700"><input type="checkbox" id="check-todos-prosas" data-action="toggle-todos-prosas"></th>`,
-            `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky left-8 top-0 z-20 bg-gray-100 dark:bg-slate-700">Título</th>`,
             `<th class="p-4 border-b text-right border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700">Ações</th>`,
         );
         const novoMaster = document.getElementById('check-todos-prosas');
@@ -1948,6 +2603,8 @@ export function renderProsas() {
         );
 
     const CELULAS_PROSAS = {
+        idioma: (pr) =>
+            `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${escapeHtml(pr.idioma || 'pt-BR')}</td>`,
         dataEscrita: (pr) => {
             const aproximada = !!(pr.dataEscrita && !pr.dataEscrita.exata);
             const dicas = [];
@@ -1974,20 +2631,98 @@ export function renderProsas() {
                 : 'Sem vínculo';
             return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500">${infoVinc}</td>`;
         },
+        // Item 4: Prosa ganha o mesmo círculo de status de Poema (ver
+        // CELULAS_POEMAS.status acima) — badgePendencia idêntico, mesmo
+        // critério (texto em pr.pendencia, independente do status).
+        status: (pr) => {
+            const INFO_STATUS = {
+                publicado: { emoji: '🟢', titulo: 'Publicado' },
+                incompleto: { emoji: '🟡', titulo: 'Incompleto' },
+                migrado: { emoji: '🔵', titulo: 'Migrado' },
+                descartado: { emoji: '🔴', titulo: 'Descartado' },
+            };
+            const { emoji, titulo } = INFO_STATUS[pr.status] || { emoji: '⚪', titulo: 'Completo' };
+            const temPendencia = !!pr.pendencia?.trim();
+            const badgePendencia = temPendencia
+                ? `<span title="Pendente: ${escapeHtml(pr.pendencia.trim())}">🟠</span>`
+                : '';
+            return `<td class="p-4" title="${titulo}"><span class="inline-flex items-center gap-1">${emoji}${badgePendencia}</span></td>`;
+        },
         dataPublicacao: (pr) =>
             `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${pr.dataPublicacao ? formatarDataParcial(pr.dataPublicacao) : '—'}</td>`,
-        pessoas: (pr) =>
-            `<td class="p-4">${badgesEtiquetas(pr.pessoas, 'bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400')}</td>`,
-        etiquetas: (pr) => `<td class="p-4">${badgesEtiquetas(pr.sinalizacoes)}</td>`,
+        pessoas: (pr) => `<td class="p-4">${badgesPessoas(pr.pessoas)}</td>`,
+        grupos: (pr) => `<td class="p-4">${badgesGrupos(pr)}</td>`,
+        autoria: (pr) => `<td class="p-4">${badgesAutoria(pr)}</td>`,
+        envios: (pr) => `<td class="p-4">${badgesEnvios(pr)}</td>`,
+        reconhecimentos: (pr) => `<td class="p-4">${badgesReconhecimentos(pr)}</td>`,
+        etiquetas: (pr) => `<td class="p-4">${badgesEtiquetas(sinalizacoesCombinadas(pr))}</td>`,
         genero: (pr) =>
             `<td class="p-4">${badgesEtiquetas(pr.genero, 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-400')}</td>`,
         notas: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.notas)}</td>`,
+        epocaRetratada: (pr) => {
+            const epoca = pr.epocaRetratada;
+            const na = epoca?.na;
+            return `<td class="p-4 text-xs ${na ? 'text-gray-300 dark:text-slate-600 italic' : 'text-gray-400 dark:text-slate-500'}">${badgeEpocaRetratada(epoca)}<span class="font-mono">${formatarIntervaloEpocaRetratada(epoca)}</span></td>`;
+        },
+        contextoHistorico: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.contextoHistorico)}</td>`,
+        elos: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(pr.conceitos?.elos, rotuloEntradaElo, 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300')}</td>`,
+        referencias: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(pr.conceitos?.referencias, rotuloEntradaReferencia, 'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-700 dark:text-fuchsia-300')}</td>`,
+        intertextualidade: (pr) => {
+            const lista = Array.isArray(pr.intertextualidade) ? pr.intertextualidade : [];
+            if (!lista.length)
+                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            const html = lista
+                .map((it) => {
+                    const badge = it.tipo
+                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+                        : '';
+                    return `<div>${badge}${trechoNota(it.texto)}</div>`;
+                })
+                .join('');
+            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
+        },
+        anexos: (pr) => {
+            const lista = Array.isArray(pr.anexos) ? pr.anexos : [];
+            if (!lista.length)
+                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            const html = lista
+                .map((it) => {
+                    const badge = it.tipo
+                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+                        : '';
+                    return `<div>${badge}${trechoNota(it.texto)}</div>`;
+                })
+                .join('');
+            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
+        },
+        anexosNotaGeral: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.anexosNotaGeral)}</td>`,
+        ocultacao: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.ocultacao)}</td>`,
+        conteudoSensivel: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.conteudoSensivel)}</td>`,
+        vocabularioHiperacionante: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.vocabularioHiperacionante)}</td>`,
+        cortadoDe: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${pr.cortadoDe ? escapeHtml(`${pr.cortadoDe.livro || ''} ${pr.cortadoDe.secao || ''}`.trim()) : '—'}</td>`,
+        lancadoEm: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${pr.lancadoEm ? escapeHtml(`${pr.lancadoEm.livro || ''} ${pr.lancadoEm.secao || ''}`.trim()) : '—'}</td>`,
+        justificativaMigracao: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.justificativaMigracao)}</td>`,
+        pendencia: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.pendencia)}</td>`,
+        descarte: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.descarte)}</td>`,
+        camposPreenchidos: (pr) => celulaCamposPreenchidos(pr),
     };
 
     container.innerHTML = listaPaginaPr
         .map((pr) => {
-            const pubBadge = pr.publicado
+            const pubBadge = estaPublicado(pr)
                 ? `<span class="text-[9px] bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold uppercase">pub</span>`
                 : '';
             const celulasMeio = colunasAtivas
@@ -2005,8 +2740,7 @@ export function renderProsas() {
             </td>
             ${celulasMeio}
             <td class="p-4 text-right space-x-2">
-                <button data-action="editar-prosa" data-id="${pr.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 p-1.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800">${ICONE_EDITAR}</button>
-                <button data-action="excluir-item" data-tipo="prosas" data-id="${pr.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+                ${celulaAcoesItem('prosas', 'prosa', 'prosas', pr.id)}
             </td>
         </tr>`;
         })
@@ -2077,4 +2811,191 @@ export function renderElementos() {
         })
         .join('');
     preencherCapas(container);
+}
+
+// ─── Pessoas ─────────────────────────────────────────────────
+// Cadastro central (ver migrarPessoasParaCadastro em db.js). Ordenada
+// alfabeticamente — diferente de Livros/Partes, não tem uma "ordem
+// editorial" própria pra Pessoa, então não há botões de mover.
+
+export function renderPessoas() {
+    const container = document.getElementById('lista-pessoas');
+    if (!container) return;
+
+    const ordenadas = [...db.pessoas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    if (ordenadas.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhuma pessoa cadastrada ainda.</div>`;
+        return;
+    }
+
+    container.innerHTML = ordenadas
+        .map((p) => {
+            // Objetos de Grupo (não só nome, ver nomesGrupos em utils.js)
+            // pra cada badge poder usar a cor própria daquele grupo —
+            // ver classesCorGrupo/CORES_GRUPO em utils.js.
+            const grupos = (p.grupoIds || [])
+                .map((id) => db.grupos.find((g) => g.id === id))
+                .filter(Boolean);
+            const { poemasIds, prosasIds } = calcularImpactoExclusaoPessoa(db, p.id);
+            const totalTextos = poemasIds.length + prosasIds.length;
+            return `
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(p.nome)}</h4>
+                <div class="flex flex-wrap gap-1 mt-1">
+                    ${
+                        grupos.length
+                            ? grupos
+                                  .map(
+                                      (g) =>
+                                          `<span class="text-[9px] ${classesCorGrupo(g.cor)} px-1.5 py-0.5 rounded">${escapeHtml(g.nome)}</span>`,
+                                  )
+                                  .join('')
+                            : `<span class="text-[10px] text-gray-300 dark:text-slate-600 italic">sem grupo</span>`
+                    }
+                </div>
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
+                    aparece em ${totalTextos} texto${totalTextos !== 1 ? 's' : ''}
+                </p>
+            </div>
+            <div class="flex gap-3 flex-shrink-0">
+                <button data-action="editar-pessoa" data-id="${p.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
+                <button data-action="mesclar-item" data-tipo="pessoas" data-id="${p.id}" title="Mesclar com outra pessoa" aria-label="Mesclar" class="inline-flex items-center justify-center p-1.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">${ICONE_MESCLAR}</button>
+                <button data-action="excluir-item" data-tipo="pessoas" data-id="${p.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+            </div>
+        </div>`;
+        })
+        .join('');
+}
+
+// ─── Grupos ──────────────────────────────────────────────────
+// Registro dedicado (ver conversa que definiu isso: cadastrável de
+// verdade, não tag livre) — cria/edita/renomeia formalmente, sem
+// hardcode no código-fonte. Mostra quantas pessoas pertencem a cada
+// grupo, pra dar uma noção de impacto antes de excluir.
+
+export function renderGrupos() {
+    const container = document.getElementById('lista-grupos');
+    if (!container) return;
+
+    const ordenados = [...db.grupos].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    if (ordenados.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum grupo cadastrado ainda.</div>`;
+        return;
+    }
+
+    container.innerHTML = ordenados
+        .map((g) => {
+            const { pessoasIds } = calcularImpactoExclusaoGrupo(db, g.id);
+            return `
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${pontoCorGrupo(g.cor)}" title="Cor do grupo" aria-hidden="true"></span>
+                    ${escapeHtml(g.nome)}
+                </h4>
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
+                    ${pessoasIds.length} pessoa${pessoasIds.length !== 1 ? 's' : ''}
+                </p>
+            </div>
+            <div class="flex gap-3 flex-shrink-0">
+                <button data-action="editar-grupo" data-id="${g.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
+                <button data-action="excluir-item" data-tipo="grupos" data-id="${g.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+            </div>
+        </div>`;
+        })
+        .join('');
+}
+
+// ─── Autores ─────────────────────────────────────────────────
+// Cadastro central (ver migrarAutoria em db.js), à parte de Pessoas —
+// mesmo espírito de renderPessoas acima, mas sem grupos (Autor não tem
+// taxonomia própria) e mostrando "sobre" em vez de badges.
+
+export function renderAutores() {
+    const container = document.getElementById('lista-autores');
+    if (!container) return;
+
+    const ordenados = [...db.autores].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    if (ordenados.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum autor cadastrado ainda.</div>`;
+        return;
+    }
+
+    container.innerHTML = ordenados
+        .map((a) => {
+            const { poemasIds, prosasIds } = calcularImpactoExclusaoAutor(db, a.id);
+            const totalTextos = poemasIds.length + prosasIds.length;
+            return `
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(a.nome)}</h4>
+                ${
+                    a.sobre
+                        ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1 line-clamp-2">${escapeHtml(a.sobre)}</p>`
+                        : ''
+                }
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
+                    aparece em ${totalTextos} texto${totalTextos !== 1 ? 's' : ''}
+                </p>
+            </div>
+            <div class="flex gap-3 flex-shrink-0">
+                <button data-action="editar-autor" data-id="${a.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
+                <button data-action="excluir-item" data-tipo="autores" data-id="${a.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+            </div>
+        </div>`;
+        })
+        .join('');
+}
+
+// ─── Épocas ──────────────────────────────────────────────────
+// Cadastro central (ver migrarEpocas em db.js), item 3 do plano de
+// schema — mesmo espírito de renderAutores acima: sem grupos/badges
+// próprios, mostrando o "contextoRelacao" (ex.: "Parceiro A e Parceiro
+// B") em vez de "sobre". Contagem considera Poema e Prosa (corrigido
+// numa sessão posterior — ver comentário de calcularImpactoExclusaoEpoca
+// em db.js; comentário antigo aqui dizia "só Poema" por resquício do
+// mesmo gap). Botão "Mesclar" (ver renderPessoas acima e Mesclar
+// (Pessoa/Época) em forms.js) — mesma lacuna de duplicata por rename
+// existe pra Época.
+
+export function renderEpocas() {
+    const container = document.getElementById('lista-epocas');
+    if (!container) return;
+
+    const ordenadas = [...db.epocas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    if (ordenadas.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhuma época cadastrada ainda.</div>`;
+        return;
+    }
+
+    container.innerHTML = ordenadas
+        .map((ep) => {
+            const { poemasIds, prosasIds } = calcularImpactoExclusaoEpoca(db, ep.id);
+            const total = poemasIds.length + prosasIds.length;
+            return `
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(ep.nome)}</h4>
+                ${
+                    ep.contextoRelacao
+                        ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1 line-clamp-2">${escapeHtml(ep.contextoRelacao)}</p>`
+                        : ''
+                }
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
+                    aparece em ${total} texto${total !== 1 ? 's' : ''}
+                </p>
+            </div>
+            <div class="flex gap-3 flex-shrink-0">
+                <button data-action="editar-epoca" data-id="${ep.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
+                <button data-action="mesclar-item" data-tipo="epocas" data-id="${ep.id}" title="Mesclar com outra época" aria-label="Mesclar" class="inline-flex items-center justify-center p-1.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">${ICONE_MESCLAR}</button>
+                <button data-action="excluir-item" data-tipo="epocas" data-id="${ep.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+            </div>
+        </div>`;
+        })
+        .join('');
 }

@@ -1,0 +1,65 @@
+<div
+    id="modal-visualizar"
+    class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-visualizar-titulo"
+    tabindex="-1"
+>
+    <div
+        class="bg-white dark:bg-slate-900 rounded-lg w-full max-w-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+    >
+        <div
+            class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0"
+        >
+            <h3 id="modal-visualizar-titulo" class="text-xl font-bold truncate pr-4">
+                Visualizar
+            </h3>
+            <button
+                type="button"
+                onclick="toggleModal('modal-visualizar')"
+                title="Fechar (Esc)"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-600 dark:hover:text-slate-300 transition-colors border border-gray-200 dark:border-slate-700 flex-shrink-0"
+                aria-label="Fechar"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    class="w-4 h-4"
+                >
+                    <path
+                        d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+                    />
+                </svg>
+            </button>
+        </div>
+        <div id="visualizar-conteudo" class="overflow-y-auto flex-1 px-8 py-6"></div>
+        <div
+            class="flex flex-wrap items-center justify-end gap-2 px-8 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0"
+        >
+            <span class="text-[10px] text-gray-400 dark:text-slate-500 mr-auto">Baixar como:</span>
+            <button
+                type="button"
+                onclick="baixarDoModalVisualizacao('md')"
+                class="text-xs font-semibold px-3 py-1.5 rounded bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-600"
+            >
+                .md
+            </button>
+            <button
+                type="button"
+                onclick="baixarDoModalVisualizacao('pdf')"
+                class="text-xs font-semibold px-3 py-1.5 rounded bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-600"
+            >
+                .pdf
+            </button>
+            <button
+                type="button"
+                onclick="baixarDoModalVisualizacao('json')"
+                class="text-xs font-semibold px-3 py-1.5 rounded bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-600"
+            >
+                .json
+            </button>
+        </div>
+    </div>
+</div>

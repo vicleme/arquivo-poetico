@@ -218,12 +218,13 @@ function substituirTudo() {
 
 // Fecha e limpa a barra — remover `el` do DOM já derruba junto o
 // listener de keydown do substituirInput (não é preciso remover à
-// mão); só o listener no textarea, que fica fora de `el`, precisa de
-// removeEventListener explícito.
+// mão); só os listeners no textarea, que ficam fora de `el`, precisam
+// de removeEventListener explícito.
 export function fecharBuscaEmCampo() {
     if (!barraAtual) return;
-    const { textarea, el, onKeydown } = barraAtual;
+    const { textarea, el, onKeydown, onPaste } = barraAtual;
     textarea.removeEventListener('keydown', onKeydown, true);
+    textarea.removeEventListener('paste', onPaste, true);
     el.remove();
     barraAtual = null;
     if (document.body.contains(textarea)) textarea.focus();
@@ -345,6 +346,25 @@ function criarBarra(textarea) {
     // ao textarea (ex.: atalhos de formatação em editor.js).
     textarea.addEventListener('keydown', onKeydown, true);
 
+    // Ctrl+V não passa pelo onKeydown acima: colar é um evento de
+    // 'paste' à parte, não uma tecla normal, e o bloco "outros atalhos
+    // (Ctrl+S etc.) passam direto" do onKeydown deixa Ctrl+V cair no
+    // comportamento nativo do textarea — ou seja, o texto colado ia
+    // direto pro POEMA de verdade (inclusive substituindo a ocorrência
+    // destacada, se havia uma selecionada), nunca pro termo de busca.
+    // Aqui a gente intercepta o 'paste' e redireciona o conteúdo
+    // colado pro termo de busca, do mesmo jeito que uma tecla normal
+    // faria (ver "e.key.length === 1" no onKeydown): substitui o termo
+    // se ele estava "selecionado" (Ctrl+A), senão concatena no final.
+    const onPaste = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const texto = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+        if (!texto) return;
+        buscar((barraAtual.termoSelecionado ? '' : barraAtual.termo) + texto);
+    };
+    textarea.addEventListener('paste', onPaste, true);
+
     barraAtual = {
         textarea,
         el,
@@ -357,6 +377,7 @@ function criarBarra(textarea) {
         termoSelecionado: false,
         expandido: false,
         onKeydown,
+        onPaste,
     };
     atualizarVisual();
 

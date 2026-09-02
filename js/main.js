@@ -15,6 +15,7 @@ import { mostrarAviso, avisarSalvo, debounce } from './utils.js';
 import { listarSnapshots, baixarSnapshot } from './autobackup.js';
 import {
     openTab,
+    abrirAba,
     toggleModal,
     prepararNovo,
     toggleCamposIntroducao,
@@ -23,9 +24,25 @@ import {
     filtrarDestinoProsa,
     autoPreencherDataPublicacao,
     togglePainel,
+    toggleMenuMobile,
+    initNav,
 } from './ui.js';
 import { registrarModal } from './modais.js';
-import { toggleColuna, moverColuna, selecionarTodasColunas, desmarcarTodasColunas } from './colunas.js';
+import {
+    toggleColuna,
+    moverColuna,
+    selecionarTodasColunas,
+    desmarcarTodasColunas,
+    resetarColunas,
+} from './colunas.js';
+import {
+    toggleAcaoColuna,
+    setFormatoBaixarColuna,
+    resetarAcoesColuna,
+    getFormatoBaixar,
+} from './acoes-coluna.js';
+import { exportarItem } from './exportar.js';
+import { abrirVisualizacao, baixarDoModalVisualizacao } from './visualizar.js';
 import { initTema, setTema } from './theme.js';
 import { renderLists } from './render.js';
 import {
@@ -39,6 +56,7 @@ import {
     getCombinadorBuscaProsas,
     setFiltroLivroPoemas,
     ordenarPoemasPor,
+    buscarPorPrefixo,
     setStatusPoemas,
     setItensPorPagina,
     setPaginaPoemas,
@@ -49,10 +67,12 @@ import {
     excluirSelecaoPoemas,
     exportarSelecaoPoemasJson,
     exportarSelecaoPoemasMarkdown,
+    exportarSelecaoPoemasPdf,
     aplicarPessoaEmMassa,
     removerPessoaEmMassa,
     aplicarSinalEmMassa,
     removerSinalEmMassa,
+    atualizarListaSinalBulk,
     aplicarDataEmMassa,
     limparDataEmMassa,
     toggleSelecaoProsa,
@@ -61,6 +81,7 @@ import {
     excluirSelecaoProsas,
     exportarSelecaoProsasJson,
     exportarSelecaoProsasMarkdown,
+    exportarSelecaoProsasPdf,
     aplicarPessoaEmMassaProsa,
     removerPessoaEmMassaProsa,
     aplicarSinalEmMassaProsa,
@@ -100,35 +121,94 @@ import {
     previsualizarExportacaoSeletiva,
     executarExportacaoSeletiva,
     executarExportacaoSeletivaMarkdown,
+    executarExportacaoSeletivaPdf,
     popularSelecaoExportacao,
     exportarTudoAninhado,
     exportarLivroCompleto,
     exportarLivrosCompletos,
     exportarTudoFlatJson,
     exportarTudoFlatMarkdown,
+    exportarTudoFlatPdf,
 } from './exportar.js';
 import { renderEstatisticas } from './estatisticas.js';
+import { renderConexoes, baixarDiagramaReferencias } from './render-conexoes.js';
 import {
     initEditor,
-    adicionarTag,
-    removerTag,
+    adicionarSinalEstilo,
+    removerSinalEstilo,
+    adicionarSinalTema,
+    removerSinalTema,
+    adicionarSinalRelacao,
+    removerSinalRelacao,
+    adicionarSinalSensibilidade,
+    removerSinalSensibilidade,
+    adicionarSinalTom,
+    removerSinalTom,
+    adicionarSinalOutros,
+    removerSinalOutros,
     applyStyle,
     wrapText,
     setAlign,
     adicionarPessoa,
     removerPessoa,
+    alternarPapelPessoa,
+    alternarDropdownPapelPessoa,
+    adicionarAutoria,
+    removerAutoria,
+    alterarPapelAutoria,
+    adicionarEnvio,
+    editarEnvio,
+    cancelarEdicaoEnvio,
+    removerEnvio,
+    adicionarReconhecimento,
+    editarReconhecimento,
+    cancelarEdicaoReconhecimento,
+    removerReconhecimento,
     atualizarDatalist,
     atualizarDatalistProsa,
-    adicionarTagProsa,
-    removerTagProsa,
+    adicionarSinalEstiloProsa,
+    removerSinalEstiloProsa,
+    adicionarSinalTemaProsa,
+    removerSinalTemaProsa,
+    adicionarSinalRelacaoProsa,
+    removerSinalRelacaoProsa,
+    adicionarSinalSensibilidadeProsa,
+    removerSinalSensibilidadeProsa,
+    adicionarSinalTomProsa,
+    removerSinalTomProsa,
+    adicionarSinalOutrosProsa,
+    removerSinalOutrosProsa,
     adicionarPessoaProsa,
     removerPessoaProsa,
+    alternarPapelPessoaProsa,
+    alternarDropdownPapelPessoaProsa,
+    adicionarAutoriaProsa,
+    removerAutoriaProsa,
+    alterarPapelAutoriaProsa,
+    adicionarEnvioProsa,
+    editarEnvioProsa,
+    cancelarEdicaoEnvioProsa,
+    removerEnvioProsa,
+    adicionarReconhecimentoProsa,
+    editarReconhecimentoProsa,
+    cancelarEdicaoReconhecimentoProsa,
+    removerReconhecimentoProsa,
     adicionarGeneroProsa,
     removerGeneroProsa,
     adicionarIntertexto,
     removerIntertexto,
     editarIntertexto,
     cancelarEdicaoIntertexto,
+    adicionarElo,
+    removerElo,
+    editarElo,
+    cancelarEdicaoElo,
+    onRelacaoEloAlterada,
+    selecionarDirecaoElo,
+    adicionarReferencia,
+    removerReferencia,
+    editarReferencia,
+    cancelarEdicaoReferencia,
     adicionarAnexo,
     removerAnexo,
     editarAnexo,
@@ -137,6 +217,24 @@ import {
     removerAnotacao,
     editarAnotacao,
     cancelarEdicaoAnotacao,
+    adicionarEloProsa,
+    removerEloProsa,
+    editarEloProsa,
+    cancelarEdicaoEloProsa,
+    onRelacaoEloAlteradaProsa,
+    selecionarDirecaoEloProsa,
+    adicionarReferenciaProsa,
+    removerReferenciaProsa,
+    editarReferenciaProsa,
+    cancelarEdicaoReferenciaProsa,
+    adicionarIntertextoProsa,
+    removerIntertextoProsa,
+    editarIntertextoProsa,
+    cancelarEdicaoIntertextoProsa,
+    adicionarAnexoProsa,
+    removerAnexoProsa,
+    editarAnexoProsa,
+    cancelarEdicaoAnexoProsa,
 } from './editor.js';
 import {
     initFormLivro,
@@ -153,6 +251,16 @@ import {
     editarProsa,
     initFormElemento,
     editarElemento,
+    initFormPessoa,
+    editarPessoa,
+    initFormGrupo,
+    editarGrupo,
+    initFormAutor,
+    editarAutor,
+    initFormEpoca,
+    editarEpoca,
+    initFormMesclar,
+    abrirModalMesclar,
     rastreadorPoema,
     rastreadorProsa,
 } from './forms.js';
@@ -193,8 +301,17 @@ registrarModal(
 );
 registrarModal('modal-prosa', 'modal-prosa.html', initFormProsa, rastreadorProsa);
 registrarModal('modal-elemento', 'modal-elemento.html', initFormElemento);
+registrarModal('modal-pessoa', 'modal-pessoa.html', initFormPessoa);
+registrarModal('modal-grupo', 'modal-grupo.html', initFormGrupo);
+registrarModal('modal-autor', 'modal-autor.html', initFormAutor);
+registrarModal('modal-epoca', 'modal-epoca.html', initFormEpoca);
+registrarModal('modal-mesclar', 'modal-mesclar.html', initFormMesclar);
 registrarModal('modal-col-parte', 'modal-col-parte.html', initFormColParte);
 registrarModal('modal-col-item', 'modal-col-item.html', initFormColItem);
+// Sem form/init próprio — o conteúdo é preenchido a cada abertura por
+// abrirVisualizacao() (visualizar.js), não há nada pra inicializar uma
+// vez só (ver comentário em registrarModal, acima).
+registrarModal('modal-visualizar', 'modal-visualizar.html', () => {});
 
 // ─── Listener delegado para as listas (render-listas.js) ─────
 // render-listas.js gera botões/checkboxes com data-action + data-id/
@@ -214,21 +331,30 @@ const ACOES_LISTA = {
     'editar-poema': (el) => editarPoema(Number(el.dataset.id)),
     'editar-prosa': (el) => editarProsa(Number(el.dataset.id)),
     'editar-elemento': (el) => editarElemento(Number(el.dataset.id)),
+    'editar-pessoa': (el) => editarPessoa(Number(el.dataset.id)),
+    'editar-grupo': (el) => editarGrupo(Number(el.dataset.id)),
+    'editar-autor': (el) => editarAutor(Number(el.dataset.id)),
+    'editar-epoca': (el) => editarEpoca(Number(el.dataset.id)),
+    'mesclar-item': (el) => abrirModalMesclar(el.dataset.tipo, Number(el.dataset.id)),
     'excluir-item': (el) => deleteItem(el.dataset.tipo, Number(el.dataset.id)),
+    'ver-item': (el) => abrirVisualizacao(el.dataset.tipo, Number(el.dataset.id)),
+    'baixar-item': (el) =>
+        exportarItem(el.dataset.tipo, Number(el.dataset.id), getFormatoBaixar(el.dataset.tabela)),
     'mover-livro': (el) => moverLivro(Number(el.dataset.id), el.dataset.dir),
     'pagina-poemas': (el) => setPaginaPoemas(Number(el.dataset.pagina)),
     'pagina-prosas': (el) => setPaginaProsas(Number(el.dataset.pagina)),
-    'toggle-poema': (el) => toggleSelecaoPoema(el.checked, Number(el.dataset.id)),
-    'toggle-prosa': (el) => toggleSelecaoProsa(el.checked, Number(el.dataset.id)),
+    'toggle-poema': (el, e) => toggleSelecaoPoema(el.checked, Number(el.dataset.id), e?.shiftKey),
+    'toggle-prosa': (el, e) => toggleSelecaoProsa(el.checked, Number(el.dataset.id), e?.shiftKey),
     'toggle-todos-poemas': (el) => toggleSelecaoTodosPoemas(el.checked),
     'toggle-todos-prosas': (el) => toggleSelecaoTodosProsas(el.checked),
+    'baixar-diagrama-referencias': (el) => baixarDiagramaReferencias(el),
 };
 
 document.querySelector('main')?.addEventListener('click', (e) => {
     const alvo = e.target.closest('[data-action]');
     if (!alvo) return;
     const acao = ACOES_LISTA[alvo.dataset.action];
-    if (acao) acao(alvo);
+    if (acao) acao(alvo, e);
 });
 
 // ─── Inicialização ───────────────────────────────────────────
@@ -243,6 +369,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await migrarImagensLegadasParaIndexedDB();
 
     initTema();
+    initNav();
     renderColetaneas();
     renderLists();
     atualizarDatalist();
@@ -420,6 +547,8 @@ window.importarJSON = function (event) {
 // no escopo global (window). Com ES Modules isso é explícito.
 
 window.openTab = openTab;
+window.abrirAba = abrirAba;
+window.toggleMenuMobile = toggleMenuMobile;
 window.toggleModal = toggleModal;
 window.prepararNovo = prepararNovo;
 window.sugerirSequencia = sugerirSequencia;
@@ -432,20 +561,76 @@ window.autoPreencherDataPublicacao = autoPreencherDataPublicacao;
 // render-listas.js, que agora usa data-action + o listener delegado
 // acima. Continuam importados normalmente (uso local no ACOES_LISTA).
 
-window.adicionarTag = adicionarTag;
-window.removerTag = removerTag;
+window.adicionarSinalEstilo = adicionarSinalEstilo;
+window.removerSinalEstilo = removerSinalEstilo;
+window.adicionarSinalTema = adicionarSinalTema;
+window.removerSinalTema = removerSinalTema;
+window.adicionarSinalRelacao = adicionarSinalRelacao;
+window.removerSinalRelacao = removerSinalRelacao;
+window.adicionarSinalSensibilidade = adicionarSinalSensibilidade;
+window.removerSinalSensibilidade = removerSinalSensibilidade;
+window.adicionarSinalTom = adicionarSinalTom;
+window.removerSinalTom = removerSinalTom;
+window.adicionarSinalOutros = adicionarSinalOutros;
+window.removerSinalOutros = removerSinalOutros;
 window.adicionarPessoa = adicionarPessoa;
 window.removerPessoa = removerPessoa;
-window.adicionarTagProsa = adicionarTagProsa;
-window.removerTagProsa = removerTagProsa;
+window.alternarPapelPessoa = alternarPapelPessoa;
+window.alternarDropdownPapelPessoa = alternarDropdownPapelPessoa;
+window.adicionarAutoria = adicionarAutoria;
+window.removerAutoria = removerAutoria;
+window.alterarPapelAutoria = alterarPapelAutoria;
+window.adicionarEnvio = adicionarEnvio;
+window.editarEnvio = editarEnvio;
+window.cancelarEdicaoEnvio = cancelarEdicaoEnvio;
+window.removerEnvio = removerEnvio;
+window.adicionarReconhecimento = adicionarReconhecimento;
+window.editarReconhecimento = editarReconhecimento;
+window.cancelarEdicaoReconhecimento = cancelarEdicaoReconhecimento;
+window.removerReconhecimento = removerReconhecimento;
+window.adicionarSinalEstiloProsa = adicionarSinalEstiloProsa;
+window.removerSinalEstiloProsa = removerSinalEstiloProsa;
+window.adicionarSinalTemaProsa = adicionarSinalTemaProsa;
+window.removerSinalTemaProsa = removerSinalTemaProsa;
+window.adicionarSinalRelacaoProsa = adicionarSinalRelacaoProsa;
+window.removerSinalRelacaoProsa = removerSinalRelacaoProsa;
+window.adicionarSinalSensibilidadeProsa = adicionarSinalSensibilidadeProsa;
+window.removerSinalSensibilidadeProsa = removerSinalSensibilidadeProsa;
+window.adicionarSinalTomProsa = adicionarSinalTomProsa;
+window.removerSinalTomProsa = removerSinalTomProsa;
+window.adicionarSinalOutrosProsa = adicionarSinalOutrosProsa;
+window.removerSinalOutrosProsa = removerSinalOutrosProsa;
 window.adicionarPessoaProsa = adicionarPessoaProsa;
 window.removerPessoaProsa = removerPessoaProsa;
+window.alternarPapelPessoaProsa = alternarPapelPessoaProsa;
+window.alternarDropdownPapelPessoaProsa = alternarDropdownPapelPessoaProsa;
+window.adicionarAutoriaProsa = adicionarAutoriaProsa;
+window.removerAutoriaProsa = removerAutoriaProsa;
+window.alterarPapelAutoriaProsa = alterarPapelAutoriaProsa;
+window.adicionarEnvioProsa = adicionarEnvioProsa;
+window.editarEnvioProsa = editarEnvioProsa;
+window.cancelarEdicaoEnvioProsa = cancelarEdicaoEnvioProsa;
+window.removerEnvioProsa = removerEnvioProsa;
+window.adicionarReconhecimentoProsa = adicionarReconhecimentoProsa;
+window.editarReconhecimentoProsa = editarReconhecimentoProsa;
+window.cancelarEdicaoReconhecimentoProsa = cancelarEdicaoReconhecimentoProsa;
+window.removerReconhecimentoProsa = removerReconhecimentoProsa;
 window.adicionarGeneroProsa = adicionarGeneroProsa;
 window.removerGeneroProsa = removerGeneroProsa;
 window.adicionarIntertexto = adicionarIntertexto;
 window.removerIntertexto = removerIntertexto;
 window.editarIntertexto = editarIntertexto;
 window.cancelarEdicaoIntertexto = cancelarEdicaoIntertexto;
+window.adicionarElo = adicionarElo;
+window.removerElo = removerElo;
+window.editarElo = editarElo;
+window.cancelarEdicaoElo = cancelarEdicaoElo;
+window.onRelacaoEloAlterada = onRelacaoEloAlterada;
+window.selecionarDirecaoElo = selecionarDirecaoElo;
+window.adicionarReferencia = adicionarReferencia;
+window.removerReferencia = removerReferencia;
+window.editarReferencia = editarReferencia;
+window.cancelarEdicaoReferencia = cancelarEdicaoReferencia;
 window.adicionarAnexo = adicionarAnexo;
 window.removerAnexo = removerAnexo;
 window.editarAnexo = editarAnexo;
@@ -454,6 +639,24 @@ window.adicionarAnotacao = adicionarAnotacao;
 window.removerAnotacao = removerAnotacao;
 window.editarAnotacao = editarAnotacao;
 window.cancelarEdicaoAnotacao = cancelarEdicaoAnotacao;
+window.adicionarEloProsa = adicionarEloProsa;
+window.removerEloProsa = removerEloProsa;
+window.editarEloProsa = editarEloProsa;
+window.cancelarEdicaoEloProsa = cancelarEdicaoEloProsa;
+window.onRelacaoEloAlteradaProsa = onRelacaoEloAlteradaProsa;
+window.selecionarDirecaoEloProsa = selecionarDirecaoEloProsa;
+window.adicionarReferenciaProsa = adicionarReferenciaProsa;
+window.removerReferenciaProsa = removerReferenciaProsa;
+window.editarReferenciaProsa = editarReferenciaProsa;
+window.cancelarEdicaoReferenciaProsa = cancelarEdicaoReferenciaProsa;
+window.adicionarIntertextoProsa = adicionarIntertextoProsa;
+window.removerIntertextoProsa = removerIntertextoProsa;
+window.editarIntertextoProsa = editarIntertextoProsa;
+window.cancelarEdicaoIntertextoProsa = cancelarEdicaoIntertextoProsa;
+window.adicionarAnexoProsa = adicionarAnexoProsa;
+window.removerAnexoProsa = removerAnexoProsa;
+window.editarAnexoProsa = editarAnexoProsa;
+window.cancelarEdicaoAnexoProsa = cancelarEdicaoAnexoProsa;
 window.applyStyle = applyStyle;
 window.wrapText = wrapText;
 // Debounce de 200ms: cada tecla digitada dispara um renderPoemas()/
@@ -487,6 +690,7 @@ function atualizarBotaoCombinador(btn, valor) {
 window.setFiltroLivroProsa = setFiltroLivroProsa;
 window.setFiltroLivroPoemas = setFiltroLivroPoemas;
 window.ordenarPoemasPor = ordenarPoemasPor;
+window.buscarPorPrefixo = buscarPorPrefixo;
 window.setStatusPoemas = setStatusPoemas;
 window.setItensPorPagina = setItensPorPagina;
 window.togglePainel = togglePainel;
@@ -494,6 +698,11 @@ window.toggleColuna = toggleColuna;
 window.moverColuna = moverColuna;
 window.selecionarTodasColunas = selecionarTodasColunas;
 window.desmarcarTodasColunas = desmarcarTodasColunas;
+window.resetarColunas = resetarColunas;
+window.toggleAcaoColuna = toggleAcaoColuna;
+window.setFormatoBaixarColuna = setFormatoBaixarColuna;
+window.resetarAcoesColuna = resetarAcoesColuna;
+window.baixarDoModalVisualizacao = baixarDoModalVisualizacao;
 window.setTema = setTema;
 window.setFiltroDataEscritaPoemas = setFiltroDataEscritaPoemas;
 window.setFiltroDataPublicacaoPoemas = setFiltroDataPublicacaoPoemas;
@@ -516,10 +725,12 @@ window.limparSelecaoPoemas = limparSelecaoPoemas;
 window.excluirSelecaoPoemas = excluirSelecaoPoemas;
 window.exportarSelecaoPoemasJson = exportarSelecaoPoemasJson;
 window.exportarSelecaoPoemasMarkdown = exportarSelecaoPoemasMarkdown;
+window.exportarSelecaoPoemasPdf = exportarSelecaoPoemasPdf;
 window.aplicarPessoaEmMassa = aplicarPessoaEmMassa;
 window.removerPessoaEmMassa = removerPessoaEmMassa;
 window.aplicarSinalEmMassa = aplicarSinalEmMassa;
 window.removerSinalEmMassa = removerSinalEmMassa;
+window.atualizarListaSinalBulk = atualizarListaSinalBulk;
 window.aplicarDataEmMassa = aplicarDataEmMassa;
 window.limparDataEmMassa = limparDataEmMassa;
 // idem: toggleSelecaoTodosProsas segue em window pelo mesmo motivo.
@@ -528,6 +739,7 @@ window.limparSelecaoProsas = limparSelecaoProsas;
 window.excluirSelecaoProsas = excluirSelecaoProsas;
 window.exportarSelecaoProsasJson = exportarSelecaoProsasJson;
 window.exportarSelecaoProsasMarkdown = exportarSelecaoProsasMarkdown;
+window.exportarSelecaoProsasPdf = exportarSelecaoProsasPdf;
 window.aplicarPessoaEmMassaProsa = aplicarPessoaEmMassaProsa;
 window.removerPessoaEmMassaProsa = removerPessoaEmMassaProsa;
 window.aplicarSinalEmMassaProsa = aplicarSinalEmMassaProsa;
@@ -546,12 +758,15 @@ window.setFiltroLivroElementos = setFiltroLivroElementos;
 window.previsualizarExportacaoSeletiva = previsualizarExportacaoSeletiva;
 window.executarExportacaoSeletiva = executarExportacaoSeletiva;
 window.executarExportacaoSeletivaMarkdown = executarExportacaoSeletivaMarkdown;
+window.executarExportacaoSeletivaPdf = executarExportacaoSeletivaPdf;
 window.renderEstatisticas = renderEstatisticas;
+window.renderConexoes = renderConexoes;
 window.exportarTudoAninhado = exportarTudoAninhado;
 window.exportarLivroCompleto = exportarLivroCompleto;
 window.exportarLivrosCompletos = exportarLivrosCompletos;
 window.exportarTudoFlatJson = exportarTudoFlatJson;
 window.exportarTudoFlatMarkdown = exportarTudoFlatMarkdown;
+window.exportarTudoFlatPdf = exportarTudoFlatPdf;
 
 window.toggleSelecaoEstrutura = toggleSelecaoEstrutura;
 window.marcarTodosEstrutura = marcarTodosEstrutura;

@@ -20,6 +20,10 @@ import {
     renderPoemas,
     renderProsas,
     renderElementos,
+    renderPessoas,
+    renderGrupos,
+    renderAutores,
+    renderEpocas,
 } from './render-listas.js';
 import { popularSeletorEstrutura, renderEstrutura } from './render-estrutura.js';
 
@@ -27,6 +31,10 @@ export function renderLists() {
     renderLivros();
     renderPartes();
     renderSecoes();
+    renderPessoas();
+    renderGrupos();
+    renderAutores();
+    renderEpocas();
     renderPoemas();
     renderProsas();
     renderElementos();

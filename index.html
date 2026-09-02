@@ -16,6 +16,12 @@
             })();
         </script>
         <script src="https://cdn.tailwindcss.com"></script>
+        <!-- jsPDF: só usada pelo botão "Baixar em .pdf" da coluna Ações de
+             Poemas/Prosas e do modal de Visualização (ver js/exportar-pdf.js).
+             Carregada via CDN como o Tailwind acima — precisa de internet na
+             hora de gerar o PDF, mas em compensação é um clique só (sem a
+             etapa extra de "Salvar como PDF" da impressão do navegador). -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
         <script>
             // Sem isso o Tailwind usa a variante "media" (segue só o SO) e ignora
             // a classe .dark que a gente aplica manualmente no <html> — o toggle
@@ -54,11 +60,6 @@
                                 class="hidden absolute right-0 mt-1 w-36 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1 z-20"
                             ></div>
                         </div>
-                        <a
-                            href="filtrar.html"
-                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 transition text-sm font-medium"
-                            >Versões Alternativas</a
-                        >
                         <input
                             type="file"
                             id="import-json"
@@ -72,32 +73,38 @@
                         >
                             Importar JSON
                         </button>
-                        <label
-                            class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-md px-2.5 py-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700 transition"
-                            title="Embute as imagens de capa no próprio arquivo. Sem isso, um backup restaurado num navegador zerado perde as capas (só o texto volta) — mas o arquivo fica bem mais leve."
+                        <div
+                            class="flex items-stretch rounded-md overflow-hidden border border-green-600 dark:border-green-500"
                         >
-                            <input
-                                type="checkbox"
-                                id="chk-incluir-capas"
-                                checked
-                                onchange="
-                                    localStorage.setItem(
-                                        'arquivoPoetico_incluirCapasBackup',
-                                        this.checked,
+                            <button
+                                onclick="
+                                    exportarJSON(
+                                        document.getElementById('chk-incluir-capas').checked,
                                     )
                                 "
-                                style="width: 13px; height: 13px; margin: 0"
-                            />
-                            capas
-                        </label>
-                        <button
-                            onclick="
-                                exportarJSON(document.getElementById('chk-incluir-capas').checked)
-                            "
-                            class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 dark:hover:bg-green-500 transition text-sm font-medium"
-                        >
-                            Baixar JSON
-                        </button>
+                                class="bg-green-600 text-white px-4 py-2 hover:bg-green-700 dark:hover:bg-green-500 transition text-sm font-medium"
+                            >
+                                Baixar JSON
+                            </button>
+                            <label
+                                class="flex items-center gap-1.5 text-xs text-green-700 dark:text-green-200 bg-green-50 dark:bg-green-950 px-2.5 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900 transition border-l border-green-600 dark:border-green-500"
+                                title="Embute as imagens de capa no próprio arquivo. Sem isso, um backup restaurado num navegador zerado perde as capas (só o texto volta) — mas o arquivo fica bem mais leve."
+                            >
+                                <input
+                                    type="checkbox"
+                                    id="chk-incluir-capas"
+                                    checked
+                                    onchange="
+                                        localStorage.setItem(
+                                            'arquivoPoetico_incluirCapasBackup',
+                                            this.checked,
+                                        )
+                                    "
+                                    style="width: 13px; height: 13px; margin: 0"
+                                />
+                                capas
+                            </label>
+                        </div>
                         <button
                             onclick="exportarTudoAninhado()"
                             title="Acervo inteiro em árvore (Livro → Parte → Seção → Poema/Prosa), sem filtro — ideal pra mandar pra uma IA processar de uma vez"
@@ -131,92 +138,250 @@
             </div>
         </header>
 
-        <!-- Datalists compartilhadas entre a página principal e o modal de
-         Poema (carregado sob demanda). Ficam aqui pra funcionar mesmo
-         antes do modal de Poema ser aberto pela primeira vez. -->
+        <!-- Datalists compartilhadas entre a página principal e os modais
+         de Poema/Prosa (carregados sob demanda). Ficam aqui pra funcionar
+         mesmo antes do modal ser aberto pela primeira vez. Uma por
+         categoria de Sinalizações (ver SINAL_CATEGORIAS em editor.js),
+         em 4 variantes (poema/prosa × normal/bulk) — "sugestoes-sinais"
+         sem sufixo é a combinada das 6 categorias, usada pelo painel de
+         exportação seletiva. -->
         <datalist id="sugestoes-sinais"></datalist>
         <datalist id="sugestoes-pessoas"></datalist>
-        <datalist id="sugestoes-sinais-bulk-prosa"></datalist>
+        <datalist id="sugestoes-autores"></datalist>
+        <datalist id="sugestoes-sinais-estilo"></datalist>
+        <datalist id="sugestoes-sinais-estilo-bulk"></datalist>
+        <datalist id="sugestoes-sinais-estilo-bulk-prosa"></datalist>
+        <datalist id="sugestoes-sinais-tema"></datalist>
+        <datalist id="sugestoes-sinais-tema-bulk"></datalist>
+        <datalist id="sugestoes-sinais-tema-bulk-prosa"></datalist>
+        <datalist id="sugestoes-sinais-relacao"></datalist>
+        <datalist id="sugestoes-sinais-relacao-bulk"></datalist>
+        <datalist id="sugestoes-sinais-relacao-bulk-prosa"></datalist>
+        <datalist id="sugestoes-sinais-sensibilidade"></datalist>
+        <datalist id="sugestoes-sinais-sensibilidade-bulk"></datalist>
+        <datalist id="sugestoes-sinais-sensibilidade-bulk-prosa"></datalist>
+        <datalist id="sugestoes-sinais-tom"></datalist>
+        <datalist id="sugestoes-sinais-tom-bulk"></datalist>
+        <datalist id="sugestoes-sinais-tom-bulk-prosa"></datalist>
+        <datalist id="sugestoes-sinais-outros"></datalist>
+        <datalist id="sugestoes-sinais-outros-bulk"></datalist>
+        <datalist id="sugestoes-sinais-outros-bulk-prosa"></datalist>
         <datalist id="sugestoes-pessoas-bulk-prosa"></datalist>
         <datalist id="sugestoes-genero-bulk-prosa"></datalist>
 
         <main class="max-w-6xl mx-auto px-4">
+            <!-- Mobile (abaixo de md): botão hambúrguer + painel dropdown
+             agrupado, montado em JS a partir de GRUPOS_NAV (ui.js) — mesma
+             lista de abas da nav desktop abaixo, só numa lente diferente.
+             Desktop (md+): nav horizontal de sempre, agora com divisores
+             visuais entre os 4 grupos. -->
+            <div class="relative md:hidden mb-8">
+                <button
+                    id="btn-menu-mobile"
+                    type="button"
+                    onclick="toggleMenuMobile()"
+                    class="w-full flex items-center gap-2 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 px-3 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 transition text-sm font-medium"
+                >
+                    <span id="icone-menu-mobile" class="text-base leading-none">☰</span>
+                    <span id="rotulo-aba-atual">Livros</span>
+                </button>
+                <div
+                    id="painel-menu-mobile"
+                    class="hidden md:hidden absolute left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-2 z-20 max-h-[70vh] overflow-y-auto"
+                ></div>
+            </div>
+
+            <!-- Nav desktop: 3 grupos com dropdown (abrem no hover — ver
+             .nav-dropdown em style.css) + Exportação solta. Cada dropdown
+             marca o botão do grupo como ativo (.nav-grupo-ativo) quando a
+             aba aberta mora nele — ver atualizarGrupoAtivoNavDesktop em
+             ui.js. -->
             <nav
-                class="flex border-b mb-8 space-x-8 overflow-x-auto border-gray-200 dark:border-slate-700"
+                class="nav-abas-desktop md:flex flex-wrap items-start gap-x-6 gap-y-2 mb-8 pb-2 border-b border-gray-200 dark:border-slate-700"
             >
-                <button
-                    id="btn-livros"
-                    onclick="openTab('livros')"
-                    class="tab-btn pb-2 font-medium active-tab whitespace-nowrap"
-                >
-                    Livros
-                </button>
-                <button
-                    id="btn-coletaneas"
-                    onclick="openTab('coletaneas')"
-                    class="tab-btn pb-2 font-medium whitespace-nowrap"
-                >
-                    Coletâneas
-                </button>
-                <button
-                    id="btn-partes"
-                    onclick="openTab('partes')"
-                    class="tab-btn pb-2 font-medium whitespace-nowrap"
-                >
-                    Partes
-                </button>
-                <button
-                    id="btn-secoes"
-                    onclick="openTab('secoes')"
-                    class="tab-btn pb-2 font-medium whitespace-nowrap"
-                >
-                    Seções
-                </button>
-                <button
-                    id="btn-poemas"
-                    onclick="openTab('poemas')"
-                    class="tab-btn pb-2 font-medium whitespace-nowrap"
-                >
-                    Poemas
-                </button>
-                <button
-                    id="btn-prosas"
-                    onclick="openTab('prosas')"
-                    class="tab-btn pb-2 font-medium whitespace-nowrap"
-                >
-                    Prosas
-                </button>
-                <button
-                    id="btn-elementos"
-                    onclick="openTab('elementos')"
-                    class="tab-btn pb-2 font-medium whitespace-nowrap"
-                >
-                    Elementos Textuais
-                </button>
-                <button
-                    id="btn-estrutura"
-                    onclick="openTab('estrutura')"
-                    class="tab-btn pb-2 font-medium whitespace-nowrap"
-                >
-                    Estrutura
-                </button>
+                <div class="relative nav-dropdown-wrap">
+                    <button
+                        type="button"
+                        id="grupo-estrutura-acervo-btn"
+                        class="grupo-nav-btn nav-grupo-ativo pb-2 font-medium whitespace-nowrap inline-flex items-center gap-1 hover:text-blue-700 dark:hover:text-blue-300"
+                    >
+                        Estrutura do acervo
+                        <span class="text-[9px] opacity-60">▾</span>
+                    </button>
+                    <div class="nav-dropdown absolute left-0 top-full pt-1 z-20 min-w-[190px]">
+                        <div
+                            class="flex flex-col gap-0.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1"
+                        >
+                            <button
+                                id="btn-livros"
+                                onclick="abrirAba('livros')"
+                                class="tab-btn active-tab text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Livros
+                            </button>
+                            <button
+                                id="btn-coletaneas"
+                                onclick="abrirAba('coletaneas')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Coletâneas
+                            </button>
+                            <button
+                                id="btn-partes"
+                                onclick="abrirAba('partes')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Partes
+                            </button>
+                            <button
+                                id="btn-secoes"
+                                onclick="abrirAba('secoes')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Seções
+                            </button>
+                            <button
+                                id="btn-pessoas"
+                                onclick="abrirAba('pessoas')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Pessoas
+                            </button>
+                            <button
+                                id="btn-grupos"
+                                onclick="abrirAba('grupos')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Grupos
+                            </button>
+                            <button
+                                id="btn-autores"
+                                onclick="abrirAba('autores')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Autores
+                            </button>
+                            <button
+                                id="btn-epocas"
+                                onclick="abrirAba('epocas')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Épocas
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative nav-dropdown-wrap">
+                    <button
+                        type="button"
+                        id="grupo-conteudo-btn"
+                        class="grupo-nav-btn pb-2 font-medium whitespace-nowrap inline-flex items-center gap-1 hover:text-blue-700 dark:hover:text-blue-300"
+                    >
+                        Conteúdo
+                        <span class="text-[9px] opacity-60">▾</span>
+                    </button>
+                    <div class="nav-dropdown absolute left-0 top-full pt-1 z-20 min-w-[190px]">
+                        <div
+                            class="flex flex-col gap-0.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1"
+                        >
+                            <button
+                                id="btn-poemas"
+                                onclick="abrirAba('poemas')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Poemas
+                            </button>
+                            <button
+                                id="btn-prosas"
+                                onclick="abrirAba('prosas')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Prosas
+                            </button>
+                            <button
+                                id="btn-elementos"
+                                onclick="abrirAba('elementos')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Elementos Textuais
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative nav-dropdown-wrap">
+                    <button
+                        type="button"
+                        id="grupo-analise-btn"
+                        class="grupo-nav-btn pb-2 font-medium whitespace-nowrap inline-flex items-center gap-1 hover:text-blue-700 dark:hover:text-blue-300"
+                    >
+                        Análise
+                        <span class="text-[9px] opacity-60">▾</span>
+                    </button>
+                    <div class="nav-dropdown absolute left-0 top-full pt-1 z-20 min-w-[190px]">
+                        <div
+                            class="flex flex-col gap-0.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1"
+                        >
+                            <button
+                                id="btn-estrutura"
+                                onclick="abrirAba('estrutura')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Estrutura
+                            </button>
+                            <button
+                                id="btn-conexoes"
+                                onclick="abrirAba('conexoes')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Conexões
+                            </button>
+                            <button
+                                id="btn-estatisticas"
+                                onclick="abrirAba('estatisticas')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Estatísticas
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <button
                     id="btn-exportar-filtrado"
-                    onclick="openTab('exportar-filtrado')"
+                    onclick="abrirAba('exportar-filtrado')"
                     class="tab-btn pb-2 font-medium whitespace-nowrap"
                 >
                     Exportação
                 </button>
-                <button
-                    id="btn-estatisticas"
-                    onclick="
-                        openTab('estatisticas');
-                        renderEstatisticas();
-                    "
-                    class="tab-btn pb-2 font-medium whitespace-nowrap"
-                >
-                    Estatísticas
-                </button>
+
+                <div class="relative nav-dropdown-wrap">
+                    <button
+                        type="button"
+                        id="grupo-ferramentas-btn"
+                        class="grupo-nav-btn pb-2 font-medium whitespace-nowrap inline-flex items-center gap-1 hover:text-blue-700 dark:hover:text-blue-300"
+                    >
+                        Ferramentas
+                        <span class="text-[9px] opacity-60">▾</span>
+                    </button>
+                    <div class="nav-dropdown absolute left-0 top-full pt-1 z-20 min-w-[190px]">
+                        <div
+                            class="flex flex-col gap-0.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1"
+                        >
+                            <a
+                                href="localizar-substituir.html"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap block"
+                                >Localizar e Substituir</a
+                            >
+                            <a
+                                href="filtrar.html"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap block"
+                                >Versões Alternativas</a
+                            >
+                        </div>
+                    </div>
+                </div>
             </nav>
 
             <section id="livros" class="tab-content active">
@@ -326,6 +491,58 @@
                 <div id="lista-secoes" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </section>
 
+            <section id="pessoas" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Pessoas</h2>
+                    <button
+                        onclick="prepararNovo('pessoa')"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                    >
+                        Nova Pessoa
+                    </button>
+                </div>
+                <div id="lista-pessoas" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </section>
+
+            <section id="grupos" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Grupos</h2>
+                    <button
+                        onclick="prepararNovo('grupo')"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                    >
+                        Novo Grupo
+                    </button>
+                </div>
+                <div id="lista-grupos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </section>
+
+            <section id="autores" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Autores</h2>
+                    <button
+                        onclick="prepararNovo('autor')"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                    >
+                        Novo Autor
+                    </button>
+                </div>
+                <div id="lista-autores" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </section>
+
+            <section id="epocas" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Épocas</h2>
+                    <button
+                        onclick="prepararNovo('epoca')"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                    >
+                        Nova Época
+                    </button>
+                </div>
+                <div id="lista-epocas" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </section>
+
             <section id="poemas" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-semibold">Conteúdo Literário</h2>
@@ -383,6 +600,7 @@
                         <option value="completos">Só completos ⚪</option>
                         <option value="incompletos">Só incompletos 🟡</option>
                         <option value="migrados">Só migrados 🔵</option>
+                        <option value="pendentes">Só pendentes 🟠</option>
                         <option value="descartados">Só descartados 🔴</option>
                     </select>
                     <select
@@ -396,45 +614,76 @@
 
                 <div
                     id="ajuda-busca-poemas"
-                    class="hidden mb-4 -mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-lg"
+                    class="hidden mb-4 -mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-lg space-y-3"
                 >
-                    <ul class="list-disc pl-4 space-y-1">
-                        <li>
-                            O primeiro campo busca <strong>metadados</strong> (título, ano, etiqueta,
-                            pessoa, livro); o segundo busca só o <strong>conteúdo</strong> do texto
-                            (versos/corpo do poema).
-                        </li>
-                        <li>
-                            O botão <strong>E / OU</strong> entre os dois campos decide se um poema
-                            precisa bater nos dois pra aparecer (E) ou se basta bater em um deles
-                            (OU) — só faz diferença quando os dois campos têm algo digitado.
-                        </li>
-                        <li>Separe os termos por espaço pra combinar — todos precisam aparecer.</li>
-                        <li>
-                            Use a palavra <code>ou</code> entre termos pra pedir alternativas dentro
-                            do mesmo campo: <code>Dalton ou Gabriela</code>.
-                        </li>
-                        <li>Use aspas pra buscar a frase exata: <code>"beira do mar"</code>.</li>
-                        <li>
-                            Prefixe com <code>-</code> pra excluir: <code>-rascunho</code> ou
-                            <code>-2023</code> — a exclusão vale sempre, mesmo dos dois lados de um
-                            <code>ou</code>.
-                        </li>
-                        <li>
-                            No campo de metadados, não usa data de escrita/publicação (pra isso, veja
-                            o filtro de data logo abaixo).
-                        </li>
-                        <li>
-                            No campo de metadados, pra restringir a um atributo específico, prefixe o
-                            termo com o nome dele e dois-pontos: <code>titulo:</code>,
-                            <code>etiqueta:</code>, <code>pessoa:</code>, <code>nota:</code>,
-                            <code>livro:</code>, <code>parte:</code>, <code>secao:</code>.
-                        </li>
-                        <li>
-                            Exemplos: <code>pessoa:Dalton</code>,
-                            <code>secao:"Fragmentos do Fim"</code>, <code>-etiqueta:rascunho</code>.
-                        </li>
-                    </ul>
+                    <div>
+                        <p class="font-bold mb-1">Sintaxe</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>
+                                Primeiro campo busca <strong>metadados</strong>; segundo busca só o
+                                <strong>conteúdo</strong> do texto (versos/corpo do poema). O botão
+                                <strong>E / OU</strong> entre os dois decide se precisa bater nos
+                                dois (E) ou só num deles (OU).
+                            </li>
+                            <li>
+                                Espaço = E lógico; <code>ou</code> = alternativa (<code
+                                    >Dalton ou Gabriela</code
+                                >); aspas = frase exata (<code>"beira do mar"</code>);
+                                <code>-termo</code> exclui.
+                            </li>
+                            <li>
+                                Acento não importa, nem no termo nem no prefixo —
+                                <code>arvore</code> acha "árvore", <code>sensivel:</code> e
+                                <code>sensível:</code> dão no mesmo.
+                            </li>
+                            <li>
+                                Não inclui data de escrita/publicação — use o filtro de data logo
+                                abaixo.
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Restringir a um campo</p>
+                        <p class="mb-1">
+                            Prefixe o termo com <code>campo:</code>. A maioria dos campos já tem
+                            lupa 🔍 no cabeçalho da coluna — clique nela em vez de digitar. Só estes
+                            aqui não têm coluna própria:
+                        </p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>
+                                <code>estilo:</code> <code>tema:</code> <code>relacao:</code>
+                                <code>tom:</code> <code>sensibilidade:</code> <code>outros:</code> —
+                                categorias de Etiqueta (a coluna Etiquetas mostra todas juntas; use
+                                um destes pra restringir a só uma categoria).
+                            </li>
+                            <li>
+                                <code>livro:</code> <code>parte:</code> <code>secao:</code> —
+                                posição na estrutura.
+                            </li>
+                            <li>
+                                <code>papel:</code> — restringe aos papéis marcados nas pessoas do
+                                texto (ex.: <code>papel:dedicatária</code>), sem olhar nome — a
+                                coluna Pessoas (e o prefixo <code>pessoa:</code>) já busca nome e
+                                papel juntos; use este quando quiser só o papel.
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Presença de campo</p>
+                        <p>
+                            <code>campo:*</code> (asterisco sozinho) acha quem tem aquele campo
+                            preenchido, não importa com o quê — ex.: <code>sensivel:*</code>.
+                            <code>-campo:*</code> inverte: só quem está com o campo vazio.
+                        </p>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Exemplos</p>
+                        <p>
+                            <code>pessoa:Dalton</code>, <code>papel:"melhor amiga"</code>,
+                            <code>grupo:Família</code>, <code>secao:"Fragmentos do Fim"</code>,
+                            <code>-etiqueta:rascunho</code>, <code>sensivel:*</code>
+                        </p>
+                    </div>
                 </div>
 
                 <div class="mb-4">
@@ -710,18 +959,33 @@
                     </div>
                 </div>
 
-                <div class="mb-4">
-                    <button
-                        type="button"
-                        onclick="togglePainel('painel-colunas-poemas', this)"
-                        class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                        🧱 Colunas ▾
-                    </button>
-                    <div
-                        id="painel-colunas-poemas"
-                        class="hidden mt-2 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-4"
-                    ></div>
+                <div class="mb-4 flex flex-wrap gap-x-6 gap-y-2">
+                    <div>
+                        <button
+                            type="button"
+                            onclick="togglePainel('painel-colunas-poemas', this)"
+                            class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            🧱 Colunas ▾
+                        </button>
+                        <div
+                            id="painel-colunas-poemas"
+                            class="hidden mt-2 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-4"
+                        ></div>
+                    </div>
+                    <div>
+                        <button
+                            type="button"
+                            onclick="togglePainel('painel-acoes-poemas', this)"
+                            class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            ⚙️ Ações ▾
+                        </button>
+                        <div
+                            id="painel-acoes-poemas"
+                            class="hidden mt-2 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+                        ></div>
+                    </div>
                 </div>
 
                 <div
@@ -751,11 +1015,24 @@
                     >
                         − Remover
                     </button>
+                    <select
+                        id="bulk-sinal-categoria"
+                        onchange="atualizarListaSinalBulk(this, 'bulk-sinal-input')"
+                        class="text-xs mb-0"
+                        style="max-width: 140px"
+                    >
+                        <option value="sinalizacoesEstilo">Estilo</option>
+                        <option value="sinalizacoesTema">Tema</option>
+                        <option value="sinalizacoesRelacao">Relação</option>
+                        <option value="sinalizacoesSensibilidade">Sensibilidade</option>
+                        <option value="sinalizacoesTom">Tom</option>
+                        <option value="sinalizacoesOutros">Outros</option>
+                    </select>
                     <input
                         type="text"
                         id="bulk-sinal-input"
-                        list="sugestoes-sinais"
-                        placeholder="Sinalização/tema..."
+                        list="sugestoes-sinais-estilo-bulk"
+                        placeholder="Sinalização..."
                         class="flex-1 min-w-[160px] mb-0"
                     />
                     <button
@@ -790,6 +1067,12 @@
                         ⬇ MD
                     </button>
                     <button
+                        onclick="exportarSelecaoPoemasPdf()"
+                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                    >
+                        ⬇ PDF
+                    </button>
+                    <button
                         onclick="excluirSelecaoPoemas()"
                         class="bg-red-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap ml-auto"
                     >
@@ -807,7 +1090,8 @@
                         class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
                     >
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
                                 >Aplicar em</label
                             >
                             <select id="bulk-data-tipo" class="text-xs p-2">
@@ -816,7 +1100,8 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
                                 >Dia</label
                             >
                             <input
@@ -828,7 +1113,8 @@
                             />
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
                                 >Mês</label
                             >
                             <input
@@ -840,7 +1126,8 @@
                             />
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
                                 >Ano</label
                             >
                             <input
@@ -963,45 +1250,82 @@
 
                 <div
                     id="ajuda-busca-prosas"
-                    class="hidden mb-4 -mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-lg"
+                    class="hidden mb-4 -mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-lg space-y-3"
                 >
-                    <ul class="list-disc pl-4 space-y-1">
-                        <li>
-                            O primeiro campo busca <strong>metadados</strong> (título, ano, etiqueta,
-                            pessoa); o segundo busca só o <strong>conteúdo</strong> do texto (corpo da
-                            prosa).
-                        </li>
-                        <li>
-                            O botão <strong>E / OU</strong> entre os dois campos decide se uma prosa
-                            precisa bater nos dois pra aparecer (E) ou se basta bater em um deles
-                            (OU) — só faz diferença quando os dois campos têm algo digitado.
-                        </li>
-                        <li>Separe os termos por espaço pra combinar — todos precisam aparecer.</li>
-                        <li>
-                            Use a palavra <code>ou</code> entre termos pra pedir alternativas dentro
-                            do mesmo campo: <code>Dalton ou Gabriela</code>.
-                        </li>
-                        <li>Use aspas pra buscar a frase exata: <code>"beira do mar"</code>.</li>
-                        <li>
-                            Prefixe com <code>-</code> pra excluir: <code>-rascunho</code> ou
-                            <code>-2023</code> — a exclusão vale sempre, mesmo dos dois lados de um
-                            <code>ou</code>.
-                        </li>
-                        <li>
-                            No campo de metadados, não usa data de escrita/publicação (pra isso, veja
-                            o filtro de data logo abaixo).
-                        </li>
-                        <li>
-                            No campo de metadados, pra restringir a um atributo específico, prefixe o
-                            termo com o nome dele e dois-pontos: <code>titulo:</code>,
-                            <code>etiqueta:</code>, <code>pessoa:</code>, <code>nota:</code>,
-                            <code>livro:</code>, <code>parte:</code>, <code>secao:</code>.
-                        </li>
-                        <li>
-                            Exemplos: <code>pessoa:Dalton</code>,
-                            <code>secao:"Fragmentos do Fim"</code>, <code>-etiqueta:rascunho</code>.
-                        </li>
-                    </ul>
+                    <div>
+                        <p class="font-bold mb-1">Sintaxe</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>
+                                Primeiro campo busca <strong>metadados</strong>; segundo busca só o
+                                <strong>conteúdo</strong> do texto (corpo da prosa). O botão
+                                <strong>E / OU</strong> entre os dois decide se precisa bater nos
+                                dois (E) ou só num deles (OU).
+                            </li>
+                            <li>
+                                Espaço = E lógico; <code>ou</code> = alternativa (<code
+                                    >Dalton ou Gabriela</code
+                                >); aspas = frase exata (<code>"beira do mar"</code>);
+                                <code>-termo</code> exclui.
+                            </li>
+                            <li>
+                                Acento não importa, nem no termo nem no prefixo —
+                                <code>arvore</code> acha "árvore", <code>sensivel:</code> e
+                                <code>sensível:</code> dão no mesmo.
+                            </li>
+                            <li>
+                                Não inclui data de escrita/publicação — use o filtro de data logo
+                                abaixo.
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Restringir a um campo</p>
+                        <p class="mb-1">
+                            Prefixe o termo com <code>campo:</code>. A maioria dos campos já tem
+                            lupa 🔍 no cabeçalho da coluna — clique nela em vez de digitar. Só estes
+                            aqui não têm coluna própria:
+                        </p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>
+                                <code>estilo:</code> <code>tema:</code> <code>relacao:</code>
+                                <code>tom:</code> <code>sensibilidade:</code> <code>outros:</code> —
+                                categorias de Etiqueta (a coluna Etiquetas mostra todas juntas; use
+                                um destes pra restringir a só uma categoria).
+                            </li>
+                            <li>
+                                <code>livro:</code> <code>parte:</code> <code>secao:</code> —
+                                posição na estrutura.
+                            </li>
+                            <li>
+                                <code>papel:</code> — restringe aos papéis marcados nas pessoas do
+                                texto (ex.: <code>papel:dedicatária</code>), sem olhar nome — a
+                                coluna Pessoas (e o prefixo <code>pessoa:</code>) já busca nome e
+                                papel juntos; use este quando quiser só o papel.
+                            </li>
+                        </ul>
+                        <p class="mt-1">
+                            Os demais campos de Poema (Ocultação, Conteúdo Sensível, Vocabulário
+                            Hiperacionante, Descarte, Contexto Histórico etc.) ainda não existem em
+                            Prosa — ela ganha esses campos quando o item 4 do schema (paridade com
+                            Poema) for implementado.
+                        </p>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Presença de campo</p>
+                        <p>
+                            <code>campo:*</code> (asterisco sozinho) acha quem tem aquele campo
+                            preenchido, não importa com o quê — ex.: <code>etiqueta:*</code>.
+                            <code>-campo:*</code> inverte: só quem está com o campo vazio.
+                        </p>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Exemplos</p>
+                        <p>
+                            <code>pessoa:Dalton</code>, <code>papel:"melhor amiga"</code>,
+                            <code>grupo:Família</code>, <code>secao:"Fragmentos do Fim"</code>,
+                            <code>-etiqueta:rascunho</code>, <code>etiqueta:*</code>
+                        </p>
+                    </div>
                 </div>
 
                 <div class="mb-4">
@@ -1190,18 +1514,33 @@
                     </div>
                 </div>
 
-                <div class="mb-4">
-                    <button
-                        type="button"
-                        onclick="togglePainel('painel-colunas-prosas', this)"
-                        class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                        🧱 Colunas ▾
-                    </button>
-                    <div
-                        id="painel-colunas-prosas"
-                        class="hidden mt-2 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-4"
-                    ></div>
+                <div class="mb-4 flex flex-wrap gap-x-6 gap-y-2">
+                    <div>
+                        <button
+                            type="button"
+                            onclick="togglePainel('painel-colunas-prosas', this)"
+                            class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            🧱 Colunas ▾
+                        </button>
+                        <div
+                            id="painel-colunas-prosas"
+                            class="hidden mt-2 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-4"
+                        ></div>
+                    </div>
+                    <div>
+                        <button
+                            type="button"
+                            onclick="togglePainel('painel-acoes-prosas', this)"
+                            class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            ⚙️ Ações ▾
+                        </button>
+                        <div
+                            id="painel-acoes-prosas"
+                            class="hidden mt-2 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+                        ></div>
+                    </div>
                 </div>
 
                 <div
@@ -1231,11 +1570,24 @@
                     >
                         − Remover
                     </button>
+                    <select
+                        id="bulk-sinal-categoria-prosa"
+                        onchange="atualizarListaSinalBulk(this, 'bulk-sinal-input-prosa', '-prosa')"
+                        class="text-xs mb-0"
+                        style="max-width: 140px"
+                    >
+                        <option value="sinalizacoesEstilo">Estilo</option>
+                        <option value="sinalizacoesTema">Tema</option>
+                        <option value="sinalizacoesRelacao">Relação</option>
+                        <option value="sinalizacoesSensibilidade">Sensibilidade</option>
+                        <option value="sinalizacoesTom">Tom</option>
+                        <option value="sinalizacoesOutros">Outros</option>
+                    </select>
                     <input
                         type="text"
                         id="bulk-sinal-input-prosa"
-                        list="sugestoes-sinais-bulk-prosa"
-                        placeholder="Sinalização/tema..."
+                        list="sugestoes-sinais-estilo-bulk-prosa"
+                        placeholder="Sinalização..."
                         class="flex-1 min-w-[160px] mb-0"
                     />
                     <button
@@ -1289,6 +1641,12 @@
                         ⬇ MD
                     </button>
                     <button
+                        onclick="exportarSelecaoProsasPdf()"
+                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                    >
+                        ⬇ PDF
+                    </button>
+                    <button
                         onclick="excluirSelecaoProsas()"
                         class="bg-red-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap ml-auto"
                     >
@@ -1306,7 +1664,8 @@
                         class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
                     >
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
                                 >Aplicar em</label
                             >
                             <select id="bulk-data-tipo-prosa" class="text-xs p-2">
@@ -1315,7 +1674,8 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
                                 >Dia</label
                             >
                             <input
@@ -1327,7 +1687,8 @@
                             />
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
                                 >Mês</label
                             >
                             <input
@@ -1339,7 +1700,8 @@
                             />
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
                                 >Ano</label
                             >
                             <input
@@ -1493,6 +1855,46 @@
                 </div>
             </section>
 
+            <section id="conexoes" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Conexões</h2>
+                </div>
+                <p class="text-xs text-gray-400 dark:text-slate-500 mb-6">
+                    Visão computada sobre Elos e Referências (item 10 do plano de schema) — não é
+                    dona de nenhum dado, só uma lente sobre o que já está cadastrado no campo
+                    "Elos"/"Referências" de cada poema. Pra editar um vínculo, clique no título do
+                    poema pra abrir o modal normalmente.
+                </p>
+
+                <div class="mb-8">
+                    <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300 mb-1">
+                        ⚠️ Buracos (Elos com só um lado cadastrado)
+                    </h3>
+                    <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-3">
+                        Mesmo cálculo do painel derivado do modal de Poema, só que pra todos os
+                        poemas de uma vez.
+                    </p>
+                    <div
+                        id="conexoes-buracos"
+                        class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    ></div>
+                </div>
+
+                <div class="mb-8">
+                    <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300 mb-3">
+                        Elos (pares e clusters)
+                    </h3>
+                    <div id="conexoes-elos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300 mb-3">
+                        Referências (cadeias)
+                    </h3>
+                    <div id="conexoes-referencias" class="grid grid-cols-1 gap-4"></div>
+                </div>
+            </section>
+
             <section id="exportar-filtrado" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-semibold">Exportação</h2>
@@ -1630,11 +2032,13 @@
                             <option value="completos">Só completos (Poemas)</option>
                             <option value="incompletos">Só incompletos (Poemas)</option>
                             <option value="migrados">Só migrados (Poemas)</option>
+                            <option value="pendentes">Só pendentes (Poemas)</option>
                             <option value="descartados">Só descartados (Poemas)</option>
                         </select>
                         <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
-                            "Completos", "Incompletos", "Migrados" e "Descartados" só existem em
-                            Poemas — Prosas não têm essa distinção e ficam de fora dessas opções.
+                            "Completos", "Incompletos", "Migrados", "Pendentes" e "Descartados" só
+                            existem em Poemas — Prosas não têm essa distinção e ficam de fora dessas
+                            opções.
                         </p>
                     </div>
 
@@ -1700,6 +2104,13 @@
                         >
                             Baixar .md seletivo
                         </button>
+                        <button
+                            onclick="executarExportacaoSeletivaPdf()"
+                            class="bg-slate-600 text-white px-4 py-2 rounded shadow font-bold text-sm"
+                            title="Mesma seleção acima, num PDF pronto pra ler ou imprimir"
+                        >
+                            Baixar .pdf seletivo
+                        </button>
                         <span
                             id="exp-resultado"
                             class="text-xs text-gray-500 dark:text-slate-400"
@@ -1734,13 +2145,19 @@
                                 onclick="exportarTudoFlatJson()"
                                 class="bg-blue-700 dark:bg-blue-600 text-white px-4 py-2 rounded shadow font-bold text-sm"
                             >
-                                Baixar tudo — JSON flat
+                                Baixar tudo - JSON flat
                             </button>
                             <button
                                 onclick="exportarTudoFlatMarkdown()"
                                 class="bg-slate-700 dark:bg-slate-600 text-white px-4 py-2 rounded shadow font-bold text-sm"
                             >
-                                Baixar tudo — .md
+                                Baixar tudo - .md
+                            </button>
+                            <button
+                                onclick="exportarTudoFlatPdf()"
+                                class="bg-slate-700 dark:bg-slate-600 text-white px-4 py-2 rounded shadow font-bold text-sm"
+                            >
+                                Baixar tudo - .pdf
                             </button>
                         </div>
                     </div>

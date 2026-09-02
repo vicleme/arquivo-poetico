@@ -21,6 +21,8 @@ function resetarDb() {
     db.elementos = [];
     db.coletaneas = [];
     db.itensColetanea = [];
+    db.pessoas = [];
+    db.grupos = [];
 }
 
 // ─── dataEstaNoIntervalo ────────────────────────────────────────
@@ -127,16 +129,29 @@ describe('correspondeFiltro (filtro combinado: livro, pessoa, tema, data, status
         assert.equal(correspondeFiltro({ paiTipo: 'livro', paiId: 2 }, opcoes), false);
     });
 
-    it('filtro por pessoa: basta UMA das pessoas marcadas bater', () => {
+    it('filtro por pessoa: basta UMA das pessoas marcadas bater (resolvido via cadastro central)', () => {
+        db.pessoas = [
+            { id: 1, nome: 'Dalton', grupoIds: [] },
+            { id: 2, nome: 'Sarinha', grupoIds: [] },
+        ];
         const opcoes = { ...opcoesBase(), pessoasIncluir: ['dalton', 'dani'] };
-        assert.equal(correspondeFiltro({ pessoas: 'Dalton' }, opcoes), true);
-        assert.equal(correspondeFiltro({ pessoas: 'Sarinha' }, opcoes), false);
+        assert.equal(
+            correspondeFiltro({ pessoas: [{ pessoaId: 1, papeis: [] }] }, opcoes),
+            true,
+        );
+        assert.equal(
+            correspondeFiltro({ pessoas: [{ pessoaId: 2, papeis: [] }] }, opcoes),
+            false,
+        );
     });
 
     it('tema a incluir E tema a excluir ao mesmo tempo: exclusão vence', () => {
         const opcoes = { ...opcoesBase(), temasIncluir: ['mar'], temasExcluir: ['rascunho'] };
-        assert.equal(correspondeFiltro({ sinalizacoes: 'mar' }, opcoes), true);
-        assert.equal(correspondeFiltro({ sinalizacoes: 'mar, rascunho' }, opcoes), false);
+        assert.equal(correspondeFiltro({ sinalizacoesTema: 'mar' }, opcoes), true);
+        assert.equal(
+            correspondeFiltro({ sinalizacoesTema: 'mar', sinalizacoesOutros: 'rascunho' }, opcoes),
+            false,
+        );
     });
 
     it('status "publicados" exclui rascunhos, e vice-versa', () => {
@@ -206,8 +221,8 @@ describe('gerarExportacaoSeletiva (monta o payload final: itens + coletâneas)',
         resetarDb();
         db.livros = [{ id: 1, titulo: 'Livro A' }];
         db.poemas = [
-            { id: 10, titulo: 'Poema 1', paiTipo: 'livro', paiId: 1, sinalizacoes: 'mar' },
-            { id: 11, titulo: 'Poema 2', paiTipo: 'livro', paiId: 1, sinalizacoes: 'terra' },
+            { id: 10, titulo: 'Poema 1', paiTipo: 'livro', paiId: 1, sinalizacoesTema: 'mar' },
+            { id: 11, titulo: 'Poema 2', paiTipo: 'livro', paiId: 1, sinalizacoesTema: 'terra' },
         ];
         db.prosas = [{ id: 20, titulo: 'Prosa 1', paiTipo: 'livro', paiId: 1 }];
     });
@@ -292,18 +307,15 @@ describe('gerarTudoFlat (acervo inteiro, sem filtro, no modelo flat)', () => {
         resetarDb();
         db.livros = [{ id: 1, titulo: 'Livro A' }];
         db.poemas = [
-            { id: 10, titulo: 'Poema 1', paiTipo: 'livro', paiId: 1, sinalizacoes: 'mar' },
-            { id: 11, titulo: 'Poema 2', paiTipo: 'livro', paiId: 1, sinalizacoes: 'terra' },
+            { id: 10, titulo: 'Poema 1', paiTipo: 'livro', paiId: 1, sinalizacoesTema: 'mar' },
+            { id: 11, titulo: 'Poema 2', paiTipo: 'livro', paiId: 1, sinalizacoesTema: 'terra' },
         ];
         db.prosas = [{ id: 20, titulo: 'Prosa 1', paiTipo: 'livro', paiId: 1 }];
     });
 
     it('inclui todos os poemas e prosas do acervo, sem filtro nenhum', () => {
         const { itens } = gerarTudoFlat();
-        assert.deepEqual(
-            itens.map((i) => i.id).sort(),
-            [10, 11, 20],
-        );
+        assert.deepEqual(itens.map((i) => i.id).sort(), [10, 11, 20]);
     });
 
     it('cada registro sai com `tipo` e `contexto` resolvidos, igual à exportação seletiva', () => {
