@@ -3,7 +3,12 @@
 // Importado por: main.js (inicialização)
 // ============================================================
 
-import { db, obterOuCriarPessoaPorNome, obterOuCriarAutorPorNome } from './db.js';
+import {
+    db,
+    obterOuCriarPessoaPorNome,
+    obterOuCriarAutorPorNome,
+    obterOuCriarGrupoPorNome,
+} from './db.js';
 import {
     extrairSinalizacoesUnicas,
     extrairGenerosUnicos,
@@ -154,6 +159,10 @@ function criarGrupoDeTags({ inputId, containerId, hiddenInputId, corClasse, nome
 // embutido no HTML renderizado) são gerados a partir dela pra não
 // repetir os IDs de DOM em dois lugares.
 const SINAL_CATEGORIAS = [
+    // "Tradição" (ex.: formas/escolas poéticas herdadas — soneto,
+    // haicai, cordel...) — categoria própria pedida à parte de Estilo,
+    // por isso vem antes dele na ordem de exibição.
+    { chave: 'Tradicao', cor: 'bg-teal-600' },
     { chave: 'Estilo', cor: 'bg-blue-600' },
     { chave: 'Tema', cor: 'bg-emerald-600' },
     { chave: 'Relacao', cor: 'bg-purple-600' },
@@ -446,6 +455,96 @@ function criarGrupoDePessoas({
     };
 }
 
+// ─── Fábrica de Grupos referenciados diretamente ────────────────
+// Complementa o painel somente-leitura acima (renderPainelGrupos, que
+// só mostra Grupo derivado de Pessoa citada): às vezes o texto se
+// refere a um Grupo inteiro sem citar ninguém dele em particular (ex.:
+// um poema que fala da família em geral, não de uma pessoa específica
+// dela). Guarda um array de grupoId — variante mais simples de
+// criarGrupoDePessoas (sem papéis, sem dropdown): nome digitado que bate
+// com Grupo já cadastrado reaproveita o id direto; nome sem
+// correspondência pede confirmação antes de criar (mesmo padrão de
+// Pessoa, ver obterOuCriarGrupoPorNome em db.js).
+function criarGrupoDeGruposDiretos({ inputId, containerId, nomeFuncaoRemover }) {
+    let itens = []; // array de grupoId
+
+    function grupoDe(grupoId) {
+        return db.grupos.find((g) => g.id == grupoId);
+    }
+
+    function adicionarPorId(grupoId) {
+        if (!itens.some((id) => id == grupoId)) {
+            itens.push(grupoId);
+            renderizar();
+        }
+    }
+
+    function adicionar(valor = null) {
+        const input = document.getElementById(inputId);
+        const nome = (valor ?? input?.value ?? '').trim();
+        if (input) input.value = '';
+        if (!nome) return;
+
+        const existente = db.grupos.find((g) => g.nome === nome);
+        if (existente) {
+            adicionarPorId(existente.id);
+            return;
+        }
+
+        abrirModalConfirmacao({
+            titulo: `Criar grupo "${nome}"?`,
+            rotulo: 'Grupo novo',
+            mensagem: `"${nome}" ainda não está no cadastro de Grupos. Criar agora (cor padrão — dá pra trocar depois na aba Grupos)?`,
+            textoConfirmar: 'Criar',
+            corConfirmar: '#e11d48',
+            onConfirmar: () => {
+                const grupo = obterOuCriarGrupoPorNome(nome);
+                adicionarPorId(grupo.id);
+            },
+        });
+    }
+
+    function remover(grupoId) {
+        itens = itens.filter((id) => id != grupoId);
+        renderizar();
+    }
+
+    function renderizar() {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = itens
+            .map((grupoId) => {
+                const grupo = grupoDe(grupoId);
+                const nome = grupo?.nome || '(grupo removido)';
+                return `
+            <span class="text-[11px] ${classesCorGrupo(grupo?.cor)} px-2 py-1 rounded-full inline-flex items-center gap-1">
+                ${escapeHtml(nome)}
+                <button type="button" data-id="${escapeHtml(String(grupoId))}" onclick="${nomeFuncaoRemover}(this.dataset.id)" class="hover:text-red-600 dark:hover:text-red-400 font-bold ml-1">×</button>
+            </span>`;
+            })
+            .join('');
+    }
+
+    function reset() {
+        itens = [];
+        renderizar();
+    }
+
+    // Aceita o array de grupoId já migrado — sem formatos legados aqui,
+    // já que o campo é novo (não existe dado antigo em outro formato
+    // pra defender, diferente de carregar() em criarGrupoDePessoas).
+    function carregar(ids) {
+        itens = Array.isArray(ids) ? [...ids] : [];
+        renderizar();
+    }
+
+    function obterItens() {
+        return [...itens];
+    }
+
+    return { adicionar, remover, renderizar, reset, carregar, obterItens };
+}
+
 // ─── Fábrica de grupo de Autoria (chip + papel único) ──────────
 // Variante mais simples de criarGrupoDePessoas: o vínculo item↔Autor
 // é single-role (Autor OU Coautor, nunca os dois pro mesmo texto — ver
@@ -587,6 +686,17 @@ const grupoPessoasProsa = criarGrupoDePessoas({
     infoGruposId: 'pr-pessoas-grupos-info',
 });
 
+const grupoGruposDiretosPoema = criarGrupoDeGruposDiretos({
+    inputId: 'p-grupo-direto-input',
+    containerId: 'p-grupos-diretos-container',
+    nomeFuncaoRemover: 'removerGrupoDireto',
+});
+const grupoGruposDiretosProsa = criarGrupoDeGruposDiretos({
+    inputId: 'pr-grupo-direto-input',
+    containerId: 'pr-grupos-diretos-container',
+    nomeFuncaoRemover: 'removerGrupoDiretoProsa',
+});
+
 const grupoAutoriaPoema = criarGrupoDeAutoria({
     inputId: 'p-autor-input',
     containerId: 'p-autoria-container',
@@ -708,12 +818,16 @@ function criarListaDeEntradas({ containerId, renderItem, nomeFuncaoRemover, nome
 
 const listaIntertextoPoema = criarListaDeEntradas({
     containerId: 'p-intertexto-lista',
-    renderItem: (it) =>
-        `${
-            it.tipo
-                ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
-                : ''
-        }${escapeHtml(it.texto || '')}`,
+    renderItem: (it) => {
+        const badge = it.tipo
+            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+            : '';
+        const link = it.link
+            ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px]">${escapeHtml(it.link)}</a>`
+            : '';
+        const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
+        return `${badge}${escapeHtml(it.texto || '')}${link}${nota}`;
+    },
     nomeFuncaoRemover: 'removerIntertexto',
     nomeFuncaoEditar: 'editarIntertexto',
 });
@@ -738,12 +852,18 @@ export function atualizarDatalistIntertexto() {
 export function adicionarIntertexto() {
     const tipoEl = document.getElementById('p-intertexto-tipo');
     const textoEl = document.getElementById('p-intertexto-texto');
+    const linkEl = document.getElementById('p-intertexto-link');
+    const notaEl = document.getElementById('p-intertexto-nota');
     const tipo = tipoEl?.value || '';
     const texto = (textoEl?.value || '').trim();
-    if (!tipo && !texto) return;
-    listaIntertextoPoema.salvar({ tipo, texto });
+    const link = (linkEl?.value || '').trim();
+    const nota = (notaEl?.value || '').trim();
+    if (!tipo && !texto && !link && !nota) return;
+    listaIntertextoPoema.salvar({ tipo, texto, link, nota });
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
+    if (linkEl) linkEl.value = '';
+    if (notaEl) notaEl.value = '';
     atualizarBotaoIntertexto();
     atualizarDatalistIntertexto();
 }
@@ -751,8 +871,12 @@ export function editarIntertexto(indice) {
     const item = listaIntertextoPoema.iniciarEdicao(indice);
     const tipoEl = document.getElementById('p-intertexto-tipo');
     const textoEl = document.getElementById('p-intertexto-texto');
+    const linkEl = document.getElementById('p-intertexto-link');
+    const notaEl = document.getElementById('p-intertexto-nota');
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (textoEl) textoEl.value = item.texto || '';
+    if (linkEl) linkEl.value = item.link || '';
+    if (notaEl) notaEl.value = item.nota || '';
     textoEl?.focus();
     atualizarBotaoIntertexto();
 }
@@ -760,8 +884,12 @@ export function cancelarEdicaoIntertexto() {
     listaIntertextoPoema.cancelarEdicao();
     const tipoEl = document.getElementById('p-intertexto-tipo');
     const textoEl = document.getElementById('p-intertexto-texto');
+    const linkEl = document.getElementById('p-intertexto-link');
+    const notaEl = document.getElementById('p-intertexto-nota');
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
+    if (linkEl) linkEl.value = '';
+    if (notaEl) notaEl.value = '';
     atualizarBotaoIntertexto();
 }
 export function removerIntertexto(indice) {
@@ -1478,12 +1606,16 @@ export function resetReferenciasProsa() {
 
 const listaIntertextoProsa = criarListaDeEntradas({
     containerId: 'pr-intertexto-lista',
-    renderItem: (it) =>
-        `${
-            it.tipo
-                ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
-                : ''
-        }${escapeHtml(it.texto || '')}`,
+    renderItem: (it) => {
+        const badge = it.tipo
+            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+            : '';
+        const link = it.link
+            ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px]">${escapeHtml(it.link)}</a>`
+            : '';
+        const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
+        return `${badge}${escapeHtml(it.texto || '')}${link}${nota}`;
+    },
     nomeFuncaoRemover: 'removerIntertextoProsa',
     nomeFuncaoEditar: 'editarIntertextoProsa',
 });
@@ -1508,12 +1640,18 @@ export function atualizarDatalistIntertextoProsa() {
 export function adicionarIntertextoProsa() {
     const tipoEl = document.getElementById('pr-intertexto-tipo');
     const textoEl = document.getElementById('pr-intertexto-texto');
+    const linkEl = document.getElementById('pr-intertexto-link');
+    const notaEl = document.getElementById('pr-intertexto-nota');
     const tipo = tipoEl?.value || '';
     const texto = (textoEl?.value || '').trim();
-    if (!tipo && !texto) return;
-    listaIntertextoProsa.salvar({ tipo, texto });
+    const link = (linkEl?.value || '').trim();
+    const nota = (notaEl?.value || '').trim();
+    if (!tipo && !texto && !link && !nota) return;
+    listaIntertextoProsa.salvar({ tipo, texto, link, nota });
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
+    if (linkEl) linkEl.value = '';
+    if (notaEl) notaEl.value = '';
     atualizarBotaoIntertextoProsa();
     atualizarDatalistIntertextoProsa();
 }
@@ -1521,8 +1659,12 @@ export function editarIntertextoProsa(indice) {
     const item = listaIntertextoProsa.iniciarEdicao(indice);
     const tipoEl = document.getElementById('pr-intertexto-tipo');
     const textoEl = document.getElementById('pr-intertexto-texto');
+    const linkEl = document.getElementById('pr-intertexto-link');
+    const notaEl = document.getElementById('pr-intertexto-nota');
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (textoEl) textoEl.value = item.texto || '';
+    if (linkEl) linkEl.value = item.link || '';
+    if (notaEl) notaEl.value = item.nota || '';
     textoEl?.focus();
     atualizarBotaoIntertextoProsa();
 }
@@ -1530,8 +1672,12 @@ export function cancelarEdicaoIntertextoProsa() {
     listaIntertextoProsa.cancelarEdicao();
     const tipoEl = document.getElementById('pr-intertexto-tipo');
     const textoEl = document.getElementById('pr-intertexto-texto');
+    const linkEl = document.getElementById('pr-intertexto-link');
+    const notaEl = document.getElementById('pr-intertexto-nota');
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
+    if (linkEl) linkEl.value = '';
+    if (notaEl) notaEl.value = '';
     atualizarBotaoIntertextoProsa();
 }
 export function removerIntertextoProsa(indice) {
@@ -2147,6 +2293,7 @@ export function atualizarDatalist() {
             .join('');
     }
     atualizarDatalistPessoas();
+    atualizarDatalistGrupos();
     atualizarDatalistAutores();
     atualizarDatalistMigracao();
     atualizarDatalistAnotacoes();
@@ -2374,6 +2521,16 @@ export function initListenersMigracaoProsa() {
 // carregarSinalizacoes abaixo cobrem as 6 de uma vez, pra quem abre/
 // fecha o modal não precisar chamar 6 funções.
 
+export function adicionarSinalTradicao(valor = null) {
+    modulosSinalPoema.Tradicao.adicionar(valor);
+}
+export function removerSinalTradicao(tag) {
+    modulosSinalPoema.Tradicao.remover(tag);
+}
+export function renderizarSinalTradicao() {
+    modulosSinalPoema.Tradicao.renderizar();
+}
+
 export function adicionarSinalEstilo(valor = null) {
     modulosSinalPoema.Estilo.adicionar(valor);
 }
@@ -2445,6 +2602,7 @@ export function resetSinalizacoes() {
     SINAL_CATEGORIAS.forEach(({ chave }) => modulosSinalPoema[chave].reset());
 }
 export function carregarSinalizacoes(item) {
+    modulosSinalPoema.Tradicao.carregar(item.sinalizacoesTradicao || '');
     modulosSinalPoema.Estilo.carregar(item.sinalizacoesEstilo || '');
     modulosSinalPoema.Tema.carregar(item.sinalizacoesTema || '');
     modulosSinalPoema.Relacao.carregar(item.sinalizacoesRelacao || '');
@@ -2498,6 +2656,36 @@ export function carregarPessoas(pessoas) {
 }
 export function obterPessoas() {
     return grupoPessoasPoema.obterItens();
+}
+
+// ─── Grupos referenciados diretamente (poema) ─────────────────
+
+export function atualizarDatalistGrupos() {
+    const nomes = db.grupos.map((g) => g.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    ['sugestoes-grupos', 'sugestoes-grupos-prosa'].forEach((id) => {
+        const datalist = document.getElementById(id);
+        if (datalist) {
+            datalist.innerHTML = nomes
+                .map((nome) => `<option value="${escapeHtml(nome)}">`)
+                .join('');
+        }
+    });
+}
+
+export function adicionarGrupoDireto(valor = null) {
+    grupoGruposDiretosPoema.adicionar(valor);
+}
+export function removerGrupoDireto(grupoId) {
+    grupoGruposDiretosPoema.remover(grupoId);
+}
+export function resetGruposDiretos() {
+    grupoGruposDiretosPoema.reset();
+}
+export function carregarGruposDiretos(ids) {
+    grupoGruposDiretosPoema.carregar(ids);
+}
+export function obterGruposDiretos() {
+    return grupoGruposDiretosPoema.obterItens();
 }
 
 // Nomes do cadastro central de Autores (db.autores), ordenados —
@@ -2588,6 +2776,16 @@ export function atualizarDatalistProsa() {
     atualizarDatalistIntertextoProsa();
 }
 
+export function adicionarSinalTradicaoProsa(valor = null) {
+    modulosSinalProsa.Tradicao.adicionar(valor);
+}
+export function removerSinalTradicaoProsa(tag) {
+    modulosSinalProsa.Tradicao.remover(tag);
+}
+export function renderizarSinalTradicaoProsa() {
+    modulosSinalProsa.Tradicao.renderizar();
+}
+
 export function adicionarSinalEstiloProsa(valor = null) {
     modulosSinalProsa.Estilo.adicionar(valor);
 }
@@ -2652,6 +2850,7 @@ export function resetSinalizacoesProsa() {
     SINAL_CATEGORIAS.forEach(({ chave }) => modulosSinalProsa[chave].reset());
 }
 export function carregarSinalizacoesProsa(item) {
+    modulosSinalProsa.Tradicao.carregar(item.sinalizacoesTradicao || '');
     modulosSinalProsa.Estilo.carregar(item.sinalizacoesEstilo || '');
     modulosSinalProsa.Tema.carregar(item.sinalizacoesTema || '');
     modulosSinalProsa.Relacao.carregar(item.sinalizacoesRelacao || '');
@@ -2683,6 +2882,25 @@ export function carregarPessoasProsa(pessoas) {
 }
 export function obterPessoasProsa() {
     return grupoPessoasProsa.obterItens();
+}
+
+// ─── Grupos referenciados diretamente (prosa) ─────────────────
+// Mesmo padrão do Poema acima, instância própria da Prosa.
+
+export function adicionarGrupoDiretoProsa(valor = null) {
+    grupoGruposDiretosProsa.adicionar(valor);
+}
+export function removerGrupoDiretoProsa(grupoId) {
+    grupoGruposDiretosProsa.remover(grupoId);
+}
+export function resetGruposDiretosProsa() {
+    grupoGruposDiretosProsa.reset();
+}
+export function carregarGruposDiretosProsa(ids) {
+    grupoGruposDiretosProsa.carregar(ids);
+}
+export function obterGruposDiretosProsa() {
+    return grupoGruposDiretosProsa.obterItens();
 }
 
 export function adicionarAutoriaProsa(valor = null) {
@@ -2816,6 +3034,7 @@ export function initEditor() {
     // por categoria, já que cada uma agora tem seu próprio input/função
     // de adicionar (ver SINAL_CATEGORIAS acima).
     const funcoesSinalPoema = {
+        Tradicao: adicionarSinalTradicao,
         Estilo: adicionarSinalEstilo,
         Tema: adicionarSinalTema,
         Relacao: adicionarSinalRelacao,
@@ -2846,16 +3065,18 @@ export function initEditor() {
         });
     }
 
-    // Enter no input de texto da Intertextualidade
-    const inputIntertexto = document.getElementById('p-intertexto-texto');
-    if (inputIntertexto) {
-        inputIntertexto.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                adicionarIntertexto();
-            }
-        });
-    }
+    // Enter nos inputs de texto/link/nota da Intertextualidade
+    ['p-intertexto-texto', 'p-intertexto-link', 'p-intertexto-nota'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    adicionarIntertexto();
+                }
+            });
+        }
+    });
 
     // Anexos usa textarea (texto longo) — Enter quebra linha na
     // descrição normalmente; Ctrl/Cmd+Enter é quem adiciona o item
@@ -2874,6 +3095,7 @@ export function initEditor() {
     // Enter nos 6 inputs de tags de Sinalizações (Prosa) — mesmo padrão
     // do Poema acima, com as funções -Prosa correspondentes.
     const funcoesSinalProsa = {
+        Tradicao: adicionarSinalTradicaoProsa,
         Estilo: adicionarSinalEstiloProsa,
         Tema: adicionarSinalTemaProsa,
         Relacao: adicionarSinalRelacaoProsa,
@@ -2912,4 +3134,18 @@ export function initEditor() {
             }
         });
     }
+
+    // Enter nos inputs de texto/link/nota da Intertextualidade (Prosa) —
+    // mesmo padrão do Poema acima.
+    ['pr-intertexto-texto', 'pr-intertexto-link', 'pr-intertexto-nota'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    adicionarIntertextoProsa();
+                }
+            });
+        }
+    });
 }

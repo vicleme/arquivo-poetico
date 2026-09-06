@@ -148,6 +148,10 @@
         <datalist id="sugestoes-sinais"></datalist>
         <datalist id="sugestoes-pessoas"></datalist>
         <datalist id="sugestoes-autores"></datalist>
+        <datalist id="sugestoes-grupos"></datalist>
+        <datalist id="sugestoes-sinais-tradicao"></datalist>
+        <datalist id="sugestoes-sinais-tradicao-bulk"></datalist>
+        <datalist id="sugestoes-sinais-tradicao-bulk-prosa"></datalist>
         <datalist id="sugestoes-sinais-estilo"></datalist>
         <datalist id="sugestoes-sinais-estilo-bulk"></datalist>
         <datalist id="sugestoes-sinais-estilo-bulk-prosa"></datalist>
@@ -602,6 +606,7 @@
                         <option value="migrados">Só migrados 🔵</option>
                         <option value="pendentes">Só pendentes 🟠</option>
                         <option value="descartados">Só descartados 🔴</option>
+                        <option value="privados">Só privados 🔒</option>
                     </select>
                     <select
                         id="filtro-livro-poemas"
@@ -1021,6 +1026,7 @@
                         class="text-xs mb-0"
                         style="max-width: 140px"
                     >
+                        <option value="sinalizacoesTradicao">Tradição</option>
                         <option value="sinalizacoesEstilo">Estilo</option>
                         <option value="sinalizacoesTema">Tema</option>
                         <option value="sinalizacoesRelacao">Relação</option>
@@ -1576,6 +1582,7 @@
                         class="text-xs mb-0"
                         style="max-width: 140px"
                     >
+                        <option value="sinalizacoesTradicao">Tradição</option>
                         <option value="sinalizacoesEstilo">Estilo</option>
                         <option value="sinalizacoesTema">Tema</option>
                         <option value="sinalizacoesRelacao">Relação</option>
@@ -2034,11 +2041,13 @@
                             <option value="migrados">Só migrados (Poemas)</option>
                             <option value="pendentes">Só pendentes (Poemas)</option>
                             <option value="descartados">Só descartados (Poemas)</option>
+                            <option value="privados">Só privados</option>
                         </select>
                         <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
                             "Completos", "Incompletos", "Migrados", "Pendentes" e "Descartados" só
                             existem em Poemas — Prosas não têm essa distinção e ficam de fora dessas
-                            opções.
+                            opções. "Todos os status" inclui os Privados normalmente — eles só saem
+                            se você escolher "Só privados" ou outro filtro que os exclua.
                         </p>
                     </div>
 

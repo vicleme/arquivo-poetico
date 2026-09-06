@@ -48,6 +48,8 @@ export const DEFINICAO_COLUNAS = {
         { key: 'envios', label: 'Envios', default: false },
         // Reconhecimentos — item 8, prêmios/menções recebidos pelo texto.
         { key: 'reconhecimentos', label: 'Reconhecimentos', default: false },
+        // Autoavaliação — grupo novo, logo depois de Reconhecimentos no modal.
+        { key: 'autoavaliacao', label: 'Autoavaliação', default: false, sortType: 'alfabetico' },
         // "Livros e destino" — vínculo estrutural.
         { key: 'estrutura', label: 'Estrutura', default: true, sortType: 'estrutura' },
         // "Elos, referências e intertextualidade".
@@ -143,6 +145,8 @@ export const DEFINICAO_COLUNAS = {
         { key: 'autoria', label: 'Autoria', default: false },
         { key: 'envios', label: 'Envios', default: false },
         { key: 'reconhecimentos', label: 'Reconhecimentos', default: false },
+        // Autoavaliação — grupo novo, logo depois de Reconhecimentos no modal.
+        { key: 'autoavaliacao', label: 'Autoavaliação', default: false },
         // "Elos, referências e intertextualidade".
         { key: 'elos', label: 'Elos', default: false },
         { key: 'referencias', label: 'Referências', default: false },

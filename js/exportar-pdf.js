@@ -30,7 +30,7 @@ function obterConstrutorJsPdf() {
 // ─── Caracteres fora do alcance das fontes padrão do jsPDF ─────────────
 // Helvetica/Times/Courier (as três fontes padrão do jsPDF, sem precisar
 // vendorizar um arquivo de fonte à parte) só cobrem WinAnsi — na prática
-// Latin-1: letras acentuadas do português passam, mas emoji (🟢🟡🔵🔴⚪,
+// Latin-1: letras acentuadas do português passam, mas emoji (🟢🟡🔵🔴⚪🔒,
 // usados nos rótulos de Status — ver INFO_STATUS em exportar-md.js),
 // a seta "→" (usada em Localização) e "⚠️" (Conteúdo Sensível/Vocabulário
 // Hiperacionante) não. Pior do que só "sumir": ao encontrar QUALQUER
@@ -49,7 +49,7 @@ function obterConstrutorJsPdf() {
 const SUBSTITUICOES_SEGURAS_PDF = [
     [/→/g, '->'],
     [/⚠️?/g, ''],
-    [/[🟢🟡🔵🔴⚪]/gu, ''],
+    [/[🟢🟡🔵🔴⚪🔒]/gu, ''],
     [/•/g, '-'],
 ];
 

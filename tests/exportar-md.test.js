@@ -5,7 +5,11 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { db } from '../js/db.js';
-import { gerarMarkdownExportacao, contarCamposPreenchidos } from '../js/exportar-md.js';
+import {
+    gerarMarkdownExportacao,
+    contarCamposPreenchidos,
+    INFO_STATUS,
+} from '../js/exportar-md.js';
 
 function resetarDb() {
     db.livros = [];
@@ -321,6 +325,95 @@ describe('gerarMarkdownExportacao — Reconhecimentos (item 8, lista prêmio+pos
     });
 });
 
+describe('gerarMarkdownExportacao — Autoavaliação (campo novo, texto livre)', () => {
+    beforeEach(resetarDb);
+
+    it('inclui o bloco "### Autoavaliação" com o texto digitado', () => {
+        db.poemas = [
+            { id: 1, titulo: 'Solo', texto: 'x', autoavaliacao: 'Gostei bastante deste.' },
+        ];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(md, /### Autoavaliação\n\nGostei bastante deste\./);
+    });
+
+    it('omite o bloco quando não há autoavaliação (campo ausente ou vazio)', () => {
+        db.poemas = [
+            { id: 1, titulo: 'Sem campo', texto: 'x' },
+            { id: 2, titulo: 'Vazio', texto: 'x', autoavaliacao: '   ' },
+        ];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.doesNotMatch(md, /### Autoavaliação/);
+    });
+
+    it('conta em Campos Preenchidos', () => {
+        const semAutoavaliacao = { id: 1, titulo: 'Solo', texto: 'x' };
+        const comAutoavaliacao = { id: 2, titulo: 'Solo', texto: 'x', autoavaliacao: 'Opinião' };
+        assert.equal(
+            contarCamposPreenchidos(comAutoavaliacao),
+            contarCamposPreenchidos(semAutoavaliacao) + 1,
+        );
+    });
+
+    it('funciona igual em Prosa', () => {
+        db.prosas = [{ id: 1, titulo: 'Conto', texto: 'x', autoavaliacao: 'Podia ser melhor.' }];
+        const md = gerarMarkdownExportacao(db.prosas);
+        assert.match(md, /### Autoavaliação\n\nPodia ser melhor\./);
+    });
+});
+
+describe('gerarMarkdownExportacao — Intertextualidade com link e nota (campos novos)', () => {
+    beforeEach(resetarDb);
+
+    it('inclui link e nota na linha, depois do texto principal', () => {
+        db.poemas = [
+            {
+                id: 1,
+                titulo: 'Solo',
+                texto: 'x',
+                intertextualidade: [
+                    {
+                        tipo: 'Citação',
+                        texto: 'Trecho citado',
+                        link: 'https://exemplo.com/obra',
+                        nota: 'Nota livre',
+                    },
+                ],
+            },
+        ];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(md, /### Intertextualidade/);
+        assert.match(
+            md,
+            /- \*\*Citação:\*\* Trecho citado — https:\/\/exemplo\.com\/obra \*\(Nota livre\)\*/,
+        );
+    });
+
+    it('omite o traço/parênteses quando link ou nota estão ausentes', () => {
+        db.poemas = [
+            {
+                id: 1,
+                titulo: 'Solo',
+                texto: 'x',
+                intertextualidade: [{ tipo: 'Citação', texto: 'Trecho' }],
+            },
+        ];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(md, /- \*\*Citação:\*\* Trecho\n/);
+    });
+
+    it('continua funcionando sem os campos novos (compatibilidade com dados antigos)', () => {
+        db.poemas = [
+            {
+                id: 1,
+                titulo: 'Solo',
+                texto: 'x',
+                intertextualidade: [{ tipo: 'Citação', texto: 'Trecho antigo' }],
+            },
+        ];
+        assert.doesNotThrow(() => gerarMarkdownExportacao(db.poemas));
+    });
+});
+
 describe('gerarMarkdownExportacao — Grupos (Grupo (Pessoa), via cadastro central)', () => {
     beforeEach(() => {
         resetarDb();
@@ -380,6 +473,56 @@ describe('gerarMarkdownExportacao — Grupos (Grupo (Pessoa), via cadastro centr
         assert.doesNotMatch(md, /\*\*Grupos:\*\*/);
     });
 
+    it('mostra o grupo referenciado diretamente, sem parêntese de pessoa', () => {
+        db.grupos = [{ id: 10, nome: 'Família', cor: 'blue' }];
+        db.poemas = [{ id: 1, titulo: 'Poema A', texto: 'x', gruposDiretos: [10] }];
+
+        const md = gerarMarkdownExportacao(db.poemas);
+
+        assert.match(md, /\*\*Grupos:\*\* Família(?!\s*\()/);
+    });
+
+    it('junta grupo-via-pessoa e grupo direto na mesma linha, nessa ordem', () => {
+        db.grupos = [
+            { id: 10, nome: 'Namorado', cor: 'blue' },
+            { id: 20, nome: 'Família', cor: 'rose' },
+        ];
+        db.pessoas = [{ id: 1, nome: 'Dalton', grupoIds: [10] }];
+        db.poemas = [
+            {
+                id: 1,
+                titulo: 'Poema A',
+                texto: 'x',
+                pessoas: [{ pessoaId: 1, papeis: [] }],
+                gruposDiretos: [20],
+            },
+        ];
+
+        const md = gerarMarkdownExportacao(db.poemas);
+
+        assert.match(md, /\*\*Grupos:\*\* Namorado \(Dalton\), Família\n/);
+    });
+
+    it('grupoId direto sem correspondência no cadastro (grupo excluído) é ignorado, não quebra a linha', () => {
+        db.grupos = [{ id: 10, nome: 'Família', cor: 'blue' }];
+        db.poemas = [{ id: 1, titulo: 'Poema A', texto: 'x', gruposDiretos: [10, 999] }];
+
+        const md = gerarMarkdownExportacao(db.poemas);
+
+        assert.match(md, /\*\*Grupos:\*\* Família\n/);
+    });
+
+    it('gruposDiretos ausente (dado antigo, sem o campo) não quebra e não afeta a linha', () => {
+        db.pessoas = [{ id: 1, nome: 'Sem Grupo', grupoIds: [] }];
+        db.poemas = [
+            { id: 1, titulo: 'Poema A', texto: 'x', pessoas: [{ pessoaId: 1, papeis: [] }] },
+        ];
+
+        assert.doesNotThrow(() => gerarMarkdownExportacao(db.poemas));
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.doesNotMatch(md, /\*\*Grupos:\*\*/);
+    });
+
     it('linha "Grupos" é independente da linha "Pessoas" (papel do texto ≠ grupo da pessoa)', () => {
         db.grupos = [{ id: 10, nome: 'Amigos', cor: 'emerald' }];
         db.pessoas = [{ id: 1, nome: 'Fábio', grupoIds: [10] }];
@@ -396,5 +539,22 @@ describe('gerarMarkdownExportacao — Grupos (Grupo (Pessoa), via cadastro centr
 
         assert.match(md, /\*\*Pessoas:\*\* Fábio \(Dedicatário\(a\)\)/);
         assert.match(md, /\*\*Grupos:\*\* Amigos \(Fábio\)/);
+    });
+});
+
+describe('gerarMarkdownExportacao — Status "Privado" (🔒)', () => {
+    beforeEach(resetarDb);
+
+    it('mostra o emoji e o título certos pro status "privado"', () => {
+        db.poemas = [{ id: 1, titulo: 'Poema Íntimo', texto: 'x', status: 'privado' }];
+
+        const md = gerarMarkdownExportacao(db.poemas);
+
+        assert.match(md, /\*\*Status:\*\* 🔒 Privado/);
+    });
+
+    it('INFO_STATUS reconhece "privado" (não cai no fallback genérico ⚪)', () => {
+        assert.equal(INFO_STATUS.privado.emoji, '🔒');
+        assert.equal(INFO_STATUS.privado.titulo, 'Privado');
     });
 });

@@ -56,6 +56,12 @@ import {
     resetPessoasProsa,
     carregarPessoasProsa,
     obterPessoasProsa,
+    carregarGruposDiretos,
+    obterGruposDiretos,
+    resetGruposDiretos,
+    carregarGruposDiretosProsa,
+    obterGruposDiretosProsa,
+    resetGruposDiretosProsa,
     carregarAutoria,
     obterAutoria,
     resetAutoria,
@@ -945,6 +951,7 @@ export function initFormPoema() {
                 referencias: obterReferencias(),
             },
             notas: document.getElementById('p-notas').value,
+            sinalizacoesTradicao: document.getElementById('p-sinal-tradicao').value,
             sinalizacoesEstilo: document.getElementById('p-sinal-estilo').value,
             sinalizacoesTema: document.getElementById('p-sinal-tema').value,
             sinalizacoesRelacao: document.getElementById('p-sinal-relacao').value,
@@ -952,9 +959,11 @@ export function initFormPoema() {
             sinalizacoesTom: document.getElementById('p-sinal-tom').value,
             sinalizacoesOutros: document.getElementById('p-sinal-outros').value,
             pessoas: obterPessoas(),
+            gruposDiretos: obterGruposDiretos(),
             autoria: obterAutoria(),
             envios: obterEnvios(),
             reconhecimentos: obterReconhecimentos(),
+            autoavaliacao: document.getElementById('p-autoavaliacao').value,
             status: document.getElementById('p-status').value,
             epocaRetratada,
             intertextualidade: obterIntertextualidade(),
@@ -1030,6 +1039,7 @@ export function initFormPoema() {
         toggleModal('modal-poema');
         resetSinalizacoes();
         resetPessoas();
+        resetGruposDiretos();
         resetAutoria();
         resetEnvios();
         resetReconhecimentos();
@@ -1044,6 +1054,7 @@ const MAPA_POEMA = {
     sequencia: 'p-sequencia',
     idioma: ['p-idioma', 'pt-BR'],
     notas: 'p-notas',
+    autoavaliacao: 'p-autoavaliacao',
     anexosNotaGeral: 'p-anexos-nota-geral',
     status: 'p-status', // select — preencherCampos seta .value por já não ser checkbox
     descricaoVisual: 'p-visual',
@@ -1113,6 +1124,7 @@ export async function editarPoema(id) {
 
     carregarSinalizacoes(p);
     carregarPessoas(p.pessoas);
+    carregarGruposDiretos(p.gruposDiretos);
     carregarAutoria(p.autoria);
     carregarEnvios(p.envios);
     carregarReconhecimentos(p.reconhecimentos);
@@ -1230,6 +1242,7 @@ export function initFormProsa() {
                 referencias: obterReferenciasProsa(),
             },
             notas: document.getElementById('pr-notas').value,
+            sinalizacoesTradicao: document.getElementById('pr-sinal-tradicao').value,
             sinalizacoesEstilo: document.getElementById('pr-sinal-estilo').value,
             sinalizacoesTema: document.getElementById('pr-sinal-tema').value,
             sinalizacoesRelacao: document.getElementById('pr-sinal-relacao').value,
@@ -1237,9 +1250,11 @@ export function initFormProsa() {
             sinalizacoesTom: document.getElementById('pr-sinal-tom').value,
             sinalizacoesOutros: document.getElementById('pr-sinal-outros').value,
             pessoas: obterPessoasProsa(),
+            gruposDiretos: obterGruposDiretosProsa(),
             autoria: obterAutoriaProsa(),
             envios: obterEnviosProsa(),
             reconhecimentos: obterReconhecimentosProsa(),
+            autoavaliacao: document.getElementById('pr-autoavaliacao').value,
             genero: document.getElementById('pr-genero').value,
             publicado: document.getElementById('pr-pub').checked,
             status: document.getElementById('pr-status').value,
@@ -1312,6 +1327,7 @@ export function initFormProsa() {
         toggleModal('modal-prosa');
         resetSinalizacoesProsa();
         resetPessoasProsa();
+        resetGruposDiretosProsa();
         resetAutoriaProsa();
         resetEnviosProsa();
         resetReconhecimentosProsa();
@@ -1331,6 +1347,7 @@ const MAPA_PROSA = {
     sequencia: ['pr-sequencia', 0],
     idioma: ['pr-idioma', 'pt-BR'],
     notas: 'pr-notas',
+    autoavaliacao: 'pr-autoavaliacao',
     publicado: 'pr-pub',
     anexosNotaGeral: 'pr-anexos-nota-geral',
     contextoHistorico: 'pr-contexto',
@@ -1405,6 +1422,7 @@ export async function editarProsa(id) {
 
     carregarSinalizacoesProsa(pr);
     carregarPessoasProsa(pr.pessoas);
+    carregarGruposDiretosProsa(pr.gruposDiretos);
     carregarAutoriaProsa(pr.autoria);
     carregarEnviosProsa(pr.envios);
     carregarReconhecimentosProsa(pr.reconhecimentos);

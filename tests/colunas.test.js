@@ -249,10 +249,10 @@ describe('moverColuna', () => {
     beforeEach(resetar);
 
     it('"up" troca de posição com o vizinho anterior', () => {
-        // ordem padrão (início): idioma, dataEscrita, dataPublicacao, epocaRetratada, contextoHistorico, notas, autoria, envios, reconhecimentos, estrutura, elos...
+        // ordem padrão (início): idioma, dataEscrita, dataPublicacao, epocaRetratada, contextoHistorico, notas, autoria, envios, reconhecimentos, autoavaliacao, estrutura, elos...
         moverColuna('poemas', 'notas', 'up');
         const estado = JSON.parse(localStorage.getItem(LS_PREFIX + 'poemas'));
-        assert.deepEqual(estado.ordem.slice(0, 10), [
+        assert.deepEqual(estado.ordem.slice(0, 11), [
             'idioma',
             'dataEscrita',
             'dataPublicacao',
@@ -262,6 +262,7 @@ describe('moverColuna', () => {
             'autoria',
             'envios',
             'reconhecimentos',
+            'autoavaliacao',
             'estrutura',
         ]);
     });

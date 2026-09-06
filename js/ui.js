@@ -22,6 +22,7 @@ import {
 } from './editor.js';
 import {
     extrairFasesUnicas,
+    extrairNomesLojasUnicos,
     escapeHtml,
     RELACOES_ELO,
     TIPOS_REFERENCIA,
@@ -417,6 +418,15 @@ export function renderDropdowns() {
     if (datalistFases) {
         datalistFases.innerHTML = extrairFasesUnicas(db.livros)
             .map((fase) => `<option value="${escapeHtml(fase)}">`)
+            .join('');
+    }
+
+    // 0.1. Sugestões de "Loja/Editora" já usadas em outros livros (mesmo
+    // padrão da Fase de Vida acima)
+    const datalistLojas = document.getElementById('sugestoes-loja-nome');
+    if (datalistLojas) {
+        datalistLojas.innerHTML = extrairNomesLojasUnicos(db.livros)
+            .map((nome) => `<option value="${escapeHtml(nome)}">`)
             .join('');
     }
 

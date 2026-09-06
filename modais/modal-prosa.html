@@ -341,8 +341,10 @@
                         <div class="campo-grupo-corpo">
                             <label class="form-label"
                                 >Livros
-                                <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                                    >(etiqueta editorial paralela — não confundir com Destino, abaixo)</span
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(etiqueta editorial paralela — não confundir com Destino,
+                                    abaixo)</span
                                 ></label
                             >
                             <select id="pr-livros" multiple class="h-24 text-xs mb-2"></select>
@@ -397,336 +399,402 @@
                     <input type="hidden" id="pr-genero" />
 
                     <details class="campo-grupo">
-                        <summary>Sinalizações e dedicatória</summary>
+                        <summary>Sinalizações</summary>
                         <div class="campo-grupo-corpo">
-                    <label class="form-label">Sinalizações — Estilo</label>
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="pr-sinal-estilo-input"
-                            list="sugestoes-sinais-estilo-prosa"
-                            class="text-sm flex-1"
-                            placeholder="Nova etiqueta de estilo..."
-                        />
-                        <button
-                            type="button"
-                            onclick="adicionarSinalEstiloProsa()"
-                            class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 rounded text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                    <div
-                        id="pr-sinal-estilo-container"
-                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
-                    ></div>
-                    <datalist id="sugestoes-sinais-estilo-prosa"></datalist>
-                    <input type="hidden" id="pr-sinal-estilo" />
+                            <label class="form-label">Tradição</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-sinal-tradicao-input"
+                                    list="sugestoes-sinais-tradicao-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de tradição..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalTradicaoProsa()"
+                                    class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="pr-sinal-tradicao-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <datalist id="sugestoes-sinais-tradicao-prosa"></datalist>
+                            <input type="hidden" id="pr-sinal-tradicao" />
 
-                    <label class="form-label">Sinalizações — Tema</label>
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="pr-sinal-tema-input"
-                            list="sugestoes-sinais-tema-prosa"
-                            class="text-sm flex-1"
-                            placeholder="Nova etiqueta de tema..."
-                        />
-                        <button
-                            type="button"
-                            onclick="adicionarSinalTemaProsa()"
-                            class="bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-3 rounded text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                    <div
-                        id="pr-sinal-tema-container"
-                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
-                    ></div>
-                    <datalist id="sugestoes-sinais-tema-prosa"></datalist>
-                    <input type="hidden" id="pr-sinal-tema" />
+                            <label class="form-label">Estilo</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-sinal-estilo-input"
+                                    list="sugestoes-sinais-estilo-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de estilo..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalEstiloProsa()"
+                                    class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="pr-sinal-estilo-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <datalist id="sugestoes-sinais-estilo-prosa"></datalist>
+                            <input type="hidden" id="pr-sinal-estilo" />
 
-                    <label class="form-label">Sinalizações — Relação</label>
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="pr-sinal-relacao-input"
-                            list="sugestoes-sinais-relacao-prosa"
-                            class="text-sm flex-1"
-                            placeholder="Nova etiqueta de relação..."
-                        />
-                        <button
-                            type="button"
-                            onclick="adicionarSinalRelacaoProsa()"
-                            class="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-3 rounded text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                    <div
-                        id="pr-sinal-relacao-container"
-                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
-                    ></div>
-                    <datalist id="sugestoes-sinais-relacao-prosa"></datalist>
-                    <input type="hidden" id="pr-sinal-relacao" />
+                            <label class="form-label">Tema</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-sinal-tema-input"
+                                    list="sugestoes-sinais-tema-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de tema..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalTemaProsa()"
+                                    class="bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="pr-sinal-tema-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <datalist id="sugestoes-sinais-tema-prosa"></datalist>
+                            <input type="hidden" id="pr-sinal-tema" />
 
-                    <label class="form-label">Sinalizações — Sensibilidade</label>
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="pr-sinal-sensibilidade-input"
-                            list="sugestoes-sinais-sensibilidade-prosa"
-                            class="text-sm flex-1"
-                            placeholder="Nova etiqueta de sensibilidade..."
-                        />
-                        <button
-                            type="button"
-                            onclick="adicionarSinalSensibilidadeProsa()"
-                            class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-3 rounded text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                    <div
-                        id="pr-sinal-sensibilidade-container"
-                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
-                    ></div>
-                    <datalist id="sugestoes-sinais-sensibilidade-prosa"></datalist>
-                    <input type="hidden" id="pr-sinal-sensibilidade" />
+                            <label class="form-label">Relação</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-sinal-relacao-input"
+                                    list="sugestoes-sinais-relacao-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de relação..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalRelacaoProsa()"
+                                    class="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="pr-sinal-relacao-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <datalist id="sugestoes-sinais-relacao-prosa"></datalist>
+                            <input type="hidden" id="pr-sinal-relacao" />
 
-                    <label class="form-label">Sinalizações — Tom</label>
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="pr-sinal-tom-input"
-                            list="sugestoes-sinais-tom-prosa"
-                            class="text-sm flex-1"
-                            placeholder="Nova etiqueta de tom..."
-                        />
-                        <button
-                            type="button"
-                            onclick="adicionarSinalTomProsa()"
-                            class="bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300 px-3 rounded text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                    <div
-                        id="pr-sinal-tom-container"
-                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
-                    ></div>
-                    <datalist id="sugestoes-sinais-tom-prosa"></datalist>
-                    <input type="hidden" id="pr-sinal-tom" />
+                            <label class="form-label">Sensibilidade</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-sinal-sensibilidade-input"
+                                    list="sugestoes-sinais-sensibilidade-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de sensibilidade..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalSensibilidadeProsa()"
+                                    class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="pr-sinal-sensibilidade-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <datalist id="sugestoes-sinais-sensibilidade-prosa"></datalist>
+                            <input type="hidden" id="pr-sinal-sensibilidade" />
 
-                    <label class="form-label"
-                        >Sinalizações — Outros
-                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(balde temporário; ver "Reconhecimentos" e Elos de Derivação)</span
-                        ></label
-                    >
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="pr-sinal-outros-input"
-                            list="sugestoes-sinais-outros-prosa"
-                            class="text-sm flex-1"
-                            placeholder="Etiqueta ainda sem categoria..."
-                        />
-                        <button
-                            type="button"
-                            onclick="adicionarSinalOutrosProsa()"
-                            class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 rounded text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                    <div
-                        id="pr-sinal-outros-container"
-                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
-                    ></div>
-                    <datalist id="sugestoes-sinais-outros-prosa"></datalist>
-                    <input type="hidden" id="pr-sinal-outros" />
+                            <label class="form-label">Tom</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-sinal-tom-input"
+                                    list="sugestoes-sinais-tom-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de tom..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalTomProsa()"
+                                    class="bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="pr-sinal-tom-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <datalist id="sugestoes-sinais-tom-prosa"></datalist>
+                            <input type="hidden" id="pr-sinal-tom" />
 
-                    <label class="form-label">Pessoas</label>
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="pr-pessoa-input"
-                            list="sugestoes-pessoas-prosa"
-                            class="text-sm flex-1"
-                            placeholder="Nome da pessoa..."
-                        />
-                        <button
-                            type="button"
-                            onclick="adicionarPessoaProsa()"
-                            class="bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 px-3 rounded text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                    <div
-                        id="pr-pessoas-container"
-                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
-                    ></div>
-                    <div
-                        id="pr-pessoas-grupos-info"
-                        class="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5"
-                    ></div>
-                    <datalist id="sugestoes-pessoas-prosa"></datalist>
+                            <label class="form-label">Outros</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-sinal-outros-input"
+                                    list="sugestoes-sinais-outros-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Etiqueta ainda sem categoria..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalOutrosProsa()"
+                                    class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="pr-sinal-outros-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <datalist id="sugestoes-sinais-outros-prosa"></datalist>
+                            <input type="hidden" id="pr-sinal-outros" />
                         </div>
                     </details>
 
                     <details class="campo-grupo">
-                        <summary>Envios e Reações</summary>
+                        <summary>Pessoas, Envios e Reações</summary>
                         <div class="campo-grupo-corpo">
-                    <label class="form-label"
-                        >Envios
-                        <span
-                            class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(quando o texto foi enviado/mostrado pra alguém, e como essa
-                            pessoa reagiu — pode haver mais de um envio pro mesmo
-                            texto)</span
-                        ></label
-                    >
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="pr-envio-pessoa"
-                            list="sugestoes-pessoas-prosa"
-                            class="text-sm flex-1"
-                            placeholder="Pra quem..."
-                        />
-                        <input
-                            type="text"
-                            id="pr-envio-meio"
-                            list="sugestoes-meios-envio-prosa"
-                            class="text-sm flex-1"
-                            placeholder="Meio (ex.: WhatsApp)"
-                        />
-                    </div>
-                    <div class="grid grid-cols-3 gap-1 mb-2">
-                        <input
-                            type="number"
-                            id="pr-envio-dia"
-                            placeholder="Dia"
-                            min="1"
-                            max="31"
-                            title="Dia"
-                        />
-                        <input
-                            type="number"
-                            id="pr-envio-mes"
-                            placeholder="Mês"
-                            min="1"
-                            max="12"
-                            title="Mês"
-                        />
-                        <input
-                            type="number"
-                            id="pr-envio-ano"
-                            placeholder="Ano"
-                            min="1900"
-                            max="2100"
-                            title="Ano"
-                        />
-                    </div>
-                    <datalist id="sugestoes-meios-envio-prosa"></datalist>
-                    <div class="flex flex-col gap-2 mb-2">
-                        <textarea
-                            id="pr-envio-reacao"
-                            class="text-sm h-16"
-                            placeholder="Reação..."
-                        ></textarea>
-                        <textarea
-                            id="pr-envio-notas"
-                            class="text-xs h-14"
-                            placeholder="Notas (opcional)..."
-                        ></textarea>
-                        <div class="flex items-center gap-2 self-end">
-                            <button
-                                type="button"
-                                id="pr-envio-btn-cancelar"
-                                onclick="cancelarEdicaoEnvioProsa()"
-                                class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs px-1"
+                            <label class="form-label">Pessoas</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-pessoa-input"
+                                    list="sugestoes-pessoas-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome da pessoa..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarPessoaProsa()"
+                                    class="bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="pr-pessoas-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <div
+                                id="pr-pessoas-grupos-info"
+                                class="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5"
+                            ></div>
+                            <datalist id="sugestoes-pessoas-prosa"></datalist>
+
+                            <label class="form-label"
+                                >Grupos (referência direta)
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(o texto se refere ao grupo em geral, sem citar uma pessoa
+                                    específica dele)</span
+                                ></label
                             >
-                                Cancelar edição
-                            </button>
-                            <button
-                                type="button"
-                                id="pr-envio-btn-add"
-                                onclick="adicionarEnvioProsa()"
-                                class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold"
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-grupo-direto-input"
+                                    list="sugestoes-grupos-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome do grupo..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarGrupoDiretoProsa()"
+                                    class="bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="pr-grupos-diretos-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <datalist id="sugestoes-grupos-prosa"></datalist>
+
+                            <label class="form-label"
+                                >Envios
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(quando o texto foi enviado/mostrado pra alguém, e como essa
+                                    pessoa reagiu — pode haver mais de um envio pro mesmo
+                                    texto)</span
+                                ></label
                             >
-                                + Adicionar envio
-                            </button>
-                        </div>
-                    </div>
-                    <div id="pr-envios-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-envio-pessoa"
+                                    list="sugestoes-pessoas-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Pra quem..."
+                                />
+                                <input
+                                    type="text"
+                                    id="pr-envio-meio"
+                                    list="sugestoes-meios-envio-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Meio (ex.: WhatsApp)"
+                                />
+                            </div>
+                            <div class="grid grid-cols-3 gap-1 mb-2">
+                                <input
+                                    type="number"
+                                    id="pr-envio-dia"
+                                    placeholder="Dia"
+                                    min="1"
+                                    max="31"
+                                    title="Dia"
+                                />
+                                <input
+                                    type="number"
+                                    id="pr-envio-mes"
+                                    placeholder="Mês"
+                                    min="1"
+                                    max="12"
+                                    title="Mês"
+                                />
+                                <input
+                                    type="number"
+                                    id="pr-envio-ano"
+                                    placeholder="Ano"
+                                    min="1900"
+                                    max="2100"
+                                    title="Ano"
+                                />
+                            </div>
+                            <datalist id="sugestoes-meios-envio-prosa"></datalist>
+                            <div class="flex flex-col gap-2 mb-2">
+                                <textarea
+                                    id="pr-envio-reacao"
+                                    class="text-sm h-16"
+                                    placeholder="Reação..."
+                                ></textarea>
+                                <textarea
+                                    id="pr-envio-notas"
+                                    class="text-xs h-14"
+                                    placeholder="Notas (opcional)..."
+                                ></textarea>
+                                <div class="flex items-center gap-2 self-end">
+                                    <button
+                                        type="button"
+                                        id="pr-envio-btn-cancelar"
+                                        onclick="cancelarEdicaoEnvioProsa()"
+                                        class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs px-1"
+                                    >
+                                        Cancelar edição
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="pr-envio-btn-add"
+                                        onclick="adicionarEnvioProsa()"
+                                        class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold"
+                                    >
+                                        + Adicionar envio
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="pr-envios-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
                         </div>
                     </details>
 
                     <details class="campo-grupo">
                         <summary>Reconhecimentos</summary>
                         <div class="campo-grupo-corpo">
-                    <label class="form-label"
-                        >Prêmios e menções
-                        <span
-                            class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(concursos, prêmios ou menções que este texto recebeu)</span
-                        ></label
-                    >
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="pr-reconhecimento-premio"
-                            list="sugestoes-premios-prosa"
-                            class="text-sm flex-1"
-                            placeholder="Prêmio/concurso..."
-                        />
-                        <input
-                            type="text"
-                            id="pr-reconhecimento-posicao"
-                            class="text-sm flex-1"
-                            placeholder="Posição (ex.: 1º lugar)"
-                        />
-                        <input
-                            type="number"
-                            id="pr-reconhecimento-ano"
-                            class="text-sm w-24"
-                            placeholder="Ano"
-                            min="1900"
-                            max="2100"
-                            title="Ano"
-                        />
-                    </div>
-                    <datalist id="sugestoes-premios-prosa"></datalist>
-                    <div class="flex flex-col gap-2 mb-2">
-                        <textarea
-                            id="pr-reconhecimento-texto"
-                            class="text-xs h-14"
-                            placeholder="Notas (opcional)..."
-                        ></textarea>
-                        <div class="flex items-center gap-2 self-end">
-                            <button
-                                type="button"
-                                id="pr-reconhecimento-btn-cancelar"
-                                onclick="cancelarEdicaoReconhecimentoProsa()"
-                                class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs px-1"
+                            <label class="form-label"
+                                >Prêmios e menções
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(concursos, prêmios ou menções que este texto recebeu)</span
+                                ></label
                             >
-                                Cancelar edição
-                            </button>
-                            <button
-                                type="button"
-                                id="pr-reconhecimento-btn-add"
-                                onclick="adicionarReconhecimentoProsa()"
-                                class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded text-xs font-bold"
-                            >
-                                + Adicionar reconhecimento
-                            </button>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-reconhecimento-premio"
+                                    list="sugestoes-premios-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Prêmio/concurso..."
+                                />
+                                <input
+                                    type="text"
+                                    id="pr-reconhecimento-posicao"
+                                    class="text-sm flex-1"
+                                    placeholder="Posição (ex.: 1º lugar)"
+                                />
+                                <input
+                                    type="number"
+                                    id="pr-reconhecimento-ano"
+                                    class="text-sm w-24"
+                                    placeholder="Ano"
+                                    min="1900"
+                                    max="2100"
+                                    title="Ano"
+                                />
+                            </div>
+                            <datalist id="sugestoes-premios-prosa"></datalist>
+                            <div class="flex flex-col gap-2 mb-2">
+                                <textarea
+                                    id="pr-reconhecimento-texto"
+                                    class="text-xs h-14"
+                                    placeholder="Notas (opcional)..."
+                                ></textarea>
+                                <div class="flex items-center gap-2 self-end">
+                                    <button
+                                        type="button"
+                                        id="pr-reconhecimento-btn-cancelar"
+                                        onclick="cancelarEdicaoReconhecimentoProsa()"
+                                        class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs px-1"
+                                    >
+                                        Cancelar edição
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="pr-reconhecimento-btn-add"
+                                        onclick="adicionarReconhecimentoProsa()"
+                                        class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded text-xs font-bold"
+                                    >
+                                        + Adicionar reconhecimento
+                                    </button>
+                                </div>
+                            </div>
+                            <div
+                                id="pr-reconhecimentos-lista"
+                                class="space-y-1 mb-2 min-h-[12px]"
+                            ></div>
                         </div>
-                    </div>
-                    <div id="pr-reconhecimentos-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>Autoavaliação</summary>
+                        <div class="campo-grupo-corpo">
+                            <label class="form-label"
+                                >Autoavaliação
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(opiniões livres sobre o texto)</span
+                                ></label
+                            >
+                            <textarea id="pr-autoavaliacao" class="text-sm h-20"></textarea>
                         </div>
                     </details>
 
@@ -737,8 +805,8 @@
                                 >Elos
                                 <span
                                     class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                                    >(ligação estrutural com outro texto do acervo (poema ou prosa) — reescrita,
-                                    tradução, continuação...)</span
+                                    >(ligação estrutural com outro texto do acervo (poema ou prosa)
+                                    — reescrita, tradução, continuação...)</span
                                 ></label
                             >
                             <div class="flex gap-2 mb-1">
@@ -806,7 +874,10 @@
                                 ></label
                             >
                             <div class="flex gap-2 mb-2">
-                                <select id="pr-ref-tipo" class="text-xs w-28 flex-shrink-0"></select>
+                                <select
+                                    id="pr-ref-tipo"
+                                    class="text-xs w-28 flex-shrink-0"
+                                ></select>
                                 <select id="pr-ref-poema" class="text-xs flex-1"></select>
                                 <button
                                     type="button"
@@ -875,6 +946,20 @@
                                 >
                                     Cancelar
                                 </button>
+                            </div>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="url"
+                                    id="pr-intertexto-link"
+                                    class="text-sm flex-1"
+                                    placeholder="Link (opcional)"
+                                />
+                                <input
+                                    type="text"
+                                    id="pr-intertexto-nota"
+                                    class="text-sm flex-1"
+                                    placeholder="Nota opcional..."
+                                />
                             </div>
                             <datalist id="sugestoes-intertexto-prosa"></datalist>
                             <div id="pr-intertexto-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
@@ -996,6 +1081,7 @@
                                     <option value="publicado">🟢 Publicado</option>
                                     <option value="migrado">🔵 Migrado</option>
                                     <option value="descartado">🔴 Descartado</option>
+                                    <option value="privado">🔒 Privado</option>
                                 </select>
                             </div>
 
@@ -1095,8 +1181,6 @@
                             ></textarea>
                         </div>
                     </details>
-
-
 
                     <div class="flex items-center gap-2">
                         <input type="checkbox" id="pr-pub" />

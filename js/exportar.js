@@ -204,6 +204,7 @@ export function correspondeFiltro(item, opcoes) {
     if (opcoes.status === 'migrados' && item.status !== 'migrado') return false;
     if (opcoes.status === 'pendentes' && !item.pendencia?.trim()) return false;
     if (opcoes.status === 'descartados' && item.status !== 'descartado') return false;
+    if (opcoes.status === 'privados' && item.status !== 'privado') return false;
     return true;
 }
 

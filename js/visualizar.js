@@ -151,7 +151,9 @@ export function renderVisualizacaoHtml(item) {
 
     html += listaHtml('Intertextualidade', item.intertextualidade, (it) => {
         const prefixo = it.tipo ? `<strong>${escapeHtml(it.tipo)}:</strong> ` : '';
-        return `${prefixo}${escapeHtml(it.texto || '')}`;
+        const link = it.link ? ` — ${escapeHtml(it.link)}` : '';
+        const nota = it.nota ? ` <em>(${escapeHtml(it.nota)})</em>` : '';
+        return `${prefixo}${escapeHtml(it.texto || '')}${link}${nota}`;
     });
 
     html += listaHtml('Anexos', item.anexos, (a) => {
@@ -187,6 +189,8 @@ export function renderVisualizacaoHtml(item) {
         const prefixo = meta ? `<strong>${escapeHtml(meta)}:</strong> ` : '';
         return `${prefixo}${escapeHtml(r.texto || '')}`;
     });
+
+    html += blocoTextoHtml('Autoavaliação', item.autoavaliacao);
 
     if ((item.conteudoSensivel || '').trim()) {
         html += `

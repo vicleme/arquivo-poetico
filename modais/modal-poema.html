@@ -589,6 +589,20 @@
                                     Cancelar
                                 </button>
                             </div>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="url"
+                                    id="p-intertexto-link"
+                                    class="text-sm flex-1"
+                                    placeholder="Link (opcional)"
+                                />
+                                <input
+                                    type="text"
+                                    id="p-intertexto-nota"
+                                    class="text-sm flex-1"
+                                    placeholder="Nota opcional..."
+                                />
+                            </div>
                             <datalist id="sugestoes-intertexto"></datalist>
                             <div id="p-intertexto-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
                         </div>
@@ -771,9 +785,32 @@
                     </details>
 
                     <details class="campo-grupo">
-                        <summary>Sinalizações e dedicatória</summary>
+                        <summary>Sinalizações</summary>
                         <div class="campo-grupo-corpo">
-                            <label class="form-label">Sinalizações — Estilo</label>
+                            <label class="form-label">Tradição</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-sinal-tradicao-input"
+                                    list="sugestoes-sinais-tradicao"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de tradição..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalTradicao()"
+                                    class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-sinal-tradicao-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <input type="hidden" id="p-sinal-tradicao" />
+
+                            <label class="form-label">Estilo</label>
                             <div class="flex gap-2 mb-2">
                                 <input
                                     type="text"
@@ -796,7 +833,7 @@
                             ></div>
                             <input type="hidden" id="p-sinal-estilo" />
 
-                            <label class="form-label">Sinalizações — Tema</label>
+                            <label class="form-label">Tema</label>
                             <div class="flex gap-2 mb-2">
                                 <input
                                     type="text"
@@ -819,7 +856,7 @@
                             ></div>
                             <input type="hidden" id="p-sinal-tema" />
 
-                            <label class="form-label">Sinalizações — Relação</label>
+                            <label class="form-label">Relação</label>
                             <div class="flex gap-2 mb-2">
                                 <input
                                     type="text"
@@ -842,7 +879,7 @@
                             ></div>
                             <input type="hidden" id="p-sinal-relacao" />
 
-                            <label class="form-label">Sinalizações — Sensibilidade</label>
+                            <label class="form-label">Sensibilidade</label>
                             <div class="flex gap-2 mb-2">
                                 <input
                                     type="text"
@@ -865,7 +902,7 @@
                             ></div>
                             <input type="hidden" id="p-sinal-sensibilidade" />
 
-                            <label class="form-label">Sinalizações — Tom</label>
+                            <label class="form-label">Tom</label>
                             <div class="flex gap-2 mb-2">
                                 <input
                                     type="text"
@@ -888,14 +925,7 @@
                             ></div>
                             <input type="hidden" id="p-sinal-tom" />
 
-                            <label class="form-label"
-                                >Sinalizações — Outros
-                                <span
-                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                                    >(balde temporário; ver "Reconhecimentos" e Elos de
-                                    Derivação)</span
-                                ></label
-                            >
+                            <label class="form-label">Outros</label>
                             <div class="flex gap-2 mb-2">
                                 <input
                                     type="text"
@@ -917,7 +947,12 @@
                                 class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
                             ></div>
                             <input type="hidden" id="p-sinal-outros" />
+                        </div>
+                    </details>
 
+                    <details class="campo-grupo">
+                        <summary>Pessoas, Envios e Reações</summary>
+                        <div class="campo-grupo-corpo">
                             <label class="form-label">Pessoas</label>
                             <div class="flex gap-2 mb-2">
                                 <input
@@ -943,12 +978,36 @@
                                 id="p-pessoas-grupos-info"
                                 class="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5"
                             ></div>
-                        </div>
-                    </details>
 
-                    <details class="campo-grupo">
-                        <summary>Envios e Reações</summary>
-                        <div class="campo-grupo-corpo">
+                            <label class="form-label"
+                                >Grupos (referência direta)
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(o texto se refere ao grupo em geral, sem citar uma pessoa
+                                    específica dele)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-grupo-direto-input"
+                                    list="sugestoes-grupos"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome do grupo..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarGrupoDireto()"
+                                    class="bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-grupos-diretos-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+
                             <label class="form-label"
                                 >Envios
                                 <span
@@ -1103,6 +1162,20 @@
                     </details>
 
                     <details class="campo-grupo">
+                        <summary>Autoavaliação</summary>
+                        <div class="campo-grupo-corpo">
+                            <label class="form-label"
+                                >Autoavaliação
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(opiniões livres sobre o texto)</span
+                                ></label
+                            >
+                            <textarea id="p-autoavaliacao" class="text-sm h-20"></textarea>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
                         <summary>Status e Pendências</summary>
                         <div class="campo-grupo-corpo">
                             <div>
@@ -1113,6 +1186,7 @@
                                     <option value="publicado">🟢 Publicado</option>
                                     <option value="migrado">🔵 Migrado</option>
                                     <option value="descartado">🔴 Descartado</option>
+                                    <option value="privado">🔒 Privado</option>
                                 </select>
                             </div>
 

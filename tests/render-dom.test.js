@@ -191,4 +191,108 @@ describe('Poemas — coluna "Grupos" (DOM real via happy-dom)', () => {
         const linha = document.querySelector('#lista-poemas tr');
         assert.match(linha.textContent, /—/);
     });
+
+    it('grupo referenciado diretamente (gruposDiretos) também gera badge na coluna, sem "—"', () => {
+        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose' });
+        db.poemas.push({
+            id: 1,
+            titulo: 'Poema A',
+            sequencia: 1,
+            gruposDiretos: [10],
+        });
+
+        toggleColuna('poemas', 'grupos', true);
+        renderPoemas();
+
+        // Isola a célula de Grupos em vez de olhar a linha inteira: outras
+        // colunas vazias (Escrito em, Publicação, Pessoas) legitimamente
+        // mostram "—" como placeholder, sem relação com este teste.
+        const linha = document.querySelector('#lista-poemas tr');
+        const celulaGrupos = [...linha.querySelectorAll('td')].find((td) =>
+            td.textContent.includes('Família'),
+        );
+        assert.ok(celulaGrupos, 'a célula de Grupos deveria conter o badge "Família"');
+        assert.doesNotMatch(celulaGrupos.textContent, /—/);
+    });
+
+    it('badge de grupo direto aparece junto com os badges de grupo-via-pessoa, sem sumir um pelo outro', () => {
+        db.grupos.push(
+            { id: 10, nome: 'Namorado', cor: 'blue' },
+            { id: 20, nome: 'Família', cor: 'rose' },
+        );
+        db.pessoas.push({ id: 1, nome: 'Dalton', grupoIds: [10] });
+        db.poemas.push({
+            id: 1,
+            titulo: 'Poema A',
+            sequencia: 1,
+            pessoas: [{ pessoaId: 1, papeis: [] }],
+            gruposDiretos: [20],
+        });
+
+        toggleColuna('poemas', 'grupos', true);
+        renderPoemas();
+
+        const celula = document.getElementById('lista-poemas').textContent;
+        assert.match(celula, /Namorado/);
+        assert.match(celula, /Dalton/);
+        assert.match(celula, /Família/);
+    });
+});
+
+describe('Grupos — exclusão com cascata em gruposDiretos (DOM real via happy-dom)', () => {
+    beforeEach(() => {
+        db.grupos.length = 0;
+        db.pessoas.length = 0;
+        db.poemas.length = 0;
+        db.prosas.length = 0;
+        document.getElementById('modal-confirmar-exclusao')?.remove();
+        document.getElementById('avisos-toast')?.remove();
+    });
+
+    it('mensagem de confirmação avisa separadamente pessoas e textos com referência direta', () => {
+        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose' });
+        db.pessoas.push({ id: 1, nome: 'Dalton', grupoIds: [10] });
+        db.poemas.push({ id: 100, titulo: 'Poema A', sequencia: 1, gruposDiretos: [10] });
+        renderGrupos();
+
+        document.querySelector('[data-action="excluir-item"][data-tipo="grupos"]').click();
+
+        const rotulo = document.getElementById('excl-rotulo').textContent;
+        assert.match(rotulo, /1 pessoa deixará de pertencer a ele/);
+        assert.match(rotulo, /deixará de ser referência direta em 1 texto/);
+    });
+
+    it('confirmar a exclusão limpa gruposDiretos do poema/prosa, mas mantém o texto', () => {
+        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose' });
+        db.poemas.push({ id: 100, titulo: 'Poema A', sequencia: 1, gruposDiretos: [10] });
+        db.prosas.push({ id: 200, titulo: 'Prosa A', sequencia: 1, gruposDiretos: [10] });
+        renderGrupos();
+
+        document.querySelector('[data-action="excluir-item"][data-tipo="grupos"]').click();
+        document.getElementById('excl-confirmar').click();
+
+        assert.equal(db.grupos.length, 0);
+        assert.equal(db.poemas.length, 1, 'o poema continua existindo');
+        assert.deepEqual(db.poemas[0].gruposDiretos, []);
+        assert.equal(db.prosas.length, 1, 'a prosa continua existindo');
+        assert.deepEqual(db.prosas[0].gruposDiretos, []);
+    });
+
+    it('"Desfazer" restaura o grupo e a referência direta no poema/prosa', () => {
+        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose' });
+        db.poemas.push({ id: 100, titulo: 'Poema A', sequencia: 1, gruposDiretos: [10] });
+        renderGrupos();
+
+        document.querySelector('[data-action="excluir-item"][data-tipo="grupos"]').click();
+        document.getElementById('excl-confirmar').click();
+
+        assert.equal(db.grupos.length, 0);
+        assert.deepEqual(db.poemas[0].gruposDiretos, []);
+
+        document.querySelector('#avisos-toast button')?.click();
+
+        assert.equal(db.grupos.length, 1);
+        assert.equal(db.grupos[0].nome, 'Família');
+        assert.deepEqual(db.poemas[0].gruposDiretos, [10]);
+    });
 });

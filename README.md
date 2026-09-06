@@ -78,6 +78,8 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
 ├── filtrar.html              → Separate tool for registering alternative versions
 │                                of sensitive texts before exporting to an AI
 │                                (see "Alternative Versions" section below)
+├── localizar-substituir.html → Separate find-and-replace tool for
+│                                Poems/Prose (see "Main features" below)
 ├── README.md
 │
 ├── assets/
@@ -99,25 +101,49 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
 │   ├── ui.js                 → Tabs, dropdowns, auto-fill (re-exports
 │   │                           toggleModal/garantirModal from modais.js)
 │   ├── render.js             → Orchestrator: calls, in order, each tab's
-│   │                           renderers on every 'db:saved' event (see the 3
+│   │                           renderers on every 'db:saved' event (see the
 │   │                           modules below for each one's logic)
 │   ├── render-listas.js      → Rendering of Books/Parts/Sections/
-│   │                           Poems (+ multi-select)/Prose/Elements
+│   │                           Poems (+ multi-select)/Prose/Elements/
+│   │                           People/Groups/Authors/Eras
 │   ├── render-estrutura.js   → "Structure" tab tree: cascading selection,
 │   │                           move ▲▼, move between levels
+│   ├── render-conexoes.js    → "Connections" tab: builds the Link (pairs/
+│   │                           clusters) and Reference (layered graph)
+│   │                           diagrams from db.poemas/db.prosas, plus the
+│   │                           "gaps" panel
 │   ├── render-lightbox.js    → Loads covers from IndexedDB asynchronously
 │   │                           and shows a navigable lightbox
 │   ├── autobackup.js         → Automatic snapshots of the collection in
 │   │                           IndexedDB (safety net alongside the manual
 │   │                           "Download JSON" — doesn't replace it)
 │   ├── forms.js              → Submit/edit Book, Part, Section, Poem,
-│   │                           Prose, Element
+│   │                           Prose, Element, Person, Group, Author, Era
+│   │                           (includes the Merge Person/Era flow)
 │   ├── editor.js             → Text formatting toolbar + tags/people
 │   ├── coletaneas.js         → Anthologies tab logic
+│   ├── colunas.js            → Which columns are shown and in what order
+│   │                           in the Poems/Prose tables (per-table
+│   │                           preference, saved to localStorage)
+│   ├── acoes-coluna.js       → Which buttons show in the Actions column
+│   │                           (View, Download, Edit, Delete) and the
+│   │                           format used by "Download", per table
+│   ├── busca-campo.js        → Ctrl+F scoped to a single text field,
+│   │                           instead of the browser's native Ctrl+F
+│   │                           (which searches the whole page)
+│   ├── visualizar.js         → "View" modal: shows the same content as
+│   │                           the exported `.md`, rendered on screen
+│   ├── theme.js              → Light/dark/automatic theme (reacts to the
+│   │                           OS theme changing live)
 │   ├── estatisticas.js       → Statistics panel (Chart.js)
 │   ├── exportar.js           → Selective export (by attributes) + export
 │   │                           of the Poems/Prose listing selection +
 │   │                           full nested exports
+│   ├── exportar-md.js        → Markdown export generation (used by
+│   │                           Selective export, table selection, and
+│   │                           nested exports)
+│   ├── exportar-pdf.js       → PDF export generation (Actions column and
+│   │                           the View modal)
 │   ├── nesting.js            → Hierarchical nesting logic (used by
 │   │                           exportar.js)
 │   └── utils.js              → Pure functions with no internal dependencies;
@@ -133,10 +159,16 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
 │   ├── modal-prosa.html
 │   ├── modal-elemento.html
 │   ├── modal-col-parte.html
-│   └── modal-col-item.html
+│   ├── modal-col-item.html
+│   ├── modal-pessoa.html
+│   ├── modal-grupo.html
+│   ├── modal-autor.html
+│   ├── modal-epoca.html
+│   ├── modal-visualizar.html  → "View" modal (see visualizar.js)
+│   └── modal-mesclar.html     → Generic Merge modal (Person/Era)
 │
-└── data/
-    └── arquivo_poetico_backup.json   → Sample/backup data (not read automatically)
+└── data/                      → Excluded from version control (see .gitignore);
+                                  personal backups and exports live here
 ```
 
 ---
@@ -160,10 +192,24 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
   partial day/month/year/hour/minute — fill in only what you know.
 - **Rich text editor**: bold, italic, underline, alignment, color, font,
   and size applied inline to the poem text.
+- **Central registries** (People, Groups, Authors, Eras tabs): reusable
+  records instead of loose text. On each Poem/Prose, a Person can carry one
+  or more roles (`PAPEIS_PESSOA`: Depicted, Inspired by, Dedicated to,
+  Mentioned, Alluded to) and a Group can be referenced directly (without
+  naming a specific Person in it) or via a linked Person. Authorship uses a
+  single role per text (Author/Co-author). Renaming a Person or Era to an
+  already-existing name doesn't merge the records automatically — the form
+  offers **Merge now** (unites the two, moving links over), **Save anyway**
+  (keeps them separate), or **Cancel**.
+- **Eras**: its own registry (name, relationship context, notes) that a
+  Poem/Prose can reference under "Depicted Era", with a start/end (partial
+  dates) and a `recorte` — "moment" (just the event) or "aftermath" (its
+  later effect).
 - **Tags and people**: theme tags and "dedicated to / about whom" as
   reusable labels, with `<datalist>` suggestions.
 - **Poem status**: 🟡 Incomplete, ⚪ Complete, 🟢 Published, 🔵 Migrated
-  (text moved from one book/section to another), and 🔴 Discarded.
+  (text moved from one book/section to another), 🔴 Discarded, and 🔒 Private
+  (never intended for publication, unlike Discarded).
 - **Migration between books** (Poem): "Cut from" and "Released in" fields
   (Book + Part/Section), free text with `<datalist>` suggestions drawn from
   already-registered books/parts/sections — meant for poems with Migrated
@@ -171,6 +217,28 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
   a record in the archive). Choosing an already-registered Section
   auto-fills the corresponding Book; typing/choosing the Book filters
   Section suggestions to that book only.
+- **Links and References** (Poem and Prose): two ways to connect a text to
+  another in the collection itself (Prose can point to a Poem or another
+  Prose; a Poem can only point to another Poem). **Links** are bilateral —
+  a `relacao` (Rewrite, Continuity, Translation, Variation, Version,
+  Response, Diptych, Other) with a `direcao` (origem = base text, destino =
+  derived text). **References** are unidirectional, always from the newer
+  text to the older one — just a `tipo` (Shared character, Shared central
+  image, Nod to, Other), with no direction. The **Connections** tab scans
+  all Links/References and builds graph diagrams (pairs/clusters for
+  Links, layered graphs for References — convergences and branches become
+  single nodes with multiple edges, not duplicate nodes) plus a "gaps"
+  panel (a link registered on only one side); diagrams can be downloaded
+  as PNG.
+- **Sendings and Reactions** (Poem and Prose): a record of when and to
+  whom a text was sent (person, date, channel, reaction, notes) —
+  `pessoa` and `meio` are free text with `<datalist>` suggestions, with no
+  central registry required.
+- **Recognitions** (Poem and Prose): awards or mentions a text received
+  (award name, placement, year, notes).
+- **Editorial status for Books/Anthologies**: Unpublished, Out of print,
+  Public domain, or Re-edited — a publishing concept for the book as a
+  whole, separate from the individual Poem/Prose status.
 - **Intertextuality** (Poem): a list of external references (song, book,
   film/series, video, quote...), each with a type + text — a poem can
   reference several different reference types at once. Each item can be
@@ -223,6 +291,30 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
   separate from the main app's `localStorage`) and are reapplied
   automatically on future uploads.
 - **JSON import/export** for a full backup of the collection (text data).
+- **Configurable columns** (Poems/Prose): choose which columns show and in
+  what order, saved per table in the browser; ID/Title and Actions are
+  fixed. Poem table headers are clickable to sort (by structure, date,
+  alphabetically, or by status, depending on the column).
+- **Configurable Actions column** (Poems/Prose): choose which buttons show
+  (View, Download, Edit, Delete) and the format used by "Download" (JSON,
+  Markdown, or PDF), saved per table.
+- **View** (Poems/Prose): a modal showing the same content as the exported
+  `.md`, rendered on screen instead of downloaded.
+- **PDF export**: alongside JSON and Markdown, individual items can be
+  downloaded as PDF from the Actions column or the View modal.
+- **Find and Replace** (`localizar-substituir.html`): a separate tool
+  (reachable from the "Tools" nav group) to search for a text snippet in
+  Poems and/or Prose — with case-sensitivity, scoping to Poems, Prose, or
+  both, and choosing which text fields to search — it shows the
+  before/after occurrences and only applies replacements to confirmed
+  items. It doesn't reach nested lists (Links, References,
+  Intertextuality, Attachments, Marginal Notes, Authorship, People,
+  Sendings, Recognitions).
+- **Light/dark/automatic theme**: preference saved in the browser; in
+  automatic mode, follows the OS theme and reacts to changes live.
+- **Search within a field** (Ctrl+F while a text field is focused):
+  searches only within that field, unlike the browser's native Ctrl+F
+  (which searches the whole page).
 
 ---
 

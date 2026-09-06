@@ -190,6 +190,23 @@ describe('correspondeFiltro (filtro combinado: livro, pessoa, tema, data, status
         assert.equal(correspondeFiltro({ publicado: false }, incompletos), false);
     });
 
+    it('status "privados" só passa item com status "privado"', () => {
+        const privados = { ...opcoesBase(), status: 'privados' };
+        assert.equal(correspondeFiltro({ status: 'privado' }, privados), true);
+        assert.equal(correspondeFiltro({ status: 'completo' }, privados), false);
+        assert.equal(correspondeFiltro({ status: 'publicado' }, privados), false);
+    });
+
+    it('status "todos" deixa item Privado passar normalmente (só sai se um filtro específico excluir)', () => {
+        const todos = { ...opcoesBase(), status: 'todos' };
+        assert.equal(correspondeFiltro({ status: 'privado' }, todos), true);
+    });
+
+    it('item Privado conta como rascunho pro filtro "rascunhos" (não é status "publicado")', () => {
+        const rascunhos = { ...opcoesBase(), status: 'rascunhos' };
+        assert.equal(correspondeFiltro({ status: 'privado' }, rascunhos), true);
+    });
+
     it('combina filtro de livro + data: os dois precisam bater', () => {
         const opcoes = {
             ...opcoesBase(),

@@ -1,6 +1,6 @@
 import './helpers/localstorage-shim.js';
 
-import { describe, it } from 'node:test';
+import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
@@ -20,6 +20,9 @@ import {
     calcularImpactoExclusaoEpoca,
     mesclarPessoas,
     mesclarEpocas,
+    obterOuCriarGrupoPorNome,
+    calcularImpactoExclusaoGrupo,
+    db,
 } from '../js/db.js';
 
 // ─── sortSecoes ─────────────────────────────────────────────────
@@ -542,6 +545,116 @@ describe('calcularImpactoExclusaoAutor (quem referencia o Autor, pra avisar ante
 
     it('funciona mesmo se poemas/prosas estiverem ausentes do db (backup antigo)', () => {
         const { poemasIds, prosasIds } = calcularImpactoExclusaoAutor({}, 10);
+        assert.deepEqual(poemasIds, []);
+        assert.deepEqual(prosasIds, []);
+    });
+});
+
+// ─── obterOuCriarGrupoPorNome ───────────────────────────────────────
+
+describe('obterOuCriarGrupoPorNome (dedup por nome exato, mesmo padrão de Pessoa/Autor)', () => {
+    beforeEach(() => {
+        db.grupos.length = 0;
+    });
+
+    it('nome que já existe no cadastro retorna o grupo existente, sem duplicar', () => {
+        db.grupos.push({ id: 1, nome: 'Família', cor: 'blue' });
+
+        const grupo = obterOuCriarGrupoPorNome('Família');
+
+        assert.equal(grupo.id, 1);
+        assert.equal(db.grupos.length, 1);
+    });
+
+    it('nome novo cria um grupo com cor padrão', () => {
+        const grupo = obterOuCriarGrupoPorNome('Trabalho');
+
+        assert.equal(db.grupos.length, 1);
+        assert.equal(grupo.nome, 'Trabalho');
+        assert.ok(grupo.cor, 'grupo novo deveria vir com uma cor padrão preenchida');
+    });
+
+    it('nome com espaços nas pontas é normalizado antes de comparar/criar', () => {
+        db.grupos.push({ id: 1, nome: 'Amigos', cor: 'emerald' });
+
+        const grupo = obterOuCriarGrupoPorNome('  Amigos  ');
+
+        assert.equal(grupo.id, 1);
+        assert.equal(db.grupos.length, 1, 'não deveria criar um grupo duplicado só por espaços');
+    });
+});
+
+// ─── calcularImpactoExclusaoGrupo ───────────────────────────────────
+
+describe('calcularImpactoExclusaoGrupo (quem referencia o Grupo, pra avisar antes de excluir)', () => {
+    it('encontra pessoas que pertencem ao grupo', () => {
+        const dbRef = {
+            pessoas: [
+                { id: 1, nome: 'Ana', grupoIds: [10] },
+                { id: 2, nome: 'Beto', grupoIds: [20] },
+            ],
+            poemas: [],
+            prosas: [],
+        };
+        const { pessoasIds, poemasIds, prosasIds } = calcularImpactoExclusaoGrupo(dbRef, 10);
+        assert.deepEqual(pessoasIds, [1]);
+        assert.deepEqual(poemasIds, []);
+        assert.deepEqual(prosasIds, []);
+    });
+
+    it('encontra também poemas e prosas que referenciam o grupo diretamente (sem pessoa)', () => {
+        const dbRef = {
+            pessoas: [],
+            poemas: [
+                { id: 100, gruposDiretos: [10] },
+                { id: 101, gruposDiretos: [20] },
+            ],
+            prosas: [{ id: 200, gruposDiretos: [10] }],
+        };
+        const { pessoasIds, poemasIds, prosasIds } = calcularImpactoExclusaoGrupo(dbRef, 10);
+        assert.deepEqual(pessoasIds, []);
+        assert.deepEqual(poemasIds, [100]);
+        assert.deepEqual(prosasIds, [200]);
+    });
+
+    it('combina os dois tipos de vínculo (via pessoa e direto) sem misturar as listas', () => {
+        const dbRef = {
+            pessoas: [{ id: 1, nome: 'Ana', grupoIds: [10] }],
+            poemas: [{ id: 100, gruposDiretos: [10] }],
+            prosas: [],
+        };
+        const { pessoasIds, poemasIds, prosasIds } = calcularImpactoExclusaoGrupo(dbRef, 10);
+        assert.deepEqual(pessoasIds, [1]);
+        assert.deepEqual(poemasIds, [100]);
+        assert.deepEqual(prosasIds, []);
+    });
+
+    it('grupo sem nenhum vínculo retorna listas vazias', () => {
+        const dbRef = {
+            pessoas: [{ id: 1, nome: 'Ana', grupoIds: [10] }],
+            poemas: [{ id: 100, gruposDiretos: [10] }],
+            prosas: [],
+        };
+        const { pessoasIds, poemasIds, prosasIds } = calcularImpactoExclusaoGrupo(dbRef, 999);
+        assert.deepEqual(pessoasIds, []);
+        assert.deepEqual(poemasIds, []);
+        assert.deepEqual(prosasIds, []);
+    });
+
+    it('funciona mesmo se pessoas/poemas/prosas estiverem ausentes do db (backup antigo)', () => {
+        const { pessoasIds, poemasIds, prosasIds } = calcularImpactoExclusaoGrupo({}, 10);
+        assert.deepEqual(pessoasIds, []);
+        assert.deepEqual(poemasIds, []);
+        assert.deepEqual(prosasIds, []);
+    });
+
+    it('item com gruposDiretos ausente (dado antigo, sem o campo) não quebra e não bate', () => {
+        const dbRef = {
+            pessoas: [],
+            poemas: [{ id: 100 }],
+            prosas: [{ id: 200 }],
+        };
+        const { poemasIds, prosasIds } = calcularImpactoExclusaoGrupo(dbRef, 10);
         assert.deepEqual(poemasIds, []);
         assert.deepEqual(prosasIds, []);
     });

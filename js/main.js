@@ -134,6 +134,8 @@ import { renderEstatisticas } from './estatisticas.js';
 import { renderConexoes, baixarDiagramaReferencias } from './render-conexoes.js';
 import {
     initEditor,
+    adicionarSinalTradicao,
+    removerSinalTradicao,
     adicionarSinalEstilo,
     removerSinalEstilo,
     adicionarSinalTema,
@@ -153,6 +155,8 @@ import {
     removerPessoa,
     alternarPapelPessoa,
     alternarDropdownPapelPessoa,
+    adicionarGrupoDireto,
+    removerGrupoDireto,
     adicionarAutoria,
     removerAutoria,
     alterarPapelAutoria,
@@ -166,6 +170,8 @@ import {
     removerReconhecimento,
     atualizarDatalist,
     atualizarDatalistProsa,
+    adicionarSinalTradicaoProsa,
+    removerSinalTradicaoProsa,
     adicionarSinalEstiloProsa,
     removerSinalEstiloProsa,
     adicionarSinalTemaProsa,
@@ -182,6 +188,8 @@ import {
     removerPessoaProsa,
     alternarPapelPessoaProsa,
     alternarDropdownPapelPessoaProsa,
+    adicionarGrupoDiretoProsa,
+    removerGrupoDiretoProsa,
     adicionarAutoriaProsa,
     removerAutoriaProsa,
     alterarPapelAutoriaProsa,
@@ -565,6 +573,8 @@ window.autoPreencherDataPublicacao = autoPreencherDataPublicacao;
 // render-listas.js, que agora usa data-action + o listener delegado
 // acima. Continuam importados normalmente (uso local no ACOES_LISTA).
 
+window.adicionarSinalTradicao = adicionarSinalTradicao;
+window.removerSinalTradicao = removerSinalTradicao;
 window.adicionarSinalEstilo = adicionarSinalEstilo;
 window.removerSinalEstilo = removerSinalEstilo;
 window.adicionarSinalTema = adicionarSinalTema;
@@ -581,6 +591,8 @@ window.adicionarPessoa = adicionarPessoa;
 window.removerPessoa = removerPessoa;
 window.alternarPapelPessoa = alternarPapelPessoa;
 window.alternarDropdownPapelPessoa = alternarDropdownPapelPessoa;
+window.adicionarGrupoDireto = adicionarGrupoDireto;
+window.removerGrupoDireto = removerGrupoDireto;
 window.adicionarAutoria = adicionarAutoria;
 window.removerAutoria = removerAutoria;
 window.alterarPapelAutoria = alterarPapelAutoria;
@@ -592,6 +604,8 @@ window.adicionarReconhecimento = adicionarReconhecimento;
 window.editarReconhecimento = editarReconhecimento;
 window.cancelarEdicaoReconhecimento = cancelarEdicaoReconhecimento;
 window.removerReconhecimento = removerReconhecimento;
+window.adicionarSinalTradicaoProsa = adicionarSinalTradicaoProsa;
+window.removerSinalTradicaoProsa = removerSinalTradicaoProsa;
 window.adicionarSinalEstiloProsa = adicionarSinalEstiloProsa;
 window.removerSinalEstiloProsa = removerSinalEstiloProsa;
 window.adicionarSinalTemaProsa = adicionarSinalTemaProsa;
@@ -608,6 +622,8 @@ window.adicionarPessoaProsa = adicionarPessoaProsa;
 window.removerPessoaProsa = removerPessoaProsa;
 window.alternarPapelPessoaProsa = alternarPapelPessoaProsa;
 window.alternarDropdownPapelPessoaProsa = alternarDropdownPapelPessoaProsa;
+window.adicionarGrupoDiretoProsa = adicionarGrupoDiretoProsa;
+window.removerGrupoDiretoProsa = removerGrupoDiretoProsa;
 window.adicionarAutoriaProsa = adicionarAutoriaProsa;
 window.removerAutoriaProsa = removerAutoriaProsa;
 window.alterarPapelAutoriaProsa = alterarPapelAutoriaProsa;

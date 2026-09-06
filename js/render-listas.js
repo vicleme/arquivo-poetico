@@ -615,7 +615,12 @@ function decorarCamposBusca(item, extraLivros = '') {
         _buscaParte: parteTitulo,
         _buscaSecao: secaoTitulo,
         _buscaIntertexto: Array.isArray(item.intertextualidade)
-            ? item.intertextualidade.map((it) => `${it.tipo || ''} ${it.texto || ''}`).join(' ')
+            ? item.intertextualidade
+                  .map(
+                      (it) =>
+                          `${it.tipo || ''} ${it.texto || ''} ${it.link || ''} ${it.nota || ''}`,
+                  )
+                  .join(' ')
             : '',
         _buscaAnexos: Array.isArray(item.anexos)
             ? item.anexos
@@ -688,9 +693,17 @@ function decorarCamposBusca(item, extraLivros = '') {
         // do vínculo poema↔pessoa — ver comentário de nomesGrupos/
         // paresGrupoPessoa em utils.js. Resolvido aqui pro prefixo
         // "grupo:", que acha o texto pelo grupo de alguém mencionado
-        // (ex.: "grupo:família"), mesmo sem citar o nome da pessoa.
+        // (ex.: "grupo:família"), mesmo sem citar o nome da pessoa. Junta
+        // também os grupos referenciados diretamente (item.gruposDiretos),
+        // pra achar o texto mesmo quando o grupo é citado sem nenhuma
+        // pessoa dele em particular.
         _buscaGrupos: [
-            ...new Set(paresGrupoPessoa(item, db.pessoas, db.grupos).map((par) => par.grupo.nome)),
+            ...new Set([
+                ...paresGrupoPessoa(item, db.pessoas, db.grupos).map((par) => par.grupo.nome),
+                ...(item.gruposDiretos || [])
+                    .map((id) => db.grupos.find((g) => g.id == id)?.nome)
+                    .filter(Boolean),
+            ]),
         ].join(' '),
         // autoria é array {autorId, papel} (nome mora no cadastro
         // central db.autores — ver migrarAutoria em db.js); nome e papel
@@ -758,6 +771,45 @@ function badgesEtiquetas(
     );
 }
 
+// Coluna "Etiquetas": mesmo tratamento por cor que a coluna Grupos já
+// tem (cada badge com a cor do que ele representa), só que aqui a cor é
+// fixa por categoria (SINALIZACOES_CATEGORIAS), não cadastrável pelo
+// Victor como a cor de Grupo — são 7 categorias fechadas, não entidades
+// com registro próprio. Mesmo espírito das cores fixas já usadas em
+// Elos (ciano) e Referências (fuchsia): cor comunica o "tipo" da tag
+// só de bater o olho, sem abrir o item.
+const CORES_CATEGORIA_SINALIZACAO = {
+    tradicao: 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300',
+    estilo: 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300',
+    tema: 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300',
+    relacao: 'bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300',
+    sensibilidade: 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300',
+    tom: 'bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300',
+    outros: 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300',
+};
+
+// Percorre as 7 categorias em vez de usar sinalizacoesCombinadas (que
+// achata tudo numa string só, perdendo de qual campo cada tag veio) —
+// aqui a categoria de origem de cada tag é o que decide a cor do badge.
+function badgesEtiquetasPorCategoria(item) {
+    const badges = Object.entries(SINALIZACOES_CATEGORIAS).flatMap(([categoria, campo]) => {
+        const valor = item[campo];
+        if (!valor) return [];
+        const corClasse = CORES_CATEGORIA_SINALIZACAO[categoria];
+        return valor
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean)
+            .map(
+                (t) =>
+                    `<span class="text-[9px] ${corClasse} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(t)}</span>`,
+            );
+    });
+    return badges.length
+        ? badges.join('')
+        : '<span class="text-gray-300 dark:text-slate-600">—</span>';
+}
+
 // Coluna de Pessoas: pessoas é array de objeto {pessoaId, papeis} —
 // nome vem do cadastro central db.pessoas (ver migrarPessoasParaCadastro
 // em db.js); papeis é array, desde o multi-select (ver migrarPapeisPessoa)
@@ -794,15 +846,25 @@ function badgesPessoas(pessoas) {
 // ver exportar-md.js). Cada badge usa a cor própria daquele grupo
 // (classesCorGrupo) e mostra "Grupo (Pessoa)" pra não perder de quem é
 // o vínculo quando o item tem mais de uma pessoa em grupos diferentes.
+// Além disso, um badge por grupo referenciado diretamente
+// (item.gruposDiretos — ver obterGruposDiretos em editor.js), sem o
+// parêntese de pessoa (não há uma pessoa específica associada).
 function badgesGrupos(item) {
     const pares = paresGrupoPessoa(item, db.pessoas, db.grupos);
-    if (!pares.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    return pares
-        .map(
-            ({ grupo, pessoa }) =>
-                `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)} <span class="opacity-70">(${escapeHtml(pessoa.nome)})</span></span>`,
-        )
-        .join('');
+    const diretos = (item.gruposDiretos || [])
+        .map((id) => db.grupos.find((g) => g.id == id))
+        .filter(Boolean);
+    if (!pares.length && !diretos.length)
+        return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    const badgesViaPessoa = pares.map(
+        ({ grupo, pessoa }) =>
+            `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)} <span class="opacity-70">(${escapeHtml(pessoa.nome)})</span></span>`,
+    );
+    const badgesDiretos = diretos.map(
+        (grupo) =>
+            `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)}</span>`,
+    );
+    return [...badgesViaPessoa, ...badgesDiretos].join('');
 }
 
 // Coluna de Autoria: um badge por par (Autor, papel) — ver paresAutoria
@@ -1050,6 +1112,7 @@ const COLUNA_CAMPO_BUSCA = {
         autoria: '_buscaAutoria',
         envios: '_buscaEnvios',
         reconhecimentos: '_buscaReconhecimentos',
+        autoavaliacao: 'autoavaliacao',
         epocaRetratada: '_buscaEpoca',
     },
     prosas: {
@@ -1062,6 +1125,7 @@ const COLUNA_CAMPO_BUSCA = {
         autoria: '_buscaAutoria',
         envios: '_buscaEnvios',
         reconhecimentos: '_buscaReconhecimentos',
+        autoavaliacao: 'autoavaliacao',
         // Item 4: mesmas entradas de Poemas para os campos que Prosa
         // acabou de ganhar (ver decorarCamposBusca acima — já genérico,
         // roda igual pras duas tabelas, então os campos decorados
@@ -1191,6 +1255,7 @@ function getListaVisivelPoemas() {
     else if (statusPoemas === 'migrados') base = base.filter((p) => p.status === 'migrado');
     else if (statusPoemas === 'pendentes') base = base.filter((p) => p.pendencia?.trim());
     else if (statusPoemas === 'descartados') base = base.filter((p) => p.status === 'descartado');
+    else if (statusPoemas === 'privados') base = base.filter((p) => p.status === 'privado');
 
     if (filtroLivroPoemas) {
         const livroSel = db.livros.find((l) => String(l.id) === String(filtroLivroPoemas));
@@ -1306,7 +1371,14 @@ function compararPorTexto(pegarTexto) {
 // Sem uma ordem "natural" entre os status (não é alfabético nem
 // cronológico), então esse é só um critério fixo e arbitrário, mas
 // consistente, do "menos pronto" ao "mais pronto".
-const ORDEM_STATUS = { incompleto: 0, completo: 1, publicado: 2, migrado: 3, descartado: 4 };
+const ORDEM_STATUS = {
+    incompleto: 0,
+    completo: 1,
+    publicado: 2,
+    migrado: 3,
+    descartado: 4,
+    privado: 5,
+};
 function compararPorStatus(a, b, asc) {
     const sa = ORDEM_STATUS[a.status] ?? 1;
     const sb = ORDEM_STATUS[b.status] ?? 1;
@@ -1362,9 +1434,12 @@ const COMPARADORES_ORDENACAO_POEMAS = {
     status: compararPorStatus,
     pessoas: compararPorTexto((p) => nomesPessoas(p, db.pessoas).join(', ')),
     grupos: compararPorTexto((p) =>
-        paresGrupoPessoa(p, db.pessoas, db.grupos)
-            .map(({ grupo }) => grupo.nome)
-            .join(', '),
+        [
+            ...paresGrupoPessoa(p, db.pessoas, db.grupos).map(({ grupo }) => grupo.nome),
+            ...(p.gruposDiretos || [])
+                .map((id) => db.grupos.find((g) => g.id == id)?.nome)
+                .filter(Boolean),
+        ].join(', '),
     ),
     autoria: compararPorTexto((p) =>
         paresAutoria(p, db.autores)
@@ -1399,6 +1474,7 @@ const COMPARADORES_ORDENACAO_POEMAS = {
     ),
     descricaoVisual: compararPorTexto((p) => p.descricaoVisual),
     contextoHistorico: compararPorTexto((p) => p.contextoHistorico),
+    autoavaliacao: compararPorTexto((p) => p.autoavaliacao),
     etiquetas: compararPorTexto((p) => sinalizacoesCombinadas(p)),
     notas: compararPorTexto((p) => p.notas),
     ocultacao: compararPorTexto((p) => p.ocultacao),
@@ -2425,6 +2501,7 @@ export function renderPoemas() {
                 incompleto: { emoji: '🟡', titulo: 'Incompleto' },
                 migrado: { emoji: '🔵', titulo: 'Migrado' },
                 descartado: { emoji: '🔴', titulo: 'Descartado' },
+                privado: { emoji: '🔒', titulo: 'Privado' },
             };
             const { emoji, titulo } = INFO_STATUS[p.status] || { emoji: '⚪', titulo: 'Completo' };
             // Pendência agora é um campo independente do status — o 🟠 é
@@ -2447,9 +2524,11 @@ export function renderPoemas() {
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(p.conceitos?.elos, rotuloEntradaElo, 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300')}</td>`,
         referencias: (p) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(p.conceitos?.referencias, rotuloEntradaReferencia, 'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-700 dark:text-fuchsia-300')}</td>`,
-        etiquetas: (p) => `<td class="p-4">${badgesEtiquetas(sinalizacoesCombinadas(p))}</td>`,
+        etiquetas: (p) => `<td class="p-4">${badgesEtiquetasPorCategoria(p)}</td>`,
         notas: (p) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.notas)}</td>`,
+        autoavaliacao: (p) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.autoavaliacao)}</td>`,
         epocaRetratada: (p) => {
             const epoca = p.epocaRetratada;
             const na = epoca?.na;
@@ -2464,7 +2543,11 @@ export function renderPoemas() {
                     const badge = it.tipo
                         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
                         : '';
-                    return `<div>${badge}${trechoNota(it.texto)}</div>`;
+                    const link = it.link
+                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.link)}</a>`
+                        : '';
+                    const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
+                    return `<div>${badge}${trechoNota(it.texto)}${link}${nota}</div>`;
                 })
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
@@ -2675,6 +2758,7 @@ export function renderProsas() {
                 incompleto: { emoji: '🟡', titulo: 'Incompleto' },
                 migrado: { emoji: '🔵', titulo: 'Migrado' },
                 descartado: { emoji: '🔴', titulo: 'Descartado' },
+                privado: { emoji: '🔒', titulo: 'Privado' },
             };
             const { emoji, titulo } = INFO_STATUS[pr.status] || { emoji: '⚪', titulo: 'Completo' };
             const temPendencia = !!pr.pendencia?.trim();
@@ -2690,11 +2774,13 @@ export function renderProsas() {
         autoria: (pr) => `<td class="p-4">${badgesAutoria(pr)}</td>`,
         envios: (pr) => `<td class="p-4">${badgesEnvios(pr)}</td>`,
         reconhecimentos: (pr) => `<td class="p-4">${badgesReconhecimentos(pr)}</td>`,
-        etiquetas: (pr) => `<td class="p-4">${badgesEtiquetas(sinalizacoesCombinadas(pr))}</td>`,
+        etiquetas: (pr) => `<td class="p-4">${badgesEtiquetasPorCategoria(pr)}</td>`,
         genero: (pr) =>
             `<td class="p-4">${badgesEtiquetas(pr.genero, 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-400')}</td>`,
         notas: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.notas)}</td>`,
+        autoavaliacao: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.autoavaliacao)}</td>`,
         epocaRetratada: (pr) => {
             const epoca = pr.epocaRetratada;
             const na = epoca?.na;
@@ -2715,7 +2801,11 @@ export function renderProsas() {
                     const badge = it.tipo
                         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
                         : '';
-                    return `<div>${badge}${trechoNota(it.texto)}</div>`;
+                    const link = it.link
+                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.link)}</a>`
+                        : '';
+                    const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
+                    return `<div>${badge}${trechoNota(it.texto)}${link}${nota}</div>`;
                 })
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;

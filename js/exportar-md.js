@@ -28,6 +28,7 @@ export const INFO_STATUS = {
     incompleto: { emoji: '🟡', titulo: 'Incompleto' },
     migrado: { emoji: '🔵', titulo: 'Migrado' },
     descartado: { emoji: '🔴', titulo: 'Descartado' },
+    privado: { emoji: '🔒', titulo: 'Privado' },
     completo: { emoji: '⚪', titulo: 'Completo' },
 };
 
@@ -126,6 +127,7 @@ function verificacoesDeCampos(item) {
         !!titulosPorIds(item.conceitos?.referencias),
         !!(item.texto || '').trim(),
         !!(item.notas || '').trim(),
+        !!(item.autoavaliacao || '').trim(),
         !!(item.descricaoVisual || '').trim(),
         !!(item.contextoHistorico || '').trim(),
         !!(item.ocultacao || '').trim(),
@@ -182,11 +184,19 @@ export function textoPessoas(item) {
 // render-listas.js — e no painel do modal — ver renderPainelGrupos em
 // editor.js). Formato "Grupo (Pessoa)", não "Pessoa (Grupo)": o pedido
 // original foi por essa ordem, pra não confundir com o parêntese de
-// papel de textoPessoas.
+// papel de textoPessoas. Além do grupo-via-pessoa, junta na mesma linha
+// os grupos referenciados diretamente (item.gruposDiretos — ver
+// obterGruposDiretos em editor.js): o texto se refere ao grupo em geral,
+// sem citar ninguém dele em particular, então aparece só pelo nome, sem
+// parêntese de pessoa.
 export function textoGrupos(item) {
     const pares = paresGrupoPessoa(item, db.pessoas, db.grupos);
-    if (!pares.length) return null;
-    return pares.map(({ grupo, pessoa }) => `${grupo.nome} (${pessoa.nome})`).join(', ');
+    const viaPessoa = pares.map(({ grupo, pessoa }) => `${grupo.nome} (${pessoa.nome})`);
+    const diretos = (item.gruposDiretos || [])
+        .map((id) => db.grupos.find((g) => g.id == id)?.nome)
+        .filter(Boolean);
+    const todos = [...viaPessoa, ...diretos];
+    return todos.length ? todos.join(', ') : null;
 }
 
 // Autoria: array {autorId, papel} (ver migrarAutoria em db.js) —
@@ -265,7 +275,9 @@ function itemParaMarkdownDepoisDoTexto(item) {
         md += '### Intertextualidade\n\n';
         item.intertextualidade.forEach((it) => {
             const prefixo = it.tipo ? `**${it.tipo}:** ` : '';
-            md += `- ${prefixo}${it.texto || ''}\n`;
+            const link = it.link ? ` — ${it.link}` : '';
+            const nota = it.nota ? ` *(${it.nota})*` : '';
+            md += `- ${prefixo}${it.texto || ''}${link}${nota}\n`;
         });
         md += '\n';
     }
@@ -319,6 +331,8 @@ function itemParaMarkdownDepoisDoTexto(item) {
         });
         md += '\n';
     }
+
+    md += blocoTexto('Autoavaliação', item.autoavaliacao);
 
     // Conteúdo Sensível / Vocabulário Hiperacionante em destaque (blockquote),
     // já que sinalizam algo que quem lê deveria notar antes do texto em si.

@@ -301,3 +301,55 @@ describe('renderVisualizacaoHtml — Reconhecimentos (item 8, faltava na Visuali
         assert.match(html, /<strong>Concurso X, 1º lugar:<\/strong> Nota/);
     });
 });
+
+describe('renderVisualizacaoHtml — Autoavaliação (campo novo, texto livre)', () => {
+    it('mostra o bloco "Autoavaliação" com o texto digitado', () => {
+        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x', autoavaliacao: 'Gostei.' };
+        const html = renderVisualizacaoHtml(item);
+        assert.match(html, /<h4[^>]*>Autoavaliação<\/h4>/);
+        assert.match(html, /Gostei\./);
+    });
+
+    it('não mostra o bloco "Autoavaliação" quando o campo está ausente ou vazio', () => {
+        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x', autoavaliacao: '   ' };
+        const html = renderVisualizacaoHtml(item);
+        assert.ok(!html.includes('Autoavaliação'));
+    });
+});
+
+describe('renderVisualizacaoHtml — Intertextualidade com link e nota (campos novos)', () => {
+    it('mostra o link e a nota junto da linha, depois do texto principal', () => {
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: 'x',
+            intertextualidade: [
+                {
+                    tipo: 'Citação',
+                    texto: 'Trecho citado',
+                    link: 'https://exemplo.com/obra',
+                    nota: 'Nota livre',
+                },
+            ],
+        };
+        const html = renderVisualizacaoHtml(item);
+        assert.match(html, /<h4[^>]*>Intertextualidade<\/h4>/);
+        assert.match(
+            html,
+            /<strong>Citação:<\/strong> Trecho citado — https:\/\/exemplo\.com\/obra <em>\(Nota livre\)<\/em>/,
+        );
+    });
+
+    it('não quebra e não mostra link/nota quando estão ausentes (compatibilidade com dados antigos)', () => {
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: 'x',
+            intertextualidade: [{ tipo: 'Citação', texto: 'Trecho antigo' }],
+        };
+        const html = renderVisualizacaoHtml(item);
+        assert.match(html, /<strong>Citação:<\/strong> Trecho antigo<\/li>/);
+    });
+});

@@ -685,6 +685,20 @@ export function extrairFasesUnicas(livros) {
     return Array.from(fases).sort();
 }
 
+// Recebe o array db.livros e retorna todos os nomes de Loja/Editora já
+// usados em l.lojas[].nome, sem repetição e ordenados — pra alimentar
+// o datalist de sugestões do campo Loja/Editora (mesmo padrão de
+// extrairFasesUnicas acima).
+export function extrairNomesLojasUnicos(livros) {
+    const nomes = new Set();
+    livros.forEach((l) => {
+        (l.lojas || []).forEach((loja) => {
+            if (loja.nome && loja.nome.trim()) nomes.add(loja.nome.trim());
+        });
+    });
+    return Array.from(nomes).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
 // ─── Datas parciais (Escrita / Primeira Publicação) ────────────
 // Flexíveis: cada campo (dia/mes/ano/hora/minuto) é opcional e
 // independente — dá pra saber só o ano, só o mês e ano, etc.
@@ -1268,6 +1282,7 @@ const CAMPOS_ATRIBUTO = {
     titulo: 'titulo',
     texto: 'texto',
     etiqueta: '_buscaSinalizacoes',
+    tradicao: 'sinalizacoesTradicao',
     estilo: 'sinalizacoesEstilo',
     tema: 'sinalizacoesTema',
     relacao: 'sinalizacoesRelacao',
@@ -1296,6 +1311,7 @@ const CAMPOS_ATRIBUTO = {
     secao: '_buscaSecao',
     visual: 'descricaoVisual',
     contexto: 'contextoHistorico',
+    autoavaliacao: 'autoavaliacao',
     intertexto: '_buscaIntertexto',
     anexo: '_buscaAnexos',
     anexos: '_buscaAnexos',
@@ -1325,6 +1341,7 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     titulo: 'titulo',
     texto: 'texto',
     _buscaSinalizacoes: 'etiqueta',
+    sinalizacoesTradicao: 'tradicao',
     sinalizacoesEstilo: 'estilo',
     sinalizacoesTema: 'tema',
     sinalizacoesRelacao: 'relacao',
@@ -1345,6 +1362,7 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaSecao: 'secao',
     descricaoVisual: 'visual',
     contextoHistorico: 'contexto',
+    autoavaliacao: 'autoavaliacao',
     _buscaIntertexto: 'intertexto',
     _buscaAnexos: 'anexo',
     anexosNotaGeral: 'notaanexos',
@@ -1447,7 +1465,7 @@ function parseConsultaBusca(query) {
 // Filtra uma lista de textos (poemas/prosas) por uma busca livre que
 // procura em título, ano, sinalizações, pessoas, autoria, grupos,
 // papéis, época retratada, livros, descrição visual, contexto
-// histórico/pessoal e intertextualidade ao mesmo tempo — ou,
+// histórico/pessoal, autoavaliação e intertextualidade ao mesmo tempo — ou,
 // opcionalmente, restrita a um atributo específico. Ver
 // parseConsultaBusca acima pra sintaxe completa.
 export function filtrarTextos(lista, query) {
@@ -1470,6 +1488,7 @@ export function filtrarTextos(lista, query) {
                 item._livros,
                 item.descricaoVisual,
                 item.contextoHistorico,
+                item.autoavaliacao,
                 item._buscaIntertexto,
                 item._buscaAnexos,
                 item.anexosNotaGeral,
@@ -1574,6 +1593,7 @@ export function extrairSinalizacoesUnicas(itens, campo = 'sinalizacoesTema') {
 // definitiva, é onde elas ficam visíveis até virar Reconhecimentos e
 // Elos tipados de Derivação.
 export const SINALIZACOES_CATEGORIAS = {
+    tradicao: 'sinalizacoesTradicao',
     estilo: 'sinalizacoesEstilo',
     tema: 'sinalizacoesTema',
     relacao: 'sinalizacoesRelacao',

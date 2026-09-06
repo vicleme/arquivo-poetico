@@ -939,6 +939,33 @@ describe('filtrarTextos (busca com sintaxe estilo Google)', () => {
         );
     });
 
+    it('prefixo autoavaliacao: busca no campo novo de opinião livre', () => {
+        const comAutoavaliacao = [
+            { id: 40, titulo: 'A', autoavaliacao: 'Gostei muito do resultado final' },
+            { id: 41, titulo: 'B', autoavaliacao: 'Achei fraco' },
+            { id: 42, titulo: 'C', autoavaliacao: '' },
+        ];
+        assert.deepEqual(
+            filtrarTextos(comAutoavaliacao, 'autoavaliacao:gostei').map((i) => i.id),
+            [40],
+        );
+        assert.deepEqual(
+            filtrarTextos(comAutoavaliacao, 'autoavaliacao:*').map((i) => i.id),
+            [40, 41],
+        );
+    });
+
+    it('autoavaliação entra na busca geral (termo solto, sem prefixo)', () => {
+        const comAutoavaliacao = [
+            { id: 50, titulo: 'Sem relação com o termo', autoavaliacao: 'menção a nostalgia' },
+            { id: 51, titulo: 'Outro', autoavaliacao: '' },
+        ];
+        assert.deepEqual(
+            filtrarTextos(comAutoavaliacao, 'nostalgia').map((i) => i.id),
+            [50],
+        );
+    });
+
     it('prefixo genero: restringe a busca ao campo Gênero (só existe em Prosa)', () => {
         const prosas = [
             { id: 10, titulo: 'Carta ao Mar', genero: 'Cartas' },
@@ -1479,10 +1506,7 @@ describe('formatarEpocaRetratada (item 3 — epocaId + recorte)', () => {
 
         it('sem contexto cadastrado (época sem o campo preenchido) não mostra o "•"', () => {
             const epocasSemContexto = [{ id: 1, nome: 'Luto' }];
-            assert.equal(
-                formatarEpocaRetratada({ epocaId: 1 }, epocasSemContexto),
-                'Luto',
-            );
+            assert.equal(formatarEpocaRetratada({ epocaId: 1 }, epocasSemContexto), 'Luto');
         });
     });
 });

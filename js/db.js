@@ -14,6 +14,7 @@ import {
     mostrarAvisoComAcao,
     fecharAviso,
     gerarId,
+    CORES_GRUPO_PADRAO,
 } from './utils.js';
 import {
     salvarCapa,
@@ -282,7 +283,7 @@ migrarPapeisPessoa(db.poemas);
 migrarPapeisPessoa(db.prosas);
 
 // Migração: os nomes de 3 dos 5 valores de PAPEIS_PESSOA mudaram numa
-// sessão (padronização de gênero — ver status-acervo-poetico.md):
+// sessão (padronização de gênero — ver manutencao/decisoes.md):
 // "Alusão" → "Aludido(a)", "Dedicatária" → "Dedicatário(a)", "Inspirado
 // por" → "Inspirado(a) por". A troca só mudou a constante e o código —
 // dado já salvo com o nome antigo (dentro de `papeis`, array de string)
@@ -531,6 +532,24 @@ export function obterOuCriarPessoaPorNome(nome) {
     return pessoa;
 }
 
+// Resolve nome → Grupo no cadastro central, criando um novo se ainda
+// não existir (dedup por nome exato, mesmo critério de
+// obterOuCriarPessoaPorNome acima). Usada por editor.js: caminho de
+// confirmação explícita do usuário ao digitar, no campo de referência
+// direta a Grupo do poema/prosa (ver criarGrupoDeGruposDiretos), o
+// nome de um grupo que ainda não está cadastrado — cor sai no padrão
+// (CORES_GRUPO_PADRAO), trocável depois na aba Grupos, mesmo espírito
+// de Pessoa nova entrar sem grupo e ganhar um depois.
+export function obterOuCriarGrupoPorNome(nome) {
+    const nomeLimpo = String(nome ?? '').trim();
+    let grupo = db.grupos.find((g) => g.nome === nomeLimpo);
+    if (!grupo) {
+        grupo = { id: gerarId(), nome: nomeLimpo, cor: CORES_GRUPO_PADRAO };
+        db.grupos.push(grupo);
+    }
+    return grupo;
+}
+
 // Resolve nome → Época no cadastro central, criando uma nova se ainda
 // não existir (dedup por nome exato, mesmo critério de
 // obterOuCriarPessoaPorNome acima). Usada por forms.js ao gravar o
@@ -722,7 +741,7 @@ export async function importarDB(novoDb) {
     migrarAutoria(db);
     // migrarReconhecimentos tinha ficado de fora daqui (só rodava no
     // load do módulo) — mesmo padrão de risco de "arquivo/chamada que
-    // fica pra trás" já documentado no status-acervo-poetico.md; pego
+    // fica pra trás" já documentado em manutencao/licoes-de-sessao.md; pego
     // ao mexer neste bloco pra Épocas, sem relação direta com o item 3.
     migrarReconhecimentos(db.poemas);
     migrarReconhecimentos(db.prosas);
@@ -899,14 +918,20 @@ export function calcularImpactoExclusaoPessoa(dbRef, pessoaId) {
 
 /**
  * Quem referencia o Grupo `grupoId` — pessoas do cadastro que pertencem
- * a ele. Excluir o Grupo não exclui a Pessoa, só tira ela desse grupo
- * (ela pode pertencer a vários — sobreposição é o ponto do campo).
+ * a ele (excluir o Grupo não exclui a Pessoa, só tira ela desse grupo —
+ * ela pode pertencer a vários, sobreposição é o ponto do campo) e,
+ * desde a referência direta a Grupo (ver criarGrupoDeGruposDiretos em
+ * editor.js), também poemas/prosas cujo `gruposDiretos` aponta pra ele
+ * sem passar por nenhuma Pessoa.
  */
 export function calcularImpactoExclusaoGrupo(dbRef, grupoId) {
     const pessoasIds = (dbRef.pessoas || [])
         .filter((p) => (p.grupoIds || []).includes(grupoId))
         .map((p) => p.id);
-    return { pessoasIds };
+    const achaGrupoDireto = (item) => (item.gruposDiretos || []).includes(grupoId);
+    const poemasIds = (dbRef.poemas || []).filter(achaGrupoDireto).map((p) => p.id);
+    const prosasIds = (dbRef.prosas || []).filter(achaGrupoDireto).map((p) => p.id);
+    return { pessoasIds, poemasIds, prosasIds };
 }
 
 /**
@@ -1160,6 +1185,25 @@ function _removerParaExclusao(col, id) {
         });
     }
 
+    // Excluir Grupo (continuação): some também de `gruposDiretos` de todo
+    // poema/prosa que o referenciava diretamente (sem pessoa) — mesmo
+    // espírito do bloco acima, só que em `item.gruposDiretos` em vez de
+    // `pessoa.grupoIds`. Guarda itemCol/itemId/grupoId pra restaurar no
+    // "Desfazer", mesmo padrão de vinculosEpocaRemovidos abaixo.
+    let vinculosGrupoDiretoRemovidos = [];
+    if (col === 'grupos') {
+        ['poemas', 'prosas'].forEach((itemCol) => {
+            (db[itemCol] || []).forEach((it) => {
+                if (!Array.isArray(it.gruposDiretos)) return;
+                const idx = it.gruposDiretos.indexOf(id);
+                if (idx !== -1) {
+                    vinculosGrupoDiretoRemovidos.push({ itemCol, itemId: it.id, grupoId: id });
+                    it.gruposDiretos.splice(idx, 1);
+                }
+            });
+        });
+    }
+
     // Fecha o buraco deixado na numeração do grupo de onde o item saiu
     // (mesma lógica de sempre — só guardamos os "irmãos" pra poder
     // reverter com abrirEspaco() se a exclusão for desfeita).
@@ -1186,6 +1230,7 @@ function _removerParaExclusao(col, id) {
         vinculosPessoaRemovidos,
         vinculosAutoriaRemovidos,
         vinculosGrupoRemovidos,
+        vinculosGrupoDiretoRemovidos,
         vinculosEpocaRemovidos,
         capasParaDescartar,
         posicaoRemovida,
@@ -1205,6 +1250,7 @@ function _restaurar(removido) {
         vinculosPessoaRemovidos,
         vinculosAutoriaRemovidos,
         vinculosGrupoRemovidos,
+        vinculosGrupoDiretoRemovidos,
         vinculosEpocaRemovidos,
         posicaoRemovida,
         irmaos,
@@ -1228,6 +1274,10 @@ function _restaurar(removido) {
     (vinculosGrupoRemovidos || []).forEach(({ pessoaId }) => {
         const p = db.pessoas?.find((i) => i.id == pessoaId);
         if (p) (p.grupoIds ||= []).push(item.id);
+    });
+    (vinculosGrupoDiretoRemovidos || []).forEach(({ itemCol, itemId, grupoId }) => {
+        const it = db[itemCol]?.find((i) => i.id == itemId);
+        if (it) (it.gruposDiretos ||= []).push(grupoId);
     });
     (vinculosEpocaRemovidos || []).forEach(({ itemCol, itemId, epocaId }) => {
         const it = db[itemCol]?.find((i) => i.id == itemId);
@@ -1315,14 +1365,26 @@ export function deleteItem(col, id) {
                 : 'Época';
     }
 
-    // Para Grupo, avisa quantas pessoas deixarão de pertencer a ele.
+    // Para Grupo, avisa quantas pessoas deixarão de pertencer a ele e,
+    // separadamente, em quantos textos ele deixará de aparecer como
+    // referência direta (sem pessoa) — os dois números têm significado
+    // diferente, por isso não somados num total só.
     if (col === 'grupos') {
-        const { pessoasIds } = calcularImpactoExclusaoGrupo(db, id);
-        const total = pessoasIds.length;
-        rotulo =
-            total > 0
-                ? `Grupo · ${total} pessoa${total !== 1 ? 's' : ''} deixará de pertencer a ele`
-                : 'Grupo';
+        const { pessoasIds, poemasIds, prosasIds } = calcularImpactoExclusaoGrupo(db, id);
+        const totalPessoas = pessoasIds.length;
+        const totalTextos = poemasIds.length + prosasIds.length;
+        const partes = [];
+        if (totalPessoas > 0) {
+            partes.push(
+                `${totalPessoas} pessoa${totalPessoas !== 1 ? 's' : ''} deixará de pertencer a ele`,
+            );
+        }
+        if (totalTextos > 0) {
+            partes.push(
+                `deixará de ser referência direta em ${totalTextos} texto${totalTextos !== 1 ? 's' : ''}`,
+            );
+        }
+        rotulo = partes.length ? `Grupo · ${partes.join(' e ')}` : 'Grupo';
     }
 
     abrirModalExclusao(titulo, rotulo, () => {
