@@ -717,6 +717,14 @@ export async function prepararNovo(tipo) {
         if (infoPr) infoPr.innerHTML = '';
     }
 
+    if (tipo === 'livro') {
+        // Import dinâmico pra evitar ciclo (ui → editor não existe hoje,
+        // mesmo motivo do bloco 'prosa' acima) — só zera o estado
+        // transitório da lista de Lojas (onde comprar), já que ela vive
+        // fora do form.reset() nativo.
+        import('./editor.js').then(({ resetLojas }) => resetLojas());
+    }
+
     if (tipo === 'grupo') {
         // Import dinâmico pra evitar ciclo (forms → ui já existe, ver
         // resetPessoasProsa acima pelo mesmo motivo). Sem cor marcada

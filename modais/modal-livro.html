@@ -134,8 +134,8 @@
                         />
                     </div>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
-                        Se você revisou o texto após a publicação (comum na impressão sob
-                        demanda). Deixe em branco se nunca editou.
+                        Se você revisou o texto após a publicação (comum na impressão sob demanda).
+                        Deixe em branco se nunca editou.
                     </p>
                 </div>
                 <div>
@@ -166,6 +166,87 @@
                 <div class="md:col-span-2">
                     <label class="form-label">Descrição da Capa</label>
                     <textarea id="l-capa-desc" class="h-24"></textarea>
+                </div>
+                <div>
+                    <label class="form-label">ISBN-13</label>
+                    <input type="text" id="l-isbn-13" placeholder="Ex: 978-65-00-00000-0" />
+                </div>
+                <div>
+                    <label class="form-label">ISBN-10</label>
+                    <input type="text" id="l-isbn-10" placeholder="Ex: 65-00-00000-0" />
+                </div>
+                <div class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                    <label class="form-label"
+                        >Onde comprar
+                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                            >(loja/editora + link de venda — pode haver mais de uma)</span
+                        ></label
+                    >
+                    <div class="flex gap-2 mb-2">
+                        <input
+                            type="text"
+                            id="l-loja-nome"
+                            class="text-sm flex-1"
+                            placeholder="Loja/Editora (ex.: Amazon)"
+                        />
+                        <input
+                            type="url"
+                            id="l-loja-url"
+                            class="text-sm flex-1"
+                            placeholder="Link"
+                        />
+                    </div>
+                    <div class="flex items-center gap-2 justify-end mb-2">
+                        <button
+                            type="button"
+                            id="l-loja-btn-cancelar"
+                            onclick="cancelarEdicaoLoja()"
+                            class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs px-1"
+                        >
+                            Cancelar edição
+                        </button>
+                        <button
+                            type="button"
+                            id="l-loja-btn-add"
+                            onclick="adicionarLoja()"
+                            class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold"
+                        >
+                            + Adicionar loja
+                        </button>
+                    </div>
+                    <div id="l-lojas-lista" class="space-y-1 min-h-[12px]"></div>
+                </div>
+                <div
+                    class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4"
+                >
+                    <div>
+                        <label class="form-label">PDF</label>
+                        <input type="url" id="l-pdf" placeholder="Link" />
+                    </div>
+                    <div>
+                        <label class="form-label">Epub</label>
+                        <input type="url" id="l-epub" placeholder="Link" />
+                    </div>
+                </div>
+                <div
+                    class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4"
+                >
+                    <div>
+                        <label class="form-label">Código de Barras</label>
+                        <input type="url" id="l-codigo-barras" placeholder="Link para a imagem" />
+                    </div>
+                    <div>
+                        <label class="form-label">Ficha Catalográfica</label>
+                        <input type="url" id="l-ficha-catalografica" placeholder="Link" />
+                    </div>
+                    <div>
+                        <label class="form-label">Certificado de Registro de Direito Autoral</label>
+                        <input type="url" id="l-certificado-direito-autoral" placeholder="Link" />
+                    </div>
+                    <div>
+                        <label class="form-label">Carta de Exclusividade</label>
+                        <input type="url" id="l-carta-exclusividade" placeholder="Link" />
+                    </div>
                 </div>
                 <div
                     class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4"

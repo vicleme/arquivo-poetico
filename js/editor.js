@@ -875,6 +875,78 @@ export function resetAnexos() {
     atualizarBotaoAnexo();
 }
 
+// ─── Lojas (livro — lista de nome+link) ────────────────────────
+// Onde o livro é vendido (loja, editora, marketplace...) + o link
+// direto pra página de venda. Vive no Livro, não no Poema/Prosa —
+// mesmo motor genérico (criarListaDeEntradas) usado acima, só com
+// dois campos (nome, link) em vez dos três+ de Anexos/Envios.
+const listaLojasLivro = criarListaDeEntradas({
+    containerId: 'l-lojas-lista',
+    renderItem: (it) => {
+        const nome = it.nome ? `<span class="font-semibold">${escapeHtml(it.nome)}</span>` : '';
+        const link = it.url
+            ? ` <a href="${escapeHtml(it.url)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px]">${escapeHtml(it.url)}</a>`
+            : '';
+        return `${nome}${nome && link ? ' —' : ''}${link}`;
+    },
+    nomeFuncaoRemover: 'removerLoja',
+    nomeFuncaoEditar: 'editarLoja',
+});
+
+function atualizarBotaoLoja() {
+    const btnAdd = document.getElementById('l-loja-btn-add');
+    const btnCancelar = document.getElementById('l-loja-btn-cancelar');
+    const emEdicao = listaLojasLivro.estaEditando();
+    if (btnAdd) btnAdd.textContent = emEdicao ? '✓ Salvar edição' : '+ Adicionar loja';
+    if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
+}
+
+export function adicionarLoja() {
+    const nomeEl = document.getElementById('l-loja-nome');
+    const urlEl = document.getElementById('l-loja-url');
+
+    const nome = (nomeEl?.value || '').trim();
+    const url = (urlEl?.value || '').trim();
+    if (!nome && !url) return;
+
+    listaLojasLivro.salvar({ nome, url });
+    if (nomeEl) nomeEl.value = '';
+    if (urlEl) urlEl.value = '';
+    atualizarBotaoLoja();
+}
+export function editarLoja(indice) {
+    const item = listaLojasLivro.iniciarEdicao(indice);
+    const nomeEl = document.getElementById('l-loja-nome');
+    const urlEl = document.getElementById('l-loja-url');
+    if (nomeEl) nomeEl.value = item.nome || '';
+    if (urlEl) urlEl.value = item.url || '';
+    nomeEl?.focus();
+    atualizarBotaoLoja();
+}
+export function cancelarEdicaoLoja() {
+    listaLojasLivro.cancelarEdicao();
+    const nomeEl = document.getElementById('l-loja-nome');
+    const urlEl = document.getElementById('l-loja-url');
+    if (nomeEl) nomeEl.value = '';
+    if (urlEl) urlEl.value = '';
+    atualizarBotaoLoja();
+}
+export function removerLoja(indice) {
+    listaLojasLivro.remover(indice);
+    atualizarBotaoLoja();
+}
+export function obterLojas() {
+    return listaLojasLivro.obterItens();
+}
+export function carregarLojas(lista) {
+    listaLojasLivro.carregar(lista);
+    atualizarBotaoLoja();
+}
+export function resetLojas() {
+    listaLojasLivro.reset();
+    atualizarBotaoLoja();
+}
+
 // ─── Elos / Referências (lista de poema-alvo+tipo+texto) ───────
 // Item 1 do plano de schema: cada elo/referência aponta pra outro poema
 // (`id`) mais uma nota livre opcional. Elos = ligação estrutural/de
@@ -2243,7 +2315,9 @@ export function atualizarDatalistMigracao() {
     ['sugestoes-livros-migracao', 'sugestoes-livros-migracao-prosa'].forEach((id) => {
         const datalist = document.getElementById(id);
         if (datalist) {
-            datalist.innerHTML = titulos.map((titulo) => `<option value="${escapeHtml(titulo)}">`).join('');
+            datalist.innerHTML = titulos
+                .map((titulo) => `<option value="${escapeHtml(titulo)}">`)
+                .join('');
         }
     });
 

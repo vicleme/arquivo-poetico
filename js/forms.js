@@ -102,6 +102,9 @@ import {
     carregarReferenciasProsa,
     resetReferenciasProsa,
     renderPainelElosDerivadosProsa,
+    obterLojas,
+    carregarLojas,
+    resetLojas,
 } from './editor.js';
 import { renderPessoas, renderEpocas } from './render-listas.js';
 
@@ -208,6 +211,17 @@ export function initFormLivro() {
             orelha1: document.getElementById('l-orelha-1').value,
             orelha2: document.getElementById('l-orelha-2').value,
             contracapa: document.getElementById('l-contracapa').value,
+            isbn13: document.getElementById('l-isbn-13').value.trim(),
+            isbn10: document.getElementById('l-isbn-10').value.trim(),
+            codigoBarrasUrl: document.getElementById('l-codigo-barras').value.trim(),
+            pdfUrl: document.getElementById('l-pdf').value.trim(),
+            epubUrl: document.getElementById('l-epub').value.trim(),
+            fichaCatalograficaUrl: document.getElementById('l-ficha-catalografica').value.trim(),
+            certificadoDireitoAutoralUrl: document
+                .getElementById('l-certificado-direito-autoral')
+                .value.trim(),
+            cartaExclusividadeUrl: document.getElementById('l-carta-exclusividade').value.trim(),
+            lojas: obterLojas(),
             capa: capaFinal,
         };
 
@@ -219,6 +233,7 @@ export function initFormLivro() {
         reordenarPosicao(db.livros, dados, dados.sequencia, posicaoAntiga);
 
         save();
+        resetLojas();
         toggleModal('modal-livro');
     };
 }
@@ -238,6 +253,14 @@ const MAPA_LIVRO = {
     orelha1: 'l-orelha-1',
     orelha2: 'l-orelha-2',
     contracapa: 'l-contracapa',
+    isbn13: 'l-isbn-13',
+    isbn10: 'l-isbn-10',
+    codigoBarrasUrl: 'l-codigo-barras',
+    pdfUrl: 'l-pdf',
+    epubUrl: 'l-epub',
+    fichaCatalograficaUrl: 'l-ficha-catalografica',
+    certificadoDireitoAutoralUrl: 'l-certificado-direito-autoral',
+    cartaExclusividadeUrl: 'l-carta-exclusividade',
 };
 
 export async function editarLivro(id) {
@@ -249,6 +272,7 @@ export async function editarLivro(id) {
     preencherCampos(l, MAPA_LIVRO);
     preencherDataParcial('l-data', l.data);
     preencherDataParcial('l-ultima-edicao', l.dataUltimaEdicao);
+    carregarLojas(l.lojas || []);
     document.getElementById('l-remover-capa').checked = false;
     document.getElementById('modal-livro-titulo').innerText = 'Editar Livro';
     toggleModal('modal-livro');
@@ -427,6 +451,7 @@ export function initFormAutor() {
         const dados = {
             id: id ? parseInt(id) : gerarId(),
             nome: document.getElementById('au-nome').value.trim(),
+            isni: document.getElementById('au-isni').value.trim(),
             sobre: document.getElementById('au-sobre').value.trim(),
         };
 
@@ -444,6 +469,7 @@ export async function editarAutor(id) {
     await garantirModal('modal-autor');
     document.getElementById('au-edit-id').value = a.id;
     document.getElementById('au-nome').value = a.nome;
+    document.getElementById('au-isni').value = a.isni || '';
     document.getElementById('au-sobre').value = a.sobre || '';
     document.getElementById('modal-autor-titulo').innerText = 'Editar Autor';
     toggleModal('modal-autor');
@@ -1356,7 +1382,8 @@ export async function editarProsa(id) {
     // ao reabrir uma prosa antiga pra editar — sem migração de dado (só
     // afeta o que aparece pré-selecionado no `<select>`; se a pessoa não
     // mexer nele, o valor gravado no submit passa a ser explícito).
-    document.getElementById('pr-status').value = pr.status || (pr.publicado ? 'publicado' : 'completo');
+    document.getElementById('pr-status').value =
+        pr.status || (pr.publicado ? 'publicado' : 'completo');
 
     const setM = (elId, vals) => {
         const el = document.getElementById(elId);

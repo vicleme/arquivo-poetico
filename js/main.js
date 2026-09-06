@@ -235,6 +235,10 @@ import {
     removerAnexoProsa,
     editarAnexoProsa,
     cancelarEdicaoAnexoProsa,
+    adicionarLoja,
+    removerLoja,
+    editarLoja,
+    cancelarEdicaoLoja,
 } from './editor.js';
 import {
     initFormLivro,
@@ -657,6 +661,10 @@ window.adicionarAnexoProsa = adicionarAnexoProsa;
 window.removerAnexoProsa = removerAnexoProsa;
 window.editarAnexoProsa = editarAnexoProsa;
 window.cancelarEdicaoAnexoProsa = cancelarEdicaoAnexoProsa;
+window.adicionarLoja = adicionarLoja;
+window.removerLoja = removerLoja;
+window.editarLoja = editarLoja;
+window.cancelarEdicaoLoja = cancelarEdicaoLoja;
 window.applyStyle = applyStyle;
 window.wrapText = wrapText;
 // Debounce de 200ms: cada tecla digitada dispara um renderPoemas()/

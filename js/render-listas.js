@@ -2135,6 +2135,41 @@ export function renderLivros() {
                 <span class="text-[10px] bg-blue-50 dark:bg-blue-950 text-blue-500 dark:text-blue-400 px-2 py-0.5 rounded font-mono">SEQ: ${l.sequencia || '0'}</span>
             </div>
             <p class="text-xs font-mono text-gray-500 dark:text-slate-400">${escapeHtml(l.siglaOficial) || '---'} | ${l.data ? (typeof l.data === 'string' ? l.data : formatarDataParcial(l.data)) : 'S/D'}${l.dataUltimaEdicao ? ` <span title="Última edição">· ed. ${formatarDataParcial(l.dataUltimaEdicao)}</span>` : ''}</p>
+            ${
+                l.isbn13 || l.isbn10
+                    ? `<p class="text-[10px] font-mono text-gray-400 dark:text-slate-500 mt-0.5">${[l.isbn13 ? `ISBN-13: ${escapeHtml(l.isbn13)}` : '', l.isbn10 ? `ISBN-10: ${escapeHtml(l.isbn10)}` : ''].filter(Boolean).join(' · ')}</p>`
+                    : ''
+            }
+            ${
+                Array.isArray(l.lojas) && l.lojas.some((loja) => loja.url)
+                    ? `<div class="flex flex-wrap gap-1 mt-2">
+                        ${l.lojas
+                            .filter((loja) => loja.url)
+                            .map(
+                                (loja) =>
+                                    `<a href="${escapeHtml(loja.url)}" target="_blank" rel="noopener" class="text-[10px] bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full hover:bg-emerald-100 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800">🛒 ${escapeHtml(loja.nome) || 'Comprar'}</a>`,
+                            )
+                            .join('')}
+                    </div>`
+                    : ''
+            }
+            ${
+                l.codigoBarrasUrl ||
+                l.fichaCatalograficaUrl ||
+                l.certificadoDireitoAutoralUrl ||
+                l.cartaExclusividadeUrl ||
+                l.pdfUrl ||
+                l.epubUrl
+                    ? `<div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px]">
+                        ${l.pdfUrl ? `<a href="${escapeHtml(l.pdfUrl)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">PDF</a>` : ''}
+                        ${l.epubUrl ? `<a href="${escapeHtml(l.epubUrl)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">Epub</a>` : ''}
+                        ${l.codigoBarrasUrl ? `<a href="${escapeHtml(l.codigoBarrasUrl)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">Código de barras</a>` : ''}
+                        ${l.fichaCatalograficaUrl ? `<a href="${escapeHtml(l.fichaCatalograficaUrl)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">Ficha catalográfica</a>` : ''}
+                        ${l.certificadoDireitoAutoralUrl ? `<a href="${escapeHtml(l.certificadoDireitoAutoralUrl)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">Certificado de direito autoral</a>` : ''}
+                        ${l.cartaExclusividadeUrl ? `<a href="${escapeHtml(l.cartaExclusividadeUrl)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">Carta de exclusividade</a>` : ''}
+                    </div>`
+                    : ''
+            }
             <div class="flex justify-between items-center mt-4">
                 <div class="flex gap-4">
                     <button data-action="editar-livro" data-id="${l.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
@@ -2933,6 +2968,11 @@ export function renderAutores() {
         <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
             <div class="flex-1 min-w-0">
                 <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(a.nome)}</h4>
+                ${
+                    a.isni
+                        ? `<p class="text-[10px] font-mono text-gray-400 dark:text-slate-500 mt-0.5">ISNI: ${escapeHtml(a.isni)}</p>`
+                        : ''
+                }
                 ${
                     a.sobre
                         ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1 line-clamp-2">${escapeHtml(a.sobre)}</p>`
