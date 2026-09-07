@@ -19,3 +19,5 @@
 **Teste pode estar medindo a coisa errada, não o código.** Caso `gruposDiretos`: um teste comparava a linha inteira da tabela contra `/—/` quando a intenção era só checar a célula de Grupos — falhava sempre, com ou sem o recurso, porque outras colunas vazias legitimamente mostram "—". Ao investigar uma falha, checar se o assert está de fato isolando o que o nome do teste diz que testa antes de mexer no código de produção.
 
 **Função exportada sem nenhum import correspondente é sinal de sobra de item que ficou pela metade** — não assumir que é código morto inofensivo sem checar primeiro se é resquício de implementação interrompida.
+
+**O zip do projeto nunca vem com `node_modules/` (decisão deliberada, pra não inflar o zip).** Rodar `npm install` (rede liberada pro registro do npm) ANTES de `node --test`, sempre que for a primeira execução da suíte numa sessão nova — antes de reportar qualquer falha relacionada a `happy-dom` ou outra devDependency ausente. Isso evita diagnosticar como "falha conhecida do ambiente" algo que é só uma dependência não instalada.
