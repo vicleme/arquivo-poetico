@@ -44,6 +44,7 @@ import {
     nomesPessoas,
     iniciaisPapeisPessoa,
     paresGrupoPessoa,
+    agruparParesGrupoPessoa,
     classesCorGrupo,
     pontoCorGrupo,
     paresAutoria,
@@ -892,9 +893,12 @@ function badgesGrupos(item) {
         .filter(Boolean);
     if (!pares.length && !diretos.length)
         return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    const badgesViaPessoa = pares.map(
-        ({ grupo, pessoa }) =>
-            `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)} <span class="opacity-70">(${escapeHtml(pessoa.nome)})</span></span>`,
+    // Agrupado por Grupo (ver agruparParesGrupoPessoa em utils.js): um
+    // badge por Grupo, com todas as pessoas que pertencem a ele entre
+    // parênteses — não um badge repetido por pessoa.
+    const badgesViaPessoa = agruparParesGrupoPessoa(pares).map(
+        ({ grupo, pessoas }) =>
+            `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)} <span class="opacity-70">(${pessoas.map((p) => escapeHtml(p.nome)).join(', ')})</span></span>`,
     );
     const badgesDiretos = diretos.map(
         (grupo) =>

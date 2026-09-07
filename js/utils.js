@@ -1176,6 +1176,22 @@ export function paresGrupoPessoa(item, pessoasCadastro = [], gruposCadastro = []
     return pares;
 }
 
+// Agrupa os pares achatados de paresGrupoPessoa por Grupo — um grupo
+// com N pessoas gera N pares (ver comentário acima), mas pra exibição
+// (badge da tabela, painel do editor, exportação em Markdown) o
+// esperado é uma entrada por Grupo com as pessoas listadas junto, não
+// o mesmo Grupo repetido uma vez por pessoa. Ordem de saída: ordem de
+// primeira aparição do Grupo em `pares`; pessoas dentro de cada grupo
+// na ordem em que aparecem nos pares.
+export function agruparParesGrupoPessoa(pares) {
+    const porGrupoId = new Map();
+    pares.forEach(({ grupo, pessoa }) => {
+        if (!porGrupoId.has(grupo.id)) porGrupoId.set(grupo.id, { grupo, pessoas: [] });
+        porGrupoId.get(grupo.id).pessoas.push(pessoa);
+    });
+    return [...porGrupoId.values()];
+}
+
 // ─── Cor de Grupo ──────────────────────────────────────────────
 // Paleta curada (não cor livre via input[type=color]): cada Grupo
 // escolhe uma destas chaves, salva em `grupo.cor`. Curada em vez de

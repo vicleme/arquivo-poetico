@@ -19,6 +19,7 @@ import {
     sinalizacoesCombinadas,
     rotuloElo,
     paresGrupoPessoa,
+    agruparParesGrupoPessoa,
     paresAutoria,
 } from './utils.js';
 import { db } from './db.js';
@@ -192,7 +193,9 @@ export function textoPessoas(item) {
 // parêntese de pessoa.
 export function textoGrupos(item) {
     const pares = paresGrupoPessoa(item, db.pessoas, db.grupos);
-    const viaPessoa = pares.map(({ grupo, pessoa }) => `${grupo.nome} (${pessoa.nome})`);
+    const viaPessoa = agruparParesGrupoPessoa(pares).map(
+        ({ grupo, pessoas }) => `${grupo.nome} (${pessoas.map((p) => p.nome).join(', ')})`,
+    );
     const diretos = (item.gruposDiretos || [])
         .map((id) => db.grupos.find((g) => g.id == id)?.nome)
         .filter(Boolean);

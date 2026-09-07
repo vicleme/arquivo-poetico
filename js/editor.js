@@ -26,6 +26,7 @@ import {
     PAPEIS_PESSOA,
     iniciaisPapeisPessoa,
     paresGrupoPessoa,
+    agruparParesGrupoPessoa,
     classesCorGrupo,
     AUTORIA_PAPEIS,
     lerDataParcial,
@@ -347,10 +348,10 @@ function criarGrupoDePessoas({
             painel.innerHTML = '';
             return;
         }
-        const badges = pares
+        const badges = agruparParesGrupoPessoa(pares)
             .map(
-                ({ grupo, pessoa }) =>
-                    `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)} <span class="opacity-70">(${escapeHtml(pessoa.nome)})</span></span>`,
+                ({ grupo, pessoas }) =>
+                    `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)} <span class="opacity-70">(${pessoas.map((p) => escapeHtml(p.nome)).join(', ')})</span></span>`,
             )
             .join('');
         painel.innerHTML = `<span class="mr-1">Grupos:</span>${badges}`;
