@@ -54,6 +54,8 @@ import {
     setCombinadorBuscaProsas,
     getCombinadorBuscaPoemas,
     getCombinadorBuscaProsas,
+    setOpcaoBuscaPoemas as _setOpcaoBuscaPoemas,
+    setOpcaoBuscaProsas as _setOpcaoBuscaProsas,
     setFiltroLivroPoemas,
     ordenarPoemasPor,
     buscarPorPrefixo,
@@ -703,6 +705,12 @@ window.alternarCombinadorBuscaProsas = (btn) => {
     setCombinadorBuscaProsas(novo);
     atualizarBotaoCombinador(btn, novo);
 };
+
+// Interruptores de busca (checkbox): "chave" é 'caseSensitive',
+// 'matchDiacritics' ou 'palavraInteira' (ver opcoesBuscaPadrao em
+// utils.js) — sem debounce, porque checkbox não dispara por tecla.
+window.setOpcaoBuscaPoemas = (chave, chk) => _setOpcaoBuscaPoemas(chave, chk.checked);
+window.setOpcaoBuscaProsas = (chave, chk) => _setOpcaoBuscaProsas(chave, chk.checked);
 function atualizarBotaoCombinador(btn, valor) {
     if (!btn) return;
     btn.textContent = valor === 'ou' ? 'OU' : 'E';

@@ -7,9 +7,9 @@ import assert from 'node:assert/strict';
 // (input + container de chips + painel somente-leitura de Grupos, ver
 // modal-poema.html/modal-prosa.html) — precisa existir ANTES do import,
 // mesmo motivo do render-dom.test.js. Inclui também os campos de
-// Intertextualidade (tipo/texto/link/nota + lista), poema e prosa, pra
-// cobrir os campos novos de link/nota (ver modal-poema.html/
-// modal-prosa.html).
+// Intertextualidade (tipo/texto/link/linkTexto/nota + lista), poema e
+// prosa, pra cobrir os campos de link/linkTexto/nota (ver
+// modal-poema.html/modal-prosa.html).
 document.body.innerHTML = `
     <div id="p-pessoa-input-wrapper">
         <input id="p-pessoa-input" />
@@ -23,6 +23,7 @@ document.body.innerHTML = `
     <input id="p-intertexto-tipo" />
     <input id="p-intertexto-texto" />
     <input id="p-intertexto-link" />
+    <input id="p-intertexto-link-texto" />
     <input id="p-intertexto-nota" />
     <button id="p-intertexto-btn-add"></button>
     <button id="p-intertexto-btn-cancelar" class="hidden"></button>
@@ -30,6 +31,7 @@ document.body.innerHTML = `
     <input id="pr-intertexto-tipo" />
     <input id="pr-intertexto-texto" />
     <input id="pr-intertexto-link" />
+    <input id="pr-intertexto-link-texto" />
     <input id="pr-intertexto-nota" />
     <button id="pr-intertexto-btn-add"></button>
     <button id="pr-intertexto-btn-cancelar" class="hidden"></button>
@@ -308,25 +310,29 @@ describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () =
     });
 });
 
-// ─── Intertextualidade — campos novos de link e nota (Poema) ──────────
-// item.tipo + item.texto já existiam; link e nota são os campos novos,
-// espelhando o padrão tipo+texto+link que Anexos já usa (ver editor.js).
+// ─── Intertextualidade — campos de link, linkTexto e nota (Poema) ─────
+// item.tipo + item.texto já existiam; link e nota vieram depois; linkTexto
+// é o rótulo opcional do link (evita estouro de URL longa na lista
+// renderizada — cai pra URL crua quando vazio), espelhando o padrão
+// tipo+texto+link que Anexos já usa (ver editor.js).
 
 function limparIntertextoPoema() {
     document.getElementById('p-intertexto-tipo').value = '';
     document.getElementById('p-intertexto-texto').value = '';
     document.getElementById('p-intertexto-link').value = '';
+    document.getElementById('p-intertexto-link-texto').value = '';
     document.getElementById('p-intertexto-nota').value = '';
     resetIntertextualidade();
 }
 
-describe('Intertextualidade — link e nota (Poema, editor.js, DOM real)', () => {
+describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM real)', () => {
     beforeEach(limparIntertextoPoema);
 
-    it('adicionarIntertexto salva tipo, texto, link e nota juntos', () => {
+    it('adicionarIntertexto salva tipo, texto, link, linkTexto e nota juntos', () => {
         document.getElementById('p-intertexto-tipo').value = 'Citação';
         document.getElementById('p-intertexto-texto').value = 'Trecho citado';
         document.getElementById('p-intertexto-link').value = 'https://exemplo.com/obra';
+        document.getElementById('p-intertexto-link-texto').value = 'Site da obra';
         document.getElementById('p-intertexto-nota').value = 'Nota livre sobre a referência';
 
         adicionarIntertexto();
@@ -336,14 +342,16 @@ describe('Intertextualidade — link e nota (Poema, editor.js, DOM real)', () =>
                 tipo: 'Citação',
                 texto: 'Trecho citado',
                 link: 'https://exemplo.com/obra',
+                linkTexto: 'Site da obra',
                 nota: 'Nota livre sobre a referência',
             },
         ]);
     });
 
-    it('limpa os 4 campos depois de adicionar', () => {
+    it('limpa os 5 campos depois de adicionar', () => {
         document.getElementById('p-intertexto-texto').value = 'Algo';
         document.getElementById('p-intertexto-link').value = 'https://exemplo.com';
+        document.getElementById('p-intertexto-link-texto').value = 'Rótulo';
         document.getElementById('p-intertexto-nota').value = 'Nota';
 
         adicionarIntertexto();
@@ -351,6 +359,7 @@ describe('Intertextualidade — link e nota (Poema, editor.js, DOM real)', () =>
         assert.equal(document.getElementById('p-intertexto-tipo').value, '');
         assert.equal(document.getElementById('p-intertexto-texto').value, '');
         assert.equal(document.getElementById('p-intertexto-link').value, '');
+        assert.equal(document.getElementById('p-intertexto-link-texto').value, '');
         assert.equal(document.getElementById('p-intertexto-nota').value, '');
     });
 
@@ -362,14 +371,15 @@ describe('Intertextualidade — link e nota (Poema, editor.js, DOM real)', () =>
         assert.equal(obterIntertextualidade().length, 1);
     });
 
-    it('não adiciona nada se os 4 campos estiverem vazios', () => {
+    it('não adiciona nada se os 5 campos estiverem vazios', () => {
         adicionarIntertexto();
         assert.deepEqual(obterIntertextualidade(), []);
     });
 
-    it('editarIntertexto repopula tipo, texto, link e nota do item selecionado', () => {
+    it('editarIntertexto repopula tipo, texto, link, linkTexto e nota do item selecionado', () => {
         document.getElementById('p-intertexto-texto').value = 'Original';
         document.getElementById('p-intertexto-link').value = 'https://original.com';
+        document.getElementById('p-intertexto-link-texto').value = 'Rótulo original';
         document.getElementById('p-intertexto-nota').value = 'Nota original';
         adicionarIntertexto();
 
@@ -377,10 +387,11 @@ describe('Intertextualidade — link e nota (Poema, editor.js, DOM real)', () =>
 
         assert.equal(document.getElementById('p-intertexto-texto').value, 'Original');
         assert.equal(document.getElementById('p-intertexto-link').value, 'https://original.com');
+        assert.equal(document.getElementById('p-intertexto-link-texto').value, 'Rótulo original');
         assert.equal(document.getElementById('p-intertexto-nota').value, 'Nota original');
     });
 
-    it('cancelarEdicaoIntertexto limpa os 4 campos sem alterar a lista', () => {
+    it('cancelarEdicaoIntertexto limpa os 5 campos sem alterar a lista', () => {
         document.getElementById('p-intertexto-texto').value = 'Original';
         adicionarIntertexto();
         editarIntertexto(0);
@@ -393,7 +404,7 @@ describe('Intertextualidade — link e nota (Poema, editor.js, DOM real)', () =>
         assert.equal(obterIntertextualidade()[0].texto, 'Original');
     });
 
-    it('a lista renderizada mostra o link como <a> e a nota junto do texto', () => {
+    it('sem linkTexto, a lista renderizada mostra a URL crua como texto do <a>', () => {
         document.getElementById('p-intertexto-texto').value = 'Trecho';
         document.getElementById('p-intertexto-link').value = 'https://exemplo.com/pagina';
         document.getElementById('p-intertexto-nota').value = 'Comentário à parte';
@@ -407,9 +418,34 @@ describe('Intertextualidade — link e nota (Poema, editor.js, DOM real)', () =>
         );
         assert.match(html, /Comentário à parte/);
     });
+
+    it('com linkTexto preenchido, a lista renderizada usa o rótulo no lugar da URL crua', () => {
+        document.getElementById('p-intertexto-tipo').value = 'Notícias';
+        document.getElementById('p-intertexto-link').value =
+            'https://g1.globo.com/pe/pernambuco/noticia/2020/06/19/algum-slug-bem-longo.ghtml';
+        document.getElementById('p-intertexto-link-texto').value = 'G1 Pernambuco';
+
+        adicionarIntertexto();
+
+        const html = document.getElementById('p-intertexto-lista').innerHTML;
+        assert.match(
+            html,
+            /<a href="https:\/\/g1\.globo\.com\/pe\/pernambuco\/noticia\/2020\/06\/19\/algum-slug-bem-longo\.ghtml"[^>]*>G1 Pernambuco<\/a>/,
+        );
+        assert.ok(!html.includes('>https://g1.globo.com'));
+    });
+
+    it('o <a> renderizado tem a classe break-all, pra URL longa quebrar em vez de estourar', () => {
+        document.getElementById('p-intertexto-link').value = 'https://exemplo.com/pagina-longa';
+
+        adicionarIntertexto();
+
+        const html = document.getElementById('p-intertexto-lista').innerHTML;
+        assert.match(html, /class="[^"]*break-all[^"]*"/);
+    });
 });
 
-// ─── Intertextualidade — link e nota (Prosa) ──────────────────────────
+// ─── Intertextualidade — link, linkTexto e nota (Prosa) ────────────────
 // Mesmo comportamento acima, na versão de Prosa (funções com sufixo
 // "Prosa" e ids prefixados "pr-").
 
@@ -417,17 +453,19 @@ function limparIntertextoProsa() {
     document.getElementById('pr-intertexto-tipo').value = '';
     document.getElementById('pr-intertexto-texto').value = '';
     document.getElementById('pr-intertexto-link').value = '';
+    document.getElementById('pr-intertexto-link-texto').value = '';
     document.getElementById('pr-intertexto-nota').value = '';
     resetIntertextualidadeProsa();
 }
 
-describe('Intertextualidade — link e nota (Prosa, editor.js, DOM real)', () => {
+describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM real)', () => {
     beforeEach(limparIntertextoProsa);
 
-    it('adicionarIntertextoProsa salva tipo, texto, link e nota juntos', () => {
+    it('adicionarIntertextoProsa salva tipo, texto, link, linkTexto e nota juntos', () => {
         document.getElementById('pr-intertexto-tipo').value = 'Alusão';
         document.getElementById('pr-intertexto-texto').value = 'Trecho aludido';
         document.getElementById('pr-intertexto-link').value = 'https://exemplo.com/prosa';
+        document.getElementById('pr-intertexto-link-texto').value = 'Rótulo prosa';
         document.getElementById('pr-intertexto-nota').value = 'Nota sobre a prosa';
 
         adicionarIntertextoProsa();
@@ -437,14 +475,16 @@ describe('Intertextualidade — link e nota (Prosa, editor.js, DOM real)', () =>
                 tipo: 'Alusão',
                 texto: 'Trecho aludido',
                 link: 'https://exemplo.com/prosa',
+                linkTexto: 'Rótulo prosa',
                 nota: 'Nota sobre a prosa',
             },
         ]);
     });
 
-    it('editarIntertextoProsa repopula tipo, texto, link e nota do item selecionado', () => {
+    it('editarIntertextoProsa repopula tipo, texto, link, linkTexto e nota do item selecionado', () => {
         document.getElementById('pr-intertexto-texto').value = 'Original';
         document.getElementById('pr-intertexto-link').value = 'https://original.com';
+        document.getElementById('pr-intertexto-link-texto').value = 'Rótulo original';
         document.getElementById('pr-intertexto-nota').value = 'Nota original';
         adicionarIntertextoProsa();
 
@@ -452,10 +492,11 @@ describe('Intertextualidade — link e nota (Prosa, editor.js, DOM real)', () =>
 
         assert.equal(document.getElementById('pr-intertexto-texto').value, 'Original');
         assert.equal(document.getElementById('pr-intertexto-link').value, 'https://original.com');
+        assert.equal(document.getElementById('pr-intertexto-link-texto').value, 'Rótulo original');
         assert.equal(document.getElementById('pr-intertexto-nota').value, 'Nota original');
     });
 
-    it('cancelarEdicaoIntertextoProsa limpa os 4 campos sem alterar a lista', () => {
+    it('cancelarEdicaoIntertextoProsa limpa os 5 campos sem alterar a lista', () => {
         document.getElementById('pr-intertexto-texto').value = 'Original';
         adicionarIntertextoProsa();
         editarIntertextoProsa(0);
@@ -467,7 +508,7 @@ describe('Intertextualidade — link e nota (Prosa, editor.js, DOM real)', () =>
         assert.equal(obterIntertextualidadeProsa().length, 1);
     });
 
-    it('a lista renderizada mostra o link como <a> e a nota junto do texto', () => {
+    it('sem linkTexto, a lista renderizada mostra a URL crua como texto do <a>', () => {
         document.getElementById('pr-intertexto-texto').value = 'Trecho';
         document.getElementById('pr-intertexto-link').value = 'https://exemplo.com/pagina-prosa';
         document.getElementById('pr-intertexto-nota').value = 'Comentário de prosa';
@@ -480,5 +521,17 @@ describe('Intertextualidade — link e nota (Prosa, editor.js, DOM real)', () =>
             /<a href="https:\/\/exemplo\.com\/pagina-prosa"[^>]*>https:\/\/exemplo\.com\/pagina-prosa<\/a>/,
         );
         assert.match(html, /Comentário de prosa/);
+    });
+
+    it('com linkTexto preenchido, a lista renderizada usa o rótulo no lugar da URL crua', () => {
+        document.getElementById('pr-intertexto-link').value =
+            'https://exemplo.com/pagina-prosa-bem-longa-que-normalmente-estouraria';
+        document.getElementById('pr-intertexto-link-texto').value = 'Fonte da prosa';
+
+        adicionarIntertextoProsa();
+
+        const html = document.getElementById('pr-intertexto-lista').innerHTML;
+        assert.match(html, />Fonte da prosa<\/a>/);
+        assert.ok(!html.includes('>https://exemplo.com/pagina-prosa-bem-longa'));
     });
 });

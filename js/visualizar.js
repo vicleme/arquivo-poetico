@@ -151,7 +151,9 @@ export function renderVisualizacaoHtml(item) {
 
     html += listaHtml('Intertextualidade', item.intertextualidade, (it) => {
         const prefixo = it.tipo ? `<strong>${escapeHtml(it.tipo)}:</strong> ` : '';
-        const link = it.link ? ` — ${escapeHtml(it.link)}` : '';
+        const link = it.link
+            ? ` — <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
+            : '';
         const nota = it.nota ? ` <em>(${escapeHtml(it.nota)})</em>` : '';
         return `${prefixo}${escapeHtml(it.texto || '')}${link}${nota}`;
     });

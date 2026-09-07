@@ -19,6 +19,16 @@ Prosa tem paridade quase total com Poema desde que ganhou os mesmos campos (úni
 - **Referências** (sempre unidirecional, mais novo → mais antigo): só `tipo` (`TIPOS_REFERENCIA` — Personagem em comum, Imagem central compartilhada, Aceno a, Outro), sem `direcao`.
 - Alvo de Prosa pode ser Poema ou Prosa (`resolverItemVinculado`/`resolverTituloPoemaOuProsa` resolvem checando os dois arrays — ids nunca colidem, contador global único).
 
+### Intertextualidade
+
+```json
+"intertextualidade": [
+  { "tipo": "Notícias", "texto": "", "link": "https://...", "linkTexto": "G1 Pernambuco", "nota": "" }
+]
+```
+
+Diálogo com algo externo ao acervo (música, livro, série, notícia...), sem vínculo por id — `tipo` e `texto` livres, com datalist de sugestões a partir do que já foi digitado antes. `link` e `nota` são opcionais. `linkTexto` é o rótulo opcional exibido no `<a>` no lugar da URL crua — sem ele, cai pra mostrar a própria URL (com `break-all` como rede de segurança em todo lugar que renderiza o link, pra URL longa quebrar linha em vez de estourar o layout).
+
 ### Pessoas / Autoria / Grupos (cadastros centrais)
 
 ```json

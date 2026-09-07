@@ -26,4 +26,6 @@
 
 **Status editorial (Inédito/Esgotado/Domínio público/Reeditado) fica só em `db.livros`/`db.coletaneas`**, nunca em Poema/Prosa — são conceitos de publicação do livro, não do texto individual.
 
+**`linkTexto` em Intertextualidade** — URL longa sem rótulo estourava o layout da lista renderizada (texto do `<a>` era a própria URL, sem quebra controlada). Em vez de só CSS (`break-all`), ganhou campo opcional `linkTexto` pro rótulo do link, com o CSS de segurança mantido em paralelo pra quando o campo fica vazio ou o rótulo digitado também é longo.
+
 **Mesclar Pessoa/Época — nome duplicado não mescla automaticamente.** Renomear pra um nome já existente não funde os registros (cada um mantém `id`/vínculos próprios) — porque às vezes o nome igual é de propósito (pessoa homônima em outro grupo; Época com mesmo apelido mas relacionamento diferente). Ao salvar um rename que colide, o formulário oferece três saídas: Mesclar agora / Salvar mesmo assim / Cancelar — nunca força a fusão.

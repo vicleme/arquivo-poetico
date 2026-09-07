@@ -23,6 +23,7 @@ import {
     getPosicaoElemento,
     filtrarTextos,
     filtrarPorConteudo,
+    opcoesBuscaPadrao,
     formatarDataParcial,
     formatarIntervaloEpocaRetratada,
     nomeEpoca,
@@ -117,6 +118,13 @@ let filtroConteudoPoemas = '';
 let filtroConteudoProsas = '';
 let combinadorBuscaPoemas = 'e'; // 'e' (precisa bater nos dois campos) ou 'ou' (basta um)
 let combinadorBuscaProsas = 'e';
+// Interruptores de busca (Diferenciar maiúsculas/minúsculas, Diferenciar
+// diacríticos, Palavra inteira) — um conjunto por lista, valendo pras
+// duas caixas (Metadados e Conteúdo) daquela lista, mesmo escopo do
+// combinador E/OU acima. Todos desligados por padrão (ver
+// opcoesBuscaPadrao em utils.js).
+let opcoesBuscaPoemas = opcoesBuscaPadrao();
+let opcoesBuscaProsas = opcoesBuscaPadrao();
 let filtroLivroProsa = '';
 let filtroLivroPoemas = '';
 
@@ -272,14 +280,16 @@ function livroDoPoema(p) {
 // busca por conteúdo (filtrarPorConteudo). Só quando os dois campos têm
 // algo digitado é que o combinador ('e' ou 'ou') realmente entra em jogo;
 // com um só preenchido, o resultado é simplesmente o desse campo.
-function combinarFiltrosBusca(decorada, filtroMeta, filtroConteudo, combinador) {
+function combinarFiltrosBusca(decorada, filtroMeta, filtroConteudo, combinador, opcoesBusca) {
     const usaMeta = !!(filtroMeta && filtroMeta.trim());
     const usaConteudo = !!(filtroConteudo && filtroConteudo.trim());
     if (!usaMeta && !usaConteudo) return decorada;
 
-    const idsMeta = usaMeta ? new Set(filtrarTextos(decorada, filtroMeta).map((p) => p.id)) : null;
+    const idsMeta = usaMeta
+        ? new Set(filtrarTextos(decorada, filtroMeta, opcoesBusca).map((p) => p.id))
+        : null;
     const idsConteudo = usaConteudo
-        ? new Set(filtrarPorConteudo(decorada, filtroConteudo).map((p) => p.id))
+        ? new Set(filtrarPorConteudo(decorada, filtroConteudo, opcoesBusca).map((p) => p.id))
         : null;
 
     return decorada.filter((p) => {
@@ -357,6 +367,29 @@ export function getCombinadorBuscaPoemas() {
 
 export function getCombinadorBuscaProsas() {
     return combinadorBuscaProsas;
+}
+
+// Interruptores de busca — cada um liga/desliga um campo de
+// opcoesBuscaPoemas/opcoesBuscaProsas (ver opcoesBuscaPadrao em utils.js)
+// e re-renderiza, mesmo padrão de setCombinadorBuscaPoemas acima.
+export function setOpcaoBuscaPoemas(chave, valor) {
+    opcoesBuscaPoemas = { ...opcoesBuscaPoemas, [chave]: !!valor };
+    paginaPoemas = 1;
+    renderPoemas();
+}
+
+export function setOpcaoBuscaProsas(chave, valor) {
+    opcoesBuscaProsas = { ...opcoesBuscaProsas, [chave]: !!valor };
+    paginaProsas = 1;
+    renderProsas();
+}
+
+export function getOpcoesBuscaPoemas() {
+    return opcoesBuscaPoemas;
+}
+
+export function getOpcoesBuscaProsas() {
+    return opcoesBuscaProsas;
 }
 
 export function setFiltroLivroProsa(valor) {
@@ -1291,6 +1324,7 @@ function getListaVisivelPoemas() {
         filtroPoemas,
         filtroConteudoPoemas,
         combinadorBuscaPoemas,
+        opcoesBuscaPoemas,
     );
 
     semDataPoemas = lista.filter(
@@ -1843,6 +1877,7 @@ function getListaVisivelProsas() {
         filtroProsas,
         filtroConteudoProsas,
         combinadorBuscaProsas,
+        opcoesBuscaProsas,
     );
 
     semDataProsas = lista.filter(

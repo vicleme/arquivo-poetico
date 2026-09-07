@@ -14,6 +14,7 @@ import {
     extrairGenerosUnicos,
     extrairValoresUnicosDeAnotacoes,
     extrairValoresUnicosDeIntertextualidade,
+    extrairTiposIntertextoUnicos,
     extrairIdiomasUnicos,
     extrairMeiosEnviosUnicos,
     extrairPremiosUnicos,
@@ -824,7 +825,7 @@ const listaIntertextoPoema = criarListaDeEntradas({
             ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
             : '';
         const link = it.link
-            ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px]">${escapeHtml(it.link)}</a>`
+            ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
             : '';
         const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
         return `${badge}${escapeHtml(it.texto || '')}${link}${nota}`;
@@ -848,22 +849,31 @@ export function atualizarDatalistIntertexto() {
             .map((v) => `<option value="${escapeHtml(v)}">`)
             .join('');
     }
+    const datalistTipo = document.getElementById('sugestoes-intertexto-tipo');
+    if (datalistTipo) {
+        datalistTipo.innerHTML = extrairTiposIntertextoUnicos(db.poemas)
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    }
 }
 
 export function adicionarIntertexto() {
     const tipoEl = document.getElementById('p-intertexto-tipo');
     const textoEl = document.getElementById('p-intertexto-texto');
     const linkEl = document.getElementById('p-intertexto-link');
+    const linkTextoEl = document.getElementById('p-intertexto-link-texto');
     const notaEl = document.getElementById('p-intertexto-nota');
     const tipo = tipoEl?.value || '';
     const texto = (textoEl?.value || '').trim();
     const link = (linkEl?.value || '').trim();
+    const linkTexto = (linkTextoEl?.value || '').trim();
     const nota = (notaEl?.value || '').trim();
-    if (!tipo && !texto && !link && !nota) return;
-    listaIntertextoPoema.salvar({ tipo, texto, link, nota });
+    if (!tipo && !texto && !link && !linkTexto && !nota) return;
+    listaIntertextoPoema.salvar({ tipo, texto, link, linkTexto, nota });
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
     if (linkEl) linkEl.value = '';
+    if (linkTextoEl) linkTextoEl.value = '';
     if (notaEl) notaEl.value = '';
     atualizarBotaoIntertexto();
     atualizarDatalistIntertexto();
@@ -873,10 +883,12 @@ export function editarIntertexto(indice) {
     const tipoEl = document.getElementById('p-intertexto-tipo');
     const textoEl = document.getElementById('p-intertexto-texto');
     const linkEl = document.getElementById('p-intertexto-link');
+    const linkTextoEl = document.getElementById('p-intertexto-link-texto');
     const notaEl = document.getElementById('p-intertexto-nota');
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (textoEl) textoEl.value = item.texto || '';
     if (linkEl) linkEl.value = item.link || '';
+    if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
     if (notaEl) notaEl.value = item.nota || '';
     textoEl?.focus();
     atualizarBotaoIntertexto();
@@ -886,10 +898,12 @@ export function cancelarEdicaoIntertexto() {
     const tipoEl = document.getElementById('p-intertexto-tipo');
     const textoEl = document.getElementById('p-intertexto-texto');
     const linkEl = document.getElementById('p-intertexto-link');
+    const linkTextoEl = document.getElementById('p-intertexto-link-texto');
     const notaEl = document.getElementById('p-intertexto-nota');
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
     if (linkEl) linkEl.value = '';
+    if (linkTextoEl) linkTextoEl.value = '';
     if (notaEl) notaEl.value = '';
     atualizarBotaoIntertexto();
 }
@@ -1612,7 +1626,7 @@ const listaIntertextoProsa = criarListaDeEntradas({
             ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
             : '';
         const link = it.link
-            ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px]">${escapeHtml(it.link)}</a>`
+            ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
             : '';
         const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
         return `${badge}${escapeHtml(it.texto || '')}${link}${nota}`;
@@ -1636,22 +1650,31 @@ export function atualizarDatalistIntertextoProsa() {
             .map((v) => `<option value="${escapeHtml(v)}">`)
             .join('');
     }
+    const datalistTipo = document.getElementById('sugestoes-intertexto-tipo-prosa');
+    if (datalistTipo) {
+        datalistTipo.innerHTML = extrairTiposIntertextoUnicos(db.prosas || [])
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    }
 }
 
 export function adicionarIntertextoProsa() {
     const tipoEl = document.getElementById('pr-intertexto-tipo');
     const textoEl = document.getElementById('pr-intertexto-texto');
     const linkEl = document.getElementById('pr-intertexto-link');
+    const linkTextoEl = document.getElementById('pr-intertexto-link-texto');
     const notaEl = document.getElementById('pr-intertexto-nota');
     const tipo = tipoEl?.value || '';
     const texto = (textoEl?.value || '').trim();
     const link = (linkEl?.value || '').trim();
+    const linkTexto = (linkTextoEl?.value || '').trim();
     const nota = (notaEl?.value || '').trim();
-    if (!tipo && !texto && !link && !nota) return;
-    listaIntertextoProsa.salvar({ tipo, texto, link, nota });
+    if (!tipo && !texto && !link && !linkTexto && !nota) return;
+    listaIntertextoProsa.salvar({ tipo, texto, link, linkTexto, nota });
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
     if (linkEl) linkEl.value = '';
+    if (linkTextoEl) linkTextoEl.value = '';
     if (notaEl) notaEl.value = '';
     atualizarBotaoIntertextoProsa();
     atualizarDatalistIntertextoProsa();
@@ -1661,10 +1684,12 @@ export function editarIntertextoProsa(indice) {
     const tipoEl = document.getElementById('pr-intertexto-tipo');
     const textoEl = document.getElementById('pr-intertexto-texto');
     const linkEl = document.getElementById('pr-intertexto-link');
+    const linkTextoEl = document.getElementById('pr-intertexto-link-texto');
     const notaEl = document.getElementById('pr-intertexto-nota');
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (textoEl) textoEl.value = item.texto || '';
     if (linkEl) linkEl.value = item.link || '';
+    if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
     if (notaEl) notaEl.value = item.nota || '';
     textoEl?.focus();
     atualizarBotaoIntertextoProsa();
@@ -1674,10 +1699,12 @@ export function cancelarEdicaoIntertextoProsa() {
     const tipoEl = document.getElementById('pr-intertexto-tipo');
     const textoEl = document.getElementById('pr-intertexto-texto');
     const linkEl = document.getElementById('pr-intertexto-link');
+    const linkTextoEl = document.getElementById('pr-intertexto-link-texto');
     const notaEl = document.getElementById('pr-intertexto-nota');
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
     if (linkEl) linkEl.value = '';
+    if (linkTextoEl) linkTextoEl.value = '';
     if (notaEl) notaEl.value = '';
     atualizarBotaoIntertextoProsa();
 }

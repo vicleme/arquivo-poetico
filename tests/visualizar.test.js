@@ -318,7 +318,7 @@ describe('renderVisualizacaoHtml — Autoavaliação (campo novo, texto livre)',
 });
 
 describe('renderVisualizacaoHtml — Intertextualidade com link e nota (campos novos)', () => {
-    it('mostra o link e a nota junto da linha, depois do texto principal', () => {
+    it('mostra o link como <a> (rótulo = URL, sem linkTexto) e a nota junto da linha', () => {
         const item = {
             id: 1,
             tipo: 'poema',
@@ -337,8 +337,31 @@ describe('renderVisualizacaoHtml — Intertextualidade com link e nota (campos n
         assert.match(html, /<h4[^>]*>Intertextualidade<\/h4>/);
         assert.match(
             html,
-            /<strong>Citação:<\/strong> Trecho citado — https:\/\/exemplo\.com\/obra <em>\(Nota livre\)<\/em>/,
+            /<strong>Citação:<\/strong> Trecho citado — <a href="https:\/\/exemplo\.com\/obra"[^>]*>https:\/\/exemplo\.com\/obra<\/a> <em>\(Nota livre\)<\/em>/,
         );
+    });
+
+    it('usa linkTexto como rótulo do <a> quando preenchido, em vez da URL crua', () => {
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: 'x',
+            intertextualidade: [
+                {
+                    tipo: 'Notícias',
+                    texto: '',
+                    link: 'https://g1.globo.com/pe/pernambuco/noticia/2020/06/19/algum-slug-bem-longo.ghtml',
+                    linkTexto: 'G1 Pernambuco',
+                },
+            ],
+        };
+        const html = renderVisualizacaoHtml(item);
+        assert.match(
+            html,
+            /<a href="https:\/\/g1\.globo\.com\/pe\/pernambuco\/noticia\/2020\/06\/19\/algum-slug-bem-longo\.ghtml"[^>]*>G1 Pernambuco<\/a>/,
+        );
+        assert.ok(!html.includes('>https://g1.globo.com'));
     });
 
     it('não quebra e não mostra link/nota quando estão ausentes (compatibilidade com dados antigos)', () => {

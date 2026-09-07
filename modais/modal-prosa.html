@@ -912,17 +912,13 @@
                                 ></label
                             >
                             <div class="flex gap-2 mb-2">
-                                <select id="pr-intertexto-tipo" class="text-xs w-28 flex-shrink-0">
-                                    <option value="">Tipo...</option>
-                                    <option value="Livro">Livro</option>
-                                    <option value="Texto">Texto</option>
-                                    <option value="Música">Música</option>
-                                    <option value="Filme/Série">Filme/Série</option>
-                                    <option value="Vídeo">Vídeo</option>
-                                    <option value="Citação">Citação</option>
-                                    <option value="Conversa">Conversa</option>
-                                    <option value="Outro">Outro</option>
-                                </select>
+                                <input
+                                    type="text"
+                                    id="pr-intertexto-tipo"
+                                    list="sugestoes-intertexto-tipo-prosa"
+                                    class="text-xs w-28 flex-shrink-0"
+                                    placeholder="Tipo..."
+                                />
                                 <input
                                     type="text"
                                     id="pr-intertexto-texto"
@@ -956,12 +952,21 @@
                                 />
                                 <input
                                     type="text"
-                                    id="pr-intertexto-nota"
+                                    id="pr-intertexto-link-texto"
                                     class="text-sm flex-1"
+                                    placeholder="Texto do link (opcional)"
+                                />
+                            </div>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-intertexto-nota"
+                                    class="text-sm w-full"
                                     placeholder="Nota opcional..."
                                 />
                             </div>
                             <datalist id="sugestoes-intertexto-prosa"></datalist>
+                            <datalist id="sugestoes-intertexto-tipo-prosa"></datalist>
                             <div id="pr-intertexto-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
                         </div>
                     </details>

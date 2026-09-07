@@ -1262,12 +1262,58 @@ export function pontoCorGrupo(cor) {
 // etc. — mesma técnica (NFD + strip de diacríticos) já usada em
 // exportarLivroCompleto (exportar.js) pra gerar nome de arquivo, só que
 // aplicada aqui à busca em vez de a um nome de arquivo.
-export function normalizarBusca(s) {
+//
+// `opts.caseSensitive` e `opts.matchDiacritics` (ambos default false)
+// desligam cada normalização individualmente — usados pelos interruptores
+// de busca (ver OPCOES_BUSCA_PADRAO abaixo). Sem opts, comportamento
+// idêntico ao de sempre (tudo normalizado).
+export function normalizarBusca(s, opts = {}) {
     if (s == null) return '';
-    return String(s)
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+    let r = String(s);
+    if (!opts.caseSensitive) r = r.toLowerCase();
+    if (!opts.matchDiacritics) r = r.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return r;
+}
+
+// Estado padrão dos 3 interruptores de busca — todos desligados (mesmo
+// comportamento de sempre: sem diferenciar caixa, sem diferenciar
+// diacríticos, por substring). Um por lista (Poemas/Prosas), aplicado
+// igualmente à busca de Metadados e à de Conteúdo daquela lista — mesmo
+// escopo do combinador E/OU já existente.
+export function opcoesBuscaPadrao() {
+    return { caseSensitive: false, matchDiacritics: false, palavraInteira: false };
+}
+
+// Limite de palavra Unicode-aware: usado no lugar de \b (que em JS só
+// enxerga [A-Za-z0-9_], então erraria com acento preservado quando
+// matchDiacritics está ligado). Um caractere "é limite" quando não é
+// letra/dígito/underline — início/fim de string contam como limite.
+function ehLimitePalavra(ch) {
+    return !ch || !/[\p{L}\p{N}_]/u.test(ch);
+}
+
+// Acha `termo` em `texto` como palavra inteira — a ocorrência (que pode
+// ter espaços, no caso de frase entre aspas) precisa ter um limite de
+// palavra tanto antes quanto depois, não só bater como substring.
+function contemPalavraInteira(texto, termo) {
+    if (!termo) return false;
+    let i = 0;
+    while (true) {
+        const pos = texto.indexOf(termo, i);
+        if (pos === -1) return false;
+        if (ehLimitePalavra(texto[pos - 1]) && ehLimitePalavra(texto[pos + termo.length])) {
+            return true;
+        }
+        i = pos + 1;
+    }
+}
+
+// Compara um valor de campo já normalizado com um termo já normalizado,
+// respeitando o interruptor de palavra inteira.
+function valorBateTermo(valorNormalizado, termoNormalizado, palavraInteira) {
+    return palavraInteira
+        ? contemPalavraInteira(valorNormalizado, termoNormalizado)
+        : valorNormalizado.includes(termoNormalizado);
 }
 
 // Nomes de atributo aceitos no prefixo "campo:valor" (ver filtrarTextos
@@ -1453,7 +1499,11 @@ function parseConsultaBusca(query) {
         // restrito e o asterisco sozinho — "campo:*algo*" ou um "*" sem
         // prefixo continuam sendo termo literal, não presença.
         const presenca = campo && termo === '*';
-        termo = presenca ? '*' : normalizarBusca(termo);
+        // Termo fica em estado bruto (só trim + aspas removidas) — a
+        // normalização (caixa/diacríticos) é decidida na comparação, por
+        // filtrarTextos/filtrarPorConteudo, de acordo com os interruptores
+        // de busca ativos (ver normalizarBusca/opcoesBuscaPadrao acima).
+        // Antes, isso era normalizado aqui direto, sempre do mesmo jeito.
 
         (excluir ? termosExcluir : grupoAtual).push({ campo, termo, presenca });
     });
@@ -1468,7 +1518,11 @@ function parseConsultaBusca(query) {
 // histórico/pessoal, autoavaliação e intertextualidade ao mesmo tempo — ou,
 // opcionalmente, restrita a um atributo específico. Ver
 // parseConsultaBusca acima pra sintaxe completa.
-export function filtrarTextos(lista, query) {
+//
+// `opts` (ver opcoesBuscaPadrao) liga/desliga diferenciar maiúsculas,
+// diferenciar diacríticos e exigir palavra inteira — omitido, o
+// comportamento é o de sempre (os 3 desligados).
+export function filtrarTextos(lista, query, opts = opcoesBuscaPadrao()) {
     if (!query || !query.trim()) return lista;
     const { gruposIncluir, termosExcluir } = parseConsultaBusca(query);
 
@@ -1503,18 +1557,22 @@ export function filtrarTextos(lista, query) {
             ]
                 .filter(Boolean)
                 .join(' '),
+            opts,
         );
 
         const valorDoTermo = (t) => {
             if (!t.campo) return camposGerais;
             const v = item[t.campo];
-            return v == null ? '' : normalizarBusca(String(v));
+            return v == null ? '' : normalizarBusca(String(v), opts);
         };
 
         // "campo:*" checa presença (valor não-vazio), ignorando o texto
-        // do campo — o resto continua sendo substring normal.
+        // do campo — o resto continua sendo substring (ou palavra
+        // inteira, se o interruptor estiver ligado) normal.
         const bateTermo = (t) =>
-            t.presenca ? valorDoTermo(t) !== '' : valorDoTermo(t).includes(t.termo);
+            t.presenca
+                ? valorDoTermo(t) !== ''
+                : valorBateTermo(valorDoTermo(t), normalizarBusca(t.termo, opts), opts.palavraInteira);
 
         const combinaInclusao =
             gruposIncluir.length === 0 || gruposIncluir.some((grupo) => grupo.every(bateTermo));
@@ -1527,14 +1585,18 @@ export function filtrarTextos(lista, query) {
 // Filtra por conteúdo textual (versos do poema, corpo da prosa), com a
 // mesma sintaxe de "ou" / aspas / exclusão de parseConsultaBusca — mas
 // sempre olhando o campo "texto", ignorando prefixos de outros atributos.
-export function filtrarPorConteudo(lista, query) {
+// Mesmos `opts` de filtrarTextos acima.
+export function filtrarPorConteudo(lista, query, opts = opcoesBuscaPadrao()) {
     if (!query || !query.trim()) return lista;
     const { gruposIncluir, termosExcluir } = parseConsultaBusca(query);
 
     return lista.filter((item) => {
-        const texto = normalizarBusca(item.texto == null ? '' : String(item.texto));
+        const texto = normalizarBusca(item.texto == null ? '' : String(item.texto), opts);
 
-        const bateTermo = (t) => (t.presenca ? texto !== '' : texto.includes(t.termo));
+        const bateTermo = (t) =>
+            t.presenca
+                ? texto !== ''
+                : valorBateTermo(texto, normalizarBusca(t.termo, opts), opts.palavraInteira);
 
         const combinaInclusao =
             gruposIncluir.length === 0 || gruposIncluir.some((grupo) => grupo.every(bateTermo));
@@ -1875,6 +1937,41 @@ export function extrairValoresUnicosDeIntertextualidade(poemas) {
         }
     });
     return Array.from(valores).sort();
+}
+
+// Sugestões de autocompletar pra Intertextualidade (campo Tipo): era select
+// fixo, virou texto livre (o valor não aciona nenhuma lógica condicional,
+// diferente do Tipo de Anexos — só entra em busca/exibição), mesmo motivo
+// de Gênero (Prosa) ser campo livre. TIPOS_INTERTEXTO_SUGERIDOS semeia com
+// as categorias já conhecidas (mesmo papel de IDIOMAS_SUGERIDOS acima),
+// pra não começar vazio pra quem já usava o select.
+export const TIPOS_INTERTEXTO_SUGERIDOS = [
+    'Livro',
+    'Texto',
+    'Música',
+    'Filme/Série',
+    'Vídeo',
+    'Fotografia',
+    'Pintura',
+    'Peça de teatro',
+    'Citação',
+    'Conversa',
+    'Pessoa pública',
+    'Mitologia',
+    'Astrologia',
+    'Outro',
+];
+
+export function extrairTiposIntertextoUnicos(poemas) {
+    const tipos = new Set(TIPOS_INTERTEXTO_SUGERIDOS);
+    poemas.forEach((p) => {
+        if (Array.isArray(p.intertextualidade)) {
+            p.intertextualidade.forEach((it) => {
+                if (it && it.tipo) tipos.add(it.tipo);
+            });
+        }
+    });
+    return Array.from(tipos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
 // Sugestões de autocompletar pras Anotações Marginais (Posição e Fonte):

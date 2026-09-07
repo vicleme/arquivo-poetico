@@ -364,7 +364,7 @@ describe('gerarMarkdownExportacao — Autoavaliação (campo novo, texto livre)'
 describe('gerarMarkdownExportacao — Intertextualidade com link e nota (campos novos)', () => {
     beforeEach(resetarDb);
 
-    it('inclui link e nota na linha, depois do texto principal', () => {
+    it('inclui link e nota na linha, depois do texto principal (sem linkTexto, o link vira o rótulo)', () => {
         db.poemas = [
             {
                 id: 1,
@@ -384,7 +384,30 @@ describe('gerarMarkdownExportacao — Intertextualidade com link e nota (campos 
         assert.match(md, /### Intertextualidade/);
         assert.match(
             md,
-            /- \*\*Citação:\*\* Trecho citado — https:\/\/exemplo\.com\/obra \*\(Nota livre\)\*/,
+            /- \*\*Citação:\*\* Trecho citado — \[https:\/\/exemplo\.com\/obra\]\(https:\/\/exemplo\.com\/obra\) \*\(Nota livre\)\*/,
+        );
+    });
+
+    it('usa linkTexto como rótulo do link Markdown quando preenchido', () => {
+        db.poemas = [
+            {
+                id: 1,
+                titulo: 'Solo',
+                texto: 'x',
+                intertextualidade: [
+                    {
+                        tipo: 'Notícias',
+                        texto: '',
+                        link: 'https://g1.globo.com/pe/pernambuco/noticia/2020/06/19/algum-slug-bem-longo.ghtml',
+                        linkTexto: 'G1 Pernambuco',
+                    },
+                ],
+            },
+        ];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(
+            md,
+            /- \*\*Notícias:\*\* {2}— \[G1 Pernambuco\]\(https:\/\/g1\.globo\.com\/pe\/pernambuco\/noticia\/2020\/06\/19\/algum-slug-bem-longo\.ghtml\)/,
         );
     });
 

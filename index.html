@@ -618,6 +618,35 @@
                 </div>
 
                 <div
+                    class="flex flex-wrap gap-x-4 gap-y-1 mb-4 -mt-2 items-center text-xs text-gray-600 dark:text-slate-400"
+                >
+                    <label class="flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            class="w-3.5 h-3.5"
+                            onchange="setOpcaoBuscaPoemas('caseSensitive', this)"
+                        />
+                        Diferenciar maiúsculas/minúsculas
+                    </label>
+                    <label class="flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            class="w-3.5 h-3.5"
+                            onchange="setOpcaoBuscaPoemas('matchDiacritics', this)"
+                        />
+                        Diferenciar diacríticos
+                    </label>
+                    <label class="flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            class="w-3.5 h-3.5"
+                            onchange="setOpcaoBuscaPoemas('palavraInteira', this)"
+                        />
+                        Só palavra inteira
+                    </label>
+                </div>
+
+                <div
                     id="ajuda-busca-poemas"
                     class="hidden mb-4 -mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-lg space-y-3"
                 >
@@ -639,7 +668,8 @@
                             <li>
                                 Acento não importa, nem no termo nem no prefixo —
                                 <code>arvore</code> acha "árvore", <code>sensivel:</code> e
-                                <code>sensível:</code> dão no mesmo.
+                                <code>sensível:</code> dão no mesmo (a menos que "Diferenciar
+                                diacríticos" esteja marcado, aqui embaixo).
                             </li>
                             <li>
                                 Não inclui data de escrita/publicação — use o filtro de data logo
@@ -1255,6 +1285,35 @@
                 </div>
 
                 <div
+                    class="flex flex-wrap gap-x-4 gap-y-1 mb-4 -mt-2 items-center text-xs text-gray-600 dark:text-slate-400"
+                >
+                    <label class="flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            class="w-3.5 h-3.5"
+                            onchange="setOpcaoBuscaProsas('caseSensitive', this)"
+                        />
+                        Diferenciar maiúsculas/minúsculas
+                    </label>
+                    <label class="flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            class="w-3.5 h-3.5"
+                            onchange="setOpcaoBuscaProsas('matchDiacritics', this)"
+                        />
+                        Diferenciar diacríticos
+                    </label>
+                    <label class="flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            class="w-3.5 h-3.5"
+                            onchange="setOpcaoBuscaProsas('palavraInteira', this)"
+                        />
+                        Só palavra inteira
+                    </label>
+                </div>
+
+                <div
                     id="ajuda-busca-prosas"
                     class="hidden mb-4 -mt-2 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-lg space-y-3"
                 >
@@ -1276,7 +1335,8 @@
                             <li>
                                 Acento não importa, nem no termo nem no prefixo —
                                 <code>arvore</code> acha "árvore", <code>sensivel:</code> e
-                                <code>sensível:</code> dão no mesmo.
+                                <code>sensível:</code> dão no mesmo (a menos que "Diferenciar
+                                diacríticos" esteja marcado, aqui embaixo).
                             </li>
                             <li>
                                 Não inclui data de escrita/publicação — use o filtro de data logo

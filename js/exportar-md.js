@@ -276,7 +276,7 @@ function itemParaMarkdownDepoisDoTexto(item) {
         md += '### Intertextualidade\n\n';
         item.intertextualidade.forEach((it) => {
             const prefixo = it.tipo ? `**${it.tipo}:** ` : '';
-            const link = it.link ? ` — ${it.link}` : '';
+            const link = it.link ? ` — [${it.linkTexto || it.link}](${it.link})` : '';
             const nota = it.nota ? ` *(${it.nota})*` : '';
             md += `- ${prefixo}${it.texto || ''}${link}${nota}\n`;
         });
