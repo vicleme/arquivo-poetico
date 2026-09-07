@@ -154,7 +154,12 @@ const ESTILO_BASE = {
 // ignora o desbalanceamento em vez de quebrar, já que o dado real do
 // acervo tem anos de HTML colado de fontes diversas (ver comentário em
 // sanitizarTextoRico, utils.js).
-function corpoParaLinhasRicas(textoOriginal) {
+//
+// Exportada (só pra ser reaproveitada por exportar-docx.js, que
+// converte as mesmas runs pra HTML em vez de desenhar num doc jsPDF) —
+// resto do app continua chamando só as funções de mais alto nível deste
+// arquivo.
+export function corpoParaLinhasRicas(textoOriginal) {
     const linhas = [[]];
     // Pilha de frames { estilo, origem }; origem identifica quem abriu o
     // frame ('negrito'/'italico'/'u'/'div'), pra saber qual token fecha

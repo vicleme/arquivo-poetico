@@ -70,6 +70,7 @@ import {
     exportarSelecaoPoemasJson,
     exportarSelecaoPoemasMarkdown,
     exportarSelecaoPoemasPdf,
+    exportarSelecaoPoemasDocx,
     aplicarPessoaEmMassa,
     removerPessoaEmMassa,
     aplicarSinalEmMassa,
@@ -84,6 +85,7 @@ import {
     exportarSelecaoProsasJson,
     exportarSelecaoProsasMarkdown,
     exportarSelecaoProsasPdf,
+    exportarSelecaoProsasDocx,
     aplicarPessoaEmMassaProsa,
     removerPessoaEmMassaProsa,
     aplicarSinalEmMassaProsa,
@@ -124,6 +126,7 @@ import {
     executarExportacaoSeletiva,
     executarExportacaoSeletivaMarkdown,
     executarExportacaoSeletivaPdf,
+    executarExportacaoSeletivaDocx,
     popularSelecaoExportacao,
     exportarTudoAninhado,
     exportarLivroCompleto,
@@ -131,6 +134,7 @@ import {
     exportarTudoFlatJson,
     exportarTudoFlatMarkdown,
     exportarTudoFlatPdf,
+    exportarTudoFlatDocx,
 } from './exportar.js';
 import { renderEstatisticas } from './estatisticas.js';
 import { renderConexoes, baixarDiagramaReferencias } from './render-conexoes.js';
@@ -758,6 +762,7 @@ window.excluirSelecaoPoemas = excluirSelecaoPoemas;
 window.exportarSelecaoPoemasJson = exportarSelecaoPoemasJson;
 window.exportarSelecaoPoemasMarkdown = exportarSelecaoPoemasMarkdown;
 window.exportarSelecaoPoemasPdf = exportarSelecaoPoemasPdf;
+window.exportarSelecaoPoemasDocx = exportarSelecaoPoemasDocx;
 window.aplicarPessoaEmMassa = aplicarPessoaEmMassa;
 window.removerPessoaEmMassa = removerPessoaEmMassa;
 window.aplicarSinalEmMassa = aplicarSinalEmMassa;
@@ -772,6 +777,7 @@ window.excluirSelecaoProsas = excluirSelecaoProsas;
 window.exportarSelecaoProsasJson = exportarSelecaoProsasJson;
 window.exportarSelecaoProsasMarkdown = exportarSelecaoProsasMarkdown;
 window.exportarSelecaoProsasPdf = exportarSelecaoProsasPdf;
+window.exportarSelecaoProsasDocx = exportarSelecaoProsasDocx;
 window.aplicarPessoaEmMassaProsa = aplicarPessoaEmMassaProsa;
 window.removerPessoaEmMassaProsa = removerPessoaEmMassaProsa;
 window.aplicarSinalEmMassaProsa = aplicarSinalEmMassaProsa;
@@ -791,6 +797,7 @@ window.previsualizarExportacaoSeletiva = previsualizarExportacaoSeletiva;
 window.executarExportacaoSeletiva = executarExportacaoSeletiva;
 window.executarExportacaoSeletivaMarkdown = executarExportacaoSeletivaMarkdown;
 window.executarExportacaoSeletivaPdf = executarExportacaoSeletivaPdf;
+window.executarExportacaoSeletivaDocx = executarExportacaoSeletivaDocx;
 window.renderEstatisticas = renderEstatisticas;
 window.renderConexoes = renderConexoes;
 window.exportarTudoAninhado = exportarTudoAninhado;
@@ -799,6 +806,7 @@ window.exportarLivrosCompletos = exportarLivrosCompletos;
 window.exportarTudoFlatJson = exportarTudoFlatJson;
 window.exportarTudoFlatMarkdown = exportarTudoFlatMarkdown;
 window.exportarTudoFlatPdf = exportarTudoFlatPdf;
+window.exportarTudoFlatDocx = exportarTudoFlatDocx;
 
 window.toggleSelecaoEstrutura = toggleSelecaoEstrutura;
 window.marcarTodosEstrutura = marcarTodosEstrutura;

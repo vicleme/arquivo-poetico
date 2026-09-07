@@ -53,7 +53,12 @@ import {
 import { preencherCapas } from './render-lightbox.js';
 import { DEFINICAO_COLUNAS, getColunasAtivas, renderSeletorColunas } from './colunas.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
-import { exportarSelecaoJson, exportarSelecaoMarkdown, exportarSelecaoPdf } from './exportar.js';
+import {
+    exportarSelecaoJson,
+    exportarSelecaoMarkdown,
+    exportarSelecaoPdf,
+    exportarSelecaoDocx,
+} from './exportar.js';
 import { contarCamposPreenchidos, TOTAL_CAMPOS_CONSIDERADOS } from './exportar-md.js';
 
 // Sempre que uma coluna é ligada/desligada (ver colunas.js) a tabela
@@ -1782,6 +1787,9 @@ export function exportarSelecaoPoemasMarkdown() {
 export function exportarSelecaoPoemasPdf() {
     exportarSelecaoPdf('poema', [...selecaoPoemas]);
 }
+export function exportarSelecaoPoemasDocx() {
+    exportarSelecaoDocx('poema', [...selecaoPoemas]);
+}
 
 // ─── Datas em massa (Poemas): Escrita / Publicação ─────────────
 // Mesma mecânica da versão de Prosas logo abaixo — ver os comentários lá.
@@ -2200,6 +2208,9 @@ export function exportarSelecaoProsasMarkdown() {
 }
 export function exportarSelecaoProsasPdf() {
     exportarSelecaoPdf('prosa', [...selecaoProsas]);
+}
+export function exportarSelecaoProsasDocx() {
+    exportarSelecaoDocx('prosa', [...selecaoProsas]);
 }
 
 // ─── Livros ──────────────────────────────────────────────────

@@ -14,9 +14,16 @@
 
 import { db } from './db.js';
 import { exportarColetaneaResolvida } from './coletaneas.js';
-import { escapeHtml, mostrarAviso, estaPublicado, sinalizacoesCombinadas, nomesPessoas } from './utils.js';
+import {
+    escapeHtml,
+    mostrarAviso,
+    estaPublicado,
+    sinalizacoesCombinadas,
+    nomesPessoas,
+} from './utils.js';
 import { baixarMarkdown } from './exportar-md.js';
 import { baixarPdf } from './exportar-pdf.js';
+import { baixarDocx } from './exportar-docx.js';
 
 function listaDeCampo(valor) {
     if (!valor) return [];
@@ -427,6 +434,22 @@ export function exportarSelecaoPdf(tipo, ids) {
     }
 }
 
+// Mesmo padrão de exportarSelecaoPdf acima — html-docx-js também é
+// carregado via CDN, então passa pelo mesmo try/catch.
+export function exportarSelecaoDocx(tipo, ids) {
+    const itens = itensDaSelecao(tipo, ids);
+    if (itens.length === 0) {
+        mostrarAviso('Nenhum item selecionado.');
+        return;
+    }
+
+    try {
+        baixarDocx(itens, `selecao_${tipo}s_${Date.now()}.docx`);
+    } catch (err) {
+        mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
+    }
+}
+
 // Nome de arquivo a partir do título do item — sem acentos, minúsculo,
 // só letras/números/hífen. Usado pelo download individual abaixo, pra
 // gerar algo como "meu-poema.pdf" em vez de "selecao_poemas_169...json".
@@ -480,6 +503,15 @@ export function exportarItem(tipo, id, formato) {
             baixarPdf(itens, `${nomeBase}.pdf`);
         } catch (err) {
             mostrarAviso(err.message || 'Não foi possível gerar o PDF.');
+        }
+        return;
+    }
+
+    if (formato === 'docx') {
+        try {
+            baixarDocx(itens, `${nomeBase}.docx`);
+        } catch (err) {
+            mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
         }
         return;
     }
@@ -663,6 +695,32 @@ export function executarExportacaoSeletivaPdf() {
     }
 }
 
+// Mesmo padrão de executarExportacaoSeletivaPdf acima, em .docx — mesmo
+// try/catch pela mesma corrida com o carregamento do html-docx-js via CDN
+// (ver exportarSelecaoDocx).
+export function executarExportacaoSeletivaDocx() {
+    const opcoes = lerFiltrosDoFormulario();
+    const { itens } = gerarExportacaoSeletiva(opcoes);
+
+    if (itens.length === 0) {
+        const span = document.getElementById('exp-resultado');
+        if (span) span.innerText = 'Nenhum item encontrado com esses filtros — nada pra baixar.';
+        return;
+    }
+
+    try {
+        baixarDocx(itens, `exportacao_seletiva_${Date.now()}.docx`);
+    } catch (err) {
+        mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
+        return;
+    }
+
+    const span = document.getElementById('exp-resultado');
+    if (span) {
+        span.innerText = `${itens.length} item(ns) exportado(s) em .docx.`;
+    }
+}
+
 // Mantém os checkboxes de Livros/Coletâneas atualizados conforme o banco muda
 window.addEventListener('db:saved', popularSelecaoExportacao);
 
@@ -687,6 +745,30 @@ export function exportarTudoFlatPdf() {
     const span = document.getElementById('exp-resultado');
     if (span) {
         span.innerText = `Acervo inteiro exportado em PDF (${itens.length} texto(s)).`;
+    }
+}
+
+// Coletâneas ficam de fora do .docx por ora — mesma decisão de
+// exportarTudoFlatMarkdown/exportarTudoFlatPdf (ver comentário lá acima).
+// Mesmo try/catch, pela mesma corrida com o carregamento do html-docx-js
+// via CDN (ver exportarSelecaoDocx).
+export function exportarTudoFlatDocx() {
+    const { itens } = gerarTudoFlat();
+    if (itens.length === 0) {
+        mostrarAviso('Acervo vazio — nada pra exportar.');
+        return;
+    }
+
+    try {
+        baixarDocx(itens, `arquivo_poetico_flat_${Date.now()}.docx`);
+    } catch (err) {
+        mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
+        return;
+    }
+
+    const span = document.getElementById('exp-resultado');
+    if (span) {
+        span.innerText = `Acervo inteiro exportado em .docx (${itens.length} texto(s)).`;
     }
 }
 

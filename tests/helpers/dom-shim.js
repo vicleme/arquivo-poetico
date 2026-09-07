@@ -18,6 +18,7 @@ function criarElementoFalso() {
         setAttribute: noop,
         removeAttribute: noop,
         remove: noop,
+        click: noop,
         _textContent: '',
         get textContent() {
             return this._textContent;

@@ -24,6 +24,7 @@ export const DEFINICAO_ACOES = [
 export const FORMATOS_BAIXAR = [
     { key: 'md', label: '.md (Markdown)' },
     { key: 'pdf', label: '.pdf' },
+    { key: 'docx', label: '.docx (Word)' },
     { key: 'json', label: '.json' },
 ];
 

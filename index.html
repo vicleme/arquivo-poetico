@@ -22,6 +22,12 @@
              hora de gerar o PDF, mas em compensação é um clique só (sem a
              etapa extra de "Salvar como PDF" da impressão do navegador). -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <!-- html-docx-js: só usada pelo botão "Baixar em .docx" da coluna
+             Ações de Poemas/Prosas e do modal de Visualização (ver
+             js/exportar-docx.js). Mesmo padrão do jsPDF acima: via CDN,
+             carregada só quando o botão é clicado pela primeira vez. Registra
+             a si mesma como window.htmlDocx (UMD, sem module loader aqui). -->
+        <script src="https://unpkg.com/html-docx-js@0.3.1/dist/html-docx.js"></script>
         <script>
             // Sem isso o Tailwind usa a variante "media" (segue só o SO) e ignora
             // a classe .dark que a gente aplica manualmente no <html> — o toggle
@@ -1109,6 +1115,12 @@
                         ⬇ PDF
                     </button>
                     <button
+                        onclick="exportarSelecaoPoemasDocx()"
+                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                    >
+                        ⬇ DOCX
+                    </button>
+                    <button
                         onclick="excluirSelecaoPoemas()"
                         class="bg-red-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap ml-auto"
                     >
@@ -1714,6 +1726,12 @@
                         ⬇ PDF
                     </button>
                     <button
+                        onclick="exportarSelecaoProsasDocx()"
+                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                    >
+                        ⬇ DOCX
+                    </button>
+                    <button
                         onclick="excluirSelecaoProsas()"
                         class="bg-red-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap ml-auto"
                     >
@@ -2180,6 +2198,13 @@
                         >
                             Baixar .pdf seletivo
                         </button>
+                        <button
+                            onclick="executarExportacaoSeletivaDocx()"
+                            class="bg-slate-600 text-white px-4 py-2 rounded shadow font-bold text-sm"
+                            title="Mesma seleção acima, num Word editável"
+                        >
+                            Baixar .docx seletivo
+                        </button>
                         <span
                             id="exp-resultado"
                             class="text-xs text-gray-500 dark:text-slate-400"
@@ -2227,6 +2252,12 @@
                                 class="bg-slate-700 dark:bg-slate-600 text-white px-4 py-2 rounded shadow font-bold text-sm"
                             >
                                 Baixar tudo - .pdf
+                            </button>
+                            <button
+                                onclick="exportarTudoFlatDocx()"
+                                class="bg-slate-700 dark:bg-slate-600 text-white px-4 py-2 rounded shadow font-bold text-sm"
+                            >
+                                Baixar tudo - .docx
                             </button>
                         </div>
                     </div>
