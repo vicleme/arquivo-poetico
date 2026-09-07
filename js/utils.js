@@ -1627,26 +1627,33 @@ export function sinalizacoesCombinadas(item) {
 // e continua sendo uma opção válida pra quem não quiser categorizar.
 export const PAPEIS_PESSOA = [
     'Retratado(a)',
-    'Inspirado(a) por',
+    'Inspiração para',
     'Dedicatário(a)',
     'Mencionado(a)',
     'Aludido(a)',
+    'Associado(a) retroativamente',
 ];
 
 // Iniciais de PAPEIS_PESSOA pra exibição compacta (modal e coluna da
 // tabela — ver badgesPessoas em render-listas.js e o chip de papéis em
-// editor.js). As 5 iniciais não colidem (R/I/D/M/A), então não precisa de
-// abreviação tipo "Re/In/De/Me". Mantém a ordem em que os papéis foram
-// marcados (não é hierarquia fixa por categoria — ver alternarPapel em
-// editor.js), só troca o nome por extenso pela inicial; "·" (ponto
-// médio) como separador entre elas, escolhido por ser mais leve que "-"
-// ou espaço sem ficar ambíguo tipo "RDIM" grudado. Exportação pra MD
-// mantém os papéis por extenso (ver exportar-md.js) — a abreviação é só
-// pra UI, onde passar o mouse por cima do chip já mostra o papel por
-// extenso via `title` (ver badgesPessoas em render-listas.js).
+// editor.js). Duas letras por valor (Re/In/De/Me/Al/As) desde que
+// "Associado(a) retroativamente" entrou como 6º valor: colidia com
+// "Aludido(a)" na inicial única (A/A), e em vez de desambiguar só esse
+// par, padronizou-se 2 letras pros 6 valores por consistência visual.
+// Mantém a ordem em que os papéis foram marcados (não é hierarquia fixa
+// por categoria — ver alternarPapel em editor.js), só troca o nome por
+// extenso pelas duas letras; "·" (ponto médio) como separador entre
+// elas, escolhido por ser mais leve que "-" ou espaço sozinho sem ficar
+// ambíguo tipo "RIDM" grudado. Espaço fino (" · ", não colado) dos dois
+// lados do separador — colado (Re·De·In) ficava ilegível em fontes
+// pequenas (chip do editor e coluna da tabela costumam usar texto
+// bem pequeno). Exportação pra MD mantém os papéis por extenso (ver
+// exportar-md.js) — a abreviação é só pra UI, onde passar o mouse por
+// cima do chip já mostra o papel por extenso via `title` (ver
+// badgesPessoas em render-listas.js).
 export function iniciaisPapeisPessoa(papeis) {
     if (!Array.isArray(papeis) || !papeis.length) return '';
-    return papeis.map((p) => p.charAt(0)).join('·');
+    return papeis.map((p) => p.slice(0, 2)).join(' · ');
 }
 
 // ─── Autoria ─────────────────────────────────────────────────────

@@ -814,7 +814,7 @@ function badgesEtiquetasPorCategoria(item) {
 // nome vem do cadastro central db.pessoas (ver migrarPessoasParaCadastro
 // em db.js); papeis é array, desde o multi-select (ver migrarPapeisPessoa)
 // — cada chip mostra o nome e, quando há papéis marcados, as iniciais
-// deles (R/I/D/M/A — ver iniciaisPapeisPessoa em utils.js) separadas por
+// deles (Re/In/De/Me/Al/As — ver iniciaisPapeisPessoa em utils.js) separadas por
 // "·", na ordem em que foram marcados no editor (não é hierarquia fixa
 // por categoria — ver alternarPapel em editor.js). Iniciais em vez do
 // nome por extenso pra caber na coluna sem poluir; passar o mouse por
@@ -824,7 +824,10 @@ function badgesEtiquetasPorCategoria(item) {
 // sentido escrever "(sem papel)" ali. Exportação pra MD também mantém os
 // papéis por extenso (ver exportar-md.js). pessoaId sem correspondência
 // no cadastro (não deveria acontecer) não gera chip, em vez de mostrar
-// "undefined".
+// "undefined". Iniciais em preto (claro) / branco (escuro) sólido, sem
+// opacity — testado com opacity-70 sobre o rosa e ficava baixo contraste
+// demais pra ler rápido numa coluna cheia de chips; texto sólido é mais
+// legível mesmo sendo secundário ao nome.
 function badgesPessoas(pessoas) {
     if (!Array.isArray(pessoas) || !pessoas.length)
         return '<span class="text-gray-300 dark:text-slate-600">—</span>';
@@ -835,7 +838,7 @@ function badgesPessoas(pessoas) {
             const papeis = Array.isArray(p.papeis) ? p.papeis.filter(Boolean) : [];
             const iniciais = escapeHtml(iniciaisPapeisPessoa(papeis));
             const title = papeis.length ? `${nome} (${papeis.join(', ')})` : nome;
-            return `<span title="${escapeHtml(title)}" class="text-[9px] bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(nome)}${iniciais ? ` <span class="opacity-70">${iniciais}</span>` : ''}</span>`;
+            return `<span title="${escapeHtml(title)}" class="text-[9px] bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(nome)}${iniciais ? ` <span class="text-black dark:text-white font-medium">${iniciais}</span>` : ''}</span>`;
         })
         .join('');
 }

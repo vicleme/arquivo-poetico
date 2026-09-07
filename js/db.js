@@ -240,7 +240,7 @@ migrarElosParaRelacaoDirecao(db.poemas);
 // Migração: pessoas era string "Pedro, Dani" (por vírgula, misturando
 // nomes sem distinguir o tipo de vínculo com o texto). Passa a ser array
 // de objeto { nome, papel }: `papel` é um dos 4 valores fechados de
-// PAPEIS_PESSOA (Retratado(a)/Inspirado(a) por/Dedicatário(a)/Mencionado(a)/Aludido(a)) —
+// PAPEIS_PESSOA (Retratado(a)/Inspiração para/Dedicatário(a)/Mencionado(a)/Aludido(a)/Associado(a) retroativamente) —
 // ou "" (não especificado). Todo nome migrado da string antiga vira
 // papel: "" (não dá pra inferir o papel a partir só do nome). Aplica a
 // Poema e Prosa (mesmo campo/schema nos dois).
@@ -261,7 +261,7 @@ migrarPessoas(db.prosas);
 // Migração: papel era string única fechada em PAPEIS_PESSOA — uma pessoa
 // só podia ocupar um papel por texto. Na prática, boa parte do acervo
 // (poemas de endereçamento direto) tem a mesma pessoa sendo Retratado(a),
-// Inspirado(a) por e Dedicatário(a) ao mesmo tempo — forçar escolha única
+// Inspiração para e Dedicatário(a) ao mesmo tempo — forçar escolha única
 // jogava fora essa distinção pro maior bloco de dados do acervo. Passa a
 // ser `papeis`: array (0+ valores de PAPEIS_PESSOA), na ordem em que
 // foram marcados no editor — não é uma hierarquia fixa por categoria,
@@ -282,24 +282,31 @@ export function migrarPapeisPessoa(itens) {
 migrarPapeisPessoa(db.poemas);
 migrarPapeisPessoa(db.prosas);
 
-// Migração: os nomes de 3 dos 5 valores de PAPEIS_PESSOA mudaram numa
-// sessão (padronização de gênero — ver manutencao/decisoes.md):
-// "Alusão" → "Aludido(a)", "Dedicatária" → "Dedicatário(a)", "Inspirado
-// por" → "Inspirado(a) por". A troca só mudou a constante e o código —
-// dado já salvo com o nome antigo (dentro de `papeis`, array de string)
-// não foi tocado, então ficava com uma string que não bate mais com
-// nenhuma opção do <select> (aparecia como papel "invisível": sem
-// marcação em nenhum item do dropdown, mas contando pra inicial exibida
-// e pra iniciaisPapeisPessoa) e, se a pessoa marcasse o papel novo
-// correspondente (ex. Aludido(a)) no mesmo item, os dois conviviam no
-// array (["Alusão", "Aludido(a)"]), gerando inicial duplicada ("A·A") na
-// coluna. Renomeia in-place os 3 valores antigos pros novos; roda depois
-// de migrarPapeisPessoa (precisa de `papeis` já ser array) e é seguro
-// rodar de novo (só troca o que ainda está no nome antigo).
+// Migração: os nomes de alguns valores de PAPEIS_PESSOA mudaram em duas
+// sessões (ver manutencao/decisoes.md):
+// (1) padronização de gênero: "Alusão" → "Aludido(a)", "Dedicatária" →
+// "Dedicatário(a)", "Inspirado por" → "Inspirado(a) por";
+// (2) correção de direção gramatical: "Inspirado(a) por" → "Inspiração
+// para" (o papel descreve a pessoa, não o poema — "Fulano (Inspirado(a)
+// por)" lia como se o poema tivesse inspirado a pessoa; "Inspiração
+// para" lê na direção certa). Mapeia direto pro nome final mesmo quando
+// o dado ainda está no nome mais antigo ("Inspirado por"), sem depender
+// de rodar em duas passagens.
+// Cada troca só mudou a constante e o código — dado já salvo com o nome
+// antigo (dentro de `papeis`, array de string) não foi tocado, então
+// ficava com uma string que não bate mais com nenhuma opção do <select>
+// (aparecia como papel "invisível": sem marcação em nenhum item do
+// dropdown, mas contando pra inicial exibida e pra iniciaisPapeisPessoa)
+// e, se a pessoa marcasse o papel novo correspondente no mesmo item, os
+// dois conviviam no array, gerando abreviação duplicada na coluna.
+// Renomeia in-place os valores antigos pros novos; roda depois de
+// migrarPapeisPessoa (precisa de `papeis` já ser array) e é seguro
+// rodar de novo (só troca o que ainda está em nome antigo).
 const RENOMEACOES_PAPEL = {
     Alusão: 'Aludido(a)',
     Dedicatária: 'Dedicatário(a)',
-    'Inspirado por': 'Inspirado(a) por',
+    'Inspirado por': 'Inspiração para',
+    'Inspirado(a) por': 'Inspiração para',
 };
 export function migrarNomesDePapel(itens) {
     itens.forEach((item) => {

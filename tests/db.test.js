@@ -328,8 +328,8 @@ describe('migrarPapeisPessoa (papel string única → papeis: array, multi-selec
 
 // ─── migrarNomesDePapel ───────────────────────────────────────────
 
-describe('migrarNomesDePapel (renomeação de gênero em PAPEIS_PESSOA: Alusão/Dedicatária/Inspirado por)', () => {
-    it('renomeia os 3 valores antigos pros novos', () => {
+describe('migrarNomesDePapel (renomeação de gênero + direção gramatical em PAPEIS_PESSOA: Alusão/Dedicatária/Inspirado por/Inspirado(a) por)', () => {
+    it('renomeia os valores antigos pros novos', () => {
         const itens = [
             {
                 pessoas: [
@@ -341,8 +341,14 @@ describe('migrarNomesDePapel (renomeação de gênero em PAPEIS_PESSOA: Alusão/
         migrarNomesDePapel(itens);
         assert.deepEqual(itens[0].pessoas, [
             { pessoaId: 1, papeis: ['Aludido(a)'] },
-            { pessoaId: 2, papeis: ['Dedicatário(a)', 'Inspirado(a) por'] },
+            { pessoaId: 2, papeis: ['Dedicatário(a)', 'Inspiração para'] },
         ]);
+    });
+
+    it('mapeia direto pro nome final mesmo a partir do nome intermediário ("Inspirado(a) por")', () => {
+        const itens = [{ pessoas: [{ pessoaId: 1, papeis: ['Inspirado(a) por'] }] }];
+        migrarNomesDePapel(itens);
+        assert.deepEqual(itens[0].pessoas, [{ pessoaId: 1, papeis: ['Inspiração para'] }]);
     });
 
     it('dedup: nome antigo + nome novo já marcados manualmente no mesmo item viram um só', () => {
@@ -920,7 +926,12 @@ describe('mesclarEpocas (junta duas entradas do cadastro de Épocas numa só)', 
                     contextoRelacao: 'Pedro e Victor',
                     notas: 'nota original',
                 },
-                { id: 2, nome: 'Corte de contato', contextoRelacao: 'Outro contexto', notas: 'outra nota' },
+                {
+                    id: 2,
+                    nome: 'Corte de contato',
+                    contextoRelacao: 'Outro contexto',
+                    notas: 'outra nota',
+                },
             ],
             poemas: [],
             prosas: [],

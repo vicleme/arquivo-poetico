@@ -224,8 +224,9 @@ const grupoGeneroProsa = criarGrupoDeTags({
 // { pessoaId, papeis } em vez de string simples — pessoaId referencia
 // o cadastro central db.pessoas (ver migrarPessoasParaCadastro em
 // db.js), papeis é o vínculo específico daquele texto com a pessoa
-// (Retratado(a)/Inspirado(a) por/Dedicatário(a)/Mencionado(a)/Aludido(a) — ver
-// PAPEIS_PESSOA em utils.js). Sem hiddenInputId: diferente dos grupos
+// (Retratado(a)/Inspiração para/Dedicatário(a)/Mencionado(a)/Aludido(a)/
+// Associado(a) retroativamente — ver PAPEIS_PESSOA em utils.js). Sem
+// hiddenInputId: diferente dos grupos
 // de tags, que gravam a string combinada num input escondido (lido por
 // `.value` em forms.js), este expõe `obterItens()` — forms.js lê o
 // array direto na hora do submit, mesmo padrão de Intertextualidade/

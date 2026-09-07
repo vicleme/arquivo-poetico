@@ -9,7 +9,6 @@ ficam salvos em `localStorage` e as capas (imagens) em `IndexedDB`. Os arquivos
 embutir as capas como base64 (checkbox "capas" ao lado de "Baixar JSON"), mas
 as exportações seletivas nunca incluem imagens.
 
-
 ---
 
 ## Como rodar
@@ -196,7 +195,8 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
 - **Cadastros centrais** (abas Pessoas, Grupos, Autores, Épocas): registros
   próprios reutilizáveis em vez de texto solto. Em cada Poema/Prosa, uma
   Pessoa pode ter um ou mais papéis (`PAPEIS_PESSOA`: Retratado(a),
-  Inspirado(a) por, Dedicatário(a), Mencionado(a), Aludido(a)) e um Grupo
+  Inspiração para, Dedicatário(a), Mencionado(a), Aludido(a), Associado(a)
+  retroativamente) e um Grupo
   pode ser referenciado diretamente (sem citar uma Pessoa específica dele) ou
   via uma Pessoa vinculada a ele. Autoria usa um papel único por texto
   (Autor/Coautor). Renomear uma Pessoa ou Época para um nome já existente
@@ -325,13 +325,13 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
 O app gera cinco tipos distintos de JSON, cada um com um campo `export_format`
 que identifica o formato:
 
-| `export_format`       | Gerado por                              | Estrutura                                                                                                      |
-| --------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| _(ausente)_           | "Baixar JSON" no header                 | Backup completo: `{ livros, partes, secoes, poemas, prosas, ... }`                                             |
-| `exportacao_seletiva` | Aba Exportação → "Baixar JSON seletivo" | Flat enriquecido: `{ export_format, itens: [...], coletaneas: [...] }` — cada item já tem `contexto` resolvido |
+| `export_format`       | Gerado por                                     | Estrutura                                                                                                                      |
+| --------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| _(ausente)_           | "Baixar JSON" no header                        | Backup completo: `{ livros, partes, secoes, poemas, prosas, ... }`                                                             |
+| `exportacao_seletiva` | Aba Exportação → "Baixar JSON seletivo"        | Flat enriquecido: `{ export_format, itens: [...], coletaneas: [...] }` — cada item já tem `contexto` resolvido                 |
 | `selecao`             | Listagem de Poemas/Prosas → seleção → "⬇ JSON" | Flat: `{ export_format, itens: [...] }` — mesmo item da Exportação seletiva (contexto resolvido), só com os marcados na tabela |
-| `deep_nesting`        | "Exportar tudo aninhado"                | Árvore completa: `{ export_format, data: [livros aninhados], avulsos, coletaneas }`                            |
-| _(livro individual)_  | "Baixar este livro completo"            | Objeto único de livro com toda a árvore aninhada                                                               |
+| `deep_nesting`        | "Exportar tudo aninhado"                       | Árvore completa: `{ export_format, data: [livros aninhados], avulsos, coletaneas }`                                            |
+| _(livro individual)_  | "Baixar este livro completo"                   | Objeto único de livro com toda a árvore aninhada                                                                               |
 
 ---
 
@@ -445,3 +445,8 @@ uma distribuída com seu cabeçalho de licença original intacto:
 
 O Tailwind CSS é carregado via CDN em tempo de execução (MIT License) e não
 é vendorizado neste repositório.
+
+## Convenção de commits
+
+Mensagens de commit seguem [Conventional Commits](https://www.conventionalcommits.org/pt-br/v1.0.0/),
+sempre em inglês. Ver [`CONTRIBUTING.pt-br.md`](./CONTRIBUTING.pt-br.md).

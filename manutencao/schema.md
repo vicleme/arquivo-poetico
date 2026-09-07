@@ -38,7 +38,7 @@ No item:
 "gruposDiretos": [10]
 ```
 
-- `pessoas`: array de `{pessoaId, papeis}` — `papeis` é array (0+ valores), não hierarquia fixa por item. `PAPEIS_PESSOA` (`utils.js`, única fonte de verdade, já na ordem de hierarquia — ver `decisoes.md`): Retratado(a), Inspirado(a) por, Dedicatário(a), Mencionado(a), Aludido(a).
+- `pessoas`: array de `{pessoaId, papeis}` — `papeis` é array (0+ valores), não hierarquia fixa por item. `PAPEIS_PESSOA` (`utils.js`, única fonte de verdade, já na ordem de hierarquia — ver `decisoes.md`): Retratado(a), Inspiração para, Dedicatário(a), Mencionado(a), Aludido(a), Associado(a) retroativamente.
 - `autoria`: single-role por texto (não acumulativo). `AUTORIA_PAPEIS = ['Autor', 'Coautor']`.
 - `gruposDiretos`: array simples de `grupoId`, sem papel — grupo referenciado sem citar nenhuma Pessoa dele em particular. Badge na coluna Grupos aparece junto dos grupos-via-pessoa, sem o parêntese de pessoa.
 

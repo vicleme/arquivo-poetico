@@ -178,8 +178,9 @@ export function textoPessoas(item) {
 
 // Grupo a que cada pessoa do item pertence (não é o mesmo dado de
 // textoPessoas acima: ali é o papel da pessoa NESTE texto — Retratado(a)/
-// Dedicatária/etc.; aqui é o Grupo, característica da própria Pessoa,
-// constante entre textos — ver paresGrupoPessoa em utils.js, mesma
+// Dedicatário(a)/etc. (ver PAPEIS_PESSOA em utils.js); aqui é o Grupo,
+// característica da própria Pessoa, constante entre textos — ver
+// paresGrupoPessoa em utils.js, mesma
 // resolução usada na coluna "Grupos" das tabelas — ver badgesGrupos em
 // render-listas.js — e no painel do modal — ver renderPainelGrupos em
 // editor.js). Formato "Grupo (Pessoa)", não "Pessoa (Grupo)": o pedido
