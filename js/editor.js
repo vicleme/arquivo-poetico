@@ -156,33 +156,86 @@ function criarGrupoDeTags({ inputId, containerId, hiddenInputId, corClasse, nome
 // Sinalizações viraram 5 grupos (Estilo/Tema/Relação/Sensibilidade/Tom)
 // em vez de 1 — mesma engine de sempre (criarGrupoDeTags), só que
 // instanciada 5x por Poema e 5x por Prosa. SINAL_CATEGORIAS é a lista
-// única de configuração; os módulos e os exports nomeados abaixo (que
-// window.* em main.js precisa, um por função, por causa do onclick="..."
-// embutido no HTML renderizado) são gerados a partir dela pra não
-// repetir os IDs de DOM em dois lugares.
+// única de configuração; os módulos, os exports nomeados (que window.*
+// em main.js precisa, um por função, por causa do onclick="..."
+// embutido no HTML renderizado) E o próprio HTML do bloco (ver
+// criarBlocosSinalizacoesHTML abaixo) são gerados a partir dela pra não
+// repetir os IDs de DOM e o rótulo/placeholder em vários lugares.
 const SINAL_CATEGORIAS = [
     // "Tradição" (ex.: formas/escolas poéticas herdadas — soneto,
     // haicai, cordel...) — categoria própria pedida à parte de Estilo,
     // por isso vem antes dele na ordem de exibição.
-    { chave: 'Tradicao', cor: 'bg-teal-600' },
-    { chave: 'Estilo', cor: 'bg-blue-600' },
-    { chave: 'Tema', cor: 'bg-emerald-600' },
-    { chave: 'Relacao', cor: 'bg-purple-600' },
-    { chave: 'Sensibilidade', cor: 'bg-amber-600' },
-    { chave: 'Tom', cor: 'bg-pink-600' },
+    {
+        chave: 'Tradicao',
+        cor: 'bg-teal-600',
+        corBotao: 'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300',
+        rotulo: 'Tradição',
+        placeholder: 'Nova etiqueta de tradição...',
+    },
+    {
+        chave: 'Estilo',
+        cor: 'bg-blue-600',
+        corBotao: 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300',
+        rotulo: 'Estilo',
+        placeholder: 'Nova etiqueta de estilo...',
+    },
+    {
+        chave: 'Tema',
+        cor: 'bg-emerald-600',
+        corBotao: 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300',
+        rotulo: 'Tema',
+        placeholder: 'Nova etiqueta de tema...',
+    },
+    {
+        chave: 'Relacao',
+        cor: 'bg-purple-600',
+        corBotao: 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300',
+        rotulo: 'Relação',
+        placeholder: 'Nova etiqueta de relação...',
+    },
+    {
+        chave: 'Sensibilidade',
+        cor: 'bg-amber-600',
+        corBotao: 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300',
+        rotulo: 'Sensibilidade',
+        placeholder: 'Nova etiqueta de sensibilidade...',
+    },
+    {
+        chave: 'Tom',
+        cor: 'bg-pink-600',
+        corBotao: 'bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300',
+        rotulo: 'Tom',
+        placeholder: 'Nova etiqueta de tom...',
+    },
     // "Domínio Imagético" (vocabulário/imagética que o texto toma
     // emprestado de um domínio de conhecimento — ex.: "Astrologia" —
     // sem que cada termo do domínio precise virar uma entrada separada
     // de Intertextualidade, que é pra diálogo com UM artefato externo
     // específico e nomeável, não pra registro geral).
-    { chave: 'DominioImagetico', cor: 'bg-cyan-600' },
+    {
+        chave: 'DominioImagetico',
+        cor: 'bg-cyan-600',
+        corBotao: 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300',
+        rotulo: 'Domínio Imagético',
+        rotuloExtra: '(repertório)',
+        placeholder: 'Nova etiqueta de domínio imagético...',
+    },
     // Balde temporário pra tags migradas que ainda não têm categoria de
     // verdade (hoje: "Premiados", "Tradução", "Variações" — que devem
     // virar Reconhecimentos e Elos tipados de Derivação numa etapa
     // futura, ver Análise de estrutura e metadados poéticos). Fica
     // visível no modal em vez de escondido no JSON pra não se perder de
     // vista até esses campos existirem.
-    { chave: 'Outros', cor: 'bg-gray-500' },
+    {
+        chave: 'Outros',
+        cor: 'bg-gray-500',
+        // Dark bg mais claro (700, não 900 como as outras) de propósito:
+        // é uma categoria neutra/temporária, então o botão já nasce um
+        // pouco mais apagado que as demais no modo escuro.
+        corBotao: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
+        rotulo: 'Outros',
+        placeholder: 'Etiqueta ainda sem categoria...',
+    },
 ];
 
 function criarModuloDeTags(config) {
@@ -198,6 +251,89 @@ function criarModuloDeTags(config) {
 
 // slugDom: "Estilo" -> "estilo" (pro id de DOM, ex.: p-sinal-estilo-input)
 const slugDom = (chave) => chave.charAt(0).toLowerCase() + chave.slice(1);
+
+// ─── Geração do HTML de Sinalizações a partir de SINAL_CATEGORIAS ──
+// Substitui o HTML antes estático (e duplicado) de modal-poema.html e
+// modal-prosa.html: cada modal agora só tem um <div id="...-sinalizacoes-
+// -corpo"></div> vazio (ver renderSinalizacoesPoema/Prosa abaixo), que é
+// preenchido uma vez, na primeira vez que o modal é carregado (ver
+// registrarModal em main.js). Função pura — recebe config, devolve
+// string; não toca em DOM, então é testável sem happy-dom.
+function criarBlocoSinalizacaoHTML(
+    { chave, corBotao, rotulo, rotuloExtra, placeholder },
+    { prefixo, sufixoFuncao, sufixoDatalist, datalistInline },
+) {
+    const slug = slugDom(chave);
+    const idDatalist = `sugestoes-sinais-${slug}${sufixoDatalist}`;
+    const rotuloHtml = rotuloExtra
+        ? `${rotulo}\n                                <span class="font-normal normal-case text-gray-400 dark:text-slate-500">${rotuloExtra}</span>`
+        : rotulo;
+
+    return `
+                            <label class="form-label">${rotuloHtml}</label>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="${prefixo}-sinal-${slug}-input"
+                                    list="${idDatalist}"
+                                    class="text-sm flex-1"
+                                    placeholder="${placeholder}"
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinal${chave}${sufixoFuncao}()"
+                                    class="${corBotao} px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="${prefixo}-sinal-${slug}-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>${
+                                datalistInline
+                                    ? `\n                            <datalist id="${idDatalist}"></datalist>`
+                                    : ''
+                            }
+                            <input type="hidden" id="${prefixo}-sinal-${slug}" />`;
+}
+
+// Monta o corpo inteiro do bloco "Sinalizações" (todas as categorias de
+// SINAL_CATEGORIAS, na ordem de exibição).
+function criarBlocosSinalizacoesHTML(opcoes) {
+    return SINAL_CATEGORIAS.map((categoria) => criarBlocoSinalizacaoHTML(categoria, opcoes)).join(
+        '\n',
+    );
+}
+
+// Poema: o <datalist> de sugestão de cada categoria já existe
+// globalmente em index.html (id="sugestoes-sinais-<slug>", sem
+// sufixo) — o bloco só referencia via list="...", sem declarar o seu.
+export function renderSinalizacoesPoema() {
+    const container = document.getElementById('p-sinalizacoes-corpo');
+    if (!container) return;
+    container.innerHTML = criarBlocosSinalizacoesHTML({
+        prefixo: 'p',
+        sufixoFuncao: '',
+        sufixoDatalist: '',
+        datalistInline: false,
+    });
+}
+
+// Prosa: ao contrário do Poema, index.html não declara uma versão
+// global do datalist pra Prosa (só as variantes -bulk-prosa da edição
+// em massa) — cada bloco declara a sua própria <datalist> inline, como
+// o HTML estático já fazia.
+export function renderSinalizacoesProsa() {
+    const container = document.getElementById('pr-sinalizacoes-corpo');
+    if (!container) return;
+    container.innerHTML = criarBlocosSinalizacoesHTML({
+        prefixo: 'pr',
+        sufixoFuncao: 'Prosa',
+        sufixoDatalist: '-prosa',
+        datalistInline: true,
+    });
+}
 
 const modulosSinalPoema = {};
 const modulosSinalProsa = {};
@@ -3001,6 +3137,12 @@ export function carregarGeneroProsa(generoStr) {
 }
 
 export function initEditor() {
+    // Preenche o corpo de Sinalizações do Poema (ver
+    // renderSinalizacoesPoema acima) antes de qualquer wiring abaixo que
+    // dependa dos inputs/containers de cada categoria já existirem no
+    // DOM.
+    renderSinalizacoesPoema();
+
     const textarea = document.getElementById('p-texto');
     const toolbar = document.querySelector('.bg-slate-50.border-slate-200');
 
@@ -3087,9 +3229,15 @@ export function initEditor() {
         }
     });
 
-    // Enter nos 6 inputs de tags de Sinalizações (Poema) — um listener
-    // por categoria, já que cada uma agora tem seu próprio input/função
-    // de adicionar (ver SINAL_CATEGORIAS acima).
+    // Enter nos inputs de tags de Sinalizações (Poema) — um listener por
+    // categoria de SINAL_CATEGORIAS. Corrigido bug: faltava
+    // "DominioImagetico" neste mapa (a categoria existia em
+    // SINAL_CATEGORIAS e o listener era ligado ao input dela, mas
+    // funcoesSinalPoema['DominioImagetico'] vinha undefined — Enter
+    // nesse campo lançava TypeError em vez de adicionar a tag). Não
+    // pego pelo teste estático de consistência porque este mapa não é
+    // um dos 4 lugares que ele cobre (ver sinalizacoes-consistencia.
+    // test.js).
     const funcoesSinalPoema = {
         Tradicao: adicionarSinalTradicao,
         Estilo: adicionarSinalEstilo,
@@ -3097,6 +3245,7 @@ export function initEditor() {
         Relacao: adicionarSinalRelacao,
         Sensibilidade: adicionarSinalSensibilidade,
         Tom: adicionarSinalTom,
+        DominioImagetico: adicionarSinalDominioImagetico,
         Outros: adicionarSinalOutros,
     };
     SINAL_CATEGORIAS.forEach(({ chave }) => {
@@ -3149,8 +3298,9 @@ export function initEditor() {
         });
     }
 
-    // Enter nos 6 inputs de tags de Sinalizações (Prosa) — mesmo padrão
-    // do Poema acima, com as funções -Prosa correspondentes.
+    // Enter nos inputs de tags de Sinalizações (Prosa) — mesmo padrão do
+    // Poema acima, com as funções -Prosa correspondentes (mesmo bug do
+    // "DominioImagetico" faltando, corrigido aqui também).
     const funcoesSinalProsa = {
         Tradicao: adicionarSinalTradicaoProsa,
         Estilo: adicionarSinalEstiloProsa,
@@ -3158,6 +3308,7 @@ export function initEditor() {
         Relacao: adicionarSinalRelacaoProsa,
         Sensibilidade: adicionarSinalSensibilidadeProsa,
         Tom: adicionarSinalTomProsa,
+        DominioImagetico: adicionarSinalDominioImageticoProsa,
         Outros: adicionarSinalOutrosProsa,
     };
     SINAL_CATEGORIAS.forEach(({ chave }) => {

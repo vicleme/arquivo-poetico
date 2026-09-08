@@ -1,19 +1,26 @@
-// Este teste é estático (lê o texto-fonte, não importa os módulos) de
-// propósito, nos moldes de wiring-onclick.test.js: SINAL_CATEGORIAS
-// (editor.js) é a lista única de configuração de onde tudo mais deveria
-// derivar, mas cada consumidor (SINALIZACOES_CATEGORIAS em utils.js,
-// CORES_CATEGORIA_SINALIZACAO em render-listas.js, os datalists em
-// index.html/modais) repete a chave/slug na mão em vez de gerar a
-// partir da lista — ver "fan-out por campo novo" em
-// manutencao/licoes-de-sessao.md. Sem isso, um descasamento de string
-// entre esses lugares não quebra nada visualmente nem nos testes
-// existentes; só faz autocomplete ou cor sumir silenciosamente (foi
-// exatamente o que aconteceu com "imagetico" vs "dominioImagetico").
+// SINALIZACOES_CATEGORIAS (utils.js) e CORES_CATEGORIA_SINALIZACAO
+// (render-listas.js) continuam repetidas na mão (nada gerado a partir
+// de SINAL_CATEGORIAS lá) — a checagem delas abaixo continua estática
+// de propósito, nos moldes de wiring-onclick.test.js, pra pegar
+// descasamento de string sem precisar de DOM (ver "fan-out por campo
+// novo" em manutencao/licoes-de-sessao.md; foi assim que "imagetico" vs
+// "dominioImagetico" foi pego).
+//
+// Os datalists de sugestão já não são todos estáticos: desde a geração
+// programática do bloco de Sinalizações (ver criarBlocosSinalizacoesHTML
+// em editor.js), o datalist "-prosa" de cada categoria é montado em
+// runtime por renderSinalizacoesProsa(), não existe mais como texto no
+// HTML de modal-prosa.html. Por isso essa checagem específica renderiza
+// de verdade (happy-dom) em vez de só ler o arquivo — os outros 3
+// datalists (sem sufixo, -bulk, -bulk-prosa) continuam estáticos em
+// index.html e seguem checados por leitura de texto.
+import './helpers/dom-real.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renderSinalizacoesProsa } from '../js/editor.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RAIZ = path.resolve(__dirname, '..');
@@ -71,13 +78,22 @@ describe('consistência das categorias de Sinalizações entre editor/utils/rend
     const utilsJs = fs.readFileSync(path.join(RAIZ, 'js/utils.js'), 'utf8');
     const renderListasJs = fs.readFileSync(path.join(RAIZ, 'js/render-listas.js'), 'utf8');
     const modaisDir = path.join(RAIZ, 'modais');
+    // Corpo de Sinalizações da Prosa não é mais texto estático em
+    // modal-prosa.html — renderiza de verdade (happy-dom, ver
+    // helpers/dom-real.js) pra incluir o datalist "-prosa" gerado por
+    // renderSinalizacoesProsa() na checagem abaixo.
+    document.body.innerHTML = '<div id="pr-sinalizacoes-corpo"></div>';
+    renderSinalizacoesProsa();
+    const sinalizacoesProsaHtml = document.getElementById('pr-sinalizacoes-corpo').innerHTML;
+
     const htmlCombinado =
         fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8') +
         fs
             .readdirSync(modaisDir)
             .filter((f) => f.endsWith('.html'))
             .map((f) => fs.readFileSync(path.join(modaisDir, f), 'utf8'))
-            .join('\n');
+            .join('\n') +
+        sinalizacoesProsaHtml;
 
     const categorias = extrairSinalCategorias(editorJs);
     const sinalizacoesCategorias = extrairObjetoChaveValor(

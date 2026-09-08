@@ -257,6 +257,7 @@ import {
     removerLoja,
     editarLoja,
     cancelarEdicaoLoja,
+    renderSinalizacoesProsa,
 } from './editor.js';
 import {
     initFormLivro,
@@ -321,7 +322,18 @@ registrarModal(
     },
     rastreadorPoema,
 );
-registrarModal('modal-prosa', 'modal-prosa.html', initFormProsa, rastreadorProsa);
+registrarModal(
+    'modal-prosa',
+    'modal-prosa.html',
+    () => {
+        // Preenche o corpo de Sinalizações da Prosa (ver
+        // renderSinalizacoesProsa em editor.js) antes de initFormProsa —
+        // mesmo motivo do renderSinalizacoesPoema em initEditor.
+        renderSinalizacoesProsa();
+        initFormProsa();
+    },
+    rastreadorProsa,
+);
 registrarModal('modal-elemento', 'modal-elemento.html', initFormElemento);
 registrarModal('modal-pessoa', 'modal-pessoa.html', initFormPessoa);
 registrarModal('modal-grupo', 'modal-grupo.html', initFormGrupo);
