@@ -170,6 +170,12 @@ const SINAL_CATEGORIAS = [
     { chave: 'Relacao', cor: 'bg-purple-600' },
     { chave: 'Sensibilidade', cor: 'bg-amber-600' },
     { chave: 'Tom', cor: 'bg-pink-600' },
+    // "Domínio Imagético" (vocabulário/imagética que o texto toma
+    // emprestado de um domínio de conhecimento — ex.: "Astrologia" —
+    // sem que cada termo do domínio precise virar uma entrada separada
+    // de Intertextualidade, que é pra diálogo com UM artefato externo
+    // específico e nomeável, não pra registro geral).
+    { chave: 'DominioImagetico', cor: 'bg-cyan-600' },
     // Balde temporário pra tags migradas que ainda não têm categoria de
     // verdade (hoje: "Premiados", "Tradução", "Variações" — que devem
     // virar Reconhecimentos e Elos tipados de Derivação numa etapa
@@ -2312,7 +2318,7 @@ export function atualizarDatalist() {
     });
     // Datalist "sugestoes-sinais" (sem categoria): usada pelo painel de
     // exportação seletiva (exp-temas-incluir/excluir), que filtra pelas
-    // 6 categorias combinadas (ver correspondeFiltro em exportar.js) —
+    // 8 categorias combinadas (ver correspondeFiltro em exportar.js) —
     // por isso a sugestão também precisa vir combinada, não só de Estilo.
     const datalistCombinada = document.getElementById('sugestoes-sinais');
     if (datalistCombinada) {
@@ -2610,6 +2616,16 @@ export function renderizarSinalTom() {
     modulosSinalPoema.Tom.renderizar();
 }
 
+export function adicionarSinalDominioImagetico(valor = null) {
+    modulosSinalPoema.DominioImagetico.adicionar(valor);
+}
+export function removerSinalDominioImagetico(tag) {
+    modulosSinalPoema.DominioImagetico.remover(tag);
+}
+export function renderizarSinalDominioImagetico() {
+    modulosSinalPoema.DominioImagetico.renderizar();
+}
+
 export function adicionarSinalOutros(valor = null) {
     modulosSinalPoema.Outros.adicionar(valor);
 }
@@ -2638,6 +2654,7 @@ export function carregarSinalizacoes(item) {
     modulosSinalPoema.Sensibilidade.carregar(item.sinalizacoesSensibilidade || '');
     modulosSinalPoema.Outros.carregar(item.sinalizacoesOutros || '');
     modulosSinalPoema.Tom.carregar(item.sinalizacoesTom || '');
+    modulosSinalPoema.DominioImagetico.carregar(item.sinalizacoesDominioImagetico || '');
 }
 
 // ─── Pessoas ─────────────────────────────────────────────────
@@ -2865,6 +2882,16 @@ export function renderizarSinalTomProsa() {
     modulosSinalProsa.Tom.renderizar();
 }
 
+export function adicionarSinalDominioImageticoProsa(valor = null) {
+    modulosSinalProsa.DominioImagetico.adicionar(valor);
+}
+export function removerSinalDominioImageticoProsa(tag) {
+    modulosSinalProsa.DominioImagetico.remover(tag);
+}
+export function renderizarSinalDominioImageticoProsa() {
+    modulosSinalProsa.DominioImagetico.renderizar();
+}
+
 export function adicionarSinalOutrosProsa(valor = null) {
     modulosSinalProsa.Outros.adicionar(valor);
 }
@@ -2886,6 +2913,7 @@ export function carregarSinalizacoesProsa(item) {
     modulosSinalProsa.Sensibilidade.carregar(item.sinalizacoesSensibilidade || '');
     modulosSinalProsa.Outros.carregar(item.sinalizacoesOutros || '');
     modulosSinalProsa.Tom.carregar(item.sinalizacoesTom || '');
+    modulosSinalProsa.DominioImagetico.carregar(item.sinalizacoesDominioImagetico || '');
 }
 
 export function adicionarPessoaProsa(valor = null) {

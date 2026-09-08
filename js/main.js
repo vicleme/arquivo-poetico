@@ -152,6 +152,8 @@ import {
     removerSinalSensibilidade,
     adicionarSinalTom,
     removerSinalTom,
+    adicionarSinalDominioImagetico,
+    removerSinalDominioImagetico,
     adicionarSinalOutros,
     removerSinalOutros,
     applyStyle,
@@ -188,6 +190,8 @@ import {
     removerSinalSensibilidadeProsa,
     adicionarSinalTomProsa,
     removerSinalTomProsa,
+    adicionarSinalDominioImageticoProsa,
+    removerSinalDominioImageticoProsa,
     adicionarSinalOutrosProsa,
     removerSinalOutrosProsa,
     adicionarPessoaProsa,
@@ -591,6 +595,8 @@ window.adicionarSinalSensibilidade = adicionarSinalSensibilidade;
 window.removerSinalSensibilidade = removerSinalSensibilidade;
 window.adicionarSinalTom = adicionarSinalTom;
 window.removerSinalTom = removerSinalTom;
+window.adicionarSinalDominioImagetico = adicionarSinalDominioImagetico;
+window.removerSinalDominioImagetico = removerSinalDominioImagetico;
 window.adicionarSinalOutros = adicionarSinalOutros;
 window.removerSinalOutros = removerSinalOutros;
 window.adicionarPessoa = adicionarPessoa;
@@ -622,6 +628,8 @@ window.adicionarSinalSensibilidadeProsa = adicionarSinalSensibilidadeProsa;
 window.removerSinalSensibilidadeProsa = removerSinalSensibilidadeProsa;
 window.adicionarSinalTomProsa = adicionarSinalTomProsa;
 window.removerSinalTomProsa = removerSinalTomProsa;
+window.adicionarSinalDominioImageticoProsa = adicionarSinalDominioImageticoProsa;
+window.removerSinalDominioImageticoProsa = removerSinalDominioImageticoProsa;
 window.adicionarSinalOutrosProsa = adicionarSinalOutrosProsa;
 window.removerSinalOutrosProsa = removerSinalOutrosProsa;
 window.adicionarPessoaProsa = adicionarPessoaProsa;

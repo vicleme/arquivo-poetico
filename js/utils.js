@@ -1353,6 +1353,11 @@ const CAMPOS_ATRIBUTO = {
     // de conteudoSensivel — aqui é a tag solta de Sensibilidade
     // (ex.: "Linguagem obscena").
     sensibilidade: 'sinalizacoesSensibilidade',
+    // Vocabulário/imagética que o texto toma emprestado de um domínio de
+    // conhecimento (ex.: "Astrologia", termos como Vênus/Trânsitos usados
+    // como registro do poema) — diferente de Intertextualidade, que é
+    // diálogo com UM artefato externo específico e nomeável.
+    imagetico: 'sinalizacoesDominioImagetico',
     // Balde temporário de tags migradas sem categoria própria ainda
     // (ver SINAL_CATEGORIAS em editor.js) — não é uma categoria de
     // verdade, só dá pra buscar nela enquanto ela existir.
@@ -1409,6 +1414,7 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     sinalizacoesRelacao: 'relacao',
     sinalizacoesTom: 'tom',
     sinalizacoesSensibilidade: 'sensibilidade',
+    sinalizacoesDominioImagetico: 'imagetico',
     sinalizacoesOutros: 'outros',
     _buscaPessoas: 'pessoa',
     _buscaPapeis: 'papel',
@@ -1641,8 +1647,8 @@ export function extrairGenerosUnicos(prosas) {
     return Array.from(generos).sort();
 }
 
-// Sinalizações viraram 5 campos por categoria (Estilo/Tema/Relação/
-// Sensibilidade/Tom — ver SINALIZACOES_CATEGORIAS) em vez de um campo
+// Sinalizações viraram campos por categoria (Tradição/Estilo/Tema/
+// Relação/Sensibilidade/Tom/Domínio Imagético — ver SINALIZACOES_CATEGORIAS) em vez de um campo
 // único misturando tudo (ver migrarSinalizacoes em db.js). `campo`
 // aceita qualquer um desses nomes de campo — a função é genérica, não
 // hardcoded pra sinalizacoesEstilo especificamente — pra poder ser
@@ -1677,6 +1683,12 @@ export const SINALIZACOES_CATEGORIAS = {
     relacao: 'sinalizacoesRelacao',
     sensibilidade: 'sinalizacoesSensibilidade',
     tom: 'sinalizacoesTom',
+    // Chave "dominioImagetico" (não "imagetico") pra bater com o slug que
+    // atualizarDatalist já usa pros datalists dessa categoria (slugDom
+    // sobre a chave 'DominioImagetico' de SINAL_CATEGORIAS em editor.js).
+    // O prefixo de busca "imagetico:" (ver CAMPOS_ATRIBUTO acima) é um
+    // namespace diferente e deliberadamente mais curto — não precisa bater.
+    dominioImagetico: 'sinalizacoesDominioImagetico',
     outros: 'sinalizacoesOutros',
 };
 

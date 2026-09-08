@@ -932,6 +932,35 @@
                             ></div>
                             <input type="hidden" id="p-sinal-tom" />
 
+                            <label class="form-label"
+                                >Domínio Imagético
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(repertório)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-sinal-dominioImagetico-input"
+                                    list="sugestoes-sinais-dominioImagetico"
+                                    class="text-sm flex-1"
+                                    placeholder="Nova etiqueta de domínio imagético..."
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarSinalDominioImagetico()"
+                                    class="bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-sinal-dominioImagetico-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <input type="hidden" id="p-sinal-dominioImagetico" />
+
                             <label class="form-label">Outros</label>
                             <div class="flex gap-2 mb-2">
                                 <input

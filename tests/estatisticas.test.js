@@ -166,7 +166,7 @@ describe('contarPorTema', () => {
         assert.deepEqual(contarPorTema(), { labels: [], data: [] });
     });
 
-    it('combina as 6 categorias de Sinalizações na mesma contagem', () => {
+    it('combina as 8 categorias de Sinalizações na mesma contagem', () => {
         db.poemas = [
             { sinalizacoesEstilo: 'Concretista', sinalizacoesTema: 'mar' },
             { sinalizacoesRelacao: '∞ Pedrictor', sinalizacoesTom: 'mar' },

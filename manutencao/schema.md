@@ -85,9 +85,9 @@ No item:
 ]
 ```
 
-### Sinalizações (6 categorias, cada uma string por vírgula)
+### Sinalizações (8 categorias, cada uma string por vírgula)
 
-`sinalizacoesEstilo`, `sinalizacoesTema`, `sinalizacoesRelacao`, `sinalizacoesSensibilidade`, `sinalizacoesTom`, `sinalizacoesOutros` (balde temporário pra tags sem categoria própria).
+`sinalizacoesTradicao`, `sinalizacoesEstilo`, `sinalizacoesTema`, `sinalizacoesRelacao`, `sinalizacoesSensibilidade`, `sinalizacoesTom`, `sinalizacoesDominioImagetico` (vocabulário/imagética de um domínio de conhecimento que o texto usa como registro — ex.: Astrologia, Mitologia — diferente de Intertextualidade, que é diálogo com um artefato externo específico), `sinalizacoesOutros` (balde temporário pra tags sem categoria própria).
 
 ### Status
 

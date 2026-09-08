@@ -377,7 +377,7 @@ export function contarPorLivro() {
 export function contarPorTema(top = 12) {
     const contagem = {};
     todosOsTextos().forEach((t) => {
-        // Etiquetas mais frequentes = as 6 categorias de Sinalizações
+        // Etiquetas mais frequentes = as 8 categorias de Sinalizações
         // combinadas (ver sinalizacoesCombinadas em utils.js), igual já
         // era quando isso era um campo único — só mudou onde o dado mora.
         listaDeCampo(sinalizacoesCombinadas(t)).forEach((tag) => {

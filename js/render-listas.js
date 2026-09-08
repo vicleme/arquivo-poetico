@@ -813,7 +813,7 @@ function badgesEtiquetas(
 // Coluna "Etiquetas": mesmo tratamento por cor que a coluna Grupos já
 // tem (cada badge com a cor do que ele representa), só que aqui a cor é
 // fixa por categoria (SINALIZACOES_CATEGORIAS), não cadastrável pelo
-// Victor como a cor de Grupo — são 7 categorias fechadas, não entidades
+// Victor como a cor de Grupo — são 8 categorias fechadas, não entidades
 // com registro próprio. Mesmo espírito das cores fixas já usadas em
 // Elos (ciano) e Referências (fuchsia): cor comunica o "tipo" da tag
 // só de bater o olho, sem abrir o item.
@@ -824,10 +824,11 @@ const CORES_CATEGORIA_SINALIZACAO = {
     relacao: 'bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300',
     sensibilidade: 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300',
     tom: 'bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300',
+    dominioImagetico: 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300',
     outros: 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300',
 };
 
-// Percorre as 7 categorias em vez de usar sinalizacoesCombinadas (que
+// Percorre as 8 categorias em vez de usar sinalizacoesCombinadas (que
 // achata tudo numa string só, perdendo de qual campo cada tag veio) —
 // aqui a categoria de origem de cada tag é o que decide a cor do badge.
 function badgesEtiquetasPorCategoria(item) {
