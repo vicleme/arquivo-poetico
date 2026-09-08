@@ -36,6 +36,7 @@ document.body.innerHTML = `
     <button id="pr-intertexto-btn-add"></button>
     <button id="pr-intertexto-btn-cancelar" class="hidden"></button>
     <div id="pr-intertexto-lista"></div>
+    <div id="pr-sinalizacoes-corpo"></div>
 `;
 
 const { db } = await import('../js/db.js');
@@ -65,6 +66,7 @@ const {
     obterIntertextualidadeProsa,
     resetIntertextualidadeProsa,
 } = await import('../js/editor.js');
+const { renderSinalizacoesProsa, initEditorProsa } = await import('../js/editor.js');
 
 function limparDb() {
     db.pessoas.length = 0;
@@ -533,5 +535,48 @@ describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM re
         const html = document.getElementById('pr-intertexto-lista').innerHTML;
         assert.match(html, />Fonte da prosa<\/a>/);
         assert.ok(!html.includes('>https://exemplo.com/pagina-prosa-bem-longa'));
+    });
+});
+
+describe('Enter nos campos de Sinalizações da Prosa não depende do modal de Poema (editor.js, DOM real)', () => {
+    // Item 4 do plano de manutenibilidade: funcoesSinalProsa (e o
+    // wiring de Enter que a usa) vivia dentro de initEditor(), que só é
+    // chamado pelo init do modal-poema (main.js). Se o modal de Prosa
+    // fosse aberto primeiro numa sessão, initEditor() nunca rodava e
+    // Enter nesses campos não fazia nada (só o botão "+" funcionava).
+    // initEditorProsa() foi extraído justamente pra não depender disso
+    // — este teste simula o cenário do bug: renderiza o corpo de
+    // Sinalizações da Prosa e chama só initEditorProsa(), sem nunca
+    // chamar initEditor().
+    renderSinalizacoesProsa();
+    initEditorProsa();
+
+    function pressionarEnter(input) {
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    }
+
+    it('Enter em Tradição (categoria comum) adiciona a etiqueta sem initEditor() ter rodado', () => {
+        const input = document.getElementById('pr-sinal-tradicao-input');
+        input.value = 'Soneto';
+
+        pressionarEnter(input);
+
+        assert.match(
+            document.getElementById('pr-sinal-tradicao-container').innerHTML,
+            />\s*Soneto\s*</,
+        );
+        assert.equal(input.value, '', 'input deveria limpar após adicionar');
+    });
+
+    it('Enter em Domínio Imagético (categoria que já teve o bug do TypeError) adiciona a etiqueta sem lançar', () => {
+        const input = document.getElementById('pr-sinal-dominioImagetico-input');
+        input.value = 'Astrologia';
+
+        assert.doesNotThrow(() => pressionarEnter(input));
+
+        assert.match(
+            document.getElementById('pr-sinal-dominioImagetico-container').innerHTML,
+            />\s*Astrologia\s*</,
+        );
     });
 });

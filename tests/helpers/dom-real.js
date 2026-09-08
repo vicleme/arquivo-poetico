@@ -19,6 +19,7 @@ globalThis.CustomEvent = window.CustomEvent;
 globalThis.Event = window.Event;
 globalThis.HTMLElement = window.HTMLElement;
 globalThis.MouseEvent = window.MouseEvent;
+globalThis.KeyboardEvent = window.KeyboardEvent;
 globalThis.Node = window.Node;
 // mostrarAviso()/_criarToastEl() (utils.js) chamam requestAnimationFrame pra
 // animar a entrada do toast — happy-dom implementa isso no objeto `window`

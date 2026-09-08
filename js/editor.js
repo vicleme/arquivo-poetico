@@ -3298,9 +3298,20 @@ export function initEditor() {
         });
     }
 
+}
+
+// Wiring de Enter dos campos de Prosa (Sinalizações, pessoas, gênero,
+// Intertextualidade). Extraído de initEditor() — item 4 do plano de
+// manutenibilidade: antes vivia dentro de initEditor(), então só era
+// registrado quando o modal de Poema carregava pela primeira vez. Se o
+// modal de Prosa fosse aberto primeiro numa sessão, esses listeners de
+// Enter nunca eram ligados (só o botão "+" funcionava). Agora é chamado
+// diretamente pelo init do modal-prosa em main.js, sem depender do
+// modal-poema ter carregado antes.
+export function initEditorProsa() {
     // Enter nos inputs de tags de Sinalizações (Prosa) — mesmo padrão do
-    // Poema acima, com as funções -Prosa correspondentes (mesmo bug do
-    // "DominioImagetico" faltando, corrigido aqui também).
+    // Poema em initEditor(), com as funções -Prosa correspondentes (mesmo
+    // bug do "DominioImagetico" faltando, corrigido também aqui).
     const funcoesSinalProsa = {
         Tradicao: adicionarSinalTradicaoProsa,
         Estilo: adicionarSinalEstiloProsa,
@@ -3344,7 +3355,7 @@ export function initEditor() {
     }
 
     // Enter nos inputs de texto/link/nota da Intertextualidade (Prosa) —
-    // mesmo padrão do Poema acima.
+    // mesmo padrão do Poema em initEditor().
     ['pr-intertexto-texto', 'pr-intertexto-link', 'pr-intertexto-nota'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) {

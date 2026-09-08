@@ -140,6 +140,7 @@ import { renderEstatisticas } from './estatisticas.js';
 import { renderConexoes, baixarDiagramaReferencias } from './render-conexoes.js';
 import {
     initEditor,
+    initEditorProsa,
     adicionarSinalTradicao,
     removerSinalTradicao,
     adicionarSinalEstilo,
@@ -331,6 +332,11 @@ registrarModal(
         // mesmo motivo do renderSinalizacoesPoema em initEditor.
         renderSinalizacoesProsa();
         initFormProsa();
+        // Wiring de Enter dos campos de Prosa (item 4 do plano de
+        // manutenibilidade): antes vivia dentro de initEditor(), então só
+        // era ligado se o modal de Poema já tivesse carregado. Chamado
+        // aqui diretamente, sem depender da ordem de abertura dos modais.
+        initEditorProsa();
     },
     rastreadorProsa,
 );
