@@ -94,12 +94,19 @@ export function setAlign(valor) {
 
 // ─── Fábrica de grupos de tags/pessoas ────────────────────────
 // Poema/Tags, Poema/Pessoas, Prosa/Tags, Prosa/Pessoas são o mesmo
-// comportamento (adicionar, remover, renderizar como chips, resetar,
-// carregar a partir de uma string "a, b, c") variando só os IDs do
-// DOM e a cor do badge. Em vez de 4 cópias, uma única implementação
-// parametrizada; cada grupo guarda seu próprio array em closure —
-// sem estado global compartilhado entre Poema e Prosa.
-function criarGrupoDeTags({ inputId, containerId, hiddenInputId, corClasse, nomeFuncaoRemover }) {
+// comportamento (adicionar, remover, editar, renderizar como chips,
+// resetar, carregar a partir de uma string "a, b, c") variando só os
+// IDs do DOM e a cor do badge. Em vez de 4 cópias, uma única
+// implementação parametrizada; cada grupo guarda seu próprio array em
+// closure — sem estado global compartilhado entre Poema e Prosa.
+function criarGrupoDeTags({
+    inputId,
+    containerId,
+    hiddenInputId,
+    corClasse,
+    nomeFuncaoRemover,
+    nomeFuncaoEditar,
+}) {
     let itens = [];
 
     function adicionar(valor = null) {
@@ -117,6 +124,23 @@ function criarGrupoDeTags({ inputId, containerId, hiddenInputId, corClasse, nome
         renderizar();
     }
 
+    // Editar: tira a etiqueta da lista e devolve o texto dela pro
+    // input, pronto pra ser corrigido — mesmo espírito de "clicar pra
+    // editar" de campos de chips (ex.: destinatários de e-mail). Sem
+    // estado de "em edição" separado (diferente de criarListaDeEntradas,
+    // que precisa disso pra objetos com vários campos): aqui
+    // adicionar() de volta já resolve salvar, então cancelar é só não
+    // clicar em "+"/Enter — o texto fica visível no input até lá, nada
+    // some da vista.
+    function editar(item) {
+        const input = document.getElementById(inputId);
+        remover(item);
+        if (input) {
+            input.value = item;
+            input.focus();
+        }
+    }
+
     function renderizar() {
         const container = document.getElementById(containerId);
         const inputOculto = document.getElementById(hiddenInputId);
@@ -127,7 +151,8 @@ function criarGrupoDeTags({ inputId, containerId, hiddenInputId, corClasse, nome
                 (i) => `
             <span class="${corClasse} text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
                 ${escapeHtml(i)}
-                <button type="button" data-valor="${escapeHtml(i)}" onclick="${nomeFuncaoRemover}(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1">×</button>
+                <button type="button" data-valor="${escapeHtml(i)}" onclick="${nomeFuncaoEditar}(this.dataset.valor)" class="hover:text-blue-200 ml-1" title="Editar">✎</button>
+                <button type="button" data-valor="${escapeHtml(i)}" onclick="${nomeFuncaoRemover}(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1" title="Remover">×</button>
             </span>`,
             )
             .join('');
@@ -150,7 +175,7 @@ function criarGrupoDeTags({ inputId, containerId, hiddenInputId, corClasse, nome
         renderizar();
     }
 
-    return { adicionar, remover, renderizar, reset, carregar };
+    return { adicionar, remover, editar, renderizar, reset, carregar };
 }
 
 // Sinalizações viraram 5 grupos (Estilo/Tema/Relação/Sensibilidade/Tom)
@@ -243,6 +268,7 @@ function criarModuloDeTags(config) {
     return {
         adicionar: (valor = null) => grupo.adicionar(valor),
         remover: (v) => grupo.remover(v),
+        editar: (v) => grupo.editar(v),
         renderizar: () => grupo.renderizar(),
         reset: () => grupo.reset(),
         carregar: (str) => grupo.carregar(str),
@@ -345,6 +371,7 @@ SINAL_CATEGORIAS.forEach(({ chave, cor }) => {
         hiddenInputId: `p-sinal-${slug}`,
         corClasse: cor,
         nomeFuncaoRemover: `removerSinal${chave}`,
+        nomeFuncaoEditar: `editarSinal${chave}`,
     });
     modulosSinalProsa[chave] = criarModuloDeTags({
         inputId: `pr-sinal-${slug}-input`,
@@ -352,6 +379,7 @@ SINAL_CATEGORIAS.forEach(({ chave, cor }) => {
         hiddenInputId: `pr-sinal-${slug}`,
         corClasse: cor,
         nomeFuncaoRemover: `removerSinal${chave}Prosa`,
+        nomeFuncaoEditar: `editarSinal${chave}Prosa`,
     });
 });
 
@@ -361,6 +389,7 @@ const grupoGeneroProsa = criarGrupoDeTags({
     hiddenInputId: 'pr-genero',
     corClasse: 'bg-amber-600',
     nomeFuncaoRemover: 'removerGeneroProsa',
+    nomeFuncaoEditar: 'editarGeneroProsa',
 });
 
 // ─── Fábrica de grupo de Pessoas (chip + papel) ────────────────
@@ -985,13 +1014,23 @@ function atualizarBotaoIntertexto() {
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
 
+// Lê o Tipo atual (`tipoElId`) e repopula o datalist de Texto
+// (`datalistTextoId`) só com as referências já tipadas com ele — chamada
+// tanto no carregamento do modal (lista geral) quanto a cada mudança no
+// campo Tipo (lista focada, ver wiring do 'input' em initEditor()/
+// initEditorProsa()). Sem Tipo ainda escolhido, cai no comportamento
+// anterior (todas as referências, de qualquer tipo).
+function atualizarDatalistTextoIntertexto(itens, tipoElId, datalistTextoId) {
+    const datalist = document.getElementById(datalistTextoId);
+    if (!datalist) return;
+    const tipoAtual = document.getElementById(tipoElId)?.value.trim() || null;
+    datalist.innerHTML = extrairValoresUnicosDeIntertextualidade(itens, tipoAtual)
+        .map((v) => `<option value="${escapeHtml(v)}">`)
+        .join('');
+}
+
 export function atualizarDatalistIntertexto() {
-    const datalist = document.getElementById('sugestoes-intertexto');
-    if (datalist) {
-        datalist.innerHTML = extrairValoresUnicosDeIntertextualidade(db.poemas)
-            .map((v) => `<option value="${escapeHtml(v)}">`)
-            .join('');
-    }
+    atualizarDatalistTextoIntertexto(db.poemas, 'p-intertexto-tipo', 'sugestoes-intertexto');
     const datalistTipo = document.getElementById('sugestoes-intertexto-tipo');
     if (datalistTipo) {
         datalistTipo.innerHTML = extrairTiposIntertextoUnicos(db.poemas)
@@ -1787,12 +1826,11 @@ function atualizarBotaoIntertextoProsa() {
 }
 
 export function atualizarDatalistIntertextoProsa() {
-    const datalist = document.getElementById('sugestoes-intertexto-prosa');
-    if (datalist) {
-        datalist.innerHTML = extrairValoresUnicosDeIntertextualidade(db.prosas || [])
-            .map((v) => `<option value="${escapeHtml(v)}">`)
-            .join('');
-    }
+    atualizarDatalistTextoIntertexto(
+        db.prosas || [],
+        'pr-intertexto-tipo',
+        'sugestoes-intertexto-prosa',
+    );
     const datalistTipo = document.getElementById('sugestoes-intertexto-tipo-prosa');
     if (datalistTipo) {
         datalistTipo.innerHTML = extrairTiposIntertextoUnicos(db.prosas || [])
@@ -2698,6 +2736,9 @@ export function adicionarSinalTradicao(valor = null) {
 export function removerSinalTradicao(tag) {
     modulosSinalPoema.Tradicao.remover(tag);
 }
+export function editarSinalTradicao(tag) {
+    modulosSinalPoema.Tradicao.editar(tag);
+}
 export function renderizarSinalTradicao() {
     modulosSinalPoema.Tradicao.renderizar();
 }
@@ -2707,6 +2748,9 @@ export function adicionarSinalEstilo(valor = null) {
 }
 export function removerSinalEstilo(tag) {
     modulosSinalPoema.Estilo.remover(tag);
+}
+export function editarSinalEstilo(tag) {
+    modulosSinalPoema.Estilo.editar(tag);
 }
 export function renderizarSinalEstilo() {
     modulosSinalPoema.Estilo.renderizar();
@@ -2718,6 +2762,9 @@ export function adicionarSinalTema(valor = null) {
 export function removerSinalTema(tag) {
     modulosSinalPoema.Tema.remover(tag);
 }
+export function editarSinalTema(tag) {
+    modulosSinalPoema.Tema.editar(tag);
+}
 export function renderizarSinalTema() {
     modulosSinalPoema.Tema.renderizar();
 }
@@ -2727,6 +2774,9 @@ export function adicionarSinalRelacao(valor = null) {
 }
 export function removerSinalRelacao(tag) {
     modulosSinalPoema.Relacao.remover(tag);
+}
+export function editarSinalRelacao(tag) {
+    modulosSinalPoema.Relacao.editar(tag);
 }
 export function renderizarSinalRelacao() {
     modulosSinalPoema.Relacao.renderizar();
@@ -2738,6 +2788,9 @@ export function adicionarSinalSensibilidade(valor = null) {
 export function removerSinalSensibilidade(tag) {
     modulosSinalPoema.Sensibilidade.remover(tag);
 }
+export function editarSinalSensibilidade(tag) {
+    modulosSinalPoema.Sensibilidade.editar(tag);
+}
 export function renderizarSinalSensibilidade() {
     modulosSinalPoema.Sensibilidade.renderizar();
 }
@@ -2747,6 +2800,9 @@ export function adicionarSinalTom(valor = null) {
 }
 export function removerSinalTom(tag) {
     modulosSinalPoema.Tom.remover(tag);
+}
+export function editarSinalTom(tag) {
+    modulosSinalPoema.Tom.editar(tag);
 }
 export function renderizarSinalTom() {
     modulosSinalPoema.Tom.renderizar();
@@ -2758,6 +2814,9 @@ export function adicionarSinalDominioImagetico(valor = null) {
 export function removerSinalDominioImagetico(tag) {
     modulosSinalPoema.DominioImagetico.remover(tag);
 }
+export function editarSinalDominioImagetico(tag) {
+    modulosSinalPoema.DominioImagetico.editar(tag);
+}
 export function renderizarSinalDominioImagetico() {
     modulosSinalPoema.DominioImagetico.renderizar();
 }
@@ -2767,6 +2826,9 @@ export function adicionarSinalOutros(valor = null) {
 }
 export function removerSinalOutros(tag) {
     modulosSinalPoema.Outros.remover(tag);
+}
+export function editarSinalOutros(tag) {
+    modulosSinalPoema.Outros.editar(tag);
 }
 export function renderizarSinalOutros() {
     modulosSinalPoema.Outros.renderizar();
@@ -2964,6 +3026,9 @@ export function adicionarSinalTradicaoProsa(valor = null) {
 export function removerSinalTradicaoProsa(tag) {
     modulosSinalProsa.Tradicao.remover(tag);
 }
+export function editarSinalTradicaoProsa(tag) {
+    modulosSinalProsa.Tradicao.editar(tag);
+}
 export function renderizarSinalTradicaoProsa() {
     modulosSinalProsa.Tradicao.renderizar();
 }
@@ -2973,6 +3038,9 @@ export function adicionarSinalEstiloProsa(valor = null) {
 }
 export function removerSinalEstiloProsa(tag) {
     modulosSinalProsa.Estilo.remover(tag);
+}
+export function editarSinalEstiloProsa(tag) {
+    modulosSinalProsa.Estilo.editar(tag);
 }
 export function renderizarSinalEstiloProsa() {
     modulosSinalProsa.Estilo.renderizar();
@@ -2984,6 +3052,9 @@ export function adicionarSinalTemaProsa(valor = null) {
 export function removerSinalTemaProsa(tag) {
     modulosSinalProsa.Tema.remover(tag);
 }
+export function editarSinalTemaProsa(tag) {
+    modulosSinalProsa.Tema.editar(tag);
+}
 export function renderizarSinalTemaProsa() {
     modulosSinalProsa.Tema.renderizar();
 }
@@ -2993,6 +3064,9 @@ export function adicionarSinalRelacaoProsa(valor = null) {
 }
 export function removerSinalRelacaoProsa(tag) {
     modulosSinalProsa.Relacao.remover(tag);
+}
+export function editarSinalRelacaoProsa(tag) {
+    modulosSinalProsa.Relacao.editar(tag);
 }
 export function renderizarSinalRelacaoProsa() {
     modulosSinalProsa.Relacao.renderizar();
@@ -3004,6 +3078,9 @@ export function adicionarSinalSensibilidadeProsa(valor = null) {
 export function removerSinalSensibilidadeProsa(tag) {
     modulosSinalProsa.Sensibilidade.remover(tag);
 }
+export function editarSinalSensibilidadeProsa(tag) {
+    modulosSinalProsa.Sensibilidade.editar(tag);
+}
 export function renderizarSinalSensibilidadeProsa() {
     modulosSinalProsa.Sensibilidade.renderizar();
 }
@@ -3013,6 +3090,9 @@ export function adicionarSinalTomProsa(valor = null) {
 }
 export function removerSinalTomProsa(tag) {
     modulosSinalProsa.Tom.remover(tag);
+}
+export function editarSinalTomProsa(tag) {
+    modulosSinalProsa.Tom.editar(tag);
 }
 export function renderizarSinalTomProsa() {
     modulosSinalProsa.Tom.renderizar();
@@ -3024,6 +3104,9 @@ export function adicionarSinalDominioImageticoProsa(valor = null) {
 export function removerSinalDominioImageticoProsa(tag) {
     modulosSinalProsa.DominioImagetico.remover(tag);
 }
+export function editarSinalDominioImageticoProsa(tag) {
+    modulosSinalProsa.DominioImagetico.editar(tag);
+}
 export function renderizarSinalDominioImageticoProsa() {
     modulosSinalProsa.DominioImagetico.renderizar();
 }
@@ -3033,6 +3116,9 @@ export function adicionarSinalOutrosProsa(valor = null) {
 }
 export function removerSinalOutrosProsa(tag) {
     modulosSinalProsa.Outros.remover(tag);
+}
+export function editarSinalOutrosProsa(tag) {
+    modulosSinalProsa.Outros.editar(tag);
 }
 export function renderizarSinalOutrosProsa() {
     modulosSinalProsa.Outros.renderizar();
@@ -3125,6 +3211,9 @@ export function adicionarGeneroProsa(valor = null) {
 }
 export function removerGeneroProsa(genero) {
     grupoGeneroProsa.remover(genero);
+}
+export function editarGeneroProsa(genero) {
+    grupoGeneroProsa.editar(genero);
 }
 export function renderizarGeneroProsa() {
     grupoGeneroProsa.renderizar();
@@ -3283,6 +3372,12 @@ export function initEditor() {
             });
         }
     });
+    // Sugestões de Texto mais focadas: refiltra pelo Tipo assim que ele
+    // muda (digitado ou escolhido do datalist) — ver
+    // atualizarDatalistTextoIntertexto acima.
+    document
+        .getElementById('p-intertexto-tipo')
+        ?.addEventListener('input', atualizarDatalistIntertexto);
 
     // Anexos usa textarea (texto longo) — Enter quebra linha na
     // descrição normalmente; Ctrl/Cmd+Enter é quem adiciona o item
@@ -3367,4 +3462,8 @@ export function initEditorProsa() {
             });
         }
     });
+    // Ver initEditor() — mesmo refiltro de sugestões de Texto pelo Tipo.
+    document
+        .getElementById('pr-intertexto-tipo')
+        ?.addEventListener('input', atualizarDatalistIntertextoProsa);
 }

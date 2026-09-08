@@ -11,12 +11,10 @@
 import {
     db,
     save,
-    deleteItemsEmMassa,
     calcularImpactoExclusaoPessoa,
     calcularImpactoExclusaoGrupo,
     calcularImpactoExclusaoAutor,
     calcularImpactoExclusaoEpoca,
-    obterOuCriarPessoaPorNome,
 } from './db.js';
 import {
     getElementHierarchy,
@@ -30,7 +28,6 @@ import {
     ROTULOS_RECORTE_EPOCA,
     escapeHtml,
     sanitizarTextoRico,
-    abrirModalConfirmacao,
     itemBateFiltroData,
     filtroDataVazio,
     itemFaltaDataParaFiltro,
@@ -38,28 +35,44 @@ import {
     itemBateFiltroEpoca,
     itemFaltaEpocaParaFiltro,
     sinalizacoesCombinadas,
-    SINALIZACOES_CATEGORIAS,
     PREFIXOS_CANONICOS_POR_CAMPO,
     rotuloElo,
     nomesPessoas,
-    iniciaisPapeisPessoa,
     paresGrupoPessoa,
-    agruparParesGrupoPessoa,
     classesCorGrupo,
     pontoCorGrupo,
     paresAutoria,
     estaPublicado,
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
-import { DEFINICAO_COLUNAS, getColunasAtivas, renderSeletorColunas } from './colunas.js';
-import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
+import { getColunasAtivas } from './colunas.js';
+import { contarCamposPreenchidos } from './exportar-md.js';
 import {
-    exportarSelecaoJson,
-    exportarSelecaoMarkdown,
-    exportarSelecaoPdf,
-    exportarSelecaoDocx,
-} from './exportar.js';
-import { contarCamposPreenchidos, TOTAL_CAMPOS_CONSIDERADOS } from './exportar-md.js';
+    celulaAcoesItem,
+    resolverTituloPoemaOuProsa,
+    titulosPoemasPorId,
+    rotuloEntradaElo,
+    rotuloEntradaReferencia,
+    trechoNota,
+    celulaCamposPreenchidos,
+    montarPaginacao,
+    montarCabecalho,
+    atualizarPainelColunas,
+    atualizarPainelAcoes,
+    badgesEtiquetas,
+    badgesEtiquetasPorCategoria,
+    badgesPessoas,
+    badgesGrupos,
+    badgesAutoria,
+    badgesEnvios,
+    badgesReconhecimentos,
+    badgeEpocaRetratada,
+} from './celulas-tabela.js';
+// selecao-massa.js importa `selecaoPoemas`/`selecaoProsas`/
+// `getListaVisivelPoemas`/`getListaVisivelProsas`/`renderPoemas`/
+// `renderProsas` daqui — import circular proposital, ver nota no topo
+// de selecao-massa.js.
+import { atualizarBarraSelecao, atualizarBarraSelecaoProsas } from './selecao-massa.js';
 
 // Sempre que uma coluna é ligada/desligada (ver colunas.js) a tabela
 // correspondente precisa recalcular cabeçalho + linhas.
@@ -79,44 +92,12 @@ window.addEventListener('acoes-coluna:alteradas', (ev) => {
 // Ícones dos botões Editar/Excluir dos cards e tabelas abaixo. Ficam como
 // string pronta (em vez de gerar via DOM) porque entram direto nas
 // template strings dos cards, junto com o resto do HTML.
-const ICONE_EDITAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M12.5 3.5l4 4L6.5 17.5H2.5v-4L12.5 3.5Z"/><path d="M10.5 5.5l4 4"/></svg>`;
-const ICONE_EXCLUIR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M4 6h12"/><path d="M8 6V4.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V6"/><path d="M5.5 6l.6 9.5a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4L14.5 6"/><path d="M8.5 9v5"/><path d="M11.5 9v5"/></svg>`;
+export const ICONE_EDITAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M12.5 3.5l4 4L6.5 17.5H2.5v-4L12.5 3.5Z"/><path d="M10.5 5.5l4 4"/></svg>`;
+export const ICONE_EXCLUIR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M4 6h12"/><path d="M8 6V4.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V6"/><path d="M5.5 6l.6 9.5a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4L14.5 6"/><path d="M8.5 9v5"/><path d="M11.5 9v5"/></svg>`;
 // Duas linhas convergindo num ponto só — mesmo espírito visual de
 // "mesclar" em apps de versionamento (git merge), usado no botão de
 // Mesclar de Pessoas/Épocas (ver renderPessoas/renderEpocas abaixo).
 const ICONE_MESCLAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M4 3v5a4 4 0 0 0 4 4h0"/><path d="M16 3v5a4 4 0 0 1-4 4h0"/><path d="M10 12v5"/><path d="M7.5 14.5l2.5 2.5 2.5-2.5"/></svg>`;
-// Ver = olho; Baixar = seta pra baixo com bandeja — só usados nas linhas
-// de Poemas/Prosas (ver acoes-coluna.js), por isso ficam ao lado dos
-// outros dois em vez de nos outros CELULAS_* deste arquivo.
-const ICONE_VER = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z"/><circle cx="10" cy="10" r="2.25"/></svg>`;
-const ICONE_BAIXAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M10 3v9.5"/><path d="M6 9l4 4 4-4"/><path d="M3.5 15.5h13"/></svg>`;
-
-// Botões da coluna Ações de Poemas/Prosas (Ver/Baixar/Editar/Excluir,
-// ver acoes-coluna.js), montados conforme a configuração salva de cada
-// tabela — só entram os habilitados, na ordem fixa de DEFINICAO_ACOES.
-// `tipo` é 'poema'/'prosa' (usado por ver-item/baixar-item em
-// main.js e por deleteItem, que espera 'poemas'/'prosas').
-function celulaAcoesItem(tabela, tipo, tipoPlural, id) {
-    const ativas = new Set(getAcoesAtivas(tabela));
-    const botoes = [];
-    if (ativas.has('ver'))
-        botoes.push(
-            `<button data-action="ver-item" data-tipo="${tipo}" data-id="${id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>`,
-        );
-    if (ativas.has('baixar'))
-        botoes.push(
-            `<button data-action="baixar-item" data-tabela="${tabela}" data-tipo="${tipo}" data-id="${id}" title="Baixar" aria-label="Baixar" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_BAIXAR}</button>`,
-        );
-    if (ativas.has('editar'))
-        botoes.push(
-            `<button data-action="editar-${tipo}" data-id="${id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 p-1.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800">${ICONE_EDITAR}</button>`,
-        );
-    if (ativas.has('excluir'))
-        botoes.push(
-            `<button data-action="excluir-item" data-tipo="${tipoPlural}" data-id="${id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>`,
-        );
-    return botoes.join('');
-}
 
 let filtroPoemas = '';
 let filtroProsas = '';
@@ -147,17 +128,14 @@ let filtroDataPublicacaoProsas = filtroDataVazio();
 // key da coluna ('titulo' pra a coluna fixa ID/Título, ou uma key de
 // DEFINICAO_COLUNAS.poemas); 'estrutura' é o padrão (ordem já vem assim
 // do array-base, sem sort adicional).
-let ordenacaoPoemas = { campo: 'estrutura', direcao: 'asc' };
+export let ordenacaoPoemas = { campo: 'estrutura', direcao: 'asc' };
 let statusPoemas = 'todos';
-let selecaoPoemas = new Set();
-let selecaoProsas = new Set();
-// Âncora do último checkbox marcado/desmarcado em cada aba — usada pro
-// shift-click estender a seleção pro intervalo entre ele e o anterior
-// (ver toggleSelecaoPoema/toggleSelecaoProsa). null = nenhum clique
-// ainda nesta sessão, ou o último clique não fez parte do intervalo
-// visível atual (filtro/ordenação mudou no meio do caminho).
-let ultimoCheckPoema = null;
-let ultimoCheckProsa = null;
+// Nunca reatribuídos (só .add/.delete/.clear/.has) — por isso dá pra
+// exportar como const e deixar selecao-massa.js importar e mutar a
+// mesma instância. A leitura (.has, pro checkbox de cada linha) mora
+// aqui; a escrita (toggle/limpar/ações em massa) mora lá.
+export const selecaoPoemas = new Set();
+export const selecaoProsas = new Set();
 let filtroLivroPartes = '';
 let filtroLivroSecoes = '';
 let filtroParteSecoes = '';
@@ -168,7 +146,7 @@ let filtroLivroElementos = '';
 // duas abas (persistida no navegador) — cada aba mantém sua própria
 // página atual, já que dependem de filtros diferentes.
 const LS_KEY_ITENS_POR_PAGINA = 'arquivoPoetico_itensPorPagina';
-const OPCOES_ITENS_POR_PAGINA = [25, 50, 100, 200];
+export const OPCOES_ITENS_POR_PAGINA = [25, 50, 100, 200];
 
 function lerItensPorPaginaSalvo() {
     const bruto = localStorage.getItem(LS_KEY_ITENS_POR_PAGINA);
@@ -177,7 +155,7 @@ function lerItensPorPaginaSalvo() {
     return OPCOES_ITENS_POR_PAGINA.includes(n) ? n : 50;
 }
 
-let itensPorPagina = lerItensPorPaginaSalvo();
+export let itensPorPagina = lerItensPorPaginaSalvo();
 let paginaPoemas = 1;
 let paginaProsas = 1;
 
@@ -788,511 +766,12 @@ function decorarCamposBusca(item, extraLivros = '') {
     };
 }
 
-// ─── Colunas dinâmicas de Poemas/Prosas ────────────────────────
-
-// Badges de etiqueta (reaproveitado nas colunas opcionais "Etiquetas" e
-// "Gênero" — mesma lógica de string "a, b, c" → chips, cor customizável).
-function badgesEtiquetas(
-    sinalizacoes,
-    corClasse = 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400',
-) {
-    if (!sinalizacoes) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    return (
-        sinalizacoes
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean)
-            .map(
-                (t) =>
-                    `<span class="text-[9px] ${corClasse} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(t)}</span>`,
-            )
-            .join('') || '<span class="text-gray-300 dark:text-slate-600">—</span>'
-    );
-}
-
-// Coluna "Etiquetas": mesmo tratamento por cor que a coluna Grupos já
-// tem (cada badge com a cor do que ele representa), só que aqui a cor é
-// fixa por categoria (SINALIZACOES_CATEGORIAS), não cadastrável pelo
-// Victor como a cor de Grupo — são 8 categorias fechadas, não entidades
-// com registro próprio. Mesmo espírito das cores fixas já usadas em
-// Elos (ciano) e Referências (fuchsia): cor comunica o "tipo" da tag
-// só de bater o olho, sem abrir o item.
-const CORES_CATEGORIA_SINALIZACAO = {
-    tradicao: 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300',
-    estilo: 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300',
-    tema: 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300',
-    relacao: 'bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300',
-    sensibilidade: 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300',
-    tom: 'bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300',
-    dominioImagetico: 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300',
-    outros: 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300',
-};
-
-// Percorre as 8 categorias em vez de usar sinalizacoesCombinadas (que
-// achata tudo numa string só, perdendo de qual campo cada tag veio) —
-// aqui a categoria de origem de cada tag é o que decide a cor do badge.
-function badgesEtiquetasPorCategoria(item) {
-    const badges = Object.entries(SINALIZACOES_CATEGORIAS).flatMap(([categoria, campo]) => {
-        const valor = item[campo];
-        if (!valor) return [];
-        const corClasse = CORES_CATEGORIA_SINALIZACAO[categoria];
-        return valor
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean)
-            .map(
-                (t) =>
-                    `<span class="text-[9px] ${corClasse} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(t)}</span>`,
-            );
-    });
-    return badges.length
-        ? badges.join('')
-        : '<span class="text-gray-300 dark:text-slate-600">—</span>';
-}
-
-// Coluna de Pessoas: pessoas é array de objeto {pessoaId, papeis} —
-// nome vem do cadastro central db.pessoas (ver migrarPessoasParaCadastro
-// em db.js); papeis é array, desde o multi-select (ver migrarPapeisPessoa)
-// — cada chip mostra o nome e, quando há papéis marcados, as iniciais
-// deles (Re/In/De/Me/Al/As — ver iniciaisPapeisPessoa em utils.js) separadas por
-// "·", na ordem em que foram marcados no editor (não é hierarquia fixa
-// por categoria — ver alternarPapel em editor.js). Iniciais em vez do
-// nome por extenso pra caber na coluna sem poluir; passar o mouse por
-// cima do chip mostra "Nome (Papel1, Papel2)" por extenso via `title`
-// (mesmo padrão da bolinha de status/pendência, ver DEFINICAO_COLUNAS
-// mais abaixo). Sem papel marcado, o title mostra só o nome — não faz
-// sentido escrever "(sem papel)" ali. Exportação pra MD também mantém os
-// papéis por extenso (ver exportar-md.js). pessoaId sem correspondência
-// no cadastro (não deveria acontecer) não gera chip, em vez de mostrar
-// "undefined". Iniciais em preto (claro) / branco (escuro) sólido, sem
-// opacity — testado com opacity-70 sobre o rosa e ficava baixo contraste
-// demais pra ler rápido numa coluna cheia de chips; texto sólido é mais
-// legível mesmo sendo secundário ao nome.
-function badgesPessoas(pessoas) {
-    if (!Array.isArray(pessoas) || !pessoas.length)
-        return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    return pessoas
-        .map((p) => {
-            const nome = db.pessoas.find((x) => x.id == p.pessoaId)?.nome;
-            if (!nome) return '';
-            const papeis = Array.isArray(p.papeis) ? p.papeis.filter(Boolean) : [];
-            const iniciais = escapeHtml(iniciaisPapeisPessoa(papeis));
-            const title = papeis.length ? `${nome} (${papeis.join(', ')})` : nome;
-            return `<span title="${escapeHtml(title)}" class="text-[9px] bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(nome)}${iniciais ? ` <span class="text-black dark:text-white font-medium">${iniciais}</span>` : ''}</span>`;
-        })
-        .join('');
-}
-
-// Coluna de Grupos: um badge por par (Grupo, Pessoa) — ver paresGrupoPessoa
-// em utils.js (mesma resolução usada no painel do modal — ver
-// renderPainelGruposDoChip em editor.js — e na exportação em Markdown —
-// ver exportar-md.js). Cada badge usa a cor própria daquele grupo
-// (classesCorGrupo) e mostra "Grupo (Pessoa)" pra não perder de quem é
-// o vínculo quando o item tem mais de uma pessoa em grupos diferentes.
-// Além disso, um badge por grupo referenciado diretamente
-// (item.gruposDiretos — ver obterGruposDiretos em editor.js), sem o
-// parêntese de pessoa (não há uma pessoa específica associada).
-function badgesGrupos(item) {
-    const pares = paresGrupoPessoa(item, db.pessoas, db.grupos);
-    const diretos = (item.gruposDiretos || [])
-        .map((id) => db.grupos.find((g) => g.id == id))
-        .filter(Boolean);
-    if (!pares.length && !diretos.length)
-        return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    // Agrupado por Grupo (ver agruparParesGrupoPessoa em utils.js): um
-    // badge por Grupo, com todas as pessoas que pertencem a ele entre
-    // parênteses — não um badge repetido por pessoa.
-    const badgesViaPessoa = agruparParesGrupoPessoa(pares).map(
-        ({ grupo, pessoas }) =>
-            `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)} <span class="opacity-70">(${pessoas.map((p) => escapeHtml(p.nome)).join(', ')})</span></span>`,
-    );
-    const badgesDiretos = diretos.map(
-        (grupo) =>
-            `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)}</span>`,
-    );
-    return [...badgesViaPessoa, ...badgesDiretos].join('');
-}
-
-// Coluna de Autoria: um badge por par (Autor, papel) — ver paresAutoria
-// em utils.js. Diferente de badgesPessoas, papel aqui é sempre único e
-// sempre marcado (todo item.autoria vem preenchido pela migração — ver
-// migrarAutoria em db.js), então o badge sempre mostra "Nome (Papel)"
-// por extenso — não precisa reduzir a iniciais como em Pessoas, já que
-// não acumula mais de um papel por autor no mesmo texto.
-function badgesAutoria(item) {
-    const pares = paresAutoria(item, db.autores);
-    if (!pares.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    return pares
-        .map(
-            ({ autor, papel }) =>
-                `<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(autor.nome)} <span class="opacity-70">(${escapeHtml(papel)})</span></span>`,
-        )
-        .join('');
-}
-
-// Coluna de Envios: um badge por envio, "pessoa · data" no chip (com
-// meio no title, hover) — igual espírito de badgesAutoria, mas sem
-// cadastro central por trás (pessoa/meio são texto livre — ver
-// comentário em criarListaDeEntradas/utils.js). A reação em si não
-// cabe no chip (pode ser longa); fica só no modal/exportação — aqui é
-// só "pra quem e quando", suficiente pra escanear a tabela.
-function badgesEnvios(item) {
-    if (!Array.isArray(item.envios) || !item.envios.length) {
-        return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    }
-    return item.envios
-        .map((e) => {
-            const rotulo = [e.pessoa, formatarDataParcial(e.data)]
-                .filter((v) => v && v !== '—')
-                .map(escapeHtml)
-                .join(' · ');
-            const title = e.meio ? ` title="via ${escapeHtml(e.meio)}"` : '';
-            return `<span class="text-[9px] bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block"${title}>${rotulo || '(sem dados)'}</span>`;
-        })
-        .join('');
-}
-
-// Coluna de Reconhecimentos: um badge por prêmio/menção, "prêmio ·
-// posição · ano" no chip — mesmo espírito de badgesEnvios (sem
-// cadastro central, premio/posicao são texto livre). O texto/nota em
-// si não cabe no chip; fica só no modal/exportação.
-function badgesReconhecimentos(item) {
-    if (!Array.isArray(item.reconhecimentos) || !item.reconhecimentos.length) {
-        return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    }
-    return item.reconhecimentos
-        .map((r) => {
-            const rotulo = [r.premio, r.posicao, r.ano]
-                .filter((v) => v || v === 0)
-                .map((v) => escapeHtml(String(v)))
-                .join(' · ');
-            return `<span class="text-[9px] bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${rotulo || '(sem dados)'}</span>`;
-        })
-        .join('');
-}
-
-// Badge do nome de Época na coluna Época Retratada (Poemas e Prosas —
-// mesmo helper pras duas tabelas, ver CELULAS_POEMAS/CELULAS_PROSAS
-// abaixo). Pedido do Victor: o "e pós" do recorte "repercussão" (ver
-// ROTULOS_RECORTE_EPOCA em utils.js) precisa aparecer direto no badge,
-// não só na exportação — mesmo texto que formatarEpocaRetratada já
-// usa ("Nome e pós"). O Contexto do relacionamento (`contextoRelacao`,
-// campo do cadastro central db.epocas — ver modal-epoca.html) não cabe
-// no espaço do badge, então entra como `title` (hover), mesmo padrão
-// já usado em badgesPessoas/badgesEnvios pra informação secundária que
-// não precisa estar sempre visível.
-function badgeEpocaRetratada(epoca) {
-    const nome = nomeEpoca(epoca, db.epocas);
-    if (!nome) return '';
-    const posRepercussao = epoca?.recorte === 'repercussão' ? ' e pós' : '';
-    const contexto = epoca?.epocaId
-        ? db.epocas.find((e) => e.id == epoca.epocaId)?.contextoRelacao
-        : '';
-    const title = contexto ? ` title="${escapeHtml(contexto)}"` : '';
-    return `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold align-middle"${title}>${escapeHtml(nome)}${posRepercussao}</span>`;
-}
-
-// Resolve o título de um Elo/Referência-alvo, que pode ser um poema OU
-// uma prosa — ids são gerados por um contador global único (gerarId()
-// em utils.js), então nunca colidem entre os dois arrays; basta checar
-// os dois. Usado por titulosPoemasPorId/textoTitulosPoemasPorId
-// (tabela) e por _buscaElos/_buscaReferencias (decorarCamposBusca).
-function resolverTituloPoemaOuProsa(id) {
-    return db.poemas.find((p) => p.id == id)?.titulo || db.prosas.find((pr) => pr.id == id)?.titulo;
-}
-
-// Títulos dos poemas referenciados por uma lista de Elos/Referências.
-// Elos guarda { id, relacao, direcao, texto } (ver migrarElosParaRelacaoDirecao
-// em db.js — redesenho Relação+Direção); Referências guarda { id, tipo, texto }
-// (schema mais simples, não mudou). `resolverRotulo` isola essa diferença:
-// cada chamador passa a função certa pra extrair o rótulo de exibição de
-// uma entrada. O rótulo vira uma badge (mesmo padrão de Intertextualidade/
-// Anexos logo abaixo), uma linha por vínculo — assim o tipo da relação não
-// se confunde com o título do poema só de bater o olho na coluna.
-// `corClasse` deixa Elos e Referências com uma cor de badge própria cada.
-function titulosPoemasPorId(
-    lista,
-    resolverRotulo,
-    corClasse = 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300',
-) {
-    if (!lista || !lista.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    const linhas = lista
-        .map((entrada) => {
-            const titulo = resolverTituloPoemaOuProsa(entrada.id);
-            if (!titulo) return null;
-            const rotulo = resolverRotulo(entrada);
-            const badge = rotulo
-                ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded ${corClasse} text-[10px] font-bold uppercase align-middle">${escapeHtml(rotulo)}</span>`
-                : '';
-            return `<div>${badge}${escapeHtml(titulo)}</div>`;
-        })
-        .filter(Boolean);
-    if (!linhas.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    return linhas.join('');
-}
-
-// Resolvedores de rótulo pra cada natureza de entrada — ver
-// titulosPoemasPorId acima e textoTitulosPoemasPorId abaixo.
-function rotuloEntradaElo(entrada) {
-    return entrada.relacao ? rotuloElo(entrada.relacao, entrada.direcao) : '';
-}
-function rotuloEntradaReferencia(entrada) {
-    return entrada.tipo || '';
-}
-
-function trechoNota(notas) {
-    if (!notas) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
-    const limpo = notas.trim();
-    const trecho = limpo.length > 80 ? limpo.slice(0, 80) + '…' : limpo;
-    return `<span title="${escapeHtml(limpo)}">${escapeHtml(trecho)}</span>`;
-}
-
-// Célula da coluna "Campos Preenchidos" (ver contarCamposPreenchidos em
-// exportar-md.js) — compartilhada entre Poemas e Prosas. Mostra "N/TOTAL"
-// mais uma barrinha de preenchimento, pra bater o olho e comparar a
-// riqueza/complexidade estrutural entre os textos sem abrir cada um.
-function celulaCamposPreenchidos(item) {
-    const preenchidos = contarCamposPreenchidos(item);
-    const proporcao = Math.round((preenchidos / TOTAL_CAMPOS_CONSIDERADOS) * 100);
-    return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400" title="${preenchidos} de ${TOTAL_CAMPOS_CONSIDERADOS} campos preenchidos">
-        <div class="flex items-center gap-2">
-            <span class="font-mono">${preenchidos}/${TOTAL_CAMPOS_CONSIDERADOS}</span>
-            <span class="w-10 h-1.5 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
-                <span class="block h-full bg-indigo-400 dark:bg-indigo-500" style="width: ${proporcao}%"></span>
-            </span>
-        </div>
-    </td>`;
-}
-
-// Monta o <thead> de Poemas ou Prosas de acordo com as colunas ativas.
-// `celulaCheck`/`celulaTitulo`/`celulaAcoes` são o HTML fixo de início/fim
-// (checkbox, título e Ações), que não passam pelo seletor de colunas.
-// Monta a barra de paginação (itens por página + Anterior/Próxima) exibida
-// abaixo da tabela. totalItens é o total já filtrado (não só o da página).
-function montarPaginacao(totalItens, paginaAtual, acaoPagina) {
-    if (totalItens === 0) return '';
-
-    const porPagina = itensPorPagina === Infinity ? totalItens : itensPorPagina;
-    const totalPaginas =
-        itensPorPagina === Infinity ? 1 : Math.max(1, Math.ceil(totalItens / itensPorPagina));
-    const inicio = (paginaAtual - 1) * porPagina + 1;
-    const fim = Math.min(paginaAtual * porPagina, totalItens);
-
-    const seletor = `
-        <label class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400">
-            Itens por página:
-            <select onchange="setItensPorPagina(this.value)"
-                class="border border-gray-300 dark:border-slate-600 dark:bg-slate-800 rounded px-1.5 py-1 text-xs">
-                ${OPCOES_ITENS_POR_PAGINA.map((n) => `<option value="${n}" ${itensPorPagina === n ? 'selected' : ''}>${n}</option>`).join('')}
-                <option value="todos" ${itensPorPagina === Infinity ? 'selected' : ''}>Todos</option>
-            </select>
-        </label>`;
-
-    const navegacao =
-        totalPaginas > 1
-            ? `
-        <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
-            <button data-action="${acaoPagina}" data-pagina="${paginaAtual - 1}" ${paginaAtual <= 1 ? 'disabled' : ''}
-                class="px-2 py-1 border border-gray-300 dark:border-slate-600 rounded disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-slate-700">‹ Anterior</button>
-            <span>Página ${paginaAtual} de ${totalPaginas}</span>
-            <button data-action="${acaoPagina}" data-pagina="${paginaAtual + 1}" ${paginaAtual >= totalPaginas ? 'disabled' : ''}
-                class="px-2 py-1 border border-gray-300 dark:border-slate-600 rounded disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-slate-700">Próxima ›</button>
-        </div>`
-            : '<span></span>';
-
-    return `
-        <div class="flex flex-wrap items-center justify-between gap-3 mt-3 px-1">
-            ${seletor}
-            <span class="text-xs text-gray-400 dark:text-slate-500">${inicio}–${fim} de ${totalItens}</span>
-            ${navegacao}
-        </div>`;
-}
-
-// Seta indicando a coluna ativa e sua direção — ou um ícone neutro (↕)
-// nas demais colunas ordenáveis, pra sinalizar que também dá pra clicar
-// nelas.
-function iconeOrdenacao(ativo, direcao) {
-    if (!ativo) return '<span class="inline-block w-3 text-gray-300 dark:text-slate-600">↕</span>';
-    return `<span class="inline-block w-3 text-blue-600 dark:text-blue-400">${direcao === 'asc' ? '▲' : '▼'}</span>`;
-}
-
-// Coluna → campo do item decorado usado pela busca (ver decorarCamposBusca
-// acima e CAMPOS_ATRIBUTO em utils.js), uma por tabela. Só entram aqui as
-// colunas que têm um prefixo "campo:" correspondente — em Poemas, Status
-// e Datas ficam de fora de propósito: já têm filtro estruturado próprio
-// (dropdown/painel de data). Elos/Referências (item 1 do schema ainda
-// pendente) ficam de fora porque ainda não têm texto decorado pra
-// buscar. Em Prosas, Datas e Vínculo (posição estrutural, não um campo
-// de texto único) ficam de fora pelo mesmo motivo das Datas de Poemas.
-// Época Retratada entrou (item 3) apesar de ter filtro estruturado de
-// data próprio — mesmo assim, com nome agora resolvido via cadastro
-// central (_buscaEpoca), faz sentido ter a lupa de atalho pro prefixo
-// "epoca:", igual autoria — a data continua só pelo painel dedicado.
-// pessoas aponta pro campo decorado "_buscaPessoas" (não pro nome cru da
-// coluna) — mesma convenção de todas as outras entradas aqui; sem isso a
-// lupa da coluna Pessoas não teria prefixo correspondente em
-// PREFIXOS_CANONICOS_POR_CAMPO (utils.js) e não apareceria.
-const COLUNA_CAMPO_BUSCA = {
-    poemas: {
-        titulo: 'titulo',
-        pessoas: '_buscaPessoas',
-        grupos: '_buscaGrupos',
-        intertextualidade: '_buscaIntertexto',
-        anexos: '_buscaAnexos',
-        anexosNotaGeral: 'anexosNotaGeral',
-        anotacoesMarginais: '_buscaAnotacoes',
-        descricaoVisual: 'descricaoVisual',
-        contextoHistorico: 'contextoHistorico',
-        etiquetas: '_buscaSinalizacoes',
-        notas: 'notas',
-        ocultacao: 'ocultacao',
-        conteudoSensivel: 'conteudoSensivel',
-        vocabularioHiperacionante: 'vocabularioHiperacionante',
-        descarte: 'descarte',
-        pendencia: 'pendencia',
-        cortadoDe: '_buscaCortadoDe',
-        lancadoEm: '_buscaLancadoEm',
-        justificativaMigracao: 'justificativaMigracao',
-        elos: '_buscaElos',
-        referencias: '_buscaReferencias',
-        autoria: '_buscaAutoria',
-        envios: '_buscaEnvios',
-        reconhecimentos: '_buscaReconhecimentos',
-        autoavaliacao: 'autoavaliacao',
-        epocaRetratada: '_buscaEpoca',
-    },
-    prosas: {
-        titulo: 'titulo',
-        pessoas: '_buscaPessoas',
-        grupos: '_buscaGrupos',
-        genero: 'genero',
-        etiquetas: '_buscaSinalizacoes',
-        notas: 'notas',
-        autoria: '_buscaAutoria',
-        envios: '_buscaEnvios',
-        reconhecimentos: '_buscaReconhecimentos',
-        autoavaliacao: 'autoavaliacao',
-        // Item 4: mesmas entradas de Poemas para os campos que Prosa
-        // acabou de ganhar (ver decorarCamposBusca acima — já genérico,
-        // roda igual pras duas tabelas, então os campos decorados
-        // _busca* já existem pra Prosa desde sempre).
-        intertextualidade: '_buscaIntertexto',
-        anexos: '_buscaAnexos',
-        anexosNotaGeral: 'anexosNotaGeral',
-        contextoHistorico: 'contextoHistorico',
-        ocultacao: 'ocultacao',
-        conteudoSensivel: 'conteudoSensivel',
-        vocabularioHiperacionante: 'vocabularioHiperacionante',
-        descarte: 'descarte',
-        pendencia: 'pendencia',
-        cortadoDe: '_buscaCortadoDe',
-        lancadoEm: '_buscaLancadoEm',
-        justificativaMigracao: 'justificativaMigracao',
-        elos: '_buscaElos',
-        referencias: '_buscaReferencias',
-        epocaRetratada: '_buscaEpoca',
-    },
-};
-
-// Ícone de atalho pra busca por essa coluna (ver buscarPorPrefixo) — só
-// aparece quando a coluna tem um prefixo "campo:" correspondente.
-// mousedown+preventDefault (não click) pelo mesmo motivo do resto da UI de
-// busca: evita que o botão roube o foco antes do input.focus() dentro da
-// própria função.
-function iconeBuscaColuna(tabela, campoItem) {
-    if (!campoItem || !PREFIXOS_CANONICOS_POR_CAMPO[campoItem]) return '';
-    const prefixo = PREFIXOS_CANONICOS_POR_CAMPO[campoItem];
-    return `<span onmousedown="event.preventDefault(); event.stopPropagation(); buscarPorPrefixo('${tabela}', '${campoItem}')"
-        class="text-gray-300 dark:text-slate-600 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-        title="Buscar por ${prefixo}:">🔍</span>`;
-}
-
-// <th> clicável: alterna a ordenação da tabela de Poemas pra essa coluna
-// (ver ordenarPoemasPor). `campo` é a key usada em COMPARADORES_ORDENACAO_POEMAS
-// (ou 'titulo'/'estrutura', os dois casos especiais). `campoItem`, quando
-// informado, é o campo decorado usado pela busca (ver COLUNA_CAMPO_BUSCA)
-// — controla se a lupa de atalho aparece.
-// `sticky top-0` vai direto em cada <th> (não no <thead>, nem no <tr>) —
-// em vários navegadores, sticky em table-row-group/table-row é ignorado ou
-// inconsistente, ainda mais combinado com border-collapse; em <th>
-// (table-cell) funciona de forma confiável, então é aí que a regra mora.
-function thOrdenavel(campo, label, estado, classeExtra = '', campoItem = null) {
-    const ativo = estado.campo === campo;
-    return `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700 ${classeExtra}">
-        <span class="flex items-center gap-1">
-            <button type="button" onclick="ordenarPoemasPor('${campo}')"
-                class="flex items-center gap-1 font-semibold hover:text-blue-600 dark:hover:text-blue-400 select-none"
-                title="Ordenar por ${escapeHtml(label)}">
-                <span>${label}</span>
-                ${iconeOrdenacao(ativo, estado.direcao)}
-            </button>
-            ${iconeBuscaColuna('poemas', campoItem)}
-        </span>
-    </th>`;
-}
-
-// <th> não-ordenável (Prosas não tem cabeçalho clicável pra ordenação —
-// ver comentário em montarCabecalho), mas que ainda ganha a lupa de
-// atalho quando a coluna tem prefixo de busca correspondente (ver
-// COLUNA_CAMPO_BUSCA).
-function thComLupa(label, campoItem, classeExtra = '') {
-    return `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700 ${classeExtra}">
-        <span class="flex items-center gap-1">
-            <span class="font-semibold">${label}</span>
-            ${iconeBuscaColuna('prosas', campoItem)}
-        </span>
-    </th>`;
-}
-
-function montarCabecalho(tabela, celulaCheck, celulaAcoes) {
-    const ativas = getColunasAtivas(tabela);
-    const def = DEFINICAO_COLUNAS[tabela];
-    const camposBusca = COLUNA_CAMPO_BUSCA[tabela] || {};
-
-    // Só Poemas tem cabeçalho ordenável por enquanto (ver DEFINICAO_COLUNAS —
-    // é a única tabela cujas colunas têm sortType definido). Prosas ainda
-    // ganha a lupa de atalho por coluna (ver thComLupa), só não a ordenação.
-    if (tabela === 'poemas') {
-        const tituloOrdenavel = thOrdenavel(
-            'titulo',
-            'ID / Título',
-            ordenacaoPoemas,
-            'left-8',
-            camposBusca.titulo,
-        );
-        const meio = ativas
-            .map((key) => def.find((c) => c.key === key))
-            .filter(Boolean)
-            .map((c) => thOrdenavel(c.key, c.label, ordenacaoPoemas, '', camposBusca[c.key]))
-            .join('');
-        return celulaCheck + tituloOrdenavel + meio + celulaAcoes;
-    }
-
-    const tituloComLupa = thComLupa('Título', camposBusca.titulo, 'sticky left-8');
-    const meio = ativas
-        .map((key) => def.find((c) => c.key === key))
-        .filter(Boolean)
-        .map((c) => thComLupa(c.label, camposBusca[c.key]))
-        .join('');
-    return celulaCheck + tituloComLupa + meio + celulaAcoes;
-}
-
-function atualizarPainelColunas(tabela, painelId) {
-    const painel = document.getElementById(painelId);
-    if (painel) painel.innerHTML = renderSeletorColunas(tabela);
-}
-
-function atualizarPainelAcoes(tabela, painelId) {
-    const painel = document.getElementById(painelId);
-    if (painel) painel.innerHTML = renderSeletorAcoes(tabela);
-}
-
 // ─── Seleção múltipla de Poemas (ações em massa) ──────────────
 
 // Retorna a lista de poemas atualmente visível, já com status, busca
 // (incluindo nomes de livros) e ordenação aplicados — usada tanto pela
 // renderização quanto pela seleção em massa, pra ficarem sempre coerentes.
-function getListaVisivelPoemas() {
+export function getListaVisivelPoemas() {
     let base = db.poemas;
     if (statusPoemas === 'publicados') base = base.filter((p) => p.status === 'publicado');
     else if (statusPoemas === 'nao-publicados') base = base.filter((p) => p.status !== 'publicado');
@@ -1362,6 +841,57 @@ function getListaVisivelPoemas() {
             lista = [...lista].sort((a, b) => comparador(a, b, asc));
         }
     }
+    return lista;
+}
+
+// Retorna a lista de prosas atualmente visível (livro/coletânea +
+// busca já aplicados) — usada tanto pela renderização quanto pela
+// seleção em massa (selecao-massa.js), pra ficarem sempre coerentes.
+// Fica aqui (e não em selecao-massa.js) porque reatribui `semDataProsas`,
+// estado que só este arquivo é dono.
+export function getListaVisivelProsas() {
+    let base = db.prosas;
+    if (filtroLivroProsa) {
+        const livroSel = db.livros.find((l) => String(l.id) === String(filtroLivroProsa));
+        if (livroSel?.tipo === 'Coletânea') {
+            // Prosas numa coletânea vivem em itensColetanea (via refId), não em paiId
+            const partesIds = new Set(
+                db.partes
+                    .filter((p) => String(p.livroId) === String(filtroLivroProsa))
+                    .map((p) => String(p.id)),
+            );
+            const refIds = new Set(
+                (db.itensColetanea || [])
+                    .filter(
+                        (i) => partesIds.has(String(i.parteId)) && i.refTipo === 'prosa' && i.refId,
+                    )
+                    .map((i) => String(i.refId)),
+            );
+            base = base.filter((pr) => refIds.has(String(pr.id)));
+        } else {
+            base = base.filter((pr) => String(livroDaProsa(pr)) === String(filtroLivroProsa));
+        }
+    }
+    const decorada = base.map((pr) => decorarCamposBusca(pr));
+    let lista = combinarFiltrosBusca(
+        decorada,
+        filtroProsas,
+        filtroConteudoProsas,
+        combinadorBuscaProsas,
+        opcoesBuscaProsas,
+    );
+
+    semDataProsas = lista.filter(
+        (pr) =>
+            itemFaltaDataParaFiltro(pr.dataEscrita, filtroDataEscritaProsas) ||
+            itemFaltaDataParaFiltro(pr.dataPublicacao, filtroDataPublicacaoProsas),
+    ).length;
+
+    lista = lista.filter(
+        (pr) =>
+            itemBateFiltroData(pr.dataEscrita, filtroDataEscritaProsas) &&
+            itemBateFiltroData(pr.dataPublicacao, filtroDataPublicacaoProsas),
+    );
     return lista;
 }
 
@@ -1541,678 +1071,6 @@ const COMPARADORES_ORDENACAO_POEMAS = {
         return asc ? diff : -diff;
     },
 };
-
-// shiftKey estende a seleção pro intervalo entre este checkbox e o
-// último clicado (ordem da lista filtrada/ordenada atual, não a ordem
-// de estrutura fixa — o intervalo é sempre "o que está entre as duas
-// linhas na tela"). Marca ou desmarca o intervalo inteiro com o mesmo
-// `checked` do checkbox que disparou o shift-click, replicando o
-// padrão do Gmail/Finder. Se a âncora não estiver mais na lista visível
-// (filtro mudou, ou é o primeiro clique da sessão), cai pro
-// comportamento normal de um clique só.
-export function toggleSelecaoPoema(checked, id, shiftKey) {
-    if (shiftKey && ultimoCheckPoema !== null && ultimoCheckPoema !== id) {
-        const visiveis = getListaVisivelPoemas().map((p) => p.id);
-        const iAncora = visiveis.indexOf(ultimoCheckPoema);
-        const iAtual = visiveis.indexOf(id);
-        if (iAncora !== -1 && iAtual !== -1) {
-            const [ini, fim] = iAncora < iAtual ? [iAncora, iAtual] : [iAtual, iAncora];
-            const intervalo = visiveis.slice(ini, fim + 1);
-            if (checked) intervalo.forEach((pid) => selecaoPoemas.add(pid));
-            else intervalo.forEach((pid) => selecaoPoemas.delete(pid));
-            ultimoCheckPoema = id;
-            renderPoemas();
-            return;
-        }
-    }
-    if (checked) selecaoPoemas.add(id);
-    else selecaoPoemas.delete(id);
-    ultimoCheckPoema = id;
-    atualizarBarraSelecao();
-}
-
-export function toggleSelecaoTodosPoemas(checked) {
-    const visiveis = getListaVisivelPoemas().map((p) => p.id);
-    if (checked) visiveis.forEach((id) => selecaoPoemas.add(id));
-    else visiveis.forEach((id) => selecaoPoemas.delete(id));
-    renderPoemas();
-}
-
-export function limparSelecaoPoemas() {
-    selecaoPoemas.clear();
-    renderPoemas();
-}
-
-function atualizarBarraSelecao() {
-    const barra = document.getElementById('barra-acoes-poemas');
-    const contador = document.getElementById('contador-selecao-poemas');
-    if (!barra) return;
-    if (selecaoPoemas.size > 0) {
-        barra.classList.remove('hidden');
-        if (contador) contador.innerText = `${selecaoPoemas.size} selecionado(s)`;
-    } else {
-        barra.classList.add('hidden');
-    }
-}
-
-function adicionarValorEmCampo(poema, campo, valorNovo) {
-    const atuais = poema[campo]
-        ? poema[campo]
-              .split(',')
-              .map((s) => s.trim())
-              .filter(Boolean)
-        : [];
-    if (!atuais.includes(valorNovo)) atuais.push(valorNovo);
-    poema[campo] = atuais.join(', ');
-}
-
-function removerValorDeCampo(poema, campo, valor) {
-    if (!poema[campo]) return;
-    const atuais = poema[campo]
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-    poema[campo] = atuais.filter((v) => v !== valor).join(', ');
-}
-
-// Variantes pra Pessoas (array de objeto {pessoaId, papeis} desde a
-// virada pro cadastro central — as duas funções genéricas acima
-// continuam servindo Sinalizações e Gênero, que não mudaram de
-// formato). Adicionar via edição em massa sempre entra com papeis: []
-// (nenhum marcado) — o bulk-edit só pede o nome, não os papéis; quem
-// quiser categorizar edita no modal do item, onde o chip já tem os
-// checkboxes.
-function adicionarPessoaEmCampo(item, pessoaId) {
-    const atuais = Array.isArray(item.pessoas) ? item.pessoas : [];
-    if (!atuais.some((p) => p.pessoaId === pessoaId)) atuais.push({ pessoaId, papeis: [] });
-    item.pessoas = atuais;
-}
-
-function removerPessoaEmCampo(item, pessoaId) {
-    if (!Array.isArray(item.pessoas)) return;
-    item.pessoas = item.pessoas.filter((p) => p.pessoaId !== pessoaId);
-}
-
-export function aplicarPessoaEmMassa() {
-    const input = document.getElementById('bulk-pessoa-input');
-    const nome = (input?.value || '').trim();
-    if (!nome || selecaoPoemas.size === 0) return;
-
-    const n = selecaoPoemas.size;
-    abrirModalConfirmacao({
-        titulo: `Dedicar a "${nome}"`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai adicionar "${nome}" aos dedicados de ${n} poema${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Aplicar',
-        corConfirmar: '#e11d48',
-        onConfirmar: () => {
-            const pessoa = obterOuCriarPessoaPorNome(nome);
-            db.poemas.forEach((p) => {
-                if (selecaoPoemas.has(p.id)) adicionarPessoaEmCampo(p, pessoa.id);
-            });
-            if (input) input.value = '';
-            selecaoPoemas.clear();
-            save(); // dispara re-render via evento db:saved
-        },
-    });
-}
-
-export function removerPessoaEmMassa() {
-    const input = document.getElementById('bulk-pessoa-input');
-    const nome = (input?.value || '').trim();
-    if (!nome || selecaoPoemas.size === 0) return;
-
-    const pessoa = db.pessoas.find((p) => p.nome === nome);
-    if (!pessoa) {
-        // Nome não bate com nenhuma pessoa cadastrada — nada a remover
-        // (diferente de "adicionar", aqui não faz sentido criar só pra
-        // desvincular em seguida).
-        if (input) input.value = '';
-        return;
-    }
-
-    const n = selecaoPoemas.size;
-    abrirModalConfirmacao({
-        titulo: `Remover "${nome}"`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai remover "${nome}" dos dedicados de ${n} poema${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Remover',
-        corConfirmar: '#dc2626',
-        onConfirmar: () => {
-            db.poemas.forEach((p) => {
-                if (selecaoPoemas.has(p.id)) removerPessoaEmCampo(p, pessoa.id);
-            });
-            if (input) input.value = '';
-            selecaoPoemas.clear();
-            save();
-        },
-    });
-}
-
-// Mapa campo→slug de DOM, pra achar o datalist certo
-// (sugestoes-sinais-{slug}-bulk[-prosa]) quando a pessoa troca a
-// categoria no seletor da edição em massa — ver SINALIZACOES_CATEGORIAS
-// em utils.js e SINAL_CATEGORIAS em editor.js (mesmo slug nos dois).
-const SLUG_POR_CAMPO_SINAL = Object.fromEntries(
-    Object.entries(SINALIZACOES_CATEGORIAS).map(([slug, campo]) => [campo, slug]),
-);
-
-export function atualizarListaSinalBulk(selectEl, inputId, sufixo = '') {
-    const input = document.getElementById(inputId);
-    if (!input || !selectEl) return;
-    const slug = SLUG_POR_CAMPO_SINAL[selectEl.value] || 'estilo';
-    input.setAttribute('list', `sugestoes-sinais-${slug}-bulk${sufixo}`);
-}
-
-export function aplicarSinalEmMassa() {
-    const input = document.getElementById('bulk-sinal-input');
-    const campo = document.getElementById('bulk-sinal-categoria')?.value || 'sinalizacoesEstilo';
-    const tag = (input?.value || '').trim();
-    if (!tag || selecaoPoemas.size === 0) return;
-
-    const n = selecaoPoemas.size;
-    abrirModalConfirmacao({
-        titulo: `Marcar "${tag}"`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai adicionar a sinalização "${tag}" a ${n} poema${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Aplicar',
-        corConfirmar: '#2563eb',
-        onConfirmar: () => {
-            db.poemas.forEach((p) => {
-                if (selecaoPoemas.has(p.id)) adicionarValorEmCampo(p, campo, tag);
-            });
-            if (input) input.value = '';
-            selecaoPoemas.clear();
-            save();
-        },
-    });
-}
-
-export function removerSinalEmMassa() {
-    const input = document.getElementById('bulk-sinal-input');
-    const campo = document.getElementById('bulk-sinal-categoria')?.value || 'sinalizacoesEstilo';
-    const tag = (input?.value || '').trim();
-    if (!tag || selecaoPoemas.size === 0) return;
-
-    const n = selecaoPoemas.size;
-    abrirModalConfirmacao({
-        titulo: `Remover "${tag}"`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai remover a sinalização "${tag}" de ${n} poema${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Remover',
-        corConfirmar: '#dc2626',
-        onConfirmar: () => {
-            db.poemas.forEach((p) => {
-                if (selecaoPoemas.has(p.id)) removerValorDeCampo(p, campo, tag);
-            });
-            if (input) input.value = '';
-            selecaoPoemas.clear();
-            save();
-        },
-    });
-}
-
-// Exclusão em massa dos poemas selecionados. A remoção de fato (e o
-// "Desfazer" com um único toast pro lote inteiro) fica em
-// deleteItemsEmMassa (db.js) — aqui só confirma com a pessoa e limpa a
-// seleção depois. Não precisa re-renderizar manualmente: deleteItemsEmMassa
-// chama save(), que dispara 'db:saved' -> renderLists() -> renderPoemas(),
-// que já esconde a barra de seleção sozinho (ver atualizarBarraSelecao()).
-export function excluirSelecaoPoemas() {
-    if (selecaoPoemas.size === 0) return;
-    const n = selecaoPoemas.size;
-    abrirModalConfirmacao({
-        titulo: `Excluir ${n} poema${n !== 1 ? 's' : ''}`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai excluir ${n} poema${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}. Vai aparecer um "Desfazer" logo em seguida, caso mude de ideia.`,
-        textoConfirmar: 'Excluir',
-        corConfirmar: '#dc2626',
-        onConfirmar: () => {
-            deleteItemsEmMassa('poemas', [...selecaoPoemas]);
-            selecaoPoemas.clear();
-        },
-    });
-}
-
-// Exporta só os poemas marcados na tabela — diferente da aba Exportação,
-// que filtra por atributos (pessoa/tema/data/status), aqui é exatamente
-// a seleção feita na listagem. Não limpa a seleção depois: exportar não
-// é destrutivo, então a pessoa pode baixar em JSON e depois em MD sem
-// re-marcar tudo de novo.
-export function exportarSelecaoPoemasJson() {
-    exportarSelecaoJson('poema', [...selecaoPoemas]);
-}
-export function exportarSelecaoPoemasMarkdown() {
-    exportarSelecaoMarkdown('poema', [...selecaoPoemas]);
-}
-export function exportarSelecaoPoemasPdf() {
-    exportarSelecaoPdf('poema', [...selecaoPoemas]);
-}
-export function exportarSelecaoPoemasDocx() {
-    exportarSelecaoDocx('poema', [...selecaoPoemas]);
-}
-
-// ─── Datas em massa (Poemas): Escrita / Publicação ─────────────
-// Mesma mecânica da versão de Prosas logo abaixo — ver os comentários lá.
-export function aplicarDataEmMassa() {
-    if (selecaoPoemas.size === 0) return;
-    const tipo = document.getElementById('bulk-data-tipo')?.value || 'escrita';
-    const parcial = lerDataParcialBulk('bulk-data');
-    if (!Object.keys(parcial).length) return;
-
-    const campo = tipo === 'publicacao' ? 'dataPublicacao' : 'dataEscrita';
-    const rotuloCampo = rotuloTipoData(tipo);
-    const exataChecked = !!document.getElementById('bulk-data-exata')?.checked;
-
-    const partes = ['dia', 'mes', 'ano']
-        .filter((c) => parcial[c] != null)
-        .map((c) => `${c === 'mes' ? 'mês' : c} ${parcial[c]}`);
-
-    const n = selecaoPoemas.size;
-    abrirModalConfirmacao({
-        titulo: `Definir ${rotuloCampo.toLowerCase()}`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai definir ${partes.join(', ')} na ${rotuloCampo} de ${n} poema${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}, mantendo os demais campos da data (se já preenchidos em cada um).`,
-        textoConfirmar: 'Aplicar',
-        corConfirmar: '#2563eb',
-        onConfirmar: () => {
-            db.poemas.forEach((p) => {
-                if (!selecaoPoemas.has(p.id)) return;
-                const atual = { ...(p[campo] || {}), ...parcial };
-                if (campo === 'dataEscrita') atual.exata = exataChecked;
-                p[campo] = atual;
-                // p.ano espelha dataEscrita.ano por compatibilidade (ver forms.js)
-                if (campo === 'dataEscrita') p.ano = atual.ano || '';
-            });
-            selecaoPoemas.clear();
-            save();
-        },
-    });
-}
-
-export function limparDataEmMassa() {
-    if (selecaoPoemas.size === 0) return;
-    const tipo = document.getElementById('bulk-data-tipo')?.value || 'escrita';
-    const campo = tipo === 'publicacao' ? 'dataPublicacao' : 'dataEscrita';
-    const rotuloCampo = rotuloTipoData(tipo);
-
-    const n = selecaoPoemas.size;
-    abrirModalConfirmacao({
-        titulo: `Limpar ${rotuloCampo.toLowerCase()}`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai apagar a ${rotuloCampo} de ${n} poema${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Limpar',
-        corConfirmar: '#dc2626',
-        onConfirmar: () => {
-            db.poemas.forEach((p) => {
-                if (!selecaoPoemas.has(p.id)) return;
-                p[campo] = null;
-                if (campo === 'dataEscrita') p.ano = '';
-            });
-            selecaoPoemas.clear();
-            save();
-        },
-    });
-}
-
-// ─── Seleção múltipla de Prosas (ações em massa) ──────────────
-// Mesma lógica da seleção de Poemas acima, adaptada pra Prosas.
-
-// Retorna a lista de prosas atualmente visível (livro/coletânea +
-// busca já aplicados) — usada tanto pela renderização quanto pela
-// seleção em massa, pra ficarem sempre coerentes.
-function getListaVisivelProsas() {
-    let base = db.prosas;
-    if (filtroLivroProsa) {
-        const livroSel = db.livros.find((l) => String(l.id) === String(filtroLivroProsa));
-        if (livroSel?.tipo === 'Coletânea') {
-            // Prosas numa coletânea vivem em itensColetanea (via refId), não em paiId
-            const partesIds = new Set(
-                db.partes
-                    .filter((p) => String(p.livroId) === String(filtroLivroProsa))
-                    .map((p) => String(p.id)),
-            );
-            const refIds = new Set(
-                (db.itensColetanea || [])
-                    .filter(
-                        (i) => partesIds.has(String(i.parteId)) && i.refTipo === 'prosa' && i.refId,
-                    )
-                    .map((i) => String(i.refId)),
-            );
-            base = base.filter((pr) => refIds.has(String(pr.id)));
-        } else {
-            base = base.filter((pr) => String(livroDaProsa(pr)) === String(filtroLivroProsa));
-        }
-    }
-    const decorada = base.map((pr) => decorarCamposBusca(pr));
-    let lista = combinarFiltrosBusca(
-        decorada,
-        filtroProsas,
-        filtroConteudoProsas,
-        combinadorBuscaProsas,
-        opcoesBuscaProsas,
-    );
-
-    semDataProsas = lista.filter(
-        (pr) =>
-            itemFaltaDataParaFiltro(pr.dataEscrita, filtroDataEscritaProsas) ||
-            itemFaltaDataParaFiltro(pr.dataPublicacao, filtroDataPublicacaoProsas),
-    ).length;
-
-    lista = lista.filter(
-        (pr) =>
-            itemBateFiltroData(pr.dataEscrita, filtroDataEscritaProsas) &&
-            itemBateFiltroData(pr.dataPublicacao, filtroDataPublicacaoProsas),
-    );
-    return lista;
-}
-
-// Ver toggleSelecaoPoema — mesma lógica de shift-click, espelhada pra Prosas.
-export function toggleSelecaoProsa(checked, id, shiftKey) {
-    if (shiftKey && ultimoCheckProsa !== null && ultimoCheckProsa !== id) {
-        const visiveis = getListaVisivelProsas().map((pr) => pr.id);
-        const iAncora = visiveis.indexOf(ultimoCheckProsa);
-        const iAtual = visiveis.indexOf(id);
-        if (iAncora !== -1 && iAtual !== -1) {
-            const [ini, fim] = iAncora < iAtual ? [iAncora, iAtual] : [iAtual, iAncora];
-            const intervalo = visiveis.slice(ini, fim + 1);
-            if (checked) intervalo.forEach((pid) => selecaoProsas.add(pid));
-            else intervalo.forEach((pid) => selecaoProsas.delete(pid));
-            ultimoCheckProsa = id;
-            renderProsas();
-            return;
-        }
-    }
-    if (checked) selecaoProsas.add(id);
-    else selecaoProsas.delete(id);
-    ultimoCheckProsa = id;
-    atualizarBarraSelecaoProsas();
-}
-
-export function toggleSelecaoTodosProsas(checked) {
-    const visiveis = getListaVisivelProsas().map((pr) => pr.id);
-    if (checked) visiveis.forEach((id) => selecaoProsas.add(id));
-    else visiveis.forEach((id) => selecaoProsas.delete(id));
-    renderProsas();
-}
-
-export function limparSelecaoProsas() {
-    selecaoProsas.clear();
-    renderProsas();
-}
-
-function atualizarBarraSelecaoProsas() {
-    const barra = document.getElementById('barra-acoes-prosas');
-    const contador = document.getElementById('contador-selecao-prosas');
-    if (!barra) return;
-    if (selecaoProsas.size > 0) {
-        barra.classList.remove('hidden');
-        if (contador) contador.innerText = `${selecaoProsas.size} selecionada(s)`;
-    } else {
-        barra.classList.add('hidden');
-    }
-}
-
-export function aplicarPessoaEmMassaProsa() {
-    const input = document.getElementById('bulk-pessoa-input-prosa');
-    const nome = (input?.value || '').trim();
-    if (!nome || selecaoProsas.size === 0) return;
-
-    const n = selecaoProsas.size;
-    abrirModalConfirmacao({
-        titulo: `Dedicar a "${nome}"`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai adicionar "${nome}" aos dedicados de ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Aplicar',
-        corConfirmar: '#e11d48',
-        onConfirmar: () => {
-            const pessoa = obterOuCriarPessoaPorNome(nome);
-            db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) adicionarPessoaEmCampo(pr, pessoa.id);
-            });
-            if (input) input.value = '';
-            selecaoProsas.clear();
-            save(); // dispara re-render via evento db:saved
-        },
-    });
-}
-
-export function removerPessoaEmMassaProsa() {
-    const input = document.getElementById('bulk-pessoa-input-prosa');
-    const nome = (input?.value || '').trim();
-    if (!nome || selecaoProsas.size === 0) return;
-
-    const pessoa = db.pessoas.find((p) => p.nome === nome);
-    if (!pessoa) {
-        if (input) input.value = '';
-        return;
-    }
-
-    const n = selecaoProsas.size;
-    abrirModalConfirmacao({
-        titulo: `Remover "${nome}"`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai remover "${nome}" dos dedicados de ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Remover',
-        corConfirmar: '#dc2626',
-        onConfirmar: () => {
-            db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) removerPessoaEmCampo(pr, pessoa.id);
-            });
-            if (input) input.value = '';
-            selecaoProsas.clear();
-            save();
-        },
-    });
-}
-
-export function aplicarSinalEmMassaProsa() {
-    const input = document.getElementById('bulk-sinal-input-prosa');
-    const campo =
-        document.getElementById('bulk-sinal-categoria-prosa')?.value || 'sinalizacoesEstilo';
-    const tag = (input?.value || '').trim();
-    if (!tag || selecaoProsas.size === 0) return;
-
-    const n = selecaoProsas.size;
-    abrirModalConfirmacao({
-        titulo: `Marcar "${tag}"`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai adicionar a sinalização "${tag}" a ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Aplicar',
-        corConfirmar: '#2563eb',
-        onConfirmar: () => {
-            db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) adicionarValorEmCampo(pr, campo, tag);
-            });
-            if (input) input.value = '';
-            selecaoProsas.clear();
-            save();
-        },
-    });
-}
-
-export function removerSinalEmMassaProsa() {
-    const input = document.getElementById('bulk-sinal-input-prosa');
-    const campo =
-        document.getElementById('bulk-sinal-categoria-prosa')?.value || 'sinalizacoesEstilo';
-    const tag = (input?.value || '').trim();
-    if (!tag || selecaoProsas.size === 0) return;
-
-    const n = selecaoProsas.size;
-    abrirModalConfirmacao({
-        titulo: `Remover "${tag}"`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai remover a sinalização "${tag}" de ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Remover',
-        corConfirmar: '#dc2626',
-        onConfirmar: () => {
-            db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) removerValorDeCampo(pr, campo, tag);
-            });
-            if (input) input.value = '';
-            selecaoProsas.clear();
-            save();
-        },
-    });
-}
-
-export function aplicarGeneroEmMassaProsa() {
-    const input = document.getElementById('bulk-genero-input-prosa');
-    const genero = (input?.value || '').trim();
-    if (!genero || selecaoProsas.size === 0) return;
-
-    const n = selecaoProsas.size;
-    abrirModalConfirmacao({
-        titulo: `Marcar "${genero}"`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai adicionar o gênero "${genero}" a ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Aplicar',
-        corConfirmar: '#d97706',
-        onConfirmar: () => {
-            db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) adicionarValorEmCampo(pr, 'genero', genero);
-            });
-            if (input) input.value = '';
-            selecaoProsas.clear();
-            save();
-        },
-    });
-}
-
-export function removerGeneroEmMassaProsa() {
-    const input = document.getElementById('bulk-genero-input-prosa');
-    const genero = (input?.value || '').trim();
-    if (!genero || selecaoProsas.size === 0) return;
-
-    const n = selecaoProsas.size;
-    abrirModalConfirmacao({
-        titulo: `Remover "${genero}"`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai remover o gênero "${genero}" de ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Remover',
-        corConfirmar: '#dc2626',
-        onConfirmar: () => {
-            db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) removerValorDeCampo(pr, 'genero', genero);
-            });
-            if (input) input.value = '';
-            selecaoProsas.clear();
-            save();
-        },
-    });
-}
-
-// ─── Datas em massa (Prosas): Escrita / Publicação ─────────────
-// Diferente das tags acima, aqui o valor não é uma string "a, b, c" e
-// sim um objeto parcial { dia?, mes?, ano? }. Só os subcampos
-// preenchidos no formulário de massa são aplicados — os demais, em
-// cada prosa, ficam como estavam (não apaga dia/mês já cadastrados
-// só porque a pessoa quis fixar o ano de um lote, por exemplo).
-function lerDataParcialBulk(prefixo) {
-    const campos = ['dia', 'mes', 'ano'];
-    const obj = {};
-    campos.forEach((c) => {
-        const el = document.getElementById(`${prefixo}-${c}`);
-        const v = el?.value;
-        if (v !== '' && v != null) obj[c] = parseInt(v);
-    });
-    return obj;
-}
-
-function rotuloTipoData(tipo) {
-    return tipo === 'publicacao' ? 'Data de Publicação' : 'Data de Escrita';
-}
-
-export function aplicarDataEmMassaProsa() {
-    if (selecaoProsas.size === 0) return;
-    const tipo = document.getElementById('bulk-data-tipo-prosa')?.value || 'escrita';
-    const parcial = lerDataParcialBulk('bulk-data-prosa');
-    if (!Object.keys(parcial).length) return;
-
-    const campo = tipo === 'publicacao' ? 'dataPublicacao' : 'dataEscrita';
-    const rotuloCampo = rotuloTipoData(tipo);
-    const exataChecked = !!document.getElementById('bulk-data-exata-prosa')?.checked;
-
-    const partes = ['dia', 'mes', 'ano']
-        .filter((c) => parcial[c] != null)
-        .map((c) => `${c === 'mes' ? 'mês' : c} ${parcial[c]}`);
-
-    const n = selecaoProsas.size;
-    abrirModalConfirmacao({
-        titulo: `Definir ${rotuloCampo.toLowerCase()}`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai definir ${partes.join(', ')} na ${rotuloCampo} de ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}, mantendo os demais campos da data (se já preenchidos em cada uma).`,
-        textoConfirmar: 'Aplicar',
-        corConfirmar: '#2563eb',
-        onConfirmar: () => {
-            db.prosas.forEach((pr) => {
-                if (!selecaoProsas.has(pr.id)) return;
-                const atual = { ...(pr[campo] || {}), ...parcial };
-                if (campo === 'dataEscrita') atual.exata = exataChecked;
-                pr[campo] = atual;
-                // pr.ano espelha dataEscrita.ano por compatibilidade (ver forms.js)
-                if (campo === 'dataEscrita') pr.ano = atual.ano || '';
-            });
-            selecaoProsas.clear();
-            save();
-        },
-    });
-}
-
-export function limparDataEmMassaProsa() {
-    if (selecaoProsas.size === 0) return;
-    const tipo = document.getElementById('bulk-data-tipo-prosa')?.value || 'escrita';
-    const campo = tipo === 'publicacao' ? 'dataPublicacao' : 'dataEscrita';
-    const rotuloCampo = rotuloTipoData(tipo);
-
-    const n = selecaoProsas.size;
-    abrirModalConfirmacao({
-        titulo: `Limpar ${rotuloCampo.toLowerCase()}`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai apagar a ${rotuloCampo} de ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
-        textoConfirmar: 'Limpar',
-        corConfirmar: '#dc2626',
-        onConfirmar: () => {
-            db.prosas.forEach((pr) => {
-                if (!selecaoProsas.has(pr.id)) return;
-                pr[campo] = null;
-                if (campo === 'dataEscrita') pr.ano = '';
-            });
-            selecaoProsas.clear();
-            save();
-        },
-    });
-}
-
-// Equivalente de excluirSelecaoPoemas() pra prosas — ver os comentários lá.
-export function excluirSelecaoProsas() {
-    if (selecaoProsas.size === 0) return;
-    const n = selecaoProsas.size;
-    abrirModalConfirmacao({
-        titulo: `Excluir ${n} prosa${n !== 1 ? 's' : ''}`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai excluir ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}. Vai aparecer um "Desfazer" logo em seguida, caso mude de ideia.`,
-        textoConfirmar: 'Excluir',
-        corConfirmar: '#dc2626',
-        onConfirmar: () => {
-            deleteItemsEmMassa('prosas', [...selecaoProsas]);
-            selecaoProsas.clear();
-        },
-    });
-}
-
-export function exportarSelecaoProsasJson() {
-    exportarSelecaoJson('prosa', [...selecaoProsas]);
-}
-export function exportarSelecaoProsasMarkdown() {
-    exportarSelecaoMarkdown('prosa', [...selecaoProsas]);
-}
-export function exportarSelecaoProsasPdf() {
-    exportarSelecaoPdf('prosa', [...selecaoProsas]);
-}
-export function exportarSelecaoProsasDocx() {
-    exportarSelecaoDocx('prosa', [...selecaoProsas]);
-}
 
 // ─── Livros ──────────────────────────────────────────────────
 

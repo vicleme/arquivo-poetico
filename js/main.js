@@ -63,6 +63,26 @@ import {
     setItensPorPagina,
     setPaginaPoemas,
     setPaginaProsas,
+    setFiltroLivroPartes,
+    setFiltroLivroSecoes,
+    setFiltroParteSecoes,
+    setFiltroLivroElementos,
+    setFiltroLivroProsa,
+    moverLivro,
+    setFiltroDataEscritaPoemas,
+    setFiltroDataPublicacaoPoemas,
+    setFiltroEpocaRetratadaPoemas,
+    setFiltroDataEscritaProsas,
+    setFiltroDataPublicacaoProsas,
+    setFiltroDataRapidoPoemasEscrita,
+    setFiltroDataRapidoPoemasPublicacao,
+    setFiltroDataRapidoPoemasEpoca,
+    setFiltroDataRapidoProsasEscrita,
+    setFiltroDataRapidoProsasPublicacao,
+    limparFiltroDataPoemas,
+    limparFiltroDataProsas,
+} from './render-listas.js';
+import {
     toggleSelecaoPoema,
     toggleSelecaoTodosPoemas,
     limparSelecaoPoemas,
@@ -94,25 +114,7 @@ import {
     removerGeneroEmMassaProsa,
     aplicarDataEmMassaProsa,
     limparDataEmMassaProsa,
-    setFiltroLivroPartes,
-    setFiltroLivroSecoes,
-    setFiltroParteSecoes,
-    setFiltroLivroElementos,
-    setFiltroLivroProsa,
-    moverLivro,
-    setFiltroDataEscritaPoemas,
-    setFiltroDataPublicacaoPoemas,
-    setFiltroEpocaRetratadaPoemas,
-    setFiltroDataEscritaProsas,
-    setFiltroDataPublicacaoProsas,
-    setFiltroDataRapidoPoemasEscrita,
-    setFiltroDataRapidoPoemasPublicacao,
-    setFiltroDataRapidoPoemasEpoca,
-    setFiltroDataRapidoProsasEscrita,
-    setFiltroDataRapidoProsasPublicacao,
-    limparFiltroDataPoemas,
-    limparFiltroDataProsas,
-} from './render-listas.js';
+} from './selecao-massa.js';
 import {
     setLivroEstrutura,
     moverItemEstrutura,
@@ -143,20 +145,28 @@ import {
     initEditorProsa,
     adicionarSinalTradicao,
     removerSinalTradicao,
+    editarSinalTradicao,
     adicionarSinalEstilo,
     removerSinalEstilo,
+    editarSinalEstilo,
     adicionarSinalTema,
     removerSinalTema,
+    editarSinalTema,
     adicionarSinalRelacao,
     removerSinalRelacao,
+    editarSinalRelacao,
     adicionarSinalSensibilidade,
     removerSinalSensibilidade,
+    editarSinalSensibilidade,
     adicionarSinalTom,
     removerSinalTom,
+    editarSinalTom,
     adicionarSinalDominioImagetico,
     removerSinalDominioImagetico,
+    editarSinalDominioImagetico,
     adicionarSinalOutros,
     removerSinalOutros,
+    editarSinalOutros,
     applyStyle,
     wrapText,
     setAlign,
@@ -181,20 +191,28 @@ import {
     atualizarDatalistProsa,
     adicionarSinalTradicaoProsa,
     removerSinalTradicaoProsa,
+    editarSinalTradicaoProsa,
     adicionarSinalEstiloProsa,
     removerSinalEstiloProsa,
+    editarSinalEstiloProsa,
     adicionarSinalTemaProsa,
     removerSinalTemaProsa,
+    editarSinalTemaProsa,
     adicionarSinalRelacaoProsa,
     removerSinalRelacaoProsa,
+    editarSinalRelacaoProsa,
     adicionarSinalSensibilidadeProsa,
     removerSinalSensibilidadeProsa,
+    editarSinalSensibilidadeProsa,
     adicionarSinalTomProsa,
     removerSinalTomProsa,
+    editarSinalTomProsa,
     adicionarSinalDominioImageticoProsa,
     removerSinalDominioImageticoProsa,
+    editarSinalDominioImageticoProsa,
     adicionarSinalOutrosProsa,
     removerSinalOutrosProsa,
+    editarSinalOutrosProsa,
     adicionarPessoaProsa,
     removerPessoaProsa,
     alternarPapelPessoaProsa,
@@ -214,6 +232,7 @@ import {
     removerReconhecimentoProsa,
     adicionarGeneroProsa,
     removerGeneroProsa,
+    editarGeneroProsa,
     adicionarIntertexto,
     removerIntertexto,
     editarIntertexto,
@@ -603,20 +622,28 @@ window.autoPreencherDataPublicacao = autoPreencherDataPublicacao;
 
 window.adicionarSinalTradicao = adicionarSinalTradicao;
 window.removerSinalTradicao = removerSinalTradicao;
+window.editarSinalTradicao = editarSinalTradicao;
 window.adicionarSinalEstilo = adicionarSinalEstilo;
 window.removerSinalEstilo = removerSinalEstilo;
+window.editarSinalEstilo = editarSinalEstilo;
 window.adicionarSinalTema = adicionarSinalTema;
 window.removerSinalTema = removerSinalTema;
+window.editarSinalTema = editarSinalTema;
 window.adicionarSinalRelacao = adicionarSinalRelacao;
 window.removerSinalRelacao = removerSinalRelacao;
+window.editarSinalRelacao = editarSinalRelacao;
 window.adicionarSinalSensibilidade = adicionarSinalSensibilidade;
 window.removerSinalSensibilidade = removerSinalSensibilidade;
+window.editarSinalSensibilidade = editarSinalSensibilidade;
 window.adicionarSinalTom = adicionarSinalTom;
 window.removerSinalTom = removerSinalTom;
+window.editarSinalTom = editarSinalTom;
 window.adicionarSinalDominioImagetico = adicionarSinalDominioImagetico;
 window.removerSinalDominioImagetico = removerSinalDominioImagetico;
+window.editarSinalDominioImagetico = editarSinalDominioImagetico;
 window.adicionarSinalOutros = adicionarSinalOutros;
 window.removerSinalOutros = removerSinalOutros;
+window.editarSinalOutros = editarSinalOutros;
 window.adicionarPessoa = adicionarPessoa;
 window.removerPessoa = removerPessoa;
 window.alternarPapelPessoa = alternarPapelPessoa;
@@ -636,20 +663,28 @@ window.cancelarEdicaoReconhecimento = cancelarEdicaoReconhecimento;
 window.removerReconhecimento = removerReconhecimento;
 window.adicionarSinalTradicaoProsa = adicionarSinalTradicaoProsa;
 window.removerSinalTradicaoProsa = removerSinalTradicaoProsa;
+window.editarSinalTradicaoProsa = editarSinalTradicaoProsa;
 window.adicionarSinalEstiloProsa = adicionarSinalEstiloProsa;
 window.removerSinalEstiloProsa = removerSinalEstiloProsa;
+window.editarSinalEstiloProsa = editarSinalEstiloProsa;
 window.adicionarSinalTemaProsa = adicionarSinalTemaProsa;
 window.removerSinalTemaProsa = removerSinalTemaProsa;
+window.editarSinalTemaProsa = editarSinalTemaProsa;
 window.adicionarSinalRelacaoProsa = adicionarSinalRelacaoProsa;
 window.removerSinalRelacaoProsa = removerSinalRelacaoProsa;
+window.editarSinalRelacaoProsa = editarSinalRelacaoProsa;
 window.adicionarSinalSensibilidadeProsa = adicionarSinalSensibilidadeProsa;
 window.removerSinalSensibilidadeProsa = removerSinalSensibilidadeProsa;
+window.editarSinalSensibilidadeProsa = editarSinalSensibilidadeProsa;
 window.adicionarSinalTomProsa = adicionarSinalTomProsa;
 window.removerSinalTomProsa = removerSinalTomProsa;
+window.editarSinalTomProsa = editarSinalTomProsa;
 window.adicionarSinalDominioImageticoProsa = adicionarSinalDominioImageticoProsa;
 window.removerSinalDominioImageticoProsa = removerSinalDominioImageticoProsa;
+window.editarSinalDominioImageticoProsa = editarSinalDominioImageticoProsa;
 window.adicionarSinalOutrosProsa = adicionarSinalOutrosProsa;
 window.removerSinalOutrosProsa = removerSinalOutrosProsa;
+window.editarSinalOutrosProsa = editarSinalOutrosProsa;
 window.adicionarPessoaProsa = adicionarPessoaProsa;
 window.removerPessoaProsa = removerPessoaProsa;
 window.alternarPapelPessoaProsa = alternarPapelPessoaProsa;
@@ -669,6 +704,7 @@ window.cancelarEdicaoReconhecimentoProsa = cancelarEdicaoReconhecimentoProsa;
 window.removerReconhecimentoProsa = removerReconhecimentoProsa;
 window.adicionarGeneroProsa = adicionarGeneroProsa;
 window.removerGeneroProsa = removerGeneroProsa;
+window.editarGeneroProsa = editarGeneroProsa;
 window.adicionarIntertexto = adicionarIntertexto;
 window.removerIntertexto = removerIntertexto;
 window.editarIntertexto = editarIntertexto;

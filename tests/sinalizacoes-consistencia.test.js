@@ -1,5 +1,5 @@
 // SINALIZACOES_CATEGORIAS (utils.js) e CORES_CATEGORIA_SINALIZACAO
-// (render-listas.js) continuam repetidas na mão (nada gerado a partir
+// (celulas-tabela.js) continuam repetidas na mão (nada gerado a partir
 // de SINAL_CATEGORIAS lá) — a checagem delas abaixo continua estática
 // de propósito, nos moldes de wiring-onclick.test.js, pra pegar
 // descasamento de string sem precisar de DOM (ver "fan-out por campo
@@ -73,10 +73,10 @@ function extrairObjetoChaves(texto, marcador) {
     return chaves;
 }
 
-describe('consistência das categorias de Sinalizações entre editor/utils/render-listas/HTML', () => {
+describe('consistência das categorias de Sinalizações entre editor/utils/celulas-tabela/HTML', () => {
     const editorJs = fs.readFileSync(path.join(RAIZ, 'js/editor.js'), 'utf8');
     const utilsJs = fs.readFileSync(path.join(RAIZ, 'js/utils.js'), 'utf8');
-    const renderListasJs = fs.readFileSync(path.join(RAIZ, 'js/render-listas.js'), 'utf8');
+    const celulasTabelaJs = fs.readFileSync(path.join(RAIZ, 'js/celulas-tabela.js'), 'utf8');
     const modaisDir = path.join(RAIZ, 'modais');
     // Corpo de Sinalizações da Prosa não é mais texto estático em
     // modal-prosa.html — renderiza de verdade (happy-dom, ver
@@ -101,7 +101,7 @@ describe('consistência das categorias de Sinalizações entre editor/utils/rend
         'export const SINALIZACOES_CATEGORIAS = {',
     );
     const coresCategoria = extrairObjetoChaves(
-        renderListasJs,
+        celulasTabelaJs,
         'const CORES_CATEGORIA_SINALIZACAO = {',
     );
 
@@ -124,7 +124,7 @@ describe('consistência das categorias de Sinalizações entre editor/utils/rend
             );
         });
 
-        it(`"${chave}" tem cor correspondente em CORES_CATEGORIA_SINALIZACAO (render-listas.js)`, () => {
+        it(`"${chave}" tem cor correspondente em CORES_CATEGORIA_SINALIZACAO (celulas-tabela.js)`, () => {
             assert.ok(
                 coresCategoria.has(slug),
                 `Falta a chave "${slug}" em CORES_CATEGORIA_SINALIZACAO`,

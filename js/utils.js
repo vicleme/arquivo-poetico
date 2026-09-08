@@ -1954,13 +1954,18 @@ export function direcaoInversa(direcao) {
 // diferentes — costumam repetir a mesma referência (a mesma conversa, o
 // mesmo livro), daí o autocompletar evitar redigitar/variar a grafia.
 // Mesma lógica de extração de extrairValoresUnicosDeAnotacoes, só que
-// sobre `intertextualidade` em vez de `anotacoesMarginais`.
-export function extrairValoresUnicosDeIntertextualidade(poemas) {
+// sobre `intertextualidade` em vez de `anotacoesMarginais`. `tipoFiltro`
+// opcional restringe às referências já tipadas com aquele Tipo exato
+// (ver atualizarDatalistIntertexto/Prosa em editor.js) — sugestão mais
+// focada uma vez que o Tipo já foi escolhido, em vez de misturar textos
+// de tipos diferentes (ex.: não sugerir nomes de livro ao digitar o
+// texto de uma referência já tipada como Música).
+export function extrairValoresUnicosDeIntertextualidade(poemas, tipoFiltro = null) {
     const valores = new Set();
     poemas.forEach((p) => {
         if (Array.isArray(p.intertextualidade)) {
             p.intertextualidade.forEach((it) => {
-                if (it && it.texto) valores.add(it.texto);
+                if (it && it.texto && (!tipoFiltro || it.tipo === tipoFiltro)) valores.add(it.texto);
             });
         }
     });
@@ -1977,7 +1982,8 @@ export const TIPOS_INTERTEXTO_SUGERIDOS = [
     'Livro',
     'Texto',
     'Música',
-    'Filme/Série',
+    'Filme',
+    'Série',
     'Vídeo',
     'Fotografia',
     'Pintura',

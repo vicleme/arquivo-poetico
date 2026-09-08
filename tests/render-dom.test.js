@@ -27,8 +27,8 @@ document.body.innerHTML = `
 `;
 
 const { db } = await import('../js/db.js');
-const { renderLivros, renderPoemas, renderGrupos, toggleSelecaoPoema } =
-    await import('../js/render-listas.js');
+const { renderLivros, renderPoemas, renderGrupos } = await import('../js/render-listas.js');
+const { toggleSelecaoPoema } = await import('../js/selecao-massa.js');
 const { toggleColuna } = await import('../js/colunas.js');
 await import('../js/main.js');
 

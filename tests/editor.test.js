@@ -66,7 +66,9 @@ const {
     obterIntertextualidadeProsa,
     resetIntertextualidadeProsa,
 } = await import('../js/editor.js');
-const { renderSinalizacoesProsa, initEditorProsa } = await import('../js/editor.js');
+const { renderSinalizacoesProsa, initEditorProsa, editarSinalRelacaoProsa } = await import(
+    '../js/editor.js'
+);
 
 function limparDb() {
     db.pessoas.length = 0;
@@ -578,5 +580,57 @@ describe('Enter nos campos de Sinalizações da Prosa não depende do modal de P
             document.getElementById('pr-sinal-dominioImagetico-container').innerHTML,
             />\s*Astrologia\s*</,
         );
+    });
+});
+
+describe('editar etiqueta de Sinalizações (editor.js, DOM real)', () => {
+    // Clicar em "editar" numa etiqueta existente tira ela da lista e
+    // devolve o texto pro input, pronto pra corrigir — sem estado de
+    // "em edição" (diferente de Intertextualidade/Anexos): reaproveita
+    // o próprio fluxo de adicionar pra salvar a correção.
+    renderSinalizacoesProsa();
+    initEditorProsa();
+
+    function pressionarEnter(input) {
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    }
+
+    it('editar tira a etiqueta do container e devolve o texto pro input', () => {
+        const input = document.getElementById('pr-sinal-relacao-input');
+        input.value = 'Sonto';
+        pressionarEnter(input);
+        assert.match(
+            document.getElementById('pr-sinal-relacao-container').innerHTML,
+            />\s*Sonto\s*</,
+        );
+
+        editarSinalRelacaoProsa('Sonto');
+
+        assert.equal(input.value, 'Sonto', 'input deveria receber o texto da etiqueta editada');
+        assert.doesNotMatch(
+            document.getElementById('pr-sinal-relacao-container').innerHTML,
+            />\s*Sonto\s*</,
+            'etiqueta original deveria sair do container ao entrar em edição',
+        );
+    });
+
+    it('corrigir e apertar Enter de novo salva o texto corrigido', () => {
+        const input = document.getElementById('pr-sinal-relacao-input');
+        input.value = 'Sonto';
+        pressionarEnter(input);
+
+        editarSinalRelacaoProsa('Sonto');
+        input.value = 'Soneto';
+        pressionarEnter(input);
+
+        assert.match(
+            document.getElementById('pr-sinal-relacao-container').innerHTML,
+            />\s*Soneto\s*</,
+        );
+        assert.doesNotMatch(
+            document.getElementById('pr-sinal-relacao-container').innerHTML,
+            />\s*Sonto\s*</,
+        );
+        assert.equal(input.value, '', 'input deveria limpar após salvar a correção');
     });
 });
