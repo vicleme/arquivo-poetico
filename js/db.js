@@ -901,7 +901,7 @@ const ROTULOS_COL = {
 // Plural + particípio com concordância de gênero certa pro toast de
 // exclusão em massa ("3 prosas excluídas", não "excluídos"). Só cobre
 // poemas/prosas (única exclusão em massa que existe hoje — ver
-// excluirSelecaoPoemas/excluirSelecaoProsas em render-listas.js);
+// excluirSelecao(tabela) em selecao-massa.js);
 // deleteItemsEmMassa cai num fallback genérico (masculino) pra
 // qualquer outra coluna que vier a ganhar seleção em massa no futuro.
 const MASSA_COL_INFO = {
@@ -1434,8 +1434,8 @@ export function deleteItem(col, id) {
 // uma vez, com um ÚNICO save() e um único toast/"Desfazer" pro lote
 // inteiro (bem diferente de chamar deleteItem em loop, que salvaria e
 // mostraria um toast pra cada item). Quem chama já deve ter confirmado a
-// ação com o usuário (ver excluirSelecaoPoemas/excluirSelecaoProsas em
-// render-listas.js) — aqui só executa.
+// ação com o usuário (ver excluirSelecao(tabela) em selecao-massa.js) —
+// aqui só executa.
 export function deleteItemsEmMassa(col, ids) {
     _finalizarExclusaoPendente();
 

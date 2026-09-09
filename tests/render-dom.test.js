@@ -28,7 +28,7 @@ document.body.innerHTML = `
 
 const { db } = await import('../js/db.js');
 const { renderLivros, renderPoemas, renderGrupos } = await import('../js/render-listas.js');
-const { toggleSelecaoPoema } = await import('../js/selecao-massa.js');
+const { toggleSelecao } = await import('../js/selecao-massa.js');
 const { toggleColuna } = await import('../js/colunas.js');
 await import('../js/main.js');
 
@@ -92,8 +92,8 @@ describe('Poemas — exclusão em massa (DOM real via happy-dom)', () => {
         // Seleciona A e B via a mesma função que o checkbox chama (o
         // checkbox em si é só um <input> gerado por template string, sem
         // benefício extra em simular o clique nele especificamente).
-        toggleSelecaoPoema(true, 1);
-        toggleSelecaoPoema(true, 2);
+        toggleSelecao('poemas', true, 1);
+        toggleSelecao('poemas', true, 2);
 
         excluirSelecaoPoemasGlobal();
 
@@ -111,10 +111,10 @@ describe('Poemas — exclusão em massa (DOM real via happy-dom)', () => {
 });
 
 function excluirSelecaoPoemasGlobal() {
-    // window.excluirSelecaoPoemas é exposto por main.js (ver window.X no
+    // window.excluirSelecao é exposto por main.js (ver window.X no
     // final do arquivo) — mesma função que o botão da barra chama via
-    // onclick="excluirSelecaoPoemas()" no index.html.
-    window.excluirSelecaoPoemas();
+    // onclick="excluirSelecao('poemas')" no index.html.
+    window.excluirSelecao('poemas');
 }
 
 describe('Grupos — bolinha de cor no card (DOM real via happy-dom)', () => {

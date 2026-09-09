@@ -79,7 +79,7 @@ import {
 // `getListaVisivelPoemas`/`getListaVisivelProsas`/`renderPoemas`/
 // `renderProsas` daqui — import circular proposital, ver nota no topo
 // de selecao-massa.js.
-import { atualizarBarraSelecao, atualizarBarraSelecaoProsas } from './selecao-massa.js';
+import { atualizarBarraSelecao } from './selecao-massa.js';
 
 // Sempre que uma coluna é ligada/desligada (ver colunas.js) a tabela
 // correspondente precisa recalcular cabeçalho + linhas.
@@ -1508,7 +1508,7 @@ export function renderPoemas() {
 
     const listaFiltrada = getListaVisivelPoemas();
     atualizarAvisoSemData('aviso-sem-data-poemas', semDataPoemas);
-    atualizarBarraSelecao();
+    atualizarBarraSelecao('poemas');
 
     const colunasAtivas = getColunasAtivas('poemas');
     const colunasContagemAtivas = getColunasContagem('poemas');
@@ -1777,7 +1777,7 @@ export function renderProsas() {
 
     const listaFiltrada = getListaVisivelProsas();
     atualizarAvisoSemData('aviso-sem-data-prosas', semDataProsas);
-    atualizarBarraSelecaoProsas();
+    atualizarBarraSelecao('prosas');
 
     const colunasAtivas = getColunasAtivas('prosas');
     const colunasContagemAtivas = getColunasContagem('prosas');

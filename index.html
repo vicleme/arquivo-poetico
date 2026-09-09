@@ -1067,13 +1067,13 @@
                         class="flex-1 min-w-[160px] mb-0"
                     />
                     <button
-                        onclick="aplicarPessoaEmMassa()"
+                        onclick="aplicarPessoaEmMassa('poemas')"
                         class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         + Dedicar
                     </button>
                     <button
-                        onclick="removerPessoaEmMassa()"
+                        onclick="removerPessoaEmMassa('poemas')"
                         class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         − Remover
@@ -1101,13 +1101,13 @@
                         class="flex-1 min-w-[160px] mb-0"
                     />
                     <button
-                        onclick="aplicarSinalEmMassa()"
+                        onclick="aplicarSinalEmMassa('poemas')"
                         class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         + Marcar
                     </button>
                     <button
-                        onclick="removerSinalEmMassa()"
+                        onclick="removerSinalEmMassa('poemas')"
                         class="bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         − Remover
@@ -1120,37 +1120,37 @@
                         📅 Datas ▾
                     </button>
                     <button
-                        onclick="exportarSelecaoPoemasJson()"
+                        onclick="exportarSelecaoAtualJson('poemas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⬇ JSON
                     </button>
                     <button
-                        onclick="exportarSelecaoPoemasMarkdown()"
+                        onclick="exportarSelecaoAtualMarkdown('poemas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⬇ MD
                     </button>
                     <button
-                        onclick="exportarSelecaoPoemasPdf()"
+                        onclick="exportarSelecaoAtualPdf('poemas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⬇ PDF
                     </button>
                     <button
-                        onclick="exportarSelecaoPoemasDocx()"
+                        onclick="exportarSelecaoAtualDocx('poemas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⬇ DOCX
                     </button>
                     <button
-                        onclick="excluirSelecaoPoemas()"
+                        onclick="excluirSelecao('poemas')"
                         class="bg-red-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap ml-auto"
                     >
                         🗑 Excluir selecionados
                     </button>
                     <button
-                        onclick="limparSelecaoPoemas()"
+                        onclick="limparSelecao('poemas')"
                         class="text-xs text-gray-500 dark:text-slate-400 underline whitespace-nowrap"
                     >
                         Cancelar seleção
@@ -1218,14 +1218,14 @@
                         </label>
                         <button
                             type="button"
-                            onclick="aplicarDataEmMassa()"
+                            onclick="aplicarDataEmMassa('poemas')"
                             class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                         >
                             Aplicar aos selecionados
                         </button>
                         <button
                             type="button"
-                            onclick="limparDataEmMassa()"
+                            onclick="limparDataEmMassa('poemas')"
                             class="bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                         >
                             Limpar data dos selecionados
@@ -1246,7 +1246,7 @@
                                     <input
                                         type="checkbox"
                                         id="check-todos-poemas"
-                                        onclick="toggleSelecaoTodosPoemas(this.checked)"
+                                        onclick="toggleSelecaoTodos('poemas', this.checked)"
                                     />
                                 </th>
                                 <th class="p-4 border-b border-gray-200 dark:border-slate-700">
@@ -1694,13 +1694,13 @@
                         class="flex-1 min-w-[160px] mb-0"
                     />
                     <button
-                        onclick="aplicarPessoaEmMassaProsa()"
+                        onclick="aplicarPessoaEmMassa('prosas')"
                         class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         + Dedicar
                     </button>
                     <button
-                        onclick="removerPessoaEmMassaProsa()"
+                        onclick="removerPessoaEmMassa('prosas')"
                         class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         − Remover
@@ -1728,13 +1728,13 @@
                         class="flex-1 min-w-[160px] mb-0"
                     />
                     <button
-                        onclick="aplicarSinalEmMassaProsa()"
+                        onclick="aplicarSinalEmMassa('prosas')"
                         class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         + Marcar
                     </button>
                     <button
-                        onclick="removerSinalEmMassaProsa()"
+                        onclick="removerSinalEmMassa('prosas')"
                         class="bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         − Remover
@@ -1766,37 +1766,37 @@
                         📅 Datas ▾
                     </button>
                     <button
-                        onclick="exportarSelecaoProsasJson()"
+                        onclick="exportarSelecaoAtualJson('prosas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⬇ JSON
                     </button>
                     <button
-                        onclick="exportarSelecaoProsasMarkdown()"
+                        onclick="exportarSelecaoAtualMarkdown('prosas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⬇ MD
                     </button>
                     <button
-                        onclick="exportarSelecaoProsasPdf()"
+                        onclick="exportarSelecaoAtualPdf('prosas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⬇ PDF
                     </button>
                     <button
-                        onclick="exportarSelecaoProsasDocx()"
+                        onclick="exportarSelecaoAtualDocx('prosas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⬇ DOCX
                     </button>
                     <button
-                        onclick="excluirSelecaoProsas()"
+                        onclick="excluirSelecao('prosas')"
                         class="bg-red-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap ml-auto"
                     >
                         🗑 Excluir selecionadas
                     </button>
                     <button
-                        onclick="limparSelecaoProsas()"
+                        onclick="limparSelecao('prosas')"
                         class="text-xs text-gray-500 dark:text-slate-400 underline whitespace-nowrap"
                     >
                         Cancelar seleção
@@ -1864,14 +1864,14 @@
                         </label>
                         <button
                             type="button"
-                            onclick="aplicarDataEmMassaProsa()"
+                            onclick="aplicarDataEmMassa('prosas')"
                             class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                         >
                             Aplicar aos selecionados
                         </button>
                         <button
                             type="button"
-                            onclick="limparDataEmMassaProsa()"
+                            onclick="limparDataEmMassa('prosas')"
                             class="bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                         >
                             Limpar data dos selecionados
@@ -1892,7 +1892,7 @@
                                     <input
                                         type="checkbox"
                                         id="check-todos-prosas"
-                                        onclick="toggleSelecaoTodosProsas(this.checked)"
+                                        onclick="toggleSelecaoTodos('prosas', this.checked)"
                                     />
                                 </th>
                                 <th class="p-4 border-b border-gray-200 dark:border-slate-700">

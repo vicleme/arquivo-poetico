@@ -95,14 +95,14 @@ import {
     limparFiltroDataProsas,
 } from './render-listas.js';
 import {
-    toggleSelecaoPoema,
-    toggleSelecaoTodosPoemas,
-    limparSelecaoPoemas,
-    excluirSelecaoPoemas,
-    exportarSelecaoPoemasJson,
-    exportarSelecaoPoemasMarkdown,
-    exportarSelecaoPoemasPdf,
-    exportarSelecaoPoemasDocx,
+    toggleSelecao,
+    toggleSelecaoTodos,
+    limparSelecao,
+    excluirSelecao,
+    exportarSelecaoAtualJson,
+    exportarSelecaoAtualMarkdown,
+    exportarSelecaoAtualPdf,
+    exportarSelecaoAtualDocx,
     aplicarPessoaEmMassa,
     removerPessoaEmMassa,
     aplicarSinalEmMassa,
@@ -110,22 +110,8 @@ import {
     atualizarListaSinalBulk,
     aplicarDataEmMassa,
     limparDataEmMassa,
-    toggleSelecaoProsa,
-    toggleSelecaoTodosProsas,
-    limparSelecaoProsas,
-    excluirSelecaoProsas,
-    exportarSelecaoProsasJson,
-    exportarSelecaoProsasMarkdown,
-    exportarSelecaoProsasPdf,
-    exportarSelecaoProsasDocx,
-    aplicarPessoaEmMassaProsa,
-    removerPessoaEmMassaProsa,
-    aplicarSinalEmMassaProsa,
-    removerSinalEmMassaProsa,
     aplicarGeneroEmMassaProsa,
     removerGeneroEmMassaProsa,
-    aplicarDataEmMassaProsa,
-    limparDataEmMassaProsa,
 } from './selecao-massa.js';
 import {
     setLivroEstrutura,
@@ -414,10 +400,10 @@ const ACOES_LISTA = {
     'mover-livro': (el) => moverLivro(Number(el.dataset.id), el.dataset.dir),
     'pagina-poemas': (el) => setPaginaPoemas(Number(el.dataset.pagina)),
     'pagina-prosas': (el) => setPaginaProsas(Number(el.dataset.pagina)),
-    'toggle-poema': (el, e) => toggleSelecaoPoema(el.checked, Number(el.dataset.id), e?.shiftKey),
-    'toggle-prosa': (el, e) => toggleSelecaoProsa(el.checked, Number(el.dataset.id), e?.shiftKey),
-    'toggle-todos-poemas': (el) => toggleSelecaoTodosPoemas(el.checked),
-    'toggle-todos-prosas': (el) => toggleSelecaoTodosProsas(el.checked),
+    'toggle-poema': (el, e) => toggleSelecao('poemas', el.checked, Number(el.dataset.id), e?.shiftKey),
+    'toggle-prosa': (el, e) => toggleSelecao('prosas', el.checked, Number(el.dataset.id), e?.shiftKey),
+    'toggle-todos-poemas': (el) => toggleSelecaoTodos('poemas', el.checked),
+    'toggle-todos-prosas': (el) => toggleSelecaoTodos('prosas', el.checked),
     'baixar-diagrama-referencias': (el) => baixarDiagramaReferencias(el),
 };
 
@@ -838,15 +824,16 @@ window.limparFiltroDataPoemas = limparFiltroDataPoemas;
 window.limparFiltroDataProsas = limparFiltroDataProsas;
 window.toggleCamposEpocaNa = toggleCamposEpocaNa;
 window.aplicarSugestaoEpoca = aplicarSugestaoEpoca;
-// toggleSelecaoTodosPoemas segue em window: index.html ainda tem um
-// onclick estático nesse checkbox (fica pra quando migrarmos index.html).
-window.toggleSelecaoTodosPoemas = toggleSelecaoTodosPoemas;
-window.limparSelecaoPoemas = limparSelecaoPoemas;
-window.excluirSelecaoPoemas = excluirSelecaoPoemas;
-window.exportarSelecaoPoemasJson = exportarSelecaoPoemasJson;
-window.exportarSelecaoPoemasMarkdown = exportarSelecaoPoemasMarkdown;
-window.exportarSelecaoPoemasPdf = exportarSelecaoPoemasPdf;
-window.exportarSelecaoPoemasDocx = exportarSelecaoPoemasDocx;
+// toggleSelecaoTodos segue em window: index.html ainda tem um onclick
+// estático nesse checkbox, em Poemas e em Prosas (fica pra quando
+// migrarmos index.html).
+window.toggleSelecaoTodos = toggleSelecaoTodos;
+window.limparSelecao = limparSelecao;
+window.excluirSelecao = excluirSelecao;
+window.exportarSelecaoAtualJson = exportarSelecaoAtualJson;
+window.exportarSelecaoAtualMarkdown = exportarSelecaoAtualMarkdown;
+window.exportarSelecaoAtualPdf = exportarSelecaoAtualPdf;
+window.exportarSelecaoAtualDocx = exportarSelecaoAtualDocx;
 window.aplicarPessoaEmMassa = aplicarPessoaEmMassa;
 window.removerPessoaEmMassa = removerPessoaEmMassa;
 window.aplicarSinalEmMassa = aplicarSinalEmMassa;
@@ -854,22 +841,8 @@ window.removerSinalEmMassa = removerSinalEmMassa;
 window.atualizarListaSinalBulk = atualizarListaSinalBulk;
 window.aplicarDataEmMassa = aplicarDataEmMassa;
 window.limparDataEmMassa = limparDataEmMassa;
-// idem: toggleSelecaoTodosProsas segue em window pelo mesmo motivo.
-window.toggleSelecaoTodosProsas = toggleSelecaoTodosProsas;
-window.limparSelecaoProsas = limparSelecaoProsas;
-window.excluirSelecaoProsas = excluirSelecaoProsas;
-window.exportarSelecaoProsasJson = exportarSelecaoProsasJson;
-window.exportarSelecaoProsasMarkdown = exportarSelecaoProsasMarkdown;
-window.exportarSelecaoProsasPdf = exportarSelecaoProsasPdf;
-window.exportarSelecaoProsasDocx = exportarSelecaoProsasDocx;
-window.aplicarPessoaEmMassaProsa = aplicarPessoaEmMassaProsa;
-window.removerPessoaEmMassaProsa = removerPessoaEmMassaProsa;
-window.aplicarSinalEmMassaProsa = aplicarSinalEmMassaProsa;
-window.removerSinalEmMassaProsa = removerSinalEmMassaProsa;
 window.aplicarGeneroEmMassaProsa = aplicarGeneroEmMassaProsa;
 window.removerGeneroEmMassaProsa = removerGeneroEmMassaProsa;
-window.aplicarDataEmMassaProsa = aplicarDataEmMassaProsa;
-window.limparDataEmMassaProsa = limparDataEmMassaProsa;
 window.setLivroEstrutura = setLivroEstrutura;
 window.moverItemEstrutura = moverItemEstrutura;
 window.abrirModalMoverNivel = abrirModalMoverNivel;
