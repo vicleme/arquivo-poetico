@@ -944,7 +944,13 @@ function grupoAutoria(tabela) {
 // esse item em vez de adicionar um novo. cancelarEdicao() sai do modo
 // sem alterar nada. remover() sempre cancela edição em andamento, pra
 // não arriscar salvar num índice que mudou de posição.
-function criarListaDeEntradas({ containerId, renderItem, nomeFuncaoRemover, nomeFuncaoEditar }) {
+function criarListaDeEntradas({
+    tabela,
+    containerId,
+    renderItem,
+    nomeFuncaoRemover,
+    nomeFuncaoEditar,
+}) {
     let itens = [];
     let editando = null; // índice do item em edição, ou null
 
@@ -983,6 +989,7 @@ function criarListaDeEntradas({ containerId, renderItem, nomeFuncaoRemover, nome
         const container = document.getElementById(containerId);
         if (!container) return;
 
+        const argTabela = tabela ? `'${tabela}', ` : '';
         container.innerHTML = itens
             .map((item, i) => {
                 const emEdicao = i === editando;
@@ -994,9 +1001,9 @@ function criarListaDeEntradas({ containerId, renderItem, nomeFuncaoRemover, nome
             }">
                 <div class="flex-1 min-w-0 whitespace-pre-wrap">${renderItem(item)}</div>
                 <div class="flex items-center gap-1 flex-shrink-0">
-                    <button type="button" onclick="${nomeFuncaoEditar}(${i})"
+                    <button type="button" onclick="${nomeFuncaoEditar}(${argTabela}${i})"
                         class="text-blue-400 hover:text-blue-600 dark:hover:text-blue-400 flex-shrink-0 px-1" title="Editar">✎</button>
-                    <button type="button" onclick="${nomeFuncaoRemover}(${i})"
+                    <button type="button" onclick="${nomeFuncaoRemover}(${argTabela}${i})"
                         class="text-red-400 hover:text-red-600 dark:hover:text-red-400 font-bold flex-shrink-0 px-1" title="Remover">×</button>
                 </div>
             </div>`;
@@ -1036,27 +1043,57 @@ function criarListaDeEntradas({ containerId, renderItem, nomeFuncaoRemover, nome
 // ─── Intertextualidade (lista de pares tipo+texto) ────────────
 // Um texto pode dialogar com várias referências externas de tipos
 // diferentes ao mesmo tempo — por isso é uma lista, não um par único.
+// Poema e Prosa compartilham motor + nomes de função (sem sufixo
+// Prosa), resolvidos por `tabela` — mesmo padrão do item 6
+// (Sinalizações): a fábrica embute `tabela` no onclick gerado (ver
+// criarListaDeEntradas acima), os wrappers exportados recebem `tabela`
+// como primeiro argumento, e prefixoDom(tabela) resolve os IDs de DOM
+// ('p-'/'pr-'), já que esses campos (ao contrário de Sinalizações/
+// Autoria/Pessoas) ainda são lidos direto do formulário nos wrappers,
+// não guardados na closure da fábrica.
+
+function prefixoDom(tabela) {
+    if (tabela === 'poemas') return 'p';
+    if (tabela === 'prosas') return 'pr';
+    throw new Error(`Tabela desconhecida em prefixoDom: ${tabela}`);
+}
+
+function renderItemIntertexto(it) {
+    const badge = it.tipo
+        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+        : '';
+    const link = it.link
+        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
+        : '';
+    const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
+    return `${badge}${escapeHtml(it.texto || '')}${link}${nota}`;
+}
 
 const listaIntertextoPoema = criarListaDeEntradas({
+    tabela: 'poemas',
     containerId: 'p-intertexto-lista',
-    renderItem: (it) => {
-        const badge = it.tipo
-            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
-            : '';
-        const link = it.link
-            ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
-            : '';
-        const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
-        return `${badge}${escapeHtml(it.texto || '')}${link}${nota}`;
-    },
+    renderItem: renderItemIntertexto,
     nomeFuncaoRemover: 'removerIntertexto',
     nomeFuncaoEditar: 'editarIntertexto',
 });
+const listaIntertextoProsa = criarListaDeEntradas({
+    tabela: 'prosas',
+    containerId: 'pr-intertexto-lista',
+    renderItem: renderItemIntertexto,
+    nomeFuncaoRemover: 'removerIntertexto',
+    nomeFuncaoEditar: 'editarIntertexto',
+});
+function listaIntertexto(tabela) {
+    if (tabela === 'poemas') return listaIntertextoPoema;
+    if (tabela === 'prosas') return listaIntertextoProsa;
+    throw new Error(`Tabela desconhecida em listaIntertexto: ${tabela}`);
+}
 
-function atualizarBotaoIntertexto() {
-    const btnAdd = document.getElementById('p-intertexto-btn-add');
-    const btnCancelar = document.getElementById('p-intertexto-btn-cancelar');
-    const emEdicao = listaIntertextoPoema.estaEditando();
+function atualizarBotaoIntertexto(tabela) {
+    const p = prefixoDom(tabela);
+    const btnAdd = document.getElementById(`${p}-intertexto-btn-add`);
+    const btnCancelar = document.getElementById(`${p}-intertexto-btn-cancelar`);
+    const emEdicao = listaIntertexto(tabela).estaEditando();
     if (btnAdd) btnAdd.textContent = emEdicao ? '✓' : '+';
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
@@ -1076,80 +1113,94 @@ function atualizarDatalistTextoIntertexto(itens, tipoElId, datalistTextoId) {
         .join('');
 }
 
-export function atualizarDatalistIntertexto() {
-    atualizarDatalistTextoIntertexto(db.poemas, 'p-intertexto-tipo', 'sugestoes-intertexto');
-    const datalistTipo = document.getElementById('sugestoes-intertexto-tipo');
+// Prosa não tem versão global do datalist de Tipo em index.html (só a
+// de Poema) — cada bloco de Prosa declara a sua própria <datalist>
+// inline (mesmo motivo de renderSinalizacoesProsa acima), daí o sufixo
+// '-prosa' nos ids abaixo quando tabela === 'prosas'.
+export function atualizarDatalistIntertexto(tabela) {
+    const p = prefixoDom(tabela);
+    const dados = tabela === 'prosas' ? db.prosas || [] : db.poemas;
+    const sufixo = tabela === 'prosas' ? '-prosa' : '';
+    atualizarDatalistTextoIntertexto(
+        dados,
+        `${p}-intertexto-tipo`,
+        `sugestoes-intertexto${sufixo}`,
+    );
+    const datalistTipo = document.getElementById(`sugestoes-intertexto-tipo${sufixo}`);
     if (datalistTipo) {
-        datalistTipo.innerHTML = extrairTiposIntertextoUnicos(db.poemas)
+        datalistTipo.innerHTML = extrairTiposIntertextoUnicos(dados)
             .map((v) => `<option value="${escapeHtml(v)}">`)
             .join('');
     }
 }
 
-export function adicionarIntertexto() {
-    const tipoEl = document.getElementById('p-intertexto-tipo');
-    const textoEl = document.getElementById('p-intertexto-texto');
-    const linkEl = document.getElementById('p-intertexto-link');
-    const linkTextoEl = document.getElementById('p-intertexto-link-texto');
-    const notaEl = document.getElementById('p-intertexto-nota');
+export function adicionarIntertexto(tabela) {
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-intertexto-tipo`);
+    const textoEl = document.getElementById(`${p}-intertexto-texto`);
+    const linkEl = document.getElementById(`${p}-intertexto-link`);
+    const linkTextoEl = document.getElementById(`${p}-intertexto-link-texto`);
+    const notaEl = document.getElementById(`${p}-intertexto-nota`);
     const tipo = tipoEl?.value || '';
     const texto = (textoEl?.value || '').trim();
     const link = (linkEl?.value || '').trim();
     const linkTexto = (linkTextoEl?.value || '').trim();
     const nota = (notaEl?.value || '').trim();
     if (!tipo && !texto && !link && !linkTexto && !nota) return;
-    listaIntertextoPoema.salvar({ tipo, texto, link, linkTexto, nota });
+    listaIntertexto(tabela).salvar({ tipo, texto, link, linkTexto, nota });
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
     if (linkEl) linkEl.value = '';
     if (linkTextoEl) linkTextoEl.value = '';
     if (notaEl) notaEl.value = '';
-    atualizarBotaoIntertexto();
-    atualizarDatalistIntertexto();
+    atualizarBotaoIntertexto(tabela);
+    atualizarDatalistIntertexto(tabela);
 }
-export function editarIntertexto(indice) {
-    const item = listaIntertextoPoema.iniciarEdicao(indice);
-    const tipoEl = document.getElementById('p-intertexto-tipo');
-    const textoEl = document.getElementById('p-intertexto-texto');
-    const linkEl = document.getElementById('p-intertexto-link');
-    const linkTextoEl = document.getElementById('p-intertexto-link-texto');
-    const notaEl = document.getElementById('p-intertexto-nota');
+export function editarIntertexto(tabela, indice) {
+    const item = listaIntertexto(tabela).iniciarEdicao(indice);
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-intertexto-tipo`);
+    const textoEl = document.getElementById(`${p}-intertexto-texto`);
+    const linkEl = document.getElementById(`${p}-intertexto-link`);
+    const linkTextoEl = document.getElementById(`${p}-intertexto-link-texto`);
+    const notaEl = document.getElementById(`${p}-intertexto-nota`);
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (textoEl) textoEl.value = item.texto || '';
     if (linkEl) linkEl.value = item.link || '';
     if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
     if (notaEl) notaEl.value = item.nota || '';
     textoEl?.focus();
-    atualizarBotaoIntertexto();
+    atualizarBotaoIntertexto(tabela);
 }
-export function cancelarEdicaoIntertexto() {
-    listaIntertextoPoema.cancelarEdicao();
-    const tipoEl = document.getElementById('p-intertexto-tipo');
-    const textoEl = document.getElementById('p-intertexto-texto');
-    const linkEl = document.getElementById('p-intertexto-link');
-    const linkTextoEl = document.getElementById('p-intertexto-link-texto');
-    const notaEl = document.getElementById('p-intertexto-nota');
+export function cancelarEdicaoIntertexto(tabela) {
+    listaIntertexto(tabela).cancelarEdicao();
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-intertexto-tipo`);
+    const textoEl = document.getElementById(`${p}-intertexto-texto`);
+    const linkEl = document.getElementById(`${p}-intertexto-link`);
+    const linkTextoEl = document.getElementById(`${p}-intertexto-link-texto`);
+    const notaEl = document.getElementById(`${p}-intertexto-nota`);
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
     if (linkEl) linkEl.value = '';
     if (linkTextoEl) linkTextoEl.value = '';
     if (notaEl) notaEl.value = '';
-    atualizarBotaoIntertexto();
+    atualizarBotaoIntertexto(tabela);
 }
-export function removerIntertexto(indice) {
-    listaIntertextoPoema.remover(indice);
-    atualizarBotaoIntertexto();
+export function removerIntertexto(tabela, indice) {
+    listaIntertexto(tabela).remover(indice);
+    atualizarBotaoIntertexto(tabela);
 }
-export function obterIntertextualidade() {
-    return listaIntertextoPoema.obterItens();
+export function obterIntertextualidade(tabela) {
+    return listaIntertexto(tabela).obterItens();
 }
-export function carregarIntertextualidade(lista) {
-    listaIntertextoPoema.carregar(lista);
-    atualizarBotaoIntertexto();
+export function carregarIntertextualidade(tabela, lista) {
+    listaIntertexto(tabela).carregar(lista);
+    atualizarBotaoIntertexto(tabela);
 }
-export function resetIntertextualidade() {
-    listaIntertextoPoema.reset();
-    atualizarBotaoIntertexto();
+export function resetIntertextualidade(tabela) {
+    listaIntertexto(tabela).reset();
+    atualizarBotaoIntertexto(tabela);
 }
 
 // ─── Anexos (lista de tipo+texto+link) ─────────────────────────
@@ -1161,33 +1212,50 @@ export function resetIntertextualidade() {
 // não dá acesso ao conteúdo.
 const TIPOS_ANEXO_COM_LINK_OBRIGATORIO = ['Declamação em vídeo', 'Comentários em vídeo'];
 
+function renderItemAnexo(it) {
+    const badge = it.tipo
+        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+        : '';
+    const link = it.link
+        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px]">${escapeHtml(it.link)}</a>`
+        : '';
+    return `${badge}${escapeHtml(it.texto || '')}${link}`;
+}
+
 const listaAnexosPoema = criarListaDeEntradas({
+    tabela: 'poemas',
     containerId: 'p-anexos-lista',
-    renderItem: (it) => {
-        const badge = it.tipo
-            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
-            : '';
-        const link = it.link
-            ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px]">${escapeHtml(it.link)}</a>`
-            : '';
-        return `${badge}${escapeHtml(it.texto || '')}${link}`;
-    },
+    renderItem: renderItemAnexo,
     nomeFuncaoRemover: 'removerAnexo',
     nomeFuncaoEditar: 'editarAnexo',
 });
+const listaAnexosProsa = criarListaDeEntradas({
+    tabela: 'prosas',
+    containerId: 'pr-anexos-lista',
+    renderItem: renderItemAnexo,
+    nomeFuncaoRemover: 'removerAnexo',
+    nomeFuncaoEditar: 'editarAnexo',
+});
+function listaAnexos(tabela) {
+    if (tabela === 'poemas') return listaAnexosPoema;
+    if (tabela === 'prosas') return listaAnexosProsa;
+    throw new Error(`Tabela desconhecida em listaAnexos: ${tabela}`);
+}
 
-function atualizarBotaoAnexo() {
-    const btnAdd = document.getElementById('p-anexo-btn-add');
-    const btnCancelar = document.getElementById('p-anexo-btn-cancelar');
-    const emEdicao = listaAnexosPoema.estaEditando();
+function atualizarBotaoAnexo(tabela) {
+    const p = prefixoDom(tabela);
+    const btnAdd = document.getElementById(`${p}-anexo-btn-add`);
+    const btnCancelar = document.getElementById(`${p}-anexo-btn-cancelar`);
+    const emEdicao = listaAnexos(tabela).estaEditando();
     if (btnAdd) btnAdd.textContent = emEdicao ? '✓ Salvar edição' : '+ Adicionar anexo';
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
 
-export function adicionarAnexo(valor = null) {
-    const tipoEl = document.getElementById('p-anexo-tipo');
-    const linkEl = document.getElementById('p-anexo-link');
-    const textoEl = document.getElementById('p-anexo-input');
+export function adicionarAnexo(tabela, valor = null) {
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-anexo-tipo`);
+    const linkEl = document.getElementById(`${p}-anexo-link`);
+    const textoEl = document.getElementById(`${p}-anexo-input`);
 
     const tipo = tipoEl?.value || '';
     const link = (linkEl?.value || '').trim();
@@ -1200,51 +1268,53 @@ export function adicionarAnexo(valor = null) {
         return;
     }
 
-    listaAnexosPoema.salvar({ tipo, texto, link });
+    listaAnexos(tabela).salvar({ tipo, texto, link });
     if (tipoEl) tipoEl.value = '';
     if (linkEl) linkEl.value = '';
     if (textoEl) textoEl.value = '';
-    atualizarBotaoAnexo();
+    atualizarBotaoAnexo(tabela);
 }
-export function editarAnexo(indice) {
-    const item = listaAnexosPoema.iniciarEdicao(indice);
-    const tipoEl = document.getElementById('p-anexo-tipo');
-    const linkEl = document.getElementById('p-anexo-link');
-    const textoEl = document.getElementById('p-anexo-input');
+export function editarAnexo(tabela, indice) {
+    const item = listaAnexos(tabela).iniciarEdicao(indice);
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-anexo-tipo`);
+    const linkEl = document.getElementById(`${p}-anexo-link`);
+    const textoEl = document.getElementById(`${p}-anexo-input`);
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (linkEl) linkEl.value = item.link || '';
     if (textoEl) textoEl.value = item.texto || '';
     textoEl?.focus();
-    atualizarBotaoAnexo();
+    atualizarBotaoAnexo(tabela);
 }
-export function cancelarEdicaoAnexo() {
-    listaAnexosPoema.cancelarEdicao();
-    const tipoEl = document.getElementById('p-anexo-tipo');
-    const linkEl = document.getElementById('p-anexo-link');
-    const textoEl = document.getElementById('p-anexo-input');
+export function cancelarEdicaoAnexo(tabela) {
+    listaAnexos(tabela).cancelarEdicao();
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-anexo-tipo`);
+    const linkEl = document.getElementById(`${p}-anexo-link`);
+    const textoEl = document.getElementById(`${p}-anexo-input`);
     if (tipoEl) tipoEl.value = '';
     if (linkEl) linkEl.value = '';
     if (textoEl) textoEl.value = '';
-    atualizarBotaoAnexo();
+    atualizarBotaoAnexo(tabela);
 }
-export function removerAnexo(indice) {
-    listaAnexosPoema.remover(indice);
-    atualizarBotaoAnexo();
+export function removerAnexo(tabela, indice) {
+    listaAnexos(tabela).remover(indice);
+    atualizarBotaoAnexo(tabela);
 }
-export function obterAnexos() {
-    return listaAnexosPoema.obterItens();
+export function obterAnexos(tabela) {
+    return listaAnexos(tabela).obterItens();
 }
-export function carregarAnexos(lista) {
+export function carregarAnexos(tabela, lista) {
     // Compatível com o formato antigo (array de strings, só descrição).
     const normalizada = Array.isArray(lista)
         ? lista.map((it) => (typeof it === 'string' ? { tipo: '', texto: it, link: '' } : it))
         : [];
-    listaAnexosPoema.carregar(normalizada);
-    atualizarBotaoAnexo();
+    listaAnexos(tabela).carregar(normalizada);
+    atualizarBotaoAnexo(tabela);
 }
-export function resetAnexos() {
-    listaAnexosPoema.reset();
-    atualizarBotaoAnexo();
+export function resetAnexos(tabela) {
+    listaAnexos(tabela).reset();
+    atualizarBotaoAnexo(tabela);
 }
 
 // ─── Lojas (livro — lista de nome+link) ────────────────────────
@@ -1338,60 +1408,97 @@ export function resetLojas() {
 // verdade pra Relação escolhida (ver atualizarRotulosDirecaoElo
 // abaixo), não "Origem"/"Destino" cru.
 //
-// Dois motores separados (não um só reaproveitado) porque cada lista
-// tem seu próprio container e campos no modal.
+// Poema e Prosa compartilham motor + nomes de função (mesmo padrão do
+// item 6/Intertextualidade/Anexos acima) — resolverItemVinculado busca
+// nos dois arrays (Poema só aponta pra outros Poemas por ora, ver
+// renderDropdowns em ui.js, mas ids nunca colidem entre os dois
+// arrays, então buscar nos dois não muda o resultado do lado Poema).
 
-function renderItemEloBilateral(it) {
-    const poema = db.poemas.find((p) => p.id == it.id);
+function resolverItemVinculado(id) {
+    return db.poemas.find((p) => p.id == id) || (db.prosas || []).find((pr) => pr.id == id);
+}
+
+function renderItemEloBilateral(it, tabela) {
+    const item = resolverItemVinculado(it.id);
     const rotulo = it.relacao ? rotuloElo(it.relacao, it.direcao) : '';
     const badge = rotulo
         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(rotulo)}</span>`
         : '';
-    const titulo = poema
-        ? escapeHtml(poema.titulo)
-        : `<span class="italic text-gray-400 dark:text-slate-500">(poema removido)</span>`;
+    const rotuloRemovido = tabela === 'prosas' ? '(texto removido)' : '(poema removido)';
+    const titulo = item
+        ? escapeHtml(item.titulo)
+        : `<span class="italic text-gray-400 dark:text-slate-500">${rotuloRemovido}</span>`;
     const nota = it.texto ? ` — ${escapeHtml(it.texto)}` : '';
     return `${badge}${titulo}${nota}`;
 }
 
-function renderItemReferencia(it) {
-    const poema = db.poemas.find((p) => p.id == it.id);
+function renderItemReferencia(it, tabela) {
+    const item = resolverItemVinculado(it.id);
     const badge = it.tipo
         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
         : '';
-    const titulo = poema
-        ? escapeHtml(poema.titulo)
-        : `<span class="italic text-gray-400 dark:text-slate-500">(poema removido)</span>`;
+    const rotuloRemovido = tabela === 'prosas' ? '(texto removido)' : '(poema removido)';
+    const titulo = item
+        ? escapeHtml(item.titulo)
+        : `<span class="italic text-gray-400 dark:text-slate-500">${rotuloRemovido}</span>`;
     const nota = it.texto ? ` — ${escapeHtml(it.texto)}` : '';
     return `${badge}${titulo}${nota}`;
 }
 
 const listaElosPoema = criarListaDeEntradas({
+    tabela: 'poemas',
     containerId: 'p-elos-lista',
-    renderItem: renderItemEloBilateral,
+    renderItem: (it) => renderItemEloBilateral(it, 'poemas'),
     nomeFuncaoRemover: 'removerElo',
     nomeFuncaoEditar: 'editarElo',
 });
+const listaElosProsa = criarListaDeEntradas({
+    tabela: 'prosas',
+    containerId: 'pr-elos-lista',
+    renderItem: (it) => renderItemEloBilateral(it, 'prosas'),
+    nomeFuncaoRemover: 'removerElo',
+    nomeFuncaoEditar: 'editarElo',
+});
+function listaElos(tabela) {
+    if (tabela === 'poemas') return listaElosPoema;
+    if (tabela === 'prosas') return listaElosProsa;
+    throw new Error(`Tabela desconhecida em listaElos: ${tabela}`);
+}
 
 const listaReferenciasPoema = criarListaDeEntradas({
+    tabela: 'poemas',
     containerId: 'p-refs-lista',
-    renderItem: renderItemReferencia,
+    renderItem: (it) => renderItemReferencia(it, 'poemas'),
     nomeFuncaoRemover: 'removerReferencia',
     nomeFuncaoEditar: 'editarReferencia',
 });
+const listaReferenciasProsa = criarListaDeEntradas({
+    tabela: 'prosas',
+    containerId: 'pr-refs-lista',
+    renderItem: (it) => renderItemReferencia(it, 'prosas'),
+    nomeFuncaoRemover: 'removerReferencia',
+    nomeFuncaoEditar: 'editarReferencia',
+});
+function listaReferencias(tabela) {
+    if (tabela === 'poemas') return listaReferenciasPoema;
+    if (tabela === 'prosas') return listaReferenciasProsa;
+    throw new Error(`Tabela desconhecida em listaReferencias: ${tabela}`);
+}
 
-function atualizarBotaoElo() {
-    const btnAdd = document.getElementById('p-elo-btn-add');
-    const btnCancelar = document.getElementById('p-elo-btn-cancelar');
-    const emEdicao = listaElosPoema.estaEditando();
+function atualizarBotaoElo(tabela) {
+    const p = prefixoDom(tabela);
+    const btnAdd = document.getElementById(`${p}-elo-btn-add`);
+    const btnCancelar = document.getElementById(`${p}-elo-btn-cancelar`);
+    const emEdicao = listaElos(tabela).estaEditando();
     if (btnAdd) btnAdd.textContent = emEdicao ? '✓' : '+';
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
 
-function atualizarBotaoReferencia() {
-    const btnAdd = document.getElementById('p-ref-btn-add');
-    const btnCancelar = document.getElementById('p-ref-btn-cancelar');
-    const emEdicao = listaReferenciasPoema.estaEditando();
+function atualizarBotaoReferencia(tabela) {
+    const p = prefixoDom(tabela);
+    const btnAdd = document.getElementById(`${p}-ref-btn-add`);
+    const btnCancelar = document.getElementById(`${p}-ref-btn-cancelar`);
+    const emEdicao = listaReferencias(tabela).estaEditando();
     if (btnAdd) btnAdd.textContent = emEdicao ? '✓' : '+';
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
@@ -1401,10 +1508,11 @@ function atualizarBotaoReferencia() {
 // "Reescrito em" / "Reescrita de") — sem relação escolhida ainda,
 // caem pro rótulo genérico Origem/Destino. Não mexe em qual botão está
 // marcado como ativo; ver marcarDirecaoElo pra isso.
-export function atualizarRotulosDirecaoElo() {
-    const relacao = document.getElementById('p-elo-relacao')?.value || '';
-    const btnOrigem = document.getElementById('p-elo-direcao-origem');
-    const btnDestino = document.getElementById('p-elo-direcao-destino');
+export function atualizarRotulosDirecaoElo(tabela) {
+    const p = prefixoDom(tabela);
+    const relacao = document.getElementById(`${p}-elo-relacao`)?.value || '';
+    const btnOrigem = document.getElementById(`${p}-elo-direcao-origem`);
+    const btnDestino = document.getElementById(`${p}-elo-direcao-destino`);
     if (btnOrigem) btnOrigem.textContent = relacao ? rotuloElo(relacao, 'origem') : 'Origem';
     if (btnDestino) btnDestino.textContent = relacao ? rotuloElo(relacao, 'destino') : 'Destino';
 }
@@ -1412,41 +1520,43 @@ export function atualizarRotulosDirecaoElo() {
 // Chamado pelo onchange do select de Relação: atualiza os rótulos dos
 // botões E limpa a direção já marcada (uma direção escolhida pra
 // Relação anterior não necessariamente faz sentido pra nova).
-export function onRelacaoEloAlterada() {
-    atualizarRotulosDirecaoElo();
-    marcarDirecaoElo('');
+export function onRelacaoEloAlterada(tabela) {
+    atualizarRotulosDirecaoElo(tabela);
+    marcarDirecaoElo(tabela, '');
 }
 
 // Marca visualmente qual botão de direção está ativo e grava o valor
-// no input escondido `p-elo-direcao`, que é o que adicionarElo/editarElo
-// de fato leem/gravam.
-function marcarDirecaoElo(direcao) {
-    const hidden = document.getElementById('p-elo-direcao');
+// no input escondido `<p>-elo-direcao`, que é o que adicionarElo/
+// editarElo de fato leem/gravam.
+function marcarDirecaoElo(tabela, direcao) {
+    const p = prefixoDom(tabela);
+    const hidden = document.getElementById(`${p}-elo-direcao`);
     if (hidden) hidden.value = direcao;
     const ativa =
         'bg-blue-100 dark:bg-blue-900 border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300';
     const inativa =
         'bg-transparent border-slate-200 dark:border-slate-700 text-gray-500 dark:text-slate-400';
-    const btnOrigem = document.getElementById('p-elo-direcao-origem');
-    const btnDestino = document.getElementById('p-elo-direcao-destino');
+    const btnOrigem = document.getElementById(`${p}-elo-direcao-origem`);
+    const btnDestino = document.getElementById(`${p}-elo-direcao-destino`);
     if (btnOrigem)
         btnOrigem.className = `elo-direcao-btn text-xs flex-1 px-2 py-1 rounded border ${direcao === 'origem' ? ativa : inativa}`;
     if (btnDestino)
         btnDestino.className = `elo-direcao-btn text-xs flex-1 px-2 py-1 rounded border ${direcao === 'destino' ? ativa : inativa}`;
 }
 
-export function selecionarDirecaoElo(direcao) {
-    marcarDirecaoElo(direcao);
+export function selecionarDirecaoElo(tabela, direcao) {
+    marcarDirecaoElo(tabela, direcao);
 }
 
-export function adicionarElo() {
-    const poemaEl = document.getElementById('p-elo-poema');
-    const relacaoEl = document.getElementById('p-elo-relacao');
-    const direcaoEl = document.getElementById('p-elo-direcao');
-    const textoEl = document.getElementById('p-elo-texto');
+export function adicionarElo(tabela) {
+    const p = prefixoDom(tabela);
+    const poemaEl = document.getElementById(`${p}-elo-poema`);
+    const relacaoEl = document.getElementById(`${p}-elo-relacao`);
+    const direcaoEl = document.getElementById(`${p}-elo-direcao`);
+    const textoEl = document.getElementById(`${p}-elo-texto`);
     const id = poemaEl?.value ? parseInt(poemaEl.value, 10) : null;
     if (!id) return;
-    listaElosPoema.salvar({
+    listaElos(tabela).salvar({
         id,
         relacao: relacaoEl?.value || '',
         direcao: direcaoEl?.value || '',
@@ -1455,61 +1565,65 @@ export function adicionarElo() {
     if (poemaEl) poemaEl.value = '';
     if (relacaoEl) relacaoEl.value = '';
     if (textoEl) textoEl.value = '';
-    atualizarRotulosDirecaoElo();
-    marcarDirecaoElo('');
-    atualizarBotaoElo();
+    atualizarRotulosDirecaoElo(tabela);
+    marcarDirecaoElo(tabela, '');
+    atualizarBotaoElo(tabela);
 }
-export function editarElo(indice) {
-    const item = listaElosPoema.iniciarEdicao(indice);
-    const poemaEl = document.getElementById('p-elo-poema');
-    const relacaoEl = document.getElementById('p-elo-relacao');
-    const textoEl = document.getElementById('p-elo-texto');
+export function editarElo(tabela, indice) {
+    const item = listaElos(tabela).iniciarEdicao(indice);
+    const p = prefixoDom(tabela);
+    const poemaEl = document.getElementById(`${p}-elo-poema`);
+    const relacaoEl = document.getElementById(`${p}-elo-relacao`);
+    const textoEl = document.getElementById(`${p}-elo-texto`);
     if (poemaEl) poemaEl.value = item.id ?? '';
     if (relacaoEl) relacaoEl.value = item.relacao || '';
     if (textoEl) textoEl.value = item.texto || '';
-    atualizarRotulosDirecaoElo();
-    marcarDirecaoElo(item.direcao || '');
-    atualizarBotaoElo();
+    atualizarRotulosDirecaoElo(tabela);
+    marcarDirecaoElo(tabela, item.direcao || '');
+    atualizarBotaoElo(tabela);
 }
-export function cancelarEdicaoElo() {
-    listaElosPoema.cancelarEdicao();
-    const poemaEl = document.getElementById('p-elo-poema');
-    const relacaoEl = document.getElementById('p-elo-relacao');
-    const textoEl = document.getElementById('p-elo-texto');
+export function cancelarEdicaoElo(tabela) {
+    listaElos(tabela).cancelarEdicao();
+    const p = prefixoDom(tabela);
+    const poemaEl = document.getElementById(`${p}-elo-poema`);
+    const relacaoEl = document.getElementById(`${p}-elo-relacao`);
+    const textoEl = document.getElementById(`${p}-elo-texto`);
     if (poemaEl) poemaEl.value = '';
     if (relacaoEl) relacaoEl.value = '';
     if (textoEl) textoEl.value = '';
-    atualizarRotulosDirecaoElo();
-    marcarDirecaoElo('');
-    atualizarBotaoElo();
+    atualizarRotulosDirecaoElo(tabela);
+    marcarDirecaoElo(tabela, '');
+    atualizarBotaoElo(tabela);
 }
-export function removerElo(indice) {
-    listaElosPoema.remover(indice);
-    atualizarBotaoElo();
+export function removerElo(tabela, indice) {
+    listaElos(tabela).remover(indice);
+    atualizarBotaoElo(tabela);
 }
-export function obterElos() {
-    return listaElosPoema.obterItens();
+export function obterElos(tabela) {
+    return listaElos(tabela).obterItens();
 }
-export function carregarElos(lista) {
-    listaElosPoema.carregar(lista);
-    atualizarBotaoElo();
+export function carregarElos(tabela, lista) {
+    listaElos(tabela).carregar(lista);
+    atualizarBotaoElo(tabela);
 }
-export function resetElos() {
-    listaElosPoema.reset();
-    const relacaoEl = document.getElementById('p-elo-relacao');
+export function resetElos(tabela) {
+    listaElos(tabela).reset();
+    const p = prefixoDom(tabela);
+    const relacaoEl = document.getElementById(`${p}-elo-relacao`);
     if (relacaoEl) relacaoEl.value = '';
-    atualizarRotulosDirecaoElo();
-    marcarDirecaoElo('');
-    atualizarBotaoElo();
+    atualizarRotulosDirecaoElo(tabela);
+    marcarDirecaoElo(tabela, '');
+    atualizarBotaoElo(tabela);
 }
 
-export function adicionarReferencia() {
-    const poemaEl = document.getElementById('p-ref-poema');
-    const tipoEl = document.getElementById('p-ref-tipo');
-    const textoEl = document.getElementById('p-ref-texto');
+export function adicionarReferencia(tabela) {
+    const p = prefixoDom(tabela);
+    const poemaEl = document.getElementById(`${p}-ref-poema`);
+    const tipoEl = document.getElementById(`${p}-ref-tipo`);
+    const textoEl = document.getElementById(`${p}-ref-texto`);
     const id = poemaEl?.value ? parseInt(poemaEl.value, 10) : null;
     if (!id) return;
-    listaReferenciasPoema.salvar({
+    listaReferencias(tabela).salvar({
         id,
         tipo: tipoEl?.value || '',
         texto: (textoEl?.value || '').trim(),
@@ -1517,42 +1631,44 @@ export function adicionarReferencia() {
     if (poemaEl) poemaEl.value = '';
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
-    atualizarBotaoReferencia();
+    atualizarBotaoReferencia(tabela);
 }
-export function editarReferencia(indice) {
-    const item = listaReferenciasPoema.iniciarEdicao(indice);
-    const poemaEl = document.getElementById('p-ref-poema');
-    const tipoEl = document.getElementById('p-ref-tipo');
-    const textoEl = document.getElementById('p-ref-texto');
+export function editarReferencia(tabela, indice) {
+    const item = listaReferencias(tabela).iniciarEdicao(indice);
+    const p = prefixoDom(tabela);
+    const poemaEl = document.getElementById(`${p}-ref-poema`);
+    const tipoEl = document.getElementById(`${p}-ref-tipo`);
+    const textoEl = document.getElementById(`${p}-ref-texto`);
     if (poemaEl) poemaEl.value = item.id ?? '';
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (textoEl) textoEl.value = item.texto || '';
-    atualizarBotaoReferencia();
+    atualizarBotaoReferencia(tabela);
 }
-export function cancelarEdicaoReferencia() {
-    listaReferenciasPoema.cancelarEdicao();
-    const poemaEl = document.getElementById('p-ref-poema');
-    const tipoEl = document.getElementById('p-ref-tipo');
-    const textoEl = document.getElementById('p-ref-texto');
+export function cancelarEdicaoReferencia(tabela) {
+    listaReferencias(tabela).cancelarEdicao();
+    const p = prefixoDom(tabela);
+    const poemaEl = document.getElementById(`${p}-ref-poema`);
+    const tipoEl = document.getElementById(`${p}-ref-tipo`);
+    const textoEl = document.getElementById(`${p}-ref-texto`);
     if (poemaEl) poemaEl.value = '';
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
-    atualizarBotaoReferencia();
+    atualizarBotaoReferencia(tabela);
 }
-export function removerReferencia(indice) {
-    listaReferenciasPoema.remover(indice);
-    atualizarBotaoReferencia();
+export function removerReferencia(tabela, indice) {
+    listaReferencias(tabela).remover(indice);
+    atualizarBotaoReferencia(tabela);
 }
-export function obterReferencias() {
-    return listaReferenciasPoema.obterItens();
+export function obterReferencias(tabela) {
+    return listaReferencias(tabela).obterItens();
 }
-export function carregarReferencias(lista) {
-    listaReferenciasPoema.carregar(lista);
-    atualizarBotaoReferencia();
+export function carregarReferencias(tabela, lista) {
+    listaReferencias(tabela).carregar(lista);
+    atualizarBotaoReferencia(tabela);
 }
-export function resetReferencias() {
-    listaReferenciasPoema.reset();
-    atualizarBotaoReferencia();
+export function resetReferencias(tabela) {
+    listaReferencias(tabela).reset();
+    atualizarBotaoReferencia(tabela);
 }
 
 // ─── Painel de Elos derivados (refinamento do item 1) ───────────
@@ -1627,416 +1743,6 @@ export function renderPainelElosDerivados(poemaId) {
 
 export function renderPainelElosDerivadosProsa(prosaId) {
     renderizarPainelElosDerivadosEm('pr-elos-derivados', prosaId);
-}
-
-// ─── Elos / Referências / Intertextualidade / Anexos (Prosa) ───
-// Item 4 do plano de schema: mesmo motor de cada campo do Poema acima,
-// espelhado pra Prosa (ids `p-`→`pr-`, funções com sufixo `Prosa`).
-// Diferença deliberada: o alvo de Elos/Referências de Prosa pode ser um
-// Poema OU outra Prosa (ver renderDropdowns em ui.js — optgroup
-// Poemas+Prosas no `<select>` pr-elo-poema/pr-ref-poema), enquanto o
-// Modal de Poema por ora só oferece outros Poemas como alvo — por isso
-// resolverItemVinculado abaixo busca nos dois arrays, diferente de
-// renderItemEloBilateral/renderItemReferencia (Poema) que buscam só em
-// db.poemas.
-function resolverItemVinculado(id) {
-    return db.poemas.find((p) => p.id == id) || (db.prosas || []).find((pr) => pr.id == id);
-}
-
-function renderItemEloBilateralProsa(it) {
-    const item = resolverItemVinculado(it.id);
-    const rotulo = it.relacao ? rotuloElo(it.relacao, it.direcao) : '';
-    const badge = rotulo
-        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(rotulo)}</span>`
-        : '';
-    const titulo = item
-        ? escapeHtml(item.titulo)
-        : `<span class="italic text-gray-400 dark:text-slate-500">(texto removido)</span>`;
-    const nota = it.texto ? ` — ${escapeHtml(it.texto)}` : '';
-    return `${badge}${titulo}${nota}`;
-}
-
-function renderItemReferenciaProsa(it) {
-    const item = resolverItemVinculado(it.id);
-    const badge = it.tipo
-        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
-        : '';
-    const titulo = item
-        ? escapeHtml(item.titulo)
-        : `<span class="italic text-gray-400 dark:text-slate-500">(texto removido)</span>`;
-    const nota = it.texto ? ` — ${escapeHtml(it.texto)}` : '';
-    return `${badge}${titulo}${nota}`;
-}
-
-const listaElosProsa = criarListaDeEntradas({
-    containerId: 'pr-elos-lista',
-    renderItem: renderItemEloBilateralProsa,
-    nomeFuncaoRemover: 'removerEloProsa',
-    nomeFuncaoEditar: 'editarEloProsa',
-});
-
-const listaReferenciasProsa = criarListaDeEntradas({
-    containerId: 'pr-refs-lista',
-    renderItem: renderItemReferenciaProsa,
-    nomeFuncaoRemover: 'removerReferenciaProsa',
-    nomeFuncaoEditar: 'editarReferenciaProsa',
-});
-
-function atualizarBotaoEloProsa() {
-    const btnAdd = document.getElementById('pr-elo-btn-add');
-    const btnCancelar = document.getElementById('pr-elo-btn-cancelar');
-    const emEdicao = listaElosProsa.estaEditando();
-    if (btnAdd) btnAdd.textContent = emEdicao ? '✓' : '+';
-    if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
-}
-
-function atualizarBotaoReferenciaProsa() {
-    const btnAdd = document.getElementById('pr-ref-btn-add');
-    const btnCancelar = document.getElementById('pr-ref-btn-cancelar');
-    const emEdicao = listaReferenciasProsa.estaEditando();
-    if (btnAdd) btnAdd.textContent = emEdicao ? '✓' : '+';
-    if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
-}
-
-export function atualizarRotulosDirecaoEloProsa() {
-    const relacao = document.getElementById('pr-elo-relacao')?.value || '';
-    const btnOrigem = document.getElementById('pr-elo-direcao-origem');
-    const btnDestino = document.getElementById('pr-elo-direcao-destino');
-    if (btnOrigem) btnOrigem.textContent = relacao ? rotuloElo(relacao, 'origem') : 'Origem';
-    if (btnDestino) btnDestino.textContent = relacao ? rotuloElo(relacao, 'destino') : 'Destino';
-}
-
-export function onRelacaoEloAlteradaProsa() {
-    atualizarRotulosDirecaoEloProsa();
-    marcarDirecaoEloProsa('');
-}
-
-function marcarDirecaoEloProsa(direcao) {
-    const hidden = document.getElementById('pr-elo-direcao');
-    if (hidden) hidden.value = direcao;
-    const ativa =
-        'bg-blue-100 dark:bg-blue-900 border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300';
-    const inativa =
-        'bg-transparent border-slate-200 dark:border-slate-700 text-gray-500 dark:text-slate-400';
-    const btnOrigem = document.getElementById('pr-elo-direcao-origem');
-    const btnDestino = document.getElementById('pr-elo-direcao-destino');
-    if (btnOrigem)
-        btnOrigem.className = `elo-direcao-btn text-xs flex-1 px-2 py-1 rounded border ${direcao === 'origem' ? ativa : inativa}`;
-    if (btnDestino)
-        btnDestino.className = `elo-direcao-btn text-xs flex-1 px-2 py-1 rounded border ${direcao === 'destino' ? ativa : inativa}`;
-}
-
-export function selecionarDirecaoEloProsa(direcao) {
-    marcarDirecaoEloProsa(direcao);
-}
-
-export function adicionarEloProsa() {
-    const alvoEl = document.getElementById('pr-elo-poema');
-    const relacaoEl = document.getElementById('pr-elo-relacao');
-    const direcaoEl = document.getElementById('pr-elo-direcao');
-    const textoEl = document.getElementById('pr-elo-texto');
-    const id = alvoEl?.value ? parseInt(alvoEl.value, 10) : null;
-    if (!id) return;
-    listaElosProsa.salvar({
-        id,
-        relacao: relacaoEl?.value || '',
-        direcao: direcaoEl?.value || '',
-        texto: (textoEl?.value || '').trim(),
-    });
-    if (alvoEl) alvoEl.value = '';
-    if (relacaoEl) relacaoEl.value = '';
-    if (textoEl) textoEl.value = '';
-    atualizarRotulosDirecaoEloProsa();
-    marcarDirecaoEloProsa('');
-    atualizarBotaoEloProsa();
-}
-export function editarEloProsa(indice) {
-    const item = listaElosProsa.iniciarEdicao(indice);
-    const alvoEl = document.getElementById('pr-elo-poema');
-    const relacaoEl = document.getElementById('pr-elo-relacao');
-    const textoEl = document.getElementById('pr-elo-texto');
-    if (alvoEl) alvoEl.value = item.id ?? '';
-    if (relacaoEl) relacaoEl.value = item.relacao || '';
-    if (textoEl) textoEl.value = item.texto || '';
-    atualizarRotulosDirecaoEloProsa();
-    marcarDirecaoEloProsa(item.direcao || '');
-    atualizarBotaoEloProsa();
-}
-export function cancelarEdicaoEloProsa() {
-    listaElosProsa.cancelarEdicao();
-    const alvoEl = document.getElementById('pr-elo-poema');
-    const relacaoEl = document.getElementById('pr-elo-relacao');
-    const textoEl = document.getElementById('pr-elo-texto');
-    if (alvoEl) alvoEl.value = '';
-    if (relacaoEl) relacaoEl.value = '';
-    if (textoEl) textoEl.value = '';
-    atualizarRotulosDirecaoEloProsa();
-    marcarDirecaoEloProsa('');
-    atualizarBotaoEloProsa();
-}
-export function removerEloProsa(indice) {
-    listaElosProsa.remover(indice);
-    atualizarBotaoEloProsa();
-}
-export function obterElosProsa() {
-    return listaElosProsa.obterItens();
-}
-export function carregarElosProsa(lista) {
-    listaElosProsa.carregar(lista);
-    atualizarBotaoEloProsa();
-}
-export function resetElosProsa() {
-    listaElosProsa.reset();
-    const relacaoEl = document.getElementById('pr-elo-relacao');
-    if (relacaoEl) relacaoEl.value = '';
-    atualizarRotulosDirecaoEloProsa();
-    marcarDirecaoEloProsa('');
-    atualizarBotaoEloProsa();
-}
-
-export function adicionarReferenciaProsa() {
-    const alvoEl = document.getElementById('pr-ref-poema');
-    const tipoEl = document.getElementById('pr-ref-tipo');
-    const textoEl = document.getElementById('pr-ref-texto');
-    const id = alvoEl?.value ? parseInt(alvoEl.value, 10) : null;
-    if (!id) return;
-    listaReferenciasProsa.salvar({
-        id,
-        tipo: tipoEl?.value || '',
-        texto: (textoEl?.value || '').trim(),
-    });
-    if (alvoEl) alvoEl.value = '';
-    if (tipoEl) tipoEl.value = '';
-    if (textoEl) textoEl.value = '';
-    atualizarBotaoReferenciaProsa();
-}
-export function editarReferenciaProsa(indice) {
-    const item = listaReferenciasProsa.iniciarEdicao(indice);
-    const alvoEl = document.getElementById('pr-ref-poema');
-    const tipoEl = document.getElementById('pr-ref-tipo');
-    const textoEl = document.getElementById('pr-ref-texto');
-    if (alvoEl) alvoEl.value = item.id ?? '';
-    if (tipoEl) tipoEl.value = item.tipo || '';
-    if (textoEl) textoEl.value = item.texto || '';
-    atualizarBotaoReferenciaProsa();
-}
-export function cancelarEdicaoReferenciaProsa() {
-    listaReferenciasProsa.cancelarEdicao();
-    const alvoEl = document.getElementById('pr-ref-poema');
-    const tipoEl = document.getElementById('pr-ref-tipo');
-    const textoEl = document.getElementById('pr-ref-texto');
-    if (alvoEl) alvoEl.value = '';
-    if (tipoEl) tipoEl.value = '';
-    if (textoEl) textoEl.value = '';
-    atualizarBotaoReferenciaProsa();
-}
-export function removerReferenciaProsa(indice) {
-    listaReferenciasProsa.remover(indice);
-    atualizarBotaoReferenciaProsa();
-}
-export function obterReferenciasProsa() {
-    return listaReferenciasProsa.obterItens();
-}
-export function carregarReferenciasProsa(lista) {
-    listaReferenciasProsa.carregar(lista);
-    atualizarBotaoReferenciaProsa();
-}
-export function resetReferenciasProsa() {
-    listaReferenciasProsa.reset();
-    atualizarBotaoReferenciaProsa();
-}
-
-// ─── Intertextualidade (Prosa) ──────────────────────────────────
-
-const listaIntertextoProsa = criarListaDeEntradas({
-    containerId: 'pr-intertexto-lista',
-    renderItem: (it) => {
-        const badge = it.tipo
-            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
-            : '';
-        const link = it.link
-            ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
-            : '';
-        const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
-        return `${badge}${escapeHtml(it.texto || '')}${link}${nota}`;
-    },
-    nomeFuncaoRemover: 'removerIntertextoProsa',
-    nomeFuncaoEditar: 'editarIntertextoProsa',
-});
-
-function atualizarBotaoIntertextoProsa() {
-    const btnAdd = document.getElementById('pr-intertexto-btn-add');
-    const btnCancelar = document.getElementById('pr-intertexto-btn-cancelar');
-    const emEdicao = listaIntertextoProsa.estaEditando();
-    if (btnAdd) btnAdd.textContent = emEdicao ? '✓' : '+';
-    if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
-}
-
-export function atualizarDatalistIntertextoProsa() {
-    atualizarDatalistTextoIntertexto(
-        db.prosas || [],
-        'pr-intertexto-tipo',
-        'sugestoes-intertexto-prosa',
-    );
-    const datalistTipo = document.getElementById('sugestoes-intertexto-tipo-prosa');
-    if (datalistTipo) {
-        datalistTipo.innerHTML = extrairTiposIntertextoUnicos(db.prosas || [])
-            .map((v) => `<option value="${escapeHtml(v)}">`)
-            .join('');
-    }
-}
-
-export function adicionarIntertextoProsa() {
-    const tipoEl = document.getElementById('pr-intertexto-tipo');
-    const textoEl = document.getElementById('pr-intertexto-texto');
-    const linkEl = document.getElementById('pr-intertexto-link');
-    const linkTextoEl = document.getElementById('pr-intertexto-link-texto');
-    const notaEl = document.getElementById('pr-intertexto-nota');
-    const tipo = tipoEl?.value || '';
-    const texto = (textoEl?.value || '').trim();
-    const link = (linkEl?.value || '').trim();
-    const linkTexto = (linkTextoEl?.value || '').trim();
-    const nota = (notaEl?.value || '').trim();
-    if (!tipo && !texto && !link && !linkTexto && !nota) return;
-    listaIntertextoProsa.salvar({ tipo, texto, link, linkTexto, nota });
-    if (tipoEl) tipoEl.value = '';
-    if (textoEl) textoEl.value = '';
-    if (linkEl) linkEl.value = '';
-    if (linkTextoEl) linkTextoEl.value = '';
-    if (notaEl) notaEl.value = '';
-    atualizarBotaoIntertextoProsa();
-    atualizarDatalistIntertextoProsa();
-}
-export function editarIntertextoProsa(indice) {
-    const item = listaIntertextoProsa.iniciarEdicao(indice);
-    const tipoEl = document.getElementById('pr-intertexto-tipo');
-    const textoEl = document.getElementById('pr-intertexto-texto');
-    const linkEl = document.getElementById('pr-intertexto-link');
-    const linkTextoEl = document.getElementById('pr-intertexto-link-texto');
-    const notaEl = document.getElementById('pr-intertexto-nota');
-    if (tipoEl) tipoEl.value = item.tipo || '';
-    if (textoEl) textoEl.value = item.texto || '';
-    if (linkEl) linkEl.value = item.link || '';
-    if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
-    if (notaEl) notaEl.value = item.nota || '';
-    textoEl?.focus();
-    atualizarBotaoIntertextoProsa();
-}
-export function cancelarEdicaoIntertextoProsa() {
-    listaIntertextoProsa.cancelarEdicao();
-    const tipoEl = document.getElementById('pr-intertexto-tipo');
-    const textoEl = document.getElementById('pr-intertexto-texto');
-    const linkEl = document.getElementById('pr-intertexto-link');
-    const linkTextoEl = document.getElementById('pr-intertexto-link-texto');
-    const notaEl = document.getElementById('pr-intertexto-nota');
-    if (tipoEl) tipoEl.value = '';
-    if (textoEl) textoEl.value = '';
-    if (linkEl) linkEl.value = '';
-    if (linkTextoEl) linkTextoEl.value = '';
-    if (notaEl) notaEl.value = '';
-    atualizarBotaoIntertextoProsa();
-}
-export function removerIntertextoProsa(indice) {
-    listaIntertextoProsa.remover(indice);
-    atualizarBotaoIntertextoProsa();
-}
-export function obterIntertextualidadeProsa() {
-    return listaIntertextoProsa.obterItens();
-}
-export function carregarIntertextualidadeProsa(lista) {
-    listaIntertextoProsa.carregar(lista);
-    atualizarBotaoIntertextoProsa();
-}
-export function resetIntertextualidadeProsa() {
-    listaIntertextoProsa.reset();
-    atualizarBotaoIntertextoProsa();
-}
-
-// ─── Anexos (Prosa) ──────────────────────────────────────────────
-
-const listaAnexosProsa = criarListaDeEntradas({
-    containerId: 'pr-anexos-lista',
-    renderItem: (it) => {
-        const badge = it.tipo
-            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
-            : '';
-        const link = it.link
-            ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px]">${escapeHtml(it.link)}</a>`
-            : '';
-        return `${badge}${escapeHtml(it.texto || '')}${link}`;
-    },
-    nomeFuncaoRemover: 'removerAnexoProsa',
-    nomeFuncaoEditar: 'editarAnexoProsa',
-});
-
-function atualizarBotaoAnexoProsa() {
-    const btnAdd = document.getElementById('pr-anexo-btn-add');
-    const btnCancelar = document.getElementById('pr-anexo-btn-cancelar');
-    const emEdicao = listaAnexosProsa.estaEditando();
-    if (btnAdd) btnAdd.textContent = emEdicao ? '✓ Salvar edição' : '+ Adicionar anexo';
-    if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
-}
-
-export function adicionarAnexoProsa(valor = null) {
-    const tipoEl = document.getElementById('pr-anexo-tipo');
-    const linkEl = document.getElementById('pr-anexo-link');
-    const textoEl = document.getElementById('pr-anexo-input');
-
-    const tipo = tipoEl?.value || '';
-    const link = (linkEl?.value || '').trim();
-    const texto = (valor ?? textoEl?.value ?? '').trim();
-
-    if (!tipo && !texto && !link) return;
-
-    if (TIPOS_ANEXO_COM_LINK_OBRIGATORIO.includes(tipo) && !link) {
-        mostrarAviso(`Anexos do tipo "${tipo}" precisam de um link.`);
-        return;
-    }
-
-    listaAnexosProsa.salvar({ tipo, texto, link });
-    if (tipoEl) tipoEl.value = '';
-    if (linkEl) linkEl.value = '';
-    if (textoEl) textoEl.value = '';
-    atualizarBotaoAnexoProsa();
-}
-export function editarAnexoProsa(indice) {
-    const item = listaAnexosProsa.iniciarEdicao(indice);
-    const tipoEl = document.getElementById('pr-anexo-tipo');
-    const linkEl = document.getElementById('pr-anexo-link');
-    const textoEl = document.getElementById('pr-anexo-input');
-    if (tipoEl) tipoEl.value = item.tipo || '';
-    if (linkEl) linkEl.value = item.link || '';
-    if (textoEl) textoEl.value = item.texto || '';
-    textoEl?.focus();
-    atualizarBotaoAnexoProsa();
-}
-export function cancelarEdicaoAnexoProsa() {
-    listaAnexosProsa.cancelarEdicao();
-    const tipoEl = document.getElementById('pr-anexo-tipo');
-    const linkEl = document.getElementById('pr-anexo-link');
-    const textoEl = document.getElementById('pr-anexo-input');
-    if (tipoEl) tipoEl.value = '';
-    if (linkEl) linkEl.value = '';
-    if (textoEl) textoEl.value = '';
-    atualizarBotaoAnexoProsa();
-}
-export function removerAnexoProsa(indice) {
-    listaAnexosProsa.remover(indice);
-    atualizarBotaoAnexoProsa();
-}
-export function obterAnexosProsa() {
-    return listaAnexosProsa.obterItens();
-}
-export function carregarAnexosProsa(lista) {
-    const normalizada = Array.isArray(lista)
-        ? lista.map((it) => (typeof it === 'string' ? { tipo: '', texto: it, link: '' } : it))
-        : [];
-    listaAnexosProsa.carregar(normalizada);
-    atualizarBotaoAnexoProsa();
-}
-export function resetAnexosProsa() {
-    listaAnexosProsa.reset();
-    atualizarBotaoAnexoProsa();
 }
 
 // ─── Anotações Marginais (lista de trecho+posição+fonte+texto) ─
@@ -2171,48 +1877,47 @@ export function resetAnotacoes() {
 // comentário em extrairMeiosEnviosUnicos), não um vínculo por id como
 // em Autoria/Pessoas.
 
+function renderItemEnvio(it) {
+    const meta = [it.pessoa, it.meio, formatarDataParcial(it.data)]
+        .filter((v) => v && v !== '—')
+        .map(escapeHtml)
+        .join(' · ');
+    const metaHtml = meta
+        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold align-middle">${meta}</span>`
+        : '';
+    const notas = it.notas
+        ? `<span class="block text-[11px] text-gray-400 dark:text-slate-500 italic mt-0.5">${escapeHtml(it.notas)}</span>`
+        : '';
+    return `${metaHtml}${escapeHtml(it.reacao || '')}${notas}`;
+}
+
 const listaEnviosPoema = criarListaDeEntradas({
+    tabela: 'poemas',
     containerId: 'p-envios-lista',
-    renderItem: (it) => {
-        const meta = [it.pessoa, it.meio, formatarDataParcial(it.data)]
-            .filter((v) => v && v !== '—')
-            .map(escapeHtml)
-            .join(' · ');
-        const metaHtml = meta
-            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold align-middle">${meta}</span>`
-            : '';
-        const notas = it.notas
-            ? `<span class="block text-[11px] text-gray-400 dark:text-slate-500 italic mt-0.5">${escapeHtml(it.notas)}</span>`
-            : '';
-        return `${metaHtml}${escapeHtml(it.reacao || '')}${notas}`;
-    },
+    renderItem: renderItemEnvio,
     nomeFuncaoRemover: 'removerEnvio',
     nomeFuncaoEditar: 'editarEnvio',
 });
 
 const listaEnviosProsa = criarListaDeEntradas({
+    tabela: 'prosas',
     containerId: 'pr-envios-lista',
-    renderItem: (it) => {
-        const meta = [it.pessoa, it.meio, formatarDataParcial(it.data)]
-            .filter((v) => v && v !== '—')
-            .map(escapeHtml)
-            .join(' · ');
-        const metaHtml = meta
-            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold align-middle">${meta}</span>`
-            : '';
-        const notas = it.notas
-            ? `<span class="block text-[11px] text-gray-400 dark:text-slate-500 italic mt-0.5">${escapeHtml(it.notas)}</span>`
-            : '';
-        return `${metaHtml}${escapeHtml(it.reacao || '')}${notas}`;
-    },
-    nomeFuncaoRemover: 'removerEnvioProsa',
-    nomeFuncaoEditar: 'editarEnvioProsa',
+    renderItem: renderItemEnvio,
+    nomeFuncaoRemover: 'removerEnvio',
+    nomeFuncaoEditar: 'editarEnvio',
 });
 
-function atualizarBotaoEnvio(prefixo, lista) {
-    const btnAdd = document.getElementById(`${prefixo}-envio-btn-add`);
-    const btnCancelar = document.getElementById(`${prefixo}-envio-btn-cancelar`);
-    const emEdicao = lista.estaEditando();
+function listaEnvios(tabela) {
+    if (tabela === 'poemas') return listaEnviosPoema;
+    if (tabela === 'prosas') return listaEnviosProsa;
+    throw new Error(`Tabela desconhecida em listaEnvios: ${tabela}`);
+}
+
+function atualizarBotaoEnvio(tabela) {
+    const p = prefixoDom(tabela);
+    const btnAdd = document.getElementById(`${p}-envio-btn-add`);
+    const btnCancelar = document.getElementById(`${p}-envio-btn-cancelar`);
+    const emEdicao = listaEnvios(tabela).estaEditando();
     if (btnAdd) btnAdd.textContent = emEdicao ? '✓ Salvar edição' : '+ Adicionar envio';
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
@@ -2232,108 +1937,63 @@ export function atualizarDatalistEnvios() {
     });
 }
 
-function limparCamposEnvio(prefixo) {
+function limparCamposEnvio(tabela) {
+    const p = prefixoDom(tabela);
     ['pessoa', 'meio', 'reacao', 'notas'].forEach((campo) => {
-        const el = document.getElementById(`${prefixo}-envio-${campo}`);
+        const el = document.getElementById(`${p}-envio-${campo}`);
         if (el) el.value = '';
     });
-    preencherDataParcial(`${prefixo}-envio`, null);
+    preencherDataParcial(`${p}-envio`, null);
 }
 
-export function adicionarEnvio() {
-    const pessoa = (document.getElementById('p-envio-pessoa')?.value || '').trim();
-    const meio = (document.getElementById('p-envio-meio')?.value || '').trim();
-    const reacao = (document.getElementById('p-envio-reacao')?.value || '').trim();
-    const notas = (document.getElementById('p-envio-notas')?.value || '').trim();
-    const data = lerDataParcial('p-envio');
+export function adicionarEnvio(tabela) {
+    const p = prefixoDom(tabela);
+    const pessoa = (document.getElementById(`${p}-envio-pessoa`)?.value || '').trim();
+    const meio = (document.getElementById(`${p}-envio-meio`)?.value || '').trim();
+    const reacao = (document.getElementById(`${p}-envio-reacao`)?.value || '').trim();
+    const notas = (document.getElementById(`${p}-envio-notas`)?.value || '').trim();
+    const data = lerDataParcial(`${p}-envio`);
     if (!pessoa && !meio && !reacao && !notas && !data) return;
 
-    listaEnviosPoema.salvar({ pessoa, data, meio, reacao, notas });
-    limparCamposEnvio('p');
-    atualizarBotaoEnvio('p', listaEnviosPoema);
+    listaEnvios(tabela).salvar({ pessoa, data, meio, reacao, notas });
+    limparCamposEnvio(tabela);
+    atualizarBotaoEnvio(tabela);
     atualizarDatalistEnvios();
 }
-export function editarEnvio(indice) {
-    const item = listaEnviosPoema.iniciarEdicao(indice);
-    const pessoaEl = document.getElementById('p-envio-pessoa');
-    const meioEl = document.getElementById('p-envio-meio');
-    const reacaoEl = document.getElementById('p-envio-reacao');
-    const notasEl = document.getElementById('p-envio-notas');
+export function editarEnvio(tabela, indice) {
+    const item = listaEnvios(tabela).iniciarEdicao(indice);
+    const p = prefixoDom(tabela);
+    const pessoaEl = document.getElementById(`${p}-envio-pessoa`);
+    const meioEl = document.getElementById(`${p}-envio-meio`);
+    const reacaoEl = document.getElementById(`${p}-envio-reacao`);
+    const notasEl = document.getElementById(`${p}-envio-notas`);
     if (pessoaEl) pessoaEl.value = item.pessoa || '';
     if (meioEl) meioEl.value = item.meio || '';
     if (reacaoEl) reacaoEl.value = item.reacao || '';
     if (notasEl) notasEl.value = item.notas || '';
-    preencherDataParcial('p-envio', item.data);
+    preencherDataParcial(`${p}-envio`, item.data);
     pessoaEl?.focus();
-    atualizarBotaoEnvio('p', listaEnviosPoema);
+    atualizarBotaoEnvio(tabela);
 }
-export function cancelarEdicaoEnvio() {
-    listaEnviosPoema.cancelarEdicao();
-    limparCamposEnvio('p');
-    atualizarBotaoEnvio('p', listaEnviosPoema);
+export function cancelarEdicaoEnvio(tabela) {
+    listaEnvios(tabela).cancelarEdicao();
+    limparCamposEnvio(tabela);
+    atualizarBotaoEnvio(tabela);
 }
-export function removerEnvio(indice) {
-    listaEnviosPoema.remover(indice);
-    atualizarBotaoEnvio('p', listaEnviosPoema);
+export function removerEnvio(tabela, indice) {
+    listaEnvios(tabela).remover(indice);
+    atualizarBotaoEnvio(tabela);
 }
-export function obterEnvios() {
-    return listaEnviosPoema.obterItens();
+export function obterEnvios(tabela) {
+    return listaEnvios(tabela).obterItens();
 }
-export function carregarEnvios(lista) {
-    listaEnviosPoema.carregar(lista);
-    atualizarBotaoEnvio('p', listaEnviosPoema);
+export function carregarEnvios(tabela, lista) {
+    listaEnvios(tabela).carregar(lista);
+    atualizarBotaoEnvio(tabela);
 }
-export function resetEnvios() {
-    listaEnviosPoema.reset();
-    atualizarBotaoEnvio('p', listaEnviosPoema);
-}
-
-export function adicionarEnvioProsa() {
-    const pessoa = (document.getElementById('pr-envio-pessoa')?.value || '').trim();
-    const meio = (document.getElementById('pr-envio-meio')?.value || '').trim();
-    const reacao = (document.getElementById('pr-envio-reacao')?.value || '').trim();
-    const notas = (document.getElementById('pr-envio-notas')?.value || '').trim();
-    const data = lerDataParcial('pr-envio');
-    if (!pessoa && !meio && !reacao && !notas && !data) return;
-
-    listaEnviosProsa.salvar({ pessoa, data, meio, reacao, notas });
-    limparCamposEnvio('pr');
-    atualizarBotaoEnvio('pr', listaEnviosProsa);
-    atualizarDatalistEnvios();
-}
-export function editarEnvioProsa(indice) {
-    const item = listaEnviosProsa.iniciarEdicao(indice);
-    const pessoaEl = document.getElementById('pr-envio-pessoa');
-    const meioEl = document.getElementById('pr-envio-meio');
-    const reacaoEl = document.getElementById('pr-envio-reacao');
-    const notasEl = document.getElementById('pr-envio-notas');
-    if (pessoaEl) pessoaEl.value = item.pessoa || '';
-    if (meioEl) meioEl.value = item.meio || '';
-    if (reacaoEl) reacaoEl.value = item.reacao || '';
-    if (notasEl) notasEl.value = item.notas || '';
-    preencherDataParcial('pr-envio', item.data);
-    pessoaEl?.focus();
-    atualizarBotaoEnvio('pr', listaEnviosProsa);
-}
-export function cancelarEdicaoEnvioProsa() {
-    listaEnviosProsa.cancelarEdicao();
-    limparCamposEnvio('pr');
-    atualizarBotaoEnvio('pr', listaEnviosProsa);
-}
-export function removerEnvioProsa(indice) {
-    listaEnviosProsa.remover(indice);
-    atualizarBotaoEnvio('pr', listaEnviosProsa);
-}
-export function obterEnviosProsa() {
-    return listaEnviosProsa.obterItens();
-}
-export function carregarEnviosProsa(lista) {
-    listaEnviosProsa.carregar(lista);
-    atualizarBotaoEnvio('pr', listaEnviosProsa);
-}
-export function resetEnviosProsa() {
-    listaEnviosProsa.reset();
-    atualizarBotaoEnvio('pr', listaEnviosProsa);
+export function resetEnvios(tabela) {
+    listaEnvios(tabela).reset();
+    atualizarBotaoEnvio(tabela);
 }
 
 // ─── Reconhecimentos (item 8 — lista de prêmio+posição+ano+texto) ───
@@ -2349,48 +2009,47 @@ export function resetEnviosProsa() {
 // `posicao` também é texto livre — prêmios diferentes nomeiam
 // colocação de formas diferentes ("1º lugar", "Menção honrosa" etc.).
 
+function renderItemReconhecimento(it) {
+    const meta = [it.premio, it.posicao, it.ano]
+        .filter((v) => v || v === 0)
+        .map((v) => escapeHtml(String(v)))
+        .join(' · ');
+    const metaHtml = meta
+        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-[10px] font-bold align-middle">${meta}</span>`
+        : '';
+    const texto = it.texto
+        ? `<span class="block text-[11px] text-gray-400 dark:text-slate-500 italic mt-0.5">${escapeHtml(it.texto)}</span>`
+        : '';
+    return `${metaHtml}${texto}`;
+}
+
 const listaReconhecimentosPoema = criarListaDeEntradas({
+    tabela: 'poemas',
     containerId: 'p-reconhecimentos-lista',
-    renderItem: (it) => {
-        const meta = [it.premio, it.posicao, it.ano]
-            .filter((v) => v || v === 0)
-            .map((v) => escapeHtml(String(v)))
-            .join(' · ');
-        const metaHtml = meta
-            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-[10px] font-bold align-middle">${meta}</span>`
-            : '';
-        const texto = it.texto
-            ? `<span class="block text-[11px] text-gray-400 dark:text-slate-500 italic mt-0.5">${escapeHtml(it.texto)}</span>`
-            : '';
-        return `${metaHtml}${texto}`;
-    },
+    renderItem: renderItemReconhecimento,
     nomeFuncaoRemover: 'removerReconhecimento',
     nomeFuncaoEditar: 'editarReconhecimento',
 });
 
 const listaReconhecimentosProsa = criarListaDeEntradas({
+    tabela: 'prosas',
     containerId: 'pr-reconhecimentos-lista',
-    renderItem: (it) => {
-        const meta = [it.premio, it.posicao, it.ano]
-            .filter((v) => v || v === 0)
-            .map((v) => escapeHtml(String(v)))
-            .join(' · ');
-        const metaHtml = meta
-            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-[10px] font-bold align-middle">${meta}</span>`
-            : '';
-        const texto = it.texto
-            ? `<span class="block text-[11px] text-gray-400 dark:text-slate-500 italic mt-0.5">${escapeHtml(it.texto)}</span>`
-            : '';
-        return `${metaHtml}${texto}`;
-    },
-    nomeFuncaoRemover: 'removerReconhecimentoProsa',
-    nomeFuncaoEditar: 'editarReconhecimentoProsa',
+    renderItem: renderItemReconhecimento,
+    nomeFuncaoRemover: 'removerReconhecimento',
+    nomeFuncaoEditar: 'editarReconhecimento',
 });
 
-function atualizarBotaoReconhecimento(prefixo, lista) {
-    const btnAdd = document.getElementById(`${prefixo}-reconhecimento-btn-add`);
-    const btnCancelar = document.getElementById(`${prefixo}-reconhecimento-btn-cancelar`);
-    const emEdicao = lista.estaEditando();
+function listaReconhecimentos(tabela) {
+    if (tabela === 'poemas') return listaReconhecimentosPoema;
+    if (tabela === 'prosas') return listaReconhecimentosProsa;
+    throw new Error(`Tabela desconhecida em listaReconhecimentos: ${tabela}`);
+}
+
+function atualizarBotaoReconhecimento(tabela) {
+    const p = prefixoDom(tabela);
+    const btnAdd = document.getElementById(`${p}-reconhecimento-btn-add`);
+    const btnCancelar = document.getElementById(`${p}-reconhecimento-btn-cancelar`);
+    const emEdicao = listaReconhecimentos(tabela).estaEditando();
     if (btnAdd) btnAdd.textContent = emEdicao ? '✓ Salvar edição' : '+ Adicionar reconhecimento';
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
@@ -2409,105 +2068,61 @@ export function atualizarDatalistReconhecimentos() {
     });
 }
 
-function limparCamposReconhecimento(prefixo) {
+function limparCamposReconhecimento(tabela) {
+    const p = prefixoDom(tabela);
     ['premio', 'posicao', 'ano', 'texto'].forEach((campo) => {
-        const el = document.getElementById(`${prefixo}-reconhecimento-${campo}`);
+        const el = document.getElementById(`${p}-reconhecimento-${campo}`);
         if (el) el.value = '';
     });
 }
 
-export function adicionarReconhecimento() {
-    const premio = (document.getElementById('p-reconhecimento-premio')?.value || '').trim();
-    const posicao = (document.getElementById('p-reconhecimento-posicao')?.value || '').trim();
-    const anoStr = (document.getElementById('p-reconhecimento-ano')?.value || '').trim();
+export function adicionarReconhecimento(tabela) {
+    const p = prefixoDom(tabela);
+    const premio = (document.getElementById(`${p}-reconhecimento-premio`)?.value || '').trim();
+    const posicao = (document.getElementById(`${p}-reconhecimento-posicao`)?.value || '').trim();
+    const anoStr = (document.getElementById(`${p}-reconhecimento-ano`)?.value || '').trim();
     const ano = anoStr ? parseInt(anoStr, 10) : null;
-    const texto = (document.getElementById('p-reconhecimento-texto')?.value || '').trim();
+    const texto = (document.getElementById(`${p}-reconhecimento-texto`)?.value || '').trim();
     if (!premio && !posicao && !ano && !texto) return;
 
-    listaReconhecimentosPoema.salvar({ premio, posicao, ano, texto });
-    limparCamposReconhecimento('p');
-    atualizarBotaoReconhecimento('p', listaReconhecimentosPoema);
+    listaReconhecimentos(tabela).salvar({ premio, posicao, ano, texto });
+    limparCamposReconhecimento(tabela);
+    atualizarBotaoReconhecimento(tabela);
     atualizarDatalistReconhecimentos();
 }
-export function editarReconhecimento(indice) {
-    const item = listaReconhecimentosPoema.iniciarEdicao(indice);
-    const premioEl = document.getElementById('p-reconhecimento-premio');
-    const posicaoEl = document.getElementById('p-reconhecimento-posicao');
-    const anoEl = document.getElementById('p-reconhecimento-ano');
-    const textoEl = document.getElementById('p-reconhecimento-texto');
+export function editarReconhecimento(tabela, indice) {
+    const item = listaReconhecimentos(tabela).iniciarEdicao(indice);
+    const p = prefixoDom(tabela);
+    const premioEl = document.getElementById(`${p}-reconhecimento-premio`);
+    const posicaoEl = document.getElementById(`${p}-reconhecimento-posicao`);
+    const anoEl = document.getElementById(`${p}-reconhecimento-ano`);
+    const textoEl = document.getElementById(`${p}-reconhecimento-texto`);
     if (premioEl) premioEl.value = item.premio || '';
     if (posicaoEl) posicaoEl.value = item.posicao || '';
     if (anoEl) anoEl.value = item.ano ?? '';
     if (textoEl) textoEl.value = item.texto || '';
     premioEl?.focus();
-    atualizarBotaoReconhecimento('p', listaReconhecimentosPoema);
+    atualizarBotaoReconhecimento(tabela);
 }
-export function cancelarEdicaoReconhecimento() {
-    listaReconhecimentosPoema.cancelarEdicao();
-    limparCamposReconhecimento('p');
-    atualizarBotaoReconhecimento('p', listaReconhecimentosPoema);
+export function cancelarEdicaoReconhecimento(tabela) {
+    listaReconhecimentos(tabela).cancelarEdicao();
+    limparCamposReconhecimento(tabela);
+    atualizarBotaoReconhecimento(tabela);
 }
-export function removerReconhecimento(indice) {
-    listaReconhecimentosPoema.remover(indice);
-    atualizarBotaoReconhecimento('p', listaReconhecimentosPoema);
+export function removerReconhecimento(tabela, indice) {
+    listaReconhecimentos(tabela).remover(indice);
+    atualizarBotaoReconhecimento(tabela);
 }
-export function obterReconhecimentos() {
-    return listaReconhecimentosPoema.obterItens();
+export function obterReconhecimentos(tabela) {
+    return listaReconhecimentos(tabela).obterItens();
 }
-export function carregarReconhecimentos(lista) {
-    listaReconhecimentosPoema.carregar(lista);
-    atualizarBotaoReconhecimento('p', listaReconhecimentosPoema);
+export function carregarReconhecimentos(tabela, lista) {
+    listaReconhecimentos(tabela).carregar(lista);
+    atualizarBotaoReconhecimento(tabela);
 }
-export function resetReconhecimentos() {
-    listaReconhecimentosPoema.reset();
-    atualizarBotaoReconhecimento('p', listaReconhecimentosPoema);
-}
-
-export function adicionarReconhecimentoProsa() {
-    const premio = (document.getElementById('pr-reconhecimento-premio')?.value || '').trim();
-    const posicao = (document.getElementById('pr-reconhecimento-posicao')?.value || '').trim();
-    const anoStr = (document.getElementById('pr-reconhecimento-ano')?.value || '').trim();
-    const ano = anoStr ? parseInt(anoStr, 10) : null;
-    const texto = (document.getElementById('pr-reconhecimento-texto')?.value || '').trim();
-    if (!premio && !posicao && !ano && !texto) return;
-
-    listaReconhecimentosProsa.salvar({ premio, posicao, ano, texto });
-    limparCamposReconhecimento('pr');
-    atualizarBotaoReconhecimento('pr', listaReconhecimentosProsa);
-    atualizarDatalistReconhecimentos();
-}
-export function editarReconhecimentoProsa(indice) {
-    const item = listaReconhecimentosProsa.iniciarEdicao(indice);
-    const premioEl = document.getElementById('pr-reconhecimento-premio');
-    const posicaoEl = document.getElementById('pr-reconhecimento-posicao');
-    const anoEl = document.getElementById('pr-reconhecimento-ano');
-    const textoEl = document.getElementById('pr-reconhecimento-texto');
-    if (premioEl) premioEl.value = item.premio || '';
-    if (posicaoEl) posicaoEl.value = item.posicao || '';
-    if (anoEl) anoEl.value = item.ano ?? '';
-    if (textoEl) textoEl.value = item.texto || '';
-    premioEl?.focus();
-    atualizarBotaoReconhecimento('pr', listaReconhecimentosProsa);
-}
-export function cancelarEdicaoReconhecimentoProsa() {
-    listaReconhecimentosProsa.cancelarEdicao();
-    limparCamposReconhecimento('pr');
-    atualizarBotaoReconhecimento('pr', listaReconhecimentosProsa);
-}
-export function removerReconhecimentoProsa(indice) {
-    listaReconhecimentosProsa.remover(indice);
-    atualizarBotaoReconhecimento('pr', listaReconhecimentosProsa);
-}
-export function obterReconhecimentosProsa() {
-    return listaReconhecimentosProsa.obterItens();
-}
-export function carregarReconhecimentosProsa(lista) {
-    listaReconhecimentosProsa.carregar(lista);
-    atualizarBotaoReconhecimento('pr', listaReconhecimentosProsa);
-}
-export function resetReconhecimentosProsa() {
-    listaReconhecimentosProsa.reset();
-    atualizarBotaoReconhecimento('pr', listaReconhecimentosProsa);
+export function resetReconhecimentos(tabela) {
+    listaReconhecimentos(tabela).reset();
+    atualizarBotaoReconhecimento(tabela);
 }
 
 // ─── Tags (Sinalizações) ─────────────────────────────────────
@@ -2553,7 +2168,7 @@ export function atualizarDatalist() {
     atualizarDatalistAutores();
     atualizarDatalistMigracao();
     atualizarDatalistAnotacoes();
-    atualizarDatalistIntertexto();
+    atualizarDatalistIntertexto('poemas');
     atualizarDatalistEpoca();
     atualizarDatalistIdioma();
     atualizarDatalistEnvios();
@@ -3078,7 +2693,7 @@ export function atualizarDatalistProsa() {
     // já foram generalizadas pra preencher os dois datalists (Poema e
     // Prosa) de uma vez só, então não precisam ser chamadas de novo
     // aqui — atualizarDatalist() (Poema) já cobre as duas pontas.
-    atualizarDatalistIntertextoProsa();
+    atualizarDatalistIntertexto('prosas');
 }
 
 // Wrappers de Sinalizações (Prosa) unificados acima em
@@ -3249,7 +2864,7 @@ export function initEditor() {
             el.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    adicionarIntertexto();
+                    adicionarIntertexto('poemas');
                 }
             });
         }
@@ -3259,7 +2874,7 @@ export function initEditor() {
     // atualizarDatalistTextoIntertexto acima.
     document
         .getElementById('p-intertexto-tipo')
-        ?.addEventListener('input', atualizarDatalistIntertexto);
+        ?.addEventListener('input', () => atualizarDatalistIntertexto('poemas'));
 
     // Anexos usa textarea (texto longo) — Enter quebra linha na
     // descrição normalmente; Ctrl/Cmd+Enter é quem adiciona o item
@@ -3270,7 +2885,7 @@ export function initEditor() {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 e.preventDefault();
                 e.stopPropagation();
-                adicionarAnexo();
+                adicionarAnexo('poemas');
             }
         });
     }
@@ -3330,7 +2945,7 @@ export function initEditorProsa() {
             el.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    adicionarIntertextoProsa();
+                    adicionarIntertexto('prosas');
                 }
             });
         }
@@ -3338,5 +2953,5 @@ export function initEditorProsa() {
     // Ver initEditor() — mesmo refiltro de sugestões de Texto pelo Tipo.
     document
         .getElementById('pr-intertexto-tipo')
-        ?.addEventListener('input', atualizarDatalistIntertextoProsa);
+        ?.addEventListener('input', () => atualizarDatalistIntertexto('prosas'));
 }

@@ -532,7 +532,7 @@
                                     <button
                                         type="button"
                                         id="pr-envio-btn-cancelar"
-                                        onclick="cancelarEdicaoEnvioProsa()"
+                                        onclick="cancelarEdicaoEnvio('prosas')"
                                         class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs px-1"
                                     >
                                         Cancelar edição
@@ -540,7 +540,7 @@
                                     <button
                                         type="button"
                                         id="pr-envio-btn-add"
-                                        onclick="adicionarEnvioProsa()"
+                                        onclick="adicionarEnvio('prosas')"
                                         class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold"
                                     >
                                         + Adicionar envio
@@ -596,7 +596,7 @@
                                     <button
                                         type="button"
                                         id="pr-reconhecimento-btn-cancelar"
-                                        onclick="cancelarEdicaoReconhecimentoProsa()"
+                                        onclick="cancelarEdicaoReconhecimento('prosas')"
                                         class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs px-1"
                                     >
                                         Cancelar edição
@@ -604,7 +604,7 @@
                                     <button
                                         type="button"
                                         id="pr-reconhecimento-btn-add"
-                                        onclick="adicionarReconhecimentoProsa()"
+                                        onclick="adicionarReconhecimento('prosas')"
                                         class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded text-xs font-bold"
                                     >
                                         + Adicionar reconhecimento
@@ -647,13 +647,13 @@
                                 <select
                                     id="pr-elo-relacao"
                                     class="text-xs w-28 flex-shrink-0"
-                                    onchange="onRelacaoEloAlteradaProsa()"
+                                    onchange="onRelacaoEloAlterada('prosas')"
                                 ></select>
                                 <select id="pr-elo-poema" class="text-xs flex-1"></select>
                                 <button
                                     type="button"
                                     id="pr-elo-btn-add"
-                                    onclick="adicionarEloProsa()"
+                                    onclick="adicionarElo('prosas')"
                                     class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 rounded text-xs font-bold flex-shrink-0"
                                 >
                                     +
@@ -661,7 +661,7 @@
                                 <button
                                     type="button"
                                     id="pr-elo-btn-cancelar"
-                                    onclick="cancelarEdicaoEloProsa()"
+                                    onclick="cancelarEdicaoElo('prosas')"
                                     class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
                                 >
                                     Cancelar
@@ -675,7 +675,7 @@
                                 <button
                                     type="button"
                                     id="pr-elo-direcao-origem"
-                                    onclick="selecionarDirecaoEloProsa('origem')"
+                                    onclick="selecionarDirecaoElo('prosas', 'origem')"
                                     class="elo-direcao-btn text-xs flex-1 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-gray-500 dark:text-slate-400"
                                 >
                                     Origem
@@ -683,7 +683,7 @@
                                 <button
                                     type="button"
                                     id="pr-elo-direcao-destino"
-                                    onclick="selecionarDirecaoEloProsa('destino')"
+                                    onclick="selecionarDirecaoElo('prosas', 'destino')"
                                     class="elo-direcao-btn text-xs flex-1 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-gray-500 dark:text-slate-400"
                                 >
                                     Destino
@@ -716,7 +716,7 @@
                                 <button
                                     type="button"
                                     id="pr-ref-btn-add"
-                                    onclick="adicionarReferenciaProsa()"
+                                    onclick="adicionarReferencia('prosas')"
                                     class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 rounded text-xs font-bold flex-shrink-0"
                                 >
                                     +
@@ -724,7 +724,7 @@
                                 <button
                                     type="button"
                                     id="pr-ref-btn-cancelar"
-                                    onclick="cancelarEdicaoReferenciaProsa()"
+                                    onclick="cancelarEdicaoReferencia('prosas')"
                                     class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
                                 >
                                     Cancelar
@@ -765,7 +765,7 @@
                                 <button
                                     type="button"
                                     id="pr-intertexto-btn-cancelar"
-                                    onclick="cancelarEdicaoIntertextoProsa()"
+                                    onclick="cancelarEdicaoIntertexto('prosas')"
                                     class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
                                 >
                                     Cancelar
@@ -773,7 +773,7 @@
                                 <button
                                     type="button"
                                     id="pr-intertexto-btn-add"
-                                    onclick="adicionarIntertextoProsa()"
+                                    onclick="adicionarIntertexto('prosas')"
                                     class="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-3 py-1.5 rounded text-xs font-bold flex-shrink-0"
                                 >
                                     +
@@ -846,7 +846,7 @@
                                 <button
                                     type="button"
                                     id="pr-anexo-btn-add"
-                                    onclick="adicionarAnexoProsa()"
+                                    onclick="adicionarAnexo('prosas')"
                                     class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded text-xs font-bold self-end"
                                 >
                                     + Adicionar anexo
@@ -854,7 +854,7 @@
                                 <button
                                     type="button"
                                     id="pr-anexo-btn-cancelar"
-                                    onclick="cancelarEdicaoAnexoProsa()"
+                                    onclick="cancelarEdicaoAnexo('prosas')"
                                     class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs self-end px-1"
                                 >
                                     Cancelar edição

@@ -60,42 +60,28 @@ import {
     carregarEnvios,
     obterEnvios,
     resetEnvios,
-    carregarEnviosProsa,
-    obterEnviosProsa,
-    resetEnviosProsa,
     carregarReconhecimentos,
     obterReconhecimentos,
     resetReconhecimentos,
-    carregarReconhecimentosProsa,
-    obterReconhecimentosProsa,
-    resetReconhecimentosProsa,
     resetGeneroProsa,
     carregarGeneroProsa,
     atualizarDatalistProsa,
     obterIntertextualidade,
     carregarIntertextualidade,
+    resetIntertextualidade,
     obterAnexos,
     carregarAnexos,
+    resetAnexos,
     obterAnotacoes,
     carregarAnotacoes,
     obterElos,
     carregarElos,
+    resetElos,
     obterReferencias,
     carregarReferencias,
+    resetReferencias,
     renderPainelElosDerivados,
     atualizarFiltroSecoesMigracao,
-    obterIntertextualidadeProsa,
-    carregarIntertextualidadeProsa,
-    resetIntertextualidadeProsa,
-    obterAnexosProsa,
-    carregarAnexosProsa,
-    resetAnexosProsa,
-    obterElosProsa,
-    carregarElosProsa,
-    resetElosProsa,
-    obterReferenciasProsa,
-    carregarReferenciasProsa,
-    resetReferenciasProsa,
     renderPainelElosDerivadosProsa,
     obterLojas,
     carregarLojas,
@@ -936,8 +922,8 @@ export function initFormPoema() {
                 parseInt(o.value),
             ),
             conceitos: {
-                elos: obterElos(),
-                referencias: obterReferencias(),
+                elos: obterElos('poemas'),
+                referencias: obterReferencias('poemas'),
             },
             notas: document.getElementById('p-notas').value,
             sinalizacoesTradicao: document.getElementById('p-sinal-tradicao').value,
@@ -951,13 +937,13 @@ export function initFormPoema() {
             pessoas: obterPessoas('poemas'),
             gruposDiretos: obterGruposDiretos('poemas'),
             autoria: obterAutoria('poemas'),
-            envios: obterEnvios(),
-            reconhecimentos: obterReconhecimentos(),
+            envios: obterEnvios('poemas'),
+            reconhecimentos: obterReconhecimentos('poemas'),
             autoavaliacao: document.getElementById('p-autoavaliacao').value,
             status: document.getElementById('p-status').value,
             epocaRetratada,
-            intertextualidade: obterIntertextualidade(),
-            anexos: obterAnexos(),
+            intertextualidade: obterIntertextualidade('poemas'),
+            anexos: obterAnexos('poemas'),
             anexosNotaGeral: document.getElementById('p-anexos-nota-geral').value,
             anotacoesMarginais: obterAnotacoes(),
             descricaoVisual: document.getElementById('p-visual').value,
@@ -1031,8 +1017,8 @@ export function initFormPoema() {
         resetPessoas('poemas');
         resetGruposDiretos('poemas');
         resetAutoria('poemas');
-        resetEnvios();
-        resetReconhecimentos();
+        resetEnvios('poemas');
+        resetReconhecimentos('poemas');
         form.reset();
     };
 }
@@ -1076,13 +1062,13 @@ export async function editarPoema(id) {
     toggleCamposEpocaNa();
     document.getElementById('p-intertexto-tipo').value = '';
     document.getElementById('p-intertexto-texto').value = '';
-    carregarIntertextualidade(p.intertextualidade || []);
-    carregarElos(p.conceitos?.elos || []);
-    carregarReferencias(p.conceitos?.referencias || []);
+    carregarIntertextualidade('poemas', p.intertextualidade || []);
+    carregarElos('poemas', p.conceitos?.elos || []);
+    carregarReferencias('poemas', p.conceitos?.referencias || []);
     renderPainelElosDerivados(p.id);
     document.getElementById('p-anexo-tipo').value = '';
     document.getElementById('p-anexo-link').value = '';
-    carregarAnexos(p.anexos || p.ilustracoes || []);
+    carregarAnexos('poemas', p.anexos || p.ilustracoes || []);
     document.getElementById('p-anotacao-trecho').value = '';
     document.getElementById('p-anotacao-posicao').value = '';
     document.getElementById('p-anotacao-fonte').value = '';
@@ -1116,8 +1102,8 @@ export async function editarPoema(id) {
     carregarPessoas('poemas', p.pessoas);
     carregarGruposDiretos('poemas', p.gruposDiretos);
     carregarAutoria('poemas', p.autoria);
-    carregarEnvios(p.envios);
-    carregarReconhecimentos(p.reconhecimentos);
+    carregarEnvios('poemas', p.envios);
+    carregarReconhecimentos('poemas', p.reconhecimentos);
     renderColetaneasInfo('p-coletaneas-info', 'poema', p.id);
     document.getElementById('modal-poema-titulo').innerText = 'Editar Poema';
     toggleModal('modal-poema');
@@ -1228,8 +1214,8 @@ export function initFormProsa() {
                 parseInt(o.value),
             ),
             conceitos: {
-                elos: obterElosProsa(),
-                referencias: obterReferenciasProsa(),
+                elos: obterElos('prosas'),
+                referencias: obterReferencias('prosas'),
             },
             notas: document.getElementById('pr-notas').value,
             sinalizacoesTradicao: document.getElementById('pr-sinal-tradicao').value,
@@ -1243,15 +1229,15 @@ export function initFormProsa() {
             pessoas: obterPessoas('prosas'),
             gruposDiretos: obterGruposDiretos('prosas'),
             autoria: obterAutoria('prosas'),
-            envios: obterEnviosProsa(),
-            reconhecimentos: obterReconhecimentosProsa(),
+            envios: obterEnvios('prosas'),
+            reconhecimentos: obterReconhecimentos('prosas'),
             autoavaliacao: document.getElementById('pr-autoavaliacao').value,
             genero: document.getElementById('pr-genero').value,
             publicado: document.getElementById('pr-pub').checked,
             status: document.getElementById('pr-status').value,
             epocaRetratada,
-            intertextualidade: obterIntertextualidadeProsa(),
-            anexos: obterAnexosProsa(),
+            intertextualidade: obterIntertextualidade('prosas'),
+            anexos: obterAnexos('prosas'),
             anexosNotaGeral: document.getElementById('pr-anexos-nota-geral').value,
             contextoHistorico: document.getElementById('pr-contexto').value,
             ocultacao: document.getElementById('pr-ocultacao').value,
@@ -1320,13 +1306,13 @@ export function initFormProsa() {
         resetPessoas('prosas');
         resetGruposDiretos('prosas');
         resetAutoria('prosas');
-        resetEnviosProsa();
-        resetReconhecimentosProsa();
+        resetEnvios('prosas');
+        resetReconhecimentos('prosas');
         resetGeneroProsa();
-        resetIntertextualidadeProsa();
-        resetAnexosProsa();
-        resetElosProsa();
-        resetReferenciasProsa();
+        resetIntertextualidade('prosas');
+        resetAnexos('prosas');
+        resetElos('prosas');
+        resetReferencias('prosas');
         form.reset();
     };
 }
@@ -1367,13 +1353,13 @@ export async function editarProsa(id) {
     toggleCamposEpocaNaProsa();
     document.getElementById('pr-intertexto-tipo').value = '';
     document.getElementById('pr-intertexto-texto').value = '';
-    carregarIntertextualidadeProsa(pr.intertextualidade || []);
-    carregarElosProsa(pr.conceitos?.elos || []);
-    carregarReferenciasProsa(pr.conceitos?.referencias || []);
+    carregarIntertextualidade('prosas', pr.intertextualidade || []);
+    carregarElos('prosas', pr.conceitos?.elos || []);
+    carregarReferencias('prosas', pr.conceitos?.referencias || []);
     renderPainelElosDerivadosProsa(pr.id);
     document.getElementById('pr-anexo-tipo').value = '';
     document.getElementById('pr-anexo-link').value = '';
-    carregarAnexosProsa(pr.anexos || []);
+    carregarAnexos('prosas', pr.anexos || []);
     document.getElementById('pr-cortado-livro').value = pr.cortadoDe?.livro || '';
     document.getElementById('pr-cortado-secao').value = pr.cortadoDe?.secao || '';
     document.getElementById('pr-lancado-livro').value = pr.lancadoEm?.livro || '';
@@ -1415,8 +1401,8 @@ export async function editarProsa(id) {
     carregarPessoas('prosas', pr.pessoas);
     carregarGruposDiretos('prosas', pr.gruposDiretos);
     carregarAutoria('prosas', pr.autoria);
-    carregarEnviosProsa(pr.envios);
-    carregarReconhecimentosProsa(pr.reconhecimentos);
+    carregarEnvios('prosas', pr.envios);
+    carregarReconhecimentos('prosas', pr.reconhecimentos);
     carregarGeneroProsa(pr.genero);
     atualizarDatalistProsa();
     renderColetaneasInfo('pr-coletaneas-info', 'prosa', pr.id);

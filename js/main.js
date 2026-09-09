@@ -187,14 +187,6 @@ import {
     removerReconhecimento,
     atualizarDatalist,
     atualizarDatalistProsa,
-    adicionarEnvioProsa,
-    editarEnvioProsa,
-    cancelarEdicaoEnvioProsa,
-    removerEnvioProsa,
-    adicionarReconhecimentoProsa,
-    editarReconhecimentoProsa,
-    cancelarEdicaoReconhecimentoProsa,
-    removerReconhecimentoProsa,
     adicionarGeneroProsa,
     removerGeneroProsa,
     editarGeneroProsa,
@@ -220,24 +212,6 @@ import {
     removerAnotacao,
     editarAnotacao,
     cancelarEdicaoAnotacao,
-    adicionarEloProsa,
-    removerEloProsa,
-    editarEloProsa,
-    cancelarEdicaoEloProsa,
-    onRelacaoEloAlteradaProsa,
-    selecionarDirecaoEloProsa,
-    adicionarReferenciaProsa,
-    removerReferenciaProsa,
-    editarReferenciaProsa,
-    cancelarEdicaoReferenciaProsa,
-    adicionarIntertextoProsa,
-    removerIntertextoProsa,
-    editarIntertextoProsa,
-    cancelarEdicaoIntertextoProsa,
-    adicionarAnexoProsa,
-    removerAnexoProsa,
-    editarAnexoProsa,
-    cancelarEdicaoAnexoProsa,
     adicionarLoja,
     removerLoja,
     editarLoja,
@@ -626,14 +600,6 @@ window.adicionarReconhecimento = adicionarReconhecimento;
 window.editarReconhecimento = editarReconhecimento;
 window.cancelarEdicaoReconhecimento = cancelarEdicaoReconhecimento;
 window.removerReconhecimento = removerReconhecimento;
-window.adicionarEnvioProsa = adicionarEnvioProsa;
-window.editarEnvioProsa = editarEnvioProsa;
-window.cancelarEdicaoEnvioProsa = cancelarEdicaoEnvioProsa;
-window.removerEnvioProsa = removerEnvioProsa;
-window.adicionarReconhecimentoProsa = adicionarReconhecimentoProsa;
-window.editarReconhecimentoProsa = editarReconhecimentoProsa;
-window.cancelarEdicaoReconhecimentoProsa = cancelarEdicaoReconhecimentoProsa;
-window.removerReconhecimentoProsa = removerReconhecimentoProsa;
 window.adicionarGeneroProsa = adicionarGeneroProsa;
 window.removerGeneroProsa = removerGeneroProsa;
 window.editarGeneroProsa = editarGeneroProsa;
@@ -659,24 +625,6 @@ window.adicionarAnotacao = adicionarAnotacao;
 window.removerAnotacao = removerAnotacao;
 window.editarAnotacao = editarAnotacao;
 window.cancelarEdicaoAnotacao = cancelarEdicaoAnotacao;
-window.adicionarEloProsa = adicionarEloProsa;
-window.removerEloProsa = removerEloProsa;
-window.editarEloProsa = editarEloProsa;
-window.cancelarEdicaoEloProsa = cancelarEdicaoEloProsa;
-window.onRelacaoEloAlteradaProsa = onRelacaoEloAlteradaProsa;
-window.selecionarDirecaoEloProsa = selecionarDirecaoEloProsa;
-window.adicionarReferenciaProsa = adicionarReferenciaProsa;
-window.removerReferenciaProsa = removerReferenciaProsa;
-window.editarReferenciaProsa = editarReferenciaProsa;
-window.cancelarEdicaoReferenciaProsa = cancelarEdicaoReferenciaProsa;
-window.adicionarIntertextoProsa = adicionarIntertextoProsa;
-window.removerIntertextoProsa = removerIntertextoProsa;
-window.editarIntertextoProsa = editarIntertextoProsa;
-window.cancelarEdicaoIntertextoProsa = cancelarEdicaoIntertextoProsa;
-window.adicionarAnexoProsa = adicionarAnexoProsa;
-window.removerAnexoProsa = removerAnexoProsa;
-window.editarAnexoProsa = editarAnexoProsa;
-window.cancelarEdicaoAnexoProsa = cancelarEdicaoAnexoProsa;
 window.adicionarLoja = adicionarLoja;
 window.removerLoja = removerLoja;
 window.editarLoja = editarLoja;

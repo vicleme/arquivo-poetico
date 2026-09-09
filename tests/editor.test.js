@@ -55,11 +55,6 @@ const {
     cancelarEdicaoIntertexto,
     obterIntertextualidade,
     resetIntertextualidade,
-    adicionarIntertextoProsa,
-    editarIntertextoProsa,
-    cancelarEdicaoIntertextoProsa,
-    obterIntertextualidadeProsa,
-    resetIntertextualidadeProsa,
 } = await import('../js/editor.js');
 const { renderSinalizacoesProsa, initEditorProsa, editarSinalRelacao } = await import(
     '../js/editor.js'
@@ -454,22 +449,22 @@ function limparIntertextoProsa() {
     document.getElementById('pr-intertexto-link').value = '';
     document.getElementById('pr-intertexto-link-texto').value = '';
     document.getElementById('pr-intertexto-nota').value = '';
-    resetIntertextualidadeProsa();
+    resetIntertextualidade('prosas');
 }
 
 describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM real)', () => {
     beforeEach(limparIntertextoProsa);
 
-    it('adicionarIntertextoProsa salva tipo, texto, link, linkTexto e nota juntos', () => {
+    it('adicionarIntertexto(prosas) salva tipo, texto, link, linkTexto e nota juntos', () => {
         document.getElementById('pr-intertexto-tipo').value = 'Alusão';
         document.getElementById('pr-intertexto-texto').value = 'Trecho aludido';
         document.getElementById('pr-intertexto-link').value = 'https://exemplo.com/prosa';
         document.getElementById('pr-intertexto-link-texto').value = 'Rótulo prosa';
         document.getElementById('pr-intertexto-nota').value = 'Nota sobre a prosa';
 
-        adicionarIntertextoProsa();
+        adicionarIntertexto('prosas');
 
-        assert.deepEqual(obterIntertextualidadeProsa(), [
+        assert.deepEqual(obterIntertextualidade('prosas'), [
             {
                 tipo: 'Alusão',
                 texto: 'Trecho aludido',
@@ -480,14 +475,14 @@ describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM re
         ]);
     });
 
-    it('editarIntertextoProsa repopula tipo, texto, link, linkTexto e nota do item selecionado', () => {
+    it('editarIntertexto(prosas) repopula tipo, texto, link, linkTexto e nota do item selecionado', () => {
         document.getElementById('pr-intertexto-texto').value = 'Original';
         document.getElementById('pr-intertexto-link').value = 'https://original.com';
         document.getElementById('pr-intertexto-link-texto').value = 'Rótulo original';
         document.getElementById('pr-intertexto-nota').value = 'Nota original';
-        adicionarIntertextoProsa();
+        adicionarIntertexto('prosas');
 
-        editarIntertextoProsa(0);
+        editarIntertexto('prosas', 0);
 
         assert.equal(document.getElementById('pr-intertexto-texto').value, 'Original');
         assert.equal(document.getElementById('pr-intertexto-link').value, 'https://original.com');
@@ -495,16 +490,16 @@ describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM re
         assert.equal(document.getElementById('pr-intertexto-nota').value, 'Nota original');
     });
 
-    it('cancelarEdicaoIntertextoProsa limpa os 5 campos sem alterar a lista', () => {
+    it('cancelarEdicaoIntertexto(prosas) limpa os 5 campos sem alterar a lista', () => {
         document.getElementById('pr-intertexto-texto').value = 'Original';
-        adicionarIntertextoProsa();
-        editarIntertextoProsa(0);
+        adicionarIntertexto('prosas');
+        editarIntertexto('prosas', 0);
 
         document.getElementById('pr-intertexto-nota').value = 'Rascunho descartado';
-        cancelarEdicaoIntertextoProsa();
+        cancelarEdicaoIntertexto('prosas');
 
         assert.equal(document.getElementById('pr-intertexto-nota').value, '');
-        assert.equal(obterIntertextualidadeProsa().length, 1);
+        assert.equal(obterIntertextualidade('prosas').length, 1);
     });
 
     it('sem linkTexto, a lista renderizada mostra a URL crua como texto do <a>', () => {
@@ -512,7 +507,7 @@ describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM re
         document.getElementById('pr-intertexto-link').value = 'https://exemplo.com/pagina-prosa';
         document.getElementById('pr-intertexto-nota').value = 'Comentário de prosa';
 
-        adicionarIntertextoProsa();
+        adicionarIntertexto('prosas');
 
         const html = document.getElementById('pr-intertexto-lista').innerHTML;
         assert.match(
@@ -527,7 +522,7 @@ describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM re
             'https://exemplo.com/pagina-prosa-bem-longa-que-normalmente-estouraria';
         document.getElementById('pr-intertexto-link-texto').value = 'Fonte da prosa';
 
-        adicionarIntertextoProsa();
+        adicionarIntertexto('prosas');
 
         const html = document.getElementById('pr-intertexto-lista').innerHTML;
         assert.match(html, />Fonte da prosa<\/a>/);

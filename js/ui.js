@@ -18,7 +18,6 @@ import {
     resetReferencias,
     renderPainelElosDerivados,
     atualizarRotulosDirecaoElo,
-    atualizarRotulosDirecaoEloProsa,
 } from './editor.js';
 import {
     extrairFasesUnicas,
@@ -535,7 +534,7 @@ export function renderDropdowns() {
             RELACOES_ELO.map(
                 (r) => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`,
             ).join('');
-        atualizarRotulosDirecaoElo();
+        atualizarRotulosDirecaoElo('poemas');
     }
     if (sRefTipo) {
         sRefTipo.innerHTML =
@@ -587,7 +586,7 @@ export function renderDropdowns() {
             RELACOES_ELO.map(
                 (r) => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`,
             ).join('');
-        atualizarRotulosDirecaoEloProsa();
+        atualizarRotulosDirecaoElo('prosas');
     }
     if (sRefTipoProsa) {
         sRefTipoProsa.innerHTML =
@@ -678,13 +677,13 @@ export async function prepararNovo(tipo) {
         resetSinalizacoes('poemas');
         resetPessoas('poemas');
         resetAutoria('poemas');
-        resetEnvios();
-        resetReconhecimentos();
-        resetIntertextualidade();
-        resetAnexos();
+        resetEnvios('poemas');
+        resetReconhecimentos('poemas');
+        resetIntertextualidade('poemas');
+        resetAnexos('poemas');
         resetAnotacoes();
-        resetElos();
-        resetReferencias();
+        resetElos('poemas');
+        resetReferencias('poemas');
         renderPainelElosDerivados(null);
         atualizarDatalist();
         const infoP = document.getElementById('p-coletaneas-info');
@@ -692,34 +691,27 @@ export async function prepararNovo(tipo) {
     }
 
     if (tipo === 'prosa') {
-        // resetPessoas, resetAutoria e resetSinalizacoes já são
-        // importadas estaticamente acima (unificadas por tabela) — só o
-        // resto de Prosa ainda precisa de import dinâmico (evita ciclo
-        // de importação, editor → ui não existe).
+        // resetPessoas, resetAutoria, resetSinalizacoes e os 6 grupos de
+        // criarListaDeEntradas (Elos/Referências/Intertextualidade/
+        // Anexos/Envios/Reconhecimentos) já são importados estaticamente
+        // acima (unificados por tabela) — só o que ainda é exclusivo de
+        // Prosa (gênero) precisa de import dinâmico (evita ciclo de
+        // importação, editor → ui não existe).
         resetSinalizacoes('prosas');
+        resetPessoas('prosas');
+        resetAutoria('prosas');
+        resetEnvios('prosas');
+        resetReconhecimentos('prosas');
+        resetIntertextualidade('prosas');
+        resetAnexos('prosas');
+        resetElos('prosas');
+        resetReferencias('prosas');
+        renderPainelElosDerivados(null);
         import('./editor.js').then(
-            ({
-                resetEnviosProsa,
-                resetReconhecimentosProsa,
-                resetGeneroProsa,
-                atualizarDatalistProsa,
-                resetIntertextualidadeProsa,
-                resetAnexosProsa,
-                resetElosProsa,
-                resetReferenciasProsa,
-                renderPainelElosDerivadosProsa,
-            }) => {
-                resetPessoas('prosas');
-                resetAutoria('prosas');
-                resetEnviosProsa();
-                resetReconhecimentosProsa();
+            ({ resetGeneroProsa, atualizarDatalistProsa, renderPainelElosDerivadosProsa }) => {
                 resetGeneroProsa();
-                resetIntertextualidadeProsa();
-                resetAnexosProsa();
-                resetElosProsa();
-                resetReferenciasProsa();
-                renderPainelElosDerivadosProsa(null);
                 atualizarDatalistProsa();
+                renderPainelElosDerivadosProsa(null);
             },
         );
         const infoPr = document.getElementById('pr-coletaneas-info');
