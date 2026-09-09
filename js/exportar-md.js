@@ -17,6 +17,8 @@ import {
     formatarEpocaRetratada,
     estaPublicado,
     sinalizacoesCombinadas,
+    sinalizacoesAgrupadas,
+    agruparIntertextualidadePorTipo,
     rotuloElo,
     paresGrupoPessoa,
     agruparParesGrupoPessoa,
@@ -256,7 +258,12 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
     }
     md += linhaMeta('Pessoas', textoPessoas(item));
     md += linhaMeta('Grupos', textoGrupos(item));
-    md += linhaMeta('Sinalizações', sinalizacoesCombinadas(item) || null);
+    // Uma linha por categoria preenchida (Tradição, Estilo, Tema...), em vez
+    // da linha única "Sinalizações" que achatava tudo junto — mesmo padrão
+    // de visualizar.js, via sinalizacoesAgrupadas() (utils.js).
+    sinalizacoesAgrupadas(item).forEach(({ rotulo, valor }) => {
+        md += linhaMeta(rotulo, valor);
+    });
     if (item.genero) md += linhaMeta('Gênero', item.genero);
     md += linhaMeta('Elos', titulosPorIds(item.conceitos?.elos));
     md += linhaMeta('Referências', titulosPorIds(item.conceitos?.referencias));
@@ -277,11 +284,28 @@ function itemParaMarkdownDepoisDoTexto(item) {
 
     if (Array.isArray(item.intertextualidade) && item.intertextualidade.length) {
         md += '### Intertextualidade\n\n';
-        item.intertextualidade.forEach((it) => {
-            const prefixo = it.tipo ? `**${it.tipo}:** ` : '';
+        const linhaEntrada = (it) => {
             const link = it.link ? ` — [${it.linkTexto || it.link}](${it.link})` : '';
             const nota = it.nota ? ` *(${it.nota})*` : '';
-            md += `- ${prefixo}${it.texto || ''}${link}${nota}\n`;
+            return `${it.texto || ''}${link}${nota}`;
+        };
+        agruparIntertextualidadePorTipo(item.intertextualidade).forEach(({ tipo, entradas, subBullet }) => {
+            if (!tipo) {
+                // Sem tipo: sem rótulo pra agrupar embaixo, cada entrada
+                // continua solta como já era antes do agrupamento.
+                entradas.forEach((it) => {
+                    md += `- ${linhaEntrada(it)}\n`;
+                });
+                return;
+            }
+            if (subBullet) {
+                md += `- **${tipo}:**\n`;
+                entradas.forEach((it) => {
+                    md += `  - ${linhaEntrada(it)}\n`;
+                });
+            } else {
+                md += `- **${tipo}:** ${entradas.map(linhaEntrada).join(', ')}\n`;
+            }
         });
         md += '\n';
     }

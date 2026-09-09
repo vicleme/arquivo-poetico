@@ -30,7 +30,8 @@ import {
     formatarDataParcial,
     formatarEpocaRetratada,
     estaPublicado,
-    sinalizacoesCombinadas,
+    sinalizacoesAgrupadas,
+    agruparIntertextualidadePorTipo,
     escapeHtml,
     sanitizarTextoRico,
 } from './utils.js';
@@ -102,6 +103,41 @@ function listaHtml(titulo, itens, montarLinha) {
         </ul>`;
 }
 
+// Mesmo espírito de listaHtml acima, mas agrupado por tipo (ver
+// agruparIntertextualidadePorTipo em utils.js) — cada grupo vira uma linha
+// só com vírgula ou um <li> com uma sub-lista aninhada, dependendo de
+// subBullet. Entradas sem tipo continuam soltas, sem grupo.
+function listaIntertextualidadeHtml(titulo, itens) {
+    const grupos = agruparIntertextualidadePorTipo(itens);
+    if (!grupos.length) return '';
+    const linhaEntrada = (it) => {
+        const link = it.link
+            ? ` — <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
+            : '';
+        const nota = it.nota ? ` <em>(${escapeHtml(it.nota)})</em>` : '';
+        return `${escapeHtml(it.texto || '')}${link}${nota}`;
+    };
+    const linhasGrupo = grupos
+        .map(({ tipo, entradas, subBullet }) => {
+            if (!tipo) {
+                return entradas
+                    .map((it) => `<li class="whitespace-pre-wrap">${linhaEntrada(it)}</li>`)
+                    .join('');
+            }
+            if (subBullet) {
+                const sub = entradas
+                    .map((it) => `<li class="whitespace-pre-wrap">${linhaEntrada(it)}</li>`)
+                    .join('');
+                return `<li class="whitespace-pre-wrap"><strong>${escapeHtml(tipo)}:</strong><ul class="list-disc list-inside ml-4 space-y-0.5">${sub}</ul></li>`;
+            }
+            return `<li class="whitespace-pre-wrap"><strong>${escapeHtml(tipo)}:</strong> ${entradas.map(linhaEntrada).join(', ')}</li>`;
+        })
+        .join('');
+    return `
+        <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1">${escapeHtml(titulo)}</h4>
+        <ul class="list-disc list-inside text-sm space-y-0.5">${linhasGrupo}</ul>`;
+}
+
 // Monta o HTML da prévia — mesma ordem de campos de itemParaMarkdown
 // (exportar-md.js), só que como blocos HTML em vez de linhas Markdown.
 export function renderVisualizacaoHtml(item) {
@@ -134,7 +170,12 @@ export function renderVisualizacaoHtml(item) {
     }
     html += linhaMetaHtml('Pessoas', textoPessoas(item));
     html += linhaMetaHtml('Grupos', textoGrupos(item));
-    html += linhaMetaHtml('Sinalizações', sinalizacoesCombinadas(item) || null);
+    // Uma linha por categoria preenchida, em vez da linha única
+    // "Sinalizações" achatada — mesmo padrão de itemParaMarkdown
+    // (exportar-md.js), via sinalizacoesAgrupadas() (utils.js).
+    sinalizacoesAgrupadas(item).forEach(({ rotulo, valor }) => {
+        html += linhaMetaHtml(rotulo, valor);
+    });
     if (item.genero) html += linhaMetaHtml('Gênero', item.genero);
     html += linhaMetaHtml('Elos', titulosPorIds(item.conceitos?.elos));
     html += linhaMetaHtml('Referências', titulosPorIds(item.conceitos?.referencias));
@@ -149,14 +190,7 @@ export function renderVisualizacaoHtml(item) {
     html += blocoTextoHtml('Contexto Histórico/Pessoal', item.contextoHistorico);
     html += blocoTextoHtml('Ocultação', item.ocultacao);
 
-    html += listaHtml('Intertextualidade', item.intertextualidade, (it) => {
-        const prefixo = it.tipo ? `<strong>${escapeHtml(it.tipo)}:</strong> ` : '';
-        const link = it.link
-            ? ` — <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
-            : '';
-        const nota = it.nota ? ` <em>(${escapeHtml(it.nota)})</em>` : '';
-        return `${prefixo}${escapeHtml(it.texto || '')}${link}${nota}`;
-    });
+    html += listaIntertextualidadeHtml('Intertextualidade', item.intertextualidade);
 
     html += listaHtml('Anexos', item.anexos, (a) => {
         const prefixo = a.tipo ? `<strong>${escapeHtml(a.tipo)}:</strong> ` : '';

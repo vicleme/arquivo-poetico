@@ -1692,16 +1692,45 @@ export const SINALIZACOES_CATEGORIAS = {
     outros: 'sinalizacoesOutros',
 };
 
-// Uma única string combinando as categorias acima — pra busca geral, export
-// em .md (linha resumo) e estatísticas, que não precisam saber de
-// categoria, só "quais tags esse item tem". Cada consumidor que SE
-// importa com categoria (o modal de edição, o filtro por prefixo
-// estilo:/tema:/etc.) usa os campos individuais direto.
+// Uma única string combinando as categorias acima — pra busca geral, filtro
+// de exportação por tema (correspondeFiltro em exportar.js) e estatísticas,
+// que não precisam saber de categoria, só "quais tags esse item tem". Cada
+// consumidor que SE importa com categoria (o modal de edição, o filtro por
+// prefixo estilo:/tema:/etc., badgesEtiquetasPorCategoria em
+// celulas-tabela.js, sinalizacoesAgrupadas abaixo) usa os campos
+// individuais direto.
 export function sinalizacoesCombinadas(item) {
     return Object.values(SINALIZACOES_CATEGORIAS)
         .map((campo) => item[campo])
         .filter(Boolean)
         .join(', ');
+}
+
+// Rótulos de exibição das categorias acima — espelha SINAL_CATEGORIAS em
+// editor.js (mesma ordem, mesmos nomes), mas não importa de lá pra não criar
+// dependência entre os dois módulos; se um rótulo mudar num lugar, muda no
+// outro também. Usado só onde a categoria precisa aparecer por extenso pro
+// usuário (sinalizacoesAgrupadas abaixo) — SINALIZACOES_CATEGORIAS sozinho
+// (chave curta) já basta pra busca/filtro.
+const ROTULOS_SINALIZACOES = {
+    tradicao: 'Tradição',
+    estilo: 'Estilo',
+    tema: 'Tema',
+    relacao: 'Relação',
+    sensibilidade: 'Sensibilidade',
+    tom: 'Tom',
+    dominioImagetico: 'Domínio Imagético',
+    outros: 'Outros',
+};
+
+// Uma entrada por categoria PREENCHIDA (rótulo + valor), na ordem de
+// SINALIZACOES_CATEGORIAS — pra exibição/exportação agrupada por categoria
+// (visualizar.js, exportar-md.js), em vez da string única e achatada de
+// sinalizacoesCombinadas(). Categorias vazias não entram na lista.
+export function sinalizacoesAgrupadas(item) {
+    return Object.entries(SINALIZACOES_CATEGORIAS)
+        .map(([categoria, campo]) => ({ rotulo: ROTULOS_SINALIZACOES[categoria], valor: item[campo] }))
+        .filter((bloco) => bloco.valor);
 }
 
 // ─── Elos / Referências tipados (item 1 do plano de schema) ────
@@ -2006,6 +2035,38 @@ export function extrairTiposIntertextoUnicos(poemas) {
         }
     });
     return Array.from(tipos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// Agrupa as entradas de Intertextualidade por tipo — pra exibição/exportação
+// (visualizar.js, exportar-md.js), em vez de uma linha solta por entrada.
+// tipo é texto livre (ver TIPOS_INTERTEXTO_SUGERIDOS acima), não um enum
+// fechado, então não dá pra decidir vírgula-vs-sub-bullet por uma lista
+// fixa de tipos — cada grupo decide sozinho, olhando suas próprias
+// entradas: se qualquer uma tiver link, nota, ou vírgula no texto (que
+// quebraria uma lista de vírgula solta — ex. "A República, de Platão"),
+// o grupo inteiro vira sub-bullet (uma linha por entrada, preserva
+// link/nota); senão, vira uma linha só com os textos separados por
+// vírgula. Entradas sem tipo (string vazia) não formam grupo com rótulo —
+// ficam soltas, uma por linha, como já era antes desse agrupamento.
+// Ordem dos grupos = ordem de primeira aparição na lista original (não
+// reordena por tipo).
+export function agruparIntertextualidadePorTipo(lista) {
+    if (!Array.isArray(lista) || !lista.length) return [];
+    const grupos = [];
+    const porTipo = new Map();
+    lista.forEach((it) => {
+        const tipo = it.tipo || '';
+        if (!porTipo.has(tipo)) {
+            const grupo = { tipo, entradas: [] };
+            porTipo.set(tipo, grupo);
+            grupos.push(grupo);
+        }
+        porTipo.get(tipo).entradas.push(it);
+    });
+    return grupos.map((grupo) => ({
+        ...grupo,
+        subBullet: grupo.entradas.some((it) => it.link || it.nota || (it.texto || '').includes(',')),
+    }));
 }
 
 // Sugestões de autocompletar pras Anotações Marginais (Posição e Fonte):
