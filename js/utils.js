@@ -1733,6 +1733,62 @@ export function sinalizacoesAgrupadas(item) {
         .filter((bloco) => bloco.valor);
 }
 
+// ─── Campos contáveis (item 3 do plano de melhorias de busca) ──────────
+// Registro dos campos multivalorados de Poema que fazem sentido "contar"
+// (pra colunas dinâmicas de contagem — ver colunas-contagem.js), pra
+// responder perguntas tipo "qual poema menciona mais pessoas" ordenando
+// por essa contagem em vez de abrir item por item. Esconde atrás de
+// `contar` a forma interna de cada campo (array simples, array de objeto,
+// contagem indireta via cadastro, ou string combinada por vírgula), pra
+// quem usa esse registro (colunas-contagem.js, render-listas.js) não
+// precisar saber os detalhes de cada um. `contar` recebe (item, db) — só
+// Grupos usa o segundo parâmetro (grupo é característica da Pessoa, ver
+// paresGrupoPessoa acima, não um campo direto do item); os demais
+// ignoram.
+export const CAMPOS_CONTAVEIS = {
+    pessoas: { label: 'Pessoas', contar: (item) => (item.pessoas || []).length },
+    grupos: {
+        label: 'Grupos',
+        contar: (item, db) => {
+            // Um poema chega a um Grupo de dois jeitos — via o cadastro de
+            // cada Pessoa vinculada (paresGrupoPessoa) ou por vínculo
+            // direto (gruposDiretos) — dedup por id pra não contar duas
+            // vezes o mesmo Grupo alcançado pelos dois caminhos.
+            const ids = new Set();
+            paresGrupoPessoa(item, db?.pessoas, db?.grupos).forEach(({ grupo }) => ids.add(grupo.id));
+            (item.gruposDiretos || []).forEach((id) => ids.add(id));
+            return ids.size;
+        },
+    },
+    elos: { label: 'Elos', contar: (item) => (item.conceitos?.elos || []).length },
+    referencias: {
+        label: 'Referências',
+        contar: (item) => (item.conceitos?.referencias || []).length,
+    },
+    intertextualidade: {
+        label: 'Intertextualidade',
+        contar: (item) => (item.intertextualidade || []).length,
+    },
+    anexos: { label: 'Anexos', contar: (item) => (item.anexos || []).length },
+    anotacoesMarginais: {
+        label: 'Anotações Marginais',
+        contar: (item) => (item.anotacoesMarginais || []).length,
+    },
+    envios: { label: 'Envios', contar: (item) => (item.envios || []).length },
+    reconhecimentos: {
+        label: 'Reconhecimentos',
+        contar: (item) => (item.reconhecimentos || []).length,
+    },
+    etiquetas: {
+        label: 'Etiquetas (Sinalizações)',
+        contar: (item) =>
+            (sinalizacoesCombinadas(item) || '')
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean).length,
+    },
+};
+
 // ─── Elos / Referências tipados (item 1 do plano de schema) ────
 // Duas listas fechadas separadas — porque Elos e Referências têm
 // natureza diferente — e, desde o redesenho Relação+Direção, Elos usa

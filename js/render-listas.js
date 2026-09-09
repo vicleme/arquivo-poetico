@@ -43,9 +43,11 @@ import {
     pontoCorGrupo,
     paresAutoria,
     estaPublicado,
+    CAMPOS_CONTAVEIS,
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
 import { getColunasAtivas } from './colunas.js';
+import { getColunasContagem, PREFIXO_ORDENACAO as PREFIXO_ORDENACAO_CONTAGEM } from './colunas-contagem.js';
 import { contarCamposPreenchidos } from './exportar-md.js';
 import {
     celulaAcoesItem,
@@ -87,6 +89,12 @@ window.addEventListener('colunas:alteradas', (ev) => {
 window.addEventListener('acoes-coluna:alteradas', (ev) => {
     if (ev.detail?.tabela === 'poemas') renderPoemas();
     if (ev.detail?.tabela === 'prosas') renderProsas();
+});
+
+// Idem pras colunas de contagem (ver colunas-contagem.js) — só existem
+// em Poemas.
+window.addEventListener('colunas-contagem:alteradas', (ev) => {
+    if (ev.detail?.tabela === 'poemas') renderPoemas();
 });
 
 // Ícones dos botões Editar/Excluir dos cards e tabelas abaixo. Ficam como
@@ -834,6 +842,21 @@ export function getListaVisivelPoemas() {
         // Ordem padrão = a ordem em que a lista já veio (estrutura); desc
         // é só ela invertida, não precisa de comparador.
         if (ordenacaoPoemas.direcao === 'desc') lista = [...lista].reverse();
+    } else if (ordenacaoPoemas.campo.startsWith(PREFIXO_ORDENACAO_CONTAGEM)) {
+        // Coluna de contagem dinâmica (ver colunas-contagem.js) — o campo
+        // que ela conta pode mudar a qualquer momento (seletor no
+        // cabeçalho), então resolve pela coluna ativa no momento do sort
+        // em vez de um comparador fixo em COMPARADORES_ORDENACAO_POEMAS.
+        const id = ordenacaoPoemas.campo.slice(PREFIXO_ORDENACAO_CONTAGEM.length);
+        const coluna = getColunasContagem('poemas').find((c) => String(c.id) === id);
+        const contar = coluna ? CAMPOS_CONTAVEIS[coluna.campo]?.contar : null;
+        if (contar) {
+            const asc = ordenacaoPoemas.direcao === 'asc';
+            lista = [...lista].sort((a, b) => {
+                const diff = contar(a, db) - contar(b, db);
+                return asc ? diff : -diff;
+            });
+        }
     } else {
         const comparador = COMPARADORES_ORDENACAO_POEMAS[ordenacaoPoemas.campo];
         if (comparador) {
@@ -1332,6 +1355,7 @@ export function renderPoemas() {
     atualizarBarraSelecao();
 
     const colunasAtivas = getColunasAtivas('poemas');
+    const colunasContagemAtivas = getColunasContagem('poemas');
     atualizarPainelColunas('poemas', 'painel-colunas-poemas');
     atualizarPainelAcoes('poemas', 'painel-acoes-poemas');
 
@@ -1352,7 +1376,7 @@ export function renderPoemas() {
     const paginacaoContainer = document.getElementById('paginacao-poemas');
 
     if (listaFiltrada.length === 0) {
-        container.innerHTML = `<tr><td colspan="${colunasAtivas.length + 3}" class="p-6 text-center text-gray-400 dark:text-slate-500 text-sm">Nenhum poema encontrado.</td></tr>`;
+        container.innerHTML = `<tr><td colspan="${colunasAtivas.length + colunasContagemAtivas.length + 3}" class="p-6 text-center text-gray-400 dark:text-slate-500 text-sm">Nenhum poema encontrado.</td></tr>`;
         if (paginacaoContainer) paginacaoContainer.innerHTML = '';
         return;
     }
@@ -1529,6 +1553,17 @@ export function renderPoemas() {
             const celulasMeio = colunasAtivas
                 .map((key) => (CELULAS_POEMAS[key] ? CELULAS_POEMAS[key](p) : ''))
                 .join('');
+            // Colunas de contagem (ver colunas-contagem.js) — uma <td> por
+            // instância ativa, com a contagem do campo selecionado naquele
+            // momento (não é fixo por linha, muda se o seletor no
+            // cabeçalho mudar de campo).
+            const celulasContagem = colunasContagemAtivas
+                .map((c) => {
+                    const contar = CAMPOS_CONTAVEIS[c.campo]?.contar;
+                    const valor = contar ? contar(p, db) : 0;
+                    return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 font-mono text-right">${valor}</td>`;
+                })
+                .join('');
             return `
         <tr class="border-b hover:bg-blue-50/50 dark:hover:bg-blue-950/50 border-gray-200 dark:border-slate-700">
             <td class="p-4 sticky left-0 z-10 bg-white dark:bg-slate-900">
@@ -1541,6 +1576,7 @@ export function renderPoemas() {
                 ${p._livros ? `<div class="text-[10px] text-indigo-500 dark:text-indigo-400 font-normal mt-1">Livros: ${escapeHtml(p._livros)}</div>` : ''}
             </td>
             ${celulasMeio}
+            ${celulasContagem}
             <td class="p-4 text-right space-x-2">
                 ${celulaAcoesItem('poemas', 'poema', 'poemas', p.id)}
             </td>

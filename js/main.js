@@ -36,6 +36,11 @@ import {
     resetarColunas,
 } from './colunas.js';
 import {
+    adicionarColunaContagem,
+    removerColunaContagem,
+    definirCampoColunaContagem,
+} from './colunas-contagem.js';
+import {
     toggleAcaoColuna,
     setFormatoBaixarColuna,
     resetarAcoesColuna,
@@ -797,6 +802,9 @@ window.moverColuna = moverColuna;
 window.selecionarTodasColunas = selecionarTodasColunas;
 window.desmarcarTodasColunas = desmarcarTodasColunas;
 window.resetarColunas = resetarColunas;
+window.adicionarColunaContagem = adicionarColunaContagem;
+window.removerColunaContagem = removerColunaContagem;
+window.definirCampoColunaContagem = definirCampoColunaContagem;
 window.toggleAcaoColuna = toggleAcaoColuna;
 window.setFormatoBaixarColuna = setFormatoBaixarColuna;
 window.resetarAcoesColuna = resetarAcoesColuna;

@@ -31,9 +31,15 @@ import {
     classesCorGrupo,
     paresAutoria,
     SINALIZACOES_CATEGORIAS,
+    CAMPOS_CONTAVEIS,
 } from './utils.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
 import { DEFINICAO_COLUNAS, getColunasAtivas, renderSeletorColunas } from './colunas.js';
+import {
+    getColunasContagem,
+    renderSeletorColunasContagem,
+    PREFIXO_ORDENACAO as PREFIXO_ORDENACAO_CONTAGEM,
+} from './colunas-contagem.js';
 import { contarCamposPreenchidos, TOTAL_CAMPOS_CONSIDERADOS } from './exportar-md.js';
 import {
     ICONE_EDITAR,
@@ -535,6 +541,43 @@ function thComLupa(label, campoItem, classeExtra = '') {
     </th>`;
 }
 
+// <th> de uma coluna de contagem (ver colunas-contagem.js): mesmo botão
+// ordenável de thOrdenavel, mas com `campo` sintético (PREFIXO_ORDENACAO +
+// id) e, no lugar da lupa de busca (colunas de contagem não têm prefixo de
+// busca — ver item 3 do plano, o operador de busca por quantidade ficou
+// pra depois), um <select> de campo + botão de remover, iguais aos do
+// painel de configuração (renderSeletorColunasContagem).
+function thContagem(coluna, estado) {
+    const campoOrdenacao = PREFIXO_ORDENACAO_CONTAGEM + coluna.id;
+    const ativo = estado.campo === campoOrdenacao;
+    const label = CAMPOS_CONTAVEIS[coluna.campo]?.label || coluna.campo;
+    const opcoes = Object.entries(CAMPOS_CONTAVEIS)
+        .map(
+            ([key, { label: l }]) =>
+                `<option value="${key}" ${key === coluna.campo ? 'selected' : ''}>${l}</option>`,
+        )
+        .join('');
+    return `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700">
+        <div class="flex items-center gap-1">
+            <button type="button" onclick="ordenarPoemasPor('${campoOrdenacao}')"
+                class="flex items-center gap-1 font-semibold hover:text-blue-600 dark:hover:text-blue-400 select-none"
+                title="Ordenar por Qtd. ${escapeHtml(label)}">
+                <span>Qtd.</span>
+                ${iconeOrdenacao(ativo, estado.direcao)}
+            </button>
+        </div>
+        <div class="flex items-center gap-1 mt-1 font-normal">
+            <select onchange="definirCampoColunaContagem('poemas', ${coluna.id}, this.value)"
+                class="text-[10px] border border-gray-200 dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-slate-200 py-0.5 max-w-[7rem]">
+                ${opcoes}
+            </select>
+            <button type="button" onclick="removerColunaContagem('poemas', ${coluna.id})"
+                title="Remover essa coluna de contagem"
+                class="text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400">✕</button>
+        </div>
+    </th>`;
+}
+
 export function montarCabecalho(tabela, celulaCheck, celulaAcoes) {
     const ativas = getColunasAtivas(tabela);
     const def = DEFINICAO_COLUNAS[tabela];
@@ -556,7 +599,13 @@ export function montarCabecalho(tabela, celulaCheck, celulaAcoes) {
             .filter(Boolean)
             .map((c) => thOrdenavel(c.key, c.label, ordenacaoPoemas, '', camposBusca[c.key]))
             .join('');
-        return celulaCheck + tituloOrdenavel + meio + celulaAcoes;
+        // Colunas de contagem (ver colunas-contagem.js) vêm depois das
+        // colunas fixas, na ordem em que foram criadas — só Poemas, mesmo
+        // motivo do comentário acima (precisa de cabeçalho ordenável).
+        const contagem = getColunasContagem('poemas')
+            .map((c) => thContagem(c, ordenacaoPoemas))
+            .join('');
+        return celulaCheck + tituloOrdenavel + meio + contagem + celulaAcoes;
     }
 
     const tituloComLupa = thComLupa('Título', camposBusca.titulo, 'sticky left-8');
@@ -570,7 +619,15 @@ export function montarCabecalho(tabela, celulaCheck, celulaAcoes) {
 
 export function atualizarPainelColunas(tabela, painelId) {
     const painel = document.getElementById(painelId);
-    if (painel) painel.innerHTML = renderSeletorColunas(tabela);
+    if (!painel) return;
+    // Colunas de contagem (ver colunas-contagem.js) só existem em Poemas —
+    // mesmo motivo do comentário em montarCabecalho (precisa de cabeçalho
+    // ordenável). O botão "+ Adicionar" mora aqui; trocar campo/remover uma
+    // já criada dá pra fazer tanto aqui quanto direto no cabeçalho da
+    // tabela (thContagem acima) — os dois lêem/escrevem o mesmo estado.
+    painel.innerHTML =
+        renderSeletorColunas(tabela) +
+        (tabela === 'poemas' ? renderSeletorColunasContagem(tabela) : '');
 }
 
 export function atualizarPainelAcoes(tabela, painelId) {
