@@ -297,7 +297,7 @@ const slugDom = (chave) => chave.charAt(0).toLowerCase() + chave.slice(1);
 // string; não toca em DOM, então é testável sem happy-dom.
 function criarBlocoSinalizacaoHTML(
     { chave, corBotao, rotulo, rotuloExtra, placeholder },
-    { prefixo, sufixoFuncao, sufixoDatalist, datalistInline },
+    { prefixo, tabela, sufixoDatalist, datalistInline },
 ) {
     const slug = slugDom(chave);
     const idDatalist = `sugestoes-sinais-${slug}${sufixoDatalist}`;
@@ -317,7 +317,7 @@ function criarBlocoSinalizacaoHTML(
                                 />
                                 <button
                                     type="button"
-                                    onclick="adicionarSinal${chave}${sufixoFuncao}()"
+                                    onclick="adicionarSinal${chave}('${tabela}')"
                                     class="${corBotao} px-3 rounded text-xs font-bold"
                                 >
                                     +
@@ -350,7 +350,7 @@ export function renderSinalizacoesPoema() {
     if (!container) return;
     container.innerHTML = criarBlocosSinalizacoesHTML({
         prefixo: 'p',
-        sufixoFuncao: '',
+        tabela: 'poemas',
         sufixoDatalist: '',
         datalistInline: false,
     });
@@ -365,7 +365,7 @@ export function renderSinalizacoesProsa() {
     if (!container) return;
     container.innerHTML = criarBlocosSinalizacoesHTML({
         prefixo: 'pr',
-        sufixoFuncao: 'Prosa',
+        tabela: 'prosas',
         sufixoDatalist: '-prosa',
         datalistInline: true,
     });
