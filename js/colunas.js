@@ -19,12 +19,15 @@ const LS_PREFIX = 'arquivoPoetico_colunas_';
 // crescendo por ordem de chegada da feature. `default: true` são as
 // colunas que já existiam antes desse recurso (mantidas ativas de
 // cara); as demais começam desligadas.
-// `sortType` só existe nas colunas de Poemas (única tabela com cabeçalho
-// clicável por enquanto — ver thOrdenavel() em render-listas.js):
+// `sortType` é só documentação (a escolha do comparador em runtime é pela
+// key, ver COMPARADORES_ORDENACAO em render-listas.js) — mas ajuda a saber
+// de cara que critério cada coluna usa, agora que as duas tabelas têm
+// cabeçalho clicável (ver thOrdenavel() em celulas-tabela.js):
 //   'estrutura'  — ordem padrão (array já vem nessa ordem; desc = invertida)
 //   'data'       — cronológica (ano/mês/dia, com data parcial/ausente por último)
 //   'alfabetico' — texto (localeCompare pt-BR, vazio por último)
 //   'status'     — pelos três estados possíveis, ver ORDEM_STATUS
+//   'numero'     — numérica direta (ex.: Campos Preenchidos)
 export const DEFINICAO_COLUNAS = {
     poemas: [
         // Campo simples logo abaixo de Título/Sequência no modal.
@@ -128,45 +131,84 @@ export const DEFINICAO_COLUNAS = {
         },
     ],
     prosas: [
-        { key: 'idioma', label: 'Idioma', default: false },
-        { key: 'dataEscrita', label: 'Data', default: true },
-        { key: 'dataPublicacao', label: 'Publicação', default: true },
+        { key: 'idioma', label: 'Idioma', default: false, sortType: 'alfabetico' },
+        { key: 'dataEscrita', label: 'Data', default: true, sortType: 'data' },
+        { key: 'dataPublicacao', label: 'Publicação', default: true, sortType: 'data' },
         // Item 4: mesmas colunas novas de Poemas, na ordem em que os
         // grupos aparecem no modal de Prosa (ver comentário no topo
         // do arquivo — ordem espelha o modal).
-        { key: 'epocaRetratada', label: 'Época Retratada', default: false },
-        { key: 'contextoHistorico', label: 'Contexto Histórico/Pessoal', default: false },
-        { key: 'vinculo', label: 'Vínculo', default: true },
-        { key: 'genero', label: 'Gênero', default: true },
-        { key: 'etiquetas', label: 'Etiquetas', default: false },
-        { key: 'pessoas', label: 'Pessoas', default: true },
-        { key: 'grupos', label: 'Grupos', default: false },
-        { key: 'notas', label: 'Notas', default: false },
+        { key: 'epocaRetratada', label: 'Época Retratada', default: false, sortType: 'data' },
+        {
+            key: 'contextoHistorico',
+            label: 'Contexto Histórico/Pessoal',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        // 'vinculo' é o mesmo dado estrutural (paiTipo/paiId nos 3 níveis
+        // Livro/Parte/Seção) que 'estrutura' representa em Poemas — mesmo
+        // sortType 'estrutura' (ordem já vem assim do array-base, ver
+        // sortProsas em db.js; desc = invertida), só o rótulo muda.
+        { key: 'vinculo', label: 'Vínculo', default: true, sortType: 'estrutura' },
+        { key: 'genero', label: 'Gênero', default: true, sortType: 'alfabetico' },
+        { key: 'etiquetas', label: 'Etiquetas', default: false, sortType: 'alfabetico' },
+        { key: 'pessoas', label: 'Pessoas', default: true, sortType: 'alfabetico' },
+        { key: 'grupos', label: 'Grupos', default: false, sortType: 'alfabetico' },
+        { key: 'notas', label: 'Notas', default: false, sortType: 'alfabetico' },
         { key: 'autoria', label: 'Autoria', default: false },
         { key: 'envios', label: 'Envios', default: false },
         { key: 'reconhecimentos', label: 'Reconhecimentos', default: false },
         // Autoavaliação — grupo novo, logo depois de Reconhecimentos no modal.
-        { key: 'autoavaliacao', label: 'Autoavaliação', default: false },
+        { key: 'autoavaliacao', label: 'Autoavaliação', default: false, sortType: 'alfabetico' },
         // "Elos, referências e intertextualidade".
-        { key: 'elos', label: 'Elos', default: false },
-        { key: 'referencias', label: 'Referências', default: false },
-        { key: 'intertextualidade', label: 'Intertextualidade', default: false },
+        { key: 'elos', label: 'Elos', default: false, sortType: 'alfabetico' },
+        { key: 'referencias', label: 'Referências', default: false, sortType: 'alfabetico' },
+        {
+            key: 'intertextualidade',
+            label: 'Intertextualidade',
+            default: false,
+            sortType: 'alfabetico',
+        },
         // "Anexos".
-        { key: 'anexos', label: 'Anexos', default: false },
-        { key: 'anexosNotaGeral', label: 'Nota Anexos', default: false },
+        { key: 'anexos', label: 'Anexos', default: false, sortType: 'alfabetico' },
+        {
+            key: 'anexosNotaGeral',
+            label: 'Nota Anexos',
+            default: false,
+            sortType: 'alfabetico',
+        },
         // "Ocultação e conteúdo sensível".
-        { key: 'ocultacao', label: 'Ocultação', default: false },
-        { key: 'conteudoSensivel', label: 'Conteúdo Sensível', default: false },
-        { key: 'vocabularioHiperacionante', label: 'Vocabulário Hiperacionante', default: false },
+        { key: 'ocultacao', label: 'Ocultação', default: false, sortType: 'alfabetico' },
+        {
+            key: 'conteudoSensivel',
+            label: 'Conteúdo Sensível',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'vocabularioHiperacionante',
+            label: 'Vocabulário Hiperacionante',
+            default: false,
+            sortType: 'alfabetico',
+        },
         // "Status e Pendências".
-        { key: 'status', label: 'Status', default: true },
-        { key: 'cortadoDe', label: 'Cortado de', default: false },
-        { key: 'lancadoEm', label: 'Lançado em', default: false },
-        { key: 'justificativaMigracao', label: 'Justificativa da Migração', default: false },
-        { key: 'pendencia', label: 'Pendência', default: false },
-        { key: 'descarte', label: 'Descarte', default: false },
+        { key: 'status', label: 'Status', default: true, sortType: 'status' },
+        { key: 'cortadoDe', label: 'Cortado de', default: false, sortType: 'alfabetico' },
+        { key: 'lancadoEm', label: 'Lançado em', default: false, sortType: 'alfabetico' },
+        {
+            key: 'justificativaMigracao',
+            label: 'Justificativa da Migração',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        { key: 'pendencia', label: 'Pendência', default: false, sortType: 'alfabetico' },
+        { key: 'descarte', label: 'Descarte', default: false, sortType: 'alfabetico' },
         // Ver comentário equivalente em poemas[] acima.
-        { key: 'camposPreenchidos', label: 'Campos Preenchidos', default: false },
+        {
+            key: 'camposPreenchidos',
+            label: 'Campos Preenchidos',
+            default: false,
+            sortType: 'numero',
+        },
     ],
 };
 

@@ -628,8 +628,14 @@ export function sortSecoes(secoes, livros, partes) {
     return secoes;
 }
 
-export function sortPoemas(poemas, livros, partes, secoes) {
-    poemas.sort((a, b) => {
+// Núcleo comum de ordenação hierárquica (Livro → Parte → Seção → própria
+// sequência), reaproveitado por sortPoemas e sortProsas — Poema e Prosa usam
+// exatamente o mesmo esquema de encaixe (paiTipo/paiId nos mesmos 3 níveis,
+// ver DEFINICAO_COLUNAS.prosas.vinculo em colunas.js e o comentário de
+// livroDaProsa em utils.js), então a lógica de caminho não muda entre os
+// dois — só a lista de itens ordenada é que difere.
+function sortItensPorEstrutura(itens, livros, partes, secoes) {
+    itens.sort((a, b) => {
         const getPath = (p) => {
             let livroIdx = 999,
                 parteIdx = 999,
@@ -667,7 +673,20 @@ export function sortPoemas(poemas, livros, partes, secoes) {
         if (pathA !== pathB) return pathA.localeCompare(pathB);
         return (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999);
     });
-    return poemas;
+    return itens;
+}
+
+export function sortPoemas(poemas, livros, partes, secoes) {
+    return sortItensPorEstrutura(poemas, livros, partes, secoes);
+}
+
+// Item 1 do plano de integração Poemas/Prosas: Prosa usa o mesmo esquema de
+// encaixe (paiTipo/paiId) que Poema, então merece a mesma ordenação
+// hierárquica em save() — antes disso, prosas espalhadas em partes/seções
+// diferentes só ficavam agrupadas por `sequencia` isolada, ignorando onde
+// cada uma está encaixada (ver Prosa e Poema.md, item 4).
+export function sortProsas(prosas, livros, partes, secoes) {
+    return sortItensPorEstrutura(prosas, livros, partes, secoes);
 }
 
 export function sortElementos(elementos, dbRef) {
@@ -691,7 +710,7 @@ export function save() {
     sortPartes(db.partes, db.livros);
     sortSecoes(db.secoes, db.livros, db.partes);
     sortPoemas(db.poemas, db.livros, db.partes, db.secoes);
-    db.prosas.sort((a, b) => (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999));
+    sortProsas(db.prosas, db.livros, db.partes, db.secoes);
     sortElementos(db.elementos, db);
 
     try {

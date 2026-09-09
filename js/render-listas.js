@@ -96,10 +96,11 @@ window.addEventListener('acoes-coluna:alteradas', (ev) => {
     if (ev.detail?.tabela === 'prosas') renderProsas();
 });
 
-// Idem pras colunas de contagem (ver colunas-contagem.js) — só existem
-// em Poemas.
+// Idem pras colunas de contagem (ver colunas-contagem.js) — agora
+// disponíveis nas duas tabelas (ver Prosa e Poema.md, item 1).
 window.addEventListener('colunas-contagem:alteradas', (ev) => {
     if (ev.detail?.tabela === 'poemas') renderPoemas();
+    if (ev.detail?.tabela === 'prosas') renderProsas();
 });
 
 // Ícones dos botões Editar/Excluir dos cards e tabelas abaixo. Ficam como
@@ -151,12 +152,16 @@ let filtroDataPublicacaoPoemas = filtroDataVazio();
 let filtroEpocaRetratadaPoemas = filtroDataVazio();
 let filtroDataEscritaProsas = filtroDataVazio();
 let filtroDataPublicacaoProsas = filtroDataVazio();
-// Ordenação da tabela de Poemas — clicável pelo cabeçalho das colunas
-// (ver thOrdenavel() e DEFINICAO_COLUNAS.poemas[].sortType). `campo` é a
-// key da coluna ('titulo' pra a coluna fixa ID/Título, ou uma key de
-// DEFINICAO_COLUNAS.poemas); 'estrutura' é o padrão (ordem já vem assim
-// do array-base, sem sort adicional).
+// Ordenação das tabelas de Poemas e Prosas — clicável pelo cabeçalho das
+// colunas (ver thOrdenavel() e DEFINICAO_COLUNAS[tabela][].sortType).
+// `campo` é a key da coluna ('titulo' pra a coluna fixa ID/Título, ou uma
+// key de DEFINICAO_COLUNAS[tabela]); CAMPO_ESTRUTURA_POR_TABELA[tabela] é
+// o padrão de cada uma (ordem já vem assim do array-base, sem sort
+// adicional) — 'estrutura' em Poemas, 'vinculo' em Prosas (mesmo dado,
+// nome de coluna diferente, ver colunas.js).
+export const CAMPO_ESTRUTURA_POR_TABELA = { poemas: 'estrutura', prosas: 'vinculo' };
 export let ordenacaoPoemas = { campo: 'estrutura', direcao: 'asc' };
+export let ordenacaoProsas = { campo: 'vinculo', direcao: 'asc' };
 let statusPoemas = 'todos';
 // Nunca reatribuídos (só .add/.delete/.clear/.has) — por isso dá pra
 // exportar como const e deixar selecao-massa.js importar e mutar a
@@ -326,7 +331,7 @@ export function setFiltroProsas(valor) {
     renderProsas();
 }
 
-// Atalho de clique no cabeçalho da coluna (ver thOrdenavel/thComLupa):
+// Atalho de clique no cabeçalho da coluna (ver thOrdenavel/iconeBuscaColuna):
 // joga o prefixo "campo:" correspondente pronto no campo de busca de
 // metadados (de Poemas ou de Prosas, conforme `tabela`) e foca nele —
 // pra quem não lembra a sintaxe de prefixo não precisar decorar nada, só
@@ -441,9 +446,23 @@ export function setFiltroPapelProsas(valor) {
 }
 
 // Chamado ao clicar no cabeçalho de uma coluna ordenável da tabela de
-// Poemas: clicar na coluna já ativa inverte a direção; clicar numa
+// Poemas OU de Prosas (item 1 do plano de integração — ver Prosa e
+// Poema.md): clicar na coluna já ativa inverte a direção; clicar numa
 // coluna diferente troca pra ela, começando em ordem ascendente.
-export function ordenarPoemasPor(campo) {
+export function ordenarPor(tabela, campo) {
+    if (tabela === 'prosas') {
+        if (ordenacaoProsas.campo === campo) {
+            ordenacaoProsas = {
+                campo,
+                direcao: ordenacaoProsas.direcao === 'asc' ? 'desc' : 'asc',
+            };
+        } else {
+            ordenacaoProsas = { campo, direcao: 'asc' };
+        }
+        paginaProsas = 1;
+        renderProsas();
+        return;
+    }
     if (ordenacaoPoemas.campo === campo) {
         ordenacaoPoemas = {
             campo,
@@ -934,33 +953,7 @@ export function getListaVisivelPoemas() {
             itemBateFiltroEpoca(p.epocaRetratada, filtroEpocaRetratadaPoemas),
     );
 
-    if (ordenacaoPoemas.campo === 'estrutura') {
-        // Ordem padrão = a ordem em que a lista já veio (estrutura); desc
-        // é só ela invertida, não precisa de comparador.
-        if (ordenacaoPoemas.direcao === 'desc') lista = [...lista].reverse();
-    } else if (ordenacaoPoemas.campo.startsWith(PREFIXO_ORDENACAO_CONTAGEM)) {
-        // Coluna de contagem dinâmica (ver colunas-contagem.js) — o campo
-        // que ela conta pode mudar a qualquer momento (seletor no
-        // cabeçalho), então resolve pela coluna ativa no momento do sort
-        // em vez de um comparador fixo em COMPARADORES_ORDENACAO_POEMAS.
-        const id = ordenacaoPoemas.campo.slice(PREFIXO_ORDENACAO_CONTAGEM.length);
-        const coluna = getColunasContagem('poemas').find((c) => String(c.id) === id);
-        const contar = coluna ? CAMPOS_CONTAVEIS[coluna.campo]?.contar : null;
-        if (contar) {
-            const asc = ordenacaoPoemas.direcao === 'asc';
-            lista = [...lista].sort((a, b) => {
-                const diff = contar(a, db) - contar(b, db);
-                return asc ? diff : -diff;
-            });
-        }
-    } else {
-        const comparador = COMPARADORES_ORDENACAO_POEMAS[ordenacaoPoemas.campo];
-        if (comparador) {
-            const asc = ordenacaoPoemas.direcao === 'asc';
-            lista = [...lista].sort((a, b) => comparador(a, b, asc));
-        }
-    }
-    return lista;
+    return aplicarOrdenacao(lista, 'poemas', ordenacaoPoemas);
 }
 
 // Retorna a lista de prosas atualmente visível (livro/coletânea +
@@ -993,6 +986,7 @@ export function getListaVisivelProsas() {
     }
 
     base = filtrarPorPessoaEPapel(base, filtroPessoaProsas, filtroPapelProsas);
+    base = base.filter((pr) => itemBateFiltrosContagem(pr, 'prosas', db));
 
     const decorada = base.map((pr) => decorarCamposBusca(pr));
     let lista = combinarFiltrosBusca(
@@ -1014,7 +1008,7 @@ export function getListaVisivelProsas() {
             itemBateFiltroData(pr.dataEscrita, filtroDataEscritaProsas) &&
             itemBateFiltroData(pr.dataPublicacao, filtroDataPublicacaoProsas),
     );
-    return lista;
+    return aplicarOrdenacao(lista, 'prosas', ordenacaoProsas);
 }
 
 // Comparador cronológico genérico (ano/mês/dia parciais) — usado pelas
@@ -1124,7 +1118,13 @@ function compararPorEpocaRetratada(a, b, asc) {
     return compararDatasParciais(ea.fim, eb.fim, asc);
 }
 
-const COMPARADORES_ORDENACAO_POEMAS = {
+// Compartilhado entre Poemas e Prosas (item 1 do plano de integração — ver
+// Prosa e Poema.md): os campos têm o mesmo nome e formato nas duas tabelas,
+// então o mesmo comparador serve pras duas — só 'genero' é exclusivo de
+// Prosa (ver DEFINICAO_COLUNAS.prosas em colunas.js) e 'anotacoesMarginais'/
+// 'descricaoVisual' exclusivos de Poema; nenhum problema em ficarem juntos
+// aqui, já que só são de fato buscados pra coluna que os declara.
+const COMPARADORES_ORDENACAO = {
     titulo: compararPorTexto((p) => p.titulo),
     idioma: compararPorTexto((p) => p.idioma),
     dataEscrita: compararPorData((p) => p.dataEscrita),
@@ -1172,6 +1172,9 @@ const COMPARADORES_ORDENACAO_POEMAS = {
             : '',
     ),
     descricaoVisual: compararPorTexto((p) => p.descricaoVisual),
+    genero: compararPorTexto((pr) =>
+        Array.isArray(pr.genero) ? pr.genero.join(', ') : pr.genero || '',
+    ),
     contextoHistorico: compararPorTexto((p) => p.contextoHistorico),
     autoavaliacao: compararPorTexto((p) => p.autoavaliacao),
     etiquetas: compararPorTexto((p) => sinalizacoesCombinadas(p)),
@@ -1193,6 +1196,41 @@ const COMPARADORES_ORDENACAO_POEMAS = {
         return asc ? diff : -diff;
     },
 };
+
+// Dispatcher de ordenação compartilhado entre getListaVisivelPoemas e
+// getListaVisivelProsas (item 1 do plano de integração — ver Prosa e
+// Poema.md): resolve os três casos possíveis pro campo de `estado`
+// (padrão estrutural da tabela, coluna de contagem dinâmica, ou
+// comparador fixo de COMPARADORES_ORDENACAO) e devolve a lista já
+// ordenada. `tabela` decide qual campo é o "padrão estrutural" (ver
+// CAMPO_ESTRUTURA_POR_TABELA) e qual conjunto de colunas de contagem
+// consultar (ver colunas-contagem.js — já é agnóstico de tabela).
+function aplicarOrdenacao(lista, tabela, estado) {
+    if (estado.campo === CAMPO_ESTRUTURA_POR_TABELA[tabela]) {
+        // Ordem padrão = a ordem em que a lista já veio (estrutura); desc
+        // é só ela invertida, não precisa de comparador.
+        return estado.direcao === 'desc' ? [...lista].reverse() : lista;
+    }
+    if (estado.campo.startsWith(PREFIXO_ORDENACAO_CONTAGEM)) {
+        // Coluna de contagem dinâmica (ver colunas-contagem.js) — o campo
+        // que ela conta pode mudar a qualquer momento (seletor no
+        // cabeçalho), então resolve pela coluna ativa no momento do sort
+        // em vez de um comparador fixo em COMPARADORES_ORDENACAO.
+        const id = estado.campo.slice(PREFIXO_ORDENACAO_CONTAGEM.length);
+        const coluna = getColunasContagem(tabela).find((c) => String(c.id) === id);
+        const contar = coluna ? CAMPOS_CONTAVEIS[coluna.campo]?.contar : null;
+        if (!contar) return lista;
+        const asc = estado.direcao === 'asc';
+        return [...lista].sort((a, b) => {
+            const diff = contar(a, db) - contar(b, db);
+            return asc ? diff : -diff;
+        });
+    }
+    const comparador = COMPARADORES_ORDENACAO[estado.campo];
+    if (!comparador) return lista;
+    const asc = estado.direcao === 'asc';
+    return [...lista].sort((a, b) => comparador(a, b, asc));
+}
 
 // ─── Livros ──────────────────────────────────────────────────
 
@@ -1725,6 +1763,7 @@ export function renderProsas() {
     atualizarBarraSelecaoProsas();
 
     const colunasAtivas = getColunasAtivas('prosas');
+    const colunasContagemAtivas = getColunasContagem('prosas');
     atualizarPainelColunas('prosas', 'painel-colunas-prosas');
     atualizarPainelAcoes('prosas', 'painel-acoes-prosas');
 
@@ -1744,7 +1783,7 @@ export function renderProsas() {
     const paginacaoContainerPr = document.getElementById('paginacao-prosas');
 
     if (listaFiltrada.length === 0) {
-        container.innerHTML = `<tr><td colspan="${colunasAtivas.length + 3}" class="p-6 text-center text-gray-400 dark:text-slate-500 text-sm">Nenhuma prosa encontrada.</td></tr>`;
+        container.innerHTML = `<tr><td colspan="${colunasAtivas.length + colunasContagemAtivas.length + 3}" class="p-6 text-center text-gray-400 dark:text-slate-500 text-sm">Nenhuma prosa encontrada.</td></tr>`;
         if (paginacaoContainerPr) paginacaoContainerPr.innerHTML = '';
         return;
     }
@@ -1904,6 +1943,15 @@ export function renderProsas() {
             const celulasMeio = colunasAtivas
                 .map((key) => (CELULAS_PROSAS[key] ? CELULAS_PROSAS[key](pr) : ''))
                 .join('');
+            // Colunas de contagem (ver colunas-contagem.js) — mesmo padrão
+            // de renderPoemas acima.
+            const celulasContagem = colunasContagemAtivas
+                .map((c) => {
+                    const contar = CAMPOS_CONTAVEIS[c.campo]?.contar;
+                    const valor = contar ? contar(pr, db) : 0;
+                    return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 font-mono text-right">${valor}</td>`;
+                })
+                .join('');
 
             return `
         <tr class="border-b hover:bg-blue-50/50 dark:hover:bg-blue-950/50 border-gray-200 dark:border-slate-700">
@@ -1915,6 +1963,7 @@ export function renderProsas() {
                 <div class="font-bold text-gray-700 dark:text-slate-200 flex items-center gap-2">${escapeHtml(pr.titulo)} ${pubBadge}</div>
             </td>
             ${celulasMeio}
+            ${celulasContagem}
             <td class="p-4 text-right space-x-2">
                 ${celulaAcoesItem('prosas', 'prosa', 'prosas', pr.id)}
             </td>

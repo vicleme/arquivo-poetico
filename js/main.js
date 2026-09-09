@@ -68,7 +68,7 @@ import {
     setFiltroPapelPoemas,
     setFiltroPessoaProsas,
     setFiltroPapelProsas,
-    ordenarPoemasPor,
+    ordenarPor,
     buscarPorPrefixo,
     setStatusPoemas,
     setItensPorPagina,
@@ -802,7 +802,7 @@ window.setFiltroPessoaPoemas = setFiltroPessoaPoemas;
 window.setFiltroPapelPoemas = setFiltroPapelPoemas;
 window.setFiltroPessoaProsas = setFiltroPessoaProsas;
 window.setFiltroPapelProsas = setFiltroPapelProsas;
-window.ordenarPoemasPor = ordenarPoemasPor;
+window.ordenarPor = ordenarPor;
 window.buscarPorPrefixo = buscarPorPrefixo;
 window.setStatusPoemas = setStatusPoemas;
 window.setItensPorPagina = setItensPorPagina;

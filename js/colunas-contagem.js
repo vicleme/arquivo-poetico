@@ -1,18 +1,20 @@
 // ============================================================
 // colunas-contagem.js — Colunas dinâmicas de "quantidade de valores"
-// na tabela de Poemas (item 3 do plano de melhorias de busca e
-// metadados): cada instância conta os valores de UM campo escolhido
-// (ver CAMPOS_CONTAVEIS em utils.js) — o usuário pode adicionar
-// quantas quiser, cada uma com seu próprio seletor de campo, pra
-// comparar mais de um campo de uma vez (ex.: Qtd. Pessoas ao lado de
+// nas tabelas de Poemas e Prosas (item 3 do plano de melhorias de busca
+// e metadados, estendido a Prosas pelo item 1 do plano de integração —
+// ver Prosa e Poema.md): cada instância conta os valores de UM campo
+// escolhido (ver CAMPOS_CONTAVEIS em utils.js) — o usuário pode
+// adicionar quantas quiser, cada uma com seu próprio seletor de campo,
+// pra comparar mais de um campo de uma vez (ex.: Qtd. Pessoas ao lado de
 // Qtd. Intertextualidade) em vez de só uma contagem por vez.
 //
 // Cada instância também carrega um filtro numérico opcional
-// (operador + valor, ex. ">= 2") — se preenchido, a lista de Poemas só
+// (operador + valor, ex. ">= 2") — se preenchido, a lista da tabela só
 // mostra itens cuja contagem daquele campo bate a comparação (ver
-// itemBateFiltrosContagem abaixo, usado por getListaVisivelPoemas em
-// render-listas.js). Sem operador ou sem valor, a coluna só exibe a
-// contagem, sem filtrar nada — comportamento original preservado.
+// itemBateFiltrosContagem abaixo, usado por getListaVisivelPoemas/
+// getListaVisivelProsas em render-listas.js). Sem operador ou sem valor,
+// a coluna só exibe a contagem, sem filtrar nada — comportamento
+// original preservado.
 //
 // Diferente de colunas.js (DEFINICAO_COLUNAS é uma lista FIXA de
 // colunas, uma por campo do modal — o usuário só liga/desliga a que
@@ -21,11 +23,10 @@
 // isso o estado salvo é uma lista de {id, campo, operador, valor},
 // não um conjunto de chaves pré-definidas.
 //
-// Só Poemas por enquanto — é a única tabela com cabeçalho ordenável
-// (ver thOrdenavel em celulas-tabela.js); Prosas ainda não tem
-// ordenação nenhuma por coluna, então uma coluna de contagem lá não
-// teria como ser ordenada, só mostrar o número — decidimos deixar de
-// fora até Prosas ganhar ordenação de verdade.
+// Disponível em Poemas e Prosas (ver item 1 do plano de integração em
+// Prosa e Poema.md) — as duas tabelas têm cabeçalho ordenável (ver
+// thOrdenavel em celulas-tabela.js), então uma coluna de contagem em
+// qualquer uma das duas pode ser ordenada, não só exibir o número.
 //
 // Importado por: render-listas.js (lê as colunas ativas pra montar
 // linhas + ordenação + filtro), celulas-tabela.js (monta o
@@ -51,11 +52,11 @@ export const OPERADORES_CONTAGEM = [
     { value: '>', label: '> maior que' },
 ];
 
-// Prefixo da key sintética usada em ordenacaoPoemas.campo pra apontar
-// pra uma coluna de contagem em vez de uma coluna fixa (ver
-// COMPARADORES_ORDENACAO_POEMAS / getListaVisivelPoemas em
-// render-listas.js) — precisa do id porque pode haver mais de uma
-// coluna de contagem ativa ao mesmo tempo.
+// Prefixo da key sintética usada em ordenacaoPoemas.campo/ordenacaoProsas.campo
+// pra apontar pra uma coluna de contagem em vez de uma coluna fixa (ver
+// COMPARADORES_ORDENACAO / aplicarOrdenacao em render-listas.js) —
+// precisa do id porque pode haver mais de uma coluna de contagem ativa
+// ao mesmo tempo.
 export const PREFIXO_ORDENACAO = 'contagem:';
 
 function lerEstado(tabela) {

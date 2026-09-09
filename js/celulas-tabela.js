@@ -3,18 +3,20 @@
 // cabeçalho das tabelas de Poemas/Prosas: badges (Etiquetas, Pessoas,
 // Grupos, Autoria, Envios, Reconhecimentos, Época), resolução de
 // título de Elos/Referências, formatação de nota/trecho, célula de
-// "Campos Preenchidos", montagem de <thead> (ordenável ou com lupa) e
+// "Campos Preenchidos", montagem de <thead> (ordenável nas duas
+// tabelas — ver item 1 do plano de integração em Prosa e Poema.md) e
 // da barra de paginação, e os botões da coluna Ações.
 //
 // Extraído de render-listas.js, que continua com a orquestração por
 // aba (renderPoemas/renderProsas/etc.), o estado de filtro/paginação/
-// ordenação (`itensPorPagina`, `ordenacaoPoemas`, exportados só-leitura
-// daqui pra montarPaginacao/thOrdenavel/montarCabecalho usarem) e
-// `decorarCamposBusca` (que fica lá por chamar `resolverTituloPoemaOuProsa`
-// — daqui — mas também precisar ficar perto de getListaVisivelPoemas/
-// Prosas, que reatribuem estado local delas). Import circular com
-// render-listas.js é proposital, mesmo espírito do de selecao-massa.js:
-// este módulo só lê `itensPorPagina`/`ordenacaoPoemas`/`ICONE_EDITAR`/
+// ordenação (`itensPorPagina`, `ordenacaoPoemas`/`ordenacaoProsas`,
+// exportados só-leitura daqui pra montarPaginacao/thOrdenavel/
+// montarCabecalho usarem) e `decorarCamposBusca` (que fica lá por
+// chamar `resolverTituloPoemaOuProsa` — daqui — mas também precisar
+// ficar perto de getListaVisivelPoemas/Prosas, que reatribuem estado
+// local delas). Import circular com render-listas.js é proposital,
+// mesmo espírito do de selecao-massa.js: este módulo só lê
+// `itensPorPagina`/`ordenacaoPoemas`/`ordenacaoProsas`/`ICONE_EDITAR`/
 // `ICONE_EXCLUIR` de lá dentro de corpo de função, nunca no topo.
 // ============================================================
 
@@ -47,6 +49,7 @@ import {
     itensPorPagina,
     OPCOES_ITENS_POR_PAGINA,
     ordenacaoPoemas,
+    ordenacaoProsas,
 } from './render-listas.js';
 
 // Ver = olho; Baixar = seta pra baixo com bandeja — só usados na coluna
@@ -504,39 +507,27 @@ function iconeBuscaColuna(tabela, campoItem) {
         title="Buscar por ${prefixo}:">🔍</span>`;
 }
 
-// <th> clicável: alterna a ordenação da tabela de Poemas pra essa coluna
-// (ver ordenarPoemasPor). `campo` é a key usada em COMPARADORES_ORDENACAO_POEMAS
-// (ou 'titulo'/'estrutura', os dois casos especiais). `campoItem`, quando
-// informado, é o campo decorado usado pela busca (ver COLUNA_CAMPO_BUSCA)
-// — controla se a lupa de atalho aparece.
+// <th> clicável: alterna a ordenação da tabela (Poemas OU Prosas — ver
+// ordenarPor em render-listas.js) pra essa coluna. `campo` é a key usada
+// em COMPARADORES_ORDENACAO (ou 'titulo'/CAMPO_ESTRUTURA_POR_TABELA[tabela],
+// os casos especiais). `campoItem`, quando informado, é o campo decorado
+// usado pela busca (ver COLUNA_CAMPO_BUSCA) — controla se a lupa de
+// atalho aparece.
 // `sticky top-0` vai direto em cada <th> (não no <thead>, nem no <tr>) —
 // em vários navegadores, sticky em table-row-group/table-row é ignorado ou
 // inconsistente, ainda mais combinado com border-collapse; em <th>
 // (table-cell) funciona de forma confiável, então é aí que a regra mora.
-function thOrdenavel(campo, label, estado, classeExtra = '', campoItem = null) {
+function thOrdenavel(tabela, campo, label, estado, classeExtra = '', campoItem = null) {
     const ativo = estado.campo === campo;
     return `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700 ${classeExtra}">
         <span class="flex items-center gap-1">
-            <button type="button" onclick="ordenarPoemasPor('${campo}')"
+            <button type="button" onclick="ordenarPor('${tabela}', '${campo}')"
                 class="flex items-center gap-1 font-semibold hover:text-blue-600 dark:hover:text-blue-400 select-none"
                 title="Ordenar por ${escapeHtml(label)}">
                 <span>${label}</span>
                 ${iconeOrdenacao(ativo, estado.direcao)}
             </button>
-            ${iconeBuscaColuna('poemas', campoItem)}
-        </span>
-    </th>`;
-}
-
-// <th> não-ordenável (Prosas não tem cabeçalho clicável pra ordenação —
-// ver comentário em montarCabecalho), mas que ainda ganha a lupa de
-// atalho quando a coluna tem prefixo de busca correspondente (ver
-// COLUNA_CAMPO_BUSCA).
-function thComLupa(label, campoItem, classeExtra = '') {
-    return `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700 ${classeExtra}">
-        <span class="flex items-center gap-1">
-            <span class="font-semibold">${label}</span>
-            ${iconeBuscaColuna('prosas', campoItem)}
+            ${iconeBuscaColuna(tabela, campoItem)}
         </span>
     </th>`;
 }
@@ -547,7 +538,7 @@ function thComLupa(label, campoItem, classeExtra = '') {
 // busca — ver item 3 do plano, o operador de busca por quantidade ficou
 // pra depois), um <select> de campo + botão de remover, iguais aos do
 // painel de configuração (renderSeletorColunasContagem).
-function thContagem(coluna, estado) {
+function thContagem(tabela, coluna, estado) {
     const campoOrdenacao = PREFIXO_ORDENACAO_CONTAGEM + coluna.id;
     const ativo = estado.campo === campoOrdenacao;
     const label = CAMPOS_CONTAVEIS[coluna.campo]?.label || coluna.campo;
@@ -559,7 +550,7 @@ function thContagem(coluna, estado) {
         .join('');
     return `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700">
         <div class="flex items-center gap-1">
-            <button type="button" onclick="ordenarPoemasPor('${campoOrdenacao}')"
+            <button type="button" onclick="ordenarPor('${tabela}', '${campoOrdenacao}')"
                 class="flex items-center gap-1 font-semibold hover:text-blue-600 dark:hover:text-blue-400 select-none"
                 title="Ordenar por Qtd. ${escapeHtml(label)}">
                 <span>Qtd.</span>
@@ -567,11 +558,11 @@ function thContagem(coluna, estado) {
             </button>
         </div>
         <div class="flex items-center gap-1 mt-1 font-normal">
-            <select onchange="definirCampoColunaContagem('poemas', ${coluna.id}, this.value)"
+            <select onchange="definirCampoColunaContagem('${tabela}', ${coluna.id}, this.value)"
                 class="text-[10px] border border-gray-200 dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-slate-200 py-0.5 max-w-[7rem]">
                 ${opcoes}
             </select>
-            <button type="button" onclick="removerColunaContagem('poemas', ${coluna.id})"
+            <button type="button" onclick="removerColunaContagem('${tabela}', ${coluna.id})"
                 title="Remover essa coluna de contagem"
                 class="text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400">✕</button>
         </div>
@@ -582,52 +573,42 @@ export function montarCabecalho(tabela, celulaCheck, celulaAcoes) {
     const ativas = getColunasAtivas(tabela);
     const def = DEFINICAO_COLUNAS[tabela];
     const camposBusca = COLUNA_CAMPO_BUSCA[tabela] || {};
+    const estadoOrdenacao = tabela === 'prosas' ? ordenacaoProsas : ordenacaoPoemas;
 
-    // Só Poemas tem cabeçalho ordenável por enquanto (ver DEFINICAO_COLUNAS —
-    // é a única tabela cujas colunas têm sortType definido). Prosas ainda
-    // ganha a lupa de atalho por coluna (ver thComLupa), só não a ordenação.
-    if (tabela === 'poemas') {
-        const tituloOrdenavel = thOrdenavel(
-            'titulo',
-            'ID / Título',
-            ordenacaoPoemas,
-            'left-8',
-            camposBusca.titulo,
-        );
-        const meio = ativas
-            .map((key) => def.find((c) => c.key === key))
-            .filter(Boolean)
-            .map((c) => thOrdenavel(c.key, c.label, ordenacaoPoemas, '', camposBusca[c.key]))
-            .join('');
-        // Colunas de contagem (ver colunas-contagem.js) vêm depois das
-        // colunas fixas, na ordem em que foram criadas — só Poemas, mesmo
-        // motivo do comentário acima (precisa de cabeçalho ordenável).
-        const contagem = getColunasContagem('poemas')
-            .map((c) => thContagem(c, ordenacaoPoemas))
-            .join('');
-        return celulaCheck + tituloOrdenavel + meio + contagem + celulaAcoes;
-    }
-
-    const tituloComLupa = thComLupa('Título', camposBusca.titulo, 'sticky left-8');
+    // Item 1 do plano de integração (ver Prosa e Poema.md): as duas
+    // tabelas têm cabeçalho ordenável agora — a única diferença é a key
+    // usada pra "ordem estrutural padrão" (ver CAMPO_ESTRUTURA_POR_TABELA
+    // em render-listas.js: 'estrutura' em Poemas, 'vinculo' em Prosas).
+    const tituloOrdenavel = thOrdenavel(
+        tabela,
+        'titulo',
+        'ID / Título',
+        estadoOrdenacao,
+        'left-8',
+        camposBusca.titulo,
+    );
     const meio = ativas
         .map((key) => def.find((c) => c.key === key))
         .filter(Boolean)
-        .map((c) => thComLupa(c.label, camposBusca[c.key]))
+        .map((c) => thOrdenavel(tabela, c.key, c.label, estadoOrdenacao, '', camposBusca[c.key]))
         .join('');
-    return celulaCheck + tituloComLupa + meio + celulaAcoes;
+    // Colunas de contagem (ver colunas-contagem.js) vêm depois das
+    // colunas fixas, na ordem em que foram criadas.
+    const contagem = getColunasContagem(tabela)
+        .map((c) => thContagem(tabela, c, estadoOrdenacao))
+        .join('');
+    return celulaCheck + tituloOrdenavel + meio + contagem + celulaAcoes;
 }
 
 export function atualizarPainelColunas(tabela, painelId) {
     const painel = document.getElementById(painelId);
     if (!painel) return;
-    // Colunas de contagem (ver colunas-contagem.js) só existem em Poemas —
-    // mesmo motivo do comentário em montarCabecalho (precisa de cabeçalho
-    // ordenável). O botão "+ Adicionar" mora aqui; trocar campo/remover uma
-    // já criada dá pra fazer tanto aqui quanto direto no cabeçalho da
-    // tabela (thContagem acima) — os dois lêem/escrevem o mesmo estado.
-    painel.innerHTML =
-        renderSeletorColunas(tabela) +
-        (tabela === 'poemas' ? renderSeletorColunasContagem(tabela) : '');
+    // Colunas de contagem (ver colunas-contagem.js) agora disponíveis nas
+    // duas tabelas (ver Prosa e Poema.md, item 1). O botão "+ Adicionar"
+    // mora aqui; trocar campo/remover uma já criada dá pra fazer tanto
+    // aqui quanto direto no cabeçalho da tabela (thContagem acima) — os
+    // dois lêem/escrevem o mesmo estado.
+    painel.innerHTML = renderSeletorColunas(tabela) + renderSeletorColunasContagem(tabela);
 }
 
 export function atualizarPainelAcoes(tabela, painelId) {
