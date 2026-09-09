@@ -71,6 +71,7 @@ import {
     ordenarPor,
     buscarPorPrefixo,
     setStatusPoemas,
+    setStatusProsas,
     setItensPorPagina,
     setPaginaPoemas,
     setPaginaProsas,
@@ -805,6 +806,7 @@ window.setFiltroPapelProsas = setFiltroPapelProsas;
 window.ordenarPor = ordenarPor;
 window.buscarPorPrefixo = buscarPorPrefixo;
 window.setStatusPoemas = setStatusPoemas;
+window.setStatusProsas = setStatusProsas;
 window.setItensPorPagina = setItensPorPagina;
 window.togglePainel = togglePainel;
 window.toggleColuna = toggleColuna;

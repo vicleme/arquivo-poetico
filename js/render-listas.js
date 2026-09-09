@@ -163,6 +163,10 @@ export const CAMPO_ESTRUTURA_POR_TABELA = { poemas: 'estrutura', prosas: 'vincul
 export let ordenacaoPoemas = { campo: 'estrutura', direcao: 'asc' };
 export let ordenacaoProsas = { campo: 'vinculo', direcao: 'asc' };
 let statusPoemas = 'todos';
+// Item 2 do plano de integração (ver Prosa e Poema.md): mesmo filtro de
+// status de Poemas, aplicado a Prosas — o campo `status` (e `pendencia`,
+// pro caso "Só pendentes") é idêntico nos dois (ver aplicarFiltroStatus).
+let statusProsas = 'todos';
 // Nunca reatribuídos (só .add/.delete/.clear/.has) — por isso dá pra
 // exportar como const e deixar selecao-massa.js importar e mutar a
 // mesma instância. A leitura (.has, pro checkbox de cada linha) mora
@@ -479,6 +483,12 @@ export function setStatusPoemas(valor) {
     statusPoemas = valor;
     paginaPoemas = 1;
     renderPoemas();
+}
+
+export function setStatusProsas(valor) {
+    statusProsas = valor;
+    paginaProsas = 1;
+    renderProsas();
 }
 
 // Chamado pelo <select> de "itens por página" — vale pra Poemas e Prosas
@@ -886,21 +896,28 @@ function popularSelectPapelFiltro(id) {
     if (Array.from(sel.options).some((o) => o.value === valorAtual)) sel.value = valorAtual;
 }
 
+// Filtro de status compartilhado por Poemas e Prosas (item 2 do plano de
+// integração — ver Prosa e Poema.md): os dois campos que ele consulta
+// (`status`, `pendencia`) são idênticos nas duas tabelas.
+function aplicarFiltroStatus(base, status) {
+    if (status === 'publicados') return base.filter((i) => i.status === 'publicado');
+    if (status === 'nao-publicados') return base.filter((i) => i.status !== 'publicado');
+    if (status === 'completos') return base.filter((i) => i.status === 'completo');
+    if (status === 'incompletos') return base.filter((i) => i.status === 'incompleto');
+    if (status === 'migrados') return base.filter((i) => i.status === 'migrado');
+    if (status === 'pendentes') return base.filter((i) => i.pendencia?.trim());
+    if (status === 'descartados') return base.filter((i) => i.status === 'descartado');
+    if (status === 'privados') return base.filter((i) => i.status === 'privado');
+    return base;
+}
+
 // ─── Seleção múltipla de Poemas (ações em massa) ──────────────
 
 // Retorna a lista de poemas atualmente visível, já com status, busca
 // (incluindo nomes de livros) e ordenação aplicados — usada tanto pela
 // renderização quanto pela seleção em massa, pra ficarem sempre coerentes.
 export function getListaVisivelPoemas() {
-    let base = db.poemas;
-    if (statusPoemas === 'publicados') base = base.filter((p) => p.status === 'publicado');
-    else if (statusPoemas === 'nao-publicados') base = base.filter((p) => p.status !== 'publicado');
-    else if (statusPoemas === 'completos') base = base.filter((p) => p.status === 'completo');
-    else if (statusPoemas === 'incompletos') base = base.filter((p) => p.status === 'incompleto');
-    else if (statusPoemas === 'migrados') base = base.filter((p) => p.status === 'migrado');
-    else if (statusPoemas === 'pendentes') base = base.filter((p) => p.pendencia?.trim());
-    else if (statusPoemas === 'descartados') base = base.filter((p) => p.status === 'descartado');
-    else if (statusPoemas === 'privados') base = base.filter((p) => p.status === 'privado');
+    let base = aplicarFiltroStatus(db.poemas, statusPoemas);
 
     if (filtroLivroPoemas) {
         const livroSel = db.livros.find((l) => String(l.id) === String(filtroLivroPoemas));
@@ -962,7 +979,7 @@ export function getListaVisivelPoemas() {
 // Fica aqui (e não em selecao-massa.js) porque reatribui `semDataProsas`,
 // estado que só este arquivo é dono.
 export function getListaVisivelProsas() {
-    let base = db.prosas;
+    let base = aplicarFiltroStatus(db.prosas, statusProsas);
     if (filtroLivroProsa) {
         const livroSel = db.livros.find((l) => String(l.id) === String(filtroLivroProsa));
         if (livroSel?.tipo === 'Coletânea') {

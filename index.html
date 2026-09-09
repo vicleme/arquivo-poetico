@@ -1311,6 +1311,21 @@
                         />
                     </div>
                     <select
+                        id="status-prosas"
+                        onchange="setStatusProsas(this.value)"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="todos">Todos os status</option>
+                        <option value="publicados">Só publicados 🟢</option>
+                        <option value="nao-publicados">Só não publicados</option>
+                        <option value="completos">Só completos ⚪</option>
+                        <option value="incompletos">Só incompletos 🟡</option>
+                        <option value="migrados">Só migrados 🔵</option>
+                        <option value="pendentes">Só pendentes 🟠</option>
+                        <option value="descartados">Só descartados 🔴</option>
+                        <option value="privados">Só privados 🔒</option>
+                    </select>
+                    <select
                         id="filtro-livro-prosas"
                         onchange="setFiltroLivroProsa(this.value)"
                         class="w-56 border p-2 rounded text-sm border-gray-300 dark:border-slate-600"
