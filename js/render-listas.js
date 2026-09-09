@@ -59,7 +59,7 @@ import {
     resolverTituloPoemaOuProsa,
     titulosPoemasPorId,
     rotuloEntradaElo,
-    rotuloEntradaReferencia,
+    rotuloEntradaEco,
     trechoNota,
     celulaCamposPreenchidos,
     montarPaginacao,
@@ -720,6 +720,14 @@ function decorarCamposBusca(item, extraLivros = '') {
                   )
                   .join(' ')
             : '',
+        _buscaReferenciasExternas: Array.isArray(item.referenciasExternas)
+            ? item.referenciasExternas
+                  .map(
+                      (it) =>
+                          `${it.tipo || ''} ${it.texto || ''} ${it.link || ''} ${it.nota || ''}`,
+                  )
+                  .join(' ')
+            : '',
         _buscaAnexos: Array.isArray(item.anexos)
             ? item.anexos
                   .map((it) => `${it.tipo || ''} ${it.texto || ''} ${it.link || ''}`)
@@ -752,8 +760,8 @@ function decorarCamposBusca(item, extraLivros = '') {
                   )
                   .join(' ')
             : '',
-        _buscaReferencias: Array.isArray(item.conceitos?.referencias)
-            ? item.conceitos.referencias
+        _buscaEcos: Array.isArray(item.conceitos?.ecos)
+            ? item.conceitos.ecos
                   .map(
                       (it) =>
                           `${it.tipo || ''} ${it.texto || ''} ${resolverTituloPoemaOuProsa(it.id)}`,
@@ -1171,12 +1179,15 @@ const COMPARADORES_ORDENACAO = {
             : '',
     ),
     elos: compararPorTexto((p) => textoTitulosPoemasPorId(p.conceitos?.elos, rotuloEntradaElo)),
-    referencias: compararPorTexto((p) =>
-        textoTitulosPoemasPorId(p.conceitos?.referencias, rotuloEntradaReferencia),
-    ),
+    ecos: compararPorTexto((p) => textoTitulosPoemasPorId(p.conceitos?.ecos, rotuloEntradaEco)),
     intertextualidade: compararPorTexto((p) =>
         Array.isArray(p.intertextualidade)
             ? p.intertextualidade.map((it) => it.texto).join(' ')
+            : '',
+    ),
+    referenciasExternas: compararPorTexto((p) =>
+        Array.isArray(p.referenciasExternas)
+            ? p.referenciasExternas.map((it) => it.texto).join(' ')
             : '',
     ),
     anexos: compararPorTexto((p) =>
@@ -1614,8 +1625,8 @@ export function renderPoemas() {
         reconhecimentos: (p) => `<td class="p-4">${badgesReconhecimentos(p)}</td>`,
         elos: (p) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(p.conceitos?.elos, rotuloEntradaElo, 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300')}</td>`,
-        referencias: (p) =>
-            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(p.conceitos?.referencias, rotuloEntradaReferencia, 'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-700 dark:text-fuchsia-300')}</td>`,
+        ecos: (p) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(p.conceitos?.ecos, rotuloEntradaEco, 'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-700 dark:text-fuchsia-300')}</td>`,
         etiquetas: (p) => `<td class="p-4">${badgesEtiquetasPorCategoria(p)}</td>`,
         notas: (p) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.notas)}</td>`,
@@ -1628,6 +1639,24 @@ export function renderPoemas() {
         },
         intertextualidade: (p) => {
             const lista = Array.isArray(p.intertextualidade) ? p.intertextualidade : [];
+            if (!lista.length)
+                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            const html = lista
+                .map((it) => {
+                    const badge = it.tipo
+                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+                        : '';
+                    const link = it.link
+                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.link)}</a>`
+                        : '';
+                    const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
+                    return `<div>${badge}${trechoNota(it.texto)}${link}${nota}</div>`;
+                })
+                .join('');
+            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
+        },
+        referenciasExternas: (p) => {
+            const lista = Array.isArray(p.referenciasExternas) ? p.referenciasExternas : [];
             if (!lista.length)
                 return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
             const html = lista
@@ -1897,10 +1926,28 @@ export function renderProsas() {
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.contextoHistorico)}</td>`,
         elos: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(pr.conceitos?.elos, rotuloEntradaElo, 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300')}</td>`,
-        referencias: (pr) =>
-            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(pr.conceitos?.referencias, rotuloEntradaReferencia, 'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-700 dark:text-fuchsia-300')}</td>`,
+        ecos: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(pr.conceitos?.ecos, rotuloEntradaEco, 'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-700 dark:text-fuchsia-300')}</td>`,
         intertextualidade: (pr) => {
             const lista = Array.isArray(pr.intertextualidade) ? pr.intertextualidade : [];
+            if (!lista.length)
+                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            const html = lista
+                .map((it) => {
+                    const badge = it.tipo
+                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+                        : '';
+                    const link = it.link
+                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.link)}</a>`
+                        : '';
+                    const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
+                    return `<div>${badge}${trechoNota(it.texto)}${link}${nota}</div>`;
+                })
+                .join('');
+            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
+        },
+        referenciasExternas: (pr) => {
+            const lista = Array.isArray(pr.referenciasExternas) ? pr.referenciasExternas : [];
             if (!lista.length)
                 return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
             const html = lista

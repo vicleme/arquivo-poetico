@@ -36,6 +36,22 @@ document.body.innerHTML = `
     <button id="pr-intertexto-btn-add"></button>
     <button id="pr-intertexto-btn-cancelar" class="hidden"></button>
     <div id="pr-intertexto-lista"></div>
+    <input id="p-refext-tipo" />
+    <input id="p-refext-texto" />
+    <input id="p-refext-link" />
+    <input id="p-refext-link-texto" />
+    <input id="p-refext-nota" />
+    <button id="p-refext-btn-add"></button>
+    <button id="p-refext-btn-cancelar" class="hidden"></button>
+    <div id="p-refext-lista"></div>
+    <input id="pr-refext-tipo" />
+    <input id="pr-refext-texto" />
+    <input id="pr-refext-link" />
+    <input id="pr-refext-link-texto" />
+    <input id="pr-refext-nota" />
+    <button id="pr-refext-btn-add"></button>
+    <button id="pr-refext-btn-cancelar" class="hidden"></button>
+    <div id="pr-refext-lista"></div>
     <div id="pr-sinalizacoes-corpo"></div>
 `;
 
@@ -316,7 +332,7 @@ function limparIntertextoPoema() {
     document.getElementById('p-intertexto-link').value = '';
     document.getElementById('p-intertexto-link-texto').value = '';
     document.getElementById('p-intertexto-nota').value = '';
-    resetIntertextualidade();
+    resetIntertextualidade('poemas');
 }
 
 describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM real)', () => {
@@ -329,9 +345,9 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
         document.getElementById('p-intertexto-link-texto').value = 'Site da obra';
         document.getElementById('p-intertexto-nota').value = 'Nota livre sobre a referência';
 
-        adicionarIntertexto();
+        adicionarIntertexto('poemas');
 
-        assert.deepEqual(obterIntertextualidade(), [
+        assert.deepEqual(obterIntertextualidade('poemas'), [
             {
                 tipo: 'Citação',
                 texto: 'Trecho citado',
@@ -348,7 +364,7 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
         document.getElementById('p-intertexto-link-texto').value = 'Rótulo';
         document.getElementById('p-intertexto-nota').value = 'Nota';
 
-        adicionarIntertexto();
+        adicionarIntertexto('poemas');
 
         assert.equal(document.getElementById('p-intertexto-tipo').value, '');
         assert.equal(document.getElementById('p-intertexto-texto').value, '');
@@ -360,14 +376,14 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
     it('link e nota sozinhos (sem tipo nem texto) já bastam pra adicionar a entrada', () => {
         document.getElementById('p-intertexto-link').value = 'https://exemplo.com';
 
-        adicionarIntertexto();
+        adicionarIntertexto('poemas');
 
-        assert.equal(obterIntertextualidade().length, 1);
+        assert.equal(obterIntertextualidade('poemas').length, 1);
     });
 
     it('não adiciona nada se os 5 campos estiverem vazios', () => {
-        adicionarIntertexto();
-        assert.deepEqual(obterIntertextualidade(), []);
+        adicionarIntertexto('poemas');
+        assert.deepEqual(obterIntertextualidade('poemas'), []);
     });
 
     it('editarIntertexto repopula tipo, texto, link, linkTexto e nota do item selecionado', () => {
@@ -375,9 +391,9 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
         document.getElementById('p-intertexto-link').value = 'https://original.com';
         document.getElementById('p-intertexto-link-texto').value = 'Rótulo original';
         document.getElementById('p-intertexto-nota').value = 'Nota original';
-        adicionarIntertexto();
+        adicionarIntertexto('poemas');
 
-        editarIntertexto(0);
+        editarIntertexto('poemas', 0);
 
         assert.equal(document.getElementById('p-intertexto-texto').value, 'Original');
         assert.equal(document.getElementById('p-intertexto-link').value, 'https://original.com');
@@ -387,15 +403,15 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
 
     it('cancelarEdicaoIntertexto limpa os 5 campos sem alterar a lista', () => {
         document.getElementById('p-intertexto-texto').value = 'Original';
-        adicionarIntertexto();
-        editarIntertexto(0);
+        adicionarIntertexto('poemas');
+        editarIntertexto('poemas', 0);
 
         document.getElementById('p-intertexto-nota').value = 'Rascunho descartado';
-        cancelarEdicaoIntertexto();
+        cancelarEdicaoIntertexto('poemas');
 
         assert.equal(document.getElementById('p-intertexto-nota').value, '');
-        assert.equal(obterIntertextualidade().length, 1);
-        assert.equal(obterIntertextualidade()[0].texto, 'Original');
+        assert.equal(obterIntertextualidade('poemas').length, 1);
+        assert.equal(obterIntertextualidade('poemas')[0].texto, 'Original');
     });
 
     it('sem linkTexto, a lista renderizada mostra a URL crua como texto do <a>', () => {
@@ -403,7 +419,7 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
         document.getElementById('p-intertexto-link').value = 'https://exemplo.com/pagina';
         document.getElementById('p-intertexto-nota').value = 'Comentário à parte';
 
-        adicionarIntertexto();
+        adicionarIntertexto('poemas');
 
         const html = document.getElementById('p-intertexto-lista').innerHTML;
         assert.match(
@@ -419,7 +435,7 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
             'https://g1.globo.com/pe/pernambuco/noticia/2020/06/19/algum-slug-bem-longo.ghtml';
         document.getElementById('p-intertexto-link-texto').value = 'G1 Pernambuco';
 
-        adicionarIntertexto();
+        adicionarIntertexto('poemas');
 
         const html = document.getElementById('p-intertexto-lista').innerHTML;
         assert.match(
@@ -432,7 +448,7 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
     it('o <a> renderizado tem a classe break-all, pra URL longa quebrar em vez de estourar', () => {
         document.getElementById('p-intertexto-link').value = 'https://exemplo.com/pagina-longa';
 
-        adicionarIntertexto();
+        adicionarIntertexto('poemas');
 
         const html = document.getElementById('p-intertexto-lista').innerHTML;
         assert.match(html, /class="[^"]*break-all[^"]*"/);

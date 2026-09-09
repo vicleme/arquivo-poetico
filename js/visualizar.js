@@ -178,7 +178,7 @@ export function renderVisualizacaoHtml(item) {
     });
     if (item.genero) html += linhaMetaHtml('Gênero', item.genero);
     html += linhaMetaHtml('Elos', titulosPorIds(item.conceitos?.elos));
-    html += linhaMetaHtml('Referências', titulosPorIds(item.conceitos?.referencias));
+    html += linhaMetaHtml('Ecos', titulosPorIds(item.conceitos?.ecos));
 
     html += `
         <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1">Texto</h4>
@@ -191,6 +191,7 @@ export function renderVisualizacaoHtml(item) {
     html += blocoTextoHtml('Ocultação', item.ocultacao);
 
     html += listaIntertextualidadeHtml('Intertextualidade', item.intertextualidade);
+    html += listaIntertextualidadeHtml('Referências', item.referenciasExternas);
 
     html += listaHtml('Anexos', item.anexos, (a) => {
         const prefixo = a.tipo ? `<strong>${escapeHtml(a.tipo)}:</strong> ` : '';

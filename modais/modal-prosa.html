@@ -633,7 +633,7 @@
                     </details>
 
                     <details class="campo-grupo">
-                        <summary>Elos, referências e intertextualidade</summary>
+                        <summary>Intratextualidade (elos e ecos)</summary>
                         <div class="campo-grupo-corpo">
                             <label class="form-label"
                                 >Elos
@@ -700,7 +700,7 @@
                             <div id="pr-elos-derivados" class="space-y-1 mb-2 hidden"></div>
 
                             <label class="form-label"
-                                >Referências
+                                >Ecos
                                 <span
                                     class="font-normal normal-case text-gray-400 dark:text-slate-500"
                                     >(ligação mais solta com outro texto — personagem em comum,
@@ -708,23 +708,20 @@
                                 ></label
                             >
                             <div class="flex gap-2 mb-2">
-                                <select
-                                    id="pr-ref-tipo"
-                                    class="text-xs w-28 flex-shrink-0"
-                                ></select>
-                                <select id="pr-ref-poema" class="text-xs flex-1"></select>
+                                <select id="pr-eco-tipo" class="text-xs w-28 flex-shrink-0"></select>
+                                <select id="pr-eco-poema" class="text-xs flex-1"></select>
                                 <button
                                     type="button"
-                                    id="pr-ref-btn-add"
-                                    onclick="adicionarReferencia('prosas')"
+                                    id="pr-eco-btn-add"
+                                    onclick="adicionarEco('prosas')"
                                     class="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-3 rounded text-xs font-bold flex-shrink-0"
                                 >
                                     +
                                 </button>
                                 <button
                                     type="button"
-                                    id="pr-ref-btn-cancelar"
-                                    onclick="cancelarEdicaoReferencia('prosas')"
+                                    id="pr-eco-btn-cancelar"
+                                    onclick="cancelarEdicaoEco('prosas')"
                                     class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
                                 >
                                     Cancelar
@@ -732,11 +729,17 @@
                             </div>
                             <input
                                 type="text"
-                                id="pr-ref-texto"
+                                id="pr-eco-texto"
                                 class="text-sm w-full mb-2"
-                                placeholder="Nota opcional sobre essa referência..."
+                                placeholder="Nota opcional sobre esse eco..."
                             />
-                            <div id="pr-refs-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
+                            <div id="pr-ecos-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>Intertextualidade e referências</summary>
+                        <div class="campo-grupo-corpo">
                             <label class="form-label"
                                 >Intertextualidade
                                 <span
@@ -804,6 +807,74 @@
                             <datalist id="sugestoes-intertexto-prosa"></datalist>
                             <datalist id="sugestoes-intertexto-tipo-prosa"></datalist>
                             <div id="pr-intertexto-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
+
+                            <label class="form-label"
+                                >Referências
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(algo que ancora o texto num tempo/mundo comum — marco
+                                    histórico, notícia, pessoa pública...)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-refext-tipo"
+                                    list="sugestoes-refext-tipo-prosa"
+                                    class="text-xs w-28 flex-shrink-0"
+                                    placeholder="Tipo..."
+                                />
+                                <input
+                                    type="text"
+                                    id="pr-refext-texto"
+                                    list="sugestoes-refext-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Ex.: Enchente de 2011"
+                                />
+                            </div>
+                            <div class="flex items-center justify-end gap-2 mb-2">
+                                <button
+                                    type="button"
+                                    id="pr-refext-btn-cancelar"
+                                    onclick="cancelarEdicaoReferenciaExterna('prosas')"
+                                    class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    id="pr-refext-btn-add"
+                                    onclick="adicionarReferenciaExterna('prosas')"
+                                    class="bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 px-3 py-1.5 rounded text-xs font-bold flex-shrink-0"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="url"
+                                    id="pr-refext-link"
+                                    class="text-sm flex-1"
+                                    placeholder="Link (opcional)"
+                                />
+                                <input
+                                    type="text"
+                                    id="pr-refext-link-texto"
+                                    class="text-sm flex-1"
+                                    placeholder="Texto do link (opcional)"
+                                />
+                            </div>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-refext-nota"
+                                    class="text-sm w-full"
+                                    placeholder="Nota opcional..."
+                                />
+                            </div>
+                            <datalist id="sugestoes-refext-prosa"></datalist>
+                            <datalist id="sugestoes-refext-tipo-prosa"></datalist>
+                            <div id="pr-refext-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
                         </div>
                     </details>
 

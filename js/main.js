@@ -137,7 +137,7 @@ import {
     exportarTudoFlatDocx,
 } from './exportar.js';
 import { renderEstatisticas } from './estatisticas.js';
-import { renderConexoes, baixarDiagramaReferencias } from './render-conexoes.js';
+import { renderConexoes, baixarDiagramaEcos } from './render-conexoes.js';
 import {
     initEditor,
     initEditorProsa,
@@ -194,16 +194,20 @@ import {
     removerIntertexto,
     editarIntertexto,
     cancelarEdicaoIntertexto,
+    adicionarReferenciaExterna,
+    removerReferenciaExterna,
+    editarReferenciaExterna,
+    cancelarEdicaoReferenciaExterna,
     adicionarElo,
     removerElo,
     editarElo,
     cancelarEdicaoElo,
     onRelacaoEloAlterada,
     selecionarDirecaoElo,
-    adicionarReferencia,
-    removerReferencia,
-    editarReferencia,
-    cancelarEdicaoReferencia,
+    adicionarEco,
+    removerEco,
+    editarEco,
+    cancelarEdicaoEco,
     adicionarAnexo,
     removerAnexo,
     editarAnexo,
@@ -345,7 +349,7 @@ const ACOES_LISTA = {
     'toggle-prosa': (el, e) => toggleSelecao('prosas', el.checked, Number(el.dataset.id), e?.shiftKey),
     'toggle-todos-poemas': (el) => toggleSelecaoTodos('poemas', el.checked),
     'toggle-todos-prosas': (el) => toggleSelecaoTodos('prosas', el.checked),
-    'baixar-diagrama-referencias': (el) => baixarDiagramaReferencias(el),
+    'baixar-diagrama-ecos': (el) => baixarDiagramaEcos(el),
 };
 
 document.querySelector('main')?.addEventListener('click', (e) => {
@@ -607,16 +611,20 @@ window.adicionarIntertexto = adicionarIntertexto;
 window.removerIntertexto = removerIntertexto;
 window.editarIntertexto = editarIntertexto;
 window.cancelarEdicaoIntertexto = cancelarEdicaoIntertexto;
+window.adicionarReferenciaExterna = adicionarReferenciaExterna;
+window.removerReferenciaExterna = removerReferenciaExterna;
+window.editarReferenciaExterna = editarReferenciaExterna;
+window.cancelarEdicaoReferenciaExterna = cancelarEdicaoReferenciaExterna;
 window.adicionarElo = adicionarElo;
 window.removerElo = removerElo;
 window.editarElo = editarElo;
 window.cancelarEdicaoElo = cancelarEdicaoElo;
 window.onRelacaoEloAlterada = onRelacaoEloAlterada;
 window.selecionarDirecaoElo = selecionarDirecaoElo;
-window.adicionarReferencia = adicionarReferencia;
-window.removerReferencia = removerReferencia;
-window.editarReferencia = editarReferencia;
-window.cancelarEdicaoReferencia = cancelarEdicaoReferencia;
+window.adicionarEco = adicionarEco;
+window.removerEco = removerEco;
+window.editarEco = editarEco;
+window.cancelarEdicaoEco = cancelarEdicaoEco;
 window.adicionarAnexo = adicionarAnexo;
 window.removerAnexo = removerAnexo;
 window.editarAnexo = editarAnexo;

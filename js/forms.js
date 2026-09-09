@@ -69,6 +69,9 @@ import {
     obterIntertextualidade,
     carregarIntertextualidade,
     resetIntertextualidade,
+    obterReferenciasExternas,
+    carregarReferenciasExternas,
+    resetReferenciasExternas,
     obterAnexos,
     carregarAnexos,
     resetAnexos,
@@ -77,9 +80,9 @@ import {
     obterElos,
     carregarElos,
     resetElos,
-    obterReferencias,
-    carregarReferencias,
-    resetReferencias,
+    obterEcos,
+    carregarEcos,
+    resetEcos,
     renderPainelElosDerivados,
     atualizarFiltroSecoesMigracao,
     renderPainelElosDerivadosProsa,
@@ -923,7 +926,7 @@ export function initFormPoema() {
             ),
             conceitos: {
                 elos: obterElos('poemas'),
-                referencias: obterReferencias('poemas'),
+                ecos: obterEcos('poemas'),
             },
             notas: document.getElementById('p-notas').value,
             sinalizacoesTradicao: document.getElementById('p-sinal-tradicao').value,
@@ -943,6 +946,7 @@ export function initFormPoema() {
             status: document.getElementById('p-status').value,
             epocaRetratada,
             intertextualidade: obterIntertextualidade('poemas'),
+            referenciasExternas: obterReferenciasExternas('poemas'),
             anexos: obterAnexos('poemas'),
             anexosNotaGeral: document.getElementById('p-anexos-nota-geral').value,
             anotacoesMarginais: obterAnotacoes(),
@@ -1063,8 +1067,11 @@ export async function editarPoema(id) {
     document.getElementById('p-intertexto-tipo').value = '';
     document.getElementById('p-intertexto-texto').value = '';
     carregarIntertextualidade('poemas', p.intertextualidade || []);
+    document.getElementById('p-refext-tipo').value = '';
+    document.getElementById('p-refext-texto').value = '';
+    carregarReferenciasExternas('poemas', p.referenciasExternas || []);
     carregarElos('poemas', p.conceitos?.elos || []);
-    carregarReferencias('poemas', p.conceitos?.referencias || []);
+    carregarEcos('poemas', p.conceitos?.ecos || []);
     renderPainelElosDerivados(p.id);
     document.getElementById('p-anexo-tipo').value = '';
     document.getElementById('p-anexo-link').value = '';
@@ -1215,7 +1222,7 @@ export function initFormProsa() {
             ),
             conceitos: {
                 elos: obterElos('prosas'),
-                referencias: obterReferencias('prosas'),
+                ecos: obterEcos('prosas'),
             },
             notas: document.getElementById('pr-notas').value,
             sinalizacoesTradicao: document.getElementById('pr-sinal-tradicao').value,
@@ -1237,6 +1244,7 @@ export function initFormProsa() {
             status: document.getElementById('pr-status').value,
             epocaRetratada,
             intertextualidade: obterIntertextualidade('prosas'),
+            referenciasExternas: obterReferenciasExternas('prosas'),
             anexos: obterAnexos('prosas'),
             anexosNotaGeral: document.getElementById('pr-anexos-nota-geral').value,
             contextoHistorico: document.getElementById('pr-contexto').value,
@@ -1310,9 +1318,10 @@ export function initFormProsa() {
         resetReconhecimentos('prosas');
         resetGeneroProsa();
         resetIntertextualidade('prosas');
+        resetReferenciasExternas('prosas');
         resetAnexos('prosas');
         resetElos('prosas');
-        resetReferencias('prosas');
+        resetEcos('prosas');
         form.reset();
     };
 }
@@ -1354,8 +1363,11 @@ export async function editarProsa(id) {
     document.getElementById('pr-intertexto-tipo').value = '';
     document.getElementById('pr-intertexto-texto').value = '';
     carregarIntertextualidade('prosas', pr.intertextualidade || []);
+    document.getElementById('pr-refext-tipo').value = '';
+    document.getElementById('pr-refext-texto').value = '';
+    carregarReferenciasExternas('prosas', pr.referenciasExternas || []);
     carregarElos('prosas', pr.conceitos?.elos || []);
-    carregarReferencias('prosas', pr.conceitos?.referencias || []);
+    carregarEcos('prosas', pr.conceitos?.ecos || []);
     renderPainelElosDerivadosProsa(pr.id);
     document.getElementById('pr-anexo-tipo').value = '';
     document.getElementById('pr-anexo-link').value = '';

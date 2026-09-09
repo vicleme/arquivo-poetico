@@ -15,7 +15,8 @@ import {
     resetAnexos,
     resetAnotacoes,
     resetElos,
-    resetReferencias,
+    resetEcos,
+    resetReferenciasExternas,
     renderPainelElosDerivados,
     atualizarRotulosDirecaoElo,
 } from './editor.js';
@@ -24,7 +25,7 @@ import {
     extrairNomesLojasUnicos,
     escapeHtml,
     RELACOES_ELO,
-    TIPOS_REFERENCIA,
+    TIPOS_ECO,
     CORES_GRUPO_PADRAO,
 } from './utils.js';
 import { toggleModal, garantirModal } from './modais.js';
@@ -505,12 +506,12 @@ export function renderDropdowns() {
             .map((l) => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`)
             .join('');
 
-    // 6. Elos e Referências entre poemas — selects de poema-alvo (single),
+    // 6. Elos e Ecos entre poemas — selects de poema-alvo (single),
     //    usados pela linha de "adicionar" de cada lista (ver editor.js:
-    //    adicionarElo/adicionarReferencia). Repovoados a cada render pra
+    //    adicionarElo/adicionarEco). Repovoados a cada render pra
     //    refletir poemas criados/renomeados depois que o modal abriu.
     const sEloPoema = document.getElementById('p-elo-poema');
-    const sRefPoema = document.getElementById('p-ref-poema');
+    const sRefPoema = document.getElementById('p-eco-poema');
     if (sEloPoema || sRefPoema) {
         const opcoes =
             '<option value="">Selecione um poema...</option>' +
@@ -521,13 +522,13 @@ export function renderDropdowns() {
         if (sEloPoema) sEloPoema.innerHTML = opcoes;
         if (sRefPoema) sRefPoema.innerHTML = opcoes;
     }
-    // Relação de Elos / Tipo de Referências — Elos usa as 8 relações
+    // Relação de Elos / Tipo de Ecos — Elos usa as 8 relações
     // fechadas (RELACOES_ELO em utils.js, ver redesenho Relação+Direção);
-    // Referências continua com sua lista fechada simples de tipos
-    // (TIPOS_REFERENCIA), sem Direção. Populadas aqui, e não hardcoded
+    // Ecos continua com sua lista fechada simples de tipos
+    // (TIPOS_ECO), sem Direção. Populadas aqui, e não hardcoded
     // no HTML, pra ter uma única fonte de verdade caso a lista mude.
     const sEloRelacao = document.getElementById('p-elo-relacao');
-    const sRefTipo = document.getElementById('p-ref-tipo');
+    const sRefTipo = document.getElementById('p-eco-tipo');
     if (sEloRelacao) {
         sEloRelacao.innerHTML =
             '<option value="">Relação...</option>' +
@@ -539,7 +540,7 @@ export function renderDropdowns() {
     if (sRefTipo) {
         sRefTipo.innerHTML =
             '<option value="">Tipo...</option>' +
-            TIPOS_REFERENCIA.map(
+            TIPOS_ECO.map(
                 (t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`,
             ).join('');
     }
@@ -553,13 +554,13 @@ export function renderDropdowns() {
             .map((l) => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`)
             .join('');
 
-    // 6c. Elos e Referências no Modal de Prosas (item 4) — selects de
+    // 6c. Elos e Ecos no Modal de Prosas (item 4) — selects de
     //     texto-alvo (single), mas agora com Poemas E Prosas juntos num
     //     optgroup por tipo (um texto do acervo pode se ligar tanto a um
     //     poema quanto a outra prosa) — diferente do Modal de Poemas
     //     acima, que por ora só oferece outros Poemas como alvo.
     const sEloProsa = document.getElementById('pr-elo-poema');
-    const sRefProsa = document.getElementById('pr-ref-poema');
+    const sRefProsa = document.getElementById('pr-eco-poema');
     if (sEloProsa || sRefProsa) {
         const opcoesProsa =
             '<option value="">Selecione um texto...</option>' +
@@ -579,7 +580,7 @@ export function renderDropdowns() {
         if (sRefProsa) sRefProsa.innerHTML = opcoesProsa;
     }
     const sEloRelacaoProsa = document.getElementById('pr-elo-relacao');
-    const sRefTipoProsa = document.getElementById('pr-ref-tipo');
+    const sRefTipoProsa = document.getElementById('pr-eco-tipo');
     if (sEloRelacaoProsa) {
         sEloRelacaoProsa.innerHTML =
             '<option value="">Relação...</option>' +
@@ -591,7 +592,7 @@ export function renderDropdowns() {
     if (sRefTipoProsa) {
         sRefTipoProsa.innerHTML =
             '<option value="">Tipo...</option>' +
-            TIPOS_REFERENCIA.map(
+            TIPOS_ECO.map(
                 (t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`,
             ).join('');
     }
@@ -680,10 +681,11 @@ export async function prepararNovo(tipo) {
         resetEnvios('poemas');
         resetReconhecimentos('poemas');
         resetIntertextualidade('poemas');
+        resetReferenciasExternas('poemas');
         resetAnexos('poemas');
         resetAnotacoes();
         resetElos('poemas');
-        resetReferencias('poemas');
+        resetEcos('poemas');
         renderPainelElosDerivados(null);
         atualizarDatalist();
         const infoP = document.getElementById('p-coletaneas-info');
@@ -691,8 +693,8 @@ export async function prepararNovo(tipo) {
     }
 
     if (tipo === 'prosa') {
-        // resetPessoas, resetAutoria, resetSinalizacoes e os 6 grupos de
-        // criarListaDeEntradas (Elos/Referências/Intertextualidade/
+        // resetPessoas, resetAutoria, resetSinalizacoes e os 7 grupos de
+        // criarListaDeEntradas (Elos/Ecos/Intertextualidade/Referências/
         // Anexos/Envios/Reconhecimentos) já são importados estaticamente
         // acima (unificados por tabela) — só o que ainda é exclusivo de
         // Prosa (gênero) precisa de import dinâmico (evita ciclo de
@@ -703,9 +705,10 @@ export async function prepararNovo(tipo) {
         resetEnvios('prosas');
         resetReconhecimentos('prosas');
         resetIntertextualidade('prosas');
+        resetReferenciasExternas('prosas');
         resetAnexos('prosas');
         resetElos('prosas');
-        resetReferencias('prosas');
+        resetEcos('prosas');
         renderPainelElosDerivados(null);
         import('./editor.js').then(
             ({ resetGeneroProsa, atualizarDatalistProsa, renderPainelElosDerivadosProsa }) => {

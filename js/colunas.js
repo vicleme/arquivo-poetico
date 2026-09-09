@@ -55,12 +55,19 @@ export const DEFINICAO_COLUNAS = {
         { key: 'autoavaliacao', label: 'Autoavaliação', default: false, sortType: 'alfabetico' },
         // "Livros e destino" — vínculo estrutural.
         { key: 'estrutura', label: 'Estrutura', default: true, sortType: 'estrutura' },
-        // "Elos, referências e intertextualidade".
+        // "Intratextualidade" (Elos + Ecos).
         { key: 'elos', label: 'Elos', default: false, sortType: 'alfabetico' },
-        { key: 'referencias', label: 'Referências', default: false, sortType: 'alfabetico' },
+        { key: 'ecos', label: 'Ecos', default: false, sortType: 'alfabetico' },
+        // "Intertextualidade e Referências".
         {
             key: 'intertextualidade',
             label: 'Intertextualidade',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'referenciasExternas',
+            label: 'Referências',
             default: false,
             sortType: 'alfabetico',
         },
@@ -159,12 +166,19 @@ export const DEFINICAO_COLUNAS = {
         { key: 'reconhecimentos', label: 'Reconhecimentos', default: false },
         // Autoavaliação — grupo novo, logo depois de Reconhecimentos no modal.
         { key: 'autoavaliacao', label: 'Autoavaliação', default: false, sortType: 'alfabetico' },
-        // "Elos, referências e intertextualidade".
+        // "Intratextualidade" (Elos + Ecos).
         { key: 'elos', label: 'Elos', default: false, sortType: 'alfabetico' },
-        { key: 'referencias', label: 'Referências', default: false, sortType: 'alfabetico' },
+        { key: 'ecos', label: 'Ecos', default: false, sortType: 'alfabetico' },
+        // "Intertextualidade e Referências".
         {
             key: 'intertextualidade',
             label: 'Intertextualidade',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'referenciasExternas',
+            label: 'Referências',
             default: false,
             sortType: 'alfabetico',
         },

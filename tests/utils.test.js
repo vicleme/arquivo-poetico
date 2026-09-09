@@ -38,7 +38,7 @@ import {
     debounce,
     criarRastreadorDeAlteracoes,
     RELACOES_ELO,
-    TIPOS_REFERENCIA,
+    TIPOS_ECO,
     ROTULOS_RELACAO_ELO,
     rotuloElo,
     direcaoInversa,
@@ -1260,7 +1260,7 @@ describe('criarRastreadorDeAlteracoes', () => {
     );
 });
 
-describe('RELACOES_ELO / TIPOS_REFERENCIA / rotuloElo (redesenho Relação+Direção)', () => {
+describe('RELACOES_ELO / TIPOS_ECO / rotuloElo (redesenho Relação+Direção)', () => {
     it('RELACOES_ELO cobre as 8 relações bilaterais, incluindo Díptico e Outro', () => {
         for (const relacao of [
             'Reescrita',
@@ -1277,17 +1277,14 @@ describe('RELACOES_ELO / TIPOS_REFERENCIA / rotuloElo (redesenho Relação+Dire�
         assert.equal(RELACOES_ELO.length, 8);
     });
 
-    it('TIPOS_REFERENCIA cobre as relações unidirecionais, incluindo o novo tipo Aceno a', () => {
+    it('TIPOS_ECO cobre as relações unidirecionais, incluindo o novo tipo Aceno a', () => {
         for (const tipo of [
             'Personagem em comum',
             'Imagem central compartilhada',
             'Aceno a',
             'Outro',
         ]) {
-            assert.ok(
-                TIPOS_REFERENCIA.includes(tipo),
-                `TIPOS_REFERENCIA deveria incluir "${tipo}"`,
-            );
+            assert.ok(TIPOS_ECO.includes(tipo), `TIPOS_ECO deveria incluir "${tipo}"`);
         }
     });
 

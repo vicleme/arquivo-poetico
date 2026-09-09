@@ -158,11 +158,31 @@ export function migrarSinalizacoes(itens) {
 migrarSinalizacoes(db.poemas);
 migrarSinalizacoes(db.prosas);
 
-// Migração: Elos e Referências eram arrays de ID cru apontando pra outro
-// poema (ex.: [1776745104803]). Passam a ser arrays de objeto
-// { id, tipo, texto } — um elo/referência pode ter um tipo específico
+// Migração: o grupo "Elos, Referências e Intertextualidade" virou
+// "Intratextualidade" (só Elos e Ecos). O que era `conceitos.referencias`
+// (a relação de um texto evocar outro do acervo) passa a se chamar
+// `conceitos.ecos` — mesma forma de dado, só a chave muda. Precisa
+// rodar ANTES de qualquer coisa que leia/normalize `conceitos.ecos`
+// (migrarElosReferencias logo abaixo, e antes do campo novo
+// `referenciasExternas` nascer — ver migrarReferenciasExternas), pra
+// não deixar vestígio da chave antiga nem misturar os dois momentos.
+// Idempotente: poema cujo `conceitos.ecos` já existe (rodada anterior,
+// ou item que nunca teve `referencias`) passa intacto; `referencias` é
+// sempre removida quando presente, mesmo sem nada pra migrar.
+function migrarReferenciasParaEcos(poemas) {
+    poemas.forEach((p) => {
+        if (!p.conceitos || p.conceitos.referencias === undefined) return;
+        if (p.conceitos.ecos === undefined) p.conceitos.ecos = p.conceitos.referencias;
+        delete p.conceitos.referencias;
+    });
+}
+migrarReferenciasParaEcos(db.poemas);
+
+// Migração: Elos e Ecos eram arrays de ID cru apontando pra outro poema
+// (ex.: [1776745104803]). Passam a ser arrays de objeto
+// { id, tipo, texto } — um elo/eco pode ter um tipo específico
 // (Reescrita de / Tradução de / Personagem em comum / etc., ver
-// TIPOS_ELO/TIPOS_REFERENCIA em utils.js) e uma nota livre opcional. Só se
+// TIPOS_ELO/TIPOS_ECO em utils.js) e uma nota livre opcional. Só se
 // aplica a Poema — Prosa ainda não tem `conceitos` (item 4 do schema,
 // paridade com Poema, ainda pendente).
 // Idempotente: entradas que já são objeto (rodada anterior de migração,
@@ -179,10 +199,26 @@ function migrarElosReferencias(poemas) {
     poemas.forEach((p) => {
         if (!p.conceitos) return;
         p.conceitos.elos = migrarLista(p.conceitos.elos);
-        p.conceitos.referencias = migrarLista(p.conceitos.referencias);
+        p.conceitos.ecos = migrarLista(p.conceitos.ecos);
     });
 }
 migrarElosReferencias(db.poemas);
+
+// Normalização: `referenciasExternas` é campo novo (grupo
+// "Intertextualidade e Referências", par de Intertextualidade) — sem
+// dado legado pra migrar, só precisa nascer `[]` em vez de `undefined`
+// pra quem lê o campo direto sem fallback (mesmo papel de
+// migrarIntertextualidadePoemas acima, sobre um campo que também é
+// top-level, não dentro de `conceitos`). Aplica a Poema e Prosa
+// (paridade, como Intertextualidade já tem hoje).
+// Idempotente: item cujo `referenciasExternas` já é array passa intacto.
+function migrarReferenciasExternas(itens) {
+    itens.forEach((item) => {
+        if (!Array.isArray(item.referenciasExternas)) item.referenciasExternas = [];
+    });
+}
+migrarReferenciasExternas(db.poemas);
+migrarReferenciasExternas(db.prosas);
 
 // Migração: Elos tinham um `tipo` de uma lista fechada de 11 valores
 // (Reescrita de, Continuação de, Tradução de, Traduzido para...) — um
@@ -753,6 +789,10 @@ export async function importarDB(novoDb) {
     db.epocas = novoDb.epocas || [];
     migrarStatusPoemas(db.poemas);
     migrarIntertextualidadePoemas(db.poemas);
+    migrarReferenciasParaEcos(db.poemas);
+    migrarElosReferencias(db.poemas);
+    migrarReferenciasExternas(db.poemas);
+    migrarReferenciasExternas(db.prosas);
     migrarSinalizacoes(db.poemas);
     migrarSinalizacoes(db.prosas);
     migrarPessoas(db.poemas);

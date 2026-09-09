@@ -1,6 +1,6 @@
 // ============================================================
 // render-conexoes.js — Aba "Conexões" (item 10 do plano de schema).
-// Visão computada sobre Elos e Referências: não é dona de nenhum
+// Visão computada sobre Elos e Ecos: não é dona de nenhum
 // dado (sem db.relacoes[], sem migração) — varre db.poemas inteiro e
 // monta a tela na hora, mesmo princípio de estatisticas.js. O campo
 // no modal e a coluna na tabela continuam sendo a fonte de verdade;
@@ -11,7 +11,7 @@
 // C com A) — tratados como grafo não-direcionado, agrupados em
 // componentes conexos.
 //
-// Referências (unidirecional, sempre mais novo → mais antigo:
+// Ecos (unidirecional, sempre mais novo → mais antigo:
 // { id, tipo, texto }) formam grafos direcionados sem ciclo — mas
 // "sem ciclo" não é o mesmo que "sem ramificação nem convergência":
 // um poema pode referenciar vários outros (ramifica), e vários poemas
@@ -22,10 +22,16 @@
 // vezes, uma por caminho que chega nele) — resolvido reescrevendo pra
 // um diagrama de grafo de verdade: cada poema é um nó único, com uma
 // aresta chegando de cada origem que o referencia (ver
-// montarGrafosReferencias/renderDiagramaReferencias abaixo). Quando o
+// montarGrafosEcos/renderDiagramaEcos abaixo). Quando o
 // grafo é mesmo uma cadeia simples (sem ramificar nem convergir em
 // ponto nenhum — o caso comum), a exibição colapsa numa linha reta em
 // vez do diagrama, que seria over-engineering pra esse caso.
+//
+// Referências (o campo novo, Marco Histórico/Notícia/Pessoa
+// Pública/Outro) não tem vínculo por id com outro item do
+// acervo — é texto livre, como Intertextualidade — então não entra
+// nesta tela de grafo. Fica só no bloco de texto do modal, na coluna
+// da tabela e na exportação.
 //
 // Ainda só cobre Poema — Prosa não tem `conceitos` até o item 4 do
 // plano de schema.
@@ -146,11 +152,11 @@ export function agruparElos() {
 // quebra o ciclo sem travar e sem sumir com nó nenhum (mesmo espírito
 // de resiliência que já existia aqui antes, só que agora sobre
 // camadas em vez de sobre árvore).
-export function montarGrafosReferencias() {
+export function montarGrafosEcos() {
     const arestas = [];
     const titulos = new Map();
     for (const poema of db.poemas) {
-        for (const ref of poema.conceitos?.referencias || []) {
+        for (const ref of poema.conceitos?.ecos || []) {
             const alvo = db.poemas.find((p) => p.id == ref.id);
             if (!alvo) continue;
             arestas.push({
@@ -370,7 +376,7 @@ function renderPassosLineares(grafo) {
 // ─── Diagrama de grafo (caso ramifica/converge) ────────────────────
 // SVG puro, sem lib de layout (o projeto não tem nenhuma dependência
 // de terceiros pra isso) — as posições vêm das camadas calculadas em
-// montarGrafosReferencias/montarGrafoComponente. Medição de texto via
+// montarGrafosEcos/montarGrafoComponente. Medição de texto via
 // canvas offscreen (memoizado) em vez de estimativa por caractere,
 // porque títulos de poema variam muito em largura e uma estimativa
 // ruim ou estoura a caixa ou desperdiça espaço.
@@ -598,7 +604,7 @@ function montarLayoutDiagrama(grafo) {
 
 let _idDiagramaSeq = 0;
 
-function renderDiagramaReferencias(grafo, idSvg) {
+function renderDiagramaEcos(grafo, idSvg) {
     const { posicoes, largura, altura, nivelPorAresta, bandaY, direcao } =
         montarLayoutDiagrama(grafo);
     const idMarcador = `conexoes-seta-${_idDiagramaSeq++}`;
@@ -723,25 +729,25 @@ function renderDiagramaReferencias(grafo, idSvg) {
 
 // Índice só pra dar um id de DOM único a cada <svg> desta renderização
 // (usado pelo botão "Baixar imagem" pra achar o diagrama certo — ver
-// baixarDiagramaReferencias abaixo). Reinicia a cada renderReferencias(),
+// baixarDiagramaEcos abaixo). Reinicia a cada renderEcos(),
 // não precisa ser globalmente único entre re-renders.
-// Cadeia linear também pode virar imagem: `renderDiagramaReferencias`
+// Cadeia linear também pode virar imagem: `renderDiagramaEcos`
 // já lida com "1 nó por camada" perfeitamente (uma cadeia linear é só
 // um caso particular do mesmo layout de colunas), então reaproveita a
 // mesma função — só que o SVG fica escondido (a exibição em texto
 // compacto continua sendo o que aparece na tela, sem mudar o visual
 // de antes), e o botão de baixar aponta pra esse SVG oculto. Mesma
-// função `svgParaPngBlob`/`baixarDiagramaReferencias` de baixo,
+// função `svgParaPngBlob`/`baixarDiagramaEcos` de baixo,
 // já que ela clona o SVG e resolve as cores por classe — não
 // depende de o elemento original estar visível.
-function renderCartaoReferencia(grafo, indice) {
+function renderCartaoEco(grafo, indice) {
     const idSvg = `conexoes-diagrama-${indice}`;
     if (grafo.linear) {
         return `
         <div class="relative bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm text-xs">
             <button
                 type="button"
-                data-action="baixar-diagrama-referencias"
+                data-action="baixar-diagrama-ecos"
                 data-svg-id="${idSvg}"
                 title="Baixar esta cadeia como imagem PNG"
                 class="absolute top-2 right-2 z-10 text-[11px] leading-none px-2 py-1 rounded border border-gray-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 text-gray-500 dark:text-slate-400 hover:text-blue-600 hover:border-blue-300 dark:hover:text-blue-400 dark:hover:border-blue-500 transition"
@@ -749,34 +755,34 @@ function renderCartaoReferencia(grafo, indice) {
                 ⭳ PNG
             </button>
             <div class="flex flex-wrap items-center gap-y-1.5 pr-12">${renderPassosLineares(grafo)}</div>
-            <div class="hidden">${renderDiagramaReferencias(grafo, idSvg)}</div>
+            <div class="hidden">${renderDiagramaEcos(grafo, idSvg)}</div>
         </div>`;
     }
     return `
         <div class="relative bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm text-xs">
             <button
                 type="button"
-                data-action="baixar-diagrama-referencias"
+                data-action="baixar-diagrama-ecos"
                 data-svg-id="${idSvg}"
                 title="Baixar este diagrama como imagem PNG"
                 class="absolute top-2 right-2 z-10 text-[11px] leading-none px-2 py-1 rounded border border-gray-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 text-gray-500 dark:text-slate-400 hover:text-blue-600 hover:border-blue-300 dark:hover:text-blue-400 dark:hover:border-blue-500 transition"
             >
                 ⭳ PNG
             </button>
-            ${renderDiagramaReferencias(grafo, idSvg)}
+            ${renderDiagramaEcos(grafo, idSvg)}
         </div>`;
 }
 
-function renderReferencias() {
-    const container = document.getElementById('conexoes-referencias');
+function renderEcos() {
+    const container = document.getElementById('conexoes-ecos');
     if (!container) return;
-    const grafos = montarGrafosReferencias();
+    const grafos = montarGrafosEcos();
     if (!grafos.length) {
         container.innerHTML =
-            '<p class="text-sm text-gray-400 dark:text-slate-500">Nenhuma Referência cadastrada ainda.</p>';
+            '<p class="text-sm text-gray-400 dark:text-slate-500">Nenhum Eco cadastrado ainda.</p>';
         return;
     }
-    container.innerHTML = grafos.map((grafo, i) => renderCartaoReferencia(grafo, i)).join('');
+    container.innerHTML = grafos.map((grafo, i) => renderCartaoEco(grafo, i)).join('');
 }
 
 // ─── Baixar diagrama como imagem (PNG) ─────────────────────────
@@ -868,8 +874,8 @@ function svgParaPngBlob(svgOriginal) {
     });
 }
 
-// Chamado pelo listener delegado em main.js (data-action="baixar-diagrama-referencias").
-export async function baixarDiagramaReferencias(botao) {
+// Chamado pelo listener delegado em main.js (data-action="baixar-diagrama-ecos").
+export async function baixarDiagramaEcos(botao) {
     const svg = document.getElementById(botao.dataset.svgId);
     if (!svg) return;
     try {
@@ -877,7 +883,7 @@ export async function baixarDiagramaReferencias(botao) {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `conexoes-referencias_${Date.now()}.png`;
+        a.download = `conexoes-ecos_${Date.now()}.png`;
         a.click();
         URL.revokeObjectURL(url);
     } catch (err) {
@@ -889,7 +895,7 @@ export async function baixarDiagramaReferencias(botao) {
 export function renderConexoes() {
     renderBuracos();
     renderElos();
-    renderReferencias();
+    renderEcos();
 }
 
 // Só recalcula se a aba de Conexões estiver visível, mesmo critério de

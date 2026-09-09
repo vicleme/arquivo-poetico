@@ -1394,8 +1394,10 @@ const CAMPOS_ATRIBUTO = {
     pendencia: 'pendencia',
     elo: '_buscaElos',
     elos: '_buscaElos',
-    referencia: '_buscaReferencias',
-    referencias: '_buscaReferencias',
+    eco: '_buscaEcos',
+    ecos: '_buscaEcos',
+    referencia: '_buscaReferenciasExternas',
+    referencias: '_buscaReferenciasExternas',
     reconhecimento: '_buscaReconhecimentos',
     reconhecimentos: '_buscaReconhecimentos',
 };
@@ -1443,7 +1445,8 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     descarte: 'descarte',
     pendencia: 'pendencia',
     _buscaElos: 'elo',
-    _buscaReferencias: 'referencia',
+    _buscaEcos: 'eco',
+    _buscaReferenciasExternas: 'referencia',
     _buscaReconhecimentos: 'reconhecimento',
 };
 
@@ -1761,13 +1764,17 @@ export const CAMPOS_CONTAVEIS = {
         },
     },
     elos: { label: 'Elos', contar: (item) => (item.conceitos?.elos || []).length },
-    referencias: {
-        label: 'Referências',
-        contar: (item) => (item.conceitos?.referencias || []).length,
+    ecos: {
+        label: 'Ecos',
+        contar: (item) => (item.conceitos?.ecos || []).length,
     },
     intertextualidade: {
         label: 'Intertextualidade',
         contar: (item) => (item.intertextualidade || []).length,
+    },
+    referenciasExternas: {
+        label: 'Referências',
+        contar: (item) => (item.referenciasExternas || []).length,
     },
     anexos: { label: 'Anexos', contar: (item) => (item.anexos || []).length },
     anotacoesMarginais: {
@@ -1789,10 +1796,10 @@ export const CAMPOS_CONTAVEIS = {
     },
 };
 
-// ─── Elos / Referências tipados (item 1 do plano de schema) ────
-// Duas listas fechadas separadas — porque Elos e Referências têm
+// ─── Elos / Ecos tipados (item 1 do plano de schema) ────
+// Duas listas fechadas separadas — porque Elos e Ecos têm
 // natureza diferente — e, desde o redesenho Relação+Direção, Elos usa
-// um schema à parte de Referências (ver mais abaixo).
+// um schema à parte de Ecos (ver mais abaixo).
 //
 // PAPEIS_PESSOA: papel de cada pessoa vinculada a um texto (item 2 do
 // plano de schema — "Pedro, Dani" comma-string vira array de objeto
@@ -1963,19 +1970,16 @@ export function extrairPremiosUnicos(itens) {
     return Array.from(premios).sort();
 }
 
-// TIPOS_REFERENCIA: relações sempre UNIDIRECIONAIS (mais novo → mais
+// TIPOS_ECO: relações sempre UNIDIRECIONAIS (mais novo → mais
 // antigo), sem par estrutural fechado — por isso sem painel derivado
 // (não há "outro lado" a inferir). "Imagem central compartilhada" é um
 // motivo recorrendo ao longo do corpus sem relação de par fechado
 // (diferente de Elos, que é bilateral). "Aceno a" é um gesto mais
 // solto, sem exigir reciprocidade nem pertencer a um tipo mais
-// específico.
-export const TIPOS_REFERENCIA = [
-    'Personagem em comum',
-    'Imagem central compartilhada',
-    'Aceno a',
-    'Outro',
-];
+// específico. Chamado "Referências" antes da reorganização que criou o
+// campo novo e distinto de mesmo nome (ver TIPOS_REFERENCIA_EXTERNA_SUGERIDOS
+// abaixo) — Eco continua sendo o par de Elo dentro de Intratextualidade.
+export const TIPOS_ECO = ['Personagem em comum', 'Imagem central compartilhada', 'Aceno a', 'Outro'];
 
 // RELACOES_ELO: relações BILATERAIS entre dois poemas (par estrutural —
 // reescrita, tradução, resposta...), redesenhadas pra separar a
@@ -2057,6 +2061,21 @@ export function extrairValoresUnicosDeIntertextualidade(poemas, tipoFiltro = nul
     return Array.from(valores).sort();
 }
 
+// Espelha extrairValoresUnicosDeIntertextualidade acima, sobre o campo
+// `referenciasExternas` — mesma lógica de "lembrar" só do que já foi
+// preenchido pro Tipo escolhido (tipoFiltro).
+export function extrairValoresUnicosDeReferenciasExternas(poemas, tipoFiltro = null) {
+    const valores = new Set();
+    poemas.forEach((p) => {
+        if (Array.isArray(p.referenciasExternas)) {
+            p.referenciasExternas.forEach((it) => {
+                if (it && it.texto && (!tipoFiltro || it.tipo === tipoFiltro)) valores.add(it.texto);
+            });
+        }
+    });
+    return Array.from(valores).sort();
+}
+
 // Sugestões de autocompletar pra Intertextualidade (campo Tipo): era select
 // fixo, virou texto livre (o valor não aciona nenhuma lógica condicional,
 // diferente do Tipo de Anexos — só entra em busca/exibição), mesmo motivo
@@ -2075,11 +2094,23 @@ export const TIPOS_INTERTEXTO_SUGERIDOS = [
     'Peça de teatro',
     'Citação',
     'Conversa',
-    'Pessoa pública',
+    'Palestra',
     'Mitologia',
-    'Astrologia',
+    'Conto de fadas',
     'Outro',
 ];
+
+// Ordena alfabeticamente, mas mantém "Outro" sempre por último — é
+// opção coringa/genérica, não um tipo de verdade a comparar com os
+// demais, então não deve se intrometer no meio da lista alfabética
+// só por acaso de ortografia (ex.: cair antes de "Pessoa pública").
+// Usado pelos dois autocompletares de Tipo abaixo (Intertextualidade
+// e Referências).
+function ordenarComOutroPorUltimo(valores) {
+    const outros = valores.filter((v) => v !== 'Outro');
+    outros.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    return valores.includes('Outro') ? [...outros, 'Outro'] : outros;
+}
 
 export function extrairTiposIntertextoUnicos(poemas) {
     const tipos = new Set(TIPOS_INTERTEXTO_SUGERIDOS);
@@ -2090,7 +2121,36 @@ export function extrairTiposIntertextoUnicos(poemas) {
             });
         }
     });
-    return Array.from(tipos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    return ordenarComOutroPorUltimo(Array.from(tipos));
+}
+
+// Sugestões de autocompletar pra Referências (campo Tipo): mesmo papel
+// de TIPOS_INTERTEXTO_SUGERIDOS acima, mas pro grupo "Referências" —
+// fatos do mundo sem autoria de obra sendo ecoada (diferente de
+// Intertextualidade, que sempre aponta pra uma obra/autoria
+// identificável). Pessoa pública migrou pra cá quando esse campo
+// nasceu — antes era tipo de Intertextualidade. Sem default de
+// Astrologia: é caso peculiar (nem todo autor cita domínios de
+// conhecimento como fonte), diferente dos tipos genéricos acima —
+// quem usar assim entra em Intertextualidade (autocompletar já
+// aprende com o uso, via extrairTiposReferenciaExternaUnicos).
+export const TIPOS_REFERENCIA_EXTERNA_SUGERIDOS = [
+    'Marco histórico',
+    'Notícia',
+    'Pessoa pública',
+    'Outro',
+];
+
+export function extrairTiposReferenciaExternaUnicos(poemas) {
+    const tipos = new Set(TIPOS_REFERENCIA_EXTERNA_SUGERIDOS);
+    poemas.forEach((p) => {
+        if (Array.isArray(p.referenciasExternas)) {
+            p.referenciasExternas.forEach((it) => {
+                if (it && it.tipo) tipos.add(it.tipo);
+            });
+        }
+    });
+    return ordenarComOutroPorUltimo(Array.from(tipos));
 }
 
 // Agrupa as entradas de Intertextualidade por tipo — pra exibição/exportação

@@ -292,24 +292,28 @@ export function badgeEpocaRetratada(epoca) {
     return `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold align-middle"${title}>${escapeHtml(nome)}${posRepercussao}</span>`;
 }
 
-// Resolve o título de um Elo/Referência-alvo, que pode ser um poema OU
+// Resolve o título de um Elo/Eco-alvo, que pode ser um poema OU
 // uma prosa — ids são gerados por um contador global único (gerarId()
 // em utils.js), então nunca colidem entre os dois arrays; basta checar
 // os dois. Usado por titulosPoemasPorId/textoTitulosPoemasPorId
-// (tabela) e por _buscaElos/_buscaReferencias (decorarCamposBusca).
+// (tabela) e por _buscaElos/_buscaEcos (decorarCamposBusca).
 export function resolverTituloPoemaOuProsa(id) {
     return db.poemas.find((p) => p.id == id)?.titulo || db.prosas.find((pr) => pr.id == id)?.titulo;
 }
 
-// Títulos dos poemas referenciados por uma lista de Elos/Referências.
-// Elos guarda { id, relacao, direcao, texto } (ver migrarElosParaRelacaoDirecao
-// em db.js — redesenho Relação+Direção); Referências guarda { id, tipo, texto }
-// (schema mais simples, não mudou). `resolverRotulo` isola essa diferença:
-// cada chamador passa a função certa pra extrair o rótulo de exibição de
-// uma entrada. O rótulo vira uma badge (mesmo padrão de Intertextualidade/
-// Anexos logo abaixo), uma linha por vínculo — assim o tipo da relação não
-// se confunde com o título do poema só de bater o olho na coluna.
-// `corClasse` deixa Elos e Referências com uma cor de badge própria cada.
+// Títulos dos poemas referenciados por uma lista de Elos/Ecos — ambos
+// são a única dupla de Intratextualidade (vínculo por id a outro texto
+// do acervo; Referências, o campo novo, não entra aqui por não ter
+// vínculo por id, ver celulaReferenciasExternas). Elos guarda
+// { id, relacao, direcao, texto } (ver migrarElosParaRelacaoDirecao em
+// db.js — redesenho Relação+Direção); Ecos guarda { id, tipo, texto }
+// (schema mais simples, não mudou, só o nome — era "Referências").
+// `resolverRotulo` isola essa diferença: cada chamador passa a função
+// certa pra extrair o rótulo de exibição de uma entrada. O rótulo vira
+// uma badge (mesmo padrão de Intertextualidade/Anexos logo abaixo), uma
+// linha por vínculo — assim o tipo da relação não se confunde com o
+// título do poema só de bater o olho na coluna.
+// `corClasse` deixa Elos e Ecos com uma cor de badge própria cada.
 export function titulosPoemasPorId(
     lista,
     resolverRotulo,
@@ -336,7 +340,7 @@ export function titulosPoemasPorId(
 export function rotuloEntradaElo(entrada) {
     return entrada.relacao ? rotuloElo(entrada.relacao, entrada.direcao) : '';
 }
-export function rotuloEntradaReferencia(entrada) {
+export function rotuloEntradaEco(entrada) {
     return entrada.tipo || '';
 }
 
@@ -420,9 +424,7 @@ function iconeOrdenacao(ativo, direcao) {
 // acima e CAMPOS_ATRIBUTO em utils.js), uma por tabela. Só entram aqui as
 // colunas que têm um prefixo "campo:" correspondente — em Poemas, Status
 // e Datas ficam de fora de propósito: já têm filtro estruturado próprio
-// (dropdown/painel de data). Elos/Referências (item 1 do schema ainda
-// pendente) ficam de fora porque ainda não têm texto decorado pra
-// buscar. Em Prosas, Datas e Vínculo (posição estrutural, não um campo
+// (dropdown/painel de data). Em Prosas, Datas e Vínculo (posição estrutural, não um campo
 // de texto único) ficam de fora pelo mesmo motivo das Datas de Poemas.
 // Época Retratada entrou (item 3) apesar de ter filtro estruturado de
 // data próprio — mesmo assim, com nome agora resolvido via cadastro
@@ -454,7 +456,8 @@ const COLUNA_CAMPO_BUSCA = {
         lancadoEm: '_buscaLancadoEm',
         justificativaMigracao: 'justificativaMigracao',
         elos: '_buscaElos',
-        referencias: '_buscaReferencias',
+        ecos: '_buscaEcos',
+        referenciasExternas: '_buscaReferenciasExternas',
         autoria: '_buscaAutoria',
         envios: '_buscaEnvios',
         reconhecimentos: '_buscaReconhecimentos',
@@ -489,7 +492,8 @@ const COLUNA_CAMPO_BUSCA = {
         lancadoEm: '_buscaLancadoEm',
         justificativaMigracao: 'justificativaMigracao',
         elos: '_buscaElos',
-        referencias: '_buscaReferencias',
+        ecos: '_buscaEcos',
+        referenciasExternas: '_buscaReferenciasExternas',
         epocaRetratada: '_buscaEpoca',
     },
 };

@@ -15,6 +15,8 @@ import {
     extrairValoresUnicosDeAnotacoes,
     extrairValoresUnicosDeIntertextualidade,
     extrairTiposIntertextoUnicos,
+    extrairValoresUnicosDeReferenciasExternas,
+    extrairTiposReferenciaExternaUnicos,
     extrairIdiomasUnicos,
     extrairMeiosEnviosUnicos,
     extrairPremiosUnicos,
@@ -1113,6 +1115,17 @@ function atualizarDatalistTextoIntertexto(itens, tipoElId, datalistTextoId) {
         .join('');
 }
 
+// Espelha atualizarDatalistTextoIntertexto acima, sobre `referenciasExternas`
+// em vez de `intertextualidade` — ver bloco de Referências mais abaixo.
+function atualizarDatalistTextoReferenciaExterna(itens, tipoElId, datalistTextoId) {
+    const datalist = document.getElementById(datalistTextoId);
+    if (!datalist) return;
+    const tipoAtual = document.getElementById(tipoElId)?.value.trim() || null;
+    datalist.innerHTML = extrairValoresUnicosDeReferenciasExternas(itens, tipoAtual)
+        .map((v) => `<option value="${escapeHtml(v)}">`)
+        .join('');
+}
+
 // Prosa não tem versão global do datalist de Tipo em index.html (só a
 // de Poema) — cada bloco de Prosa declara a sua própria <datalist>
 // inline (mesmo motivo de renderSinalizacoesProsa acima), daí o sufixo
@@ -1201,6 +1214,145 @@ export function carregarIntertextualidade(tabela, lista) {
 export function resetIntertextualidade(tabela) {
     listaIntertexto(tabela).reset();
     atualizarBotaoIntertexto(tabela);
+}
+
+// ─── Referências (lista de tipo+texto+link+linkTexto+nota) ─────
+// Par de Intertextualidade dentro do grupo "Intertextualidade e
+// Referências": mesmo motor/schema (tipo e texto livres com datalist de
+// sugestão, tipo filtra as sugestões de texto — ver
+// atualizarDatalistTextoIntertexto acima, espelhado aqui em
+// atualizarDatalistTextoReferenciaExterna — arrays diferentes, mesmo
+// mecanismo), mas diálogo com um tipo
+// diferente de "fora do acervo": não um artefato específico (livro,
+// música...), e sim algo que ancora o texto num tempo/mundo comum —
+// Marco Histórico, Notícia, Pessoa Pública, Astrologia
+// (TIPOS_REFERENCIA_EXTERNA_SUGERIDOS em utils.js). Campo interno
+// `referenciasExternas` —
+// deliberadamente distinto da chave antiga `conceitos.referencias`
+// (agora `conceitos.ecos`), pra não haver ambiguidade lendo o código:
+// o rótulo "Referências" é novo aqui, a chave também.
+function renderItemReferenciaExterna(it) {
+    const badge = it.tipo
+        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+        : '';
+    const link = it.link
+        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
+        : '';
+    const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
+    return `${badge}${escapeHtml(it.texto || '')}${link}${nota}`;
+}
+
+const listaReferenciaExternaPoema = criarListaDeEntradas({
+    tabela: 'poemas',
+    containerId: 'p-refext-lista',
+    renderItem: renderItemReferenciaExterna,
+    nomeFuncaoRemover: 'removerReferenciaExterna',
+    nomeFuncaoEditar: 'editarReferenciaExterna',
+});
+const listaReferenciaExternaProsa = criarListaDeEntradas({
+    tabela: 'prosas',
+    containerId: 'pr-refext-lista',
+    renderItem: renderItemReferenciaExterna,
+    nomeFuncaoRemover: 'removerReferenciaExterna',
+    nomeFuncaoEditar: 'editarReferenciaExterna',
+});
+function listaReferenciaExterna(tabela) {
+    if (tabela === 'poemas') return listaReferenciaExternaPoema;
+    if (tabela === 'prosas') return listaReferenciaExternaProsa;
+    throw new Error(`Tabela desconhecida em listaReferenciaExterna: ${tabela}`);
+}
+
+function atualizarBotaoReferenciaExterna(tabela) {
+    const p = prefixoDom(tabela);
+    const btnAdd = document.getElementById(`${p}-refext-btn-add`);
+    const btnCancelar = document.getElementById(`${p}-refext-btn-cancelar`);
+    const emEdicao = listaReferenciaExterna(tabela).estaEditando();
+    if (btnAdd) btnAdd.textContent = emEdicao ? '✓' : '+';
+    if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
+}
+
+// Prosa não tem versão global do datalist de Tipo em index.html (só a
+// de Poema) — mesmo motivo do sufixo '-prosa' em atualizarDatalistIntertexto.
+export function atualizarDatalistReferenciaExterna(tabela) {
+    const p = prefixoDom(tabela);
+    const dados = tabela === 'prosas' ? db.prosas || [] : db.poemas;
+    const sufixo = tabela === 'prosas' ? '-prosa' : '';
+    atualizarDatalistTextoReferenciaExterna(dados, `${p}-refext-tipo`, `sugestoes-refext${sufixo}`);
+    const datalistTipo = document.getElementById(`sugestoes-refext-tipo${sufixo}`);
+    if (datalistTipo) {
+        datalistTipo.innerHTML = extrairTiposReferenciaExternaUnicos(dados)
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    }
+}
+
+export function adicionarReferenciaExterna(tabela) {
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-refext-tipo`);
+    const textoEl = document.getElementById(`${p}-refext-texto`);
+    const linkEl = document.getElementById(`${p}-refext-link`);
+    const linkTextoEl = document.getElementById(`${p}-refext-link-texto`);
+    const notaEl = document.getElementById(`${p}-refext-nota`);
+    const tipo = tipoEl?.value || '';
+    const texto = (textoEl?.value || '').trim();
+    const link = (linkEl?.value || '').trim();
+    const linkTexto = (linkTextoEl?.value || '').trim();
+    const nota = (notaEl?.value || '').trim();
+    if (!tipo && !texto && !link && !linkTexto && !nota) return;
+    listaReferenciaExterna(tabela).salvar({ tipo, texto, link, linkTexto, nota });
+    if (tipoEl) tipoEl.value = '';
+    if (textoEl) textoEl.value = '';
+    if (linkEl) linkEl.value = '';
+    if (linkTextoEl) linkTextoEl.value = '';
+    if (notaEl) notaEl.value = '';
+    atualizarBotaoReferenciaExterna(tabela);
+    atualizarDatalistReferenciaExterna(tabela);
+}
+export function editarReferenciaExterna(tabela, indice) {
+    const item = listaReferenciaExterna(tabela).iniciarEdicao(indice);
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-refext-tipo`);
+    const textoEl = document.getElementById(`${p}-refext-texto`);
+    const linkEl = document.getElementById(`${p}-refext-link`);
+    const linkTextoEl = document.getElementById(`${p}-refext-link-texto`);
+    const notaEl = document.getElementById(`${p}-refext-nota`);
+    if (tipoEl) tipoEl.value = item.tipo || '';
+    if (textoEl) textoEl.value = item.texto || '';
+    if (linkEl) linkEl.value = item.link || '';
+    if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
+    if (notaEl) notaEl.value = item.nota || '';
+    textoEl?.focus();
+    atualizarBotaoReferenciaExterna(tabela);
+}
+export function cancelarEdicaoReferenciaExterna(tabela) {
+    listaReferenciaExterna(tabela).cancelarEdicao();
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-refext-tipo`);
+    const textoEl = document.getElementById(`${p}-refext-texto`);
+    const linkEl = document.getElementById(`${p}-refext-link`);
+    const linkTextoEl = document.getElementById(`${p}-refext-link-texto`);
+    const notaEl = document.getElementById(`${p}-refext-nota`);
+    if (tipoEl) tipoEl.value = '';
+    if (textoEl) textoEl.value = '';
+    if (linkEl) linkEl.value = '';
+    if (linkTextoEl) linkTextoEl.value = '';
+    if (notaEl) notaEl.value = '';
+    atualizarBotaoReferenciaExterna(tabela);
+}
+export function removerReferenciaExterna(tabela, indice) {
+    listaReferenciaExterna(tabela).remover(indice);
+    atualizarBotaoReferenciaExterna(tabela);
+}
+export function obterReferenciasExternas(tabela) {
+    return listaReferenciaExterna(tabela).obterItens();
+}
+export function carregarReferenciasExternas(tabela, lista) {
+    listaReferenciaExterna(tabela).carregar(lista);
+    atualizarBotaoReferenciaExterna(tabela);
+}
+export function resetReferenciasExternas(tabela) {
+    listaReferenciaExterna(tabela).reset();
+    atualizarBotaoReferenciaExterna(tabela);
 }
 
 // ─── Anexos (lista de tipo+texto+link) ─────────────────────────
@@ -1389,15 +1541,20 @@ export function resetLojas() {
     atualizarBotaoLoja();
 }
 
-// ─── Elos / Referências (lista de poema-alvo+tipo+texto) ───────
-// Item 1 do plano de schema: cada elo/referência aponta pra outro poema
-// (`id`) mais uma nota livre opcional. Elos = ligação estrutural/de
-// derivação, sempre BILATERAL (Reescrita, Tradução, Resposta...);
-// Referências = ligação mais solta, sempre UNIDIRECIONAL (Personagem em
-// comum, Imagem central compartilhada, Aceno a...), ainda com um `tipo`
-// de lista fechada simples (TIPOS_REFERENCIA em utils.js).
+// ─── Elos / Ecos (lista de poema-alvo+tipo+texto) ───────────────
+// Item 1 do plano de schema, par de Intratextualidade (o que acontece
+// entre os textos do próprio acervo): cada elo/eco aponta pra outro
+// poema (`id`) mais uma nota livre opcional. Elos = ligação estrutural/
+// de derivação, sempre BILATERAL (Reescrita, Tradução, Resposta...);
+// Ecos = ligação mais solta, sempre UNIDIRECIONAL (Personagem em comum,
+// Imagem central compartilhada, Aceno a...), ainda com um `tipo` de
+// lista fechada simples (TIPOS_ECO em utils.js). Ecos era chamado
+// "Referências" — renomeado quando "Referências" passou a nomear um
+// campo novo e distinto (diálogo com algo fora do acervo, tipado, mas
+// sem vínculo por id — ver bloco de Referências Externas mais abaixo,
+// ao lado de Intertextualidade).
 //
-// Elos usa um schema diferente de Referências desde o redesenho
+// Elos usa um schema diferente de Ecos desde o redesenho
 // Relação+Direção: em vez de `tipo` (lista fechada de rótulos, um valor
 // por rótulo possível — "Reescrita de" e "Reescrito em" eram dois
 // valores em vez de dois lados da mesma relação), guarda `relacao` (uma
@@ -1432,7 +1589,7 @@ function renderItemEloBilateral(it, tabela) {
     return `${badge}${titulo}${nota}`;
 }
 
-function renderItemReferencia(it, tabela) {
+function renderItemEco(it, tabela) {
     const item = resolverItemVinculado(it.id);
     const badge = it.tipo
         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
@@ -1465,24 +1622,24 @@ function listaElos(tabela) {
     throw new Error(`Tabela desconhecida em listaElos: ${tabela}`);
 }
 
-const listaReferenciasPoema = criarListaDeEntradas({
+const listaEcosPoema = criarListaDeEntradas({
     tabela: 'poemas',
-    containerId: 'p-refs-lista',
-    renderItem: (it) => renderItemReferencia(it, 'poemas'),
-    nomeFuncaoRemover: 'removerReferencia',
-    nomeFuncaoEditar: 'editarReferencia',
+    containerId: 'p-ecos-lista',
+    renderItem: (it) => renderItemEco(it, 'poemas'),
+    nomeFuncaoRemover: 'removerEco',
+    nomeFuncaoEditar: 'editarEco',
 });
-const listaReferenciasProsa = criarListaDeEntradas({
+const listaEcosProsa = criarListaDeEntradas({
     tabela: 'prosas',
-    containerId: 'pr-refs-lista',
-    renderItem: (it) => renderItemReferencia(it, 'prosas'),
-    nomeFuncaoRemover: 'removerReferencia',
-    nomeFuncaoEditar: 'editarReferencia',
+    containerId: 'pr-ecos-lista',
+    renderItem: (it) => renderItemEco(it, 'prosas'),
+    nomeFuncaoRemover: 'removerEco',
+    nomeFuncaoEditar: 'editarEco',
 });
-function listaReferencias(tabela) {
-    if (tabela === 'poemas') return listaReferenciasPoema;
-    if (tabela === 'prosas') return listaReferenciasProsa;
-    throw new Error(`Tabela desconhecida em listaReferencias: ${tabela}`);
+function listaEcos(tabela) {
+    if (tabela === 'poemas') return listaEcosPoema;
+    if (tabela === 'prosas') return listaEcosProsa;
+    throw new Error(`Tabela desconhecida em listaEcos: ${tabela}`);
 }
 
 function atualizarBotaoElo(tabela) {
@@ -1494,11 +1651,11 @@ function atualizarBotaoElo(tabela) {
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
 
-function atualizarBotaoReferencia(tabela) {
+function atualizarBotaoEco(tabela) {
     const p = prefixoDom(tabela);
-    const btnAdd = document.getElementById(`${p}-ref-btn-add`);
-    const btnCancelar = document.getElementById(`${p}-ref-btn-cancelar`);
-    const emEdicao = listaReferencias(tabela).estaEditando();
+    const btnAdd = document.getElementById(`${p}-eco-btn-add`);
+    const btnCancelar = document.getElementById(`${p}-eco-btn-cancelar`);
+    const emEdicao = listaEcos(tabela).estaEditando();
     if (btnAdd) btnAdd.textContent = emEdicao ? '✓' : '+';
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
@@ -1616,14 +1773,14 @@ export function resetElos(tabela) {
     atualizarBotaoElo(tabela);
 }
 
-export function adicionarReferencia(tabela) {
+export function adicionarEco(tabela) {
     const p = prefixoDom(tabela);
-    const poemaEl = document.getElementById(`${p}-ref-poema`);
-    const tipoEl = document.getElementById(`${p}-ref-tipo`);
-    const textoEl = document.getElementById(`${p}-ref-texto`);
+    const poemaEl = document.getElementById(`${p}-eco-poema`);
+    const tipoEl = document.getElementById(`${p}-eco-tipo`);
+    const textoEl = document.getElementById(`${p}-eco-texto`);
     const id = poemaEl?.value ? parseInt(poemaEl.value, 10) : null;
     if (!id) return;
-    listaReferencias(tabela).salvar({
+    listaEcos(tabela).salvar({
         id,
         tipo: tipoEl?.value || '',
         texto: (textoEl?.value || '').trim(),
@@ -1631,48 +1788,48 @@ export function adicionarReferencia(tabela) {
     if (poemaEl) poemaEl.value = '';
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
-    atualizarBotaoReferencia(tabela);
+    atualizarBotaoEco(tabela);
 }
-export function editarReferencia(tabela, indice) {
-    const item = listaReferencias(tabela).iniciarEdicao(indice);
+export function editarEco(tabela, indice) {
+    const item = listaEcos(tabela).iniciarEdicao(indice);
     const p = prefixoDom(tabela);
-    const poemaEl = document.getElementById(`${p}-ref-poema`);
-    const tipoEl = document.getElementById(`${p}-ref-tipo`);
-    const textoEl = document.getElementById(`${p}-ref-texto`);
+    const poemaEl = document.getElementById(`${p}-eco-poema`);
+    const tipoEl = document.getElementById(`${p}-eco-tipo`);
+    const textoEl = document.getElementById(`${p}-eco-texto`);
     if (poemaEl) poemaEl.value = item.id ?? '';
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (textoEl) textoEl.value = item.texto || '';
-    atualizarBotaoReferencia(tabela);
+    atualizarBotaoEco(tabela);
 }
-export function cancelarEdicaoReferencia(tabela) {
-    listaReferencias(tabela).cancelarEdicao();
+export function cancelarEdicaoEco(tabela) {
+    listaEcos(tabela).cancelarEdicao();
     const p = prefixoDom(tabela);
-    const poemaEl = document.getElementById(`${p}-ref-poema`);
-    const tipoEl = document.getElementById(`${p}-ref-tipo`);
-    const textoEl = document.getElementById(`${p}-ref-texto`);
+    const poemaEl = document.getElementById(`${p}-eco-poema`);
+    const tipoEl = document.getElementById(`${p}-eco-tipo`);
+    const textoEl = document.getElementById(`${p}-eco-texto`);
     if (poemaEl) poemaEl.value = '';
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
-    atualizarBotaoReferencia(tabela);
+    atualizarBotaoEco(tabela);
 }
-export function removerReferencia(tabela, indice) {
-    listaReferencias(tabela).remover(indice);
-    atualizarBotaoReferencia(tabela);
+export function removerEco(tabela, indice) {
+    listaEcos(tabela).remover(indice);
+    atualizarBotaoEco(tabela);
 }
-export function obterReferencias(tabela) {
-    return listaReferencias(tabela).obterItens();
+export function obterEcos(tabela) {
+    return listaEcos(tabela).obterItens();
 }
-export function carregarReferencias(tabela, lista) {
-    listaReferencias(tabela).carregar(lista);
-    atualizarBotaoReferencia(tabela);
+export function carregarEcos(tabela, lista) {
+    listaEcos(tabela).carregar(lista);
+    atualizarBotaoEco(tabela);
 }
-export function resetReferencias(tabela) {
-    listaReferencias(tabela).reset();
-    atualizarBotaoReferencia(tabela);
+export function resetEcos(tabela) {
+    listaEcos(tabela).reset();
+    atualizarBotaoEco(tabela);
 }
 
 // ─── Painel de Elos derivados (refinamento do item 1) ───────────
-// Só pra Elos (bilaterais) — Referências são unidirecionais por
+// Só pra Elos (bilaterais) — Ecos são unidirecionais por
 // natureza, sem "outro lado" a inferir. Quando o poema B é alvo de um
 // elo cadastrado no poema A, mas o poema B não tem um elo manual de
 // volta pra A, mostra aqui um aviso calculado ("Referenciado por..."),
@@ -2169,6 +2326,7 @@ export function atualizarDatalist() {
     atualizarDatalistMigracao();
     atualizarDatalistAnotacoes();
     atualizarDatalistIntertexto('poemas');
+    atualizarDatalistReferenciaExterna('poemas');
     atualizarDatalistEpoca();
     atualizarDatalistIdioma();
     atualizarDatalistEnvios();
@@ -2694,6 +2852,7 @@ export function atualizarDatalistProsa() {
     // Prosa) de uma vez só, então não precisam ser chamadas de novo
     // aqui — atualizarDatalist() (Poema) já cobre as duas pontas.
     atualizarDatalistIntertexto('prosas');
+    atualizarDatalistReferenciaExterna('prosas');
 }
 
 // Wrappers de Sinalizações (Prosa) unificados acima em
@@ -2869,12 +3028,28 @@ export function initEditor() {
             });
         }
     });
+    // Enter nos inputs de texto/link/nota de Referências — mesmo padrão
+    // de Intertextualidade acima.
+    ['p-refext-texto', 'p-refext-link', 'p-refext-nota'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    adicionarReferenciaExterna('poemas');
+                }
+            });
+        }
+    });
     // Sugestões de Texto mais focadas: refiltra pelo Tipo assim que ele
     // muda (digitado ou escolhido do datalist) — ver
     // atualizarDatalistTextoIntertexto acima.
     document
         .getElementById('p-intertexto-tipo')
         ?.addEventListener('input', () => atualizarDatalistIntertexto('poemas'));
+    document
+        .getElementById('p-refext-tipo')
+        ?.addEventListener('input', () => atualizarDatalistReferenciaExterna('poemas'));
 
     // Anexos usa textarea (texto longo) — Enter quebra linha na
     // descrição normalmente; Ctrl/Cmd+Enter é quem adiciona o item
@@ -2950,8 +3125,22 @@ export function initEditorProsa() {
             });
         }
     });
+    ['pr-refext-texto', 'pr-refext-link', 'pr-refext-nota'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    adicionarReferenciaExterna('prosas');
+                }
+            });
+        }
+    });
     // Ver initEditor() — mesmo refiltro de sugestões de Texto pelo Tipo.
     document
         .getElementById('pr-intertexto-tipo')
         ?.addEventListener('input', () => atualizarDatalistIntertexto('prosas'));
+    document
+        .getElementById('pr-refext-tipo')
+        ?.addEventListener('input', () => atualizarDatalistReferenciaExterna('prosas'));
 }

@@ -23,10 +23,10 @@ function resetarDb() {
     db.autores = [];
 }
 
-describe('gerarMarkdownExportacao — Elos e Referências', () => {
+describe('gerarMarkdownExportacao — Elos e Ecos', () => {
     beforeEach(resetarDb);
 
-    it('resolve os {id,tipo,texto} de conceitos.elos/referencias pros títulos dos poemas ligados', () => {
+    it('resolve os {id,tipo,texto} de conceitos.elos/ecos pros títulos dos poemas ligados', () => {
         db.poemas = [
             { id: 1, titulo: 'Poema A', texto: 'linha 1' },
             { id: 2, titulo: 'Poema B', texto: 'linha 2' },
@@ -36,7 +36,7 @@ describe('gerarMarkdownExportacao — Elos e Referências', () => {
                 texto: 'linha 3',
                 conceitos: {
                     elos: [{ id: 1, tipo: '', texto: '' }],
-                    referencias: [
+                    ecos: [
                         { id: 1, tipo: '', texto: '' },
                         { id: 2, tipo: '', texto: '' },
                     ],
@@ -47,7 +47,7 @@ describe('gerarMarkdownExportacao — Elos e Referências', () => {
         const md = gerarMarkdownExportacao([db.poemas[2]]);
 
         assert.match(md, /\*\*Elos:\*\* Poema A/);
-        assert.match(md, /\*\*Referências:\*\* Poema A, Poema B/);
+        assert.match(md, /\*\*Ecos:\*\* Poema A, Poema B/);
     });
 
     it('inclui o rótulo (Relação+Direção) como prefixo e a nota livre entre parênteses quando preenchidos', () => {
@@ -66,7 +66,7 @@ describe('gerarMarkdownExportacao — Elos e Referências', () => {
                             texto: 'primeira versão, em prosa',
                         },
                     ],
-                    referencias: [],
+                    ecos: [],
                 },
             },
         ];
@@ -76,22 +76,22 @@ describe('gerarMarkdownExportacao — Elos e Referências', () => {
         assert.match(md, /\*\*Elos:\*\* Reescrita de: Poema A \(primeira versão, em prosa\)/);
     });
 
-    it('omite as linhas de Elos/Referências quando o item não tem conceitos', () => {
+    it('omite as linhas de Elos/Ecos quando o item não tem conceitos', () => {
         db.poemas = [{ id: 1, titulo: 'Solo', texto: 'linha única' }];
 
         const md = gerarMarkdownExportacao(db.poemas);
 
         assert.doesNotMatch(md, /\*\*Elos:\*\*/);
-        assert.doesNotMatch(md, /\*\*Referências:\*\*/);
+        assert.doesNotMatch(md, /\*\*Ecos:\*\*/);
     });
 
-    it('ignora entradas de elos/referências que não correspondem a nenhum poema existente', () => {
+    it('ignora entradas de elos/ecos que não correspondem a nenhum poema existente', () => {
         db.poemas = [
             {
                 id: 1,
                 titulo: 'Único',
                 texto: 'x',
-                conceitos: { elos: [{ id: 999, tipo: '', texto: '' }], referencias: [] },
+                conceitos: { elos: [{ id: 999, tipo: '', texto: '' }], ecos: [] },
             },
         ];
 

@@ -77,7 +77,7 @@ function blocoTexto(titulo, texto) {
 }
 
 // Elos guarda { id, relacao, direcao, texto } (redesenho Relação+Direção,
-// ver rotuloElo em utils.js); Referências guarda { id, tipo, texto }
+// ver rotuloElo em utils.js); Ecos guarda { id, tipo, texto }
 // (schema mais simples, sem Direção — não mudou). Resolve pros títulos,
 // igual titulosPoemasPorId em render-listas.js, só que em texto puro
 // (sem HTML) pro Markdown. O rótulo entra como prefixo quando existe, e
@@ -127,7 +127,7 @@ function verificacoesDeCampos(item) {
         !!sinalizacoesCombinadas(item),
         !!item.genero,
         !!titulosPorIds(item.conceitos?.elos),
-        !!titulosPorIds(item.conceitos?.referencias),
+        !!titulosPorIds(item.conceitos?.ecos),
         !!(item.texto || '').trim(),
         !!(item.notas || '').trim(),
         !!(item.autoavaliacao || '').trim(),
@@ -135,6 +135,7 @@ function verificacoesDeCampos(item) {
         !!(item.contextoHistorico || '').trim(),
         !!(item.ocultacao || '').trim(),
         Array.isArray(item.intertextualidade) && item.intertextualidade.length > 0,
+        Array.isArray(item.referenciasExternas) && item.referenciasExternas.length > 0,
         Array.isArray(item.anexos) && item.anexos.length > 0,
         !!(item.anexosNotaGeral || '').trim(),
         Array.isArray(item.anotacoesMarginais) && item.anotacoesMarginais.length > 0,
@@ -266,7 +267,7 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
     });
     if (item.genero) md += linhaMeta('Gênero', item.genero);
     md += linhaMeta('Elos', titulosPorIds(item.conceitos?.elos));
-    md += linhaMeta('Referências', titulosPorIds(item.conceitos?.referencias));
+    md += linhaMeta('Ecos', titulosPorIds(item.conceitos?.ecos));
 
     md += '\n';
     md += blocoTexto('Texto', corpoParaMarkdown(item.texto));
@@ -293,6 +294,32 @@ function itemParaMarkdownDepoisDoTexto(item) {
             if (!tipo) {
                 // Sem tipo: sem rótulo pra agrupar embaixo, cada entrada
                 // continua solta como já era antes do agrupamento.
+                entradas.forEach((it) => {
+                    md += `- ${linhaEntrada(it)}\n`;
+                });
+                return;
+            }
+            if (subBullet) {
+                md += `- **${tipo}:**\n`;
+                entradas.forEach((it) => {
+                    md += `  - ${linhaEntrada(it)}\n`;
+                });
+            } else {
+                md += `- **${tipo}:** ${entradas.map(linhaEntrada).join(', ')}\n`;
+            }
+        });
+        md += '\n';
+    }
+
+    if (Array.isArray(item.referenciasExternas) && item.referenciasExternas.length) {
+        md += '### Referências\n\n';
+        const linhaEntrada = (it) => {
+            const link = it.link ? ` — [${it.linkTexto || it.link}](${it.link})` : '';
+            const nota = it.nota ? ` *(${it.nota})*` : '';
+            return `${it.texto || ''}${link}${nota}`;
+        };
+        agruparIntertextualidadePorTipo(item.referenciasExternas).forEach(({ tipo, entradas, subBullet }) => {
+            if (!tipo) {
                 entradas.forEach((it) => {
                     md += `- ${linhaEntrada(it)}\n`;
                 });
