@@ -62,6 +62,10 @@ import {
     setOpcaoBuscaPoemas as _setOpcaoBuscaPoemas,
     setOpcaoBuscaProsas as _setOpcaoBuscaProsas,
     setFiltroLivroPoemas,
+    setFiltroPessoaPoemas,
+    setFiltroPapelPoemas,
+    setFiltroPessoaProsas,
+    setFiltroPapelProsas,
     ordenarPoemasPor,
     buscarPorPrefixo,
     setStatusPoemas,
@@ -792,6 +796,10 @@ function atualizarBotaoCombinador(btn, valor) {
 }
 window.setFiltroLivroProsa = setFiltroLivroProsa;
 window.setFiltroLivroPoemas = setFiltroLivroPoemas;
+window.setFiltroPessoaPoemas = setFiltroPessoaPoemas;
+window.setFiltroPapelPoemas = setFiltroPapelPoemas;
+window.setFiltroPessoaProsas = setFiltroPessoaProsas;
+window.setFiltroPapelProsas = setFiltroPapelProsas;
 window.ordenarPoemasPor = ordenarPoemasPor;
 window.buscarPorPrefixo = buscarPorPrefixo;
 window.setStatusPoemas = setStatusPoemas;

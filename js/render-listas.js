@@ -44,6 +44,7 @@ import {
     paresAutoria,
     estaPublicado,
     CAMPOS_CONTAVEIS,
+    PAPEIS_PESSOA,
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
 import { getColunasAtivas } from './colunas.js';
@@ -122,6 +123,21 @@ let opcoesBuscaPoemas = opcoesBuscaPadrao();
 let opcoesBuscaProsas = opcoesBuscaPadrao();
 let filtroLivroProsa = '';
 let filtroLivroPoemas = '';
+// Filtro dedicado Pessoa+Papel — par (pessoaId, papel) independente da
+// busca por texto, pra resolver o caso que a busca por texto não
+// consegue: "papel:Dedicatário(a) pessoa:Pedro" bate mesmo se Pedro só
+// for Mencionado(a) e outra pessoa qualquer for a Dedicatária, porque
+// _buscaPessoas/_buscaPapeis são strings achatadas sem vínculo entre
+// qual papel pertence a qual pessoa (ver decorarCamposBusca acima). Os
+// dois seletores também funcionam sozinhos (só pessoa = qualquer papel
+// dela; só papel = qualquer pessoa com aquele papel), igual aos
+// prefixos pessoa:/papel: já existentes — a diferença só aparece
+// quando os dois estão preenchidos ao mesmo tempo (ver
+// getListaVisivelPoemas/getListaVisivelProsas abaixo).
+let filtroPessoaPoemas = '';
+let filtroPapelPoemas = '';
+let filtroPessoaProsas = '';
+let filtroPapelProsas = '';
 
 // Filtros de faixa de data (De/Até), independentes da busca por texto —
 // ver itemBateFiltroData em utils.js pra semântica de sobreposição de
@@ -394,6 +410,30 @@ export function setFiltroLivroPoemas(valor) {
     filtroLivroPoemas = valor;
     paginaPoemas = 1;
     renderPoemas();
+}
+
+export function setFiltroPessoaPoemas(valor) {
+    filtroPessoaPoemas = valor;
+    paginaPoemas = 1;
+    renderPoemas();
+}
+
+export function setFiltroPapelPoemas(valor) {
+    filtroPapelPoemas = valor;
+    paginaPoemas = 1;
+    renderPoemas();
+}
+
+export function setFiltroPessoaProsas(valor) {
+    filtroPessoaProsas = valor;
+    paginaProsas = 1;
+    renderProsas();
+}
+
+export function setFiltroPapelProsas(valor) {
+    filtroPapelProsas = valor;
+    paginaProsas = 1;
+    renderProsas();
 }
 
 // Chamado ao clicar no cabeçalho de uma coluna ordenável da tabela de
@@ -774,6 +814,55 @@ function decorarCamposBusca(item, extraLivros = '') {
     };
 }
 
+// Filtro dedicado Pessoa+Papel (ver comentário de filtroPessoaPoemas
+// acima) — pessoaId e papel são independentes na UI (dois selects lado
+// a lado), então os três casos possíveis são: nenhum preenchido (não
+// filtra), só um preenchido (equivale a pessoa:/papel: da busca por
+// texto — qualquer papel daquela pessoa, ou qualquer pessoa com aquele
+// papel) e os dois preenchidos (exige o par exato: aquele papel
+// especificamente naquela pessoa, resolvendo o caso que pessoa:X
+// papel:Y na busca por texto não consegue).
+function filtrarPorPessoaEPapel(lista, pessoaId, papel) {
+    if (!pessoaId && !papel) return lista;
+    return lista.filter((item) => {
+        if (!Array.isArray(item.pessoas)) return false;
+        return item.pessoas.some((p) => {
+            const bateP = !pessoaId || String(p.pessoaId) === String(pessoaId);
+            const batePapel = !papel || (p.papeis || []).includes(papel);
+            return bateP && batePapel;
+        });
+    });
+}
+
+// Popula o select de Pessoa do filtro dedicado Pessoa+Papel (ver
+// filtroPessoaPoemas acima) com todo o cadastro central db.pessoas,
+// em ordem alfabética — mesmo padrão de preservar a seleção atual já
+// usado no select de Livro (ver renderPoemas/renderProsas).
+function popularSelectPessoaFiltro(id) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const valorAtual = sel.value;
+    const pessoasOrdenadas = [...db.pessoas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    sel.innerHTML =
+        '<option value="">-- Qualquer pessoa --</option>' +
+        pessoasOrdenadas.map((p) => `<option value="${p.id}">${escapeHtml(p.nome)}</option>`).join('');
+    if (Array.from(sel.options).some((o) => o.value === valorAtual)) sel.value = valorAtual;
+}
+
+// Popula o select de Papel do filtro dedicado Pessoa+Papel — lista
+// fechada PAPEIS_PESSOA (ver utils.js), não muda entre renders, mas
+// populamos aqui mesmo assim pra ficar no mesmo lugar/padrão do select
+// de Pessoa acima.
+function popularSelectPapelFiltro(id) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const valorAtual = sel.value;
+    sel.innerHTML =
+        '<option value="">-- Qualquer papel --</option>' +
+        PAPEIS_PESSOA.map((papel) => `<option value="${escapeHtml(papel)}">${escapeHtml(papel)}</option>`).join('');
+    if (Array.from(sel.options).some((o) => o.value === valorAtual)) sel.value = valorAtual;
+}
+
 // ─── Seleção múltipla de Poemas (ações em massa) ──────────────
 
 // Retorna a lista de poemas atualmente visível, já com status, busca
@@ -811,6 +900,8 @@ export function getListaVisivelPoemas() {
             base = base.filter((p) => String(livroDoPoema(p)) === String(filtroLivroPoemas));
         }
     }
+
+    base = filtrarPorPessoaEPapel(base, filtroPessoaPoemas, filtroPapelPoemas);
 
     const decorada = base.map((p) => {
         const _livros = nomesLivros(p);
@@ -895,6 +986,9 @@ export function getListaVisivelProsas() {
             base = base.filter((pr) => String(livroDaProsa(pr)) === String(filtroLivroProsa));
         }
     }
+
+    base = filtrarPorPessoaEPapel(base, filtroPessoaProsas, filtroPapelProsas);
+
     const decorada = base.map((pr) => decorarCamposBusca(pr));
     let lista = combinarFiltrosBusca(
         decorada,
@@ -1349,6 +1443,8 @@ export function renderPoemas() {
         if (Array.from(filtroSel.options).some((o) => o.value === valorAtual))
             filtroSel.value = valorAtual;
     }
+    popularSelectPessoaFiltro('filtro-pessoa-poemas');
+    popularSelectPapelFiltro('filtro-papel-poemas');
 
     const listaFiltrada = getListaVisivelPoemas();
     atualizarAvisoSemData('aviso-sem-data-poemas', semDataPoemas);
@@ -1616,6 +1712,8 @@ export function renderProsas() {
         if (Array.from(filtroSelPr.options).some((o) => o.value === valorAtual))
             filtroSelPr.value = valorAtual;
     }
+    popularSelectPessoaFiltro('filtro-pessoa-prosas');
+    popularSelectPapelFiltro('filtro-papel-prosas');
 
     const listaFiltrada = getListaVisivelProsas();
     atualizarAvisoSemData('aviso-sem-data-prosas', semDataProsas);
