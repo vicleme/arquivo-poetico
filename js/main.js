@@ -211,15 +211,6 @@ import {
     adicionarSinalOutrosProsa,
     removerSinalOutrosProsa,
     editarSinalOutrosProsa,
-    adicionarPessoaProsa,
-    removerPessoaProsa,
-    alternarPapelPessoaProsa,
-    alternarDropdownPapelPessoaProsa,
-    adicionarGrupoDiretoProsa,
-    removerGrupoDiretoProsa,
-    adicionarAutoriaProsa,
-    removerAutoriaProsa,
-    alterarPapelAutoriaProsa,
     adicionarEnvioProsa,
     editarEnvioProsa,
     cancelarEdicaoEnvioProsa,
@@ -683,15 +674,6 @@ window.editarSinalDominioImageticoProsa = editarSinalDominioImageticoProsa;
 window.adicionarSinalOutrosProsa = adicionarSinalOutrosProsa;
 window.removerSinalOutrosProsa = removerSinalOutrosProsa;
 window.editarSinalOutrosProsa = editarSinalOutrosProsa;
-window.adicionarPessoaProsa = adicionarPessoaProsa;
-window.removerPessoaProsa = removerPessoaProsa;
-window.alternarPapelPessoaProsa = alternarPapelPessoaProsa;
-window.alternarDropdownPapelPessoaProsa = alternarDropdownPapelPessoaProsa;
-window.adicionarGrupoDiretoProsa = adicionarGrupoDiretoProsa;
-window.removerGrupoDiretoProsa = removerGrupoDiretoProsa;
-window.adicionarAutoriaProsa = adicionarAutoriaProsa;
-window.removerAutoriaProsa = removerAutoriaProsa;
-window.alterarPapelAutoriaProsa = alterarPapelAutoriaProsa;
 window.adicionarEnvioProsa = adicionarEnvioProsa;
 window.editarEnvioProsa = editarEnvioProsa;
 window.cancelarEdicaoEnvioProsa = cancelarEdicaoEnvioProsa;

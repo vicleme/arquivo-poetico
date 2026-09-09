@@ -53,21 +53,12 @@ import {
     resetPessoas,
     resetSinalizacoesProsa,
     carregarSinalizacoesProsa,
-    resetPessoasProsa,
-    carregarPessoasProsa,
-    obterPessoasProsa,
     carregarGruposDiretos,
     obterGruposDiretos,
     resetGruposDiretos,
-    carregarGruposDiretosProsa,
-    obterGruposDiretosProsa,
-    resetGruposDiretosProsa,
     carregarAutoria,
     obterAutoria,
     resetAutoria,
-    carregarAutoriaProsa,
-    obterAutoriaProsa,
-    resetAutoriaProsa,
     carregarEnvios,
     obterEnvios,
     resetEnvios,
@@ -959,9 +950,9 @@ export function initFormPoema() {
             sinalizacoesTom: document.getElementById('p-sinal-tom').value,
             sinalizacoesDominioImagetico: document.getElementById('p-sinal-dominioImagetico').value,
             sinalizacoesOutros: document.getElementById('p-sinal-outros').value,
-            pessoas: obterPessoas(),
-            gruposDiretos: obterGruposDiretos(),
-            autoria: obterAutoria(),
+            pessoas: obterPessoas('poemas'),
+            gruposDiretos: obterGruposDiretos('poemas'),
+            autoria: obterAutoria('poemas'),
             envios: obterEnvios(),
             reconhecimentos: obterReconhecimentos(),
             autoavaliacao: document.getElementById('p-autoavaliacao').value,
@@ -1039,9 +1030,9 @@ export function initFormPoema() {
         rastreadorPoema.marcarLimpo();
         toggleModal('modal-poema');
         resetSinalizacoes();
-        resetPessoas();
-        resetGruposDiretos();
-        resetAutoria();
+        resetPessoas('poemas');
+        resetGruposDiretos('poemas');
+        resetAutoria('poemas');
         resetEnvios();
         resetReconhecimentos();
         form.reset();
@@ -1124,9 +1115,9 @@ export async function editarPoema(id) {
     setM('p-livros', p.livrosIds || []);
 
     carregarSinalizacoes(p);
-    carregarPessoas(p.pessoas);
-    carregarGruposDiretos(p.gruposDiretos);
-    carregarAutoria(p.autoria);
+    carregarPessoas('poemas', p.pessoas);
+    carregarGruposDiretos('poemas', p.gruposDiretos);
+    carregarAutoria('poemas', p.autoria);
     carregarEnvios(p.envios);
     carregarReconhecimentos(p.reconhecimentos);
     renderColetaneasInfo('p-coletaneas-info', 'poema', p.id);
@@ -1251,9 +1242,9 @@ export function initFormProsa() {
             sinalizacoesTom: document.getElementById('pr-sinal-tom').value,
             sinalizacoesDominioImagetico: document.getElementById('pr-sinal-dominioImagetico').value,
             sinalizacoesOutros: document.getElementById('pr-sinal-outros').value,
-            pessoas: obterPessoasProsa(),
-            gruposDiretos: obterGruposDiretosProsa(),
-            autoria: obterAutoriaProsa(),
+            pessoas: obterPessoas('prosas'),
+            gruposDiretos: obterGruposDiretos('prosas'),
+            autoria: obterAutoria('prosas'),
             envios: obterEnviosProsa(),
             reconhecimentos: obterReconhecimentosProsa(),
             autoavaliacao: document.getElementById('pr-autoavaliacao').value,
@@ -1328,9 +1319,9 @@ export function initFormProsa() {
         rastreadorProsa.marcarLimpo();
         toggleModal('modal-prosa');
         resetSinalizacoesProsa();
-        resetPessoasProsa();
-        resetGruposDiretosProsa();
-        resetAutoriaProsa();
+        resetPessoas('prosas');
+        resetGruposDiretos('prosas');
+        resetAutoria('prosas');
         resetEnviosProsa();
         resetReconhecimentosProsa();
         resetGeneroProsa();
@@ -1423,9 +1414,9 @@ export async function editarProsa(id) {
     sincronizarFiltroDestino('pr-destino-filtro', 'pr-destino', destinoStr);
 
     carregarSinalizacoesProsa(pr);
-    carregarPessoasProsa(pr.pessoas);
-    carregarGruposDiretosProsa(pr.gruposDiretos);
-    carregarAutoriaProsa(pr.autoria);
+    carregarPessoas('prosas', pr.pessoas);
+    carregarGruposDiretos('prosas', pr.gruposDiretos);
+    carregarAutoria('prosas', pr.autoria);
     carregarEnviosProsa(pr.envios);
     carregarReconhecimentosProsa(pr.reconhecimentos);
     carregarGeneroProsa(pr.genero);

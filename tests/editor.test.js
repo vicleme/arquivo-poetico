@@ -48,11 +48,6 @@ const {
     resetGruposDiretos,
     carregarGruposDiretos,
     obterGruposDiretos,
-    adicionarGrupoDiretoProsa,
-    removerGrupoDiretoProsa,
-    resetGruposDiretosProsa,
-    carregarGruposDiretosProsa,
-    obterGruposDiretosProsa,
 } = await import('../js/editor.js');
 const {
     adicionarIntertexto,
@@ -74,9 +69,9 @@ function limparDb() {
     db.pessoas.length = 0;
     db.grupos.length = 0;
     document.getElementById('modal-confirmar-exclusao')?.remove();
-    resetPessoas();
-    resetGruposDiretos();
-    resetGruposDiretosProsa();
+    resetPessoas('poemas');
+    resetGruposDiretos('poemas');
+    resetGruposDiretos('prosas');
 }
 
 describe('Criação de pessoa nova via chip (editor.js, DOM real)', () => {
@@ -85,15 +80,15 @@ describe('Criação de pessoa nova via chip (editor.js, DOM real)', () => {
     it('nome que bate com pessoa já cadastrada reaproveita o id direto, sem pedir confirmação', () => {
         db.pessoas.push({ id: 1, nome: 'Ana', grupoIds: [] });
 
-        adicionarPessoa('Ana');
+        adicionarPessoa('poemas', 'Ana');
 
         assert.equal(document.getElementById('modal-confirmar-exclusao'), null);
-        assert.deepEqual(obterPessoas(), [{ pessoaId: 1, papeis: [] }]);
+        assert.deepEqual(obterPessoas('poemas'), [{ pessoaId: 1, papeis: [] }]);
         assert.equal(db.pessoas.length, 1, 'não deveria duplicar a pessoa existente');
     });
 
     it('nome sem correspondência pede confirmação antes de criar — cancelar não cria nada', () => {
-        adicionarPessoa('Beatriz');
+        adicionarPessoa('poemas', 'Beatriz');
 
         const overlay = document.getElementById('modal-confirmar-exclusao');
         assert.ok(overlay, 'deveria abrir o modal de confirmação de pessoa nova');
@@ -102,11 +97,11 @@ describe('Criação de pessoa nova via chip (editor.js, DOM real)', () => {
         document.getElementById('excl-cancelar').click();
 
         assert.equal(db.pessoas.length, 0);
-        assert.deepEqual(obterPessoas(), []);
+        assert.deepEqual(obterPessoas('poemas'), []);
     });
 
     it('nome sem correspondência, ao confirmar, cria a pessoa no cadastro central sem grupo e gera o chip', () => {
-        adicionarPessoa('Carla');
+        adicionarPessoa('poemas', 'Carla');
 
         document.getElementById('excl-confirmar').click();
 
@@ -115,7 +110,7 @@ describe('Criação de pessoa nova via chip (editor.js, DOM real)', () => {
         assert.equal(criada.nome, 'Carla');
         assert.deepEqual(criada.grupoIds, [], 'pessoa nova via chip não vem com grupo atribuído');
 
-        assert.deepEqual(obterPessoas(), [{ pessoaId: criada.id, papeis: [] }]);
+        assert.deepEqual(obterPessoas('poemas'), [{ pessoaId: criada.id, papeis: [] }]);
         assert.match(
             document.getElementById('p-pessoas-container').textContent,
             /Carla/,
@@ -126,28 +121,28 @@ describe('Criação de pessoa nova via chip (editor.js, DOM real)', () => {
     it('adicionar a mesma pessoa duas vezes não duplica o chip', () => {
         db.pessoas.push({ id: 5, nome: 'Duda', grupoIds: [] });
 
-        adicionarPessoa('Duda');
-        adicionarPessoa('Duda');
+        adicionarPessoa('poemas', 'Duda');
+        adicionarPessoa('poemas', 'Duda');
 
-        assert.equal(obterPessoas().length, 1);
+        assert.equal(obterPessoas('poemas').length, 1);
     });
 
     it('remover um chip tira a pessoa da lista de itens, sem afetar o cadastro central', () => {
         db.pessoas.push({ id: 9, nome: 'Elis', grupoIds: [] });
-        adicionarPessoa('Elis');
+        adicionarPessoa('poemas', 'Elis');
 
-        removerPessoa(9);
+        removerPessoa('poemas', 9);
 
-        assert.deepEqual(obterPessoas(), []);
+        assert.deepEqual(obterPessoas('poemas'), []);
         assert.equal(db.pessoas.length, 1, 'remover o chip não remove a pessoa do cadastro');
     });
 
     it('input com espaços/vazio não gera pessoa nem confirmação', () => {
-        adicionarPessoa('   ');
+        adicionarPessoa('poemas', '   ');
 
         assert.equal(document.getElementById('modal-confirmar-exclusao'), null);
         assert.equal(db.pessoas.length, 0);
-        assert.deepEqual(obterPessoas(), []);
+        assert.deepEqual(obterPessoas('poemas'), []);
     });
 });
 
@@ -156,7 +151,7 @@ describe('Painel somente-leitura de Grupos embaixo dos chips (editor.js, DOM rea
 
     it('some (fica vazio) quando nenhuma pessoa selecionada está em grupo', () => {
         db.pessoas.push({ id: 1, nome: 'Fábio', grupoIds: [] });
-        carregarPessoas([{ pessoaId: 1, papeis: [] }]);
+        carregarPessoas('poemas', [{ pessoaId: 1, papeis: [] }]);
 
         assert.equal(document.getElementById('p-pessoas-grupos-info').innerHTML, '');
     });
@@ -164,7 +159,7 @@ describe('Painel somente-leitura de Grupos embaixo dos chips (editor.js, DOM rea
     it('mostra "Grupo (Pessoa)" pra cada grupo que a pessoa selecionada pertence', () => {
         db.grupos.push({ id: 10, nome: 'Namorado', cor: 'blue' });
         db.pessoas.push({ id: 1, nome: 'Dalton', grupoIds: [10] });
-        carregarPessoas([{ pessoaId: 1, papeis: [] }]);
+        carregarPessoas('poemas', [{ pessoaId: 1, papeis: [] }]);
 
         const texto = document.getElementById('p-pessoas-grupos-info').textContent;
         assert.match(texto, /Namorado/);
@@ -177,7 +172,7 @@ describe('Painel somente-leitura de Grupos embaixo dos chips (editor.js, DOM rea
             { id: 11, nome: 'Ex-namorado', cor: 'amber' },
         );
         db.pessoas.push({ id: 1, nome: 'Pedro', grupoIds: [10, 11] });
-        carregarPessoas([{ pessoaId: 1, papeis: [] }]);
+        carregarPessoas('poemas', [{ pessoaId: 1, papeis: [] }]);
 
         const badges = document
             .getElementById('p-pessoas-grupos-info')
@@ -190,11 +185,11 @@ describe('Painel somente-leitura de Grupos embaixo dos chips (editor.js, DOM rea
     it('painel some de novo ao remover a pessoa que trazia o único grupo', () => {
         db.grupos.push({ id: 10, nome: 'Amigos', cor: 'emerald' });
         db.pessoas.push({ id: 1, nome: 'Gustavo', grupoIds: [10] });
-        carregarPessoas([{ pessoaId: 1, papeis: [] }]);
+        carregarPessoas('poemas', [{ pessoaId: 1, papeis: [] }]);
 
         assert.notEqual(document.getElementById('p-pessoas-grupos-info').innerHTML, '');
 
-        removerPessoa(1);
+        removerPessoa('poemas', 1);
 
         assert.equal(document.getElementById('p-pessoas-grupos-info').innerHTML, '');
     });
@@ -213,15 +208,15 @@ describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () =
     it('nome que bate com grupo já cadastrado reaproveita o id direto, sem pedir confirmação', () => {
         db.grupos.push({ id: 10, nome: 'Família', cor: 'blue' });
 
-        adicionarGrupoDireto('Família');
+        adicionarGrupoDireto('poemas', 'Família');
 
         assert.equal(document.getElementById('modal-confirmar-exclusao'), null);
-        assert.deepEqual(obterGruposDiretos(), [10]);
+        assert.deepEqual(obterGruposDiretos('poemas'), [10]);
         assert.equal(db.grupos.length, 1, 'não deveria duplicar o grupo existente');
     });
 
     it('nome sem correspondência pede confirmação antes de criar — cancelar não cria nada', () => {
-        adicionarGrupoDireto('Coletivo Novo');
+        adicionarGrupoDireto('poemas', 'Coletivo Novo');
 
         const overlay = document.getElementById('modal-confirmar-exclusao');
         assert.ok(overlay, 'deveria abrir o modal de confirmação de grupo novo');
@@ -230,11 +225,11 @@ describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () =
         document.getElementById('excl-cancelar').click();
 
         assert.equal(db.grupos.length, 0);
-        assert.deepEqual(obterGruposDiretos(), []);
+        assert.deepEqual(obterGruposDiretos('poemas'), []);
     });
 
     it('nome sem correspondência, ao confirmar, cria o grupo no cadastro central com cor padrão e gera o chip', () => {
-        adicionarGrupoDireto('Coletivo Novo');
+        adicionarGrupoDireto('poemas', 'Coletivo Novo');
 
         document.getElementById('excl-confirmar').click();
 
@@ -243,7 +238,7 @@ describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () =
         assert.equal(criado.nome, 'Coletivo Novo');
         assert.ok(criado.cor, 'grupo novo via chip deveria vir com uma cor padrão');
 
-        assert.deepEqual(obterGruposDiretos(), [criado.id]);
+        assert.deepEqual(obterGruposDiretos('poemas'), [criado.id]);
         assert.match(
             document.getElementById('p-grupos-diretos-container').textContent,
             /Coletivo Novo/,
@@ -254,63 +249,63 @@ describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () =
     it('adicionar o mesmo grupo duas vezes não duplica o chip', () => {
         db.grupos.push({ id: 20, nome: 'Trabalho', cor: 'emerald' });
 
-        adicionarGrupoDireto('Trabalho');
-        adicionarGrupoDireto('Trabalho');
+        adicionarGrupoDireto('poemas', 'Trabalho');
+        adicionarGrupoDireto('poemas', 'Trabalho');
 
-        assert.equal(obterGruposDiretos().length, 1);
+        assert.equal(obterGruposDiretos('poemas').length, 1);
     });
 
     it('remover um chip tira o grupo da lista de itens, sem afetar o cadastro central', () => {
         db.grupos.push({ id: 30, nome: 'Faculdade', cor: 'amber' });
-        adicionarGrupoDireto('Faculdade');
+        adicionarGrupoDireto('poemas', 'Faculdade');
 
-        removerGrupoDireto(30);
+        removerGrupoDireto('poemas', 30);
 
-        assert.deepEqual(obterGruposDiretos(), []);
+        assert.deepEqual(obterGruposDiretos('poemas'), []);
         assert.equal(db.grupos.length, 1, 'remover o chip não remove o grupo do cadastro');
     });
 
     it('input com espaços/vazio não gera grupo nem confirmação', () => {
-        adicionarGrupoDireto('   ');
+        adicionarGrupoDireto('poemas', '   ');
 
         assert.equal(document.getElementById('modal-confirmar-exclusao'), null);
         assert.equal(db.grupos.length, 0);
-        assert.deepEqual(obterGruposDiretos(), []);
+        assert.deepEqual(obterGruposDiretos('poemas'), []);
     });
 
     it('carregar/resetar preenche e limpa os chips (ida e volta pelo formulário)', () => {
         db.grupos.push({ id: 40, nome: 'Vizinhança', cor: 'rose' });
 
-        carregarGruposDiretos([40]);
-        assert.deepEqual(obterGruposDiretos(), [40]);
+        carregarGruposDiretos('poemas', [40]);
+        assert.deepEqual(obterGruposDiretos('poemas'), [40]);
         assert.match(
             document.getElementById('p-grupos-diretos-container').textContent,
             /Vizinhança/,
         );
 
-        resetGruposDiretos();
-        assert.deepEqual(obterGruposDiretos(), []);
+        resetGruposDiretos('poemas');
+        assert.deepEqual(obterGruposDiretos('poemas'), []);
         assert.equal(document.getElementById('p-grupos-diretos-container').innerHTML, '');
     });
 
     it('a variante de Prosa é independente da de Poema (containers e estado próprios)', () => {
         db.grupos.push({ id: 50, nome: 'Editora', cor: 'sky' });
 
-        adicionarGrupoDiretoProsa('Editora');
+        adicionarGrupoDireto('prosas', 'Editora');
 
-        assert.deepEqual(obterGruposDiretosProsa(), [50]);
-        assert.deepEqual(obterGruposDiretos(), [], 'não deveria vazar pro estado de Poema');
+        assert.deepEqual(obterGruposDiretos('prosas'), [50]);
+        assert.deepEqual(obterGruposDiretos('poemas'), [], 'não deveria vazar pro estado de Poema');
         assert.match(document.getElementById('pr-grupos-diretos-container').textContent, /Editora/);
         assert.equal(document.getElementById('p-grupos-diretos-container').innerHTML, '');
 
-        removerGrupoDiretoProsa(50);
-        assert.deepEqual(obterGruposDiretosProsa(), []);
+        removerGrupoDireto('prosas', 50);
+        assert.deepEqual(obterGruposDiretos('prosas'), []);
     });
 
-    it('carregarGruposDiretosProsa restaura o array salvo, sem vazar pro estado de Poema', () => {
-        carregarGruposDiretosProsa([50]);
-        assert.deepEqual(obterGruposDiretosProsa(), [50]);
-        assert.deepEqual(obterGruposDiretos(), []);
+    it('carregarGruposDiretos(\'prosas\', ...) restaura o array salvo, sem vazar pro estado de Poema', () => {
+        carregarGruposDiretos('prosas', [50]);
+        assert.deepEqual(obterGruposDiretos('prosas'), [50]);
+        assert.deepEqual(obterGruposDiretos('poemas'), []);
     });
 });
 

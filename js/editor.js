@@ -406,6 +406,7 @@ const grupoGeneroProsa = criarGrupoDeTags({
 // Anexos (`obterIntertextualidade`/`obterAnexos`, ver criarListaDeEntradas
 // acima), que também guardam objeto em vez de string simples.
 function criarGrupoDePessoas({
+    tabela,
     inputId,
     containerId,
     corClasse,
@@ -538,7 +539,7 @@ function criarGrupoDePessoas({
                 return `
                 <label class="flex items-center gap-1 px-2 py-1 text-[10px] text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer whitespace-nowrap">
                     <input type="checkbox" ${marcado ? 'checked' : ''}
-                        onchange="${nomeFuncaoAlternarPapel}(${JSON.stringify(i.pessoaId)}, '${escapeHtml(p).replace(/'/g, "\\'")}', this.checked)"
+                        onchange="${nomeFuncaoAlternarPapel}('${tabela}', ${JSON.stringify(i.pessoaId)}, '${escapeHtml(p).replace(/'/g, "\\'")}', this.checked)"
                         class="rounded border-gray-300 dark:border-slate-600 text-rose-500 focus:ring-rose-400" />
                     ${escapeHtml(p)}
                 </label>`;
@@ -554,11 +555,11 @@ function criarGrupoDePessoas({
                 return `
             <span class="relative ${corClasse} text-white text-[10px] pl-2 pr-1 py-1 rounded-full inline-flex items-center gap-1">
                 ${escapeHtml(nome)}
-                <button type="button" data-id="${escapeHtml(String(i.pessoaId))}" onclick="${nomeFuncaoAlternarDropdown}(this.dataset.id)"
+                <button type="button" data-id="${escapeHtml(String(i.pessoaId))}" onclick="${nomeFuncaoAlternarDropdown}('${tabela}', this.dataset.id)"
                     class="text-[9px] bg-white/20 rounded px-1 py-0 hover:bg-white/30">
                     ${rotuloPapeis}
                 </button>
-                <button type="button" data-id="${escapeHtml(String(i.pessoaId))}" onclick="${nomeFuncaoRemover}(this.dataset.id)" class="hover:text-red-200 font-bold ml-1">×</button>
+                <button type="button" data-id="${escapeHtml(String(i.pessoaId))}" onclick="${nomeFuncaoRemover}('${tabela}', this.dataset.id)" class="hover:text-red-200 font-bold ml-1">×</button>
                 ${
                     aberto
                         ? `<div class="absolute z-10 top-full left-0 mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded shadow-lg py-1 min-w-max">${checkboxesPapel(i)}</div>`
@@ -639,7 +640,7 @@ function criarGrupoDePessoas({
 // com Grupo já cadastrado reaproveita o id direto; nome sem
 // correspondência pede confirmação antes de criar (mesmo padrão de
 // Pessoa, ver obterOuCriarGrupoPorNome em db.js).
-function criarGrupoDeGruposDiretos({ inputId, containerId, nomeFuncaoRemover }) {
+function criarGrupoDeGruposDiretos({ tabela, inputId, containerId, nomeFuncaoRemover }) {
     let itens = []; // array de grupoId
 
     function grupoDe(grupoId) {
@@ -693,7 +694,7 @@ function criarGrupoDeGruposDiretos({ inputId, containerId, nomeFuncaoRemover }) 
                 return `
             <span class="text-[11px] ${classesCorGrupo(grupo?.cor)} px-2 py-1 rounded-full inline-flex items-center gap-1">
                 ${escapeHtml(nome)}
-                <button type="button" data-id="${escapeHtml(String(grupoId))}" onclick="${nomeFuncaoRemover}(this.dataset.id)" class="hover:text-red-600 dark:hover:text-red-400 font-bold ml-1">×</button>
+                <button type="button" data-id="${escapeHtml(String(grupoId))}" onclick="${nomeFuncaoRemover}('${tabela}', this.dataset.id)" class="hover:text-red-600 dark:hover:text-red-400 font-bold ml-1">×</button>
             </span>`;
             })
             .join('');
@@ -730,6 +731,7 @@ function criarGrupoDeGruposDiretos({ inputId, containerId, nomeFuncaoRemover }) 
 // db.js), mesmo padrão de confirmação de "criar autor novo" que
 // criarGrupoDePessoas usa pra Pessoa.
 function criarGrupoDeAutoria({
+    tabela,
     inputId,
     containerId,
     corClasse,
@@ -803,11 +805,11 @@ function criarGrupoDeAutoria({
             <span class="relative ${corClasse} text-white text-[10px] pl-2 pr-1 py-1 rounded-full inline-flex items-center gap-1">
                 ${escapeHtml(nome)}
                 <select data-id="${escapeHtml(String(i.autorId))}"
-                    onchange="${nomeFuncaoAlterarPapel}(this.dataset.id, this.value)"
+                    onchange="${nomeFuncaoAlterarPapel}('${tabela}', this.dataset.id, this.value)"
                     class="text-[9px] bg-white/20 rounded px-1 py-0 border-0 text-white [&>option]:text-black">
                     ${opcoesPapel(i)}
                 </select>
-                <button type="button" data-id="${escapeHtml(String(i.autorId))}" onclick="${nomeFuncaoRemover}(this.dataset.id)" class="hover:text-red-200 font-bold ml-1">×</button>
+                <button type="button" data-id="${escapeHtml(String(i.autorId))}" onclick="${nomeFuncaoRemover}('${tabela}', this.dataset.id)" class="hover:text-red-200 font-bold ml-1">×</button>
             </span>`;
             })
             .join('');
@@ -842,6 +844,7 @@ function criarGrupoDeAutoria({
 }
 
 const grupoPessoasPoema = criarGrupoDePessoas({
+    tabela: 'poemas',
     inputId: 'p-pessoa-input',
     containerId: 'p-pessoas-container',
     corClasse: 'bg-rose-500',
@@ -851,27 +854,43 @@ const grupoPessoasPoema = criarGrupoDePessoas({
     infoGruposId: 'p-pessoas-grupos-info',
 });
 const grupoPessoasProsa = criarGrupoDePessoas({
+    tabela: 'prosas',
     inputId: 'pr-pessoa-input',
     containerId: 'pr-pessoas-container',
     corClasse: 'bg-rose-500',
-    nomeFuncaoRemover: 'removerPessoaProsa',
-    nomeFuncaoAlternarPapel: 'alternarPapelPessoaProsa',
-    nomeFuncaoAlternarDropdown: 'alternarDropdownPapelPessoaProsa',
+    nomeFuncaoRemover: 'removerPessoa',
+    nomeFuncaoAlternarPapel: 'alternarPapelPessoa',
+    nomeFuncaoAlternarDropdown: 'alternarDropdownPapelPessoa',
     infoGruposId: 'pr-pessoas-grupos-info',
 });
+// Resolve a instância certa (Poema/Prosa) pra cada chamada unificada
+// abaixo — mesmo papel do cfg()/CONFIG_SELECAO em selecao-massa.js.
+function grupoPessoas(tabela) {
+    if (tabela === 'poemas') return grupoPessoasPoema;
+    if (tabela === 'prosas') return grupoPessoasProsa;
+    throw new Error(`Tabela desconhecida em grupoPessoas: ${tabela}`);
+}
 
 const grupoGruposDiretosPoema = criarGrupoDeGruposDiretos({
+    tabela: 'poemas',
     inputId: 'p-grupo-direto-input',
     containerId: 'p-grupos-diretos-container',
     nomeFuncaoRemover: 'removerGrupoDireto',
 });
 const grupoGruposDiretosProsa = criarGrupoDeGruposDiretos({
+    tabela: 'prosas',
     inputId: 'pr-grupo-direto-input',
     containerId: 'pr-grupos-diretos-container',
-    nomeFuncaoRemover: 'removerGrupoDiretoProsa',
+    nomeFuncaoRemover: 'removerGrupoDireto',
 });
+function grupoGruposDiretos(tabela) {
+    if (tabela === 'poemas') return grupoGruposDiretosPoema;
+    if (tabela === 'prosas') return grupoGruposDiretosProsa;
+    throw new Error(`Tabela desconhecida em grupoGruposDiretos: ${tabela}`);
+}
 
 const grupoAutoriaPoema = criarGrupoDeAutoria({
+    tabela: 'poemas',
     inputId: 'p-autor-input',
     containerId: 'p-autoria-container',
     corClasse: 'bg-indigo-600',
@@ -879,12 +898,18 @@ const grupoAutoriaPoema = criarGrupoDeAutoria({
     nomeFuncaoAlterarPapel: 'alterarPapelAutoria',
 });
 const grupoAutoriaProsa = criarGrupoDeAutoria({
+    tabela: 'prosas',
     inputId: 'pr-autor-input',
     containerId: 'pr-autoria-container',
     corClasse: 'bg-indigo-600',
-    nomeFuncaoRemover: 'removerAutoriaProsa',
-    nomeFuncaoAlterarPapel: 'alterarPapelAutoriaProsa',
+    nomeFuncaoRemover: 'removerAutoria',
+    nomeFuncaoAlterarPapel: 'alterarPapelAutoria',
 });
+function grupoAutoria(tabela) {
+    if (tabela === 'poemas') return grupoAutoriaPoema;
+    if (tabela === 'prosas') return grupoAutoriaProsa;
+    throw new Error(`Tabela desconhecida em grupoAutoria: ${tabela}`);
+}
 
 // ─── Listas genéricas de entradas (objetos ou texto livre) ────
 // Usado por Intertextualidade (pares tipo+texto) e Anexos (tipo+
@@ -2877,29 +2902,29 @@ function nomesPessoasCadastro() {
     return db.pessoas.map((p) => p.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
-export function adicionarPessoa(valor = null) {
-    grupoPessoasPoema.adicionar(valor);
+export function adicionarPessoa(tabela, valor = null) {
+    grupoPessoas(tabela).adicionar(valor);
 }
-export function removerPessoa(nome) {
-    grupoPessoasPoema.remover(nome);
+export function removerPessoa(tabela, nome) {
+    grupoPessoas(tabela).remover(nome);
 }
-export function alternarPapelPessoa(nome, papel, marcado) {
-    grupoPessoasPoema.alternarPapel(nome, papel, marcado);
+export function alternarPapelPessoa(tabela, nome, papel, marcado) {
+    grupoPessoas(tabela).alternarPapel(nome, papel, marcado);
 }
-export function alternarDropdownPapelPessoa(nome) {
-    grupoPessoasPoema.alternarDropdown(nome);
+export function alternarDropdownPapelPessoa(tabela, nome) {
+    grupoPessoas(tabela).alternarDropdown(nome);
 }
-export function renderizarPessoas() {
-    grupoPessoasPoema.renderizar();
+export function renderizarPessoas(tabela) {
+    grupoPessoas(tabela).renderizar();
 }
-export function resetPessoas() {
-    grupoPessoasPoema.reset();
+export function resetPessoas(tabela) {
+    grupoPessoas(tabela).reset();
 }
-export function carregarPessoas(pessoas) {
-    grupoPessoasPoema.carregar(pessoas);
+export function carregarPessoas(tabela, pessoas) {
+    grupoPessoas(tabela).carregar(pessoas);
 }
-export function obterPessoas() {
-    return grupoPessoasPoema.obterItens();
+export function obterPessoas(tabela) {
+    return grupoPessoas(tabela).obterItens();
 }
 
 // ─── Grupos referenciados diretamente (poema) ─────────────────
@@ -2916,20 +2941,20 @@ export function atualizarDatalistGrupos() {
     });
 }
 
-export function adicionarGrupoDireto(valor = null) {
-    grupoGruposDiretosPoema.adicionar(valor);
+export function adicionarGrupoDireto(tabela, valor = null) {
+    grupoGruposDiretos(tabela).adicionar(valor);
 }
-export function removerGrupoDireto(grupoId) {
-    grupoGruposDiretosPoema.remover(grupoId);
+export function removerGrupoDireto(tabela, grupoId) {
+    grupoGruposDiretos(tabela).remover(grupoId);
 }
-export function resetGruposDiretos() {
-    grupoGruposDiretosPoema.reset();
+export function resetGruposDiretos(tabela) {
+    grupoGruposDiretos(tabela).reset();
 }
-export function carregarGruposDiretos(ids) {
-    grupoGruposDiretosPoema.carregar(ids);
+export function carregarGruposDiretos(tabela, ids) {
+    grupoGruposDiretos(tabela).carregar(ids);
 }
-export function obterGruposDiretos() {
-    return grupoGruposDiretosPoema.obterItens();
+export function obterGruposDiretos(tabela) {
+    return grupoGruposDiretos(tabela).obterItens();
 }
 
 // Nomes do cadastro central de Autores (db.autores), ordenados —
@@ -2948,26 +2973,26 @@ export function atualizarDatalistAutores() {
     });
 }
 
-export function adicionarAutoria(valor = null) {
-    grupoAutoriaPoema.adicionar(valor);
+export function adicionarAutoria(tabela, valor = null) {
+    grupoAutoria(tabela).adicionar(valor);
 }
-export function removerAutoria(autorId) {
-    grupoAutoriaPoema.remover(autorId);
+export function removerAutoria(tabela, autorId) {
+    grupoAutoria(tabela).remover(autorId);
 }
-export function alterarPapelAutoria(autorId, papel) {
-    grupoAutoriaPoema.alterarPapel(autorId, papel);
+export function alterarPapelAutoria(tabela, autorId, papel) {
+    grupoAutoria(tabela).alterarPapel(autorId, papel);
 }
-export function renderizarAutoria() {
-    grupoAutoriaPoema.renderizar();
+export function renderizarAutoria(tabela) {
+    grupoAutoria(tabela).renderizar();
 }
-export function resetAutoria() {
-    grupoAutoriaPoema.reset();
+export function resetAutoria(tabela) {
+    grupoAutoria(tabela).reset();
 }
-export function carregarAutoria(autoria) {
-    grupoAutoriaPoema.carregar(autoria);
+export function carregarAutoria(tabela, autoria) {
+    grupoAutoria(tabela).carregar(autoria);
 }
-export function obterAutoria() {
-    return grupoAutoriaPoema.obterItens();
+export function obterAutoria(tabela) {
+    return grupoAutoria(tabela).obterItens();
 }
 
 // ─── Inicialização dos listeners ─────────────────────────────
@@ -3138,71 +3163,17 @@ export function carregarSinalizacoesProsa(item) {
     modulosSinalProsa.DominioImagetico.carregar(item.sinalizacoesDominioImagetico || '');
 }
 
-export function adicionarPessoaProsa(valor = null) {
-    grupoPessoasProsa.adicionar(valor);
-}
-export function removerPessoaProsa(nome) {
-    grupoPessoasProsa.remover(nome);
-}
-export function alternarPapelPessoaProsa(nome, papel, marcado) {
-    grupoPessoasProsa.alternarPapel(nome, papel, marcado);
-}
-export function alternarDropdownPapelPessoaProsa(nome) {
-    grupoPessoasProsa.alternarDropdown(nome);
-}
-export function renderizarPessoasProsa() {
-    grupoPessoasProsa.renderizar();
-}
-export function resetPessoasProsa() {
-    grupoPessoasProsa.reset();
-}
-export function carregarPessoasProsa(pessoas) {
-    grupoPessoasProsa.carregar(pessoas);
-}
-export function obterPessoasProsa() {
-    return grupoPessoasProsa.obterItens();
-}
+// Wrappers de Pessoa (Prosa) unificados acima em adicionarPessoa(tabela, ...)
+// etc. — ver grupoPessoas(tabela).
 
 // ─── Grupos referenciados diretamente (prosa) ─────────────────
 // Mesmo padrão do Poema acima, instância própria da Prosa.
 
-export function adicionarGrupoDiretoProsa(valor = null) {
-    grupoGruposDiretosProsa.adicionar(valor);
-}
-export function removerGrupoDiretoProsa(grupoId) {
-    grupoGruposDiretosProsa.remover(grupoId);
-}
-export function resetGruposDiretosProsa() {
-    grupoGruposDiretosProsa.reset();
-}
-export function carregarGruposDiretosProsa(ids) {
-    grupoGruposDiretosProsa.carregar(ids);
-}
-export function obterGruposDiretosProsa() {
-    return grupoGruposDiretosProsa.obterItens();
-}
+// Wrappers de Grupos Diretos (Prosa) unificados acima em
+// adicionarGrupoDireto(tabela, ...) etc. — ver grupoGruposDiretos(tabela).
 
-export function adicionarAutoriaProsa(valor = null) {
-    grupoAutoriaProsa.adicionar(valor);
-}
-export function removerAutoriaProsa(autorId) {
-    grupoAutoriaProsa.remover(autorId);
-}
-export function alterarPapelAutoriaProsa(autorId, papel) {
-    grupoAutoriaProsa.alterarPapel(autorId, papel);
-}
-export function renderizarAutoriaProsa() {
-    grupoAutoriaProsa.renderizar();
-}
-export function resetAutoriaProsa() {
-    grupoAutoriaProsa.reset();
-}
-export function carregarAutoriaProsa(autoria) {
-    grupoAutoriaProsa.carregar(autoria);
-}
-export function obterAutoriaProsa() {
-    return grupoAutoriaProsa.obterItens();
-}
+// Wrappers de Autoria (Prosa) unificados acima em adicionarAutoria(tabela, ...)
+// etc. — ver grupoAutoria(tabela).
 
 // ─── Gênero (Cartas, Diálogos, Ensaios, Prosas poéticas...) ───
 
@@ -3355,7 +3326,7 @@ export function initEditor() {
         inputPessoa.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                adicionarPessoa();
+                adicionarPessoa('poemas');
             }
         });
     }
@@ -3435,7 +3406,7 @@ export function initEditorProsa() {
         inputPessoaProsa.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                adicionarPessoaProsa();
+                adicionarPessoa('prosas');
             }
         });
     }

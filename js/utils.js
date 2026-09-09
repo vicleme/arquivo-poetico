@@ -2121,7 +2121,9 @@ export function agruparIntertextualidadePorTipo(lista) {
     });
     return grupos.map((grupo) => ({
         ...grupo,
-        subBullet: grupo.entradas.some((it) => it.link || it.nota || (it.texto || '').includes(',')),
+        subBullet:
+            grupo.entradas.length > 1 &&
+            grupo.entradas.some((it) => it.link || it.nota || (it.texto || '').includes(',')),
     }));
 }
 

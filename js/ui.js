@@ -676,8 +676,8 @@ export async function prepararNovo(tipo) {
 
     if (tipo === 'poema') {
         resetSinalizacoes();
-        resetPessoas();
-        resetAutoria();
+        resetPessoas('poemas');
+        resetAutoria('poemas');
         resetEnvios();
         resetReconhecimentos();
         resetIntertextualidade();
@@ -692,13 +692,13 @@ export async function prepararNovo(tipo) {
     }
 
     if (tipo === 'prosa') {
-        // resetSinalizacoesProsa e resetPessoasProsa são importadas
-        // dinamicamente pra evitar ciclo de importação (editor → ui não existe)
+        // resetSinalizacoesProsa é importada dinamicamente pra evitar
+        // ciclo de importação (editor → ui não existe); resetPessoas e
+        // resetAutoria já são importadas estaticamente acima (unificadas
+        // por tabela).
         import('./editor.js').then(
             ({
                 resetSinalizacoesProsa,
-                resetPessoasProsa,
-                resetAutoriaProsa,
                 resetEnviosProsa,
                 resetReconhecimentosProsa,
                 resetGeneroProsa,
@@ -710,8 +710,8 @@ export async function prepararNovo(tipo) {
                 renderPainelElosDerivadosProsa,
             }) => {
                 resetSinalizacoesProsa();
-                resetPessoasProsa();
-                resetAutoriaProsa();
+                resetPessoas('prosas');
+                resetAutoria('prosas');
                 resetEnviosProsa();
                 resetReconhecimentosProsa();
                 resetGeneroProsa();
@@ -737,7 +737,7 @@ export async function prepararNovo(tipo) {
 
     if (tipo === 'grupo') {
         // Import dinâmico pra evitar ciclo (forms → ui já existe, ver
-        // resetPessoasProsa acima pelo mesmo motivo). Sem cor marcada
+        // resetPessoas('prosas') acima pelo mesmo motivo). Sem cor marcada
         // ainda no form novo: seleciona a primeira da paleta por padrão
         // (mesmo padrão do fallback em classesCorGrupo, ver utils.js).
         import('./forms.js').then(({ renderSeletorCorGrupo }) => {
