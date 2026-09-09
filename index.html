@@ -624,22 +624,24 @@
                     >
                         <option value="">-- Todos os livros --</option>
                     </select>
-                    <select
-                        id="filtro-pessoa-poemas"
-                        onchange="setFiltroPessoaPoemas(this.value)"
-                        title="Filtro dedicado: combine com o seletor de Papel ao lado para achar um papel específico numa pessoa específica (sem misturar com outra pessoa que tenha o mesmo papel no texto)"
-                        style="width: 160px; margin-bottom: 0"
-                    >
-                        <option value="">-- Qualquer pessoa --</option>
-                    </select>
-                    <select
-                        id="filtro-papel-poemas"
-                        onchange="setFiltroPapelPoemas(this.value)"
-                        title="Filtro dedicado: combine com o seletor de Pessoa ao lado para achar um papel específico numa pessoa específica (sem misturar com outra pessoa que tenha o mesmo papel no texto)"
-                        style="width: 160px; margin-bottom: 0"
-                    >
-                        <option value="">-- Qualquer papel --</option>
-                    </select>
+                    <div class="flex gap-3 shrink-0">
+                        <select
+                            id="filtro-pessoa-poemas"
+                            onchange="setFiltroPessoaPoemas(this.value)"
+                            title="Filtro dedicado: combine com o seletor de Papel ao lado para achar um papel específico numa pessoa específica (sem misturar com outra pessoa que tenha o mesmo papel no texto)"
+                            style="width: 150px; margin-bottom: 0"
+                        >
+                            <option value="">-- Qualquer pessoa --</option>
+                        </select>
+                        <select
+                            id="filtro-papel-poemas"
+                            onchange="setFiltroPapelPoemas(this.value)"
+                            title="Filtro dedicado: combine com o seletor de Pessoa ao lado para achar um papel específico numa pessoa específica (sem misturar com outra pessoa que tenha o mesmo papel no texto)"
+                            style="width: 150px; margin-bottom: 0"
+                        >
+                            <option value="">-- Qualquer papel --</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div
@@ -1315,22 +1317,24 @@
                     >
                         <option value="">-- Todos os livros --</option>
                     </select>
-                    <select
-                        id="filtro-pessoa-prosas"
-                        onchange="setFiltroPessoaProsas(this.value)"
-                        title="Filtro dedicado: combine com o seletor de Papel ao lado para achar um papel específico numa pessoa específica (sem misturar com outra pessoa que tenha o mesmo papel no texto)"
-                        class="w-40 border p-2 rounded text-sm border-gray-300 dark:border-slate-600"
-                    >
-                        <option value="">-- Qualquer pessoa --</option>
-                    </select>
-                    <select
-                        id="filtro-papel-prosas"
-                        onchange="setFiltroPapelProsas(this.value)"
-                        title="Filtro dedicado: combine com o seletor de Pessoa ao lado para achar um papel específico numa pessoa específica (sem misturar com outra pessoa que tenha o mesmo papel no texto)"
-                        class="w-40 border p-2 rounded text-sm border-gray-300 dark:border-slate-600"
-                    >
-                        <option value="">-- Qualquer papel --</option>
-                    </select>
+                    <div class="flex gap-3 shrink-0">
+                        <select
+                            id="filtro-pessoa-prosas"
+                            onchange="setFiltroPessoaProsas(this.value)"
+                            title="Filtro dedicado: combine com o seletor de Papel ao lado para achar um papel específico numa pessoa específica (sem misturar com outra pessoa que tenha o mesmo papel no texto)"
+                            class="w-36 border p-2 rounded text-sm border-gray-300 dark:border-slate-600"
+                        >
+                            <option value="">-- Qualquer pessoa --</option>
+                        </select>
+                        <select
+                            id="filtro-papel-prosas"
+                            onchange="setFiltroPapelProsas(this.value)"
+                            title="Filtro dedicado: combine com o seletor de Pessoa ao lado para achar um papel específico numa pessoa específica (sem misturar com outra pessoa que tenha o mesmo papel no texto)"
+                            class="w-36 border p-2 rounded text-sm border-gray-300 dark:border-slate-600"
+                        >
+                            <option value="">-- Qualquer papel --</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div
