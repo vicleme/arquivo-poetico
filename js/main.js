@@ -39,6 +39,8 @@ import {
     adicionarColunaContagem,
     removerColunaContagem,
     definirCampoColunaContagem,
+    definirOperadorColunaContagem,
+    definirValorColunaContagem,
 } from './colunas-contagem.js';
 import {
     toggleAcaoColuna,
@@ -813,6 +815,8 @@ window.resetarColunas = resetarColunas;
 window.adicionarColunaContagem = adicionarColunaContagem;
 window.removerColunaContagem = removerColunaContagem;
 window.definirCampoColunaContagem = definirCampoColunaContagem;
+window.definirOperadorColunaContagem = definirOperadorColunaContagem;
+window.definirValorColunaContagem = definirValorColunaContagem;
 window.toggleAcaoColuna = toggleAcaoColuna;
 window.setFormatoBaixarColuna = setFormatoBaixarColuna;
 window.resetarAcoesColuna = resetarAcoesColuna;

@@ -48,7 +48,11 @@ import {
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
 import { getColunasAtivas } from './colunas.js';
-import { getColunasContagem, PREFIXO_ORDENACAO as PREFIXO_ORDENACAO_CONTAGEM } from './colunas-contagem.js';
+import {
+    getColunasContagem,
+    PREFIXO_ORDENACAO as PREFIXO_ORDENACAO_CONTAGEM,
+    itemBateFiltrosContagem,
+} from './colunas-contagem.js';
 import { contarCamposPreenchidos } from './exportar-md.js';
 import {
     celulaAcoesItem,
@@ -902,6 +906,7 @@ export function getListaVisivelPoemas() {
     }
 
     base = filtrarPorPessoaEPapel(base, filtroPessoaPoemas, filtroPapelPoemas);
+    base = base.filter((p) => itemBateFiltrosContagem(p, 'poemas', db));
 
     const decorada = base.map((p) => {
         const _livros = nomesLivros(p);
