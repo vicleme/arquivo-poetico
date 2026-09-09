@@ -187,30 +187,6 @@ import {
     removerReconhecimento,
     atualizarDatalist,
     atualizarDatalistProsa,
-    adicionarSinalTradicaoProsa,
-    removerSinalTradicaoProsa,
-    editarSinalTradicaoProsa,
-    adicionarSinalEstiloProsa,
-    removerSinalEstiloProsa,
-    editarSinalEstiloProsa,
-    adicionarSinalTemaProsa,
-    removerSinalTemaProsa,
-    editarSinalTemaProsa,
-    adicionarSinalRelacaoProsa,
-    removerSinalRelacaoProsa,
-    editarSinalRelacaoProsa,
-    adicionarSinalSensibilidadeProsa,
-    removerSinalSensibilidadeProsa,
-    editarSinalSensibilidadeProsa,
-    adicionarSinalTomProsa,
-    removerSinalTomProsa,
-    editarSinalTomProsa,
-    adicionarSinalDominioImageticoProsa,
-    removerSinalDominioImageticoProsa,
-    editarSinalDominioImageticoProsa,
-    adicionarSinalOutrosProsa,
-    removerSinalOutrosProsa,
-    editarSinalOutrosProsa,
     adicionarEnvioProsa,
     editarEnvioProsa,
     cancelarEdicaoEnvioProsa,
@@ -650,30 +626,6 @@ window.adicionarReconhecimento = adicionarReconhecimento;
 window.editarReconhecimento = editarReconhecimento;
 window.cancelarEdicaoReconhecimento = cancelarEdicaoReconhecimento;
 window.removerReconhecimento = removerReconhecimento;
-window.adicionarSinalTradicaoProsa = adicionarSinalTradicaoProsa;
-window.removerSinalTradicaoProsa = removerSinalTradicaoProsa;
-window.editarSinalTradicaoProsa = editarSinalTradicaoProsa;
-window.adicionarSinalEstiloProsa = adicionarSinalEstiloProsa;
-window.removerSinalEstiloProsa = removerSinalEstiloProsa;
-window.editarSinalEstiloProsa = editarSinalEstiloProsa;
-window.adicionarSinalTemaProsa = adicionarSinalTemaProsa;
-window.removerSinalTemaProsa = removerSinalTemaProsa;
-window.editarSinalTemaProsa = editarSinalTemaProsa;
-window.adicionarSinalRelacaoProsa = adicionarSinalRelacaoProsa;
-window.removerSinalRelacaoProsa = removerSinalRelacaoProsa;
-window.editarSinalRelacaoProsa = editarSinalRelacaoProsa;
-window.adicionarSinalSensibilidadeProsa = adicionarSinalSensibilidadeProsa;
-window.removerSinalSensibilidadeProsa = removerSinalSensibilidadeProsa;
-window.editarSinalSensibilidadeProsa = editarSinalSensibilidadeProsa;
-window.adicionarSinalTomProsa = adicionarSinalTomProsa;
-window.removerSinalTomProsa = removerSinalTomProsa;
-window.editarSinalTomProsa = editarSinalTomProsa;
-window.adicionarSinalDominioImageticoProsa = adicionarSinalDominioImageticoProsa;
-window.removerSinalDominioImageticoProsa = removerSinalDominioImageticoProsa;
-window.editarSinalDominioImageticoProsa = editarSinalDominioImageticoProsa;
-window.adicionarSinalOutrosProsa = adicionarSinalOutrosProsa;
-window.removerSinalOutrosProsa = removerSinalOutrosProsa;
-window.editarSinalOutrosProsa = editarSinalOutrosProsa;
 window.adicionarEnvioProsa = adicionarEnvioProsa;
 window.editarEnvioProsa = editarEnvioProsa;
 window.cancelarEdicaoEnvioProsa = cancelarEdicaoEnvioProsa;

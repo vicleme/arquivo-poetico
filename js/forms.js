@@ -51,8 +51,6 @@ import {
     resetSinalizacoes,
     carregarSinalizacoes,
     resetPessoas,
-    resetSinalizacoesProsa,
-    carregarSinalizacoesProsa,
     carregarGruposDiretos,
     obterGruposDiretos,
     resetGruposDiretos,
@@ -1029,7 +1027,7 @@ export function initFormPoema() {
         save();
         rastreadorPoema.marcarLimpo();
         toggleModal('modal-poema');
-        resetSinalizacoes();
+        resetSinalizacoes('poemas');
         resetPessoas('poemas');
         resetGruposDiretos('poemas');
         resetAutoria('poemas');
@@ -1114,7 +1112,7 @@ export async function editarPoema(id) {
 
     setM('p-livros', p.livrosIds || []);
 
-    carregarSinalizacoes(p);
+    carregarSinalizacoes('poemas', p);
     carregarPessoas('poemas', p.pessoas);
     carregarGruposDiretos('poemas', p.gruposDiretos);
     carregarAutoria('poemas', p.autoria);
@@ -1318,7 +1316,7 @@ export function initFormProsa() {
         save();
         rastreadorProsa.marcarLimpo();
         toggleModal('modal-prosa');
-        resetSinalizacoesProsa();
+        resetSinalizacoes('prosas');
         resetPessoas('prosas');
         resetGruposDiretos('prosas');
         resetAutoria('prosas');
@@ -1413,7 +1411,7 @@ export async function editarProsa(id) {
               : ''; // compatibilidade: prosas salvas antes da remoção do campo legado
     sincronizarFiltroDestino('pr-destino-filtro', 'pr-destino', destinoStr);
 
-    carregarSinalizacoesProsa(pr);
+    carregarSinalizacoes('prosas', pr);
     carregarPessoas('prosas', pr.pessoas);
     carregarGruposDiretos('prosas', pr.gruposDiretos);
     carregarAutoria('prosas', pr.autoria);

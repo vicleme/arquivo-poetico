@@ -675,7 +675,7 @@ export async function prepararNovo(tipo) {
     if (idField) idField.value = '';
 
     if (tipo === 'poema') {
-        resetSinalizacoes();
+        resetSinalizacoes('poemas');
         resetPessoas('poemas');
         resetAutoria('poemas');
         resetEnvios();
@@ -692,13 +692,13 @@ export async function prepararNovo(tipo) {
     }
 
     if (tipo === 'prosa') {
-        // resetSinalizacoesProsa é importada dinamicamente pra evitar
-        // ciclo de importação (editor → ui não existe); resetPessoas e
-        // resetAutoria já são importadas estaticamente acima (unificadas
-        // por tabela).
+        // resetPessoas, resetAutoria e resetSinalizacoes já são
+        // importadas estaticamente acima (unificadas por tabela) — só o
+        // resto de Prosa ainda precisa de import dinâmico (evita ciclo
+        // de importação, editor → ui não existe).
+        resetSinalizacoes('prosas');
         import('./editor.js').then(
             ({
-                resetSinalizacoesProsa,
                 resetEnviosProsa,
                 resetReconhecimentosProsa,
                 resetGeneroProsa,
@@ -709,7 +709,6 @@ export async function prepararNovo(tipo) {
                 resetReferenciasProsa,
                 renderPainelElosDerivadosProsa,
             }) => {
-                resetSinalizacoesProsa();
                 resetPessoas('prosas');
                 resetAutoria('prosas');
                 resetEnviosProsa();

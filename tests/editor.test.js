@@ -61,7 +61,7 @@ const {
     obterIntertextualidadeProsa,
     resetIntertextualidadeProsa,
 } = await import('../js/editor.js');
-const { renderSinalizacoesProsa, initEditorProsa, editarSinalRelacaoProsa } = await import(
+const { renderSinalizacoesProsa, initEditorProsa, editarSinalRelacao } = await import(
     '../js/editor.js'
 );
 
@@ -599,7 +599,7 @@ describe('editar etiqueta de Sinalizações (editor.js, DOM real)', () => {
             />\s*Sonto\s*</,
         );
 
-        editarSinalRelacaoProsa('Sonto');
+        editarSinalRelacao('prosas', 'Sonto');
 
         assert.equal(input.value, 'Sonto', 'input deveria receber o texto da etiqueta editada');
         assert.doesNotMatch(
@@ -614,7 +614,7 @@ describe('editar etiqueta de Sinalizações (editor.js, DOM real)', () => {
         input.value = 'Sonto';
         pressionarEnter(input);
 
-        editarSinalRelacaoProsa('Sonto');
+        editarSinalRelacao('prosas', 'Sonto');
         input.value = 'Soneto';
         pressionarEnter(input);
 

@@ -99,7 +99,14 @@ export function setAlign(valor) {
 // IDs do DOM e a cor do badge. Em vez de 4 cópias, uma única
 // implementação parametrizada; cada grupo guarda seu próprio array em
 // closure — sem estado global compartilhado entre Poema e Prosa.
+// tabela é opcional: Sinalizações (Poema/Prosa unificadas) passa
+// 'poemas'/'prosas' pra embutir no onclick gerado (ver renderizar()
+// abaixo); Gênero (grupoGeneroProsa, só existe pra Prosa) não passa
+// nada e o onclick sai sem esse argumento — mesmo espírito de tabela
+// opcional que criarGrupoDeAutoria/criarGrupoDePessoas usam, mas aqui
+// o parâmetro pode legitimamente ficar de fora.
 function criarGrupoDeTags({
+    tabela,
     inputId,
     containerId,
     hiddenInputId,
@@ -146,13 +153,14 @@ function criarGrupoDeTags({
         const inputOculto = document.getElementById(hiddenInputId);
         if (!container) return;
 
+        const argTabela = tabela ? `'${tabela}', ` : '';
         container.innerHTML = itens
             .map(
                 (i) => `
             <span class="${corClasse} text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
                 ${escapeHtml(i)}
-                <button type="button" data-valor="${escapeHtml(i)}" onclick="${nomeFuncaoEditar}(this.dataset.valor)" class="hover:text-blue-200 ml-1" title="Editar">✎</button>
-                <button type="button" data-valor="${escapeHtml(i)}" onclick="${nomeFuncaoRemover}(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1" title="Remover">×</button>
+                <button type="button" data-valor="${escapeHtml(i)}" onclick="${nomeFuncaoEditar}(${argTabela}this.dataset.valor)" class="hover:text-blue-200 ml-1" title="Editar">✎</button>
+                <button type="button" data-valor="${escapeHtml(i)}" onclick="${nomeFuncaoRemover}(${argTabela}this.dataset.valor)" class="hover:text-red-200 font-bold ml-1" title="Remover">×</button>
             </span>`,
             )
             .join('');
@@ -361,11 +369,17 @@ export function renderSinalizacoesProsa() {
     });
 }
 
+// Poema e Prosa agora compartilham os mesmos nomes de função por
+// categoria (removerSinalX/editarSinalX, sem sufixo Prosa) — o
+// argumento `tabela` embutido no onclick (ver criarGrupoDeTags acima)
+// é quem diferencia a instância em runtime, mesmo padrão de
+// grupoAutoria(tabela)/grupoPessoas(tabela).
 const modulosSinalPoema = {};
 const modulosSinalProsa = {};
 SINAL_CATEGORIAS.forEach(({ chave, cor }) => {
     const slug = slugDom(chave);
     modulosSinalPoema[chave] = criarModuloDeTags({
+        tabela: 'poemas',
         inputId: `p-sinal-${slug}-input`,
         containerId: `p-sinal-${slug}-container`,
         hiddenInputId: `p-sinal-${slug}`,
@@ -374,14 +388,22 @@ SINAL_CATEGORIAS.forEach(({ chave, cor }) => {
         nomeFuncaoEditar: `editarSinal${chave}`,
     });
     modulosSinalProsa[chave] = criarModuloDeTags({
+        tabela: 'prosas',
         inputId: `pr-sinal-${slug}-input`,
         containerId: `pr-sinal-${slug}-container`,
         hiddenInputId: `pr-sinal-${slug}`,
         corClasse: cor,
-        nomeFuncaoRemover: `removerSinal${chave}Prosa`,
-        nomeFuncaoEditar: `editarSinal${chave}Prosa`,
+        nomeFuncaoRemover: `removerSinal${chave}`,
+        nomeFuncaoEditar: `editarSinal${chave}`,
     });
 });
+// Resolve a instância certa (Poema/Prosa) de uma categoria de
+// Sinalização — mesmo papel de grupoAutoria(tabela)/grupoPessoas(tabela).
+function grupoSinal(chave, tabela) {
+    if (tabela === 'poemas') return modulosSinalPoema[chave];
+    if (tabela === 'prosas') return modulosSinalProsa[chave];
+    throw new Error(`Tabela desconhecida em grupoSinal: ${tabela}`);
+}
 
 const grupoGeneroProsa = criarGrupoDeTags({
     inputId: 'pr-genero-input',
@@ -2755,129 +2777,143 @@ export function initListenersMigracaoProsa() {
 // carregarSinalizacoes abaixo cobrem as 6 de uma vez, pra quem abre/
 // fecha o modal não precisar chamar 6 funções.
 
-export function adicionarSinalTradicao(valor = null) {
-    modulosSinalPoema.Tradicao.adicionar(valor);
+// Um wrapper por ação (não mais por ação×tabela): recebe `tabela` como
+// primeiro argumento e resolve a instância via grupoSinal(chave,
+// tabela) — mesmo padrão de adicionarAutoria(tabela, ...) etc. Reduz
+// de 64 pra 32 funções exportadas (8 categorias × 4 ações).
+export function adicionarSinalTradicao(tabela, valor = null) {
+    grupoSinal('Tradicao', tabela).adicionar(valor);
 }
-export function removerSinalTradicao(tag) {
-    modulosSinalPoema.Tradicao.remover(tag);
+export function removerSinalTradicao(tabela, tag) {
+    grupoSinal('Tradicao', tabela).remover(tag);
 }
-export function editarSinalTradicao(tag) {
-    modulosSinalPoema.Tradicao.editar(tag);
+export function editarSinalTradicao(tabela, tag) {
+    grupoSinal('Tradicao', tabela).editar(tag);
 }
-export function renderizarSinalTradicao() {
-    modulosSinalPoema.Tradicao.renderizar();
-}
-
-export function adicionarSinalEstilo(valor = null) {
-    modulosSinalPoema.Estilo.adicionar(valor);
-}
-export function removerSinalEstilo(tag) {
-    modulosSinalPoema.Estilo.remover(tag);
-}
-export function editarSinalEstilo(tag) {
-    modulosSinalPoema.Estilo.editar(tag);
-}
-export function renderizarSinalEstilo() {
-    modulosSinalPoema.Estilo.renderizar();
+export function renderizarSinalTradicao(tabela) {
+    grupoSinal('Tradicao', tabela).renderizar();
 }
 
-export function adicionarSinalTema(valor = null) {
-    modulosSinalPoema.Tema.adicionar(valor);
+export function adicionarSinalEstilo(tabela, valor = null) {
+    grupoSinal('Estilo', tabela).adicionar(valor);
 }
-export function removerSinalTema(tag) {
-    modulosSinalPoema.Tema.remover(tag);
+export function removerSinalEstilo(tabela, tag) {
+    grupoSinal('Estilo', tabela).remover(tag);
 }
-export function editarSinalTema(tag) {
-    modulosSinalPoema.Tema.editar(tag);
+export function editarSinalEstilo(tabela, tag) {
+    grupoSinal('Estilo', tabela).editar(tag);
 }
-export function renderizarSinalTema() {
-    modulosSinalPoema.Tema.renderizar();
-}
-
-export function adicionarSinalRelacao(valor = null) {
-    modulosSinalPoema.Relacao.adicionar(valor);
-}
-export function removerSinalRelacao(tag) {
-    modulosSinalPoema.Relacao.remover(tag);
-}
-export function editarSinalRelacao(tag) {
-    modulosSinalPoema.Relacao.editar(tag);
-}
-export function renderizarSinalRelacao() {
-    modulosSinalPoema.Relacao.renderizar();
+export function renderizarSinalEstilo(tabela) {
+    grupoSinal('Estilo', tabela).renderizar();
 }
 
-export function adicionarSinalSensibilidade(valor = null) {
-    modulosSinalPoema.Sensibilidade.adicionar(valor);
+export function adicionarSinalTema(tabela, valor = null) {
+    grupoSinal('Tema', tabela).adicionar(valor);
 }
-export function removerSinalSensibilidade(tag) {
-    modulosSinalPoema.Sensibilidade.remover(tag);
+export function removerSinalTema(tabela, tag) {
+    grupoSinal('Tema', tabela).remover(tag);
 }
-export function editarSinalSensibilidade(tag) {
-    modulosSinalPoema.Sensibilidade.editar(tag);
+export function editarSinalTema(tabela, tag) {
+    grupoSinal('Tema', tabela).editar(tag);
 }
-export function renderizarSinalSensibilidade() {
-    modulosSinalPoema.Sensibilidade.renderizar();
-}
-
-export function adicionarSinalTom(valor = null) {
-    modulosSinalPoema.Tom.adicionar(valor);
-}
-export function removerSinalTom(tag) {
-    modulosSinalPoema.Tom.remover(tag);
-}
-export function editarSinalTom(tag) {
-    modulosSinalPoema.Tom.editar(tag);
-}
-export function renderizarSinalTom() {
-    modulosSinalPoema.Tom.renderizar();
+export function renderizarSinalTema(tabela) {
+    grupoSinal('Tema', tabela).renderizar();
 }
 
-export function adicionarSinalDominioImagetico(valor = null) {
-    modulosSinalPoema.DominioImagetico.adicionar(valor);
+export function adicionarSinalRelacao(tabela, valor = null) {
+    grupoSinal('Relacao', tabela).adicionar(valor);
 }
-export function removerSinalDominioImagetico(tag) {
-    modulosSinalPoema.DominioImagetico.remover(tag);
+export function removerSinalRelacao(tabela, tag) {
+    grupoSinal('Relacao', tabela).remover(tag);
 }
-export function editarSinalDominioImagetico(tag) {
-    modulosSinalPoema.DominioImagetico.editar(tag);
+export function editarSinalRelacao(tabela, tag) {
+    grupoSinal('Relacao', tabela).editar(tag);
 }
-export function renderizarSinalDominioImagetico() {
-    modulosSinalPoema.DominioImagetico.renderizar();
+export function renderizarSinalRelacao(tabela) {
+    grupoSinal('Relacao', tabela).renderizar();
 }
 
-export function adicionarSinalOutros(valor = null) {
-    modulosSinalPoema.Outros.adicionar(valor);
+export function adicionarSinalSensibilidade(tabela, valor = null) {
+    grupoSinal('Sensibilidade', tabela).adicionar(valor);
 }
-export function removerSinalOutros(tag) {
-    modulosSinalPoema.Outros.remover(tag);
+export function removerSinalSensibilidade(tabela, tag) {
+    grupoSinal('Sensibilidade', tabela).remover(tag);
 }
-export function editarSinalOutros(tag) {
-    modulosSinalPoema.Outros.editar(tag);
+export function editarSinalSensibilidade(tabela, tag) {
+    grupoSinal('Sensibilidade', tabela).editar(tag);
 }
-export function renderizarSinalOutros() {
-    modulosSinalPoema.Outros.renderizar();
+export function renderizarSinalSensibilidade(tabela) {
+    grupoSinal('Sensibilidade', tabela).renderizar();
 }
+
+export function adicionarSinalTom(tabela, valor = null) {
+    grupoSinal('Tom', tabela).adicionar(valor);
+}
+export function removerSinalTom(tabela, tag) {
+    grupoSinal('Tom', tabela).remover(tag);
+}
+export function editarSinalTom(tabela, tag) {
+    grupoSinal('Tom', tabela).editar(tag);
+}
+export function renderizarSinalTom(tabela) {
+    grupoSinal('Tom', tabela).renderizar();
+}
+
+export function adicionarSinalDominioImagetico(tabela, valor = null) {
+    grupoSinal('DominioImagetico', tabela).adicionar(valor);
+}
+export function removerSinalDominioImagetico(tabela, tag) {
+    grupoSinal('DominioImagetico', tabela).remover(tag);
+}
+export function editarSinalDominioImagetico(tabela, tag) {
+    grupoSinal('DominioImagetico', tabela).editar(tag);
+}
+export function renderizarSinalDominioImagetico(tabela) {
+    grupoSinal('DominioImagetico', tabela).renderizar();
+}
+
+export function adicionarSinalOutros(tabela, valor = null) {
+    grupoSinal('Outros', tabela).adicionar(valor);
+}
+export function removerSinalOutros(tabela, tag) {
+    grupoSinal('Outros', tabela).remover(tag);
+}
+export function editarSinalOutros(tabela, tag) {
+    grupoSinal('Outros', tabela).editar(tag);
+}
+export function renderizarSinalOutros(tabela) {
+    grupoSinal('Outros', tabela).renderizar();
+}
+
+// Mapa chave -> wrapper, reaproveitado pelo wiring de Enter de
+// initEditor() e initEditorProsa() abaixo (era um objeto duplicado por
+// modal, um com as funções -Poema e outro com as -Prosa; agora as
+// funções já são as mesmas, só muda o argumento `tabela` na chamada).
+const funcoesSinal = {
+    Tradicao: adicionarSinalTradicao,
+    Estilo: adicionarSinalEstilo,
+    Tema: adicionarSinalTema,
+    Relacao: adicionarSinalRelacao,
+    Sensibilidade: adicionarSinalSensibilidade,
+    Tom: adicionarSinalTom,
+    DominioImagetico: adicionarSinalDominioImagetico,
+    Outros: adicionarSinalOutros,
+};
 
 // Ao contrário de Intertextualidade/Anexos/Anotações (arrays de objetos,
 // que precisam de um getter porque não há onde o navegador guardaria o
 // valor sozinho), cada categoria de Sinalizações já escreve sua string
-// atual no próprio hidden input (p-sinal-{categoria}) a cada
-// adicionar/remover — igual Pessoas. Por isso forms.js lê
-// document.getElementById('p-sinal-estilo').value etc. direto no
-// submit, sem precisar de um obterSinalizacoes() aqui.
-export function resetSinalizacoes() {
-    SINAL_CATEGORIAS.forEach(({ chave }) => modulosSinalPoema[chave].reset());
+// atual no próprio hidden input (p-sinal-{categoria}/pr-sinal-
+// {categoria}) a cada adicionar/remover — igual Pessoas. Por isso
+// forms.js lê document.getElementById('p-sinal-estilo').value etc.
+// direto no submit, sem precisar de um obterSinalizacoes() aqui.
+export function resetSinalizacoes(tabela) {
+    SINAL_CATEGORIAS.forEach(({ chave }) => grupoSinal(chave, tabela).reset());
 }
-export function carregarSinalizacoes(item) {
-    modulosSinalPoema.Tradicao.carregar(item.sinalizacoesTradicao || '');
-    modulosSinalPoema.Estilo.carregar(item.sinalizacoesEstilo || '');
-    modulosSinalPoema.Tema.carregar(item.sinalizacoesTema || '');
-    modulosSinalPoema.Relacao.carregar(item.sinalizacoesRelacao || '');
-    modulosSinalPoema.Sensibilidade.carregar(item.sinalizacoesSensibilidade || '');
-    modulosSinalPoema.Outros.carregar(item.sinalizacoesOutros || '');
-    modulosSinalPoema.Tom.carregar(item.sinalizacoesTom || '');
-    modulosSinalPoema.DominioImagetico.carregar(item.sinalizacoesDominioImagetico || '');
+export function carregarSinalizacoes(tabela, item) {
+    SINAL_CATEGORIAS.forEach(({ chave }) => {
+        grupoSinal(chave, tabela).carregar(item[`sinalizacoes${chave}`] || '');
+    });
 }
 
 // ─── Pessoas ─────────────────────────────────────────────────
@@ -3045,123 +3081,8 @@ export function atualizarDatalistProsa() {
     atualizarDatalistIntertextoProsa();
 }
 
-export function adicionarSinalTradicaoProsa(valor = null) {
-    modulosSinalProsa.Tradicao.adicionar(valor);
-}
-export function removerSinalTradicaoProsa(tag) {
-    modulosSinalProsa.Tradicao.remover(tag);
-}
-export function editarSinalTradicaoProsa(tag) {
-    modulosSinalProsa.Tradicao.editar(tag);
-}
-export function renderizarSinalTradicaoProsa() {
-    modulosSinalProsa.Tradicao.renderizar();
-}
-
-export function adicionarSinalEstiloProsa(valor = null) {
-    modulosSinalProsa.Estilo.adicionar(valor);
-}
-export function removerSinalEstiloProsa(tag) {
-    modulosSinalProsa.Estilo.remover(tag);
-}
-export function editarSinalEstiloProsa(tag) {
-    modulosSinalProsa.Estilo.editar(tag);
-}
-export function renderizarSinalEstiloProsa() {
-    modulosSinalProsa.Estilo.renderizar();
-}
-
-export function adicionarSinalTemaProsa(valor = null) {
-    modulosSinalProsa.Tema.adicionar(valor);
-}
-export function removerSinalTemaProsa(tag) {
-    modulosSinalProsa.Tema.remover(tag);
-}
-export function editarSinalTemaProsa(tag) {
-    modulosSinalProsa.Tema.editar(tag);
-}
-export function renderizarSinalTemaProsa() {
-    modulosSinalProsa.Tema.renderizar();
-}
-
-export function adicionarSinalRelacaoProsa(valor = null) {
-    modulosSinalProsa.Relacao.adicionar(valor);
-}
-export function removerSinalRelacaoProsa(tag) {
-    modulosSinalProsa.Relacao.remover(tag);
-}
-export function editarSinalRelacaoProsa(tag) {
-    modulosSinalProsa.Relacao.editar(tag);
-}
-export function renderizarSinalRelacaoProsa() {
-    modulosSinalProsa.Relacao.renderizar();
-}
-
-export function adicionarSinalSensibilidadeProsa(valor = null) {
-    modulosSinalProsa.Sensibilidade.adicionar(valor);
-}
-export function removerSinalSensibilidadeProsa(tag) {
-    modulosSinalProsa.Sensibilidade.remover(tag);
-}
-export function editarSinalSensibilidadeProsa(tag) {
-    modulosSinalProsa.Sensibilidade.editar(tag);
-}
-export function renderizarSinalSensibilidadeProsa() {
-    modulosSinalProsa.Sensibilidade.renderizar();
-}
-
-export function adicionarSinalTomProsa(valor = null) {
-    modulosSinalProsa.Tom.adicionar(valor);
-}
-export function removerSinalTomProsa(tag) {
-    modulosSinalProsa.Tom.remover(tag);
-}
-export function editarSinalTomProsa(tag) {
-    modulosSinalProsa.Tom.editar(tag);
-}
-export function renderizarSinalTomProsa() {
-    modulosSinalProsa.Tom.renderizar();
-}
-
-export function adicionarSinalDominioImageticoProsa(valor = null) {
-    modulosSinalProsa.DominioImagetico.adicionar(valor);
-}
-export function removerSinalDominioImageticoProsa(tag) {
-    modulosSinalProsa.DominioImagetico.remover(tag);
-}
-export function editarSinalDominioImageticoProsa(tag) {
-    modulosSinalProsa.DominioImagetico.editar(tag);
-}
-export function renderizarSinalDominioImageticoProsa() {
-    modulosSinalProsa.DominioImagetico.renderizar();
-}
-
-export function adicionarSinalOutrosProsa(valor = null) {
-    modulosSinalProsa.Outros.adicionar(valor);
-}
-export function removerSinalOutrosProsa(tag) {
-    modulosSinalProsa.Outros.remover(tag);
-}
-export function editarSinalOutrosProsa(tag) {
-    modulosSinalProsa.Outros.editar(tag);
-}
-export function renderizarSinalOutrosProsa() {
-    modulosSinalProsa.Outros.renderizar();
-}
-
-export function resetSinalizacoesProsa() {
-    SINAL_CATEGORIAS.forEach(({ chave }) => modulosSinalProsa[chave].reset());
-}
-export function carregarSinalizacoesProsa(item) {
-    modulosSinalProsa.Tradicao.carregar(item.sinalizacoesTradicao || '');
-    modulosSinalProsa.Estilo.carregar(item.sinalizacoesEstilo || '');
-    modulosSinalProsa.Tema.carregar(item.sinalizacoesTema || '');
-    modulosSinalProsa.Relacao.carregar(item.sinalizacoesRelacao || '');
-    modulosSinalProsa.Sensibilidade.carregar(item.sinalizacoesSensibilidade || '');
-    modulosSinalProsa.Outros.carregar(item.sinalizacoesOutros || '');
-    modulosSinalProsa.Tom.carregar(item.sinalizacoesTom || '');
-    modulosSinalProsa.DominioImagetico.carregar(item.sinalizacoesDominioImagetico || '');
-}
+// Wrappers de Sinalizações (Prosa) unificados acima em
+// adicionarSinalTradicao(tabela, ...) etc. — ver grupoSinal(chave, tabela).
 
 // Wrappers de Pessoa (Prosa) unificados acima em adicionarPessoa(tabela, ...)
 // etc. — ver grupoPessoas(tabela).
@@ -3290,31 +3211,21 @@ export function initEditor() {
     });
 
     // Enter nos inputs de tags de Sinalizações (Poema) — um listener por
-    // categoria de SINAL_CATEGORIAS. Corrigido bug: faltava
-    // "DominioImagetico" neste mapa (a categoria existia em
-    // SINAL_CATEGORIAS e o listener era ligado ao input dela, mas
-    // funcoesSinalPoema['DominioImagetico'] vinha undefined — Enter
-    // nesse campo lançava TypeError em vez de adicionar a tag). Não
-    // pego pelo teste estático de consistência porque este mapa não é
-    // um dos 4 lugares que ele cobre (ver sinalizacoes-consistencia.
-    // test.js).
-    const funcoesSinalPoema = {
-        Tradicao: adicionarSinalTradicao,
-        Estilo: adicionarSinalEstilo,
-        Tema: adicionarSinalTema,
-        Relacao: adicionarSinalRelacao,
-        Sensibilidade: adicionarSinalSensibilidade,
-        Tom: adicionarSinalTom,
-        DominioImagetico: adicionarSinalDominioImagetico,
-        Outros: adicionarSinalOutros,
-    };
+    // categoria de SINAL_CATEGORIAS, via funcoesSinal[chave]('poemas')
+    // (mapa único, compartilhado com initEditorProsa abaixo desde a
+    // unificação Poema/Prosa). Corrigido bug: faltava "DominioImagetico"
+    // nesse mapa (a categoria existia em SINAL_CATEGORIAS e o listener
+    // era ligado ao input dela, mas a entrada vinha undefined — Enter
+    // nesse campo lançava TypeError em vez de adicionar a tag). Não pego
+    // pelo teste estático de consistência porque esse mapa não é um dos
+    // 4 lugares que ele cobre (ver sinalizacoes-consistencia.test.js).
     SINAL_CATEGORIAS.forEach(({ chave }) => {
         const input = document.getElementById(`p-sinal-${slugDom(chave)}-input`);
         if (input) {
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    funcoesSinalPoema[chave]();
+                    funcoesSinal[chave]('poemas');
                 }
             });
         }
@@ -3376,25 +3287,16 @@ export function initEditor() {
 // modal-poema ter carregado antes.
 export function initEditorProsa() {
     // Enter nos inputs de tags de Sinalizações (Prosa) — mesmo padrão do
-    // Poema em initEditor(), com as funções -Prosa correspondentes (mesmo
-    // bug do "DominioImagetico" faltando, corrigido também aqui).
-    const funcoesSinalProsa = {
-        Tradicao: adicionarSinalTradicaoProsa,
-        Estilo: adicionarSinalEstiloProsa,
-        Tema: adicionarSinalTemaProsa,
-        Relacao: adicionarSinalRelacaoProsa,
-        Sensibilidade: adicionarSinalSensibilidadeProsa,
-        Tom: adicionarSinalTomProsa,
-        DominioImagetico: adicionarSinalDominioImageticoProsa,
-        Outros: adicionarSinalOutrosProsa,
-    };
+    // Poema em initEditor(), via funcoesSinal[chave]('prosas') (mesmo
+    // mapa único; mesmo bug do "DominioImagetico" faltando, corrigido
+    // também aqui).
     SINAL_CATEGORIAS.forEach(({ chave }) => {
         const input = document.getElementById(`pr-sinal-${slugDom(chave)}-input`);
         if (input) {
             input.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    funcoesSinalProsa[chave]();
+                    funcoesSinal[chave]('prosas');
                 }
             });
         }
