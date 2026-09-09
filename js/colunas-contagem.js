@@ -224,8 +224,20 @@ export function renderSeletorColunasContagem(tabela) {
 
     return `
         <div class="mt-2 pt-2 border-t border-gray-200 dark:border-slate-600">
-            <p class="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500 mb-1">
-                Colunas de contagem (quantos valores tem cada campo — operador+nº filtra a lista)
+            <div class="flex items-center gap-1 mb-1">
+                <p class="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">
+                    Colunas de contagem
+                </p>
+                <button type="button" onclick="togglePainel('ajuda-colunas-contagem-${tabela}', this)"
+                    class="shrink-0 w-3.5 h-3.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[9px] leading-none font-bold hover:bg-slate-300 dark:hover:bg-slate-600"
+                    aria-label="O que são colunas de contagem"
+                >
+                    ?
+                </button>
+            </div>
+            <p id="ajuda-colunas-contagem-${tabela}"
+                class="hidden mb-1 text-[10px] text-gray-400 dark:text-slate-500">
+                Quantos valores tem cada campo — operador+nº filtra a lista.
             </p>
             ${linhas}
             <button type="button" onclick="adicionarColunaContagem('${tabela}')"
