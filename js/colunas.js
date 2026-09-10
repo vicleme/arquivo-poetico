@@ -136,6 +136,22 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'numero',
         },
+        // Também não correspondem a campo do modal — duas numerações de
+        // linha com regras diferentes (ver getListaVisivelPoemas em
+        // render-listas.js): 'contagemTipo' conta 1..N na ordem da
+        // estrutura do livro (paiTipo/paiId), sempre, mesmo ordenando a
+        // tabela por outra coluna — e reinicia em 1 quando um livro é
+        // selecionado no filtro, contando só os poemas daquele livro.
+        // 'contagemLinha' conta 1..N na ordem de exibição atual (a que a
+        // ordenação escolhida produziu) — não tem sortType porque ordenar
+        // por ela não faz sentido (o valor É a posição de exibição atual).
+        {
+            key: 'contagemTipo',
+            label: 'Contagem de Poemas',
+            default: false,
+            sortType: 'numero',
+        },
+        { key: 'contagemLinha', label: 'Contagem de Linhas', default: false },
     ],
     prosas: [
         { key: 'idioma', label: 'Idioma', default: false, sortType: 'alfabetico' },
@@ -223,6 +239,14 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'numero',
         },
+        // Ver comentário equivalente em poemas[] acima.
+        {
+            key: 'contagemTipo',
+            label: 'Contagem de Prosas',
+            default: false,
+            sortType: 'numero',
+        },
+        { key: 'contagemLinha', label: 'Contagem de Linhas', default: false },
     ],
 };
 

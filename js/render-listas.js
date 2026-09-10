@@ -886,7 +886,9 @@ function popularSelectPessoaFiltro(id) {
     const pessoasOrdenadas = [...db.pessoas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     sel.innerHTML =
         '<option value="">-- Qualquer pessoa --</option>' +
-        pessoasOrdenadas.map((p) => `<option value="${p.id}">${escapeHtml(p.nome)}</option>`).join('');
+        pessoasOrdenadas
+            .map((p) => `<option value="${p.id}">${escapeHtml(p.nome)}</option>`)
+            .join('');
     if (Array.from(sel.options).some((o) => o.value === valorAtual)) sel.value = valorAtual;
 }
 
@@ -900,7 +902,9 @@ function popularSelectPapelFiltro(id) {
     const valorAtual = sel.value;
     sel.innerHTML =
         '<option value="">-- Qualquer papel --</option>' +
-        PAPEIS_PESSOA.map((papel) => `<option value="${escapeHtml(papel)}">${escapeHtml(papel)}</option>`).join('');
+        PAPEIS_PESSOA.map(
+            (papel) => `<option value="${escapeHtml(papel)}">${escapeHtml(papel)}</option>`,
+        ).join('');
     if (Array.from(sel.options).some((o) => o.value === valorAtual)) sel.value = valorAtual;
 }
 
@@ -978,6 +982,18 @@ export function getListaVisivelPoemas() {
             itemBateFiltroEpoca(p.epocaRetratada, filtroEpocaRetratadaPoemas),
     );
 
+    // Numeração pra coluna "Contagem de Poemas" (ver colunas.js e
+    // celulaCamposPreenchidos/CELULAS_POEMAS abaixo): 1..N na ordem da
+    // estrutura do livro entre os itens que sobreviveram a todos os
+    // filtros acima — precisa ser calculada AQUI, antes de aplicarOrdenacao,
+    // porque até este ponto `lista` só passou por .filter/.map (nunca por
+    // .sort), então ainda preserva a ordem estrutural original de
+    // db.poemas (ver sortPoemas em db.js). Guardar o número no próprio
+    // item (_numEstrutura) faz ele "grudar" no item e sobreviver ao sort
+    // de aplicarOrdenacao logo abaixo, não importa por qual coluna o
+    // usuário escolha ordenar a tabela depois.
+    lista = lista.map((p, i) => ({ ...p, _numEstrutura: i + 1 }));
+
     return aplicarOrdenacao(lista, 'poemas', ordenacaoPoemas);
 }
 
@@ -1033,6 +1049,10 @@ export function getListaVisivelProsas() {
             itemBateFiltroData(pr.dataEscrita, filtroDataEscritaProsas) &&
             itemBateFiltroData(pr.dataPublicacao, filtroDataPublicacaoProsas),
     );
+
+    // Ver comentário equivalente em getListaVisivelPoemas acima.
+    lista = lista.map((pr, i) => ({ ...pr, _numEstrutura: i + 1 }));
+
     return aplicarOrdenacao(lista, 'prosas', ordenacaoProsas);
 }
 
@@ -1221,6 +1241,19 @@ const COMPARADORES_ORDENACAO = {
     pendencia: compararPorTexto((p) => p.pendencia),
     camposPreenchidos: (a, b, asc) => {
         const diff = contarCamposPreenchidos(a) - contarCamposPreenchidos(b);
+        return asc ? diff : -diff;
+    },
+    // Ordenar por "Contagem de Poemas/Prosas" dá o mesmo resultado que
+    // ordenar pela coluna de estrutura ('estrutura'/'vinculo'), já que
+    // _numEstrutura É a posição nessa ordem (ver getListaVisivelPoemas/
+    // getListaVisivelProsas acima) — mas faz sentido existir como
+    // comparador próprio: sem ele, clicar no cabeçalho dessa coluna pra
+    // ordenar não faria nada (aplicarOrdenacao devolve a lista sem
+    // mexer quando não acha comparador pra `estado.campo`).
+    // 'contagemLinha' não entra aqui de propósito — ver comentário em
+    // colunas.js.
+    contagemTipo: (a, b, asc) => {
+        const diff = (a._numEstrutura ?? 0) - (b._numEstrutura ?? 0);
         return asc ? diff : -diff;
     },
 };
@@ -1731,12 +1764,28 @@ export function renderPoemas() {
         pendencia: (p) =>
             `<td class="p-4 text-xs max-w-xs ${p.pendencia ? 'text-orange-700 dark:text-orange-400 border-l-2 border-orange-300 dark:border-orange-700' : 'text-gray-300 dark:text-slate-600'}">${p.pendencia ? trechoNota(p.pendencia) : '—'}</td>`,
         camposPreenchidos: (p) => celulaCamposPreenchidos(p),
+        // 'contagemTipo' usa o número já calculado em getListaVisivelPoemas
+        // (_numEstrutura) — não depende da posição na página.
+        contagemTipo: (p) =>
+            `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono text-right">${p._numEstrutura ?? '—'}</td>`,
+        // 'contagemLinha' é a exceção: precisa da posição na página atual
+        // (2º argumento, `numeroLinha`, calculado no .map abaixo), não de
+        // um campo do próprio item.
+        contagemLinha: (_p, numeroLinha) =>
+            `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono text-right">${numeroLinha}</td>`,
     };
 
+    // Offset de paginação pra "Contagem de Linhas" continuar contando
+    // (ex.: linha 21 no topo da página 2 com 20 itens/página) em vez de
+    // reiniciar em 1 a cada página — Infinity ("todos") não tem offset.
+    const offsetPaginaPoemas =
+        itensPorPagina === Infinity ? 0 : (paginaPoemas - 1) * itensPorPagina;
+
     container.innerHTML = listaPagina
-        .map((p) => {
+        .map((p, idxNaPagina) => {
+            const numeroLinha = offsetPaginaPoemas + idxNaPagina + 1;
             const celulasMeio = colunasAtivas
-                .map((key) => (CELULAS_POEMAS[key] ? CELULAS_POEMAS[key](p) : ''))
+                .map((key) => (CELULAS_POEMAS[key] ? CELULAS_POEMAS[key](p, numeroLinha) : ''))
                 .join('');
             // Colunas de contagem (ver colunas-contagem.js) — uma <td> por
             // instância ativa, com a contagem do campo selecionado naquele
@@ -1997,15 +2046,25 @@ export function renderProsas() {
         descarte: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.descarte)}</td>`,
         camposPreenchidos: (pr) => celulaCamposPreenchidos(pr),
+        // Ver comentário equivalente em CELULAS_POEMAS acima.
+        contagemTipo: (pr) =>
+            `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono text-right">${pr._numEstrutura ?? '—'}</td>`,
+        contagemLinha: (_pr, numeroLinha) =>
+            `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono text-right">${numeroLinha}</td>`,
     };
 
+    // Ver comentário equivalente em renderPoemas acima.
+    const offsetPaginaProsas =
+        itensPorPagina === Infinity ? 0 : (paginaProsas - 1) * itensPorPagina;
+
     container.innerHTML = listaPaginaPr
-        .map((pr) => {
+        .map((pr, idxNaPagina) => {
+            const numeroLinha = offsetPaginaProsas + idxNaPagina + 1;
             const pubBadge = estaPublicado(pr)
                 ? `<span class="text-[9px] bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded font-bold uppercase">pub</span>`
                 : '';
             const celulasMeio = colunasAtivas
-                .map((key) => (CELULAS_PROSAS[key] ? CELULAS_PROSAS[key](pr) : ''))
+                .map((key) => (CELULAS_PROSAS[key] ? CELULAS_PROSAS[key](pr, numeroLinha) : ''))
                 .join('');
             // Colunas de contagem (ver colunas-contagem.js) — mesmo padrão
             // de renderPoemas acima.

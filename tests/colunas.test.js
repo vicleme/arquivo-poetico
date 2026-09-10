@@ -280,7 +280,7 @@ describe('moverColuna', () => {
     });
 
     it('mover a última coluna pra "down" não faz nada (já está no fim)', () => {
-        moverColuna('poemas', 'camposPreenchidos', 'down');
+        moverColuna('poemas', 'contagemLinha', 'down');
         assert.equal(localStorage.getItem(LS_PREFIX + 'poemas'), null);
     });
 

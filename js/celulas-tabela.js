@@ -573,6 +573,19 @@ function thContagem(tabela, coluna, estado) {
     </th>`;
 }
 
+// <th> fixo, não-clicável — usado só pela coluna "Contagem de Linhas"
+// (ver colunas.js): diferente de qualquer outra coluna da tabela, o
+// valor dela É a posição de exibição atual, então "ordenar por ela"
+// não tem sentido (thOrdenavel exige uma key com comparador em
+// COMPARADORES_ORDENACAO ou tratamento especial em aplicarOrdenacao,
+// e essa coluna não tem nenhum dos dois de propósito).
+function thContagemLinha(label) {
+    return `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-slate-500"
+        title="Numeração das linhas na ordem de exibição atual — muda se você reordenar a tabela, filtrar ou trocar de página">
+        ${label}
+    </th>`;
+}
+
 export function montarCabecalho(tabela, celulaCheck, celulaAcoes) {
     const ativas = getColunasAtivas(tabela);
     const def = DEFINICAO_COLUNAS[tabela];
@@ -594,7 +607,11 @@ export function montarCabecalho(tabela, celulaCheck, celulaAcoes) {
     const meio = ativas
         .map((key) => def.find((c) => c.key === key))
         .filter(Boolean)
-        .map((c) => thOrdenavel(tabela, c.key, c.label, estadoOrdenacao, '', camposBusca[c.key]))
+        .map((c) =>
+            c.key === 'contagemLinha'
+                ? thContagemLinha(c.label)
+                : thOrdenavel(tabela, c.key, c.label, estadoOrdenacao, '', camposBusca[c.key]),
+        )
         .join('');
     // Colunas de contagem (ver colunas-contagem.js) vêm depois das
     // colunas fixas, na ordem em que foram criadas.
@@ -619,4 +636,3 @@ export function atualizarPainelAcoes(tabela, painelId) {
     const painel = document.getElementById(painelId);
     if (painel) painel.innerHTML = renderSeletorAcoes(tabela);
 }
-
