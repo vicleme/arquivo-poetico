@@ -22,6 +22,7 @@
 // ============================================================
 
 import { itemParaMarkdownPartes } from './exportar-md.js';
+import { corpoParaLinhasRicas, linhaTemFundoUniforme, blocosDeFundoContinuos } from './utils.js';
 
 function obterConstrutorJsPdf() {
     return window.jspdf?.jsPDF || null;
@@ -104,115 +105,28 @@ function analisarLinha(linhaBruta) {
 // fora vira texto puro, sem quebrar o parser). font-family não é
 // reproduzida (as fontes padrão do jsPDF são só Helvetica/Times/Courier,
 // sem como carregar uma fonte arbitrária sem vendorizar um arquivo à
-// parte) — cor, tamanho, negrito, itálico, sublinhado e alinhamento sim.
+// parte) — cor, fundo, tamanho, negrito, itálico, sublinhado e alinhamento
+// sim. Fundo (shading) é desenhado como um retângulo preenchido ATRÁS do
+// texto (ver extensaoVerticalTexto abaixo) — não existe "background"
+// nativo de texto no jsPDF, então a caixa é aproximada a partir do
+// tamanho da fonte (jsPDF não expõe métricas reais de ascent/descent das
+// fontes padrão). Por padrão o retângulo cola nas palavras que têm fundo
+// (largura = largura do texto, ver "2º passo" em renderizarCorpoRico) —
+// SALVO quando o fundo cobre a linha INTEIRA (linhaTemFundoUniforme,
+// utils.js), caso em que o retângulo estica margem a margem (largura
+// útil da página), não só ao redor do texto. Ao contrário do .md (ver
+// legendaCorParaMarkdown em exportar-md.js), o PDF não ganha uma legenda
+// textual descrevendo o fundo — ele mostra o fundo de verdade, então a
+// legenda seria redundante aqui.
 
-function corParaRgb(valorCor) {
-    if (!valorCor || valorCor === 'inherit') return null;
-    const hex = valorCor.trim().replace('#', '');
-    const cheio =
-        hex.length === 3
-            ? hex
-                  .split('')
-                  .map((c) => c + c)
-                  .join('')
-            : hex;
-    if (!/^[0-9a-fA-F]{6}$/.test(cheio)) return null;
-    return {
-        r: parseInt(cheio.slice(0, 2), 16),
-        g: parseInt(cheio.slice(2, 4), 16),
-        b: parseInt(cheio.slice(4, 6), 16),
-    };
-}
-
-function analisarEstiloDeDiv(atributoStyle) {
-    const estilo = {};
-    const corMatch = atributoStyle.match(/color:\s*([^;]+);/);
-    if (corMatch) {
-        const rgb = corParaRgb(corMatch[1]);
-        if (rgb) estilo.cor = rgb;
-    }
-    const tamanhoMatch = atributoStyle.match(/font-size:\s*([\d.]+)pt/);
-    if (tamanhoMatch) estilo.tamanho = Math.min(28, Math.max(7, parseFloat(tamanhoMatch[1])));
-    const alinhoMatch = atributoStyle.match(/text-align:\s*(left|right|center)/);
-    if (alinhoMatch) estilo.alinhamento = alinhoMatch[1];
-    return estilo;
-}
-
-const ESTILO_BASE = {
-    negrito: false,
-    italico: false,
-    sublinhado: false,
-    cor: null,
-    tamanho: null,
-    alinhamento: null,
-};
-
-// String bruta do campo `texto` → array de linhas, cada linha um array
-// de "runs" ({ texto, negrito, italico, sublinhado, cor, tamanho,
-// alinhamento }) com estilo já resolvido (cascata de tags aninhadas
-// aplicada). Tolerante a HTML malformado (tag sem par correspondente):
-// ignora o desbalanceamento em vez de quebrar, já que o dado real do
-// acervo tem anos de HTML colado de fontes diversas (ver comentário em
-// sanitizarTextoRico, utils.js).
-//
-// Exportada (só pra ser reaproveitada por exportar-docx.js, que
-// converte as mesmas runs pra HTML em vez de desenhar num doc jsPDF) —
-// resto do app continua chamando só as funções de mais alto nível deste
-// arquivo.
-export function corpoParaLinhasRicas(textoOriginal) {
-    const linhas = [[]];
-    // Pilha de frames { estilo, origem }; origem identifica quem abriu o
-    // frame ('negrito'/'italico'/'u'/'div'), pra saber qual token fecha
-    // ele — necessário porque ** e _ não têm marcador de abertura/
-    // fechamento distinto (o mesmo "**" abre e fecha).
-    const pilha = [{ estilo: ESTILO_BASE, origem: null }];
-    const topo = () => pilha[pilha.length - 1];
-
-    function empurrar(origem, parcial) {
-        pilha.push({ estilo: { ...topo().estilo, ...parcial }, origem });
-    }
-    function desempilharSeForOrigem(origem) {
-        if (pilha.length > 1 && topo().origem === origem) pilha.pop();
-    }
-    function emitirRun(texto) {
-        if (!texto) return;
-        linhas[linhas.length - 1].push({ texto, ...topo().estilo });
-    }
-
-    const tokenRegex = /(<div style="([^"]*)"[^>]*>|<\/div>|<u>|<\/u>|\n|\*\*|_)/g;
-    let ultimoIndex = 0;
-    let match;
-
-    while ((match = tokenRegex.exec(textoOriginal)) !== null) {
-        if (match.index > ultimoIndex) {
-            emitirRun(textoOriginal.slice(ultimoIndex, match.index));
-        }
-        const token = match[1];
-        if (token === '\n') {
-            linhas.push([]);
-        } else if (token === '**') {
-            if (topo().origem === 'negrito') desempilharSeForOrigem('negrito');
-            else empurrar('negrito', { negrito: true });
-        } else if (token === '_') {
-            if (topo().origem === 'italico') desempilharSeForOrigem('italico');
-            else empurrar('italico', { italico: true });
-        } else if (token === '<u>') {
-            empurrar('u', { sublinhado: true });
-        } else if (token === '</u>') {
-            desempilharSeForOrigem('u');
-        } else if (token.startsWith('<div')) {
-            empurrar('div', analisarEstiloDeDiv(match[2] || ''));
-        } else if (token === '</div>') {
-            desempilharSeForOrigem('div');
-        }
-        ultimoIndex = tokenRegex.lastIndex;
-    }
-    if (ultimoIndex < textoOriginal.length) {
-        emitirRun(textoOriginal.slice(ultimoIndex));
-    }
-
-    return linhas;
-}
+// analisarEstiloDeDiv/corParaRgb/corpoParaLinhasRicas moraram aqui antes;
+// agora moram em utils.js (importado acima) porque exportar-md.js também
+// precisa delas pra montar a legenda de cor/fonte (legendaCorParaMarkdown)
+// e não pode importar de exportar-pdf.js sem criar um import circular
+// (este arquivo já importa itemParaMarkdownPartes de lá). Reexportada
+// abaixo só pra exportar-docx.js não precisar saber que o parser mudou
+// de casa.
+export { corpoParaLinhasRicas };
 
 // Estilo → nome da variante de fonte que o jsPDF espera em setFont().
 function variantePorEstilo(negrito, italico) {
@@ -222,19 +136,221 @@ function variantePorEstilo(negrito, italico) {
     return 'normal';
 }
 
-// Desenha o corpo rico de um item (uma linha por verso/parágrafo do
-// campo `texto`), com quebra de página e de linha (respeitando a
-// largura útil, com quebra de palavra) e negrito/itálico/sublinhado/
-// cor/tamanho/alinhamento por trecho. Mutabiliza `estadoY` (objeto com
-// `{ y }`, ver gerarPdfExportacao) e usa `quebrarPaginaSeNecessario` do
-// chamador — mesmo padrão dos outros blocos, pra todo mundo respeitar a
-// mesma paginação.
-function renderizarCorpoRico(doc, textoOriginal, opcoes) {
-    const { margem, larguraUtil, estadoY, quebrarPaginaSeNecessario, tamanhoBase } = opcoes;
-    const linhas = corpoParaLinhasRicas(textoOriginal || '');
+// Aproximação de ascent/descent do Helvetica pra desenhar a caixa de
+// fundo (shading) coladinha ao texto — jsPDF não expõe métricas reais
+// da fonte sem carregar um arquivo à parte (mesma limitação de
+// font-family, ver comentário acima). Os fatores (0.78 acima da
+// baseline, 0.22 abaixo) foram calibrados visualmente: cobrem
+// ascendentes/descendentes comuns (ex.: "ç", "j") sem sobrar espaço
+// em branco grande demais acima de texto só com letras baixas.
+function extensaoVerticalTexto(tamanho) {
+    return { subida: tamanho * 0.78, descida: tamanho * 0.22 };
+}
 
-    linhas.forEach((runsDaLinha, indice) => {
+function mesmoFundo(a, b) {
+    return JSON.stringify(a || null) === JSON.stringify(b || null);
+}
+
+// ─── Caixa contínua (padding/border-radius) ─────────────────────────────
+// Um <div style="background-color:...; padding:...; border-radius:...">
+// embrulhando várias linhas (ver blocosDeFundoContinuos, utils.js) vira
+// UMA caixa só — um retângulo (arredondado quando border-radius > 0)
+// desenhado ANTES de qualquer texto do bloco, com o texto deslocado pra
+// dentro pelo valor do padding (convertido de px pra pt: 1px = 0.75pt,
+// mesma conversão usada no resto do PDF pra font-size). Isso é diferente
+// do fundo "chapado" de sempre (uma faixa por linha, colada ao texto) —
+// esse continua existindo pra qualquer <div> só com background-color,
+// sem padding nem border-radius (ver renderizarLinhaRica abaixo).
+//
+// Pra desenhar o retângulo ANTES do texto (senão o texto ficaria por
+// baixo da caixa) sem "adivinhar" a altura, medimos o bloco inteiro
+// primeiro (medirAlturaBloco) usando exatamente o mesmo empacotamento de
+// palavras (empacotarPalavras) que o desenho de verdade vai usar depois
+// — as duas passadas nunca divergem porque chamam a mesma função pura.
+//
+// Limitação aceita: se o bloco inteiro não couber nem numa página em
+// branco, desistimos da caixa (devolve false) e quem chama cai de volta
+// pro desenho linha a linha de sempre, que sabe quebrar página no meio
+// — melhor perder a caixa contínua numa poesia excepcionalmente longa
+// do que arriscar uma caixa cortada ao meio entre duas páginas.
+function empacotarPalavras(doc, runsDaLinha, larguraUtilLinha, tamanhoBase) {
+    const palavras = [];
+    runsDaLinha.forEach((run) => {
+        const partes = saneParaPdf(run.texto).split(/\s+/).filter(Boolean);
+        partes.forEach((p) =>
+            palavras.push({
+                texto: p,
+                negrito: run.negrito,
+                italico: run.italico,
+                sublinhado: run.sublinhado,
+                cor: run.cor,
+                fundo: run.fundo,
+                tamanho: run.tamanho || tamanhoBase,
+            }),
+        );
+    });
+    const alinhamento = runsDaLinha.find((r) => r.alinhamento)?.alinhamento || 'left';
+    if (!palavras.length) return { subLinhas: [], alinhamento };
+
+    function largura(palavra) {
+        doc.setFont('helvetica', variantePorEstilo(palavra.negrito, palavra.italico));
+        doc.setFontSize(palavra.tamanho);
+        return doc.getTextWidth(palavra.texto);
+    }
+    const larguraEspaco = (tamanho = tamanhoBase) => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(tamanho);
+        return doc.getTextWidth(' ');
+    };
+
+    const subLinhas = [];
+    let atual = [];
+    let larguraAtual = 0;
+    palavras.forEach((palavra) => {
+        const w = largura(palavra);
+        const comEspaco = atual.length ? larguraEspaco(palavra.tamanho) : 0;
+        if (atual.length && larguraAtual + comEspaco + w > larguraUtilLinha) {
+            subLinhas.push(atual);
+            atual = [palavra];
+            larguraAtual = w;
+        } else {
+            atual.push(palavra);
+            larguraAtual += comEspaco + w;
+        }
+    });
+    if (atual.length) subLinhas.push(atual);
+
+    return { subLinhas, alinhamento };
+}
+
+function alturaLinhaEmBranco(linhas, indice, tamanhoBase) {
+    const proximaComTexto = linhas.slice(indice + 1).find((l) => l.length);
+    const maiorTamanhoVizinho = proximaComTexto
+        ? Math.max(...proximaComTexto.map((r) => r.tamanho || tamanhoBase))
+        : tamanhoBase;
+    return Math.max(tamanhoBase, maiorTamanhoVizinho) * 1.4;
+}
+
+function medirAlturaBloco(doc, linhas, bloco, larguraUtilBloco, tamanhoBase) {
+    let altura = 0;
+    for (let indice = bloco.inicio; indice <= bloco.fim; indice++) {
+        const runsDaLinha = linhas[indice];
         if (!runsDaLinha.length) {
+            altura += alturaLinhaEmBranco(linhas, indice, tamanhoBase);
+            continue;
+        }
+        const { subLinhas } = empacotarPalavras(doc, runsDaLinha, larguraUtilBloco, tamanhoBase);
+        if (!subLinhas.length) {
+            altura += tamanhoBase * 1.4;
+            continue;
+        }
+        subLinhas.forEach((sub) => {
+            altura += Math.max(...sub.map((p) => p.tamanho)) * 1.4;
+        });
+    }
+    return altura;
+}
+
+// Tamanho (maior entre os runs) da primeira ou última linha COM texto
+// de um bloco — usado só pra calibrar a extensão vertical real (subida/
+// descida, ver extensaoVerticalTexto) das bordas do bloco: sem isso, o
+// padding do topo/base seria medido a partir da BASELINE do texto, não
+// do topo/fundo visual das letras (ver comentário em
+// renderizarBlocoComCaixa). `direcao` é 1 pra buscar a partir do início
+// (primeira linha com texto) ou -1 a partir do fim (última).
+function tamanhoNaBorda(linhas, bloco, tamanhoBase, direcao) {
+    for (let i = direcao === 1 ? bloco.inicio : bloco.fim; i >= bloco.inicio && i <= bloco.fim; i += direcao) {
+        const runs = linhas[i];
+        if (runs && runs.length) return Math.max(...runs.map((r) => r.tamanho || tamanhoBase));
+    }
+    return tamanhoBase;
+}
+
+// Desenha uma caixa contínua pro bloco inteiro (retângulo — arredondado
+// quando bloco.raio > 0 — preenchido com bloco.fundo, com padding
+// convertido pra pt) e delega o texto de cada linha do bloco pra
+// renderizarLinhaRica, deslocado/estreitado pelo padding e com o fundo
+// "de linha" de sempre suprimido (a caixa já cobre tudo). Devolve
+// `true` quando desenhou a caixa, `false` quando desistiu (não coube
+// nem numa página em branco — ver comentário acima).
+function renderizarBlocoComCaixa(doc, linhas, bloco, opcoes) {
+    const { margem, larguraUtil, estadoY, quebrarPaginaSeNecessario, tamanhoBase, alturaPagina } = opcoes;
+    const PX_PARA_PT = 0.75;
+    const paddingPt = (bloco.padding || 0) * PX_PARA_PT;
+    const raioPt = (bloco.raio || 0) * PX_PARA_PT;
+    const larguraUtilBloco = larguraUtil - paddingPt * 2;
+    if (larguraUtilBloco < 20) return false; // padding absurdo — não força um bloco ilegível
+
+    const alturaConteudo = medirAlturaBloco(doc, linhas, bloco, larguraUtilBloco, tamanhoBase);
+
+    // O laço de renderização (igual o de fora, ver renderizarLinhaRica)
+    // avança `tamanho*1.4` por linha — baseline até a PRÓXIMA baseline —
+    // então a primeira linha nasce colada no topo (a "subida"/ascent da
+    // fonte não está reservada antes dela) e a última deixa, depois de
+    // si, um respiro do tamanho de uma linha INTEIRA que nunca chega a
+    // ser usado (não existe próxima linha ali dentro). Resultado, com o
+    // padding somado por cima disso tudo: praticamente nenhuma margem
+    // visual no topo (padding < subida da fonte já come o respiro) e
+    // uma sobra enorme, pintada, no fundo — e ainda assim, como a caixa
+    // termina bem em cima da baseline real do próximo campo (Notas/
+    // Autoria), aquele campo nasce com a própria "subida" invadindo a
+    // área pintada. Corrigido reservando embaixo só a "descida" real da
+    // última linha (não a linha fantasma inteira) e embaixo dela mais
+    // um respiro de segurança (fora da caixa) do tamanho da maior fonte
+    // que costuma vir logo depois (Notas em H3/11,5pt); em cima, soma-se
+    // a "subida" da primeira linha ao padding, pra sobrar exatamente o
+    // padding pedido entre a borda e o topo visual das letras.
+    const primeiroTamanho = tamanhoNaBorda(linhas, bloco, tamanhoBase, 1);
+    const ultimoTamanho = tamanhoNaBorda(linhas, bloco, tamanhoBase, -1);
+    const extraTopo = extensaoVerticalTexto(primeiroTamanho).subida;
+    const espacoFantasmaUltimaLinha = ultimoTamanho * 1.4 - extensaoVerticalTexto(ultimoTamanho).descida;
+    const reservaSeguranca = extensaoVerticalTexto(Math.max(tamanhoBase, 11.5)).subida;
+
+    const alturaTotal = alturaConteudo + paddingPt * 2 + extraTopo - espacoFantasmaUltimaLinha;
+    const alturaPaginaUtil = alturaPagina - margem * 2;
+    if (alturaTotal > alturaPaginaUtil) return false;
+
+    quebrarPaginaSeNecessario(alturaTotal);
+
+    const boxTopoY = estadoY.y;
+    doc.setFillColor(bloco.fundo.r, bloco.fundo.g, bloco.fundo.b);
+    if (raioPt > 0 && typeof doc.roundedRect === 'function') {
+        doc.roundedRect(margem, boxTopoY, larguraUtil, alturaTotal, raioPt, raioPt, 'F');
+    } else {
+        doc.rect(margem, boxTopoY, larguraUtil, alturaTotal, 'F');
+    }
+
+    estadoY.y += paddingPt + extraTopo;
+    for (let indice = bloco.inicio; indice <= bloco.fim; indice++) {
+        renderizarLinhaRica(doc, linhas, indice, {
+            margem: margem + paddingPt,
+            larguraUtil: larguraUtilBloco,
+            estadoY,
+            quebrarPaginaSeNecessario,
+            tamanhoBase,
+            suprimirFundoDeLinhaInteira: true,
+        });
+    }
+    // Desfaz o respiro fantasma da última linha (chegamos exatamente na
+    // borda inferior real da caixa) e só então soma o padding de baixo.
+    estadoY.y += paddingPt - espacoFantasmaUltimaLinha;
+    // Respiro de segurança FORA da caixa, pra o próximo campo (Notas/
+    // Autoria/Anexos) não nascer com a própria subida invadindo a área
+    // pintada — ver comentário acima.
+    estadoY.y += reservaSeguranca;
+    return true;
+}
+
+// Desenha UMA linha (índice `indice` de `linhas`) — extraído de
+// renderizarCorpoRico pra poder ser chamado tanto no caminho normal
+// (fundo "chapado" linha a linha) quanto de dentro de
+// renderizarBlocoComCaixa (texto deslocado pelo padding, com o fundo de
+// linha suprimido porque a caixa contínua já foi desenhada por trás).
+function renderizarLinhaRica(doc, linhas, indice, opcoes) {
+    const { margem, larguraUtil, estadoY, quebrarPaginaSeNecessario, tamanhoBase, suprimirFundoDeLinhaInteira } =
+        opcoes;
+    const runsDaLinha = linhas[indice];
+    if (!runsDaLinha.length) {
             // Linha em branco (verso/parágrafo vazio, ex.: um Enter duplo
             // no editor) — o efeito pretendido é uma quebra de parágrafo,
             // que precisa ocupar PELO MENOS o espaço de uma linha normal.
@@ -262,26 +378,18 @@ function renderizarCorpoRico(doc, textoOriginal, opcoes) {
         // inteiro quando o objetivo é alinhar, então não costuma haver
         // mistura de alinhamentos numa mesma linha).
         const alinhamento = runsDaLinha.find((r) => r.alinhamento)?.alinhamento || 'left';
+        // Fundo de linha inteira (todo run com texto na linha compartilha
+        // o mesmo fundo) vira faixa de largura total em vez de colar nas
+        // palavras — ver comentário no topo do arquivo.
+        const fundoUniforme = linhaTemFundoUniforme(runsDaLinha);
 
-        // Tokeniza em palavras (mantendo o estilo de cada uma) — espaços
-        // internos múltiplos são normalizados pra um só; espaçamento
-        // exato entre palavras não sobrevive (limitação aceita, não é
-        // isso que a toolbar de formatação controla).
-        const palavras = [];
-        runsDaLinha.forEach((run) => {
-            const partes = saneParaPdf(run.texto).split(/\s+/).filter(Boolean);
-            partes.forEach((p) =>
-                palavras.push({
-                    texto: p,
-                    negrito: run.negrito,
-                    italico: run.italico,
-                    sublinhado: run.sublinhado,
-                    cor: run.cor,
-                    tamanho: run.tamanho || tamanhoBase,
-                }),
-            );
-        });
-        if (!palavras.length) {
+        // Empacotamento em sub-linhas (quebra de palavra) — fatorado em
+        // empacotarPalavras() pra ser a MESMA função usada por
+        // medirAlturaBloco() na medição prévia de uma caixa contínua
+        // (ver comentário acima de renderizarBlocoComCaixa); assim as
+        // duas passadas nunca divergem.
+        const { subLinhas } = empacotarPalavras(doc, runsDaLinha, larguraUtil, tamanhoBase);
+        if (!subLinhas.length) {
             estadoY.y += tamanhoBase * 1.4;
             return;
         }
@@ -302,24 +410,6 @@ function renderizarCorpoRico(doc, textoOriginal, opcoes) {
             return doc.getTextWidth(' ');
         };
 
-        // Empacota greedy em sub-linhas respeitando larguraUtil.
-        const subLinhas = [];
-        let atual = [];
-        let larguraAtual = 0;
-        palavras.forEach((palavra) => {
-            const w = largura(palavra);
-            const comEspaco = atual.length ? larguraEspaco(palavra.tamanho) : 0;
-            if (atual.length && larguraAtual + comEspaco + w > larguraUtil) {
-                subLinhas.push(atual);
-                atual = [palavra];
-                larguraAtual = w;
-            } else {
-                atual.push(palavra);
-                larguraAtual += comEspaco + w;
-            }
-        });
-        if (atual.length) subLinhas.push(atual);
-
         subLinhas.forEach((sub) => {
             const maiorTamanho = Math.max(...sub.map((p) => p.tamanho));
             const alturaLinha = maiorTamanho * 1.4;
@@ -334,30 +424,127 @@ function renderizarCorpoRico(doc, textoOriginal, opcoes) {
             if (alinhamento === 'right') x = margem + (larguraUtil - larguraTotal);
             else if (alinhamento === 'center') x = margem + (larguraUtil - larguraTotal) / 2;
 
-            sub.forEach((palavra, i) => {
+            // 1º passo: só calcula onde cada palavra vai cair (sem
+            // desenhar nada ainda) — o fundo precisa ser desenhado ANTES
+            // do texto, mas só sabemos a largura/posição de cada palavra
+            // depois de já ter passado por todas (mesmo cálculo de
+            // largura(palavra) já usado acima pro empacotamento, reaproveitado
+            // aqui em vez de medido de novo dentro do laço de desenho).
+            const posicoes = sub.map((palavra, i) => {
                 if (i > 0) x += larguraEspaco();
+                const w = largura(palavra);
+                const posicao = { palavra, x, w };
+                x += w;
+                return posicao;
+            });
+
+            // 2º passo: fundo (shading), desenhado ATRÁS do texto. Suprimido
+            // quando a linha faz parte de uma caixa contínua (ver
+            // renderizarBlocoComCaixa) — a caixa inteira já foi pintada por
+            // trás do bloco, repetir aqui só faria o mesmo fundo por cima
+            // de novo, sem efeito visual, e sem respeitar o padding.
+            if (fundoUniforme && !suprimirFundoDeLinhaInteira) {
+                // Linha inteira com o mesmo fundo: um retângulo só, margem
+                // a margem (largura útil da página) — não ao redor das
+                // palavras.
+                const { subida, descida } = extensaoVerticalTexto(maiorTamanho);
+                doc.setFillColor(fundoUniforme.r, fundoUniforme.g, fundoUniforme.b);
+                doc.rect(margem, estadoY.y - subida, larguraUtil, subida + descida, 'F');
+            } else if (!fundoUniforme) {
+                // Palavras ADJACENTES com o mesmo fundo viram um único
+                // retângulo — cobrindo também o espaço entre elas — em vez
+                // de uma caixa por palavra com uma lasquinha branca no
+                // espaço; mesmo cuidado que motivou a troca da geração de
+                // .docx pro OOXML nativo (shading colado ao texto, sem
+                // buracos artificiais).
+                let grupoFundo = null;
+                const fecharGrupoFundo = () => {
+                    if (!grupoFundo) return;
+                    const { subida, descida } = extensaoVerticalTexto(grupoFundo.maiorTamanho);
+                    doc.setFillColor(grupoFundo.fundo.r, grupoFundo.fundo.g, grupoFundo.fundo.b);
+                    doc.rect(
+                        grupoFundo.xInicio,
+                        estadoY.y - subida,
+                        grupoFundo.xFim - grupoFundo.xInicio,
+                        subida + descida,
+                        'F',
+                    );
+                    grupoFundo = null;
+                };
+                posicoes.forEach(({ palavra, x: xPalavra, w }) => {
+                    if (!palavra.fundo) {
+                        fecharGrupoFundo();
+                        return;
+                    }
+                    if (grupoFundo && mesmoFundo(grupoFundo.fundo, palavra.fundo)) {
+                        grupoFundo.xFim = xPalavra + w;
+                        grupoFundo.maiorTamanho = Math.max(grupoFundo.maiorTamanho, palavra.tamanho);
+                    } else {
+                        fecharGrupoFundo();
+                        grupoFundo = {
+                            fundo: palavra.fundo,
+                            xInicio: xPalavra,
+                            xFim: xPalavra + w,
+                            maiorTamanho: palavra.tamanho,
+                        };
+                    }
+                });
+                fecharGrupoFundo();
+            }
+
+            // 3º passo: texto por cima do fundo já desenhado (e sublinhado
+            // por cima do texto, como já era antes).
+            posicoes.forEach(({ palavra, x: xPalavra, w }) => {
                 doc.setFont('helvetica', variantePorEstilo(palavra.negrito, palavra.italico));
                 doc.setFontSize(palavra.tamanho);
                 if (palavra.cor) doc.setTextColor(palavra.cor.r, palavra.cor.g, palavra.cor.b);
                 else doc.setTextColor(0, 0, 0);
 
-                doc.text(palavra.texto, x, estadoY.y);
-                const w = doc.getTextWidth(palavra.texto);
+                doc.text(palavra.texto, xPalavra, estadoY.y);
                 if (palavra.sublinhado) {
                     doc.setDrawColor(
                         palavra.cor ? palavra.cor.r : 0,
                         palavra.cor ? palavra.cor.g : 0,
                         palavra.cor ? palavra.cor.b : 0,
                     );
-                    doc.line(x, estadoY.y + 1.5, x + w, estadoY.y + 1.5);
+                    doc.line(xPalavra, estadoY.y + 1.5, xPalavra + w, estadoY.y + 1.5);
                 }
-                x += w;
             });
 
             doc.setTextColor(0, 0, 0);
             estadoY.y += alturaLinha;
         });
-    });
+}
+
+// Desenha o corpo rico de um item (uma linha por verso/parágrafo do
+// campo `texto`), com quebra de página e de linha (respeitando a
+// largura útil, com quebra de palavra) e negrito/itálico/sublinhado/
+// cor/tamanho/alinhamento por trecho. Mutabiliza `estadoY` (objeto com
+// `{ y }`, ver gerarPdfExportacao) e usa `quebrarPaginaSeNecessario` do
+// chamador — mesmo padrão dos outros blocos, pra todo mundo respeitar a
+// mesma paginação. Linhas dentro de um bloco com padding/border-radius
+// (ver blocosDeFundoContinuos, utils.js) são desviadas pra
+// renderizarBlocoComCaixa, que desenha a caixa contínua e delega cada
+// linha de volta pra renderizarLinhaRica; o resto segue o caminho de
+// sempre, linha a linha.
+function renderizarCorpoRico(doc, textoOriginal, opcoes) {
+    const linhas = corpoParaLinhasRicas(textoOriginal || '');
+    const blocosComCaixa = blocosDeFundoContinuos(linhas).filter((b) => b.padding || b.raio);
+    const blocoPorInicio = new Map(blocosComCaixa.map((b) => [b.inicio, b]));
+
+    let indice = 0;
+    while (indice < linhas.length) {
+        const bloco = blocoPorInicio.get(indice);
+        if (bloco && renderizarBlocoComCaixa(doc, linhas, bloco, opcoes)) {
+            indice = bloco.fim + 1;
+            continue;
+        }
+        renderizarLinhaRica(doc, linhas, indice, {
+            ...opcoes,
+            suprimirFundoDeLinhaInteira: false,
+        });
+        indice++;
+    }
 }
 
 // Gera o documento jsPDF (objeto `doc`, ainda não salvo) a partir dos
@@ -388,10 +575,20 @@ export function gerarPdfExportacao(itens) {
     // fatorada pra ser chamada duas vezes por item (antes/depois do
     // corpo do Texto, que tem seu próprio renderizador acima).
     function renderizarLinhasSimples(md) {
+        // Reconhece SEQUÊNCIAS de linha em branco (\n\n\n..., ou "---"
+        // logo emendado numa linha vazia) e soma o respiro de 8pt só na
+        // PRIMEIRA da sequência — as blanks seguintes, consecutivas, não
+        // somam de novo. Sem isso, um "### Texto\n\n" (uma linha de
+        // título + UMA linha em branco de verdade) processado por
+        // .split('\n') vira três entradas — título, "", "" — e cada
+        // string vazia extra soma +8pt sozinha, inflando o respiro real
+        // pretendido (uma linha em branco) pro dobro.
+        let ultimaFoiBranco = false;
         md.split('\n').forEach((linhaBruta) => {
             const linhaSemEspacos = linhaBruta.trim();
             if (!linhaSemEspacos || linhaSemEspacos === '---') {
-                estadoY.y += 8;
+                if (!ultimaFoiBranco) estadoY.y += 8;
+                ultimaFoiBranco = true;
                 return;
             }
 
@@ -427,8 +624,15 @@ export function gerarPdfExportacao(itens) {
             // Maior pro nível 1/2 (separa blocos inteiros), menor pro 3
             // (subseção dentro do mesmo bloco). Não aplica no topo da
             // página (estadoY.y === margem: nada foi desenhado ainda ali).
-            if (nivelTitulo && estadoY.y > margem) {
-                const preEspacoTitulo = nivelTitulo === 1 ? 16 : nivelTitulo === 2 ? 12 : 8;
+            // Se a linha em branco anterior já rendeu o respiro de 8pt
+            // (ultimaFoiBranco), o título não precisa do preEspacoTitulo
+            // inteiro por cima — é o mesmo respiro contado duas vezes
+            // (uma pela linha vazia do Markdown, outra por esta regra).
+            // Continua aplicando o respiro cheio só quando o título vem
+            // colado direto no conteúdo anterior, sem blank entre eles
+            // (motivo original desta regra, ver comentário acima).
+            if (nivelTitulo && estadoY.y > margem && !ultimaFoiBranco) {
+                const preEspacoTitulo = nivelTitulo === 1 ? 16 : nivelTitulo === 2 ? 12 : 4;
                 if (estadoY.y + preEspacoTitulo + tamanho * 1.4 > alturaPagina - margem) {
                     // Título ficaria colado no rodapé (ou cortado) — quebra a
                     // página em vez de gastar o respiro extra num espaço que
@@ -439,6 +643,7 @@ export function gerarPdfExportacao(itens) {
                     estadoY.y += preEspacoTitulo;
                 }
             }
+            ultimaFoiBranco = false;
 
             doc.setFont('helvetica', estilo);
             doc.setFontSize(tamanho);
@@ -486,8 +691,14 @@ export function gerarPdfExportacao(itens) {
                 estadoY,
                 quebrarPaginaSeNecessario,
                 tamanhoBase: 10,
+                alturaPagina,
             });
-            estadoY.y += 8;
+            // Respiro entre o corpo rico e o próximo campo (Notas/Autoria/
+            // etc.). Antes era 8pt fixos, somados por cima de qualquer
+            // linha em branco que o Markdown de "depoisDoTexto" já tivesse
+            // antes do primeiro campo — reduzido pra 4pt, valor mais perto
+            // do "+4 pós-título" comum ao resto do documento.
+            estadoY.y += 4;
         }
 
         renderizarLinhasSimples(depoisDoTexto);

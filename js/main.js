@@ -57,6 +57,8 @@ import {
     setFiltroProsas,
     setFiltroConteudoPoemas,
     setFiltroConteudoProsas,
+    setFiltroNumeroPoemas,
+    setFiltroNumeroProsas,
     setCombinadorBuscaPoemas,
     setCombinadorBuscaProsas,
     getCombinadorBuscaPoemas,
@@ -345,8 +347,10 @@ const ACOES_LISTA = {
     'mover-livro': (el) => moverLivro(Number(el.dataset.id), el.dataset.dir),
     'pagina-poemas': (el) => setPaginaPoemas(Number(el.dataset.pagina)),
     'pagina-prosas': (el) => setPaginaProsas(Number(el.dataset.pagina)),
-    'toggle-poema': (el, e) => toggleSelecao('poemas', el.checked, Number(el.dataset.id), e?.shiftKey),
-    'toggle-prosa': (el, e) => toggleSelecao('prosas', el.checked, Number(el.dataset.id), e?.shiftKey),
+    'toggle-poema': (el, e) =>
+        toggleSelecao('poemas', el.checked, Number(el.dataset.id), e?.shiftKey),
+    'toggle-prosa': (el, e) =>
+        toggleSelecao('prosas', el.checked, Number(el.dataset.id), e?.shiftKey),
     'toggle-todos-poemas': (el) => toggleSelecaoTodos('poemas', el.checked),
     'toggle-todos-prosas': (el) => toggleSelecaoTodos('prosas', el.checked),
     'baixar-diagrama-ecos': (el) => baixarDiagramaEcos(el),
@@ -646,6 +650,8 @@ window.setFiltroPoemas = debounce(setFiltroPoemas, 200);
 window.setFiltroProsas = debounce(setFiltroProsas, 200);
 window.setFiltroConteudoPoemas = debounce(setFiltroConteudoPoemas, 200);
 window.setFiltroConteudoProsas = debounce(setFiltroConteudoProsas, 200);
+window.setFiltroNumeroPoemas = debounce(setFiltroNumeroPoemas, 200);
+window.setFiltroNumeroProsas = debounce(setFiltroNumeroProsas, 200);
 
 // Alterna o botão E/OU entre os dois campos de busca (metadados +
 // conteúdo) e atualiza o próprio rótulo do botão.

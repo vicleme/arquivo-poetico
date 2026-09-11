@@ -100,7 +100,12 @@ describe('gerarPdfExportacao', () => {
     });
 
     it('some com qualquer outro caractere fora de Latin-1 não previsto na lista (rede de segurança)', () => {
-        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'verso com emoji novo 🚀 no meio' };
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: 'verso com emoji novo 🚀 no meio',
+        };
         const doc = gerarPdfExportacao([item]);
         const texto = textoCompleto(doc);
         assert.ok(!texto.includes('🚀'));
@@ -144,8 +149,13 @@ describe('gerarPdfExportacao', () => {
         // (com um setDrawColor no meio — ver renderizarCorpoRico), então
         // procura qualquer line() nas chamadas seguintes, não a imediata.
         const indiceTexto = doc.chamadas.indexOf(chamadaTexto);
-        const temLineDepois = doc.chamadas.slice(indiceTexto + 1, indiceTexto + 4).some((c) => c.tipo === 'line');
-        assert.ok(temLineDepois, 'deveria haver uma chamada line() logo após o text() da palavra sublinhada');
+        const temLineDepois = doc.chamadas
+            .slice(indiceTexto + 1, indiceTexto + 4)
+            .some((c) => c.tipo === 'line');
+        assert.ok(
+            temLineDepois,
+            'deveria haver uma chamada line() logo após o text() da palavra sublinhada',
+        );
     });
 
     it('cor: aplica setTextColor com o RGB correspondente ao hex do <div style="color:...">', () => {
@@ -165,6 +175,254 @@ describe('gerarPdfExportacao', () => {
             .filter((c) => c.tipo === 'setTextColor');
         const ultimaCor = coresAntes[coresAntes.length - 1];
         assert.deepEqual(ultimaCor, { tipo: 'setTextColor', r: 255, g: 0, b: 0 });
+    });
+
+    it('fundo: desenha um rect() preenchido ATRÁS da palavra, com o RGB do background-color', () => {
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: '<div style="background-color: #ff0000;">destaque</div>',
+        };
+        const doc = gerarPdfExportacao([item]);
+        const chamadaTexto = doc.chamadas.find((c) => c.tipo === 'text' && c.texto === 'destaque');
+        assert.ok(chamadaTexto);
+        const indiceTexto = doc.chamadas.indexOf(chamadaTexto);
+
+        // O rect() de fundo tem que vir ANTES do text() (senão o texto
+        // fica embaixo da caixa colorida, escondido) — ver comentário
+        // "3º passo" em renderizarCorpoRico.
+        const rectAntes = doc.chamadas.slice(0, indiceTexto).find((c) => c.tipo === 'rect');
+        assert.ok(rectAntes, 'deveria haver um rect() de fundo antes do text() da palavra');
+        assert.equal(rectAntes.estilo, 'F');
+
+        const corAntes = doc.chamadas
+            .slice(0, doc.chamadas.indexOf(rectAntes) + 1)
+            .filter((c) => c.tipo === 'setFillColor')
+            .pop();
+        assert.deepEqual(corAntes, { tipo: 'setFillColor', r: 255, g: 0, b: 0 });
+    });
+
+    it('fundo: não desenha rect() quando a palavra não tem background-color', () => {
+        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'sem fundo' };
+        const doc = gerarPdfExportacao([item]);
+        assert.ok(!doc.chamadas.some((c) => c.tipo === 'rect'));
+    });
+
+    // ─── Caixa contínua (padding/border-radius) ──────────────────────
+    // Ver blocosDeFundoContinuos (utils.js) e renderizarBlocoComCaixa
+    // (exportar-pdf.js): um <div> com padding/border-radius embrulhando
+    // várias linhas (estrofes incluídas) tem que virar UM retângulo só,
+    // não uma faixa por linha — mesmo com uma linha em branco (quebra
+    // de estrofe) no meio do bloco.
+    describe('caixa contínua (padding/border-radius)', () => {
+        const TEXTO_BLOCO =
+            '<div style="background-color: #000000; padding: 20px; border-radius: 8px;">' +
+            'primeira estrofe\nsegue\n\nsegunda estrofe</div>';
+
+        it('desenha um único rect() cobrindo o bloco inteiro (não uma faixa por linha)', () => {
+            const item = { id: 1, tipo: 'poema', titulo: 'T', texto: TEXTO_BLOCO };
+            const doc = gerarPdfExportacao([item]);
+            const rects = doc.chamadas.filter((c) => c.tipo === 'rect' && c.estilo === 'F');
+            assert.equal(
+                rects.length,
+                1,
+                'deveria haver exatamente um rect() de fundo pro bloco inteiro',
+            );
+        });
+
+        it('o rect() do bloco vem antes de qualquer text() do bloco, com a cor de fundo certa', () => {
+            const item = { id: 1, tipo: 'poema', titulo: 'T', texto: TEXTO_BLOCO };
+            const doc = gerarPdfExportacao([item]);
+            const rect = doc.chamadas.find((c) => c.tipo === 'rect' && c.estilo === 'F');
+            const primeiroTexto = doc.chamadas.find(
+                (c) => c.tipo === 'text' && c.texto === 'primeira',
+            );
+            assert.ok(rect && primeiroTexto);
+            assert.ok(doc.chamadas.indexOf(rect) < doc.chamadas.indexOf(primeiroTexto));
+
+            const corAntes = doc.chamadas
+                .slice(0, doc.chamadas.indexOf(rect) + 1)
+                .filter((c) => c.tipo === 'setFillColor')
+                .pop();
+            assert.deepEqual(corAntes, { tipo: 'setFillColor', r: 0, g: 0, b: 0 });
+        });
+
+        it('todos os versos do bloco (estrofes incluídas) aparecem depois do rect() único', () => {
+            const item = { id: 1, tipo: 'poema', titulo: 'T', texto: TEXTO_BLOCO };
+            const doc = gerarPdfExportacao([item]);
+            assert.match(textoCompleto(doc), /primeira/);
+            assert.match(textoCompleto(doc), /segunda/);
+            assert.match(textoCompleto(doc), /estrofe/);
+        });
+
+        it('sem padding/border-radius, o fundo continua desenhado linha a linha (comportamento de sempre)', () => {
+            const item = {
+                id: 1,
+                tipo: 'poema',
+                titulo: 'T',
+                texto: '<div style="background-color: #710808;">linha um</div>\nsem fundo',
+            };
+            const doc = gerarPdfExportacao([item]);
+            const rects = doc.chamadas.filter((c) => c.tipo === 'rect' && c.estilo === 'F');
+            assert.equal(rects.length, 1);
+        });
+
+        // Regressão do bug relatado: a margem vertical (padding) era medida a
+        // partir da BASELINE do texto, não do topo/fundo visual das letras —
+        // o topo ficava colado na borda da caixa (a "subida" da fonte comia o
+        // padding) e a base sobrava um respiro do tamanho de uma linha
+        // fantasma inteira, grande e desproporcional. Ver comentário em
+        // renderizarBlocoComCaixa (exportar-pdf.js).
+        it('margem visual do topo da caixa bate com o padding pedido (não fica colada no texto)', () => {
+            const item = {
+                id: 1,
+                tipo: 'poema',
+                titulo: 'T',
+                texto: '<div style="background-color: #710808; padding: 20px; font-size: 18pt;">verso</div>',
+            };
+            const doc = gerarPdfExportacao([item]);
+            const rect = doc.chamadas.find((c) => c.tipo === 'rect' && c.estilo === 'F');
+            const primeiroTexto = doc.chamadas.find((c) => c.tipo === 'text' && c.texto === 'verso');
+            const paddingPt = 20 * 0.75; // 1px = 0.75pt, mesma conversão do código
+            const subida = 18 * 0.78; // extensaoVerticalTexto
+            const topoVisualDoTexto = primeiroTexto.y - subida;
+            assert.ok(
+                Math.abs(topoVisualDoTexto - (rect.y + paddingPt)) < 0.01,
+                `topo visual do texto deveria ficar a ${paddingPt}pt da borda da caixa, mas a distância foi ${(topoVisualDoTexto - rect.y).toFixed(2)}pt`,
+            );
+        });
+
+        it('margem visual da base da caixa bate com o padding pedido (sem sobra de linha fantasma)', () => {
+            const item = {
+                id: 1,
+                tipo: 'poema',
+                titulo: 'T',
+                texto: '<div style="background-color: #710808; padding: 20px; font-size: 18pt;">verso</div>',
+            };
+            const doc = gerarPdfExportacao([item]);
+            const rect = doc.chamadas.find((c) => c.tipo === 'rect' && c.estilo === 'F');
+            const ultimoTexto = doc.chamadas.find((c) => c.tipo === 'text' && c.texto === 'verso');
+            const paddingPt = 20 * 0.75;
+            const descida = 18 * 0.22;
+            const baseVisualDoTexto = ultimoTexto.y + descida;
+            const baseDaCaixa = rect.y + rect.h;
+            assert.ok(
+                Math.abs(baseDaCaixa - baseVisualDoTexto - paddingPt) < 0.01,
+                `base visual do texto deveria ficar a ${paddingPt}pt da borda da caixa, mas a distância foi ${(baseDaCaixa - baseVisualDoTexto).toFixed(2)}pt`,
+            );
+        });
+
+        it('o campo seguinte (Autoria) não nasce sobreposto ao fundo pintado da caixa', () => {
+            db.autores = [{ id: 1, nome: 'Victor' }];
+            const item = {
+                id: 1,
+                tipo: 'poema',
+                titulo: 'T',
+                texto: '<div style="background-color: #710808; padding: 20px; font-size: 18pt;">verso</div>',
+                autoria: [{ autorId: 1, papel: 'Autor' }],
+            };
+            const doc = gerarPdfExportacao([item]);
+            const rect = doc.chamadas.find((c) => c.tipo === 'rect' && c.estilo === 'F');
+            const baseDaCaixa = rect.y + rect.h;
+            const autoria = doc.chamadas.find((c) => c.tipo === 'text' && /Autoria/.test(c.texto));
+            const subidaAutoria = 10 * 0.78; // tamanhoBase
+            const topoVisualDaAutoria = autoria.y - subidaAutoria;
+            assert.ok(
+                topoVisualDaAutoria >= baseDaCaixa,
+                `Autoria não deveria invadir a caixa: topo visual em ${topoVisualDaAutoria.toFixed(2)}, base da caixa em ${baseDaCaixa.toFixed(2)}`,
+            );
+        });
+    });
+
+    it('fundo: mescla palavras ADJACENTES com o mesmo fundo num único rect (sem lacuna no espaço entre elas)', () => {
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: '<div style="background-color: #ff0000;">duas palavras</div>',
+        };
+        const doc = gerarPdfExportacao([item]);
+        const rects = doc.chamadas.filter((c) => c.tipo === 'rect');
+        assert.equal(
+            rects.length,
+            1,
+            'duas palavras adjacentes com o mesmo fundo deveriam virar um único rect',
+        );
+
+        const [chamadaDuas, chamadaPalavras] = ['duas', 'palavras'].map((texto) =>
+            doc.chamadas.find((c) => c.tipo === 'text' && c.texto === texto),
+        );
+        // O rect precisa cobrir do início de "duas" até o fim de "palavras"
+        // (incluindo o espaço entre as duas) — não só a largura de uma
+        // palavra isolada.
+        assert.ok(rects[0].x <= chamadaDuas.x);
+        assert.ok(rects[0].x + rects[0].w >= chamadaPalavras.x);
+    });
+
+    it('fundo: NÃO mescla palavras adjacentes com fundos diferentes (dois rects separados)', () => {
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto:
+                '<div style="background-color: #ff0000;">vermelho</div> ' +
+                '<div style="background-color: #0000ff;">azul</div>',
+        };
+        const doc = gerarPdfExportacao([item]);
+        const rects = doc.chamadas.filter((c) => c.tipo === 'rect');
+        assert.equal(rects.length, 2, 'fundos diferentes não deveriam se fundir num só rect');
+    });
+
+    // ─── Fundo de linha inteira: faixa de largura total, margem a margem ───
+    it('fundo cobrindo a linha inteira: rect() estica margem a margem (largura útil da página)', () => {
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: '<div style="background-color: #ff0000;">linha inteira destacada</div>',
+        };
+        const doc = gerarPdfExportacao([item]);
+        const rects = doc.chamadas.filter((c) => c.tipo === 'rect');
+        assert.equal(rects.length, 1, 'linha inteira com um só fundo deveria virar um único rect');
+
+        const margem = 48;
+        const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
+        assert.equal(rects[0].x, margem, 'faixa de fundo deveria começar na margem esquerda');
+        assert.equal(
+            rects[0].w,
+            larguraUtil,
+            'faixa de fundo deveria cobrir toda a largura útil, não só o texto',
+        );
+    });
+
+    it('fundo cobrindo só uma palavra (resto da linha sem fundo): rect() continua colado ao texto, não estica pra largura total', () => {
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: 'antes <div style="background-color: #ff0000;">destaque</div> depois',
+        };
+        const doc = gerarPdfExportacao([item]);
+        const rects = doc.chamadas.filter((c) => c.tipo === 'rect');
+        assert.equal(rects.length, 1, 'só a palavra com fundo deveria gerar rect');
+
+        const margem = 48;
+        const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
+        const chamadaDestaque = doc.chamadas.find(
+            (c) => c.tipo === 'text' && c.texto === 'destaque',
+        );
+        assert.ok(chamadaDestaque);
+        // Colado à palavra — bem menor que a largura útil inteira, e não
+        // começando na margem (tem "antes " na frente).
+        assert.ok(
+            rects[0].w < larguraUtil,
+            'fundo de trecho parcial não deveria ocupar a página toda',
+        );
+        assert.ok(
+            rects[0].x > margem,
+            'fundo de trecho parcial não deveria começar colado na margem',
+        );
     });
 
     it('tamanho de fonte: usa o font-size do <div> em vez do tamanho-base', () => {
@@ -192,7 +450,10 @@ describe('gerarPdfExportacao', () => {
         const docDir = gerarPdfExportacao([itemDireita]);
         const xEsq = docEsq.chamadas.find((c) => c.tipo === 'text' && c.texto === 'x').x;
         const xDir = docDir.chamadas.find((c) => c.tipo === 'text' && c.texto === 'x').x;
-        assert.ok(xDir > xEsq, 'alinhado à direita deveria ter x bem maior que alinhado à esquerda');
+        assert.ok(
+            xDir > xEsq,
+            'alinhado à direita deveria ter x bem maior que alinhado à esquerda',
+        );
     });
 
     it('não achata a formatação do corpo (markdown "achatado" não é usado pro Texto)', () => {
@@ -207,6 +468,49 @@ describe('gerarPdfExportacao', () => {
         assert.ok(algumEmBold);
     });
 
+    // ─── Respiro entre título/corpo/campos ───
+    // Regressão do bug relatado: "### Texto\n\n" (título + UMA linha em
+    // branco de verdade) virava, no split('\n'), três entradas — título,
+    // "", "" — e cada string vazia extra somava +8pt sozinha, dobrando o
+    // respiro pretendido. Ver comentário em renderizarLinhasSimples
+    // (exportar-pdf.js) pro detalhe da correção.
+
+    it('não soma o respiro da linha em branco duas vezes depois do título "Texto" (bug corrigido)', () => {
+        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x' };
+        const doc = gerarPdfExportacao([item]);
+        const chamadas = doc.chamadas.filter((c) => c.tipo === 'text');
+        const yTitulo = chamadas.find((c) => c.texto === 'Texto').y;
+        const yCorpo = chamadas.find((c) => c.texto === 'x').y;
+        const respiro = yCorpo - yTitulo;
+        // Antes do fix: 8 (pré-título) + 4 (pós-título) + 16 (duas linhas
+        // em branco contadas em vez de uma) = 28pt só de espaço morto,
+        // sem contar a linha do título em si (~36pt de gap total nesse
+        // cenário). Depois do fix, sem o dobro: bem menos que isso.
+        assert.ok(
+            respiro < 30,
+            `respiro título->corpo deveria ser bem menor que os ~36pt do bug antigo, mas foi ${respiro}pt`,
+        );
+        assert.ok(respiro > 15, `respiro não deveria ter colapsado quase a zero (foi ${respiro}pt)`);
+    });
+
+    it('respiro entre o corpo do Texto e o próximo campo (Autoria) cai de 8pt fixos pra 4pt', () => {
+        db.autores = [{ id: 1, nome: 'Victor' }];
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: 'x',
+            autoria: [{ autorId: 1, papel: 'Autor' }],
+        };
+        const doc = gerarPdfExportacao([item]);
+        const chamadas = doc.chamadas.filter((c) => c.tipo === 'text');
+        const yCorpo = chamadas.find((c) => c.texto === 'x').y;
+        const yAutoria = chamadas.find((c) => /Autoria/.test(c.texto)).y;
+        const respiro = yAutoria - yCorpo;
+        assert.ok(respiro <= 19, `respiro corpo->Autoria deveria ter caído (foi ${respiro}pt, antes era ~22pt)`);
+        assert.ok(respiro >= 14, `respiro não deveria ter colapsado demais (foi ${respiro}pt)`);
+    });
+
     // ─── Paginação ───
 
     it('adiciona uma nova página (addPage) quando o conteúdo excede a altura útil', () => {
@@ -218,7 +522,10 @@ describe('gerarPdfExportacao', () => {
             texto: versoLongo,
         }));
         const doc = gerarPdfExportacao(itens);
-        assert.ok(doc.paginas > 1, 'documento grande deveria ter disparado addPage() em algum ponto');
+        assert.ok(
+            doc.paginas > 1,
+            'documento grande deveria ter disparado addPage() em algum ponto',
+        );
     });
 
     // ─── contarCamposPreenchidos (coluna nova) ───

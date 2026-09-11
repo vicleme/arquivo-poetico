@@ -148,6 +148,235 @@ export function sanitizarTextoRico(valor) {
     return limpo;
 }
 
+// ─── Corpo rico do Texto: parser compartilhado ──────────────────────────
+// Reproduz a cascata de **negrito**/_itálico_/<u>/<div style="...">
+// aplicada pela toolbar do editor (ver wrapText/applyStyle em editor.js)
+// como uma árvore de "runs" já resolvidos — usado por exportar-pdf.js
+// (desenho no PDF), exportar-docx.js (spans em HTML) e exportar-md.js
+// (legenda textual de cor/fonte que o Markdown puro não consegue
+// carregar, ver legendaCorParaMarkdown). Mora aqui, não em
+// exportar-pdf.js, porque exportar-pdf.js e exportar-docx.js importam de
+// exportar-md.js (itemParaMarkdownPartes) — se o parser morasse lá,
+// exportar-md.js precisaria importar de volta de exportar-pdf.js,
+// import circular.
+function corParaRgb(valorCor) {
+    if (!valorCor || valorCor === 'inherit') return null;
+    const hex = valorCor.trim().replace('#', '');
+    const cheio =
+        hex.length === 3
+            ? hex
+                  .split('')
+                  .map((c) => c + c)
+                  .join('')
+            : hex;
+    if (!/^[0-9a-fA-F]{6}$/.test(cheio)) return null;
+    return {
+        r: parseInt(cheio.slice(0, 2), 16),
+        g: parseInt(cheio.slice(2, 4), 16),
+        b: parseInt(cheio.slice(4, 6), 16),
+    };
+}
+
+// Lê o atributo style="..." de um <div> (ver ALLOWLIST_TEXTO_RICO acima
+// pro conjunto completo aceito na tela) — cor, fundo, fonte, tamanho,
+// alinhamento, padding e border-radius. display/etc. continuam sem
+// equivalente em nenhum dos três formatos de exportação, então não são
+// extraídos aqui. padding/border-radius só suportam um valor único (ex.:
+// "padding: 20px;") — o mesmo formato que o campo Texto de fato carrega
+// hoje (colado manualmente, a toolbar do editor não tem botão pra isso);
+// a forma "20px 10px" (valores por eixo) não é reconhecida e o campo
+// fica null, caindo no comportamento de sempre (sem caixa/padding).
+function analisarEstiloDeDiv(atributoStyle) {
+    const estilo = {};
+    // Lookbehind negativo: sem ele, "color:" também bate dentro de
+    // "background-color:" (é substring), lendo o fundo como se fosse
+    // cor de texto.
+    const corMatch = atributoStyle.match(/(?<!background-)color:\s*([^;]+);/);
+    if (corMatch) {
+        const rgb = corParaRgb(corMatch[1]);
+        if (rgb) estilo.cor = rgb;
+    }
+    const fundoMatch = atributoStyle.match(/background-color:\s*([^;]+);/);
+    if (fundoMatch) {
+        const rgb = corParaRgb(fundoMatch[1]);
+        if (rgb) estilo.fundo = rgb;
+    }
+    const fonteMatch = atributoStyle.match(/font-family:\s*([^;]+);/);
+    if (fonteMatch) estilo.fonte = fonteMatch[1].trim().replace(/^['"]|['"]$/g, '');
+    const tamanhoMatch = atributoStyle.match(/font-size:\s*([\d.]+)pt/);
+    if (tamanhoMatch) estilo.tamanho = Math.min(28, Math.max(7, parseFloat(tamanhoMatch[1])));
+    const alinhoMatch = atributoStyle.match(/text-align:\s*(left|right|center)/);
+    if (alinhoMatch) estilo.alinhamento = alinhoMatch[1];
+    const paddingMatch = atributoStyle.match(/padding:\s*([\d.]+)px\s*;/);
+    if (paddingMatch) estilo.padding = parseFloat(paddingMatch[1]);
+    const raioMatch = atributoStyle.match(/border-radius:\s*([\d.]+)px\s*;/);
+    if (raioMatch) estilo.raio = parseFloat(raioMatch[1]);
+    return estilo;
+}
+
+const ESTILO_BASE = {
+    negrito: false,
+    italico: false,
+    sublinhado: false,
+    cor: null,
+    fundo: null,
+    fonte: null,
+    tamanho: null,
+    alinhamento: null,
+    padding: null,
+    raio: null,
+};
+
+// String bruta do campo `texto` → array de linhas, cada linha um array
+// de "runs" ({ texto, negrito, italico, sublinhado, cor, fundo, fonte,
+// tamanho, alinhamento }) com estilo já resolvido (cascata de tags
+// aninhadas aplicada). Tolerante a HTML malformado (tag sem par
+// correspondente): ignora o desbalanceamento em vez de quebrar, já que o
+// dado real do acervo tem anos de HTML colado de fontes diversas (ver
+// comentário em sanitizarTextoRico, acima).
+export function corpoParaLinhasRicas(textoOriginal) {
+    const linhas = [[]];
+    // Pilha de frames { estilo, origem }; origem identifica quem abriu o
+    // frame ('negrito'/'italico'/'u'/'div'), pra saber qual token fecha
+    // ele — necessário porque ** e _ não têm marcador de abertura/
+    // fechamento distinto (o mesmo "**" abre e fecha).
+    const pilha = [{ estilo: ESTILO_BASE, origem: null }];
+    const topo = () => pilha[pilha.length - 1];
+
+    function empurrar(origem, parcial) {
+        pilha.push({ estilo: { ...topo().estilo, ...parcial }, origem });
+    }
+    function desempilharSeForOrigem(origem) {
+        if (pilha.length > 1 && topo().origem === origem) pilha.pop();
+    }
+    function emitirRun(texto) {
+        if (!texto) return;
+        linhas[linhas.length - 1].push({ texto, ...topo().estilo });
+    }
+
+    const tokenRegex = /(<div style="([^"]*)"[^>]*>|<\/div>|<u>|<\/u>|\n|\*\*|_)/g;
+    let ultimoIndex = 0;
+    let match;
+
+    while ((match = tokenRegex.exec(textoOriginal)) !== null) {
+        if (match.index > ultimoIndex) {
+            emitirRun(textoOriginal.slice(ultimoIndex, match.index));
+        }
+        const token = match[1];
+        if (token === '\n') {
+            linhas.push([]);
+        } else if (token === '**') {
+            if (topo().origem === 'negrito') desempilharSeForOrigem('negrito');
+            else empurrar('negrito', { negrito: true });
+        } else if (token === '_') {
+            if (topo().origem === 'italico') desempilharSeForOrigem('italico');
+            else empurrar('italico', { italico: true });
+        } else if (token === '<u>') {
+            empurrar('u', { sublinhado: true });
+        } else if (token === '</u>') {
+            desempilharSeForOrigem('u');
+        } else if (token.startsWith('<div')) {
+            empurrar('div', analisarEstiloDeDiv(match[2] || ''));
+        } else if (token === '</div>') {
+            desempilharSeForOrigem('div');
+        }
+        ultimoIndex = tokenRegex.lastIndex;
+    }
+    if (ultimoIndex < textoOriginal.length) {
+        emitirRun(textoOriginal.slice(ultimoIndex));
+    }
+
+    return linhas;
+}
+
+// ─── Fundo uniforme de uma linha ────────────────────────────────
+// Usado pelas exportações em .docx e .pdf (exportar-docx.js/
+// exportar-pdf.js) pra decidir se o fundo (background-color) de uma
+// linha vira uma faixa esticada margem a margem ("largura da página
+// toda") ou continua colado só ao(s) trecho(s) específico(s) que tem
+// fundo. Considera a linha "uniforme" quando TODO run com texto de
+// verdade (run vazio/só espaço não conta) tem o mesmo fundo — uma
+// linha sem fundo nenhum, com fundo só numa palavra/trecho, ou com
+// fundos DIFERENTES lado a lado não é uniforme. Retorna a cor (objeto
+// {r,g,b}) quando uniforme, ou null quando não é (fundo deve
+// continuar colado ao texto nesse caso).
+export function linhaTemFundoUniforme(runsDaLinha) {
+    const runsComTexto = (runsDaLinha || []).filter((r) => r.texto && r.texto.trim());
+    if (!runsComTexto.length) return null;
+    const primeiroFundo = runsComTexto[0].fundo || null;
+    if (!primeiroFundo) return null;
+    const uniforme = runsComTexto.every(
+        (r) => JSON.stringify(r.fundo || null) === JSON.stringify(primeiroFundo),
+    );
+    return uniforme ? primeiroFundo : null;
+}
+
+// ─── Blocos contínuos de fundo (caixa com padding/border-radius) ───────
+// linhaTemFundoUniforme (acima) decide LINHA a linha — suficiente pro
+// fundo "chapado" de sempre (uma faixa por linha, ver exportar-pdf.js/
+// exportar-docx.js). Mas um <div style="background-color:...;
+// padding:...; border-radius:..."> que embrulha um poema inteiro (ver
+// conversa que motivou isso) precisa virar UMA caixa só contínua, com
+// respiro de verdade acima/abaixo/dos lados do texto — não N faixas
+// grudadas coladas linha a linha. blocosDeFundoContinuos() identifica
+// essas sequências: linhas CONSECUTIVAS com o mesmo fundo/padding/raio
+// viram um bloco { inicio, fim } (índices em `linhas`, inclusive).
+//
+// Uma linha em BRANCO (quebra de estrofe, sem run nenhum — ver
+// corpoParaLinhasRicas) entra no bloco quando está ENTRE duas linhas do
+// mesmo bloco: no navegador, o fundo de um <div> em bloco cobre o
+// elemento inteiro, quebra de parágrafo ou não, então aquele respiro
+// entre estrofes continua "dentro" da caixa visualmente mesmo sem
+// nenhum texto ali. Uma linha em branco que NÃO está cercada por duas
+// linhas do mesmo bloco continua sendo só uma quebra de parágrafo
+// comum, sem entrar em bloco nenhum.
+export function blocosDeFundoContinuos(linhas) {
+    const mesmoEstilo = (a, b) =>
+        a &&
+        b &&
+        JSON.stringify(a.fundo) === JSON.stringify(b.fundo) &&
+        a.padding === b.padding &&
+        a.raio === b.raio;
+
+    const estiloPorLinha = (linhas || []).map((runsDaLinha) => {
+        if (!runsDaLinha.length) return null;
+        const fundo = linhaTemFundoUniforme(runsDaLinha);
+        if (!fundo) return null;
+        const referencia = runsDaLinha.find((r) => r.texto && r.texto.trim()) || runsDaLinha[0];
+        return { fundo, padding: referencia.padding || null, raio: referencia.raio || null };
+    });
+
+    // Absorve sequências de linhas em branco entre duas linhas do mesmo
+    // bloco.
+    let i = 0;
+    while (i < estiloPorLinha.length) {
+        if (estiloPorLinha[i] !== null || linhas[i].length) {
+            i++;
+            continue;
+        }
+        let fim = i;
+        while (fim < estiloPorLinha.length && estiloPorLinha[fim] === null && !linhas[fim].length) {
+            fim++;
+        }
+        if (i > 0 && fim < estiloPorLinha.length && mesmoEstilo(estiloPorLinha[i - 1], estiloPorLinha[fim])) {
+            for (let k = i; k < fim; k++) estiloPorLinha[k] = estiloPorLinha[i - 1];
+        }
+        i = fim;
+    }
+
+    // Agrupa linhas consecutivas com o mesmo estilo num único bloco.
+    const blocos = [];
+    estiloPorLinha.forEach((info, indice) => {
+        const ultimo = blocos[blocos.length - 1];
+        if (info && ultimo && ultimo.fim === indice - 1 && mesmoEstilo(ultimo, info)) {
+            ultimo.fim = indice;
+        } else if (info) {
+            blocos.push({ inicio: indice, fim: indice, fundo: info.fundo, padding: info.padding, raio: info.raio });
+        }
+    });
+    return blocos;
+}
+
 // ─── Debounce ────────────────────────────────────────────────
 // Atrasa a chamada de fn até `espera` ms depois da última invocação.
 // Usado nos campos de busca (Poemas/Prosas): cada renderPoemas()/
@@ -1537,6 +1766,34 @@ function parseConsultaBusca(query) {
     return { gruposIncluir, termosExcluir };
 }
 
+// Interpreta a consulta da "Caixa B" (busca por Nº — ver
+// filtroNumeroPoemas/filtroNumeroProsas em render-listas.js): separa os
+// tokens que são só dígitos separados por vírgula, sem prefixo de campo
+// (ex. "5,9,30" — o número é o _numEstrutura, calculado depois de todos
+// os outros filtros, por isso não pode reaproveitar CAMPOS_ATRIBUTO/
+// parseConsultaBusca direto: aquele mecanismo roda ANTES do número
+// existir) de qualquer outro token (prefixos "campo:valor" como
+// etiqueta:, titulo: etc.), que continuam podendo ser digitados na
+// mesma caixa e são resolvidos depois, com filtrarTextos, mas já em
+// cima da lista que sobrou do recorte por número.
+//
+// Não interpreta aspas/frase-exata dentro do próprio "resto" — só separa
+// por espaço e devolve os tokens não-numéricos remontados na mesma
+// ordem, pra filtrarTextos (que entende aspas) reprocessar depois.
+export function parseConsultaNumero(query) {
+    const tokens = (query || '').trim().match(/\S+/g) || [];
+    const numeros = new Set();
+    const resto = [];
+    tokens.forEach((tok) => {
+        if (/^\d+(,\d+)*$/.test(tok)) {
+            tok.split(',').forEach((n) => numeros.add(Number(n)));
+        } else {
+            resto.push(tok);
+        }
+    });
+    return { numeros, resto: resto.join(' ') };
+}
+
 // Filtra uma lista de textos (poemas/prosas) por uma busca livre que
 // procura em título, ano, sinalizações, pessoas, autoria, grupos,
 // papéis, época retratada, livros, descrição visual, contexto
@@ -1597,7 +1854,11 @@ export function filtrarTextos(lista, query, opts = opcoesBuscaPadrao()) {
         const bateTermo = (t) =>
             t.presenca
                 ? valorDoTermo(t) !== ''
-                : valorBateTermo(valorDoTermo(t), normalizarBusca(t.termo, opts), opts.palavraInteira);
+                : valorBateTermo(
+                      valorDoTermo(t),
+                      normalizarBusca(t.termo, opts),
+                      opts.palavraInteira,
+                  );
 
         const combinaInclusao =
             gruposIncluir.length === 0 || gruposIncluir.some((grupo) => grupo.every(bateTermo));
@@ -1732,7 +1993,10 @@ const ROTULOS_SINALIZACOES = {
 // sinalizacoesCombinadas(). Categorias vazias não entram na lista.
 export function sinalizacoesAgrupadas(item) {
     return Object.entries(SINALIZACOES_CATEGORIAS)
-        .map(([categoria, campo]) => ({ rotulo: ROTULOS_SINALIZACOES[categoria], valor: item[campo] }))
+        .map(([categoria, campo]) => ({
+            rotulo: ROTULOS_SINALIZACOES[categoria],
+            valor: item[campo],
+        }))
         .filter((bloco) => bloco.valor);
 }
 
@@ -1758,7 +2022,9 @@ export const CAMPOS_CONTAVEIS = {
             // direto (gruposDiretos) — dedup por id pra não contar duas
             // vezes o mesmo Grupo alcançado pelos dois caminhos.
             const ids = new Set();
-            paresGrupoPessoa(item, db?.pessoas, db?.grupos).forEach(({ grupo }) => ids.add(grupo.id));
+            paresGrupoPessoa(item, db?.pessoas, db?.grupos).forEach(({ grupo }) =>
+                ids.add(grupo.id),
+            );
             (item.gruposDiretos || []).forEach((id) => ids.add(id));
             return ids.size;
         },
@@ -1979,7 +2245,12 @@ export function extrairPremiosUnicos(itens) {
 // específico. Chamado "Referências" antes da reorganização que criou o
 // campo novo e distinto de mesmo nome (ver TIPOS_REFERENCIA_EXTERNA_SUGERIDOS
 // abaixo) — Eco continua sendo o par de Elo dentro de Intratextualidade.
-export const TIPOS_ECO = ['Personagem em comum', 'Imagem central compartilhada', 'Aceno a', 'Outro'];
+export const TIPOS_ECO = [
+    'Personagem em comum',
+    'Imagem central compartilhada',
+    'Aceno a',
+    'Outro',
+];
 
 // RELACOES_ELO: relações BILATERAIS entre dois poemas (par estrutural —
 // reescrita, tradução, resposta...), redesenhadas pra separar a
@@ -2054,7 +2325,8 @@ export function extrairValoresUnicosDeIntertextualidade(poemas, tipoFiltro = nul
     poemas.forEach((p) => {
         if (Array.isArray(p.intertextualidade)) {
             p.intertextualidade.forEach((it) => {
-                if (it && it.texto && (!tipoFiltro || it.tipo === tipoFiltro)) valores.add(it.texto);
+                if (it && it.texto && (!tipoFiltro || it.tipo === tipoFiltro))
+                    valores.add(it.texto);
             });
         }
     });
@@ -2069,7 +2341,8 @@ export function extrairValoresUnicosDeReferenciasExternas(poemas, tipoFiltro = n
     poemas.forEach((p) => {
         if (Array.isArray(p.referenciasExternas)) {
             p.referenciasExternas.forEach((it) => {
-                if (it && it.texto && (!tipoFiltro || it.tipo === tipoFiltro)) valores.add(it.texto);
+                if (it && it.texto && (!tipoFiltro || it.tipo === tipoFiltro))
+                    valores.add(it.texto);
             });
         }
     });

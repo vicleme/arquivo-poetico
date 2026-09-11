@@ -2,8 +2,9 @@
 // e não é uma dependência do package.json — não tem como `import` a lib
 // de verdade aqui. Este shim implementa só a fatia da API que
 // js/exportar-pdf.js efetivamente usa (setFont, setFontSize,
-// setTextColor, setDrawColor, text, line, splitTextToSize, getTextWidth,
-// addPage, internal.pageSize, output/save) e grava um log de chamadas
+// setTextColor, setDrawColor, setFillColor, rect, text, line,
+// splitTextToSize, getTextWidth, addPage, internal.pageSize,
+// output/save) e grava um log de chamadas
 // (`doc.chamadas`) pra os testes inspecionarem.
 //
 // NÃO tenta reproduzir métricas de fonte reais nem gerar um PDF de
@@ -58,6 +59,14 @@ export function criarConstrutorJsPdfFalso() {
 
         setDrawColor(r, g, b) {
             this.chamadas.push({ tipo: 'setDrawColor', r, g, b });
+        }
+
+        setFillColor(r, g, b) {
+            this.chamadas.push({ tipo: 'setFillColor', r, g, b });
+        }
+
+        rect(x, y, w, h, estilo) {
+            this.chamadas.push({ tipo: 'rect', x, y, w, h, estilo });
         }
 
         getTextWidth(texto) {

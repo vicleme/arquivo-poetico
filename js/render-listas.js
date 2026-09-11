@@ -21,6 +21,7 @@ import {
     getPosicaoElemento,
     filtrarTextos,
     filtrarPorConteudo,
+    parseConsultaNumero,
     opcoesBuscaPadrao,
     formatarDataParcial,
     formatarIntervaloEpocaRetratada,
@@ -117,6 +118,14 @@ let filtroPoemas = '';
 let filtroProsas = '';
 let filtroConteudoPoemas = '';
 let filtroConteudoProsas = '';
+// "Caixa B" — busca pelo número da coluna Contagem de Poemas/Prosas
+// (_numEstrutura), separada da Caixa A (filtroPoemas/filtroConteudoPoemas
+// acima) de propósito: tudo que está na Caixa A entra ANTES do cálculo
+// de _numEstrutura (pode deslocar a numeração); tudo que está aqui entra
+// DEPOIS (só recorta o resultado, nunca realimenta a numeração) — ver
+// aplicação em getListaVisivelPoemas/getListaVisivelProsas abaixo.
+let filtroNumeroPoemas = '';
+let filtroNumeroProsas = '';
 let combinadorBuscaPoemas = 'e'; // 'e' (precisa bater nos dois campos) ou 'ou' (basta um)
 let combinadorBuscaProsas = 'e';
 // Interruptores de busca (Diferenciar maiúsculas/minúsculas, Diferenciar
@@ -363,6 +372,20 @@ export function setFiltroConteudoPoemas(valor) {
 
 export function setFiltroConteudoProsas(valor) {
     filtroConteudoProsas = valor;
+    paginaProsas = 1;
+    renderProsas();
+}
+
+// Setters da Caixa B (ver comentário em filtroNumeroPoemas acima) — mesmo
+// padrão de setFiltroConteudoPoemas/Prosas: reseta a página e re-renderiza.
+export function setFiltroNumeroPoemas(valor) {
+    filtroNumeroPoemas = valor;
+    paginaPoemas = 1;
+    renderPoemas();
+}
+
+export function setFiltroNumeroProsas(valor) {
+    filtroNumeroProsas = valor;
     paginaProsas = 1;
     renderProsas();
 }
@@ -994,6 +1017,17 @@ export function getListaVisivelPoemas() {
     // usuário escolha ordenar a tabela depois.
     lista = lista.map((p, i) => ({ ...p, _numEstrutura: i + 1 }));
 
+    // Caixa B (busca por Nº) — ver comentário em filtroNumeroPoemas: entra
+    // só AQUI, depois de _numEstrutura já atribuído, então nunca desloca a
+    // numeração — só recorta o que já foi numerado. numeros vazio (nada
+    // digitado, ou só prefixos sem número solto) não filtra por número,
+    // igual ao resto do arquivo quando um filtro está "sem valor".
+    if (filtroNumeroPoemas && filtroNumeroPoemas.trim()) {
+        const { numeros, resto } = parseConsultaNumero(filtroNumeroPoemas);
+        if (numeros.size) lista = lista.filter((p) => numeros.has(p._numEstrutura));
+        if (resto.trim()) lista = filtrarTextos(lista, resto, opcoesBuscaPoemas);
+    }
+
     return aplicarOrdenacao(lista, 'poemas', ordenacaoPoemas);
 }
 
@@ -1052,6 +1086,13 @@ export function getListaVisivelProsas() {
 
     // Ver comentário equivalente em getListaVisivelPoemas acima.
     lista = lista.map((pr, i) => ({ ...pr, _numEstrutura: i + 1 }));
+
+    // Caixa B — ver comentário equivalente em getListaVisivelPoemas acima.
+    if (filtroNumeroProsas && filtroNumeroProsas.trim()) {
+        const { numeros, resto } = parseConsultaNumero(filtroNumeroProsas);
+        if (numeros.size) lista = lista.filter((pr) => numeros.has(pr._numEstrutura));
+        if (resto.trim()) lista = filtrarTextos(lista, resto, opcoesBuscaProsas);
+    }
 
     return aplicarOrdenacao(lista, 'prosas', ordenacaoProsas);
 }

@@ -9,6 +9,7 @@ import {
     gerarMarkdownExportacao,
     contarCamposPreenchidos,
     INFO_STATUS,
+    legendaCorParaMarkdown,
 } from '../js/exportar-md.js';
 
 function resetarDb() {
@@ -579,5 +580,102 @@ describe('gerarMarkdownExportacao — Status "Privado" (🔒)', () => {
     it('INFO_STATUS reconhece "privado" (não cai no fallback genérico ⚪)', () => {
         assert.equal(INFO_STATUS.privado.emoji, '🔒');
         assert.equal(INFO_STATUS.privado.titulo, 'Privado');
+    });
+});
+
+describe('legendaCorParaMarkdown (cor/fundo/fonte perdidos na conversão para Markdown)', () => {
+    it('texto sem nenhum <div> de estilo não gera legenda', () => {
+        assert.equal(legendaCorParaMarkdown('verso sem formatação'), '');
+    });
+
+    it('**negrito**/_itálico_/<u> sozinhos (sem cor/fundo/fonte) não geram legenda', () => {
+        assert.equal(legendaCorParaMarkdown('**negrito** e _itálico_ e <u>sublinhado</u>'), '');
+    });
+
+    it('cor de texto gera uma linha "- "trecho" — cor do texto #HEX"', () => {
+        const md = legendaCorParaMarkdown('<div style="color: #ff0000;">vermelho</div>');
+        assert.match(md, /^_Formatação de cor\/fundo\/fonte do texto original/);
+        assert.match(md, /- "vermelho" — cor do texto #FF0000/);
+    });
+
+    it('fundo (background-color) gera "fundo #HEX", separado de cor de texto', () => {
+        const md = legendaCorParaMarkdown(
+            '<div style="background-color: #710808;">texto com fundo</div>',
+        );
+        assert.match(md, /- "texto com fundo" — fundo #710808/);
+        assert.ok(!md.includes('cor do texto'));
+    });
+
+    it('cor de texto e fundo no mesmo <div> entram na mesma linha, "cor do texto X, fundo Y"', () => {
+        const md = legendaCorParaMarkdown(
+            '<div style="color: #ffffff; background-color: #710808;">ambos</div>',
+        );
+        assert.match(md, /- "ambos" — cor do texto #FFFFFF, fundo #710808/);
+    });
+
+    it('regressão: background-color não é lido como color (bug do "color:" batendo como substring)', () => {
+        const md = legendaCorParaMarkdown('<div style="background-color: #710808;">fundo só</div>');
+        assert.ok(!md.includes('cor do texto #710808'));
+        assert.match(md, /fundo #710808/);
+    });
+
+    it('font-family gera \'fonte "nome"\', entre aspas', () => {
+        const md = legendaCorParaMarkdown('<div style="font-family: Georgia;">com fonte</div>');
+        assert.match(md, /- "com fonte" — fonte "Georgia"/);
+    });
+
+    it('runs consecutivos com o mesmo estilo (cor/fundo/fonte) viram um único trecho agrupado', () => {
+        const md = legendaCorParaMarkdown(
+            '<div style="color: #ff0000;">um **dois** três</div>',
+        );
+        // "um ", "dois" (negrito) e " três" são 3 runs com a mesma cor —
+        // devem virar um único grupo/linha, não três.
+        const ocorrencias = (md.match(/— cor do texto #FF0000/g) || []).length;
+        assert.equal(ocorrencias, 1);
+        assert.match(md, /- "um dois três" — cor do texto #FF0000/);
+    });
+
+    it('um run sem cor/fundo/fonte no meio fecha o grupo — não funde trechos de estilos diferentes', () => {
+        const md = legendaCorParaMarkdown(
+            '<div style="color: #ff0000;">vermelho</div> sem cor <div style="color: #0000ff;">azul</div>',
+        );
+        assert.match(md, /- "vermelho" — cor do texto #FF0000/);
+        assert.match(md, /- "azul" — cor do texto #0000FF/);
+        // Duas linhas separadas, não uma só juntando os dois trechos.
+        assert.equal((md.match(/^- /gm) || []).length, 2);
+    });
+
+    it('grupo que atravessa quebra de linha (mesmo <div> envolvendo vários versos) junta os trechos com " / "', () => {
+        const md = legendaCorParaMarkdown(
+            '<div style="color: #ff0000;">verso um\nverso dois</div>',
+        );
+        assert.match(md, /- "verso um \/ verso dois" — cor do texto #FF0000/);
+    });
+
+    it('cor de 3 dígitos (#f00) é expandida e normalizada em maiúsculas (#FF0000)', () => {
+        const md = legendaCorParaMarkdown('<div style="color: #f00;">curta</div>');
+        assert.match(md, /- "curta" — cor do texto #FF0000/);
+    });
+
+    it('fundo cobrindo vários trechos de cor diferente é anunciado uma vez só, aninhado', () => {
+        const md = legendaCorParaMarkdown(
+            '<div style="background-color: #710808;">' +
+                '<div style="color: #727272;">cinza</div>' +
+                '<div style="color: #ffffff;">branco</div>' +
+                '</div>',
+        );
+        // Só uma ocorrência de "fundo #710808" (não uma por trecho de cor).
+        assert.equal((md.match(/fundo #710808/g) || []).length, 1);
+        assert.match(md, /- fundo #710808 no trecho "cinza \/ branco":/);
+        assert.match(md, /  - "cinza" — cor do texto #727272/);
+        assert.match(md, /  - "branco" — cor do texto #FFFFFF/);
+    });
+
+    it('fundo isolado (sem outro trecho de cor no mesmo bloco) mantém o formato antigo, sem aninhar', () => {
+        const md = legendaCorParaMarkdown(
+            '<div style="background-color: #710808;"><div style="color: #ffffff;">só um trecho</div></div>',
+        );
+        assert.match(md, /^- "só um trecho" — cor do texto #FFFFFF, fundo #710808/m);
+        assert.ok(!md.includes('no trecho'));
     });
 });

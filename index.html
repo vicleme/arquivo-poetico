@@ -22,12 +22,17 @@
              hora de gerar o PDF, mas em compensação é um clique só (sem a
              etapa extra de "Salvar como PDF" da impressão do navegador). -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-        <!-- html-docx-js: só usada pelo botão "Baixar em .docx" da coluna
-             Ações de Poemas/Prosas e do modal de Visualização (ver
-             js/exportar-docx.js). Mesmo padrão do jsPDF acima: via CDN,
-             carregada só quando o botão é clicado pela primeira vez. Registra
-             a si mesma como window.htmlDocx (UMD, sem module loader aqui). -->
-        <script src="https://unpkg.com/html-docx-js@0.3.1/dist/html-docx.js"></script>
+        <!-- docx (dolanmiu/docx): só usada pelo botão "Baixar em .docx" da
+             coluna Ações de Poemas/Prosas e do modal de Visualização (ver
+             js/exportar-docx.js). Mesmo padrão do jsPDF acima: via CDN.
+             Registra a si mesma como window.docx (build UMD, sem module
+             loader aqui — o pacote é "type: module" no npm, mas o build
+             .umd.cjs empacota um global de verdade pra uso direto via
+             <script>). Gera OOXML de verdade (runs/parágrafos com w:shd
+             etc.) em vez de terceirizar a conversão pro motor de
+             importação HTML do Word, que era o esquema do antigo
+             html-docx-js (ver comentário no topo de exportar-docx.js). -->
+        <script src="https://unpkg.com/docx@9.7.1/dist/index.umd.cjs"></script>
         <script>
             // Sem isso o Tailwind usa a variante "media" (segue só o SO) e ignora
             // a classe .dark que a gente aplica manualmente no <html> — o toggle
@@ -642,6 +647,16 @@
                             <option value="">-- Qualquer papel --</option>
                         </select>
                     </div>
+                    <div class="flex items-center flex-1 min-w-[220px] gap-1">
+                        <input
+                            type="search"
+                            id="busca-numero-poemas"
+                            oninput="setFiltroNumeroPoemas(this.value)"
+                            placeholder="Nº: 5,9,30 (pode combinar com etiqueta:, titulo:...)"
+                            title="Busca pela coluna Contagem de Poemas (nº na ordem de estrutura, já considerando os filtros acima). Números separados por vírgula; pode combinar com prefixos como etiqueta: pra recortar dentro da lista de números — mas isso nunca desloca a numeração, só filtra em cima dela."
+                            class="flex-1 mb-0"
+                        />
+                    </div>
                 </div>
 
                 <div
@@ -715,9 +730,9 @@
                             <li>
                                 <code>tradicao:</code> <code>estilo:</code> <code>tema:</code>
                                 <code>relacao:</code> <code>sensibilidade:</code> <code>tom:</code>
-                                <code>imagetico:</code> <code>outros:</code> —
-                                categorias de Etiqueta (a coluna Etiquetas mostra todas juntas; use
-                                um destes pra restringir a só uma categoria).
+                                <code>imagetico:</code> <code>outros:</code> — categorias de
+                                Etiqueta (a coluna Etiquetas mostra todas juntas; use um destes pra
+                                restringir a só uma categoria).
                             </li>
                             <li>
                                 <code>livro:</code> <code>parte:</code> <code>secao:</code> —
@@ -1350,6 +1365,16 @@
                             <option value="">-- Qualquer papel --</option>
                         </select>
                     </div>
+                    <div class="flex items-center flex-1 min-w-[220px] gap-1">
+                        <input
+                            type="search"
+                            id="busca-numero-prosas"
+                            oninput="setFiltroNumeroProsas(this.value)"
+                            placeholder="Nº: 5,9,30 (pode combinar com etiqueta:, titulo:...)"
+                            title="Busca pela coluna Contagem de Prosas (nº na ordem de estrutura, já considerando os filtros acima). Números separados por vírgula; pode combinar com prefixos como etiqueta: pra recortar dentro da lista de números — mas isso nunca desloca a numeração, só filtra em cima dela."
+                            class="flex-1 mb-0"
+                        />
+                    </div>
                 </div>
 
                 <div
@@ -1423,9 +1448,9 @@
                             <li>
                                 <code>tradicao:</code> <code>estilo:</code> <code>tema:</code>
                                 <code>relacao:</code> <code>sensibilidade:</code> <code>tom:</code>
-                                <code>imagetico:</code> <code>outros:</code> —
-                                categorias de Etiqueta (a coluna Etiquetas mostra todas juntas; use
-                                um destes pra restringir a só uma categoria).
+                                <code>imagetico:</code> <code>outros:</code> — categorias de
+                                Etiqueta (a coluna Etiquetas mostra todas juntas; use um destes pra
+                                restringir a só uma categoria).
                             </li>
                             <li>
                                 <code>livro:</code> <code>parte:</code> <code>secao:</code> —
@@ -2003,10 +2028,10 @@
                     <h2 class="text-xl font-semibold">Conexões</h2>
                 </div>
                 <p class="text-xs text-gray-400 dark:text-slate-500 mb-6">
-                    Visão computada sobre Elos e Ecos (item 10 do plano de schema) — não é
-                    dona de nenhum dado, só uma lente sobre o que já está cadastrado no campo
-                    "Elos"/"Ecos" de cada poema. Pra editar um vínculo, clique no título do
-                    poema pra abrir o modal normalmente.
+                    Visão computada sobre Elos e Ecos (item 10 do plano de schema) — não é dona de
+                    nenhum dado, só uma lente sobre o que já está cadastrado no campo "Elos"/"Ecos"
+                    de cada poema. Pra editar um vínculo, clique no título do poema pra abrir o
+                    modal normalmente.
                 </p>
 
                 <div class="mb-8">

@@ -23,6 +23,7 @@ import {
     paresGrupoPessoa,
     agruparParesGrupoPessoa,
     paresAutoria,
+    corpoParaLinhasRicas,
 } from './utils.js';
 import { db } from './db.js';
 
@@ -57,6 +58,111 @@ function corpoParaMarkdown(texto) {
         .split('\n')
         .map((linha) => linha.replace(/\s+$/, '')) // evita hard-break duplicado sobre espaço já existente
         .join('  \n');
+}
+
+// ─── Legenda textual de cor/fundo/fonte ─────────────────────────────────
+// corpoParaMarkdown (acima) descarta os <div style="..."> inteiros — sem
+// isso, quem lê o .md (humano ou IA) perde a informação de que um trecho
+// tinha uma cor/fundo/fonte aplicada, mesmo quando essa escolha carrega
+// sentido (ex.: cor mudando pra marcar uma transição no poema). Em vez de
+// tentar reproduzir a formatação em Markdown puro (não dá — mesmo
+// motivo de corpoParaMarkdown), descreve em prosa qual trecho tinha qual
+// estilo. Reaproveita corpoParaLinhasRicas (utils.js, compartilhado com
+// exportar-pdf.js/exportar-docx.js) pra já ter a cascata de tags
+// aninhadas resolvida por run, em vez de reimplementar o parser aqui.
+function corRgbParaHex(rgb) {
+    const h = (n) => n.toString(16).padStart(2, '0');
+    return `#${h(rgb.r)}${h(rgb.g)}${h(rgb.b)}`.toUpperCase();
+}
+
+// negrito/italico/sublinhado/tamanho/alinhamento sobrevivem em outro
+// lugar (negrito/itálico como Markdown de verdade; sublinhado como <u>
+// inline, ver corpoParaMarkdown) ou não fazem parte do que essa legenda
+// descreve (tamanho/alinhamento não foram pedidos) — só cor/fundo/fonte
+// entram na comparação de agrupamento.
+function mesmoEstiloDeLegenda(a, b) {
+    return (
+        JSON.stringify(a.cor) === JSON.stringify(b.cor) &&
+        JSON.stringify(a.fundo) === JSON.stringify(b.fundo) &&
+        a.fonte === b.fonte
+    );
+}
+
+export function legendaCorParaMarkdown(textoOriginal) {
+    if (!textoOriginal) return '';
+    const linhas = corpoParaLinhasRicas(textoOriginal);
+
+    // Agrupa runs consecutivos (inclusive atravessando quebras de linha,
+    // já que o mesmo <div> de estilo costuma envolver vários versos) com
+    // cor/fundo/fonte idênticos num único trecho — percorrendo runs e
+    // quebras de linha em sequência única, pra um run sem estilo no meio
+    // de uma linha fechar só o grupo que veio antes dele, não os que vêm
+    // depois na mesma linha. Pedaços de linhas diferentes dentro do
+    // mesmo grupo entram separados por " / " no texto entre aspas.
+    let grupoAtual = null;
+    let pendenteQuebraDeLinha = false;
+    const grupos = [];
+    linhas.forEach((runsDaLinha, indice) => {
+        if (indice > 0 && grupoAtual) pendenteQuebraDeLinha = true;
+        runsDaLinha.forEach((run) => {
+            const semEstiloRelevante = !run.cor && !run.fundo && !run.fonte;
+            if (semEstiloRelevante) {
+                grupoAtual = null;
+                return;
+            }
+            if (grupoAtual && mesmoEstiloDeLegenda(grupoAtual, run)) {
+                grupoAtual.texto += (pendenteQuebraDeLinha ? ' / ' : '') + run.texto;
+            } else {
+                grupoAtual = { texto: run.texto, cor: run.cor, fundo: run.fundo, fonte: run.fonte };
+                grupos.push(grupoAtual);
+            }
+            pendenteQuebraDeLinha = false;
+        });
+    });
+
+    if (!grupos.length) return '';
+
+    // Segunda passada: junta grupos consecutivos que compartilham o mesmo
+    // fundo num único "bloco" — o fundo normalmente vem de um <div> mais
+    // externo cobrindo vários trechos de cor diferente (ver conversa sobre
+    // o exemplo do balão), então repetir "fundo X" em toda linha do bloco
+    // é ruído. Quando o bloco tem só um grupo, mantém o formato antigo
+    // (fundo na mesma linha da cor) — só blocos com 2+ grupos ganham a
+    // estrutura aninhada abaixo.
+    const blocos = [];
+    grupos.forEach((g) => {
+        const ultimoBloco = blocos[blocos.length - 1];
+        if (ultimoBloco && JSON.stringify(ultimoBloco.fundo) === JSON.stringify(g.fundo)) {
+            ultimoBloco.itens.push(g);
+        } else {
+            blocos.push({ fundo: g.fundo, itens: [g] });
+        }
+    });
+
+    let md =
+        '_Formatação de cor/fundo/fonte do texto original, perdida na conversão para Markdown:_\n\n';
+    blocos.forEach((bloco) => {
+        if (bloco.fundo && bloco.itens.length > 1) {
+            const trechoCompleto = bloco.itens.map((g) => g.texto.trim()).join(' / ');
+            md += `- fundo ${corRgbParaHex(bloco.fundo)} no trecho "${trechoCompleto}":\n`;
+            bloco.itens.forEach((g) => {
+                const partes = [];
+                if (g.cor) partes.push(`cor do texto ${corRgbParaHex(g.cor)}`);
+                if (g.fonte) partes.push(`fonte "${g.fonte}"`);
+                if (partes.length) md += `  - "${g.texto.trim()}" — ${partes.join(', ')}\n`;
+            });
+        } else {
+            bloco.itens.forEach((g) => {
+                const partes = [];
+                if (g.cor) partes.push(`cor do texto ${corRgbParaHex(g.cor)}`);
+                if (g.fundo) partes.push(`fundo ${corRgbParaHex(g.fundo)}`);
+                if (g.fonte) partes.push(`fonte "${g.fonte}"`);
+                md += `- "${g.texto.trim()}" — ${partes.join(', ')}\n`;
+            });
+        }
+    });
+    md += '\n';
+    return md;
 }
 
 // ─── Campos auxiliares ─────────────────────────────────────────────────
@@ -271,6 +377,7 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
 
     md += '\n';
     md += blocoTexto('Texto', corpoParaMarkdown(item.texto));
+    md += legendaCorParaMarkdown(item.texto);
 
     return md;
 }

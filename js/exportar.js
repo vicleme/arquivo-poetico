@@ -434,9 +434,12 @@ export function exportarSelecaoPdf(tipo, ids) {
     }
 }
 
-// Mesmo padrão de exportarSelecaoPdf acima — html-docx-js também é
-// carregado via CDN, então passa pelo mesmo try/catch.
-export function exportarSelecaoDocx(tipo, ids) {
+// Mesmo padrão de exportarSelecaoPdf acima — a lib docx também é
+// carregada via CDN, então passa pelo mesmo try/catch. baixarDocx agora
+// é assíncrona (Packer.toBlob, da lib docx, retorna Promise — ver
+// exportar-docx.js), daí o await: sem ele, um erro de geração vira uma
+// Promise rejeitada não tratada em vez de cair no catch abaixo.
+export async function exportarSelecaoDocx(tipo, ids) {
     const itens = itensDaSelecao(tipo, ids);
     if (itens.length === 0) {
         mostrarAviso('Nenhum item selecionado.');
@@ -444,7 +447,7 @@ export function exportarSelecaoDocx(tipo, ids) {
     }
 
     try {
-        baixarDocx(itens, `selecao_${tipo}s_${Date.now()}.docx`);
+        await baixarDocx(itens, `selecao_${tipo}s_${Date.now()}.docx`);
     } catch (err) {
         mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
     }
@@ -470,7 +473,7 @@ function nomeArquivoSeguro(texto) {
 // de Visualização, do botão que a pessoa clicou (os três ficam sempre
 // visíveis ali, ver visualizar.js). Reaproveita itensDaSelecao (mesmo
 // registro/contexto resolvido das demais exportações).
-export function exportarItem(tipo, id, formato) {
+export async function exportarItem(tipo, id, formato) {
     const itens = itensDaSelecao(tipo, [id]);
     if (itens.length === 0) {
         mostrarAviso('Item não encontrado.');
@@ -509,7 +512,7 @@ export function exportarItem(tipo, id, formato) {
 
     if (formato === 'docx') {
         try {
-            baixarDocx(itens, `${nomeBase}.docx`);
+            await baixarDocx(itens, `${nomeBase}.docx`);
         } catch (err) {
             mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
         }
@@ -696,9 +699,9 @@ export function executarExportacaoSeletivaPdf() {
 }
 
 // Mesmo padrão de executarExportacaoSeletivaPdf acima, em .docx — mesmo
-// try/catch pela mesma corrida com o carregamento do html-docx-js via CDN
-// (ver exportarSelecaoDocx).
-export function executarExportacaoSeletivaDocx() {
+// try/catch pela mesma corrida com o carregamento da lib docx via CDN
+// (ver exportarSelecaoDocx, e o comentário lá sobre o await).
+export async function executarExportacaoSeletivaDocx() {
     const opcoes = lerFiltrosDoFormulario();
     const { itens } = gerarExportacaoSeletiva(opcoes);
 
@@ -709,7 +712,7 @@ export function executarExportacaoSeletivaDocx() {
     }
 
     try {
-        baixarDocx(itens, `exportacao_seletiva_${Date.now()}.docx`);
+        await baixarDocx(itens, `exportacao_seletiva_${Date.now()}.docx`);
     } catch (err) {
         mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
         return;
@@ -750,9 +753,9 @@ export function exportarTudoFlatPdf() {
 
 // Coletâneas ficam de fora do .docx por ora — mesma decisão de
 // exportarTudoFlatMarkdown/exportarTudoFlatPdf (ver comentário lá acima).
-// Mesmo try/catch, pela mesma corrida com o carregamento do html-docx-js
-// via CDN (ver exportarSelecaoDocx).
-export function exportarTudoFlatDocx() {
+// Mesmo try/catch, pela mesma corrida com o carregamento da lib docx via
+// CDN (ver exportarSelecaoDocx, e o comentário lá sobre o await).
+export async function exportarTudoFlatDocx() {
     const { itens } = gerarTudoFlat();
     if (itens.length === 0) {
         mostrarAviso('Acervo vazio — nada pra exportar.');
@@ -760,7 +763,7 @@ export function exportarTudoFlatDocx() {
     }
 
     try {
-        baixarDocx(itens, `arquivo_poetico_flat_${Date.now()}.docx`);
+        await baixarDocx(itens, `arquivo_poetico_flat_${Date.now()}.docx`);
     } catch (err) {
         mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
         return;

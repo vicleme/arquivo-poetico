@@ -5,7 +5,7 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { db } from '../js/db.js';
-import { calcularBuracos, agruparElos, montarGrafosReferencias } from '../js/render-conexoes.js';
+import { calcularBuracos, agruparElos, montarGrafosEcos } from '../js/render-conexoes.js';
 
 function resetarDb() {
     db.livros = [];
@@ -139,14 +139,14 @@ describe('agruparElos', () => {
     });
 });
 
-// ─── montarGrafosReferencias ─────────────────────────────────────
+// ─── montarGrafosEcos ─────────────────────────────────────
 
-describe('montarGrafosReferencias', () => {
+describe('montarGrafosEcos', () => {
     beforeEach(resetarDb);
 
-    it('sem referências, sem grafos', () => {
-        db.poemas = [{ id: 1, titulo: 'A', conceitos: { referencias: [] } }];
-        assert.deepEqual(montarGrafosReferencias(), []);
+    it('sem ecos, sem grafos', () => {
+        db.poemas = [{ id: 1, titulo: 'A', conceitos: { ecos: [] } }];
+        assert.deepEqual(montarGrafosEcos(), []);
     });
 
     it('monta uma cadeia linear (sem ramificação nem convergência) mais novo → mais antigo', () => {
@@ -155,21 +155,21 @@ describe('montarGrafosReferencias', () => {
             {
                 id: 1,
                 titulo: 'A',
-                conceitos: { referencias: [{ id: 2, tipo: 'Aceno a', texto: '' }] },
+                conceitos: { ecos: [{ id: 2, tipo: 'Aceno a', texto: '' }] },
             },
             {
                 id: 2,
                 titulo: 'B',
-                conceitos: { referencias: [{ id: 3, tipo: 'Personagem em comum', texto: '' }] },
+                conceitos: { ecos: [{ id: 3, tipo: 'Personagem em comum', texto: '' }] },
             },
             {
                 id: 3,
                 titulo: 'C',
-                conceitos: { referencias: [{ id: 4, tipo: 'Outro', texto: '' }] },
+                conceitos: { ecos: [{ id: 4, tipo: 'Outro', texto: '' }] },
             },
-            { id: 4, titulo: 'D', conceitos: { referencias: [] } },
+            { id: 4, titulo: 'D', conceitos: { ecos: [] } },
         ];
-        const grafos = montarGrafosReferencias();
+        const grafos = montarGrafosEcos();
         assert.equal(grafos.length, 1);
         assert.equal(grafos[0].linear, true);
         assert.deepEqual(grafos[0].camadas, [[1], [2], [3], [4]]);
@@ -190,7 +190,7 @@ describe('montarGrafosReferencias', () => {
                 id: 1,
                 titulo: 'Sob o sol comum das horas',
                 conceitos: {
-                    referencias: [
+                    ecos: [
                         { id: 2, tipo: 'Aceno a', texto: '' },
                         { id: 4, tipo: 'Aceno a', texto: '' },
                     ],
@@ -200,7 +200,7 @@ describe('montarGrafosReferencias', () => {
                 id: 2,
                 titulo: '[Insone]',
                 conceitos: {
-                    referencias: [
+                    ecos: [
                         { id: 3, tipo: 'Imagem central compartilhada', texto: '' },
                         { id: 4, tipo: 'Imagem central compartilhada', texto: '' },
                     ],
@@ -209,11 +209,11 @@ describe('montarGrafosReferencias', () => {
             {
                 id: 3,
                 titulo: 'coffe breaks',
-                conceitos: { referencias: [{ id: 4, tipo: 'Outro', texto: '' }] },
+                conceitos: { ecos: [{ id: 4, tipo: 'Outro', texto: '' }] },
             },
-            { id: 4, titulo: 'Garoto Café', conceitos: { referencias: [] } },
+            { id: 4, titulo: 'Garoto Café', conceitos: { ecos: [] } },
         ];
-        const grafos = montarGrafosReferencias();
+        const grafos = montarGrafosEcos();
         assert.equal(grafos.length, 1);
         const grafo = grafos[0];
 
@@ -240,12 +240,12 @@ describe('montarGrafosReferencias', () => {
             {
                 id: 1,
                 titulo: 'A',
-                conceitos: { referencias: [{ id: 2, tipo: 'Outro', texto: '' }] },
+                conceitos: { ecos: [{ id: 2, tipo: 'Outro', texto: '' }] },
             },
-            { id: 2, titulo: 'B', conceitos: { referencias: [] } },
-            { id: 3, titulo: 'C (isolado)', conceitos: { referencias: [] } },
+            { id: 2, titulo: 'B', conceitos: { ecos: [] } },
+            { id: 3, titulo: 'C (isolado)', conceitos: { ecos: [] } },
         ];
-        const grafos = montarGrafosReferencias();
+        const grafos = montarGrafosEcos();
         const todosOsIds = new Set(grafos.flatMap((g) => g.nos.map((n) => n.id)));
         assert.equal(todosOsIds.has(3), false);
     });
@@ -255,15 +255,15 @@ describe('montarGrafosReferencias', () => {
             {
                 id: 1,
                 titulo: 'A',
-                conceitos: { referencias: [{ id: 2, tipo: 'Outro', texto: '' }] },
+                conceitos: { ecos: [{ id: 2, tipo: 'Outro', texto: '' }] },
             },
             {
                 id: 2,
                 titulo: 'B',
-                conceitos: { referencias: [{ id: 1, tipo: 'Outro', texto: '' }] },
+                conceitos: { ecos: [{ id: 1, tipo: 'Outro', texto: '' }] },
             },
         ];
-        const grafos = montarGrafosReferencias();
+        const grafos = montarGrafosEcos();
         assert.equal(grafos.length, 1);
         assert.deepEqual(new Set(grafos[0].nos.map((n) => n.id)), new Set([1, 2]));
         assert.equal(grafos[0].arestas.length, 2);

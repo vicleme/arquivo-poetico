@@ -1,0 +1,3619 @@
+﻿diff --git a/index.html b/index.html
+index a3203b0..f38f057 100644
+--- a/index.html
++++ b/index.html
+@@ -22,12 +22,17 @@
+              hora de gerar o PDF, mas em compensação é um clique só (sem a
+              etapa extra de "Salvar como PDF" da impressão do navegador). -->
+         <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+-        <!-- html-docx-js: só usada pelo botão "Baixar em .docx" da coluna
+-             Ações de Poemas/Prosas e do modal de Visualização (ver
+-             js/exportar-docx.js). Mesmo padrão do jsPDF acima: via CDN,
+-             carregada só quando o botão é clicado pela primeira vez. Registra
+-             a si mesma como window.htmlDocx (UMD, sem module loader aqui). -->
+-        <script src="https://unpkg.com/html-docx-js@0.3.1/dist/html-docx.js"></script>
++        <!-- docx (dolanmiu/docx): só usada pelo botão "Baixar em .docx" da
++             coluna Ações de Poemas/Prosas e do modal de Visualização (ver
++             js/exportar-docx.js). Mesmo padrão do jsPDF acima: via CDN.
++             Registra a si mesma como window.docx (build UMD, sem module
++             loader aqui — o pacote é "type: module" no npm, mas o build
++             .umd.cjs empacota um global de verdade pra uso direto via
++             <script>). Gera OOXML de verdade (runs/parágrafos com w:shd
++             etc.) em vez de terceirizar a conversão pro motor de
++             importação HTML do Word, que era o esquema do antigo
++             html-docx-js (ver comentário no topo de exportar-docx.js). -->
++        <script src="https://unpkg.com/docx@9.7.1/dist/index.umd.cjs"></script>
+         <script>
+             // Sem isso o Tailwind usa a variante "media" (segue só o SO) e ignora
+             // a classe .dark que a gente aplica manualmente no <html> — o toggle
+@@ -642,6 +647,16 @@
+                             <option value="">-- Qualquer papel --</option>
+                         </select>
+                     </div>
++                    <div class="flex items-center flex-1 min-w-[220px] gap-1">
++                        <input
++                            type="search"
++                            id="busca-numero-poemas"
++                            oninput="setFiltroNumeroPoemas(this.value)"
++                            placeholder="Nº: 5,9,30 (pode combinar com etiqueta:, titulo:...)"
++                            title="Busca pela coluna Contagem de Poemas (nº na ordem de estrutura, já considerando os filtros acima). Números separados por vírgula; pode combinar com prefixos como etiqueta: pra recortar dentro da lista de números — mas isso nunca desloca a numeração, só filtra em cima dela."
++                            class="flex-1 mb-0"
++                        />
++                    </div>
+                 </div>
+ 
+                 <div
+@@ -715,9 +730,9 @@
+                             <li>
+                                 <code>tradicao:</code> <code>estilo:</code> <code>tema:</code>
+                                 <code>relacao:</code> <code>sensibilidade:</code> <code>tom:</code>
+-                                <code>imagetico:</code> <code>outros:</code> —
+-                                categorias de Etiqueta (a coluna Etiquetas mostra todas juntas; use
+-                                um destes pra restringir a só uma categoria).
++                                <code>imagetico:</code> <code>outros:</code> — categorias de
++                                Etiqueta (a coluna Etiquetas mostra todas juntas; use um destes pra
++                                restringir a só uma categoria).
+                             </li>
+                             <li>
+                                 <code>livro:</code> <code>parte:</code> <code>secao:</code> —
+@@ -1350,6 +1365,16 @@
+                             <option value="">-- Qualquer papel --</option>
+                         </select>
+                     </div>
++                    <div class="flex items-center flex-1 min-w-[220px] gap-1">
++                        <input
++                            type="search"
++                            id="busca-numero-prosas"
++                            oninput="setFiltroNumeroProsas(this.value)"
++                            placeholder="Nº: 5,9,30 (pode combinar com etiqueta:, titulo:...)"
++                            title="Busca pela coluna Contagem de Prosas (nº na ordem de estrutura, já considerando os filtros acima). Números separados por vírgula; pode combinar com prefixos como etiqueta: pra recortar dentro da lista de números — mas isso nunca desloca a numeração, só filtra em cima dela."
++                            class="flex-1 mb-0"
++                        />
++                    </div>
+                 </div>
+ 
+                 <div
+@@ -1423,9 +1448,9 @@
+                             <li>
+                                 <code>tradicao:</code> <code>estilo:</code> <code>tema:</code>
+                                 <code>relacao:</code> <code>sensibilidade:</code> <code>tom:</code>
+-                                <code>imagetico:</code> <code>outros:</code> —
+-                                categorias de Etiqueta (a coluna Etiquetas mostra todas juntas; use
+-                                um destes pra restringir a só uma categoria).
++                                <code>imagetico:</code> <code>outros:</code> — categorias de
++                                Etiqueta (a coluna Etiquetas mostra todas juntas; use um destes pra
++                                restringir a só uma categoria).
+                             </li>
+                             <li>
+                                 <code>livro:</code> <code>parte:</code> <code>secao:</code> —
+@@ -2003,10 +2028,10 @@
+                     <h2 class="text-xl font-semibold">Conexões</h2>
+                 </div>
+                 <p class="text-xs text-gray-400 dark:text-slate-500 mb-6">
+-                    Visão computada sobre Elos e Ecos (item 10 do plano de schema) — não é
+-                    dona de nenhum dado, só uma lente sobre o que já está cadastrado no campo
+-                    "Elos"/"Ecos" de cada poema. Pra editar um vínculo, clique no título do
+-                    poema pra abrir o modal normalmente.
++                    Visão computada sobre Elos e Ecos (item 10 do plano de schema) — não é dona de
++                    nenhum dado, só uma lente sobre o que já está cadastrado no campo "Elos"/"Ecos"
++                    de cada poema. Pra editar um vínculo, clique no título do poema pra abrir o
++                    modal normalmente.
+                 </p>
+ 
+                 <div class="mb-8">
+diff --git a/js/exportar-docx.js b/js/exportar-docx.js
+index 8050ed3..1693f5c 100644
+--- a/js/exportar-docx.js
++++ b/js/exportar-docx.js
+@@ -6,165 +6,433 @@
+ // (exportar-md.js) pra tudo em volta do corpo do Texto — meta, Notas,
+ // Anexos etc. — assim os três formatos nunca divergem em QUAIS campos
+ // entram nem em que ordem. O corpo do Texto em si reaproveita
+-// corpoParaLinhasRicas (exportar-pdf.js) — as mesmas runs
+-// (texto/negrito/itálico/sublinhado/cor/tamanho/alinhamento) que o PDF
+-// desenha, só que aqui viram HTML em vez de comandos de desenho —
+-// então negrito/itálico/sublinhado/cor sobrevivem no .docx igual já
+-// sobrevivem no PDF (o .md "achata" tudo isso, ver corpoParaMarkdown).
++// corpoParaLinhasRicas (utils.js) — as mesmas runs
++// (texto/negrito/itálico/sublinhado/cor/fundo/fonte/tamanho/alinhamento)
++// que o PDF usa pra desenhar, só que aqui viram TextRun de verdade da
++// lib docx em vez de comandos de desenho — negrito/itálico/sublinhado/
++// cor/fundo/fonte sobrevivem no .docx igual já sobrevivem no PDF (fundo
++// e fonte não são desenhados no PDF, ver comentário em
++// analisarEstiloDeDiv/utils.js pra saber por quê) — o .md "achata" tudo
++// isso, ver corpoParaMarkdown em exportar-md.js, mas descreve fundo/
++// cor/fonte numa legenda textual à parte (legendaCorParaMarkdown).
+ //
+-// Geração de verdade (HTML → .docx) fica por conta do html-docx-js,
+-// vendorizado via CDN (ver <script> em index.html, mesmo padrão do
+-// jsPDF) — carrega só quando o botão "Baixar em .docx" é usado pela
+-// primeira vez.
++// Geração de verdade fica por conta da lib docx (npm: docx),
++// vendorizada via CDN como window.docx (build UMD, mesmo padrão do
++// jsPDF — ver <script> em index.html). Antes disso a exportação usava
++// html-docx-js, que não faz conversão HTML→OOXML nenhuma: empacota o
++// HTML cru como .mht e delega a conversão de verdade pro motor de
++// importação HTML do próprio Word (uma caixa-preta, sem controle fino
++// sobre "isso é sombreamento de RUN" vs. "isso é sombreamento de
++// PARÁGRAFO" — na prática, cada verso virando seu próprio <p style=
++// "background-color:...">, o Word promovia aquele fundo a algo que se
++// comporta como sombreamento de parágrafo/linha inteira, em vez de
++// ficar colado ao texto). A lib docx monta o OOXML run a run: por
++// padrão, cada trecho com fundo (run.fundo, abaixo) vira um TextRun
++// com `shading` explícito — um w:shd dentro do w:rPr do PRÓPRIO RUN,
++// nunca no w:pPr do parágrafo — então a caixa de fundo cola
++// exatamente no texto. A EXCEÇÃO é quando o fundo cobre a linha
++// INTEIRA (todo run com texto na linha tem o mesmo fundo, ver
++// linhaTemFundoUniforme em utils.js): nesse caso o sombreamento sobe
++// pro w:pPr do Paragraph — pedido explícito de que o fundo de uma
++// linha toda ocupe a largura da página inteira, não só o texto. Uma
++// linha com fundo só numa palavra/trecho (ou com fundos diferentes
++// lado a lado) continua no caminho de RUN de sempre.
+ // ============================================================
+ 
+ import { itemParaMarkdownPartes } from './exportar-md.js';
+-import { corpoParaLinhasRicas } from './exportar-pdf.js';
++import { corpoParaLinhasRicas, linhaTemFundoUniforme, blocosDeFundoContinuos } from './utils.js';
+ 
+-function obterConversorDocx() {
+-    return window.htmlDocx || null;
++function obterDocx() {
++    return window.docx || null;
+ }
+ 
+-function escaparHtml(texto) {
+-    return String(texto ?? '')
+-        .replace(/&/g, '&amp;')
+-        .replace(/</g, '&lt;')
+-        .replace(/>/g, '&gt;');
++// ─── Espaçamento padrão do documento ────────────────────────────────────
++// Sem isso, a lib docx não define w:docDefaults nem spacing nenhum nos
++// estilos de heading/lista embutidos (Heading1/2/3, ListParagraph) — ao
++// abrir no Word, tudo cai no fallback "sem espaço antes/depois, linha
++// single" e o documento inteiro fica "grudado": título colado no
++// parágrafo seguinte, cada item colado no próximo, cada linha de meta
++// colada na de cima, Notas colada no fim do bloco de Texto etc. — bem
++// diferente do respiro que a tela (CSS) e o PDF (que já soma espaço
++// antes/depois de título, ver preEspacoTitulo/"+= 8"/"+= 4" em
++// renderizarLinhasSimples, exportar-pdf.js) sempre tiveram.
++//
++// Valores abaixo espelham o MESMO ritmo do PDF (que usa pt: título
++// maior = mais respiro antes, "depois" sempre pequeno pra colar no
++// conteúdo do próprio título) — só convertidos pra twips (1pt = 20
++// twips, a unidade de spacing/margin da lib docx):
++//   H1 (preEspacoTitulo 16pt / +4pt no PDF)  → before 320 / after 80
++//   H2 (preEspacoTitulo 12pt / +4pt no PDF)  → before 240 / after 80
++//   H3 (preEspacoTitulo  8pt / +4pt no PDF)  → before 160 / after 80
++// O padrão geral (Normal, usado por parágrafos comuns — Notas, citação,
++// linhas de texto livre) ganha um "after" pequeno (120 twips = 6pt) pra
++// blocos de texto corrido não colarem um no outro, com linha um pouco
++// mais folgada (line 264 ≈ 1,1) — mas deliberadamente MENOR que os
++// versos do corpo do Texto (line 360 = 1,5, ver linhaParaDocxParagrafo),
++// que têm sua própria proporção pensada pra poesia. ListParagraph (as
++// linhas "- **Rótulo:** valor" de meta) fica com "after" bem menor (40
++// twips) — no PDF, cada linha de meta é só uma quebra de linha comum,
++// sem respiro extra entre uma e outra, então a lista deve continuar
++// visualmente compacta mesmo com o Normal geral mais espaçado.
++const ESTILOS_PADRAO_DOCUMENTO = {
++    default: {
++        document: {
++            paragraph: { spacing: { after: 120, line: 264, lineRule: 'auto' } },
++        },
++        heading1: { paragraph: { spacing: { before: 320, after: 80 } } },
++        heading2: { paragraph: { spacing: { before: 240, after: 80 } } },
++        heading3: { paragraph: { spacing: { before: 160, after: 80 } } },
++        listParagraph: { paragraph: { spacing: { after: 40 } } },
++    },
++};
++
++function corRgbParaHex(rgb) {
++    const h = (n) => n.toString(16).padStart(2, '0');
++    return `${h(rgb.r)}${h(rgb.g)}${h(rgb.b)}`.toUpperCase();
+ }
+ 
+-// ─── Markdown "simples" → HTML ──────────────────────────────────────────
+-// Cobre só o subconjunto de Markdown que itemParaMarkdownPartes de fato
+-// produz (ver exportar-md.js): #/##/### (título geral/item/seção),
+-// listas "- ", citação "> ", **negrito**, *itálico* (asterisco único,
+-// usado nas notas/anexos — diferente do _itálico_ do corpo do Texto,
+-// que tem tratamento próprio abaixo), links [texto](url) e "---" como
+-// separador. Não é um parser de Markdown genérico — não precisa ser,
+-// já que só recebe Markdown gerado por itemParaMarkdownPartes.
+-function inlineParaHtml(texto) {
+-    let t = escaparHtml(texto);
+-    t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+-    t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+-    t = t.replace(/\*(.+?)\*/g, '<em>$1</em>');
+-    return t;
++// ─── Markdown inline "simples" → runs ────────────────────────────────────
++// Cobre só o subconjunto que itemParaMarkdownPartes de fato produz (ver
++// exportar-md.js) dentro de uma linha: links [texto](url), **negrito** e
++// *itálico* (asterisco único — usado nos rótulos de tipo "*(Poema)*" e
++// nas notas/anexos, diferente do _itálico_ do corpo do Texto, que tem
++// tratamento próprio em corpoParaDocxParagrafos). Mesma ordem de
++// precedência que o antigo inlineParaHtml (link → negrito → itálico):
++// em vez de substituições de string em cadeia (que geravam HTML), cada
++// passo fatia um array de "segmentos" — string crua ainda não
++// analisada, ou token já resolvido — e só aplica a próxima regex sobre
++// os pedaços que ainda são string, preservando o mesmo efeito de
++// precedência sequencial sem reprocessar o que já virou token.
++function aplicarRegexEmSegmentos(segmentos, regex, criarToken) {
++    const resultado = [];
++    segmentos.forEach((seg) => {
++        if (typeof seg !== 'string') {
++            resultado.push(seg);
++            return;
++        }
++        let ultimoIndex = 0;
++        let match;
++        regex.lastIndex = 0;
++        while ((match = regex.exec(seg)) !== null) {
++            if (match.index > ultimoIndex) resultado.push(seg.slice(ultimoIndex, match.index));
++            resultado.push(criarToken(match));
++            ultimoIndex = regex.lastIndex;
++        }
++        if (ultimoIndex < seg.length) resultado.push(seg.slice(ultimoIndex));
++    });
++    return resultado;
+ }
+ 
+-function markdownParaHtml(md) {
+-    let html = '';
+-    let emLista = false;
+-    let emCitacao = false;
++function inlineParaSegmentos(texto) {
++    let segmentos = [texto];
++    segmentos = aplicarRegexEmSegmentos(segmentos, /\[([^\]]+)\]\(([^)]+)\)/g, (m) => ({
++        tipo: 'link',
++        texto: m[1],
++        url: m[2],
++    }));
++    segmentos = aplicarRegexEmSegmentos(segmentos, /\*\*(.+?)\*\*/g, (m) => ({
++        tipo: 'texto',
++        texto: m[1],
++        negrito: true,
++    }));
++    segmentos = aplicarRegexEmSegmentos(segmentos, /\*(.+?)\*/g, (m) => ({
++        tipo: 'texto',
++        texto: m[1],
++        italico: true,
++    }));
++    return segmentos
++        .map((seg) => (typeof seg === 'string' ? { tipo: 'texto', texto: seg } : seg))
++        .filter((seg) => seg.texto !== '');
++}
+ 
+-    function fecharLista() {
+-        if (emLista) {
+-            html += '</ul>';
+-            emLista = false;
+-        }
+-    }
+-    function fecharCitacao() {
+-        if (emCitacao) {
+-            html += '</blockquote>';
+-            emCitacao = false;
++function segmentosParaRuns(docx, segmentos) {
++    const { TextRun, ExternalHyperlink } = docx;
++    return segmentos.map((seg) => {
++        if (seg.tipo === 'link') {
++            return new ExternalHyperlink({
++                link: seg.url,
++                children: [new TextRun({ text: seg.texto, style: 'Hyperlink' })],
++            });
+         }
+-    }
++        return new TextRun({
++            text: seg.texto,
++            bold: seg.negrito || undefined,
++            italics: seg.italico || undefined,
++        });
++    });
++}
++
++// ─── Markdown "simples" → parágrafos ────────────────────────────────────
++// Mesmo subconjunto de markdownParaHtml (versão anterior, baseada em
++// HTML): #/##/### (título geral/item/seção), listas "- " (sub-itens
++// "  - " de itemParaMarkdownDepoisDoTexto caem na mesma regra depois do
++// trim — mesma limitação/fidelidade da versão em HTML, sem nesting),
++// citação "> ", e "---" como separador. Não é um parser de Markdown
++// genérico — só recebe Markdown gerado por itemParaMarkdownPartes.
++function criarSeparador(docx) {
++    const { Paragraph, BorderStyle } = docx;
++    return new Paragraph({
++        border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: 'CCCCCC' } },
++        spacing: { before: 120, after: 200 },
++    });
++}
++
++function markdownParaParagrafos(docx, md) {
++    const { Paragraph, HeadingLevel, BorderStyle } = docx;
++    const NIVEL_TITULO = {
++        1: HeadingLevel.HEADING_1,
++        2: HeadingLevel.HEADING_2,
++        3: HeadingLevel.HEADING_3,
++    };
++    const paragrafos = [];
+ 
+     md.split('\n').forEach((linhaBruta) => {
+         const linha = linhaBruta.trim();
+-        if (!linha) {
+-            fecharLista();
+-            fecharCitacao();
+-            return;
+-        }
++        if (!linha) return;
++
+         if (linha === '---') {
+-            fecharLista();
+-            fecharCitacao();
+-            html += '<hr>';
++            paragrafos.push(criarSeparador(docx));
+             return;
+         }
+ 
+         const tituloMatch = linha.match(/^(#{1,3})\s+(.*)$/);
+         if (tituloMatch) {
+-            fecharLista();
+-            fecharCitacao();
+-            const nivel = tituloMatch[1].length; // # -> h1, ## -> h2, ### -> h3
+-            html += `<h${nivel}>${inlineParaHtml(tituloMatch[2])}</h${nivel}>`;
++            paragrafos.push(
++                new Paragraph({
++                    heading: NIVEL_TITULO[tituloMatch[1].length],
++                    children: segmentosParaRuns(docx, inlineParaSegmentos(tituloMatch[2])),
++                }),
++            );
+             return;
+         }
+ 
+         if (linha.startsWith('> ')) {
+-            fecharLista();
+-            if (!emCitacao) {
+-                html += '<blockquote>';
+-                emCitacao = true;
+-            }
+-            html += `<p>${inlineParaHtml(linha.slice(2))}</p>`;
++            paragrafos.push(
++                new Paragraph({
++                    indent: { left: 360 },
++                    border: { left: { style: BorderStyle.SINGLE, size: 12, color: '999999' } },
++                    children: segmentosParaRuns(docx, inlineParaSegmentos(linha.slice(2))),
++                }),
++            );
+             return;
+         }
+-        fecharCitacao();
+ 
+         const listaMatch = linha.match(/^- (.*)$/);
+         if (listaMatch) {
+-            if (!emLista) {
+-                html += '<ul>';
+-                emLista = true;
+-            }
+-            html += `<li>${inlineParaHtml(listaMatch[1])}</li>`;
++            paragrafos.push(
++                new Paragraph({
++                    bullet: { level: 0 },
++                    children: segmentosParaRuns(docx, inlineParaSegmentos(listaMatch[1])),
++                }),
++            );
+             return;
+         }
+-        fecharLista();
+ 
+-        html += `<p>${inlineParaHtml(linha)}</p>`;
++        paragrafos.push(
++            new Paragraph({ children: segmentosParaRuns(docx, inlineParaSegmentos(linha)) }),
++        );
+     });
+ 
+-    fecharLista();
+-    fecharCitacao();
+-    return html;
++    return paragrafos;
+ }
+ 
+ // ─── Corpo rico do Texto ────────────────────────────────────────────────
+-// corpoParaLinhasRicas (exportar-pdf.js) já resolve a cascata de
+-// **negrito**/_itálico_/<u>/<div style="...">  em runs com estilo
+-// definitivo — aqui só converte cada run num <span> com o estilo
+-// equivalente em CSS inline. Cada "linha" das runs vira seu próprio
+-// <p> (não reflui como parágrafo comum): poesia depende da quebra de
++// corpoParaLinhasRicas (utils.js) já resolve a cascata de
++// **negrito**/_itálico_/<u>/<div style="..."> em runs com estilo
++// definitivo — aqui cada run vira um TextRun com as propriedades
++// equivalentes. O fundo (run.fundo) normalmente vira `shading` DENTRO
++// do próprio TextRun (w:shd no w:rPr do run), nunca uma propriedade do
++// Paragraph — SALVO quando a linha inteira compartilha o mesmo fundo
++// (linhaTemFundoUniforme, ver comentário no topo do arquivo), caso em
++// que o shading sobe pro próprio Paragraph (w:shd no w:pPr), cobrindo
++// margem a margem. Cada "linha" das runs vira seu próprio Paragraph
++// (não reflui como parágrafo comum): poesia depende da quebra de
+ // verso a verso, igual o PDF preserva linha a linha.
+-function corpoParaHtml(textoOriginal) {
+-    const linhas = corpoParaLinhasRicas(textoOriginal || '');
+-    let html = '';
++//
++// Extraído de corpoParaDocxParagrafos pra poder ser chamado tanto no
++// caminho normal quanto de dentro de uma caixa contínua (ver
++// linhaParaDocxParagrafo abaixo) — `suprimirFundo` evita repetir, no
++// w:pPr do próprio verso, um fundo que a TABELA que o envolve já
++// desenha atrás dele (ver criarTabelaComCaixa).
++function linhaParaDocxParagrafo(docx, runsDaLinha, { suprimirFundo = false } = {}) {
++    const { Paragraph, TextRun, ShadingType, AlignmentType } = docx;
++    const MAPA_ALINHAMENTO = {
++        left: AlignmentType.LEFT,
++        right: AlignmentType.RIGHT,
++        center: AlignmentType.CENTER,
++    };
+ 
+-    linhas.forEach((runsDaLinha) => {
+-        if (!runsDaLinha.length) {
+-            html += '<p>&nbsp;</p>';
+-            return;
++    if (!runsDaLinha.length) {
++        return new Paragraph({
++            spacing: { after: 0, line: 360, lineRule: 'auto' },
++            children: [],
++        });
++    }
++
++    const alinhamento = runsDaLinha.find((r) => r.alinhamento)?.alinhamento || 'left';
++    const fundoUniforme = !suprimirFundo && linhaTemFundoUniforme(runsDaLinha);
++    const children = runsDaLinha.map((run) => {
++        const opcoes = { text: run.texto };
++        if (run.negrito) opcoes.bold = true;
++        if (run.italico) opcoes.italics = true;
++        if (run.sublinhado) opcoes.underline = {};
++        if (run.cor) opcoes.color = corRgbParaHex(run.cor);
++        if (run.fundo && !fundoUniforme && !suprimirFundo) {
++            // Sombreamento de RUN — colado ao texto, nunca à linha inteira
++            // (ver comentário no topo do arquivo). Quando a linha inteira
++            // tem o mesmo fundo, ele vai pro Paragraph abaixo em vez de
++            // repetir aqui.
++            opcoes.shading = {
++                type: ShadingType.CLEAR,
++                color: 'auto',
++                fill: corRgbParaHex(run.fundo),
++            };
+         }
++        if (run.fonte) opcoes.font = run.fonte;
++        if (run.tamanho) opcoes.size = Math.round(run.tamanho * 2); // pt → meio-ponto
++        return new TextRun(opcoes);
++    });
++
++    const opcoesParagrafo = {
++        alignment: MAPA_ALINHAMENTO[alinhamento],
++        // "line: 360" (1,5 linha, no vocabulário do próprio Word) em
++        // vez do espaçamento single padrão — sem isso, cada verso
++        // (Paragraph) usa a métrica "auto" nativa da fonte, que sobra
++        // MUITO menos respiro do que o fator usado no PDF (tamanho *
++        // 1.4 de altura de linha, ver alturaLinha em exportar-pdf.js);
++        // o efeito era o fundo (shading) colando quase direto no
++        // texto, sem quase nenhuma margem interna acima/abaixo dele —
++        // reportado como "tudo muito espremidinho" depois da troca
++        // html-docx-js → docx. `after: 0` continua — isso é o que
++        // mantém versos consecutivos (e, dentro deles, fundo de linha
++        // inteira mesclado entre versos vizinhos, ver
++        // linhaTemFundoUniforme) sem um vão em branco a mais entre um
++        // verso e o próximo.
++        spacing: { after: 0, line: 360, lineRule: 'auto' },
++        children,
++    };
++    if (fundoUniforme) {
++        // Fundo de linha inteira: sombreamento de PARÁGRAFO, cobre
++        // margem a margem (largura da página), não só o texto.
++        opcoesParagrafo.shading = {
++            type: ShadingType.CLEAR,
++            color: 'auto',
++            fill: corRgbParaHex(fundoUniforme),
++        };
++    }
++    return new Paragraph(opcoesParagrafo);
++}
++
++// ─── Caixa contínua (padding/border-radius) ─────────────────────────────
++// Equivalente docx de renderizarBlocoComCaixa em exportar-pdf.js: um
++// bloco identificado por blocosDeFundoContinuos (utils.js) — várias
++// linhas seguidas com o mesmo fundo/padding/raio, quebras de estrofe em
++// branco incluídas — vira UMA caixa só, não N faixas coladas linha a
++// linha. Word não tem uma primitiva de "fundo de bloco com respiro"
++// fora de tabela, então a caixa é uma tabela 1×1 sem bordas: o
++// sombreamento (`shading`) vai na CÉLULA (cobre o bloco inteiro, largura
++// da página) e o padding vira `margins` da célula (px→twips: 1px =
++// 0,75pt = 15 twips — mesma conversão px→pt usada no PDF, só que daí
++// pra twips, que é a unidade de margem/espaçamento da lib docx). Os
++// parágrafos de cada linha do bloco entram como filhos da célula, com
++// `suprimirFundo: true` (a célula já pinta o fundo; repetir no w:pPr de
++// cada verso não muda o visual mas polui o XML).
++//
++// border-radius NÃO tem equivalente em tabela do Word (cantos de célula
++// são sempre retos) — bloco.raio é ignorado aqui de propósito; a caixa
++// sai com cantos quadrados no .docx mesmo quando arredondada na tela e
++// no PDF. Isso é avisado a Victor fora do código, não no documento
++// gerado.
++function criarTabelaComCaixa(docx, bloco, paragrafosDoBloco) {
++    const { Table, TableRow, TableCell, BorderStyle, WidthType, ShadingType } = docx;
++    const PX_PARA_TWIPS = 15;
++    const margemPadding = Math.round((bloco.padding || 0) * PX_PARA_TWIPS);
++    const semBorda = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+ 
+-        const alinhamento = runsDaLinha.find((r) => r.alinhamento)?.alinhamento || 'left';
+-        const conteudo = runsDaLinha
+-            .map((run) => {
+-                const estilos = [];
+-                if (run.negrito) estilos.push('font-weight:bold');
+-                if (run.italico) estilos.push('font-style:italic');
+-                if (run.sublinhado) estilos.push('text-decoration:underline');
+-                if (run.cor) estilos.push(`color:rgb(${run.cor.r},${run.cor.g},${run.cor.b})`);
+-                if (run.tamanho) estilos.push(`font-size:${run.tamanho}pt`);
+-                const styleAttr = estilos.length ? ` style="${estilos.join(';')}"` : '';
+-                return `<span${styleAttr}>${escaparHtml(run.texto)}</span>`;
+-            })
+-            .join('');
+-
+-        html += `<p style="margin:0;text-align:${alinhamento}">${conteudo}</p>`;
++    return new Table({
++        width: { size: 100, type: WidthType.PERCENTAGE },
++        borders: {
++            top: semBorda,
++            bottom: semBorda,
++            left: semBorda,
++            right: semBorda,
++            insideHorizontal: semBorda,
++            insideVertical: semBorda,
++        },
++        rows: [
++            new TableRow({
++                children: [
++                    new TableCell({
++                        width: { size: 100, type: WidthType.PERCENTAGE },
++                        shading: {
++                            type: ShadingType.CLEAR,
++                            color: 'auto',
++                            fill: corRgbParaHex(bloco.fundo),
++                        },
++                        margins: {
++                            top: margemPadding,
++                            bottom: margemPadding,
++                            left: margemPadding,
++                            right: margemPadding,
++                        },
++                        children: paragrafosDoBloco,
++                    }),
++                ],
++            }),
++        ],
+     });
++}
++
++// Percorre as linhas do corpo (`corpoParaLinhasRicas`) devolvendo um
++// array de Paragraph/Table pra `sections[0].children` do Document.
++// Linhas dentro de um bloco com padding/border-radius (ver
++// blocosDeFundoContinuos, utils.js) são desviadas pra
++// criarTabelaComCaixa; o resto segue o caminho de sempre, um Paragraph
++// por linha.
++function corpoParaDocxParagrafos(docx, textoOriginal) {
++    const linhas = corpoParaLinhasRicas(textoOriginal || '');
++    const blocosComCaixa = blocosDeFundoContinuos(linhas).filter((b) => b.padding || b.raio);
++    const blocoPorInicio = new Map(blocosComCaixa.map((b) => [b.inicio, b]));
+ 
+-    return html;
++    const resultado = [];
++    let indice = 0;
++    while (indice < linhas.length) {
++        const bloco = blocoPorInicio.get(indice);
++        if (bloco) {
++            const paragrafosDoBloco = [];
++            for (let i = bloco.inicio; i <= bloco.fim; i++) {
++                paragrafosDoBloco.push(
++                    linhaParaDocxParagrafo(docx, linhas[i], { suprimirFundo: true }),
++                );
++            }
++            resultado.push(criarTabelaComCaixa(docx, bloco, paragrafosDoBloco));
++            indice = bloco.fim + 1;
++            continue;
++        }
++        resultado.push(linhaParaDocxParagrafo(docx, linhas[indice]));
++        indice++;
++    }
++    return resultado;
+ }
+ 
+ // ─── Documento completo ─────────────────────────────────────────────────
+-// Mesma estrutura de gerarPdfExportacao (exportar-pdf.js): corta o
++// Mesma estrutura da versão anterior (gerarDocxHtmlExportacao): corta o
+ // Markdown de "antesDoTexto" bem no marcador "### Texto\n\n" e troca o
+-// que viria depois (o corpo achatado) pelo corpo rico em HTML.
+-export function gerarDocxHtmlExportacao(itens) {
++// que viria depois (o corpo achatado) pelo corpo rico em Paragraph/
++// TextRun de verdade.
++export function gerarDocxDocumento(itens) {
++    const docx = obterDocx();
++    if (!docx) {
++        throw new Error(
++            'A biblioteca de .docx não carregou (verifique a conexão com a internet) — tente novamente em alguns segundos.',
++        );
++    }
++
+     const agora = new Date();
+     const dataStr = agora.toLocaleDateString('pt-BR');
+ 
+-    let corpo = markdownParaHtml(
++    let corpo = markdownParaParagrafos(
++        docx,
+         `# Exportação Poética\n\n_Gerado em ${dataStr} — ${itens.length} texto(s)._\n\n---\n\n`,
+     );
+ 
+@@ -174,29 +442,34 @@ export function gerarDocxHtmlExportacao(itens) {
+         const marcador = '### Texto\n\n';
+         const indiceMarcador = antesDoTexto.indexOf(marcador);
+         if (indiceMarcador === -1) {
+-            corpo += markdownParaHtml(antesDoTexto);
++            corpo = corpo.concat(markdownParaParagrafos(docx, antesDoTexto));
+         } else {
+-            corpo += markdownParaHtml(antesDoTexto.slice(0, indiceMarcador + marcador.length));
+-            corpo += corpoParaHtml(item.texto);
++            corpo = corpo.concat(
++                markdownParaParagrafos(
++                    docx,
++                    antesDoTexto.slice(0, indiceMarcador + marcador.length),
++                ),
++            );
++            corpo = corpo.concat(corpoParaDocxParagrafos(docx, item.texto));
+         }
+ 
+-        corpo += markdownParaHtml(depoisDoTexto);
+-        corpo += markdownParaHtml('---\n\n');
++        corpo = corpo.concat(markdownParaParagrafos(docx, depoisDoTexto));
++        corpo = corpo.concat(markdownParaParagrafos(docx, '---\n\n'));
+     });
+ 
+-    return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>${corpo}</body></html>`;
++    return new docx.Document({ styles: ESTILOS_PADRAO_DOCUMENTO, sections: [{ children: corpo }] });
+ }
+ 
+-export function baixarDocx(itens, nomeArquivo) {
+-    const htmlDocx = obterConversorDocx();
+-    if (!htmlDocx) {
++export async function baixarDocx(itens, nomeArquivo) {
++    const docx = obterDocx();
++    if (!docx) {
+         throw new Error(
+             'A biblioteca de .docx não carregou (verifique a conexão com a internet) — tente novamente em alguns segundos.',
+         );
+     }
+ 
+-    const html = gerarDocxHtmlExportacao(itens);
+-    const blob = htmlDocx.asBlob(html);
++    const documento = gerarDocxDocumento(itens);
++    const blob = await docx.Packer.toBlob(documento);
+     const url = URL.createObjectURL(blob);
+     const a = document.createElement('a');
+     a.style.display = 'none';
+diff --git a/js/exportar-md.js b/js/exportar-md.js
+index 0265d47..e571434 100644
+--- a/js/exportar-md.js
++++ b/js/exportar-md.js
+@@ -23,6 +23,7 @@ import {
+     paresGrupoPessoa,
+     agruparParesGrupoPessoa,
+     paresAutoria,
++    corpoParaLinhasRicas,
+ } from './utils.js';
+ import { db } from './db.js';
+ 
+@@ -59,6 +60,111 @@ function corpoParaMarkdown(texto) {
+         .join('  \n');
+ }
+ 
++// ─── Legenda textual de cor/fundo/fonte ─────────────────────────────────
++// corpoParaMarkdown (acima) descarta os <div style="..."> inteiros — sem
++// isso, quem lê o .md (humano ou IA) perde a informação de que um trecho
++// tinha uma cor/fundo/fonte aplicada, mesmo quando essa escolha carrega
++// sentido (ex.: cor mudando pra marcar uma transição no poema). Em vez de
++// tentar reproduzir a formatação em Markdown puro (não dá — mesmo
++// motivo de corpoParaMarkdown), descreve em prosa qual trecho tinha qual
++// estilo. Reaproveita corpoParaLinhasRicas (utils.js, compartilhado com
++// exportar-pdf.js/exportar-docx.js) pra já ter a cascata de tags
++// aninhadas resolvida por run, em vez de reimplementar o parser aqui.
++function corRgbParaHex(rgb) {
++    const h = (n) => n.toString(16).padStart(2, '0');
++    return `#${h(rgb.r)}${h(rgb.g)}${h(rgb.b)}`.toUpperCase();
++}
++
++// negrito/italico/sublinhado/tamanho/alinhamento sobrevivem em outro
++// lugar (negrito/itálico como Markdown de verdade; sublinhado como <u>
++// inline, ver corpoParaMarkdown) ou não fazem parte do que essa legenda
++// descreve (tamanho/alinhamento não foram pedidos) — só cor/fundo/fonte
++// entram na comparação de agrupamento.
++function mesmoEstiloDeLegenda(a, b) {
++    return (
++        JSON.stringify(a.cor) === JSON.stringify(b.cor) &&
++        JSON.stringify(a.fundo) === JSON.stringify(b.fundo) &&
++        a.fonte === b.fonte
++    );
++}
++
++export function legendaCorParaMarkdown(textoOriginal) {
++    if (!textoOriginal) return '';
++    const linhas = corpoParaLinhasRicas(textoOriginal);
++
++    // Agrupa runs consecutivos (inclusive atravessando quebras de linha,
++    // já que o mesmo <div> de estilo costuma envolver vários versos) com
++    // cor/fundo/fonte idênticos num único trecho — percorrendo runs e
++    // quebras de linha em sequência única, pra um run sem estilo no meio
++    // de uma linha fechar só o grupo que veio antes dele, não os que vêm
++    // depois na mesma linha. Pedaços de linhas diferentes dentro do
++    // mesmo grupo entram separados por " / " no texto entre aspas.
++    let grupoAtual = null;
++    let pendenteQuebraDeLinha = false;
++    const grupos = [];
++    linhas.forEach((runsDaLinha, indice) => {
++        if (indice > 0 && grupoAtual) pendenteQuebraDeLinha = true;
++        runsDaLinha.forEach((run) => {
++            const semEstiloRelevante = !run.cor && !run.fundo && !run.fonte;
++            if (semEstiloRelevante) {
++                grupoAtual = null;
++                return;
++            }
++            if (grupoAtual && mesmoEstiloDeLegenda(grupoAtual, run)) {
++                grupoAtual.texto += (pendenteQuebraDeLinha ? ' / ' : '') + run.texto;
++            } else {
++                grupoAtual = { texto: run.texto, cor: run.cor, fundo: run.fundo, fonte: run.fonte };
++                grupos.push(grupoAtual);
++            }
++            pendenteQuebraDeLinha = false;
++        });
++    });
++
++    if (!grupos.length) return '';
++
++    // Segunda passada: junta grupos consecutivos que compartilham o mesmo
++    // fundo num único "bloco" — o fundo normalmente vem de um <div> mais
++    // externo cobrindo vários trechos de cor diferente (ver conversa sobre
++    // o exemplo do balão), então repetir "fundo X" em toda linha do bloco
++    // é ruído. Quando o bloco tem só um grupo, mantém o formato antigo
++    // (fundo na mesma linha da cor) — só blocos com 2+ grupos ganham a
++    // estrutura aninhada abaixo.
++    const blocos = [];
++    grupos.forEach((g) => {
++        const ultimoBloco = blocos[blocos.length - 1];
++        if (ultimoBloco && JSON.stringify(ultimoBloco.fundo) === JSON.stringify(g.fundo)) {
++            ultimoBloco.itens.push(g);
++        } else {
++            blocos.push({ fundo: g.fundo, itens: [g] });
++        }
++    });
++
++    let md =
++        '_Formatação de cor/fundo/fonte do texto original, perdida na conversão para Markdown:_\n\n';
++    blocos.forEach((bloco) => {
++        if (bloco.fundo && bloco.itens.length > 1) {
++            const trechoCompleto = bloco.itens.map((g) => g.texto.trim()).join(' / ');
++            md += `- fundo ${corRgbParaHex(bloco.fundo)} no trecho "${trechoCompleto}":\n`;
++            bloco.itens.forEach((g) => {
++                const partes = [];
++                if (g.cor) partes.push(`cor do texto ${corRgbParaHex(g.cor)}`);
++                if (g.fonte) partes.push(`fonte "${g.fonte}"`);
++                if (partes.length) md += `  - "${g.texto.trim()}" — ${partes.join(', ')}\n`;
++            });
++        } else {
++            bloco.itens.forEach((g) => {
++                const partes = [];
++                if (g.cor) partes.push(`cor do texto ${corRgbParaHex(g.cor)}`);
++                if (g.fundo) partes.push(`fundo ${corRgbParaHex(g.fundo)}`);
++                if (g.fonte) partes.push(`fonte "${g.fonte}"`);
++                md += `- "${g.texto.trim()}" — ${partes.join(', ')}\n`;
++            });
++        }
++    });
++    md += '\n';
++    return md;
++}
++
+ // ─── Campos auxiliares ─────────────────────────────────────────────────
+ 
+ export function livroSecaoStr(ls) {
+@@ -271,6 +377,7 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
+ 
+     md += '\n';
+     md += blocoTexto('Texto', corpoParaMarkdown(item.texto));
++    md += legendaCorParaMarkdown(item.texto);
+ 
+     return md;
+ }
+diff --git a/js/exportar-pdf.js b/js/exportar-pdf.js
+index 1dba939..5e5476c 100644
+--- a/js/exportar-pdf.js
++++ b/js/exportar-pdf.js
+@@ -22,6 +22,7 @@
+ // ============================================================
+ 
+ import { itemParaMarkdownPartes } from './exportar-md.js';
++import { corpoParaLinhasRicas, linhaTemFundoUniforme, blocosDeFundoContinuos } from './utils.js';
+ 
+ function obterConstrutorJsPdf() {
+     return window.jspdf?.jsPDF || null;
+@@ -104,137 +105,252 @@ function analisarLinha(linhaBruta) {
+ // fora vira texto puro, sem quebrar o parser). font-family não é
+ // reproduzida (as fontes padrão do jsPDF são só Helvetica/Times/Courier,
+ // sem como carregar uma fonte arbitrária sem vendorizar um arquivo à
+-// parte) — cor, tamanho, negrito, itálico, sublinhado e alinhamento sim.
+-
+-function corParaRgb(valorCor) {
+-    if (!valorCor || valorCor === 'inherit') return null;
+-    const hex = valorCor.trim().replace('#', '');
+-    const cheio =
+-        hex.length === 3
+-            ? hex
+-                  .split('')
+-                  .map((c) => c + c)
+-                  .join('')
+-            : hex;
+-    if (!/^[0-9a-fA-F]{6}$/.test(cheio)) return null;
+-    return {
+-        r: parseInt(cheio.slice(0, 2), 16),
+-        g: parseInt(cheio.slice(2, 4), 16),
+-        b: parseInt(cheio.slice(4, 6), 16),
+-    };
++// parte) — cor, fundo, tamanho, negrito, itálico, sublinhado e alinhamento
++// sim. Fundo (shading) é desenhado como um retângulo preenchido ATRÁS do
++// texto (ver extensaoVerticalTexto abaixo) — não existe "background"
++// nativo de texto no jsPDF, então a caixa é aproximada a partir do
++// tamanho da fonte (jsPDF não expõe métricas reais de ascent/descent das
++// fontes padrão). Por padrão o retângulo cola nas palavras que têm fundo
++// (largura = largura do texto, ver "2º passo" em renderizarCorpoRico) —
++// SALVO quando o fundo cobre a linha INTEIRA (linhaTemFundoUniforme,
++// utils.js), caso em que o retângulo estica margem a margem (largura
++// útil da página), não só ao redor do texto. Ao contrário do .md (ver
++// legendaCorParaMarkdown em exportar-md.js), o PDF não ganha uma legenda
++// textual descrevendo o fundo — ele mostra o fundo de verdade, então a
++// legenda seria redundante aqui.
++
++// analisarEstiloDeDiv/corParaRgb/corpoParaLinhasRicas moraram aqui antes;
++// agora moram em utils.js (importado acima) porque exportar-md.js também
++// precisa delas pra montar a legenda de cor/fonte (legendaCorParaMarkdown)
++// e não pode importar de exportar-pdf.js sem criar um import circular
++// (este arquivo já importa itemParaMarkdownPartes de lá). Reexportada
++// abaixo só pra exportar-docx.js não precisar saber que o parser mudou
++// de casa.
++export { corpoParaLinhasRicas };
++
++// Estilo → nome da variante de fonte que o jsPDF espera em setFont().
++function variantePorEstilo(negrito, italico) {
++    if (negrito && italico) return 'bolditalic';
++    if (negrito) return 'bold';
++    if (italico) return 'italic';
++    return 'normal';
+ }
+ 
+-function analisarEstiloDeDiv(atributoStyle) {
+-    const estilo = {};
+-    const corMatch = atributoStyle.match(/color:\s*([^;]+);/);
+-    if (corMatch) {
+-        const rgb = corParaRgb(corMatch[1]);
+-        if (rgb) estilo.cor = rgb;
+-    }
+-    const tamanhoMatch = atributoStyle.match(/font-size:\s*([\d.]+)pt/);
+-    if (tamanhoMatch) estilo.tamanho = Math.min(28, Math.max(7, parseFloat(tamanhoMatch[1])));
+-    const alinhoMatch = atributoStyle.match(/text-align:\s*(left|right|center)/);
+-    if (alinhoMatch) estilo.alinhamento = alinhoMatch[1];
+-    return estilo;
++// Aproximação de ascent/descent do Helvetica pra desenhar a caixa de
++// fundo (shading) coladinha ao texto — jsPDF não expõe métricas reais
++// da fonte sem carregar um arquivo à parte (mesma limitação de
++// font-family, ver comentário acima). Os fatores (0.78 acima da
++// baseline, 0.22 abaixo) foram calibrados visualmente: cobrem
++// ascendentes/descendentes comuns (ex.: "ç", "j") sem sobrar espaço
++// em branco grande demais acima de texto só com letras baixas.
++function extensaoVerticalTexto(tamanho) {
++    return { subida: tamanho * 0.78, descida: tamanho * 0.22 };
++}
++
++function mesmoFundo(a, b) {
++    return JSON.stringify(a || null) === JSON.stringify(b || null);
+ }
+ 
+-const ESTILO_BASE = {
+-    negrito: false,
+-    italico: false,
+-    sublinhado: false,
+-    cor: null,
+-    tamanho: null,
+-    alinhamento: null,
+-};
+-
+-// String bruta do campo `texto` → array de linhas, cada linha um array
+-// de "runs" ({ texto, negrito, italico, sublinhado, cor, tamanho,
+-// alinhamento }) com estilo já resolvido (cascata de tags aninhadas
+-// aplicada). Tolerante a HTML malformado (tag sem par correspondente):
+-// ignora o desbalanceamento em vez de quebrar, já que o dado real do
+-// acervo tem anos de HTML colado de fontes diversas (ver comentário em
+-// sanitizarTextoRico, utils.js).
++// ─── Caixa contínua (padding/border-radius) ─────────────────────────────
++// Um <div style="background-color:...; padding:...; border-radius:...">
++// embrulhando várias linhas (ver blocosDeFundoContinuos, utils.js) vira
++// UMA caixa só — um retângulo (arredondado quando border-radius > 0)
++// desenhado ANTES de qualquer texto do bloco, com o texto deslocado pra
++// dentro pelo valor do padding (convertido de px pra pt: 1px = 0.75pt,
++// mesma conversão usada no resto do PDF pra font-size). Isso é diferente
++// do fundo "chapado" de sempre (uma faixa por linha, colada ao texto) —
++// esse continua existindo pra qualquer <div> só com background-color,
++// sem padding nem border-radius (ver renderizarLinhaRica abaixo).
+ //
+-// Exportada (só pra ser reaproveitada por exportar-docx.js, que
+-// converte as mesmas runs pra HTML em vez de desenhar num doc jsPDF) —
+-// resto do app continua chamando só as funções de mais alto nível deste
+-// arquivo.
+-export function corpoParaLinhasRicas(textoOriginal) {
+-    const linhas = [[]];
+-    // Pilha de frames { estilo, origem }; origem identifica quem abriu o
+-    // frame ('negrito'/'italico'/'u'/'div'), pra saber qual token fecha
+-    // ele — necessário porque ** e _ não têm marcador de abertura/
+-    // fechamento distinto (o mesmo "**" abre e fecha).
+-    const pilha = [{ estilo: ESTILO_BASE, origem: null }];
+-    const topo = () => pilha[pilha.length - 1];
+-
+-    function empurrar(origem, parcial) {
+-        pilha.push({ estilo: { ...topo().estilo, ...parcial }, origem });
+-    }
+-    function desempilharSeForOrigem(origem) {
+-        if (pilha.length > 1 && topo().origem === origem) pilha.pop();
+-    }
+-    function emitirRun(texto) {
+-        if (!texto) return;
+-        linhas[linhas.length - 1].push({ texto, ...topo().estilo });
++// Pra desenhar o retângulo ANTES do texto (senão o texto ficaria por
++// baixo da caixa) sem "adivinhar" a altura, medimos o bloco inteiro
++// primeiro (medirAlturaBloco) usando exatamente o mesmo empacotamento de
++// palavras (empacotarPalavras) que o desenho de verdade vai usar depois
++// — as duas passadas nunca divergem porque chamam a mesma função pura.
++//
++// Limitação aceita: se o bloco inteiro não couber nem numa página em
++// branco, desistimos da caixa (devolve false) e quem chama cai de volta
++// pro desenho linha a linha de sempre, que sabe quebrar página no meio
++// — melhor perder a caixa contínua numa poesia excepcionalmente longa
++// do que arriscar uma caixa cortada ao meio entre duas páginas.
++function empacotarPalavras(doc, runsDaLinha, larguraUtilLinha, tamanhoBase) {
++    const palavras = [];
++    runsDaLinha.forEach((run) => {
++        const partes = saneParaPdf(run.texto).split(/\s+/).filter(Boolean);
++        partes.forEach((p) =>
++            palavras.push({
++                texto: p,
++                negrito: run.negrito,
++                italico: run.italico,
++                sublinhado: run.sublinhado,
++                cor: run.cor,
++                fundo: run.fundo,
++                tamanho: run.tamanho || tamanhoBase,
++            }),
++        );
++    });
++    const alinhamento = runsDaLinha.find((r) => r.alinhamento)?.alinhamento || 'left';
++    if (!palavras.length) return { subLinhas: [], alinhamento };
++
++    function largura(palavra) {
++        doc.setFont('helvetica', variantePorEstilo(palavra.negrito, palavra.italico));
++        doc.setFontSize(palavra.tamanho);
++        return doc.getTextWidth(palavra.texto);
+     }
++    const larguraEspaco = (tamanho = tamanhoBase) => {
++        doc.setFont('helvetica', 'normal');
++        doc.setFontSize(tamanho);
++        return doc.getTextWidth(' ');
++    };
+ 
+-    const tokenRegex = /(<div style="([^"]*)"[^>]*>|<\/div>|<u>|<\/u>|\n|\*\*|_)/g;
+-    let ultimoIndex = 0;
+-    let match;
++    const subLinhas = [];
++    let atual = [];
++    let larguraAtual = 0;
++    palavras.forEach((palavra) => {
++        const w = largura(palavra);
++        const comEspaco = atual.length ? larguraEspaco(palavra.tamanho) : 0;
++        if (atual.length && larguraAtual + comEspaco + w > larguraUtilLinha) {
++            subLinhas.push(atual);
++            atual = [palavra];
++            larguraAtual = w;
++        } else {
++            atual.push(palavra);
++            larguraAtual += comEspaco + w;
++        }
++    });
++    if (atual.length) subLinhas.push(atual);
++
++    return { subLinhas, alinhamento };
++}
++
++function alturaLinhaEmBranco(linhas, indice, tamanhoBase) {
++    const proximaComTexto = linhas.slice(indice + 1).find((l) => l.length);
++    const maiorTamanhoVizinho = proximaComTexto
++        ? Math.max(...proximaComTexto.map((r) => r.tamanho || tamanhoBase))
++        : tamanhoBase;
++    return Math.max(tamanhoBase, maiorTamanhoVizinho) * 1.4;
++}
+ 
+-    while ((match = tokenRegex.exec(textoOriginal)) !== null) {
+-        if (match.index > ultimoIndex) {
+-            emitirRun(textoOriginal.slice(ultimoIndex, match.index));
++function medirAlturaBloco(doc, linhas, bloco, larguraUtilBloco, tamanhoBase) {
++    let altura = 0;
++    for (let indice = bloco.inicio; indice <= bloco.fim; indice++) {
++        const runsDaLinha = linhas[indice];
++        if (!runsDaLinha.length) {
++            altura += alturaLinhaEmBranco(linhas, indice, tamanhoBase);
++            continue;
+         }
+-        const token = match[1];
+-        if (token === '\n') {
+-            linhas.push([]);
+-        } else if (token === '**') {
+-            if (topo().origem === 'negrito') desempilharSeForOrigem('negrito');
+-            else empurrar('negrito', { negrito: true });
+-        } else if (token === '_') {
+-            if (topo().origem === 'italico') desempilharSeForOrigem('italico');
+-            else empurrar('italico', { italico: true });
+-        } else if (token === '<u>') {
+-            empurrar('u', { sublinhado: true });
+-        } else if (token === '</u>') {
+-            desempilharSeForOrigem('u');
+-        } else if (token.startsWith('<div')) {
+-            empurrar('div', analisarEstiloDeDiv(match[2] || ''));
+-        } else if (token === '</div>') {
+-            desempilharSeForOrigem('div');
++        const { subLinhas } = empacotarPalavras(doc, runsDaLinha, larguraUtilBloco, tamanhoBase);
++        if (!subLinhas.length) {
++            altura += tamanhoBase * 1.4;
++            continue;
+         }
+-        ultimoIndex = tokenRegex.lastIndex;
+-    }
+-    if (ultimoIndex < textoOriginal.length) {
+-        emitirRun(textoOriginal.slice(ultimoIndex));
++        subLinhas.forEach((sub) => {
++            altura += Math.max(...sub.map((p) => p.tamanho)) * 1.4;
++        });
+     }
+-
+-    return linhas;
++    return altura;
+ }
+ 
+-// Estilo → nome da variante de fonte que o jsPDF espera em setFont().
+-function variantePorEstilo(negrito, italico) {
+-    if (negrito && italico) return 'bolditalic';
+-    if (negrito) return 'bold';
+-    if (italico) return 'italic';
+-    return 'normal';
++// Tamanho (maior entre os runs) da primeira ou última linha COM texto
++// de um bloco — usado só pra calibrar a extensão vertical real (subida/
++// descida, ver extensaoVerticalTexto) das bordas do bloco: sem isso, o
++// padding do topo/base seria medido a partir da BASELINE do texto, não
++// do topo/fundo visual das letras (ver comentário em
++// renderizarBlocoComCaixa). `direcao` é 1 pra buscar a partir do início
++// (primeira linha com texto) ou -1 a partir do fim (última).
++function tamanhoNaBorda(linhas, bloco, tamanhoBase, direcao) {
++    for (let i = direcao === 1 ? bloco.inicio : bloco.fim; i >= bloco.inicio && i <= bloco.fim; i += direcao) {
++        const runs = linhas[i];
++        if (runs && runs.length) return Math.max(...runs.map((r) => r.tamanho || tamanhoBase));
++    }
++    return tamanhoBase;
+ }
+ 
+-// Desenha o corpo rico de um item (uma linha por verso/parágrafo do
+-// campo `texto`), com quebra de página e de linha (respeitando a
+-// largura útil, com quebra de palavra) e negrito/itálico/sublinhado/
+-// cor/tamanho/alinhamento por trecho. Mutabiliza `estadoY` (objeto com
+-// `{ y }`, ver gerarPdfExportacao) e usa `quebrarPaginaSeNecessario` do
+-// chamador — mesmo padrão dos outros blocos, pra todo mundo respeitar a
+-// mesma paginação.
+-function renderizarCorpoRico(doc, textoOriginal, opcoes) {
+-    const { margem, larguraUtil, estadoY, quebrarPaginaSeNecessario, tamanhoBase } = opcoes;
+-    const linhas = corpoParaLinhasRicas(textoOriginal || '');
++// Desenha uma caixa contínua pro bloco inteiro (retângulo — arredondado
++// quando bloco.raio > 0 — preenchido com bloco.fundo, com padding
++// convertido pra pt) e delega o texto de cada linha do bloco pra
++// renderizarLinhaRica, deslocado/estreitado pelo padding e com o fundo
++// "de linha" de sempre suprimido (a caixa já cobre tudo). Devolve
++// `true` quando desenhou a caixa, `false` quando desistiu (não coube
++// nem numa página em branco — ver comentário acima).
++function renderizarBlocoComCaixa(doc, linhas, bloco, opcoes) {
++    const { margem, larguraUtil, estadoY, quebrarPaginaSeNecessario, tamanhoBase, alturaPagina } = opcoes;
++    const PX_PARA_PT = 0.75;
++    const paddingPt = (bloco.padding || 0) * PX_PARA_PT;
++    const raioPt = (bloco.raio || 0) * PX_PARA_PT;
++    const larguraUtilBloco = larguraUtil - paddingPt * 2;
++    if (larguraUtilBloco < 20) return false; // padding absurdo — não força um bloco ilegível
++
++    const alturaConteudo = medirAlturaBloco(doc, linhas, bloco, larguraUtilBloco, tamanhoBase);
++
++    // O laço de renderização (igual o de fora, ver renderizarLinhaRica)
++    // avança `tamanho*1.4` por linha — baseline até a PRÓXIMA baseline —
++    // então a primeira linha nasce colada no topo (a "subida"/ascent da
++    // fonte não está reservada antes dela) e a última deixa, depois de
++    // si, um respiro do tamanho de uma linha INTEIRA que nunca chega a
++    // ser usado (não existe próxima linha ali dentro). Resultado, com o
++    // padding somado por cima disso tudo: praticamente nenhuma margem
++    // visual no topo (padding < subida da fonte já come o respiro) e
++    // uma sobra enorme, pintada, no fundo — e ainda assim, como a caixa
++    // termina bem em cima da baseline real do próximo campo (Notas/
++    // Autoria), aquele campo nasce com a própria "subida" invadindo a
++    // área pintada. Corrigido reservando embaixo só a "descida" real da
++    // última linha (não a linha fantasma inteira) e embaixo dela mais
++    // um respiro de segurança (fora da caixa) do tamanho da maior fonte
++    // que costuma vir logo depois (Notas em H3/11,5pt); em cima, soma-se
++    // a "subida" da primeira linha ao padding, pra sobrar exatamente o
++    // padding pedido entre a borda e o topo visual das letras.
++    const primeiroTamanho = tamanhoNaBorda(linhas, bloco, tamanhoBase, 1);
++    const ultimoTamanho = tamanhoNaBorda(linhas, bloco, tamanhoBase, -1);
++    const extraTopo = extensaoVerticalTexto(primeiroTamanho).subida;
++    const espacoFantasmaUltimaLinha = ultimoTamanho * 1.4 - extensaoVerticalTexto(ultimoTamanho).descida;
++    const reservaSeguranca = extensaoVerticalTexto(Math.max(tamanhoBase, 11.5)).subida;
++
++    const alturaTotal = alturaConteudo + paddingPt * 2 + extraTopo - espacoFantasmaUltimaLinha;
++    const alturaPaginaUtil = alturaPagina - margem * 2;
++    if (alturaTotal > alturaPaginaUtil) return false;
++
++    quebrarPaginaSeNecessario(alturaTotal);
++
++    const boxTopoY = estadoY.y;
++    doc.setFillColor(bloco.fundo.r, bloco.fundo.g, bloco.fundo.b);
++    if (raioPt > 0 && typeof doc.roundedRect === 'function') {
++        doc.roundedRect(margem, boxTopoY, larguraUtil, alturaTotal, raioPt, raioPt, 'F');
++    } else {
++        doc.rect(margem, boxTopoY, larguraUtil, alturaTotal, 'F');
++    }
+ 
+-    linhas.forEach((runsDaLinha, indice) => {
+-        if (!runsDaLinha.length) {
++    estadoY.y += paddingPt + extraTopo;
++    for (let indice = bloco.inicio; indice <= bloco.fim; indice++) {
++        renderizarLinhaRica(doc, linhas, indice, {
++            margem: margem + paddingPt,
++            larguraUtil: larguraUtilBloco,
++            estadoY,
++            quebrarPaginaSeNecessario,
++            tamanhoBase,
++            suprimirFundoDeLinhaInteira: true,
++        });
++    }
++    // Desfaz o respiro fantasma da última linha (chegamos exatamente na
++    // borda inferior real da caixa) e só então soma o padding de baixo.
++    estadoY.y += paddingPt - espacoFantasmaUltimaLinha;
++    // Respiro de segurança FORA da caixa, pra o próximo campo (Notas/
++    // Autoria/Anexos) não nascer com a própria subida invadindo a área
++    // pintada — ver comentário acima.
++    estadoY.y += reservaSeguranca;
++    return true;
++}
++
++// Desenha UMA linha (índice `indice` de `linhas`) — extraído de
++// renderizarCorpoRico pra poder ser chamado tanto no caminho normal
++// (fundo "chapado" linha a linha) quanto de dentro de
++// renderizarBlocoComCaixa (texto deslocado pelo padding, com o fundo de
++// linha suprimido porque a caixa contínua já foi desenhada por trás).
++function renderizarLinhaRica(doc, linhas, indice, opcoes) {
++    const { margem, larguraUtil, estadoY, quebrarPaginaSeNecessario, tamanhoBase, suprimirFundoDeLinhaInteira } =
++        opcoes;
++    const runsDaLinha = linhas[indice];
++    if (!runsDaLinha.length) {
+             // Linha em branco (verso/parágrafo vazio, ex.: um Enter duplo
+             // no editor) — o efeito pretendido é uma quebra de parágrafo,
+             // que precisa ocupar PELO MENOS o espaço de uma linha normal.
+@@ -262,26 +378,18 @@ function renderizarCorpoRico(doc, textoOriginal, opcoes) {
+         // inteiro quando o objetivo é alinhar, então não costuma haver
+         // mistura de alinhamentos numa mesma linha).
+         const alinhamento = runsDaLinha.find((r) => r.alinhamento)?.alinhamento || 'left';
+-
+-        // Tokeniza em palavras (mantendo o estilo de cada uma) — espaços
+-        // internos múltiplos são normalizados pra um só; espaçamento
+-        // exato entre palavras não sobrevive (limitação aceita, não é
+-        // isso que a toolbar de formatação controla).
+-        const palavras = [];
+-        runsDaLinha.forEach((run) => {
+-            const partes = saneParaPdf(run.texto).split(/\s+/).filter(Boolean);
+-            partes.forEach((p) =>
+-                palavras.push({
+-                    texto: p,
+-                    negrito: run.negrito,
+-                    italico: run.italico,
+-                    sublinhado: run.sublinhado,
+-                    cor: run.cor,
+-                    tamanho: run.tamanho || tamanhoBase,
+-                }),
+-            );
+-        });
+-        if (!palavras.length) {
++        // Fundo de linha inteira (todo run com texto na linha compartilha
++        // o mesmo fundo) vira faixa de largura total em vez de colar nas
++        // palavras — ver comentário no topo do arquivo.
++        const fundoUniforme = linhaTemFundoUniforme(runsDaLinha);
++
++        // Empacotamento em sub-linhas (quebra de palavra) — fatorado em
++        // empacotarPalavras() pra ser a MESMA função usada por
++        // medirAlturaBloco() na medição prévia de uma caixa contínua
++        // (ver comentário acima de renderizarBlocoComCaixa); assim as
++        // duas passadas nunca divergem.
++        const { subLinhas } = empacotarPalavras(doc, runsDaLinha, larguraUtil, tamanhoBase);
++        if (!subLinhas.length) {
+             estadoY.y += tamanhoBase * 1.4;
+             return;
+         }
+@@ -302,24 +410,6 @@ function renderizarCorpoRico(doc, textoOriginal, opcoes) {
+             return doc.getTextWidth(' ');
+         };
+ 
+-        // Empacota greedy em sub-linhas respeitando larguraUtil.
+-        const subLinhas = [];
+-        let atual = [];
+-        let larguraAtual = 0;
+-        palavras.forEach((palavra) => {
+-            const w = largura(palavra);
+-            const comEspaco = atual.length ? larguraEspaco(palavra.tamanho) : 0;
+-            if (atual.length && larguraAtual + comEspaco + w > larguraUtil) {
+-                subLinhas.push(atual);
+-                atual = [palavra];
+-                larguraAtual = w;
+-            } else {
+-                atual.push(palavra);
+-                larguraAtual += comEspaco + w;
+-            }
+-        });
+-        if (atual.length) subLinhas.push(atual);
+-
+         subLinhas.forEach((sub) => {
+             const maiorTamanho = Math.max(...sub.map((p) => p.tamanho));
+             const alturaLinha = maiorTamanho * 1.4;
+@@ -334,30 +424,127 @@ function renderizarCorpoRico(doc, textoOriginal, opcoes) {
+             if (alinhamento === 'right') x = margem + (larguraUtil - larguraTotal);
+             else if (alinhamento === 'center') x = margem + (larguraUtil - larguraTotal) / 2;
+ 
+-            sub.forEach((palavra, i) => {
++            // 1º passo: só calcula onde cada palavra vai cair (sem
++            // desenhar nada ainda) — o fundo precisa ser desenhado ANTES
++            // do texto, mas só sabemos a largura/posição de cada palavra
++            // depois de já ter passado por todas (mesmo cálculo de
++            // largura(palavra) já usado acima pro empacotamento, reaproveitado
++            // aqui em vez de medido de novo dentro do laço de desenho).
++            const posicoes = sub.map((palavra, i) => {
+                 if (i > 0) x += larguraEspaco();
++                const w = largura(palavra);
++                const posicao = { palavra, x, w };
++                x += w;
++                return posicao;
++            });
++
++            // 2º passo: fundo (shading), desenhado ATRÁS do texto. Suprimido
++            // quando a linha faz parte de uma caixa contínua (ver
++            // renderizarBlocoComCaixa) — a caixa inteira já foi pintada por
++            // trás do bloco, repetir aqui só faria o mesmo fundo por cima
++            // de novo, sem efeito visual, e sem respeitar o padding.
++            if (fundoUniforme && !suprimirFundoDeLinhaInteira) {
++                // Linha inteira com o mesmo fundo: um retângulo só, margem
++                // a margem (largura útil da página) — não ao redor das
++                // palavras.
++                const { subida, descida } = extensaoVerticalTexto(maiorTamanho);
++                doc.setFillColor(fundoUniforme.r, fundoUniforme.g, fundoUniforme.b);
++                doc.rect(margem, estadoY.y - subida, larguraUtil, subida + descida, 'F');
++            } else if (!fundoUniforme) {
++                // Palavras ADJACENTES com o mesmo fundo viram um único
++                // retângulo — cobrindo também o espaço entre elas — em vez
++                // de uma caixa por palavra com uma lasquinha branca no
++                // espaço; mesmo cuidado que motivou a troca da geração de
++                // .docx pro OOXML nativo (shading colado ao texto, sem
++                // buracos artificiais).
++                let grupoFundo = null;
++                const fecharGrupoFundo = () => {
++                    if (!grupoFundo) return;
++                    const { subida, descida } = extensaoVerticalTexto(grupoFundo.maiorTamanho);
++                    doc.setFillColor(grupoFundo.fundo.r, grupoFundo.fundo.g, grupoFundo.fundo.b);
++                    doc.rect(
++                        grupoFundo.xInicio,
++                        estadoY.y - subida,
++                        grupoFundo.xFim - grupoFundo.xInicio,
++                        subida + descida,
++                        'F',
++                    );
++                    grupoFundo = null;
++                };
++                posicoes.forEach(({ palavra, x: xPalavra, w }) => {
++                    if (!palavra.fundo) {
++                        fecharGrupoFundo();
++                        return;
++                    }
++                    if (grupoFundo && mesmoFundo(grupoFundo.fundo, palavra.fundo)) {
++                        grupoFundo.xFim = xPalavra + w;
++                        grupoFundo.maiorTamanho = Math.max(grupoFundo.maiorTamanho, palavra.tamanho);
++                    } else {
++                        fecharGrupoFundo();
++                        grupoFundo = {
++                            fundo: palavra.fundo,
++                            xInicio: xPalavra,
++                            xFim: xPalavra + w,
++                            maiorTamanho: palavra.tamanho,
++                        };
++                    }
++                });
++                fecharGrupoFundo();
++            }
++
++            // 3º passo: texto por cima do fundo já desenhado (e sublinhado
++            // por cima do texto, como já era antes).
++            posicoes.forEach(({ palavra, x: xPalavra, w }) => {
+                 doc.setFont('helvetica', variantePorEstilo(palavra.negrito, palavra.italico));
+                 doc.setFontSize(palavra.tamanho);
+                 if (palavra.cor) doc.setTextColor(palavra.cor.r, palavra.cor.g, palavra.cor.b);
+                 else doc.setTextColor(0, 0, 0);
+ 
+-                doc.text(palavra.texto, x, estadoY.y);
+-                const w = doc.getTextWidth(palavra.texto);
++                doc.text(palavra.texto, xPalavra, estadoY.y);
+                 if (palavra.sublinhado) {
+                     doc.setDrawColor(
+                         palavra.cor ? palavra.cor.r : 0,
+                         palavra.cor ? palavra.cor.g : 0,
+                         palavra.cor ? palavra.cor.b : 0,
+                     );
+-                    doc.line(x, estadoY.y + 1.5, x + w, estadoY.y + 1.5);
++                    doc.line(xPalavra, estadoY.y + 1.5, xPalavra + w, estadoY.y + 1.5);
+                 }
+-                x += w;
+             });
+ 
+             doc.setTextColor(0, 0, 0);
+             estadoY.y += alturaLinha;
+         });
+-    });
++}
++
++// Desenha o corpo rico de um item (uma linha por verso/parágrafo do
++// campo `texto`), com quebra de página e de linha (respeitando a
++// largura útil, com quebra de palavra) e negrito/itálico/sublinhado/
++// cor/tamanho/alinhamento por trecho. Mutabiliza `estadoY` (objeto com
++// `{ y }`, ver gerarPdfExportacao) e usa `quebrarPaginaSeNecessario` do
++// chamador — mesmo padrão dos outros blocos, pra todo mundo respeitar a
++// mesma paginação. Linhas dentro de um bloco com padding/border-radius
++// (ver blocosDeFundoContinuos, utils.js) são desviadas pra
++// renderizarBlocoComCaixa, que desenha a caixa contínua e delega cada
++// linha de volta pra renderizarLinhaRica; o resto segue o caminho de
++// sempre, linha a linha.
++function renderizarCorpoRico(doc, textoOriginal, opcoes) {
++    const linhas = corpoParaLinhasRicas(textoOriginal || '');
++    const blocosComCaixa = blocosDeFundoContinuos(linhas).filter((b) => b.padding || b.raio);
++    const blocoPorInicio = new Map(blocosComCaixa.map((b) => [b.inicio, b]));
++
++    let indice = 0;
++    while (indice < linhas.length) {
++        const bloco = blocoPorInicio.get(indice);
++        if (bloco && renderizarBlocoComCaixa(doc, linhas, bloco, opcoes)) {
++            indice = bloco.fim + 1;
++            continue;
++        }
++        renderizarLinhaRica(doc, linhas, indice, {
++            ...opcoes,
++            suprimirFundoDeLinhaInteira: false,
++        });
++        indice++;
++    }
+ }
+ 
+ // Gera o documento jsPDF (objeto `doc`, ainda não salvo) a partir dos
+@@ -388,10 +575,20 @@ export function gerarPdfExportacao(itens) {
+     // fatorada pra ser chamada duas vezes por item (antes/depois do
+     // corpo do Texto, que tem seu próprio renderizador acima).
+     function renderizarLinhasSimples(md) {
++        // Reconhece SEQUÊNCIAS de linha em branco (\n\n\n..., ou "---"
++        // logo emendado numa linha vazia) e soma o respiro de 8pt só na
++        // PRIMEIRA da sequência — as blanks seguintes, consecutivas, não
++        // somam de novo. Sem isso, um "### Texto\n\n" (uma linha de
++        // título + UMA linha em branco de verdade) processado por
++        // .split('\n') vira três entradas — título, "", "" — e cada
++        // string vazia extra soma +8pt sozinha, inflando o respiro real
++        // pretendido (uma linha em branco) pro dobro.
++        let ultimaFoiBranco = false;
+         md.split('\n').forEach((linhaBruta) => {
+             const linhaSemEspacos = linhaBruta.trim();
+             if (!linhaSemEspacos || linhaSemEspacos === '---') {
+-                estadoY.y += 8;
++                if (!ultimaFoiBranco) estadoY.y += 8;
++                ultimaFoiBranco = true;
+                 return;
+             }
+ 
+@@ -427,8 +624,15 @@ export function gerarPdfExportacao(itens) {
+             // Maior pro nível 1/2 (separa blocos inteiros), menor pro 3
+             // (subseção dentro do mesmo bloco). Não aplica no topo da
+             // página (estadoY.y === margem: nada foi desenhado ainda ali).
+-            if (nivelTitulo && estadoY.y > margem) {
+-                const preEspacoTitulo = nivelTitulo === 1 ? 16 : nivelTitulo === 2 ? 12 : 8;
++            // Se a linha em branco anterior já rendeu o respiro de 8pt
++            // (ultimaFoiBranco), o título não precisa do preEspacoTitulo
++            // inteiro por cima — é o mesmo respiro contado duas vezes
++            // (uma pela linha vazia do Markdown, outra por esta regra).
++            // Continua aplicando o respiro cheio só quando o título vem
++            // colado direto no conteúdo anterior, sem blank entre eles
++            // (motivo original desta regra, ver comentário acima).
++            if (nivelTitulo && estadoY.y > margem && !ultimaFoiBranco) {
++                const preEspacoTitulo = nivelTitulo === 1 ? 16 : nivelTitulo === 2 ? 12 : 4;
+                 if (estadoY.y + preEspacoTitulo + tamanho * 1.4 > alturaPagina - margem) {
+                     // Título ficaria colado no rodapé (ou cortado) — quebra a
+                     // página em vez de gastar o respiro extra num espaço que
+@@ -439,6 +643,7 @@ export function gerarPdfExportacao(itens) {
+                     estadoY.y += preEspacoTitulo;
+                 }
+             }
++            ultimaFoiBranco = false;
+ 
+             doc.setFont('helvetica', estilo);
+             doc.setFontSize(tamanho);
+@@ -486,8 +691,14 @@ export function gerarPdfExportacao(itens) {
+                 estadoY,
+                 quebrarPaginaSeNecessario,
+                 tamanhoBase: 10,
++                alturaPagina,
+             });
+-            estadoY.y += 8;
++            // Respiro entre o corpo rico e o próximo campo (Notas/Autoria/
++            // etc.). Antes era 8pt fixos, somados por cima de qualquer
++            // linha em branco que o Markdown de "depoisDoTexto" já tivesse
++            // antes do primeiro campo — reduzido pra 4pt, valor mais perto
++            // do "+4 pós-título" comum ao resto do documento.
++            estadoY.y += 4;
+         }
+ 
+         renderizarLinhasSimples(depoisDoTexto);
+diff --git a/js/exportar.js b/js/exportar.js
+index 56d6374..d985c76 100644
+--- a/js/exportar.js
++++ b/js/exportar.js
+@@ -434,9 +434,12 @@ export function exportarSelecaoPdf(tipo, ids) {
+     }
+ }
+ 
+-// Mesmo padrão de exportarSelecaoPdf acima — html-docx-js também é
+-// carregado via CDN, então passa pelo mesmo try/catch.
+-export function exportarSelecaoDocx(tipo, ids) {
++// Mesmo padrão de exportarSelecaoPdf acima — a lib docx também é
++// carregada via CDN, então passa pelo mesmo try/catch. baixarDocx agora
++// é assíncrona (Packer.toBlob, da lib docx, retorna Promise — ver
++// exportar-docx.js), daí o await: sem ele, um erro de geração vira uma
++// Promise rejeitada não tratada em vez de cair no catch abaixo.
++export async function exportarSelecaoDocx(tipo, ids) {
+     const itens = itensDaSelecao(tipo, ids);
+     if (itens.length === 0) {
+         mostrarAviso('Nenhum item selecionado.');
+@@ -444,7 +447,7 @@ export function exportarSelecaoDocx(tipo, ids) {
+     }
+ 
+     try {
+-        baixarDocx(itens, `selecao_${tipo}s_${Date.now()}.docx`);
++        await baixarDocx(itens, `selecao_${tipo}s_${Date.now()}.docx`);
+     } catch (err) {
+         mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
+     }
+@@ -470,7 +473,7 @@ function nomeArquivoSeguro(texto) {
+ // de Visualização, do botão que a pessoa clicou (os três ficam sempre
+ // visíveis ali, ver visualizar.js). Reaproveita itensDaSelecao (mesmo
+ // registro/contexto resolvido das demais exportações).
+-export function exportarItem(tipo, id, formato) {
++export async function exportarItem(tipo, id, formato) {
+     const itens = itensDaSelecao(tipo, [id]);
+     if (itens.length === 0) {
+         mostrarAviso('Item não encontrado.');
+@@ -509,7 +512,7 @@ export function exportarItem(tipo, id, formato) {
+ 
+     if (formato === 'docx') {
+         try {
+-            baixarDocx(itens, `${nomeBase}.docx`);
++            await baixarDocx(itens, `${nomeBase}.docx`);
+         } catch (err) {
+             mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
+         }
+@@ -696,9 +699,9 @@ export function executarExportacaoSeletivaPdf() {
+ }
+ 
+ // Mesmo padrão de executarExportacaoSeletivaPdf acima, em .docx — mesmo
+-// try/catch pela mesma corrida com o carregamento do html-docx-js via CDN
+-// (ver exportarSelecaoDocx).
+-export function executarExportacaoSeletivaDocx() {
++// try/catch pela mesma corrida com o carregamento da lib docx via CDN
++// (ver exportarSelecaoDocx, e o comentário lá sobre o await).
++export async function executarExportacaoSeletivaDocx() {
+     const opcoes = lerFiltrosDoFormulario();
+     const { itens } = gerarExportacaoSeletiva(opcoes);
+ 
+@@ -709,7 +712,7 @@ export function executarExportacaoSeletivaDocx() {
+     }
+ 
+     try {
+-        baixarDocx(itens, `exportacao_seletiva_${Date.now()}.docx`);
++        await baixarDocx(itens, `exportacao_seletiva_${Date.now()}.docx`);
+     } catch (err) {
+         mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
+         return;
+@@ -750,9 +753,9 @@ export function exportarTudoFlatPdf() {
+ 
+ // Coletâneas ficam de fora do .docx por ora — mesma decisão de
+ // exportarTudoFlatMarkdown/exportarTudoFlatPdf (ver comentário lá acima).
+-// Mesmo try/catch, pela mesma corrida com o carregamento do html-docx-js
+-// via CDN (ver exportarSelecaoDocx).
+-export function exportarTudoFlatDocx() {
++// Mesmo try/catch, pela mesma corrida com o carregamento da lib docx via
++// CDN (ver exportarSelecaoDocx, e o comentário lá sobre o await).
++export async function exportarTudoFlatDocx() {
+     const { itens } = gerarTudoFlat();
+     if (itens.length === 0) {
+         mostrarAviso('Acervo vazio — nada pra exportar.');
+@@ -760,7 +763,7 @@ export function exportarTudoFlatDocx() {
+     }
+ 
+     try {
+-        baixarDocx(itens, `arquivo_poetico_flat_${Date.now()}.docx`);
++        await baixarDocx(itens, `arquivo_poetico_flat_${Date.now()}.docx`);
+     } catch (err) {
+         mostrarAviso(err.message || 'Não foi possível gerar o .docx.');
+         return;
+diff --git a/js/main.js b/js/main.js
+index 77ceec3..a03e548 100644
+--- a/js/main.js
++++ b/js/main.js
+@@ -57,6 +57,8 @@ import {
+     setFiltroProsas,
+     setFiltroConteudoPoemas,
+     setFiltroConteudoProsas,
++    setFiltroNumeroPoemas,
++    setFiltroNumeroProsas,
+     setCombinadorBuscaPoemas,
+     setCombinadorBuscaProsas,
+     getCombinadorBuscaPoemas,
+@@ -345,8 +347,10 @@ const ACOES_LISTA = {
+     'mover-livro': (el) => moverLivro(Number(el.dataset.id), el.dataset.dir),
+     'pagina-poemas': (el) => setPaginaPoemas(Number(el.dataset.pagina)),
+     'pagina-prosas': (el) => setPaginaProsas(Number(el.dataset.pagina)),
+-    'toggle-poema': (el, e) => toggleSelecao('poemas', el.checked, Number(el.dataset.id), e?.shiftKey),
+-    'toggle-prosa': (el, e) => toggleSelecao('prosas', el.checked, Number(el.dataset.id), e?.shiftKey),
++    'toggle-poema': (el, e) =>
++        toggleSelecao('poemas', el.checked, Number(el.dataset.id), e?.shiftKey),
++    'toggle-prosa': (el, e) =>
++        toggleSelecao('prosas', el.checked, Number(el.dataset.id), e?.shiftKey),
+     'toggle-todos-poemas': (el) => toggleSelecaoTodos('poemas', el.checked),
+     'toggle-todos-prosas': (el) => toggleSelecaoTodos('prosas', el.checked),
+     'baixar-diagrama-ecos': (el) => baixarDiagramaEcos(el),
+@@ -646,6 +650,8 @@ window.setFiltroPoemas = debounce(setFiltroPoemas, 200);
+ window.setFiltroProsas = debounce(setFiltroProsas, 200);
+ window.setFiltroConteudoPoemas = debounce(setFiltroConteudoPoemas, 200);
+ window.setFiltroConteudoProsas = debounce(setFiltroConteudoProsas, 200);
++window.setFiltroNumeroPoemas = debounce(setFiltroNumeroPoemas, 200);
++window.setFiltroNumeroProsas = debounce(setFiltroNumeroProsas, 200);
+ 
+ // Alterna o botão E/OU entre os dois campos de busca (metadados +
+ // conteúdo) e atualiza o próprio rótulo do botão.
+diff --git a/js/render-listas.js b/js/render-listas.js
+index 4d775a7..aa9ddc2 100644
+--- a/js/render-listas.js
++++ b/js/render-listas.js
+@@ -21,6 +21,7 @@ import {
+     getPosicaoElemento,
+     filtrarTextos,
+     filtrarPorConteudo,
++    parseConsultaNumero,
+     opcoesBuscaPadrao,
+     formatarDataParcial,
+     formatarIntervaloEpocaRetratada,
+@@ -117,6 +118,14 @@ let filtroPoemas = '';
+ let filtroProsas = '';
+ let filtroConteudoPoemas = '';
+ let filtroConteudoProsas = '';
++// "Caixa B" — busca pelo número da coluna Contagem de Poemas/Prosas
++// (_numEstrutura), separada da Caixa A (filtroPoemas/filtroConteudoPoemas
++// acima) de propósito: tudo que está na Caixa A entra ANTES do cálculo
++// de _numEstrutura (pode deslocar a numeração); tudo que está aqui entra
++// DEPOIS (só recorta o resultado, nunca realimenta a numeração) — ver
++// aplicação em getListaVisivelPoemas/getListaVisivelProsas abaixo.
++let filtroNumeroPoemas = '';
++let filtroNumeroProsas = '';
+ let combinadorBuscaPoemas = 'e'; // 'e' (precisa bater nos dois campos) ou 'ou' (basta um)
+ let combinadorBuscaProsas = 'e';
+ // Interruptores de busca (Diferenciar maiúsculas/minúsculas, Diferenciar
+@@ -367,6 +376,20 @@ export function setFiltroConteudoProsas(valor) {
+     renderProsas();
+ }
+ 
++// Setters da Caixa B (ver comentário em filtroNumeroPoemas acima) — mesmo
++// padrão de setFiltroConteudoPoemas/Prosas: reseta a página e re-renderiza.
++export function setFiltroNumeroPoemas(valor) {
++    filtroNumeroPoemas = valor;
++    paginaPoemas = 1;
++    renderPoemas();
++}
++
++export function setFiltroNumeroProsas(valor) {
++    filtroNumeroProsas = valor;
++    paginaProsas = 1;
++    renderProsas();
++}
++
+ // Alterna entre 'e' (precisa bater nos dois campos de busca) e 'ou' (basta
+ // bater em um deles) — só faz diferença quando os dois campos têm algo
+ // digitado; com um só preenchido o resultado é o mesmo nos dois modos.
+@@ -994,6 +1017,17 @@ export function getListaVisivelPoemas() {
+     // usuário escolha ordenar a tabela depois.
+     lista = lista.map((p, i) => ({ ...p, _numEstrutura: i + 1 }));
+ 
++    // Caixa B (busca por Nº) — ver comentário em filtroNumeroPoemas: entra
++    // só AQUI, depois de _numEstrutura já atribuído, então nunca desloca a
++    // numeração — só recorta o que já foi numerado. numeros vazio (nada
++    // digitado, ou só prefixos sem número solto) não filtra por número,
++    // igual ao resto do arquivo quando um filtro está "sem valor".
++    if (filtroNumeroPoemas && filtroNumeroPoemas.trim()) {
++        const { numeros, resto } = parseConsultaNumero(filtroNumeroPoemas);
++        if (numeros.size) lista = lista.filter((p) => numeros.has(p._numEstrutura));
++        if (resto.trim()) lista = filtrarTextos(lista, resto, opcoesBuscaPoemas);
++    }
++
+     return aplicarOrdenacao(lista, 'poemas', ordenacaoPoemas);
+ }
+ 
+@@ -1053,6 +1087,13 @@ export function getListaVisivelProsas() {
+     // Ver comentário equivalente em getListaVisivelPoemas acima.
+     lista = lista.map((pr, i) => ({ ...pr, _numEstrutura: i + 1 }));
+ 
++    // Caixa B — ver comentário equivalente em getListaVisivelPoemas acima.
++    if (filtroNumeroProsas && filtroNumeroProsas.trim()) {
++        const { numeros, resto } = parseConsultaNumero(filtroNumeroProsas);
++        if (numeros.size) lista = lista.filter((pr) => numeros.has(pr._numEstrutura));
++        if (resto.trim()) lista = filtrarTextos(lista, resto, opcoesBuscaProsas);
++    }
++
+     return aplicarOrdenacao(lista, 'prosas', ordenacaoProsas);
+ }
+ 
+diff --git a/js/utils.js b/js/utils.js
+index 38ca75e..a9d4882 100644
+--- a/js/utils.js
++++ b/js/utils.js
+@@ -148,6 +148,235 @@ export function sanitizarTextoRico(valor) {
+     return limpo;
+ }
+ 
++// ─── Corpo rico do Texto: parser compartilhado ──────────────────────────
++// Reproduz a cascata de **negrito**/_itálico_/<u>/<div style="...">
++// aplicada pela toolbar do editor (ver wrapText/applyStyle em editor.js)
++// como uma árvore de "runs" já resolvidos — usado por exportar-pdf.js
++// (desenho no PDF), exportar-docx.js (spans em HTML) e exportar-md.js
++// (legenda textual de cor/fonte que o Markdown puro não consegue
++// carregar, ver legendaCorParaMarkdown). Mora aqui, não em
++// exportar-pdf.js, porque exportar-pdf.js e exportar-docx.js importam de
++// exportar-md.js (itemParaMarkdownPartes) — se o parser morasse lá,
++// exportar-md.js precisaria importar de volta de exportar-pdf.js,
++// import circular.
++function corParaRgb(valorCor) {
++    if (!valorCor || valorCor === 'inherit') return null;
++    const hex = valorCor.trim().replace('#', '');
++    const cheio =
++        hex.length === 3
++            ? hex
++                  .split('')
++                  .map((c) => c + c)
++                  .join('')
++            : hex;
++    if (!/^[0-9a-fA-F]{6}$/.test(cheio)) return null;
++    return {
++        r: parseInt(cheio.slice(0, 2), 16),
++        g: parseInt(cheio.slice(2, 4), 16),
++        b: parseInt(cheio.slice(4, 6), 16),
++    };
++}
++
++// Lê o atributo style="..." de um <div> (ver ALLOWLIST_TEXTO_RICO acima
++// pro conjunto completo aceito na tela) — cor, fundo, fonte, tamanho,
++// alinhamento, padding e border-radius. display/etc. continuam sem
++// equivalente em nenhum dos três formatos de exportação, então não são
++// extraídos aqui. padding/border-radius só suportam um valor único (ex.:
++// "padding: 20px;") — o mesmo formato que o campo Texto de fato carrega
++// hoje (colado manualmente, a toolbar do editor não tem botão pra isso);
++// a forma "20px 10px" (valores por eixo) não é reconhecida e o campo
++// fica null, caindo no comportamento de sempre (sem caixa/padding).
++function analisarEstiloDeDiv(atributoStyle) {
++    const estilo = {};
++    // Lookbehind negativo: sem ele, "color:" também bate dentro de
++    // "background-color:" (é substring), lendo o fundo como se fosse
++    // cor de texto.
++    const corMatch = atributoStyle.match(/(?<!background-)color:\s*([^;]+);/);
++    if (corMatch) {
++        const rgb = corParaRgb(corMatch[1]);
++        if (rgb) estilo.cor = rgb;
++    }
++    const fundoMatch = atributoStyle.match(/background-color:\s*([^;]+);/);
++    if (fundoMatch) {
++        const rgb = corParaRgb(fundoMatch[1]);
++        if (rgb) estilo.fundo = rgb;
++    }
++    const fonteMatch = atributoStyle.match(/font-family:\s*([^;]+);/);
++    if (fonteMatch) estilo.fonte = fonteMatch[1].trim().replace(/^['"]|['"]$/g, '');
++    const tamanhoMatch = atributoStyle.match(/font-size:\s*([\d.]+)pt/);
++    if (tamanhoMatch) estilo.tamanho = Math.min(28, Math.max(7, parseFloat(tamanhoMatch[1])));
++    const alinhoMatch = atributoStyle.match(/text-align:\s*(left|right|center)/);
++    if (alinhoMatch) estilo.alinhamento = alinhoMatch[1];
++    const paddingMatch = atributoStyle.match(/padding:\s*([\d.]+)px\s*;/);
++    if (paddingMatch) estilo.padding = parseFloat(paddingMatch[1]);
++    const raioMatch = atributoStyle.match(/border-radius:\s*([\d.]+)px\s*;/);
++    if (raioMatch) estilo.raio = parseFloat(raioMatch[1]);
++    return estilo;
++}
++
++const ESTILO_BASE = {
++    negrito: false,
++    italico: false,
++    sublinhado: false,
++    cor: null,
++    fundo: null,
++    fonte: null,
++    tamanho: null,
++    alinhamento: null,
++    padding: null,
++    raio: null,
++};
++
++// String bruta do campo `texto` → array de linhas, cada linha um array
++// de "runs" ({ texto, negrito, italico, sublinhado, cor, fundo, fonte,
++// tamanho, alinhamento }) com estilo já resolvido (cascata de tags
++// aninhadas aplicada). Tolerante a HTML malformado (tag sem par
++// correspondente): ignora o desbalanceamento em vez de quebrar, já que o
++// dado real do acervo tem anos de HTML colado de fontes diversas (ver
++// comentário em sanitizarTextoRico, acima).
++export function corpoParaLinhasRicas(textoOriginal) {
++    const linhas = [[]];
++    // Pilha de frames { estilo, origem }; origem identifica quem abriu o
++    // frame ('negrito'/'italico'/'u'/'div'), pra saber qual token fecha
++    // ele — necessário porque ** e _ não têm marcador de abertura/
++    // fechamento distinto (o mesmo "**" abre e fecha).
++    const pilha = [{ estilo: ESTILO_BASE, origem: null }];
++    const topo = () => pilha[pilha.length - 1];
++
++    function empurrar(origem, parcial) {
++        pilha.push({ estilo: { ...topo().estilo, ...parcial }, origem });
++    }
++    function desempilharSeForOrigem(origem) {
++        if (pilha.length > 1 && topo().origem === origem) pilha.pop();
++    }
++    function emitirRun(texto) {
++        if (!texto) return;
++        linhas[linhas.length - 1].push({ texto, ...topo().estilo });
++    }
++
++    const tokenRegex = /(<div style="([^"]*)"[^>]*>|<\/div>|<u>|<\/u>|\n|\*\*|_)/g;
++    let ultimoIndex = 0;
++    let match;
++
++    while ((match = tokenRegex.exec(textoOriginal)) !== null) {
++        if (match.index > ultimoIndex) {
++            emitirRun(textoOriginal.slice(ultimoIndex, match.index));
++        }
++        const token = match[1];
++        if (token === '\n') {
++            linhas.push([]);
++        } else if (token === '**') {
++            if (topo().origem === 'negrito') desempilharSeForOrigem('negrito');
++            else empurrar('negrito', { negrito: true });
++        } else if (token === '_') {
++            if (topo().origem === 'italico') desempilharSeForOrigem('italico');
++            else empurrar('italico', { italico: true });
++        } else if (token === '<u>') {
++            empurrar('u', { sublinhado: true });
++        } else if (token === '</u>') {
++            desempilharSeForOrigem('u');
++        } else if (token.startsWith('<div')) {
++            empurrar('div', analisarEstiloDeDiv(match[2] || ''));
++        } else if (token === '</div>') {
++            desempilharSeForOrigem('div');
++        }
++        ultimoIndex = tokenRegex.lastIndex;
++    }
++    if (ultimoIndex < textoOriginal.length) {
++        emitirRun(textoOriginal.slice(ultimoIndex));
++    }
++
++    return linhas;
++}
++
++// ─── Fundo uniforme de uma linha ────────────────────────────────
++// Usado pelas exportações em .docx e .pdf (exportar-docx.js/
++// exportar-pdf.js) pra decidir se o fundo (background-color) de uma
++// linha vira uma faixa esticada margem a margem ("largura da página
++// toda") ou continua colado só ao(s) trecho(s) específico(s) que tem
++// fundo. Considera a linha "uniforme" quando TODO run com texto de
++// verdade (run vazio/só espaço não conta) tem o mesmo fundo — uma
++// linha sem fundo nenhum, com fundo só numa palavra/trecho, ou com
++// fundos DIFERENTES lado a lado não é uniforme. Retorna a cor (objeto
++// {r,g,b}) quando uniforme, ou null quando não é (fundo deve
++// continuar colado ao texto nesse caso).
++export function linhaTemFundoUniforme(runsDaLinha) {
++    const runsComTexto = (runsDaLinha || []).filter((r) => r.texto && r.texto.trim());
++    if (!runsComTexto.length) return null;
++    const primeiroFundo = runsComTexto[0].fundo || null;
++    if (!primeiroFundo) return null;
++    const uniforme = runsComTexto.every(
++        (r) => JSON.stringify(r.fundo || null) === JSON.stringify(primeiroFundo),
++    );
++    return uniforme ? primeiroFundo : null;
++}
++
++// ─── Blocos contínuos de fundo (caixa com padding/border-radius) ───────
++// linhaTemFundoUniforme (acima) decide LINHA a linha — suficiente pro
++// fundo "chapado" de sempre (uma faixa por linha, ver exportar-pdf.js/
++// exportar-docx.js). Mas um <div style="background-color:...;
++// padding:...; border-radius:..."> que embrulha um poema inteiro (ver
++// conversa que motivou isso) precisa virar UMA caixa só contínua, com
++// respiro de verdade acima/abaixo/dos lados do texto — não N faixas
++// grudadas coladas linha a linha. blocosDeFundoContinuos() identifica
++// essas sequências: linhas CONSECUTIVAS com o mesmo fundo/padding/raio
++// viram um bloco { inicio, fim } (índices em `linhas`, inclusive).
++//
++// Uma linha em BRANCO (quebra de estrofe, sem run nenhum — ver
++// corpoParaLinhasRicas) entra no bloco quando está ENTRE duas linhas do
++// mesmo bloco: no navegador, o fundo de um <div> em bloco cobre o
++// elemento inteiro, quebra de parágrafo ou não, então aquele respiro
++// entre estrofes continua "dentro" da caixa visualmente mesmo sem
++// nenhum texto ali. Uma linha em branco que NÃO está cercada por duas
++// linhas do mesmo bloco continua sendo só uma quebra de parágrafo
++// comum, sem entrar em bloco nenhum.
++export function blocosDeFundoContinuos(linhas) {
++    const mesmoEstilo = (a, b) =>
++        a &&
++        b &&
++        JSON.stringify(a.fundo) === JSON.stringify(b.fundo) &&
++        a.padding === b.padding &&
++        a.raio === b.raio;
++
++    const estiloPorLinha = (linhas || []).map((runsDaLinha) => {
++        if (!runsDaLinha.length) return null;
++        const fundo = linhaTemFundoUniforme(runsDaLinha);
++        if (!fundo) return null;
++        const referencia = runsDaLinha.find((r) => r.texto && r.texto.trim()) || runsDaLinha[0];
++        return { fundo, padding: referencia.padding || null, raio: referencia.raio || null };
++    });
++
++    // Absorve sequências de linhas em branco entre duas linhas do mesmo
++    // bloco.
++    let i = 0;
++    while (i < estiloPorLinha.length) {
++        if (estiloPorLinha[i] !== null || linhas[i].length) {
++            i++;
++            continue;
++        }
++        let fim = i;
++        while (fim < estiloPorLinha.length && estiloPorLinha[fim] === null && !linhas[fim].length) {
++            fim++;
++        }
++        if (i > 0 && fim < estiloPorLinha.length && mesmoEstilo(estiloPorLinha[i - 1], estiloPorLinha[fim])) {
++            for (let k = i; k < fim; k++) estiloPorLinha[k] = estiloPorLinha[i - 1];
++        }
++        i = fim;
++    }
++
++    // Agrupa linhas consecutivas com o mesmo estilo num único bloco.
++    const blocos = [];
++    estiloPorLinha.forEach((info, indice) => {
++        const ultimo = blocos[blocos.length - 1];
++        if (info && ultimo && ultimo.fim === indice - 1 && mesmoEstilo(ultimo, info)) {
++            ultimo.fim = indice;
++        } else if (info) {
++            blocos.push({ inicio: indice, fim: indice, fundo: info.fundo, padding: info.padding, raio: info.raio });
++        }
++    });
++    return blocos;
++}
++
+ // ─── Debounce ────────────────────────────────────────────────
+ // Atrasa a chamada de fn até `espera` ms depois da última invocação.
+ // Usado nos campos de busca (Poemas/Prosas): cada renderPoemas()/
+@@ -1537,6 +1766,34 @@ function parseConsultaBusca(query) {
+     return { gruposIncluir, termosExcluir };
+ }
+ 
++// Interpreta a consulta da "Caixa B" (busca por Nº — ver
++// filtroNumeroPoemas/filtroNumeroProsas em render-listas.js): separa os
++// tokens que são só dígitos separados por vírgula, sem prefixo de campo
++// (ex. "5,9,30" — o número é o _numEstrutura, calculado depois de todos
++// os outros filtros, por isso não pode reaproveitar CAMPOS_ATRIBUTO/
++// parseConsultaBusca direto: aquele mecanismo roda ANTES do número
++// existir) de qualquer outro token (prefixos "campo:valor" como
++// etiqueta:, titulo: etc.), que continuam podendo ser digitados na
++// mesma caixa e são resolvidos depois, com filtrarTextos, mas já em
++// cima da lista que sobrou do recorte por número.
++//
++// Não interpreta aspas/frase-exata dentro do próprio "resto" — só separa
++// por espaço e devolve os tokens não-numéricos remontados na mesma
++// ordem, pra filtrarTextos (que entende aspas) reprocessar depois.
++export function parseConsultaNumero(query) {
++    const tokens = (query || '').trim().match(/\S+/g) || [];
++    const numeros = new Set();
++    const resto = [];
++    tokens.forEach((tok) => {
++        if (/^\d+(,\d+)*$/.test(tok)) {
++            tok.split(',').forEach((n) => numeros.add(Number(n)));
++        } else {
++            resto.push(tok);
++        }
++    });
++    return { numeros, resto: resto.join(' ') };
++}
++
+ // Filtra uma lista de textos (poemas/prosas) por uma busca livre que
+ // procura em título, ano, sinalizações, pessoas, autoria, grupos,
+ // papéis, época retratada, livros, descrição visual, contexto
+@@ -1597,7 +1854,11 @@ export function filtrarTextos(lista, query, opts = opcoesBuscaPadrao()) {
+         const bateTermo = (t) =>
+             t.presenca
+                 ? valorDoTermo(t) !== ''
+-                : valorBateTermo(valorDoTermo(t), normalizarBusca(t.termo, opts), opts.palavraInteira);
++                : valorBateTermo(
++                      valorDoTermo(t),
++                      normalizarBusca(t.termo, opts),
++                      opts.palavraInteira,
++                  );
+ 
+         const combinaInclusao =
+             gruposIncluir.length === 0 || gruposIncluir.some((grupo) => grupo.every(bateTermo));
+@@ -1732,7 +1993,10 @@ const ROTULOS_SINALIZACOES = {
+ // sinalizacoesCombinadas(). Categorias vazias não entram na lista.
+ export function sinalizacoesAgrupadas(item) {
+     return Object.entries(SINALIZACOES_CATEGORIAS)
+-        .map(([categoria, campo]) => ({ rotulo: ROTULOS_SINALIZACOES[categoria], valor: item[campo] }))
++        .map(([categoria, campo]) => ({
++            rotulo: ROTULOS_SINALIZACOES[categoria],
++            valor: item[campo],
++        }))
+         .filter((bloco) => bloco.valor);
+ }
+ 
+@@ -1758,7 +2022,9 @@ export const CAMPOS_CONTAVEIS = {
+             // direto (gruposDiretos) — dedup por id pra não contar duas
+             // vezes o mesmo Grupo alcançado pelos dois caminhos.
+             const ids = new Set();
+-            paresGrupoPessoa(item, db?.pessoas, db?.grupos).forEach(({ grupo }) => ids.add(grupo.id));
++            paresGrupoPessoa(item, db?.pessoas, db?.grupos).forEach(({ grupo }) =>
++                ids.add(grupo.id),
++            );
+             (item.gruposDiretos || []).forEach((id) => ids.add(id));
+             return ids.size;
+         },
+@@ -1979,7 +2245,12 @@ export function extrairPremiosUnicos(itens) {
+ // específico. Chamado "Referências" antes da reorganização que criou o
+ // campo novo e distinto de mesmo nome (ver TIPOS_REFERENCIA_EXTERNA_SUGERIDOS
+ // abaixo) — Eco continua sendo o par de Elo dentro de Intratextualidade.
+-export const TIPOS_ECO = ['Personagem em comum', 'Imagem central compartilhada', 'Aceno a', 'Outro'];
++export const TIPOS_ECO = [
++    'Personagem em comum',
++    'Imagem central compartilhada',
++    'Aceno a',
++    'Outro',
++];
+ 
+ // RELACOES_ELO: relações BILATERAIS entre dois poemas (par estrutural —
+ // reescrita, tradução, resposta...), redesenhadas pra separar a
+@@ -2054,7 +2325,8 @@ export function extrairValoresUnicosDeIntertextualidade(poemas, tipoFiltro = nul
+     poemas.forEach((p) => {
+         if (Array.isArray(p.intertextualidade)) {
+             p.intertextualidade.forEach((it) => {
+-                if (it && it.texto && (!tipoFiltro || it.tipo === tipoFiltro)) valores.add(it.texto);
++                if (it && it.texto && (!tipoFiltro || it.tipo === tipoFiltro))
++                    valores.add(it.texto);
+             });
+         }
+     });
+@@ -2069,7 +2341,8 @@ export function extrairValoresUnicosDeReferenciasExternas(poemas, tipoFiltro = n
+     poemas.forEach((p) => {
+         if (Array.isArray(p.referenciasExternas)) {
+             p.referenciasExternas.forEach((it) => {
+-                if (it && it.texto && (!tipoFiltro || it.tipo === tipoFiltro)) valores.add(it.texto);
++                if (it && it.texto && (!tipoFiltro || it.tipo === tipoFiltro))
++                    valores.add(it.texto);
+             });
+         }
+     });
+diff --git a/manutencao/decisoes.md b/manutencao/decisoes.md
+index be07021..d313794 100644
+--- a/manutencao/decisoes.md
++++ b/manutencao/decisoes.md
+@@ -30,4 +30,8 @@
+ 
+ **`linkTexto` em Intertextualidade** — URL longa sem rótulo estourava o layout da lista renderizada (texto do `<a>` era a própria URL, sem quebra controlada). Em vez de só CSS (`break-all`), ganhou campo opcional `linkTexto` pro rótulo do link, com o CSS de segurança mantido em paralelo pra quando o campo fica vazio ou o rótulo digitado também é longo.
+ 
++**Troca de html-docx-js pela lib `docx` (npm) na exportação em Word.** html-docx-js não convertia HTML→OOXML de verdade — empacotava o HTML cru como `.mht` (`altChunk`) e delegava a conversão pro motor de importação HTML do próprio Word, uma caixa-preta sem controle fino sobre nível de sombreamento. Resultado visível: o fundo (`background-color`) de um `<span>` de verso, com cada verso em seu próprio `<p>`, o Word promovia a algo que se comporta como sombreamento de PARÁGRAFO/linha inteira, em vez de RUN (caractere) — a caixa colorida esticava a largura da linha em vez de colar no texto. A lib `docx` monta OOXML run a run: `TextRun({ shading: {...} })` gera `w:shd` dentro do `w:rPr` do próprio run, nunca no `w:pPr` do parágrafo, então o resultado é sempre a caixa colada ao texto — sem depender de heurística de nenhum motor de importação. `js/exportar-docx.js` reescrito pra montar `Paragraph`/`TextRun` diretamente (via `window.docx`, CDN — ver `index.html`) em vez de gerar uma string HTML; `baixarDocx` virou assíncrona (`Packer.toBlob` retorna Promise), com `await` propagado nas 4 chamadas em `exportar.js`. `docx` e `jszip` entraram como devDependencies só pra teste (import direto do pacote real em Node, sem precisar de bundler — produção continua via CDN/`window.docx`, mesmo esquema do jsPDF).
++
+ **Mesclar Pessoa/Época — nome duplicado não mescla automaticamente.** Renomear pra um nome já existente não funde os registros (cada um mantém `id`/vínculos próprios) — porque às vezes o nome igual é de propósito (pessoa homônima em outro grupo; Época com mesmo apelido mas relacionamento diferente). Ao salvar um rename que colide, o formulário oferece três saídas: Mesclar agora / Salvar mesmo assim / Cancelar — nunca força a fusão.
++
++**Fundo (shading) na exportação em PDF, sem legenda textual.** `js/exportar-pdf.js` (`renderizarCorpoRico`) já reproduzia cor/negrito/itálico/sublinhado/tamanho/alinhamento do corpo rico, mas não o `background-color` (`run.fundo`, já extraído por `analisarEstiloDeDiv`/`corpoParaLinhasRicas` em `utils.js`) — o fundo simplesmente não chegava a ser desenhado. Como o jsPDF não tem um "background" nativo de texto, cada palavra com fundo vira um `doc.rect(..., 'F')` desenhado ATRÁS do `doc.text()` (posições calculadas num passo à parte antes de desenhar qualquer coisa, pra não depender da ordem de desenho pra saber onde cada palavra cai); a altura da caixa é uma aproximação de ascent/descent do Helvetica (`extensaoVerticalTexto`, 0.78/0.22 do tamanho da fonte — jsPDF não expõe métrica real de fonte sem vendorizar um arquivo à parte, mesma limitação já documentada pra font-family). Palavras ADJACENTES com o mesmo fundo se fundem num único retângulo (cobrindo o espaço entre elas) em vez de uma caixa por palavra com lasca branca no meio — mesmo cuidado de "colar no texto, sem buraco artificial" que motivou a troca da geração de `.docx` pro OOXML nativo (ver decisão acima), só que aqui resolvido no próprio desenho em vez de delegado a um `w:shd`. Deliberado NÃO adicionar a legenda textual de formatação (`legendaCorParaMarkdown`, usada só no `.md`) ao PDF: ela existe pra compensar a perda de formatação na conversão pra Markdown — no PDF o fundo já aparece de verdade, então a legenda seria redundante.
+diff --git a/package-lock.json b/package-lock.json
+index 2aa9794..f27a220 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -7,10 +7,12 @@
+             "name": "arquivo-poetico",
+             "devDependencies": {
+                 "@eslint/js": "^10.0.1",
++                "docx": "^9.7.1",
+                 "eslint": "^10.8.0",
+                 "eslint-config-prettier": "^10.1.8",
+                 "globals": "^17.7.0",
+                 "happy-dom": "^20.11.1",
++                "jszip": "^3.10.1",
+                 "prettier": "^3.9.6"
+             }
+         },
+@@ -332,6 +334,13 @@
+                 "node": ">=4.0"
+             }
+         },
++        "node_modules/core-util-is": {
++            "version": "1.0.3",
++            "resolved": "https://registry.npmjs.org/core-util-is/-/core-util-is-1.0.3.tgz",
++            "integrity": "sha512-ZQBvi1DcpJ4GDqanjucZ2Hj3wEO5pZDS89BWbkcrvdxksJorwUDDZamX9ldFkp9aw2lmBDLgkObEA4DWNJ9FYQ==",
++            "dev": true,
++            "license": "MIT"
++        },
+         "node_modules/cross-spawn": {
+             "version": "7.0.6",
+             "resolved": "https://registry.npmjs.org/cross-spawn/-/cross-spawn-7.0.6.tgz",
+@@ -372,6 +381,41 @@
+             "dev": true,
+             "license": "MIT"
+         },
++        "node_modules/docx": {
++            "version": "9.7.1",
++            "resolved": "https://registry.npmjs.org/docx/-/docx-9.7.1.tgz",
++            "integrity": "sha512-ilXFf9Moz47ABjFpDiA5s1w9lpb4EFSp7+5iiJSbfyYDM+bpZdAgLlSr7fW4aXhVe/E+F6QCv0EvRVFEd5CsWg==",
++            "dev": true,
++            "license": "MIT",
++            "dependencies": {
++                "@types/node": "^25.2.3",
++                "hash.js": "^1.1.7",
++                "jszip": "^3.10.1",
++                "nanoid": "^5.1.3",
++                "xml": "^1.0.1",
++                "xml-js": "^1.6.8"
++            },
++            "engines": {
++                "node": ">=10"
++            }
++        },
++        "node_modules/docx/node_modules/@types/node": {
++            "version": "25.9.6",
++            "resolved": "https://registry.npmjs.org/@types/node/-/node-25.9.6.tgz",
++            "integrity": "sha512-JR6Q/PV5DKFvjrGFVqQJdeG0qvsqQQLDa3TzFrqVwhqRXqwNaxPo2KYCtCQXpOdIulCouKwT7a6in9nFthBAzw==",
++            "dev": true,
++            "license": "MIT",
++            "dependencies": {
++                "undici-types": ">=7.24.0 <7.24.7"
++            }
++        },
++        "node_modules/docx/node_modules/undici-types": {
++            "version": "7.24.6",
++            "resolved": "https://registry.npmjs.org/undici-types/-/undici-types-7.24.6.tgz",
++            "integrity": "sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg==",
++            "dev": true,
++            "license": "MIT"
++        },
+         "node_modules/entities": {
+             "version": "7.0.1",
+             "resolved": "https://registry.npmjs.org/entities/-/entities-7.0.1.tgz",
+@@ -686,6 +730,17 @@
+                 "node": ">=20.0.0"
+             }
+         },
++        "node_modules/hash.js": {
++            "version": "1.1.7",
++            "resolved": "https://registry.npmjs.org/hash.js/-/hash.js-1.1.7.tgz",
++            "integrity": "sha512-taOaskGt4z4SOANNseOviYDvjEJinIkRgmp7LbKP2YTTmVxWBl87s/uzK9r+44BclBSp2X7K1hqeNfz9JbBeXA==",
++            "dev": true,
++            "license": "MIT",
++            "dependencies": {
++                "inherits": "^2.0.3",
++                "minimalistic-assert": "^1.0.1"
++            }
++        },
+         "node_modules/ignore": {
+             "version": "5.3.2",
+             "resolved": "https://registry.npmjs.org/ignore/-/ignore-5.3.2.tgz",
+@@ -696,6 +751,13 @@
+                 "node": ">= 4"
+             }
+         },
++        "node_modules/immediate": {
++            "version": "3.0.6",
++            "resolved": "https://registry.npmjs.org/immediate/-/immediate-3.0.6.tgz",
++            "integrity": "sha512-XXOFtyqDjNDAQxVfYxuF7g9Il/IbWmmlQg2MYKOH8ExIT1qg6xc4zyS3HaEEATgs1btfzxq15ciUiY7gjSXRGQ==",
++            "dev": true,
++            "license": "MIT"
++        },
+         "node_modules/imurmurhash": {
+             "version": "0.1.4",
+             "resolved": "https://registry.npmjs.org/imurmurhash/-/imurmurhash-0.1.4.tgz",
+@@ -706,6 +768,13 @@
+                 "node": ">=0.8.19"
+             }
+         },
++        "node_modules/inherits": {
++            "version": "2.0.4",
++            "resolved": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",
++            "integrity": "sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==",
++            "dev": true,
++            "license": "ISC"
++        },
+         "node_modules/is-extglob": {
+             "version": "2.1.1",
+             "resolved": "https://registry.npmjs.org/is-extglob/-/is-extglob-2.1.1.tgz",
+@@ -729,6 +798,13 @@
+                 "node": ">=0.10.0"
+             }
+         },
++        "node_modules/isarray": {
++            "version": "1.0.0",
++            "resolved": "https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz",
++            "integrity": "sha512-VLghIWNM6ELQzo7zwmcg0NmTVyWKYjvIeM83yjp0wRDTmUnrM678fQbcKBo6n2CJEF0szoG//ytg+TKla89ALQ==",
++            "dev": true,
++            "license": "MIT"
++        },
+         "node_modules/isexe": {
+             "version": "2.0.0",
+             "resolved": "https://registry.npmjs.org/isexe/-/isexe-2.0.0.tgz",
+@@ -757,6 +833,19 @@
+             "dev": true,
+             "license": "MIT"
+         },
++        "node_modules/jszip": {
++            "version": "3.10.2",
++            "resolved": "https://registry.npmjs.org/jszip/-/jszip-3.10.2.tgz",
++            "integrity": "sha512-3l+rb15IOWtUhU0H5MFqES/T6Kh7abYwjosBey/vD6hDt8zoEffkSC5Ws5SGtgVw3gBx2NEbhTeSW1+kWkpyTQ==",
++            "dev": true,
++            "license": "(MIT OR GPL-3.0-or-later)",
++            "dependencies": {
++                "lie": "~3.3.0",
++                "pako": "~1.0.2",
++                "readable-stream": "~2.3.6",
++                "setimmediate": "^1.0.5"
++            }
++        },
+         "node_modules/keyv": {
+             "version": "4.5.4",
+             "resolved": "https://registry.npmjs.org/keyv/-/keyv-4.5.4.tgz",
+@@ -781,6 +870,16 @@
+                 "node": ">= 0.8.0"
+             }
+         },
++        "node_modules/lie": {
++            "version": "3.3.0",
++            "resolved": "https://registry.npmjs.org/lie/-/lie-3.3.0.tgz",
++            "integrity": "sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ==",
++            "dev": true,
++            "license": "MIT",
++            "dependencies": {
++                "immediate": "~3.0.5"
++            }
++        },
+         "node_modules/locate-path": {
+             "version": "6.0.0",
+             "resolved": "https://registry.npmjs.org/locate-path/-/locate-path-6.0.0.tgz",
+@@ -797,6 +896,13 @@
+                 "url": "https://github.com/sponsors/sindresorhus"
+             }
+         },
++        "node_modules/minimalistic-assert": {
++            "version": "1.0.1",
++            "resolved": "https://registry.npmjs.org/minimalistic-assert/-/minimalistic-assert-1.0.1.tgz",
++            "integrity": "sha512-UtJcAD4yEaGtjPezWuO9wC4nwUnVH/8/Im3yEHQP4b67cXlD/Qr9hdITCU1xDbSEXg2XKNaP8jsReV7vQd00/A==",
++            "dev": true,
++            "license": "ISC"
++        },
+         "node_modules/minimatch": {
+             "version": "10.2.5",
+             "resolved": "https://registry.npmjs.org/minimatch/-/minimatch-10.2.5.tgz",
+@@ -820,6 +926,25 @@
+             "dev": true,
+             "license": "MIT"
+         },
++        "node_modules/nanoid": {
++            "version": "5.1.16",
++            "resolved": "https://registry.npmjs.org/nanoid/-/nanoid-5.1.16.tgz",
++            "integrity": "sha512-kVrnsrJqMR8+oLJnGEmSWw9BivK5mt7H3FZatVRjrc5wGqFYuBxX1yG7+A7Gi5AefkX6t/oCkizcQgpu0cY1dQ==",
++            "dev": true,
++            "funding": [
++                {
++                    "type": "github",
++                    "url": "https://github.com/sponsors/ai"
++                }
++            ],
++            "license": "MIT",
++            "bin": {
++                "nanoid": "bin/nanoid.js"
++            },
++            "engines": {
++                "node": "^18 || >=20"
++            }
++        },
+         "node_modules/natural-compare": {
+             "version": "1.4.0",
+             "resolved": "https://registry.npmjs.org/natural-compare/-/natural-compare-1.4.0.tgz",
+@@ -877,6 +1002,13 @@
+                 "url": "https://github.com/sponsors/sindresorhus"
+             }
+         },
++        "node_modules/pako": {
++            "version": "1.0.11",
++            "resolved": "https://registry.npmjs.org/pako/-/pako-1.0.11.tgz",
++            "integrity": "sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==",
++            "dev": true,
++            "license": "(MIT AND Zlib)"
++        },
+         "node_modules/path-exists": {
+             "version": "4.0.0",
+             "resolved": "https://registry.npmjs.org/path-exists/-/path-exists-4.0.0.tgz",
+@@ -923,6 +1055,13 @@
+                 "url": "https://github.com/prettier/prettier?sponsor=1"
+             }
+         },
++        "node_modules/process-nextick-args": {
++            "version": "2.0.1",
++            "resolved": "https://registry.npmjs.org/process-nextick-args/-/process-nextick-args-2.0.1.tgz",
++            "integrity": "sha512-3ouUOpQhtgrbOa17J7+uxOTpITYWaGP7/AhoR3+A+/1e9skrzelGi/dXzEYyvbxubEF6Wn2ypscTKiKJFFn1ag==",
++            "dev": true,
++            "license": "MIT"
++        },
+         "node_modules/punycode": {
+             "version": "2.3.1",
+             "resolved": "https://registry.npmjs.org/punycode/-/punycode-2.3.1.tgz",
+@@ -933,6 +1072,46 @@
+                 "node": ">=6"
+             }
+         },
++        "node_modules/readable-stream": {
++            "version": "2.3.8",
++            "resolved": "https://registry.npmjs.org/readable-stream/-/readable-stream-2.3.8.tgz",
++            "integrity": "sha512-8p0AUk4XODgIewSi0l8Epjs+EVnWiK7NoDIEGU0HhE7+ZyY8D1IMY7odu5lRrFXGg71L15KG8QrPmum45RTtdA==",
++            "dev": true,
++            "license": "MIT",
++            "dependencies": {
++                "core-util-is": "~1.0.0",
++                "inherits": "~2.0.3",
++                "isarray": "~1.0.0",
++                "process-nextick-args": "~2.0.0",
++                "safe-buffer": "~5.1.1",
++                "string_decoder": "~1.1.1",
++                "util-deprecate": "~1.0.1"
++            }
++        },
++        "node_modules/safe-buffer": {
++            "version": "5.1.2",
++            "resolved": "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.1.2.tgz",
++            "integrity": "sha512-Gd2UZBJDkXlY7GbJxfsE8/nvKkUEU1G38c1siN6QP6a9PT9MmHB8GnpscSmMJSoF8LOIrt8ud/wPtojys4G6+g==",
++            "dev": true,
++            "license": "MIT"
++        },
++        "node_modules/sax": {
++            "version": "1.6.1",
++            "resolved": "https://registry.npmjs.org/sax/-/sax-1.6.1.tgz",
++            "integrity": "sha512-42tBVwLWnaQvW5zc4HbZrTuWccECCZfBi92FDuwtqxasH+JbPB3/FOKb1m222K42R4WxuxzzMsTswfzgtSu64Q==",
++            "dev": true,
++            "license": "BlueOak-1.0.0",
++            "engines": {
++                "node": ">=11.0.0"
++            }
++        },
++        "node_modules/setimmediate": {
++            "version": "1.0.5",
++            "resolved": "https://registry.npmjs.org/setimmediate/-/setimmediate-1.0.5.tgz",
++            "integrity": "sha512-MATJdZp8sLqDl/68LfQmbP8zKPLQNV6BIZoIgrscFDQ+RsvK/BxeDQOgyxKKoh0y/8h3BqVFnCqQ/gd+reiIXA==",
++            "dev": true,
++            "license": "MIT"
++        },
+         "node_modules/shebang-command": {
+             "version": "2.0.0",
+             "resolved": "https://registry.npmjs.org/shebang-command/-/shebang-command-2.0.0.tgz",
+@@ -956,6 +1135,16 @@
+                 "node": ">=8"
+             }
+         },
++        "node_modules/string_decoder": {
++            "version": "1.1.1",
++            "resolved": "https://registry.npmjs.org/string_decoder/-/string_decoder-1.1.1.tgz",
++            "integrity": "sha512-n/ShnvDi6FHbbVfviro+WojiFzv+s8MPMHBczVePfUpDJLwoLT0ht1l4YwBCbi8pJAveEEdnkHyPyTP/mzRfwg==",
++            "dev": true,
++            "license": "MIT",
++            "dependencies": {
++                "safe-buffer": "~5.1.0"
++            }
++        },
+         "node_modules/type-check": {
+             "version": "0.4.0",
+             "resolved": "https://registry.npmjs.org/type-check/-/type-check-0.4.0.tgz",
+@@ -986,6 +1175,13 @@
+                 "punycode": "^2.1.0"
+             }
+         },
++        "node_modules/util-deprecate": {
++            "version": "1.0.2",
++            "resolved": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
++            "integrity": "sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==",
++            "dev": true,
++            "license": "MIT"
++        },
+         "node_modules/whatwg-mimetype": {
+             "version": "3.0.0",
+             "resolved": "https://registry.npmjs.org/whatwg-mimetype/-/whatwg-mimetype-3.0.0.tgz",
+@@ -1044,6 +1240,26 @@
+                 }
+             }
+         },
++        "node_modules/xml": {
++            "version": "1.0.1",
++            "resolved": "https://registry.npmjs.org/xml/-/xml-1.0.1.tgz",
++            "integrity": "sha512-huCv9IH9Tcf95zuYCsQraZtWnJvBtLVE0QHMOs8bWyZAFZNDcYjsPq1nEx8jKA9y+Beo9v+7OBPRisQTjinQMw==",
++            "dev": true,
++            "license": "MIT"
++        },
++        "node_modules/xml-js": {
++            "version": "1.6.11",
++            "resolved": "https://registry.npmjs.org/xml-js/-/xml-js-1.6.11.tgz",
++            "integrity": "sha512-7rVi2KMfwfWFl+GpPg6m80IVMWXLRjO+PxTq7V2CDhoGak0wzYzFgUY2m4XJ47OGdXd8eLE8EmwfAmdjw7lC1g==",
++            "dev": true,
++            "license": "MIT",
++            "dependencies": {
++                "sax": "^1.2.4"
++            },
++            "bin": {
++                "xml-js": "bin/cli.js"
++            }
++        },
+         "node_modules/yocto-queue": {
+             "version": "0.1.0",
+             "resolved": "https://registry.npmjs.org/yocto-queue/-/yocto-queue-0.1.0.tgz",
+diff --git a/package.json b/package.json
+index 4c499dc..128b84a 100644
+--- a/package.json
++++ b/package.json
+@@ -11,10 +11,12 @@
+     },
+     "devDependencies": {
+         "@eslint/js": "^10.0.1",
++        "docx": "^9.7.1",
+         "eslint": "^10.8.0",
+         "eslint-config-prettier": "^10.1.8",
+         "globals": "^17.7.0",
+         "happy-dom": "^20.11.1",
++        "jszip": "^3.10.1",
+         "prettier": "^3.9.6"
+     }
+ }
+diff --git a/tests/exportar-docx.test.js b/tests/exportar-docx.test.js
+index 44de0a9..e06e863 100644
+--- a/tests/exportar-docx.test.js
++++ b/tests/exportar-docx.test.js
+@@ -1,12 +1,14 @@
+ import './helpers/localstorage-shim.js';
+ import './helpers/dom-shim.js';
+-import { instalarHtmlDocxFalso, removerHtmlDocxFalso } from './helpers/htmldocx-shim.js';
++import { instalarDocxReal, removerDocxReal } from './helpers/docx-shim.js';
+ 
+ import { describe, it, beforeEach, afterEach } from 'node:test';
+ import assert from 'node:assert/strict';
++import { Packer } from 'docx';
++import JSZip from 'jszip';
+ 
+ import { db } from '../js/db.js';
+-import { gerarDocxHtmlExportacao, baixarDocx } from '../js/exportar-docx.js';
++import { gerarDocxDocumento, baixarDocx } from '../js/exportar-docx.js';
+ 
+ function resetarDb() {
+     db.livros = [];
+@@ -21,29 +23,97 @@ function resetarDb() {
+     db.grupos = [];
+ }
+ 
+-describe('gerarDocxHtmlExportacao', () => {
+-    beforeEach(resetarDb);
++// ─── Helpers de inspeção do OOXML gerado ────────────────────────────────
++// Em vez de comparar contra uma string HTML (como a versão anterior, que
++// testava só o que ia pro html-docx-js — nunca o .docx de verdade), estes
++// testes empacotam o Document de verdade (Packer.toBuffer) e reabrem o
++// .zip resultante, lendo word/document.xml — o mesmo XML que o Word
++// interpreta. Os helpers abaixo usam regex simples (não um parser XML
++// completo) só pra isolar o <w:p>...</w:p> ou <w:r>...</w:r> relevante;
++// suficiente pro que os testes checam.
++async function documentoParaXml(documento) {
++    const buffer = await Packer.toBuffer(documento);
++    const zip = await JSZip.loadAsync(buffer);
++    return zip.file('word/document.xml').async('string');
++}
++
++async function relacionamentosParaXml(documento) {
++    const buffer = await Packer.toBuffer(documento);
++    const zip = await JSZip.loadAsync(buffer);
++    return zip.file('word/_rels/document.xml.rels').async('string');
++}
++
++async function documentoParaStylesXml(documento) {
++    const buffer = await Packer.toBuffer(documento);
++    const zip = await JSZip.loadAsync(buffer);
++    return zip.file('word/styles.xml').async('string');
++}
++
++function estiloPorId(stylesXml, id) {
++    const m = (stylesXml || '').match(
++        new RegExp(`<w:style[^>]*w:styleId="${id}"[^>]*>.*?<\\/w:style>`, 's'),
++    );
++    return m ? m[0] : '';
++}
++
++function extrairParagrafoComTexto(xml, textoAlvo) {
++    const blocos = xml.match(/<w:p(?: [^>]*)?>.*?<\/w:p>/gs) || [];
++    return blocos.find((p) => p.includes(textoAlvo));
++}
++
++function pPrDoParagrafo(paragrafoXml) {
++    const m = (paragrafoXml || '').match(/<w:pPr>.*?<\/w:pPr>/s);
++    return m ? m[0] : '';
++}
++
++function runComTexto(paragrafoXml, textoAlvo) {
++    const blocos = (paragrafoXml || '').match(/<w:r>.*?<\/w:r>/gs) || [];
++    return blocos.find((r) => r.includes(textoAlvo)) || '';
++}
++
++describe('gerarDocxDocumento', () => {
++    beforeEach(() => {
++        resetarDb();
++        instalarDocxReal();
++    });
++    afterEach(removerDocxReal);
++
++    it('lança erro claro quando a lib docx não carregou (sem window.docx)', () => {
++        removerDocxReal();
++        assert.throws(() => gerarDocxDocumento([]), /biblioteca de \.docx não carregou/);
++    });
+ 
+-    it('gera um HTML válido mesmo com lista vazia (só o cabeçalho geral)', () => {
+-        const html = gerarDocxHtmlExportacao([]);
+-        assert.match(html, /^<!DOCTYPE html>/);
+-        assert.match(html, /<h1>Exportação Poética<\/h1>/);
+-        assert.match(html, /0 texto\(s\)/);
++    it('gera um Document válido mesmo com lista vazia (só o cabeçalho geral)', async () => {
++        const documento = gerarDocxDocumento([]);
++        const xml = await documentoParaXml(documento);
++        assert.match(xml, /Exportação Poética/);
++        assert.match(xml, /0 texto\(s\)/);
+     });
+ 
+-    it('título do item vira <h2>, com o tipo em itálico (*(...)* de itemParaMarkdownPartes)', () => {
++    it('título do item vira Heading2, com o tipo em itálico (run separado)', async () => {
+         const item = { id: 1, tipo: 'poema', titulo: 'Canção da Solidão', texto: 'verso único' };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.match(html, /<h2>1\. "Canção da Solidão" <em>\(Poema\)<\/em><\/h2>/);
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++
++        const paragrafo = extrairParagrafoComTexto(xml, 'Canção da Solidão');
++        assert.ok(paragrafo, 'parágrafo do título não encontrado');
++        assert.match(pPrDoParagrafo(paragrafo), /<w:pStyle w:val="Heading2"\s*\/>/);
++
++        const runTipo = runComTexto(paragrafo, 'Poema');
++        assert.match(runTipo, /<w:i\b/);
+     });
+ 
+-    it('prosa é rotulada como "(Prosa)"', () => {
++    it('prosa é rotulada como "(Prosa)"', async () => {
+         const item = { id: 1, tipo: 'prosa', titulo: 'T', texto: 'x' };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.match(html, /<em>\(Prosa\)<\/em>/);
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++        // O rótulo do tipo sai entre parênteses (ver "(Poema)" no teste
++        // anterior) — checa substring, não ">Prosa<" cru, senão o próprio
++        // "(" antes do texto já faz a regex antiga nunca bater.
++        assert.ok(xml.includes('(Prosa)'));
+     });
+ 
+-    it('linhas de meta ("- **Rótulo:** valor") viram <li><strong>Rótulo:</strong> valor</li>', () => {
++    it('linhas de meta ("- **Rótulo:** valor") viram item de lista com o rótulo em negrito', async () => {
+         const item = {
+             id: 1,
+             tipo: 'poema',
+@@ -51,18 +121,26 @@ describe('gerarDocxHtmlExportacao', () => {
+             idioma: 'Português',
+             texto: 'x',
+         };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.match(html, /<li><strong>Idioma:<\/strong> Português<\/li>/);
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++
++        const paragrafo = extrairParagrafoComTexto(xml, 'Português');
++        assert.ok(paragrafo, 'parágrafo da meta de Idioma não encontrado');
++        assert.match(pPrDoParagrafo(paragrafo), /<w:numPr>/); // é item de lista (bullet)
++        assert.match(runComTexto(paragrafo, 'Idioma'), /<w:b\b/);
+     });
+ 
+-    it('seções ### (ex.: Notas) viram <h3>, com o conteúdo em <p>', () => {
++    it('seções ### (ex.: Notas) viram Heading3, com o conteúdo em parágrafo próprio', async () => {
+         const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x', notas: 'Uma nota qualquer' };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.match(html, /<h3>Notas<\/h3>/);
+-        assert.match(html, /<p>Uma nota qualquer<\/p>/);
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++
++        const tituloSecao = extrairParagrafoComTexto(xml, 'Notas');
++        assert.match(pPrDoParagrafo(tituloSecao), /<w:pStyle w:val="Heading3"\s*\/>/);
++        assert.ok(extrairParagrafoComTexto(xml, 'Uma nota qualquer'));
+     });
+ 
+-    it('Conteúdo Sensível vira blockquote (mesmo destaque do .md/.pdf)', () => {
++    it('Conteúdo Sensível vira parágrafo com borda esquerda (mesmo destaque do .md/.pdf)', async () => {
+         const item = {
+             id: 1,
+             tipo: 'poema',
+@@ -70,11 +148,15 @@ describe('gerarDocxHtmlExportacao', () => {
+             texto: 'x',
+             conteudoSensivel: 'aviso importante',
+         };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.match(html, /<blockquote><p>aviso importante<\/p><\/blockquote>/);
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++
++        const paragrafo = extrairParagrafoComTexto(xml, 'aviso importante');
++        assert.ok(paragrafo);
++        assert.match(pPrDoParagrafo(paragrafo), /<w:pBdr>.*<w:left /s);
+     });
+ 
+-    it('link de Intertextualidade ([texto](url)) vira <a href="url">texto</a>', () => {
++    it('link de Intertextualidade ([texto](url)) vira hyperlink de verdade (w:hyperlink + relacionamento)', async () => {
+         const item = {
+             id: 1,
+             tipo: 'poema',
+@@ -82,11 +164,17 @@ describe('gerarDocxHtmlExportacao', () => {
+             texto: 'x',
+             intertextualidade: [{ tipo: 'Referência', texto: 'algo', link: 'https://ex.com' }],
+         };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.match(html, /<a href="https:\/\/ex\.com">https:\/\/ex\.com<\/a>/);
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++        const rels = await relacionamentosParaXml(documento);
++
++        assert.match(xml, /<w:hyperlink/);
++        const paragrafo = extrairParagrafoComTexto(xml, 'https://ex.com');
++        assert.ok(paragrafo, 'texto visível do link não encontrado');
++        assert.match(rels, /Target="https:\/\/ex\.com"/);
+     });
+ 
+-    it('escapa &, < e > em campos de texto livre (não deixa HTML solto injetado)', () => {
++    it('escapa & < > em campos de texto livre (serialização XML, não string HTML montada à mão)', async () => {
+         const item = {
+             id: 1,
+             tipo: 'poema',
+@@ -94,62 +182,291 @@ describe('gerarDocxHtmlExportacao', () => {
+             texto: 'x',
+             notas: '<script>a & b</script>',
+         };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.ok(!html.includes('<script>a & b</script>'));
+-        assert.match(html, /&lt;script&gt;a &amp; b&lt;\/script&gt;/);
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++        assert.ok(!xml.includes('<script>a & b</script>'));
++        assert.match(xml, /&lt;script&gt;a &amp; b&lt;\/script&gt;/);
+     });
+ 
+     it('item sem Texto preenchido não quebra (não há corpo rico pra renderizar)', () => {
+         const item = { id: 1, tipo: 'poema', titulo: 'T' };
+-        assert.doesNotThrow(() => gerarDocxHtmlExportacao([item]));
++        assert.doesNotThrow(() => gerarDocxDocumento([item]));
+     });
+ 
+     // ─── Corpo rico do Texto (mesmas runs que o PDF usa) ───
+ 
+-    it('negrito: "**palavra**" vira <span style="font-weight:bold">palavra</span>, sem os marcadores', () => {
++    it('negrito: "**palavra**" vira run com <w:b/>, sem os marcadores', async () => {
+         const item = { id: 1, tipo: 'poema', titulo: 'T', texto: '**palavra**' };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.match(html, /<span style="font-weight:bold">palavra<\/span>/);
+-        assert.ok(!html.includes('**palavra**'));
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++        const paragrafo = extrairParagrafoComTexto(xml, 'palavra');
++        assert.match(runComTexto(paragrafo, 'palavra'), /<w:b\b/);
++        assert.ok(!xml.includes('**palavra**'));
+     });
+ 
+-    it('itálico: "_palavra_" vira <span style="font-style:italic">palavra</span>', () => {
++    it('itálico: "_palavra_" vira run com <w:i/>', async () => {
+         const item = { id: 1, tipo: 'poema', titulo: 'T', texto: '_palavra_' };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.match(html, /<span style="font-style:italic">palavra<\/span>/);
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++        const paragrafo = extrairParagrafoComTexto(xml, 'palavra');
++        assert.match(runComTexto(paragrafo, 'palavra'), /<w:i\b/);
+     });
+ 
+-    it('sublinhado: "<u>palavra</u>" vira <span style="text-decoration:underline">palavra</span>', () => {
++    it('sublinhado: "<u>palavra</u>" vira run com <w:u .../>', async () => {
+         const item = { id: 1, tipo: 'poema', titulo: 'T', texto: '<u>palavra</u>' };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.match(html, /<span style="text-decoration:underline">palavra<\/span>/);
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++        const paragrafo = extrairParagrafoComTexto(xml, 'palavra');
++        assert.match(runComTexto(paragrafo, 'palavra'), /<w:u /);
+     });
+ 
+-    it('cor de um <div style="color:...​"> vira color:rgb(...) no span', () => {
++    it('cor de um <div style="color:...​"> vira <w:color w:val="FF0000"/> no run', async () => {
+         const item = {
+             id: 1,
+             tipo: 'poema',
+             titulo: 'T',
+             texto: '<div style="color: #ff0000;">palavra</div>',
+         };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.match(html, /color:rgb\(255,0,0\)/);
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++        const paragrafo = extrairParagrafoComTexto(xml, 'palavra');
++        assert.match(runComTexto(paragrafo, 'palavra'), /<w:color w:val="FF0000"\s*\/>/);
++    });
++
++    // ─── Fundo: largura total quando cobre a linha inteira, colado ao
++    // texto quando cobre só parte dela ──────────────────────────────────
++    // Motivo original do sombreamento de RUN (troca html-docx-js → docx,
++    // ver decisoes.md): com o html-docx-js, cada verso virando seu
++    // próprio <p style="background-color:..."> fazia o motor de
++    // importação HTML do Word promover QUALQUER fundo a algo equivalente
++    // a sombreamento de parágrafo/linha inteira, mesmo quando só uma
++    // palavra tinha estilo. Com TextRun({ shading: {...} }) da lib docx,
++    // dá pra escolher: quando a linha inteira compartilha o mesmo fundo,
++    // o pedido agora é justamente esse efeito de linha inteira (w:shd no
++    // w:pPr, largura da página) — só quando o fundo cobre só parte da
++    // linha é que ele precisa ficar colado ao texto (w:shd no w:rPr do
++    // run), senão destacar uma palavra pintaria o resto da linha junto.
++    it('fundo cobrindo a linha inteira vira w:shd no w:pPr do parágrafo (faixa de largura total)', async () => {
++        const item = {
++            id: 1,
++            tipo: 'poema',
++            titulo: 'T',
++            texto: '<div style="background-color: #710808;">linha inteira destacada</div>',
++        };
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++
++        const paragrafo = extrairParagrafoComTexto(xml, 'linha inteira destacada');
++        assert.ok(paragrafo, 'parágrafo com o texto não encontrado no XML');
++
++        assert.match(
++            pPrDoParagrafo(paragrafo),
++            /<w:shd[^>]*w:fill="710808"/,
++            'fundo de linha inteira deveria virar sombreamento de PARÁGRAFO',
++        );
++        // E não duplica no run (senão a cor "soma" visualmente):
++        const run = runComTexto(paragrafo, 'linha inteira destacada');
++        assert.ok(
++            !run.includes('<w:shd'),
++            'fundo de linha inteira não deveria repetir no w:rPr do run',
++        );
++    });
++
++    it('fundo cobrindo só um trecho da linha continua w:shd no w:rPr do RUN, colado ao texto', async () => {
++        const item = {
++            id: 1,
++            tipo: 'poema',
++            titulo: 'T',
++            texto: 'antes <div style="background-color: #710808;">palavra</div> depois',
++        };
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++
++        const paragrafo = extrairParagrafoComTexto(xml, 'palavra');
++        assert.ok(paragrafo, 'parágrafo com o texto não encontrado no XML');
++
++        // Não vazou pro parágrafo inteiro:
++        assert.ok(
++            !pPrDoParagrafo(paragrafo).includes('<w:shd'),
++            'sombreamento de trecho parcial vazou pro w:pPr do parágrafo',
++        );
++
++        // Ficou no run, colado ao texto:
++        const run = runComTexto(paragrafo, 'palavra');
++        assert.match(run, /<w:rPr>.*<w:shd[^>]*w:fill="710808"/s);
++    });
++
++    // ─── Caixa contínua (padding/border-radius) ──────────────────────
++    // Ver blocosDeFundoContinuos (utils.js) e criarTabelaComCaixa
++    // (exportar-docx.js): um <div> com padding/border-radius embrulhando
++    // várias linhas (estrofes incluídas) tem que virar UMA tabela 1×1
++    // sem bordas, com o fundo na célula (shd) — não um shading de
++    // parágrafo repetido linha a linha.
++    describe('caixa contínua (padding/border-radius)', () => {
++        const TEXTO_BLOCO =
++            '<div style="background-color: #000000; padding: 20px; border-radius: 8px;">' +
++            'primeira estrofe\nsegue\n\nsegunda estrofe</div>';
++
++        it('vira uma única <w:tbl>, não N faixas de parágrafo', async () => {
++            const item = { id: 1, tipo: 'poema', titulo: 'T', texto: TEXTO_BLOCO };
++            const documento = gerarDocxDocumento([item]);
++            const xml = await documentoParaXml(documento);
++            const tabelas = xml.match(/<w:tbl>.*?<\/w:tbl>/gs) || [];
++            assert.equal(
++                tabelas.length,
++                1,
++                'deveria haver exatamente uma <w:tbl> pro bloco inteiro',
++            );
++        });
++
++        it('a tabela não tem bordas e a célula tem o fundo (shd) do bloco', async () => {
++            const item = { id: 1, tipo: 'poema', titulo: 'T', texto: TEXTO_BLOCO };
++            const documento = gerarDocxDocumento([item]);
++            const xml = await documentoParaXml(documento);
++            const tabela = (xml.match(/<w:tbl>.*?<\/w:tbl>/gs) || [])[0];
++            assert.ok(tabela, 'tabela não encontrada');
++            assert.match(tabela, /<w:tcPr>.*?<w:shd[^>]*w:fill="000000"/s);
++            const bordas = tabela.match(/w:val="none"/g) || [];
++            assert.ok(bordas.length >= 4, 'tabela deveria estar sem bordas visíveis');
++        });
++
++        it('padding (px) vira margem de célula (w:tcMar) em twips — 20px = 300 twips', async () => {
++            const item = { id: 1, tipo: 'poema', titulo: 'T', texto: TEXTO_BLOCO };
++            const documento = gerarDocxDocumento([item]);
++            const xml = await documentoParaXml(documento);
++            const tabela = (xml.match(/<w:tbl>.*?<\/w:tbl>/gs) || [])[0];
++            assert.match(tabela, /<w:tcMar>/);
++            assert.match(tabela, /w:type="dxa" w:w="300"/);
++        });
++
++        it('todos os versos do bloco (estrofe em branco incluída) ficam dentro da tabela, sem shading repetido no parágrafo', async () => {
++            const item = { id: 1, tipo: 'poema', titulo: 'T', texto: TEXTO_BLOCO };
++            const documento = gerarDocxDocumento([item]);
++            const xml = await documentoParaXml(documento);
++            const tabela = (xml.match(/<w:tbl>.*?<\/w:tbl>/gs) || [])[0];
++            assert.ok(tabela.includes('primeira'));
++            assert.ok(tabela.includes('segunda'));
++            assert.ok(tabela.includes('estrofe'));
++            // Sem <w:shd> no w:pPr de cada verso — o fundo já está na célula.
++            const paragrafosDaTabela = tabela.match(/<w:p(?: [^>]*)?>.*?<\/w:p>/gs) || [];
++            paragrafosDaTabela.forEach((p) => {
++                assert.ok(!pPrDoParagrafo(p).includes('<w:shd'));
++            });
++        });
++
++        it('sem padding/border-radius, o fundo continua indo pro w:pPr do parágrafo (sem tabela)', async () => {
++            const item = {
++                id: 1,
++                tipo: 'poema',
++                titulo: 'T',
++                texto: '<div style="background-color: #710808;">linha inteira</div>',
++            };
++            const documento = gerarDocxDocumento([item]);
++            const xml = await documentoParaXml(documento);
++            assert.ok(
++                !xml.includes('<w:tbl>'),
++                'não deveria haver tabela sem padding/border-radius',
++            );
++        });
++    });
++
++    it('fonte (font-family) de um <div> vira <w:rFonts .../> no run', async () => {
++        const item = {
++            id: 1,
++            tipo: 'poema',
++            titulo: 'T',
++            texto: '<div style="font-family: Georgia;">palavra</div>',
++        };
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++        const paragrafo = extrairParagrafoComTexto(xml, 'palavra');
++        assert.match(runComTexto(paragrafo, 'palavra'), /<w:rFonts[^>]*w:ascii="Georgia"/);
++    });
++
++    it('cor de texto, fundo e fonte no mesmo <div> coexistem no mesmo run, cada um sua propriedade', async () => {
++        // "depois" fora do <div>, sem fundo, garante que a linha NÃO é
++        // uniforme — senão o fundo subiria pro w:pPr do parágrafo (ver
++        // testes de fundo acima) e essa asserção de w:shd no run falharia
++        // por um motivo que não tem nada a ver com o que este teste checa.
++        const item = {
++            id: 1,
++            tipo: 'poema',
++            titulo: 'T',
++            texto: '<div style="color: #ffffff; background-color: #710808; font-family: Georgia;">palavra</div> depois',
++        };
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++        const paragrafo = extrairParagrafoComTexto(xml, 'palavra');
++        const run = runComTexto(paragrafo, 'palavra');
++        assert.match(run, /<w:color w:val="FFFFFF"\s*\/>/);
++        assert.match(run, /<w:shd[^>]*w:fill="710808"/);
++        assert.match(run, /<w:rFonts[^>]*w:ascii="Georgia"/);
+     });
+ 
+-    it('quebra de linha do corpo (verso a verso) vira um <p> por linha, preservando a estrutura de versos', () => {
++    it('quebra de linha do corpo (verso a verso) vira um parágrafo por linha, preservando a estrutura de versos', async () => {
+         const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'primeiro verso\nsegundo verso' };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        const indicePrimeiro = html.indexOf('primeiro verso');
+-        const indiceSegundo = html.indexOf('segundo verso');
+-        assert.ok(indicePrimeiro > -1 && indiceSegundo > indicePrimeiro);
+-        // Cada verso é seu próprio <p> — não devem cair no mesmo <span>.
+-        assert.ok(!html.includes('primeiro verso\nsegundo verso'));
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++
++        const paragrafoPrimeiro = extrairParagrafoComTexto(xml, 'primeiro verso');
++        const paragrafoSegundo = extrairParagrafoComTexto(xml, 'segundo verso');
++        assert.ok(paragrafoPrimeiro && paragrafoSegundo);
++        // Cada verso é seu próprio <w:p> — não devem cair no mesmo parágrafo.
++        assert.notEqual(paragrafoPrimeiro, paragrafoSegundo);
++        assert.ok(!xml.includes('primeiro versosegundo verso'));
+     });
+ 
+-    it('linha em branco (parágrafo vazio) vira um <p>&nbsp;</p>, sem quebrar', () => {
++    it('linha em branco (parágrafo vazio) vira um <w:p> sem runs, sem quebrar', () => {
+         const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'verso um\n\nverso dois' };
+-        const html = gerarDocxHtmlExportacao([item]);
+-        assert.match(html, /<p>&nbsp;<\/p>/);
++        assert.doesNotThrow(() => gerarDocxDocumento([item]));
++    });
++
++    // ─── Regressão: espaçamento "espremido" depois da troca html-docx-js → docx ───
++    // Sem w:spacing/w:line explícito, cada verso (Paragraph) usava a
++    // métrica "auto" nativa da fonte pro Word — bem mais apertada que o
++    // fator usado no PDF (tamanho * 1.4, ver alturaLinha em
++    // exportar-pdf.js) — dando pouquíssimo respiro dentro do fundo
++    // (shading) e entre os versos.
++    it('cada verso do corpo tem w:spacing com w:line="360" (1,5 linha) — respiro maior que o padrão "single"', async () => {
++        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'verso único' };
++        const documento = gerarDocxDocumento([item]);
++        const xml = await documentoParaXml(documento);
++        const paragrafo = extrairParagrafoComTexto(xml, 'verso único');
++        assert.ok(paragrafo, 'parágrafo com o texto não encontrado no XML');
++        assert.match(
++            pPrDoParagrafo(paragrafo),
++            /<w:spacing[^>]*w:line="360"[^>]*w:lineRule="auto"/,
++        );
++    });
++
++    // ─── Espaçamento padrão do documento ────────────────────────────
++    // Regressão: sem w:docDefaults/estilos de heading com spacing, o
++    // Word abre o .docx com tudo "grudado" (fallback sem espaço antes/
++    // depois, linha single) — título colado no parágrafo seguinte, item
++    // colado no próximo, meta colada na de cima. Ver ESTILOS_PADRAO_DOCUMENTO
++    // em exportar-docx.js.
++    describe('espaçamento padrão do documento (styles.xml)', () => {
++        it('parágrafo comum (Normal/docDefaults) tem spacing "after" e linha mais folgada que single', async () => {
++            const documento = gerarDocxDocumento([]);
++            const styles = await documentoParaStylesXml(documento);
++            const docDefaults = styles.match(/<w:docDefaults>.*?<\/w:docDefaults>/s)?.[0] || '';
++            assert.match(docDefaults, /<w:spacing[^>]*w:after="120"/);
++            assert.match(docDefaults, /<w:spacing[^>]*w:line="264"[^>]*w:lineRule="auto"/);
++        });
++
++        it('Heading1/2/3 têm spacing "before" maior quanto maior o nível (respiro antes do título)', async () => {
++            const documento = gerarDocxDocumento([]);
++            const styles = await documentoParaStylesXml(documento);
++            assert.match(estiloPorId(styles, 'Heading1'), /<w:spacing[^>]*w:before="320"/);
++            assert.match(estiloPorId(styles, 'Heading2'), /<w:spacing[^>]*w:before="240"/);
++            assert.match(estiloPorId(styles, 'Heading3'), /<w:spacing[^>]*w:before="160"/);
++        });
++
++        it('ListParagraph (linhas de meta) tem spacing "after" bem menor que o Normal — lista compacta', async () => {
++            const documento = gerarDocxDocumento([]);
++            const styles = await documentoParaStylesXml(documento);
++            assert.match(estiloPorId(styles, 'ListParagraph'), /<w:spacing[^>]*w:after="40"/);
++        });
+     });
+ });
+ 
+@@ -157,18 +474,19 @@ describe('baixarDocx', () => {
+     beforeEach(() => {
+         resetarDb();
+     });
+-    afterEach(removerHtmlDocxFalso);
++    afterEach(removerDocxReal);
+ 
+-    it('lança erro claro quando a lib html-docx-js não carregou (sem window.htmlDocx)', () => {
+-        removerHtmlDocxFalso();
+-        assert.throws(() => baixarDocx([], 'teste.docx'), /biblioteca de \.docx não carregou/);
++    it('lança erro claro quando a lib docx não carregou (sem window.docx)', async () => {
++        removerDocxReal();
++        await assert.rejects(
++            () => baixarDocx([], 'teste.docx'),
++            /biblioteca de \.docx não carregou/,
++        );
+     });
+ 
+-    it('repassa o HTML gerado pra htmlDocx.asBlob quando a lib está disponível', () => {
+-        const htmlDocxFalso = instalarHtmlDocxFalso();
++    it('gera e desencadeia o download quando a lib está disponível (não lança)', async () => {
++        instalarDocxReal();
+         const item = { id: 1, tipo: 'poema', titulo: 'Título Único', texto: 'x' };
+-        baixarDocx([item], 'teste.docx');
+-        assert.equal(htmlDocxFalso.chamadas.length, 1);
+-        assert.match(htmlDocxFalso.chamadas[0].html, /Título Único/);
++        await assert.doesNotReject(() => baixarDocx([item], 'teste.docx'));
+     });
+ });
+diff --git a/tests/exportar-md.test.js b/tests/exportar-md.test.js
+index 5babc3f..0d6263b 100644
+--- a/tests/exportar-md.test.js
++++ b/tests/exportar-md.test.js
+@@ -9,6 +9,7 @@ import {
+     gerarMarkdownExportacao,
+     contarCamposPreenchidos,
+     INFO_STATUS,
++    legendaCorParaMarkdown,
+ } from '../js/exportar-md.js';
+ 
+ function resetarDb() {
+@@ -581,3 +582,100 @@ describe('gerarMarkdownExportacao — Status "Privado" (🔒)', () => {
+         assert.equal(INFO_STATUS.privado.titulo, 'Privado');
+     });
+ });
++
++describe('legendaCorParaMarkdown (cor/fundo/fonte perdidos na conversão para Markdown)', () => {
++    it('texto sem nenhum <div> de estilo não gera legenda', () => {
++        assert.equal(legendaCorParaMarkdown('verso sem formatação'), '');
++    });
++
++    it('**negrito**/_itálico_/<u> sozinhos (sem cor/fundo/fonte) não geram legenda', () => {
++        assert.equal(legendaCorParaMarkdown('**negrito** e _itálico_ e <u>sublinhado</u>'), '');
++    });
++
++    it('cor de texto gera uma linha "- "trecho" — cor do texto #HEX"', () => {
++        const md = legendaCorParaMarkdown('<div style="color: #ff0000;">vermelho</div>');
++        assert.match(md, /^_Formatação de cor\/fundo\/fonte do texto original/);
++        assert.match(md, /- "vermelho" — cor do texto #FF0000/);
++    });
++
++    it('fundo (background-color) gera "fundo #HEX", separado de cor de texto', () => {
++        const md = legendaCorParaMarkdown(
++            '<div style="background-color: #710808;">texto com fundo</div>',
++        );
++        assert.match(md, /- "texto com fundo" — fundo #710808/);
++        assert.ok(!md.includes('cor do texto'));
++    });
++
++    it('cor de texto e fundo no mesmo <div> entram na mesma linha, "cor do texto X, fundo Y"', () => {
++        const md = legendaCorParaMarkdown(
++            '<div style="color: #ffffff; background-color: #710808;">ambos</div>',
++        );
++        assert.match(md, /- "ambos" — cor do texto #FFFFFF, fundo #710808/);
++    });
++
++    it('regressão: background-color não é lido como color (bug do "color:" batendo como substring)', () => {
++        const md = legendaCorParaMarkdown('<div style="background-color: #710808;">fundo só</div>');
++        assert.ok(!md.includes('cor do texto #710808'));
++        assert.match(md, /fundo #710808/);
++    });
++
++    it('font-family gera \'fonte "nome"\', entre aspas', () => {
++        const md = legendaCorParaMarkdown('<div style="font-family: Georgia;">com fonte</div>');
++        assert.match(md, /- "com fonte" — fonte "Georgia"/);
++    });
++
++    it('runs consecutivos com o mesmo estilo (cor/fundo/fonte) viram um único trecho agrupado', () => {
++        const md = legendaCorParaMarkdown(
++            '<div style="color: #ff0000;">um **dois** três</div>',
++        );
++        // "um ", "dois" (negrito) e " três" são 3 runs com a mesma cor —
++        // devem virar um único grupo/linha, não três.
++        const ocorrencias = (md.match(/— cor do texto #FF0000/g) || []).length;
++        assert.equal(ocorrencias, 1);
++        assert.match(md, /- "um dois três" — cor do texto #FF0000/);
++    });
++
++    it('um run sem cor/fundo/fonte no meio fecha o grupo — não funde trechos de estilos diferentes', () => {
++        const md = legendaCorParaMarkdown(
++            '<div style="color: #ff0000;">vermelho</div> sem cor <div style="color: #0000ff;">azul</div>',
++        );
++        assert.match(md, /- "vermelho" — cor do texto #FF0000/);
++        assert.match(md, /- "azul" — cor do texto #0000FF/);
++        // Duas linhas separadas, não uma só juntando os dois trechos.
++        assert.equal((md.match(/^- /gm) || []).length, 2);
++    });
++
++    it('grupo que atravessa quebra de linha (mesmo <div> envolvendo vários versos) junta os trechos com " / "', () => {
++        const md = legendaCorParaMarkdown(
++            '<div style="color: #ff0000;">verso um\nverso dois</div>',
++        );
++        assert.match(md, /- "verso um \/ verso dois" — cor do texto #FF0000/);
++    });
++
++    it('cor de 3 dígitos (#f00) é expandida e normalizada em maiúsculas (#FF0000)', () => {
++        const md = legendaCorParaMarkdown('<div style="color: #f00;">curta</div>');
++        assert.match(md, /- "curta" — cor do texto #FF0000/);
++    });
++
++    it('fundo cobrindo vários trechos de cor diferente é anunciado uma vez só, aninhado', () => {
++        const md = legendaCorParaMarkdown(
++            '<div style="background-color: #710808;">' +
++                '<div style="color: #727272;">cinza</div>' +
++                '<div style="color: #ffffff;">branco</div>' +
++                '</div>',
++        );
++        // Só uma ocorrência de "fundo #710808" (não uma por trecho de cor).
++        assert.equal((md.match(/fundo #710808/g) || []).length, 1);
++        assert.match(md, /- fundo #710808 no trecho "cinza \/ branco":/);
++        assert.match(md, /  - "cinza" — cor do texto #727272/);
++        assert.match(md, /  - "branco" — cor do texto #FFFFFF/);
++    });
++
++    it('fundo isolado (sem outro trecho de cor no mesmo bloco) mantém o formato antigo, sem aninhar', () => {
++        const md = legendaCorParaMarkdown(
++            '<div style="background-color: #710808;"><div style="color: #ffffff;">só um trecho</div></div>',
++        );
++        assert.match(md, /^- "só um trecho" — cor do texto #FFFFFF, fundo #710808/m);
++        assert.ok(!md.includes('no trecho'));
++    });
++});
+diff --git a/tests/exportar-pdf.test.js b/tests/exportar-pdf.test.js
+index 3f85c9d..92fd94b 100644
+--- a/tests/exportar-pdf.test.js
++++ b/tests/exportar-pdf.test.js
+@@ -100,7 +100,12 @@ describe('gerarPdfExportacao', () => {
+     });
+ 
+     it('some com qualquer outro caractere fora de Latin-1 não previsto na lista (rede de segurança)', () => {
+-        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'verso com emoji novo 🚀 no meio' };
++        const item = {
++            id: 1,
++            tipo: 'poema',
++            titulo: 'T',
++            texto: 'verso com emoji novo 🚀 no meio',
++        };
+         const doc = gerarPdfExportacao([item]);
+         const texto = textoCompleto(doc);
+         assert.ok(!texto.includes('🚀'));
+@@ -144,8 +149,13 @@ describe('gerarPdfExportacao', () => {
+         // (com um setDrawColor no meio — ver renderizarCorpoRico), então
+         // procura qualquer line() nas chamadas seguintes, não a imediata.
+         const indiceTexto = doc.chamadas.indexOf(chamadaTexto);
+-        const temLineDepois = doc.chamadas.slice(indiceTexto + 1, indiceTexto + 4).some((c) => c.tipo === 'line');
+-        assert.ok(temLineDepois, 'deveria haver uma chamada line() logo após o text() da palavra sublinhada');
++        const temLineDepois = doc.chamadas
++            .slice(indiceTexto + 1, indiceTexto + 4)
++            .some((c) => c.tipo === 'line');
++        assert.ok(
++            temLineDepois,
++            'deveria haver uma chamada line() logo após o text() da palavra sublinhada',
++        );
+     });
+ 
+     it('cor: aplica setTextColor com o RGB correspondente ao hex do <div style="color:...">', () => {
+@@ -167,6 +177,254 @@ describe('gerarPdfExportacao', () => {
+         assert.deepEqual(ultimaCor, { tipo: 'setTextColor', r: 255, g: 0, b: 0 });
+     });
+ 
++    it('fundo: desenha um rect() preenchido ATRÁS da palavra, com o RGB do background-color', () => {
++        const item = {
++            id: 1,
++            tipo: 'poema',
++            titulo: 'T',
++            texto: '<div style="background-color: #ff0000;">destaque</div>',
++        };
++        const doc = gerarPdfExportacao([item]);
++        const chamadaTexto = doc.chamadas.find((c) => c.tipo === 'text' && c.texto === 'destaque');
++        assert.ok(chamadaTexto);
++        const indiceTexto = doc.chamadas.indexOf(chamadaTexto);
++
++        // O rect() de fundo tem que vir ANTES do text() (senão o texto
++        // fica embaixo da caixa colorida, escondido) — ver comentário
++        // "3º passo" em renderizarCorpoRico.
++        const rectAntes = doc.chamadas.slice(0, indiceTexto).find((c) => c.tipo === 'rect');
++        assert.ok(rectAntes, 'deveria haver um rect() de fundo antes do text() da palavra');
++        assert.equal(rectAntes.estilo, 'F');
++
++        const corAntes = doc.chamadas
++            .slice(0, doc.chamadas.indexOf(rectAntes) + 1)
++            .filter((c) => c.tipo === 'setFillColor')
++            .pop();
++        assert.deepEqual(corAntes, { tipo: 'setFillColor', r: 255, g: 0, b: 0 });
++    });
++
++    it('fundo: não desenha rect() quando a palavra não tem background-color', () => {
++        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'sem fundo' };
++        const doc = gerarPdfExportacao([item]);
++        assert.ok(!doc.chamadas.some((c) => c.tipo === 'rect'));
++    });
++
++    // ─── Caixa contínua (padding/border-radius) ──────────────────────
++    // Ver blocosDeFundoContinuos (utils.js) e renderizarBlocoComCaixa
++    // (exportar-pdf.js): um <div> com padding/border-radius embrulhando
++    // várias linhas (estrofes incluídas) tem que virar UM retângulo só,
++    // não uma faixa por linha — mesmo com uma linha em branco (quebra
++    // de estrofe) no meio do bloco.
++    describe('caixa contínua (padding/border-radius)', () => {
++        const TEXTO_BLOCO =
++            '<div style="background-color: #000000; padding: 20px; border-radius: 8px;">' +
++            'primeira estrofe\nsegue\n\nsegunda estrofe</div>';
++
++        it('desenha um único rect() cobrindo o bloco inteiro (não uma faixa por linha)', () => {
++            const item = { id: 1, tipo: 'poema', titulo: 'T', texto: TEXTO_BLOCO };
++            const doc = gerarPdfExportacao([item]);
++            const rects = doc.chamadas.filter((c) => c.tipo === 'rect' && c.estilo === 'F');
++            assert.equal(
++                rects.length,
++                1,
++                'deveria haver exatamente um rect() de fundo pro bloco inteiro',
++            );
++        });
++
++        it('o rect() do bloco vem antes de qualquer text() do bloco, com a cor de fundo certa', () => {
++            const item = { id: 1, tipo: 'poema', titulo: 'T', texto: TEXTO_BLOCO };
++            const doc = gerarPdfExportacao([item]);
++            const rect = doc.chamadas.find((c) => c.tipo === 'rect' && c.estilo === 'F');
++            const primeiroTexto = doc.chamadas.find(
++                (c) => c.tipo === 'text' && c.texto === 'primeira',
++            );
++            assert.ok(rect && primeiroTexto);
++            assert.ok(doc.chamadas.indexOf(rect) < doc.chamadas.indexOf(primeiroTexto));
++
++            const corAntes = doc.chamadas
++                .slice(0, doc.chamadas.indexOf(rect) + 1)
++                .filter((c) => c.tipo === 'setFillColor')
++                .pop();
++            assert.deepEqual(corAntes, { tipo: 'setFillColor', r: 0, g: 0, b: 0 });
++        });
++
++        it('todos os versos do bloco (estrofes incluídas) aparecem depois do rect() único', () => {
++            const item = { id: 1, tipo: 'poema', titulo: 'T', texto: TEXTO_BLOCO };
++            const doc = gerarPdfExportacao([item]);
++            assert.match(textoCompleto(doc), /primeira/);
++            assert.match(textoCompleto(doc), /segunda/);
++            assert.match(textoCompleto(doc), /estrofe/);
++        });
++
++        it('sem padding/border-radius, o fundo continua desenhado linha a linha (comportamento de sempre)', () => {
++            const item = {
++                id: 1,
++                tipo: 'poema',
++                titulo: 'T',
++                texto: '<div style="background-color: #710808;">linha um</div>\nsem fundo',
++            };
++            const doc = gerarPdfExportacao([item]);
++            const rects = doc.chamadas.filter((c) => c.tipo === 'rect' && c.estilo === 'F');
++            assert.equal(rects.length, 1);
++        });
++
++        // Regressão do bug relatado: a margem vertical (padding) era medida a
++        // partir da BASELINE do texto, não do topo/fundo visual das letras —
++        // o topo ficava colado na borda da caixa (a "subida" da fonte comia o
++        // padding) e a base sobrava um respiro do tamanho de uma linha
++        // fantasma inteira, grande e desproporcional. Ver comentário em
++        // renderizarBlocoComCaixa (exportar-pdf.js).
++        it('margem visual do topo da caixa bate com o padding pedido (não fica colada no texto)', () => {
++            const item = {
++                id: 1,
++                tipo: 'poema',
++                titulo: 'T',
++                texto: '<div style="background-color: #710808; padding: 20px; font-size: 18pt;">verso</div>',
++            };
++            const doc = gerarPdfExportacao([item]);
++            const rect = doc.chamadas.find((c) => c.tipo === 'rect' && c.estilo === 'F');
++            const primeiroTexto = doc.chamadas.find((c) => c.tipo === 'text' && c.texto === 'verso');
++            const paddingPt = 20 * 0.75; // 1px = 0.75pt, mesma conversão do código
++            const subida = 18 * 0.78; // extensaoVerticalTexto
++            const topoVisualDoTexto = primeiroTexto.y - subida;
++            assert.ok(
++                Math.abs(topoVisualDoTexto - (rect.y + paddingPt)) < 0.01,
++                `topo visual do texto deveria ficar a ${paddingPt}pt da borda da caixa, mas a distância foi ${(topoVisualDoTexto - rect.y).toFixed(2)}pt`,
++            );
++        });
++
++        it('margem visual da base da caixa bate com o padding pedido (sem sobra de linha fantasma)', () => {
++            const item = {
++                id: 1,
++                tipo: 'poema',
++                titulo: 'T',
++                texto: '<div style="background-color: #710808; padding: 20px; font-size: 18pt;">verso</div>',
++            };
++            const doc = gerarPdfExportacao([item]);
++            const rect = doc.chamadas.find((c) => c.tipo === 'rect' && c.estilo === 'F');
++            const ultimoTexto = doc.chamadas.find((c) => c.tipo === 'text' && c.texto === 'verso');
++            const paddingPt = 20 * 0.75;
++            const descida = 18 * 0.22;
++            const baseVisualDoTexto = ultimoTexto.y + descida;
++            const baseDaCaixa = rect.y + rect.h;
++            assert.ok(
++                Math.abs(baseDaCaixa - baseVisualDoTexto - paddingPt) < 0.01,
++                `base visual do texto deveria ficar a ${paddingPt}pt da borda da caixa, mas a distância foi ${(baseDaCaixa - baseVisualDoTexto).toFixed(2)}pt`,
++            );
++        });
++
++        it('o campo seguinte (Autoria) não nasce sobreposto ao fundo pintado da caixa', () => {
++            db.autores = [{ id: 1, nome: 'Victor' }];
++            const item = {
++                id: 1,
++                tipo: 'poema',
++                titulo: 'T',
++                texto: '<div style="background-color: #710808; padding: 20px; font-size: 18pt;">verso</div>',
++                autoria: [{ autorId: 1, papel: 'Autor' }],
++            };
++            const doc = gerarPdfExportacao([item]);
++            const rect = doc.chamadas.find((c) => c.tipo === 'rect' && c.estilo === 'F');
++            const baseDaCaixa = rect.y + rect.h;
++            const autoria = doc.chamadas.find((c) => c.tipo === 'text' && /Autoria/.test(c.texto));
++            const subidaAutoria = 10 * 0.78; // tamanhoBase
++            const topoVisualDaAutoria = autoria.y - subidaAutoria;
++            assert.ok(
++                topoVisualDaAutoria >= baseDaCaixa,
++                `Autoria não deveria invadir a caixa: topo visual em ${topoVisualDaAutoria.toFixed(2)}, base da caixa em ${baseDaCaixa.toFixed(2)}`,
++            );
++        });
++    });
++
++    it('fundo: mescla palavras ADJACENTES com o mesmo fundo num único rect (sem lacuna no espaço entre elas)', () => {
++        const item = {
++            id: 1,
++            tipo: 'poema',
++            titulo: 'T',
++            texto: '<div style="background-color: #ff0000;">duas palavras</div>',
++        };
++        const doc = gerarPdfExportacao([item]);
++        const rects = doc.chamadas.filter((c) => c.tipo === 'rect');
++        assert.equal(
++            rects.length,
++            1,
++            'duas palavras adjacentes com o mesmo fundo deveriam virar um único rect',
++        );
++
++        const [chamadaDuas, chamadaPalavras] = ['duas', 'palavras'].map((texto) =>
++            doc.chamadas.find((c) => c.tipo === 'text' && c.texto === texto),
++        );
++        // O rect precisa cobrir do início de "duas" até o fim de "palavras"
++        // (incluindo o espaço entre as duas) — não só a largura de uma
++        // palavra isolada.
++        assert.ok(rects[0].x <= chamadaDuas.x);
++        assert.ok(rects[0].x + rects[0].w >= chamadaPalavras.x);
++    });
++
++    it('fundo: NÃO mescla palavras adjacentes com fundos diferentes (dois rects separados)', () => {
++        const item = {
++            id: 1,
++            tipo: 'poema',
++            titulo: 'T',
++            texto:
++                '<div style="background-color: #ff0000;">vermelho</div> ' +
++                '<div style="background-color: #0000ff;">azul</div>',
++        };
++        const doc = gerarPdfExportacao([item]);
++        const rects = doc.chamadas.filter((c) => c.tipo === 'rect');
++        assert.equal(rects.length, 2, 'fundos diferentes não deveriam se fundir num só rect');
++    });
++
++    // ─── Fundo de linha inteira: faixa de largura total, margem a margem ───
++    it('fundo cobrindo a linha inteira: rect() estica margem a margem (largura útil da página)', () => {
++        const item = {
++            id: 1,
++            tipo: 'poema',
++            titulo: 'T',
++            texto: '<div style="background-color: #ff0000;">linha inteira destacada</div>',
++        };
++        const doc = gerarPdfExportacao([item]);
++        const rects = doc.chamadas.filter((c) => c.tipo === 'rect');
++        assert.equal(rects.length, 1, 'linha inteira com um só fundo deveria virar um único rect');
++
++        const margem = 48;
++        const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
++        assert.equal(rects[0].x, margem, 'faixa de fundo deveria começar na margem esquerda');
++        assert.equal(
++            rects[0].w,
++            larguraUtil,
++            'faixa de fundo deveria cobrir toda a largura útil, não só o texto',
++        );
++    });
++
++    it('fundo cobrindo só uma palavra (resto da linha sem fundo): rect() continua colado ao texto, não estica pra largura total', () => {
++        const item = {
++            id: 1,
++            tipo: 'poema',
++            titulo: 'T',
++            texto: 'antes <div style="background-color: #ff0000;">destaque</div> depois',
++        };
++        const doc = gerarPdfExportacao([item]);
++        const rects = doc.chamadas.filter((c) => c.tipo === 'rect');
++        assert.equal(rects.length, 1, 'só a palavra com fundo deveria gerar rect');
++
++        const margem = 48;
++        const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
++        const chamadaDestaque = doc.chamadas.find(
++            (c) => c.tipo === 'text' && c.texto === 'destaque',
++        );
++        assert.ok(chamadaDestaque);
++        // Colado à palavra — bem menor que a largura útil inteira, e não
++        // começando na margem (tem "antes " na frente).
++        assert.ok(
++            rects[0].w < larguraUtil,
++            'fundo de trecho parcial não deveria ocupar a página toda',
++        );
++        assert.ok(
++            rects[0].x > margem,
++            'fundo de trecho parcial não deveria começar colado na margem',
++        );
++    });
++
+     it('tamanho de fonte: usa o font-size do <div> em vez do tamanho-base', () => {
+         const item = {
+             id: 1,
+@@ -192,7 +450,10 @@ describe('gerarPdfExportacao', () => {
+         const docDir = gerarPdfExportacao([itemDireita]);
+         const xEsq = docEsq.chamadas.find((c) => c.tipo === 'text' && c.texto === 'x').x;
+         const xDir = docDir.chamadas.find((c) => c.tipo === 'text' && c.texto === 'x').x;
+-        assert.ok(xDir > xEsq, 'alinhado à direita deveria ter x bem maior que alinhado à esquerda');
++        assert.ok(
++            xDir > xEsq,
++            'alinhado à direita deveria ter x bem maior que alinhado à esquerda',
++        );
+     });
+ 
+     it('não achata a formatação do corpo (markdown "achatado" não é usado pro Texto)', () => {
+@@ -207,6 +468,49 @@ describe('gerarPdfExportacao', () => {
+         assert.ok(algumEmBold);
+     });
+ 
++    // ─── Respiro entre título/corpo/campos ───
++    // Regressão do bug relatado: "### Texto\n\n" (título + UMA linha em
++    // branco de verdade) virava, no split('\n'), três entradas — título,
++    // "", "" — e cada string vazia extra somava +8pt sozinha, dobrando o
++    // respiro pretendido. Ver comentário em renderizarLinhasSimples
++    // (exportar-pdf.js) pro detalhe da correção.
++
++    it('não soma o respiro da linha em branco duas vezes depois do título "Texto" (bug corrigido)', () => {
++        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x' };
++        const doc = gerarPdfExportacao([item]);
++        const chamadas = doc.chamadas.filter((c) => c.tipo === 'text');
++        const yTitulo = chamadas.find((c) => c.texto === 'Texto').y;
++        const yCorpo = chamadas.find((c) => c.texto === 'x').y;
++        const respiro = yCorpo - yTitulo;
++        // Antes do fix: 8 (pré-título) + 4 (pós-título) + 16 (duas linhas
++        // em branco contadas em vez de uma) = 28pt só de espaço morto,
++        // sem contar a linha do título em si (~36pt de gap total nesse
++        // cenário). Depois do fix, sem o dobro: bem menos que isso.
++        assert.ok(
++            respiro < 30,
++            `respiro título->corpo deveria ser bem menor que os ~36pt do bug antigo, mas foi ${respiro}pt`,
++        );
++        assert.ok(respiro > 15, `respiro não deveria ter colapsado quase a zero (foi ${respiro}pt)`);
++    });
++
++    it('respiro entre o corpo do Texto e o próximo campo (Autoria) cai de 8pt fixos pra 4pt', () => {
++        db.autores = [{ id: 1, nome: 'Victor' }];
++        const item = {
++            id: 1,
++            tipo: 'poema',
++            titulo: 'T',
++            texto: 'x',
++            autoria: [{ autorId: 1, papel: 'Autor' }],
++        };
++        const doc = gerarPdfExportacao([item]);
++        const chamadas = doc.chamadas.filter((c) => c.tipo === 'text');
++        const yCorpo = chamadas.find((c) => c.texto === 'x').y;
++        const yAutoria = chamadas.find((c) => /Autoria/.test(c.texto)).y;
++        const respiro = yAutoria - yCorpo;
++        assert.ok(respiro <= 19, `respiro corpo->Autoria deveria ter caído (foi ${respiro}pt, antes era ~22pt)`);
++        assert.ok(respiro >= 14, `respiro não deveria ter colapsado demais (foi ${respiro}pt)`);
++    });
++
+     // ─── Paginação ───
+ 
+     it('adiciona uma nova página (addPage) quando o conteúdo excede a altura útil', () => {
+@@ -218,7 +522,10 @@ describe('gerarPdfExportacao', () => {
+             texto: versoLongo,
+         }));
+         const doc = gerarPdfExportacao(itens);
+-        assert.ok(doc.paginas > 1, 'documento grande deveria ter disparado addPage() em algum ponto');
++        assert.ok(
++            doc.paginas > 1,
++            'documento grande deveria ter disparado addPage() em algum ponto',
++        );
+     });
+ 
+     // ─── contarCamposPreenchidos (coluna nova) ───
+diff --git a/tests/helpers/htmldocx-shim.js b/tests/helpers/htmldocx-shim.js
+deleted file mode 100644
+index 1b7b157..0000000
+--- a/tests/helpers/htmldocx-shim.js
++++ /dev/null
+@@ -1,30 +0,0 @@
+-// html-docx-js é carregado só via CDN no navegador (ver <script> em
+-// index.html) e não é uma dependência do package.json — não tem como
+-// `import` a lib de verdade aqui. Este shim implementa só a fatia da
+-// API que js/exportar-docx.js efetivamente usa (asBlob) e grava um log
+-// de chamadas (`htmlDocxFalso.chamadas`) pros testes inspecionarem o
+-// HTML que de fato chegou até a "conversão".
+-//
+-// NÃO gera um .docx de verdade — só o suficiente pra garantir que
+-// gerarDocxHtmlExportacao produziu o HTML esperado e que baixarDocx
+-// (exportar-docx.js) repassa esse HTML pra lib corretamente.
+-
+-export function instalarHtmlDocxFalso() {
+-    globalThis.window = globalThis.window || {};
+-    const chamadas = [];
+-    const htmlDocxFalso = {
+-        chamadas,
+-        asBlob(html, opcoes) {
+-            chamadas.push({ html, opcoes });
+-            return new Blob([html], {
+-                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+-            });
+-        },
+-    };
+-    globalThis.window.htmlDocx = htmlDocxFalso;
+-    return htmlDocxFalso;
+-}
+-
+-export function removerHtmlDocxFalso() {
+-    if (globalThis.window) delete globalThis.window.htmlDocx;
+-}
+diff --git a/tests/helpers/jspdf-shim.js b/tests/helpers/jspdf-shim.js
+index 3c96579..9389cc4 100644
+--- a/tests/helpers/jspdf-shim.js
++++ b/tests/helpers/jspdf-shim.js
+@@ -2,8 +2,9 @@
+ // e não é uma dependência do package.json — não tem como `import` a lib
+ // de verdade aqui. Este shim implementa só a fatia da API que
+ // js/exportar-pdf.js efetivamente usa (setFont, setFontSize,
+-// setTextColor, setDrawColor, text, line, splitTextToSize, getTextWidth,
+-// addPage, internal.pageSize, output/save) e grava um log de chamadas
++// setTextColor, setDrawColor, setFillColor, rect, text, line,
++// splitTextToSize, getTextWidth, addPage, internal.pageSize,
++// output/save) e grava um log de chamadas
+ // (`doc.chamadas`) pra os testes inspecionarem.
+ //
+ // NÃO tenta reproduzir métricas de fonte reais nem gerar um PDF de
+@@ -60,6 +61,14 @@ export function criarConstrutorJsPdfFalso() {
+             this.chamadas.push({ tipo: 'setDrawColor', r, g, b });
+         }
+ 
++        setFillColor(r, g, b) {
++            this.chamadas.push({ tipo: 'setFillColor', r, g, b });
++        }
++
++        rect(x, y, w, h, estilo) {
++            this.chamadas.push({ tipo: 'rect', x, y, w, h, estilo });
++        }
++
+         getTextWidth(texto) {
+             return larguraAproximada(texto, this._tamanho);
+         }
+diff --git a/tests/render-conexoes.test.js b/tests/render-conexoes.test.js
+index e4b07df..03466c0 100644
+--- a/tests/render-conexoes.test.js
++++ b/tests/render-conexoes.test.js
+@@ -5,7 +5,7 @@ import { describe, it, beforeEach } from 'node:test';
+ import assert from 'node:assert/strict';
+ 
+ import { db } from '../js/db.js';
+-import { calcularBuracos, agruparElos, montarGrafosReferencias } from '../js/render-conexoes.js';
++import { calcularBuracos, agruparElos, montarGrafosEcos } from '../js/render-conexoes.js';
+ 
+ function resetarDb() {
+     db.livros = [];
+@@ -139,14 +139,14 @@ describe('agruparElos', () => {
+     });
+ });
+ 
+-// ─── montarGrafosReferencias ─────────────────────────────────────
++// ─── montarGrafosEcos ─────────────────────────────────────
+ 
+-describe('montarGrafosReferencias', () => {
++describe('montarGrafosEcos', () => {
+     beforeEach(resetarDb);
+ 
+-    it('sem referências, sem grafos', () => {
+-        db.poemas = [{ id: 1, titulo: 'A', conceitos: { referencias: [] } }];
+-        assert.deepEqual(montarGrafosReferencias(), []);
++    it('sem ecos, sem grafos', () => {
++        db.poemas = [{ id: 1, titulo: 'A', conceitos: { ecos: [] } }];
++        assert.deepEqual(montarGrafosEcos(), []);
+     });
+ 
+     it('monta uma cadeia linear (sem ramificação nem convergência) mais novo → mais antigo', () => {
+@@ -155,21 +155,21 @@ describe('montarGrafosReferencias', () => {
+             {
+                 id: 1,
+                 titulo: 'A',
+-                conceitos: { referencias: [{ id: 2, tipo: 'Aceno a', texto: '' }] },
++                conceitos: { ecos: [{ id: 2, tipo: 'Aceno a', texto: '' }] },
+             },
+             {
+                 id: 2,
+                 titulo: 'B',
+-                conceitos: { referencias: [{ id: 3, tipo: 'Personagem em comum', texto: '' }] },
++                conceitos: { ecos: [{ id: 3, tipo: 'Personagem em comum', texto: '' }] },
+             },
+             {
+                 id: 3,
+                 titulo: 'C',
+-                conceitos: { referencias: [{ id: 4, tipo: 'Outro', texto: '' }] },
++                conceitos: { ecos: [{ id: 4, tipo: 'Outro', texto: '' }] },
+             },
+-            { id: 4, titulo: 'D', conceitos: { referencias: [] } },
++            { id: 4, titulo: 'D', conceitos: { ecos: [] } },
+         ];
+-        const grafos = montarGrafosReferencias();
++        const grafos = montarGrafosEcos();
+         assert.equal(grafos.length, 1);
+         assert.equal(grafos[0].linear, true);
+         assert.deepEqual(grafos[0].camadas, [[1], [2], [3], [4]]);
+@@ -190,7 +190,7 @@ describe('montarGrafosReferencias', () => {
+                 id: 1,
+                 titulo: 'Sob o sol comum das horas',
+                 conceitos: {
+-                    referencias: [
++                    ecos: [
+                         { id: 2, tipo: 'Aceno a', texto: '' },
+                         { id: 4, tipo: 'Aceno a', texto: '' },
+                     ],
+@@ -200,7 +200,7 @@ describe('montarGrafosReferencias', () => {
+                 id: 2,
+                 titulo: '[Insone]',
+                 conceitos: {
+-                    referencias: [
++                    ecos: [
+                         { id: 3, tipo: 'Imagem central compartilhada', texto: '' },
+                         { id: 4, tipo: 'Imagem central compartilhada', texto: '' },
+                     ],
+@@ -209,11 +209,11 @@ describe('montarGrafosReferencias', () => {
+             {
+                 id: 3,
+                 titulo: 'coffe breaks',
+-                conceitos: { referencias: [{ id: 4, tipo: 'Outro', texto: '' }] },
++                conceitos: { ecos: [{ id: 4, tipo: 'Outro', texto: '' }] },
+             },
+-            { id: 4, titulo: 'Garoto Café', conceitos: { referencias: [] } },
++            { id: 4, titulo: 'Garoto Café', conceitos: { ecos: [] } },
+         ];
+-        const grafos = montarGrafosReferencias();
++        const grafos = montarGrafosEcos();
+         assert.equal(grafos.length, 1);
+         const grafo = grafos[0];
+ 
+@@ -240,12 +240,12 @@ describe('montarGrafosReferencias', () => {
+             {
+                 id: 1,
+                 titulo: 'A',
+-                conceitos: { referencias: [{ id: 2, tipo: 'Outro', texto: '' }] },
++                conceitos: { ecos: [{ id: 2, tipo: 'Outro', texto: '' }] },
+             },
+-            { id: 2, titulo: 'B', conceitos: { referencias: [] } },
+-            { id: 3, titulo: 'C (isolado)', conceitos: { referencias: [] } },
++            { id: 2, titulo: 'B', conceitos: { ecos: [] } },
++            { id: 3, titulo: 'C (isolado)', conceitos: { ecos: [] } },
+         ];
+-        const grafos = montarGrafosReferencias();
++        const grafos = montarGrafosEcos();
+         const todosOsIds = new Set(grafos.flatMap((g) => g.nos.map((n) => n.id)));
+         assert.equal(todosOsIds.has(3), false);
+     });
+@@ -255,15 +255,15 @@ describe('montarGrafosReferencias', () => {
+             {
+                 id: 1,
+                 titulo: 'A',
+-                conceitos: { referencias: [{ id: 2, tipo: 'Outro', texto: '' }] },
++                conceitos: { ecos: [{ id: 2, tipo: 'Outro', texto: '' }] },
+             },
+             {
+                 id: 2,
+                 titulo: 'B',
+-                conceitos: { referencias: [{ id: 1, tipo: 'Outro', texto: '' }] },
++                conceitos: { ecos: [{ id: 1, tipo: 'Outro', texto: '' }] },
+             },
+         ];
+-        const grafos = montarGrafosReferencias();
++        const grafos = montarGrafosEcos();
+         assert.equal(grafos.length, 1);
+         assert.deepEqual(new Set(grafos[0].nos.map((n) => n.id)), new Set([1, 2]));
+         assert.equal(grafos[0].arestas.length, 2);
