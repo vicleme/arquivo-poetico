@@ -48,6 +48,13 @@ import {
     contextoRelacaoEpoca,
     formatarEpocaRetratada,
     obterSugestaoEpocaPorId,
+    FORMAS_POEMA,
+    avisoMonorrimaAtipica,
+    ESQUEMA_RIMAS_PADRAO,
+    REGULARIDADES_METRICAS,
+    TAMANHOS_VERSO,
+    ORIGENS_TRADICAO_SONORIDADE,
+    calcularOpcoesCascataSonoridade,
 } from '../js/utils.js';
 
 describe('gerarId', () => {
@@ -1542,5 +1549,183 @@ describe('obterSugestaoEpocaPorId (sugestão de datas/contexto pro poema mais re
 
     it('devolve null quando não há nenhum poema com essa época ainda', () => {
         assert.equal(obterSugestaoEpocaPorId([{ id: 1, epocaRetratada: null }], 5), null);
+    });
+});
+
+describe('FORMAS_POEMA — Poesia Narrativa / Cordel', () => {
+    it('inclui a forma como opção, entre Quadra Popular e Forma Livre', () => {
+        assert.ok(FORMAS_POEMA.includes('Poesia Narrativa / Cordel'));
+        const iCordel = FORMAS_POEMA.indexOf('Poesia Narrativa / Cordel');
+        const iQuadra = FORMAS_POEMA.indexOf('Quadra Popular');
+        const iLivre = FORMAS_POEMA.indexOf('Forma Livre / Indefinida');
+        assert.ok(iQuadra >= 0 && iQuadra < iCordel && iCordel < iLivre);
+    });
+});
+
+describe('FORMAS_POEMA — Poema em Redondilhas removida', () => {
+    it('não existe mais como opção — coberta por tamanhoVerso, campo independente de formaPoema', () => {
+        assert.ok(!FORMAS_POEMA.includes('Poema em Redondilhas'));
+    });
+});
+
+describe('FORMAS_POEMA — Quadra / Trova separadas em Trova e Quadra Popular', () => {
+    it('não existe mais "Quadra / Trova" como opção única', () => {
+        assert.ok(!FORMAS_POEMA.includes('Quadra / Trova'));
+    });
+
+    it('inclui as duas opções separadas', () => {
+        assert.ok(FORMAS_POEMA.includes('Trova'));
+        assert.ok(FORMAS_POEMA.includes('Quadra Popular'));
+    });
+});
+
+describe('avisoMonorrimaAtipica', () => {
+    it('avisa em forma fixa comum (ex.: sem linha na matriz, como Limerick)', () => {
+        assert.equal(
+            avisoMonorrimaAtipica('Limerick', 'Monorrima Absoluta (AAAA)'),
+            'Atenção: a monorrima absoluta é atípica para este formato estrutural.',
+        );
+    });
+
+    it('não avisa em Poesia Narrativa / Cordel — monorrima é a norma, não exceção', () => {
+        assert.equal(
+            avisoMonorrimaAtipica('Poesia Narrativa / Cordel', 'Monorrima Absoluta (AAAA)'),
+            null,
+        );
+    });
+
+    it('não avisa em Forma Livre / Indefinida', () => {
+        assert.equal(
+            avisoMonorrimaAtipica('Forma Livre / Indefinida', 'Monorrima Absoluta (AAAA)'),
+            null,
+        );
+    });
+
+    it('não avisa quando o padrão de rima não é Monorrima Absoluta', () => {
+        assert.equal(avisoMonorrimaAtipica('Limerick', 'Emparelhada (AABB)'), null);
+    });
+
+    it('não avisa quando formaPoema ainda não foi escolhido', () => {
+        assert.equal(avisoMonorrimaAtipica(null, 'Monorrima Absoluta (AAAA)'), null);
+    });
+});
+
+describe('ESQUEMA_RIMAS_PADRAO — Sextilha Aberta', () => {
+    it('inclui o padrão da sextilha aberta (cordel)', () => {
+        assert.ok(ESQUEMA_RIMAS_PADRAO.includes('Sextilha Aberta (ABCBDB)'));
+    });
+});
+
+describe('ESQUEMA_RIMAS_PADRAO — Décima Espinela', () => {
+    it('inclui o padrão da décima espinela (décima/repente/trova/cordel)', () => {
+        assert.ok(ESQUEMA_RIMAS_PADRAO.includes('Décima Espinela (ABBAACCDDC)'));
+    });
+});
+
+describe('ESQUEMA_RIMAS_PADRAO — Limerick', () => {
+    it('inclui o esquema fixo do Limerick (AABBA)', () => {
+        assert.ok(ESQUEMA_RIMAS_PADRAO.includes('Limerick (AABBA)'));
+    });
+});
+
+describe('ESQUEMA_RIMAS_PADRAO — Quadra / Rima Simples', () => {
+    it('inclui o padrão ABCB, nomeado como Quadra (não Trova)', () => {
+        assert.ok(ESQUEMA_RIMAS_PADRAO.includes('Quadra / Rima Simples (ABCB)'));
+    });
+});
+
+describe('calcularOpcoesCascataSonoridade — Limerick', () => {
+    it('trava regularidadeMetrica, tamanhoVerso (4 tamanhos), esquemaRimasPadrao e origemTradicao', () => {
+        const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Limerick' });
+        assert.deepEqual(opcoes.regularidadeMetrica, ['Heterométrico']);
+        assert.deepEqual(opcoes.tamanhoVerso, [
+            'Redondilha Menor / Pentassílabo (5)',
+            'Hexassílabo (6)',
+            'Octossílabo (8)',
+            'Eneassílabo (9)',
+        ]);
+        assert.deepEqual(opcoes.esquemaRimasPadrao, ['Limerick (AABBA)']);
+        assert.deepEqual(opcoes.origemTradicao, ['Tradição Importada']);
+    });
+
+    it('exige rima (bloqueia Sem Rimas / Livre)', () => {
+        const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Limerick' });
+        assert.ok(!opcoes.esquemaRimasPresenca.includes('Sem Rimas / Livre'));
+    });
+});
+
+describe('calcularOpcoesCascataSonoridade — Trova', () => {
+    it('trava regularidadeMetrica, tamanhoVerso e origemTradicao', () => {
+        const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Trova' });
+        assert.deepEqual(opcoes.regularidadeMetrica, ['Isométrico']);
+        assert.deepEqual(opcoes.tamanhoVerso, ['Redondilha Maior / Heptassílabo (7)']);
+        assert.deepEqual(opcoes.origemTradicao, ['Medida Velha']);
+    });
+
+    it('trava esquemaRimasPadrao em ABAB/ABBA — NÃO inclui ABCB (é só Quadra)', () => {
+        const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Trova' });
+        assert.deepEqual(opcoes.esquemaRimasPadrao, [
+            'Alternada / Cruzada (ABAB)',
+            'Oposta / Interpolada (ABBA)',
+        ]);
+        assert.ok(!opcoes.esquemaRimasPadrao.includes('Quadra / Rima Simples (ABCB)'));
+    });
+
+    it('exige rima (bloqueia Sem Rimas / Livre)', () => {
+        const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Trova' });
+        assert.ok(!opcoes.esquemaRimasPresenca.includes('Sem Rimas / Livre'));
+    });
+});
+
+describe('calcularOpcoesCascataSonoridade — Quadra Popular', () => {
+    it('NÃO tem linha na matriz — todos os campos ficam sem restrição', () => {
+        const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Quadra Popular' });
+        assert.deepEqual(opcoes.regularidadeMetrica, REGULARIDADES_METRICAS);
+        assert.deepEqual(opcoes.tamanhoVerso, TAMANHOS_VERSO);
+        assert.deepEqual(opcoes.esquemaRimasPadrao, ESQUEMA_RIMAS_PADRAO);
+        assert.deepEqual(opcoes.origemTradicao, ORIGENS_TRADICAO_SONORIDADE);
+    });
+});
+
+describe('avisoMonorrimaAtipica — Quadra Popular', () => {
+    it('não avisa — forma deliberadamente solta, sem trava na matriz', () => {
+        assert.equal(avisoMonorrimaAtipica('Quadra Popular', 'Monorrima Absoluta (AAAA)'), null);
+    });
+});
+
+describe('FORMAS_POEMA — Lira Brasileira', () => {
+    it('inclui "Lira Brasileira", não mais "Lira" sozinho', () => {
+        assert.ok(FORMAS_POEMA.includes('Lira Brasileira'));
+        assert.ok(!FORMAS_POEMA.includes('Lira'));
+    });
+});
+
+describe('calcularOpcoesCascataSonoridade — Lira Brasileira', () => {
+    it('trava regularidadeMetrica, tamanhoVerso e origemTradicao', () => {
+        const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Lira Brasileira' });
+        assert.deepEqual(opcoes.regularidadeMetrica, ['Heterométrico']);
+        assert.deepEqual(opcoes.tamanhoVerso, ['Hexassílabo (6)', 'Decassílabo (10)']);
+        assert.deepEqual(opcoes.origemTradicao, ['Medida Nova']);
+    });
+
+    it('exige rima (bloqueia Sem Rimas / Livre) sem travar um padrão específico', () => {
+        const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Lira Brasileira' });
+        assert.ok(!opcoes.esquemaRimasPresenca.includes('Sem Rimas / Livre'));
+        assert.deepEqual(opcoes.esquemaRimasPadrao, ESQUEMA_RIMAS_PADRAO);
+    });
+});
+
+describe('calcularOpcoesCascataSonoridade — Poesia Narrativa / Cordel', () => {
+    it('trava regularidadeMetrica, tamanhoVerso, esquemaRimasPresenca e origemTradicao', () => {
+        const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Poesia Narrativa / Cordel' });
+        assert.deepEqual(opcoes.regularidadeMetrica, ['Isométrico']);
+        assert.deepEqual(opcoes.tamanhoVerso, ['Redondilha Maior / Heptassílabo (7)']);
+        assert.deepEqual(opcoes.esquemaRimasPresenca, ['Rimado']);
+        assert.deepEqual(opcoes.origemTradicao, ['Medida Velha']);
+    });
+
+    it('NÃO trava esquemaRimasPadrao — deixa a lista inteira, incluindo Sextilha Aberta', () => {
+        const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Poesia Narrativa / Cordel' });
+        assert.deepEqual(opcoes.esquemaRimasPadrao, ESQUEMA_RIMAS_PADRAO);
     });
 });

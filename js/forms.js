@@ -10,6 +10,7 @@ import {
     calcularImpactoExclusaoEpoca,
     mesclarPessoas,
     mesclarEpocas,
+    getEscansaoDoPoema,
 } from './db.js';
 import {
     reordenarPosicao,
@@ -32,6 +33,18 @@ import {
     CORES_GRUPO,
     CORES_GRUPO_PADRAO,
     pontoCorGrupo,
+    FORMAS_POEMA,
+    REGULARIDADES_METRICAS,
+    TAMANHOS_VERSO,
+    ESQUEMA_RIMAS_PRESENCA,
+    ESQUEMA_RIMAS_PADRAO,
+    ORIGENS_TRADICAO_SONORIDADE,
+    REGISTROS_SONORIDADE,
+    TONS_SONORIDADE,
+    calcularOpcoesCascataSonoridade,
+    corrigirPresencaRimaSeVersoBranco,
+    sugerirOrigemTradicaoPorTamanho,
+    avisoMonorrimaAtipica,
 } from './utils.js';
 
 // Rastreadores de alterações não salvas dos formulários de texto longo
@@ -91,6 +104,13 @@ import {
     resetLojas,
 } from './editor.js';
 import { renderPessoas, renderEpocas } from './render-listas.js';
+import {
+    construirLinhasIniciais,
+    inicializarGradeSonoridade,
+    obterLinhasSonoridade,
+    obterRimasSonoridade,
+    calcularDivergenciaSilabas,
+} from './editor-sonoridade.js';
 
 // Lê o par Livro/Seção de texto livre dos campos de Migração (Cortado
 // de / Lançado em) — compartilhado por Poema e Prosa (item 4), por isso
@@ -607,6 +627,310 @@ export function initFormMesclar() {
             },
         });
     };
+}
+
+// ─── Sonoridade (Escansão) ──────────────────────────────────────
+// Bloco 1 (dados + tabela) e Bloco 2 completo — a grade em si (grade
+// silábica, Modo Sílaba Tônica, Mapeamento de Rimas) mora em
+// js/editor-sonoridade.js; este arquivo só decide QUANDO carregá-la
+// (carregarGradeSonoridade) e lê o resultado final na hora de salvar
+// (obterLinhasSonoridade/obterRimasSonoridade).
+function popularSelectOpcoes(id, opcoes, valorAtual = '') {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const placeholder = sel.options[0]; // "-- Não classificado --" / "-- Presença --" etc.
+    sel.innerHTML = '';
+    sel.appendChild(placeholder);
+    opcoes.forEach((op) => {
+        const opt = document.createElement('option');
+        opt.value = op;
+        opt.textContent = op;
+        sel.appendChild(opt);
+    });
+    // Se o valor atual não está (mais) na lista — típico de repopular
+    // com uma lista filtrada pela cascata do Bloco 3 depois de trocar
+    // formaPoema — cai pro placeholder em vez de deixar o <select>
+    // sem nenhuma opção selecionada (valor "fantasma").
+    sel.value = valorAtual && opcoes.includes(valorAtual) ? valorAtual : '';
+}
+
+// Bloco 3 (Matriz de Validação em Cascata) — relê os 3 campos que
+// disparam restrição (formaPoema/regularidadeMetrica/
+// esquemaRimasPresenca já escolhidos) e repopula os 5 selects em
+// cascata com a lista filtrada de calcularOpcoesCascataSonoridade,
+// preservando o valor de cada um se ele ainda for válido (senão volta
+// pro placeholder — ver popularSelectOpcoes). Chamada tanto ao abrir o
+// modal (popularCamposSonoridade, pra uma escansão já salva abrir já
+// filtrada) quanto a cada troca de formaPoema/regularidadeMetrica/
+// esquemaRimasPresenca (ver initFormSonoridade).
+function aplicarCascataSonoridade() {
+    const formaPoema = document.getElementById('son-forma-poema')?.value || '';
+    const regularidadeMetrica = document.getElementById('son-regularidade-metrica')?.value || '';
+    const esquemaRimasPresenca =
+        document.getElementById('son-esquema-rimas-presenca')?.value || '';
+
+    const opcoes = calcularOpcoesCascataSonoridade({
+        formaPoema,
+        regularidadeMetrica,
+        esquemaRimasPresenca,
+    });
+
+    popularSelectOpcoes('son-regularidade-metrica', opcoes.regularidadeMetrica, regularidadeMetrica);
+    popularSelectOpcoes(
+        'son-tamanho-verso',
+        opcoes.tamanhoVerso,
+        document.getElementById('son-tamanho-verso')?.value,
+    );
+    popularSelectOpcoes(
+        'son-esquema-rimas-presenca',
+        opcoes.esquemaRimasPresenca,
+        esquemaRimasPresenca,
+    );
+    popularSelectOpcoes(
+        'son-esquema-rimas-padrao',
+        opcoes.esquemaRimasPadrao,
+        document.getElementById('son-esquema-rimas-padrao')?.value,
+    );
+    popularSelectOpcoes(
+        'son-origem-tradicao',
+        opcoes.origemTradicao,
+        document.getElementById('son-origem-tradicao')?.value,
+    );
+}
+
+
+// junto com um aviso (não bloqueante) se o poema escolhido já tiver
+// uma escansão cadastrada (edição em cima dela substitui; cadastro novo
+// nesse poema criaria uma segunda, o que getEscansaoDoPoema não prevê
+// — ver comentário em db.js: no máximo uma por poema).
+function popularSelectPoemasSonoridade(poemaIdAtual = '') {
+    const sel = document.getElementById('son-poema-id');
+    if (!sel) return;
+    const ordenados = [...db.poemas].sort((a, b) =>
+        (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR'),
+    );
+    sel.innerHTML = '<option value="">-- Escolha um poema --</option>';
+    ordenados.forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.titulo || `#${p.id}`;
+        sel.appendChild(opt);
+    });
+    sel.value = poemaIdAtual || '';
+}
+
+function atualizarAvisoPoemaSonoridade() {
+    const sel = document.getElementById('son-poema-id');
+    const aviso = document.getElementById('son-poema-aviso');
+    const idEmEdicao = document.getElementById('son-edit-id')?.value;
+    if (!sel || !aviso) return;
+    const existente = sel.value ? getEscansaoDoPoema(parseInt(sel.value)) : null;
+    if (existente && String(existente.id) !== String(idEmEdicao)) {
+        aviso.textContent =
+            'Esse poema já tem uma escansão cadastrada — salvar aqui substitui a existente.';
+        aviso.classList.remove('hidden');
+    } else {
+        aviso.classList.add('hidden');
+    }
+}
+
+// Carrega a grade do editor visual (js/editor-sonoridade.js) a partir do
+// estado atual do <select> de poema + do id em edição:
+// - sem poema escolhido → grade vazia;
+// - editando uma escansão já existente E o poema no select ainda é o
+//   mesmo dela → recarrega a grade salva (`es.escansaoLinhas`), preservando
+//   a divisão silábica já feita;
+// - poema novo OU trocado (edição apontando pra outro poema agora) →
+//   reconstrói do zero a partir do texto do poema (construirLinhasIniciais)
+//   — troca de poema no meio de uma edição existente perde a grade
+//   anterior, decisão aceita (ver conversa do Bloco 2).
+function carregarGradeSonoridade() {
+    const container = document.getElementById('son-grade-container');
+    if (!container) return;
+    const poemaId = parseInt(document.getElementById('son-poema-id')?.value);
+    if (!poemaId) {
+        inicializarGradeSonoridade(container, []);
+        return;
+    }
+    const poema = db.poemas.find((p) => p.id === poemaId);
+    if (!poema) {
+        inicializarGradeSonoridade(container, []);
+        return;
+    }
+    const idEmEdicao = document.getElementById('son-edit-id')?.value;
+    const es = idEmEdicao ? db.escansoes.find((x) => String(x.id) === idEmEdicao) : null;
+    const linhas =
+        es && String(es.poemaId) === String(poemaId) && es.escansaoLinhas?.length
+            ? es.escansaoLinhas
+            : construirLinhasIniciais(poema.texto);
+    const rimas = es && String(es.poemaId) === String(poemaId) ? es.rimas || [] : [];
+    inicializarGradeSonoridade(container, linhas, rimas);
+}
+
+// Repopula os 7 selects (poema + 6 campos de classificação) do zero —
+// chamada tanto ao abrir "Adicionar Escansão" quanto ao editar, nunca
+// só uma vez no registrarModal(): ao contrário do onsubmit (que pode
+// ser wireado uma única vez, ver initFormSonoridade), a lista de poemas
+// muda ao longo do uso, então precisa recarregar toda vez que o modal
+// abre — mesmo raciocínio de renderDropdowns() em ui.js, chamado por
+// prepararNovo a cada abertura.
+function popularCamposSonoridade(valores = {}) {
+    popularSelectPoemasSonoridade(valores.poemaId || '');
+    popularSelectOpcoes('son-forma-poema', FORMAS_POEMA, valores.formaPoema);
+    popularSelectOpcoes(
+        'son-regularidade-metrica',
+        REGULARIDADES_METRICAS,
+        valores.regularidadeMetrica,
+    );
+    popularSelectOpcoes('son-tamanho-verso', TAMANHOS_VERSO, valores.tamanhoVerso);
+    popularSelectOpcoes(
+        'son-esquema-rimas-presenca',
+        ESQUEMA_RIMAS_PRESENCA,
+        valores.esquemaRimasPresenca,
+    );
+    popularSelectOpcoes(
+        'son-esquema-rimas-padrao',
+        ESQUEMA_RIMAS_PADRAO,
+        valores.esquemaRimasPadrao,
+    );
+    popularSelectOpcoes('son-origem-tradicao', ORIGENS_TRADICAO_SONORIDADE, valores.origemTradicao);
+    popularSelectOpcoes('son-registro', REGISTROS_SONORIDADE, valores.registro);
+    popularSelectOpcoes('son-tom', TONS_SONORIDADE, valores.tom);
+    // Bloco 3: estreita os 5 selects em cascata pro que já está salvo em
+    // formaPoema/regularidadeMetrica/esquemaRimasPresenca — feito depois
+    // de popular tudo com a lista cheia (acima), não antes, senão os
+    // valores.* ainda não estariam no DOM pra aplicarCascataSonoridade ler.
+    aplicarCascataSonoridade();
+    atualizarAvisoPoemaSonoridade();
+    carregarGradeSonoridade();
+}
+
+// Abre o modal pra uma escansão NOVA (botão "Adicionar Escansão") — a
+// contraparte de editarSonoridade abaixo. Função própria (em vez de
+// reaproveitar prepararNovo(tipo) de ui.js) porque o reset desse modal
+// precisa repopular os selects a cada abertura, não só uma vez — mesmo
+// padrão já usado por prepararNovaParte/prepararNovoItem em
+// coletaneas.js pro mesmo tipo de necessidade.
+export async function prepararNovaSonoridade() {
+    await garantirModal('modal-sonoridade');
+    const form = document.getElementById('form-sonoridade');
+    if (!form) return;
+    form.reset();
+    document.getElementById('son-edit-id').value = '';
+    document.getElementById('modal-sonoridade-titulo').innerText = 'Adicionar Escansão';
+    popularCamposSonoridade();
+    toggleModal('modal-sonoridade');
+}
+
+export function initFormSonoridade() {
+    const selPoema = document.getElementById('son-poema-id');
+    if (selPoema) {
+        selPoema.onchange = () => {
+            atualizarAvisoPoemaSonoridade();
+            carregarGradeSonoridade();
+        };
+    }
+
+    // Bloco 3 — os 3 campos que disparam restrição/correção nos outros:
+    // formaPoema e regularidadeMetrica recalculam a cascata inteira (um
+    // muda quem trava o quê, o outro decide se o caso composto Forma
+    // Livre + Versos Livres se aplica); esquemaRimasPresenca primeiro
+    // corrige o próprio valor (regra 1 — Versos Brancos) e só depois
+    // recalcula (o Padrão depende do valor já corrigido de Presença).
+    document.getElementById('son-forma-poema')?.addEventListener('change', () => {
+        aplicarCascataSonoridade();
+    });
+    document.getElementById('son-regularidade-metrica')?.addEventListener('change', () => {
+        aplicarCascataSonoridade();
+    });
+    document.getElementById('son-esquema-rimas-presenca')?.addEventListener('change', (e) => {
+        const regularidadeMetrica = document.getElementById('son-regularidade-metrica')?.value;
+        const corrigido = corrigirPresencaRimaSeVersoBranco(e.target.value, regularidadeMetrica);
+        if (corrigido !== e.target.value) e.target.value = corrigido;
+        aplicarCascataSonoridade();
+    });
+    // Regra adicional 2 — sugestão, não trava: só preenche Origem/
+    // Tradição se o campo ainda estiver vazio, pra não sobrescrever uma
+    // escolha manual já feita.
+    document.getElementById('son-tamanho-verso')?.addEventListener('change', (e) => {
+        const selOrigem = document.getElementById('son-origem-tradicao');
+        if (!selOrigem || selOrigem.value) return;
+        const sugestao = sugerirOrigemTradicaoPorTamanho(e.target.value);
+        if (sugestao && Array.from(selOrigem.options).some((o) => o.value === sugestao)) {
+            selOrigem.value = sugestao;
+        }
+    });
+
+    const form = document.getElementById('form-sonoridade');
+    if (!form) return;
+
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const id = document.getElementById('son-edit-id').value;
+        const poemaId = parseInt(document.getElementById('son-poema-id').value);
+        if (!poemaId) return;
+
+        // Substitui a escansão existente do poema (se houver e não for a
+        // que já está em edição), em vez de criar uma segunda — mesmo
+        // aviso não bloqueante mostrado em atualizarAvisoPoemaSonoridade.
+        const existente = getEscansaoDoPoema(poemaId);
+        const idAlvo = id ? parseInt(id) : existente ? existente.id : gerarId();
+
+        const dados = {
+            id: idAlvo,
+            poemaId,
+            formaPoema: document.getElementById('son-forma-poema').value || null,
+            regularidadeMetrica: document.getElementById('son-regularidade-metrica').value || null,
+            tamanhoVerso: document.getElementById('son-tamanho-verso').value || null,
+            esquemaRimasPresenca:
+                document.getElementById('son-esquema-rimas-presenca').value || null,
+            esquemaRimasPadrao: document.getElementById('son-esquema-rimas-padrao').value || null,
+            origemTradicao: document.getElementById('son-origem-tradicao').value || null,
+            registro: document.getElementById('son-registro').value || null,
+            tom: document.getElementById('son-tom').value || null,
+            escansaoLinhas: obterLinhasSonoridade(),
+            rimas: obterRimasSonoridade(),
+        };
+
+        // Regra adicional 3 (avisos não-bloqueantes) — não impedem o
+        // salvamento, só avisam depois pra revisão. Monorrima atípica
+        // primeiro (mais específico); divergência de sílabas só faz
+        // sentido em poema Isométrico (ver calcularDivergenciaSilabas).
+        const avisoMonorrima = avisoMonorrimaAtipica(dados.formaPoema, dados.esquemaRimasPadrao);
+        if (avisoMonorrima) mostrarAviso(avisoMonorrima);
+        if (dados.regularidadeMetrica === 'Isométrico') {
+            const divergentes = calcularDivergenciaSilabas(dados.escansaoLinhas, dados.tamanhoVerso);
+            if (divergentes.length) {
+                mostrarAviso(
+                    `Verso${divergentes.length > 1 ? 's' : ''} ${divergentes.join(', ')} ${
+                        divergentes.length > 1 ? 'não batem' : 'não bate'
+                    } com ${dados.tamanhoVerso} — confira a escansão.`,
+                );
+            }
+        }
+
+        const anterior = db.escansoes.find((x) => x.id == idAlvo);
+        if (anterior) {
+            const idx = db.escansoes.findIndex((x) => x.id == idAlvo);
+            db.escansoes[idx] = dados;
+        } else {
+            db.escansoes.push(dados);
+        }
+
+        save();
+        toggleModal('modal-sonoridade');
+    };
+}
+
+export async function editarSonoridade(id) {
+    const es = db.escansoes.find((x) => x.id == id);
+    if (!es) return;
+    await garantirModal('modal-sonoridade');
+
+    document.getElementById('son-edit-id').value = es.id;
+    popularCamposSonoridade(es);
+    document.getElementById('modal-sonoridade-titulo').innerText = 'Editar Escansão';
+    toggleModal('modal-sonoridade');
 }
 
 export async function abrirModalMesclar(tipo, origemId) {
@@ -1231,7 +1555,8 @@ export function initFormProsa() {
             sinalizacoesRelacao: document.getElementById('pr-sinal-relacao').value,
             sinalizacoesSensibilidade: document.getElementById('pr-sinal-sensibilidade').value,
             sinalizacoesTom: document.getElementById('pr-sinal-tom').value,
-            sinalizacoesDominioImagetico: document.getElementById('pr-sinal-dominioImagetico').value,
+            sinalizacoesDominioImagetico: document.getElementById('pr-sinal-dominioImagetico')
+                .value,
             sinalizacoesOutros: document.getElementById('pr-sinal-outros').value,
             pessoas: obterPessoas('prosas'),
             gruposDiretos: obterGruposDiretos('prosas'),

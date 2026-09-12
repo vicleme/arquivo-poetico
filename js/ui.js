@@ -82,6 +82,7 @@ export const GRUPOS_NAV = [
         abas: [
             { id: 'estrutura', rotulo: 'Estrutura' },
             { id: 'conexoes', rotulo: 'Conexões' },
+            { id: 'sonoridade', rotulo: 'Sonoridade' },
             { id: 'estatisticas', rotulo: 'Estatísticas' },
         ],
     },
@@ -540,9 +541,9 @@ export function renderDropdowns() {
     if (sRefTipo) {
         sRefTipo.innerHTML =
             '<option value="">Tipo...</option>' +
-            TIPOS_ECO.map(
-                (t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`,
-            ).join('');
+            TIPOS_ECO.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join(
+                '',
+            );
     }
 
     // 6b. Livros múltiplos no Modal de Prosas (item 4 — mesmo campo de
@@ -592,9 +593,9 @@ export function renderDropdowns() {
     if (sRefTipoProsa) {
         sRefTipoProsa.innerHTML =
             '<option value="">Tipo...</option>' +
-            TIPOS_ECO.map(
-                (t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`,
-            ).join('');
+            TIPOS_ECO.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join(
+                '',
+            );
     }
 
     // 7. Destino de Prosas (Livro, Parte ou Seção) — sem filtro por padrão

@@ -4,6 +4,9 @@ node_modules/
 # Dados locais — nunca comitar backups pessoais
 data/
 
+# diff local
+diff.txt
+
 # Arquivos de sistema
 .DS_Store
 Thumbs.db

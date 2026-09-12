@@ -50,6 +50,11 @@ import {
 } from './acoes-coluna.js';
 import { exportarItem } from './exportar.js';
 import { abrirVisualizacao, baixarDoModalVisualizacao } from './visualizar.js';
+import { exportarEscansao } from './exportar-sonoridade.js';
+import {
+    abrirVisualizacaoSonoridade,
+    baixarDoModalVisualizacaoSonoridade,
+} from './visualizar-sonoridade.js';
 import { initTema, setTema } from './theme.js';
 import { renderLists } from './render.js';
 import {
@@ -95,6 +100,7 @@ import {
     setFiltroDataRapidoProsasPublicacao,
     limparFiltroDataPoemas,
     limparFiltroDataProsas,
+    setFiltroSonoridade,
 } from './render-listas.js';
 import {
     toggleSelecao,
@@ -249,6 +255,9 @@ import {
     editarEpoca,
     initFormMesclar,
     abrirModalMesclar,
+    initFormSonoridade,
+    editarSonoridade,
+    prepararNovaSonoridade,
     rastreadorPoema,
     rastreadorProsa,
 } from './forms.js';
@@ -309,6 +318,7 @@ registrarModal('modal-pessoa', 'modal-pessoa.html', initFormPessoa);
 registrarModal('modal-grupo', 'modal-grupo.html', initFormGrupo);
 registrarModal('modal-autor', 'modal-autor.html', initFormAutor);
 registrarModal('modal-epoca', 'modal-epoca.html', initFormEpoca);
+registrarModal('modal-sonoridade', 'modal-sonoridade.html', initFormSonoridade);
 registrarModal('modal-mesclar', 'modal-mesclar.html', initFormMesclar);
 registrarModal('modal-col-parte', 'modal-col-parte.html', initFormColParte);
 registrarModal('modal-col-item', 'modal-col-item.html', initFormColItem);
@@ -316,6 +326,9 @@ registrarModal('modal-col-item', 'modal-col-item.html', initFormColItem);
 // abrirVisualizacao() (visualizar.js), não há nada pra inicializar uma
 // vez só (ver comentário em registrarModal, acima).
 registrarModal('modal-visualizar', 'modal-visualizar.html', () => {});
+// Mesmo espírito acima, agora pra Sonoridade (ver visualizar-sonoridade.js)
+// — extensão desta sessão, antes só Poemas/Prosas tinham essa visualização.
+registrarModal('modal-visualizar-sonoridade', 'modal-visualizar-sonoridade.html', () => {});
 
 // ─── Listener delegado para as listas (render-listas.js) ─────
 // render-listas.js gera botões/checkboxes com data-action + data-id/
@@ -339,6 +352,14 @@ const ACOES_LISTA = {
     'editar-grupo': (el) => editarGrupo(Number(el.dataset.id)),
     'editar-autor': (el) => editarAutor(Number(el.dataset.id)),
     'editar-epoca': (el) => editarEpoca(Number(el.dataset.id)),
+    'editar-sonoridade': (el) => editarSonoridade(Number(el.dataset.id)),
+    // "Ver" ganhou visualização somente-leitura própria nesta sessão
+    // (antes abria o mesmo modal de edição — ver visualizar-sonoridade.js
+    // pro porquê de ser um modal à parte em vez de reaproveitar
+    // modal-visualizar, que é específico de Poemas/Prosas).
+    'ver-sonoridade': (el) => abrirVisualizacaoSonoridade(Number(el.dataset.id)),
+    'baixar-sonoridade': (el) =>
+        exportarEscansao(Number(el.dataset.id), getFormatoBaixar('sonoridade')),
     'mesclar-item': (el) => abrirModalMesclar(el.dataset.tipo, Number(el.dataset.id)),
     'excluir-item': (el) => deleteItem(el.dataset.tipo, Number(el.dataset.id)),
     'ver-item': (el) => abrirVisualizacao(el.dataset.tipo, Number(el.dataset.id)),
@@ -557,6 +578,7 @@ window.abrirAba = abrirAba;
 window.toggleMenuMobile = toggleMenuMobile;
 window.toggleModal = toggleModal;
 window.prepararNovo = prepararNovo;
+window.prepararNovaSonoridade = prepararNovaSonoridade;
 window.sugerirSequencia = sugerirSequencia;
 window.filtrarDestinoPoema = filtrarDestinoPoema;
 window.filtrarDestinoProsa = filtrarDestinoProsa;
@@ -647,6 +669,7 @@ window.wrapText = wrapText;
 // renderProsas() completo (reconstrói a tabela via innerHTML), então
 // sem isso a digitação rápida engasga conforme o acervo cresce.
 window.setFiltroPoemas = debounce(setFiltroPoemas, 200);
+window.setFiltroSonoridade = debounce(setFiltroSonoridade, 200);
 window.setFiltroProsas = debounce(setFiltroProsas, 200);
 window.setFiltroConteudoPoemas = debounce(setFiltroConteudoPoemas, 200);
 window.setFiltroConteudoProsas = debounce(setFiltroConteudoProsas, 200);
@@ -705,6 +728,7 @@ window.toggleAcaoColuna = toggleAcaoColuna;
 window.setFormatoBaixarColuna = setFormatoBaixarColuna;
 window.resetarAcoesColuna = resetarAcoesColuna;
 window.baixarDoModalVisualizacao = baixarDoModalVisualizacao;
+window.baixarDoModalVisualizacaoSonoridade = baixarDoModalVisualizacaoSonoridade;
 window.setTema = setTema;
 window.setFiltroDataEscritaPoemas = setFiltroDataEscritaPoemas;
 window.setFiltroDataPublicacaoPoemas = setFiltroDataPublicacaoPoemas;

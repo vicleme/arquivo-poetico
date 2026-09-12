@@ -1,0 +1,173 @@
+<div
+    id="modal-sonoridade"
+    class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-sonoridade-titulo"
+    tabindex="-1"
+>
+    <div
+        class="bg-white dark:bg-slate-900 rounded-lg w-[95vw] max-w-6xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+    >
+        <div
+            class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0"
+        >
+            <h3 id="modal-sonoridade-titulo" class="text-2xl font-bold">Adicionar Escansão</h3>
+            <div class="flex items-center gap-1 ml-4">
+                <button
+                    type="button"
+                    onclick="document.getElementById('form-sonoridade').requestSubmit()"
+                    title="Salvar (atalho: Ctrl+Enter)"
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors border border-emerald-200 dark:border-emerald-800"
+                    aria-label="Salvar"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        class="w-4 h-4"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                            clip-rule="evenodd"
+                        />
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    onclick="toggleModal('modal-sonoridade')"
+                    title="Fechar (Esc)"
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-600 dark:hover:text-slate-300 transition-colors border border-gray-200 dark:border-slate-700"
+                    aria-label="Fechar"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        class="w-4 h-4"
+                    >
+                        <path
+                            d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+                        />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-y-auto flex-1 px-8 py-6">
+            <form id="form-sonoridade" class="grid grid-cols-1 gap-4">
+                <input type="hidden" id="son-edit-id" />
+                <div>
+                    <label class="form-label">Poema</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Cada poema tem no máximo uma escansão cadastrada.
+                    </p>
+                    <select id="son-poema-id" required>
+                        <option value="">-- Escolha um poema --</option>
+                    </select>
+                    <p
+                        id="son-poema-aviso"
+                        class="hidden text-[10px] text-amber-600 dark:text-amber-400 mt-1"
+                    ></p>
+                </div>
+
+                <div class="pt-2 border-t border-gray-100 dark:border-slate-700">
+                    <p class="text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">
+                        Editor visual — escansão silábica
+                    </p>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-3">
+                        Divida cada verso em sílabas digitando <code>/</code> entre elas (ex.:
+                        <code>Quan/do o/ sol/ se/ pôs</code>). A régua no topo mostra o número de
+                        sílabas do maior verso. Ative o Modo Sílaba Tônica (botão acima da grade) e
+                        clique numa sílaba pra marcar o acento. Ative o Modo Rima pra montar pares
+                        (clique abre um lado, shift-clique estende pra rima rica, clique numa outra
+                        linha abre o outro lado) — confirme ou cancele nos botões que aparecem.
+                        Cada par confirmado entra na lista "Pares de Rima" abaixo da grade, onde dá
+                        pra classificar Acentuação/Tonalidade/Riqueza, corrigir um lado ou remover.
+                    </p>
+                    <div id="son-grade-container"></div>
+                </div>
+
+                <div class="pt-2 border-t border-gray-100 dark:border-slate-700">
+                    <p class="text-xs font-bold text-gray-500 dark:text-slate-400 mb-3">
+                        Classificação Poética
+                    </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Forma do Poema</label>
+                            <select id="son-forma-poema">
+                                <option value="">-- Não classificado --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Regularidade Métrica</label>
+                            <select id="son-regularidade-metrica">
+                                <option value="">-- Não classificado --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Tamanho do Verso / Metragem</label>
+                            <select id="son-tamanho-verso">
+                                <option value="">-- Não classificado --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Esquema de Rimas</label>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <select id="son-esquema-rimas-presenca" title="Presença de rima">
+                                    <option value="">-- Presença --</option>
+                                </select>
+                                <select id="son-esquema-rimas-padrao" title="Padrão estrutural">
+                                    <option value="">-- Padrão estrutural --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="form-label">Origem e Tradição</label>
+                            <select id="son-origem-tradicao">
+                                <option value="">-- Não classificado --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Registro</label>
+                            <select id="son-registro">
+                                <option value="">-- Não classificado --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Tom</label>
+                            <select id="son-tom">
+                                <option value="">-- Não classificado --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-3">
+                        As opções de Regularidade Métrica, Tamanho do Verso, Esquema de Rimas e
+                        Origem/Tradição já se restringem automaticamente a partir da Forma
+                        escolhida (ex.: Soneto Clássico exige Decassílabo/Alexandrino). Registro e
+                        Tom ficam fora dessa cascata — continuam sempre livres.
+                    </p>
+                </div>
+
+                <div
+                    class="flex justify-end gap-2 border-t pt-6 border-gray-200 dark:border-slate-700"
+                >
+                    <button
+                        type="button"
+                        onclick="toggleModal('modal-sonoridade')"
+                        class="text-gray-600 dark:text-slate-300 px-4 py-2"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        class="bg-blue-600 text-white px-8 py-2 rounded font-bold"
+                    >
+                        SALVAR
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -51,6 +51,28 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     grupos: [], // cadastro central de Grupos ({ id, nome }) — quem uma Pessoa é na vida de quem escreve, constante entre poemas
     autores: [], // cadastro central de Autores ({ id, nome, sobre }) — quem escreveu o item, ver migrarAutoria
     epocas: [], // cadastro central de Épocas ({ id, nome, contextoRelacao, notas }) — a que período um poema se refere, ver migrarEpocas
+    // Análise de escansão/métrica/rimas de um poema (aba Sonoridade).
+    // Um poema pode ter no máximo uma escansão vinculada (não é histórico
+    // de versões) — ver getEscansaoDoPoema. Bloco 1 (dados + tabela) cobre
+    // os 7 campos de classificação; escansaoLinhas (grade silábica, cada
+    // linha com `tonicas`: array de índices de sílaba marcados no Modo
+    // Sílaba Tônica) e rimas (pares de sílabas que rimam entre versos,
+    // `{ id, a: { linha, silabas }, b: { linha, silabas } }` — a letra
+    // A/B/C... do esquema é sempre derivada dos pares, nunca salva; ver
+    // calcularLetrasRima em editor-sonoridade.js) são do Bloco 2
+    // (js/editor-sonoridade.js) — passos 1-2 (grade + tônica) e o
+    // sub-passo 1 do Mapeamento de Rimas (estrutura do par + letras)
+    // prontos. Estilização visual do par (contorno colorido, spec 3.2)
+    // já tem um destaque provisório (ring azul/roxo na seleção em
+    // curso); classificação de cada rima (posição/acentuação/
+    // tonalidade/riqueza) e o painel consolidado ainda não têm editor —
+    // próximos sub-passos.
+    // { id, poemaId, formaPoema, regularidadeMetrica, tamanhoVerso,
+    //   esquemaRimasPresenca, esquemaRimasPadrao, origemTradicao,
+    //   registro, tom, escansaoLinhas: [], rimas: [] }
+    // registro/tom eram um único campo (tomRegistro) — ver
+    // migrarRegistroTomSonoridade.
+    escansoes: [],
 };
 
 // Garante que dados importados de versões antigas tenham os campos novos
@@ -59,6 +81,33 @@ if (!db.pessoas) db.pessoas = [];
 if (!db.grupos) db.grupos = [];
 if (!db.autores) db.autores = [];
 if (!db.epocas) db.epocas = [];
+if (!db.escansoes) db.escansoes = [];
+
+// Migração: `tomRegistro` (Tom/Registro, 3 opções) virou dois campos
+// independentes — `registro` (formalidade da linguagem, 5 opções) e
+// `tom` (atitude/disposição poética, 7 opções) — ver
+// REGISTROS_SONORIDADE/TONS_SONORIDADE em utils.js. Mapeamento
+// best-effort do valor antigo pra `registro`; `tom` fica vazio (não dá
+// pra inferir tom a partir de, por exemplo, "Misto / Irônico" com
+// segurança — melhor o usuário reclassificar do que herdar um tom
+// errado). Idempotente: escansão que já tem `registro` (ou nunca teve
+// `tomRegistro`) passa intacta.
+const MAPA_MIGRACAO_TOM_REGISTRO = {
+    'Erudito / Culto': 'Culto / Erudito',
+    'Coloquial / Popular': 'Coloquial / Popular',
+    'Misto / Irônico': 'Misto / Híbrido',
+};
+export function migrarRegistroTomSonoridade(escansoes) {
+    escansoes.forEach((es) => {
+        if (es.tomRegistro === undefined) return;
+        if (es.registro === undefined) {
+            es.registro = MAPA_MIGRACAO_TOM_REGISTRO[es.tomRegistro] || null;
+        }
+        if (es.tom === undefined) es.tom = null;
+        delete es.tomRegistro;
+    });
+}
+migrarRegistroTomSonoridade(db.escansoes);
 
 // Migração: em Poemas, o campo `publicado` (boolean) virou `status`, com
 // 3 valores — 'publicado' | 'completo' | 'incompleto' — pra diferenciar
@@ -787,6 +836,8 @@ export async function importarDB(novoDb) {
     db.grupos = novoDb.grupos || [];
     db.autores = novoDb.autores || [];
     db.epocas = novoDb.epocas || [];
+    db.escansoes = novoDb.escansoes || [];
+    migrarRegistroTomSonoridade(db.escansoes);
     migrarStatusPoemas(db.poemas);
     migrarIntertextualidadePoemas(db.poemas);
     migrarReferenciasParaEcos(db.poemas);
@@ -936,6 +987,7 @@ const ROTULOS_COL = {
     grupos: 'Grupo',
     autores: 'Autor',
     epocas: 'Época',
+    escansoes: 'Escansão',
 };
 
 // Plural + particípio com concordância de gênero certa pro toast de
@@ -1380,9 +1432,29 @@ function _desfazerExclusaoPendente() {
     save();
 }
 
+// Resolve o título exibido no toast/modal de exclusão pra uma Escansão
+// (que não tem título próprio — pertence a um poema) a partir do poema
+// vinculado (`resolverTituloPoemaOuProsa`, mesma resolução usada por
+// Elos/Ecos em celulas-tabela.js).
+function tituloEscansao(escansao) {
+    if (!escansao) return null;
+    const poema = db.poemas.find((p) => p.id == escansao.poemaId);
+    return poema ? poema.titulo : `#${escansao.id}`;
+}
+
+// Uma Escansão por poema (não é histórico de versões — ver comentário no
+// db inicial) — usado pela tabela da aba Sonoridade e pelo modal de
+// cadastro/edição (pra saber se já existe uma escansão daquele poema).
+export function getEscansaoDoPoema(poemaId) {
+    return db.escansoes.find((e) => e.poemaId == poemaId) || null;
+}
+
 export function deleteItem(col, id) {
     const item = db[col]?.find((i) => i.id == id);
-    const titulo = item?.titulo || item?.tipo || item?.nome || `#${id}`;
+    const titulo =
+        col === 'escansoes'
+            ? tituloEscansao(item)
+            : item?.titulo || item?.tipo || item?.nome || `#${id}`;
     let rotulo = ROTULOS_COL[col] || col;
 
     // Para coletâneas, informa quantas partes e itens serão removidos em cascata

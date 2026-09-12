@@ -358,7 +358,11 @@ export function blocosDeFundoContinuos(linhas) {
         while (fim < estiloPorLinha.length && estiloPorLinha[fim] === null && !linhas[fim].length) {
             fim++;
         }
-        if (i > 0 && fim < estiloPorLinha.length && mesmoEstilo(estiloPorLinha[i - 1], estiloPorLinha[fim])) {
+        if (
+            i > 0 &&
+            fim < estiloPorLinha.length &&
+            mesmoEstilo(estiloPorLinha[i - 1], estiloPorLinha[fim])
+        ) {
             for (let k = i; k < fim; k++) estiloPorLinha[k] = estiloPorLinha[i - 1];
         }
         i = fim;
@@ -371,7 +375,13 @@ export function blocosDeFundoContinuos(linhas) {
         if (info && ultimo && ultimo.fim === indice - 1 && mesmoEstilo(ultimo, info)) {
             ultimo.fim = indice;
         } else if (info) {
-            blocos.push({ inicio: indice, fim: indice, fundo: info.fundo, padding: info.padding, raio: info.raio });
+            blocos.push({
+                inicio: indice,
+                fim: indice,
+                fundo: info.fundo,
+                padding: info.padding,
+                raio: info.raio,
+            });
         }
     });
     return blocos;
@@ -2517,4 +2527,432 @@ export function getElementHierarchy(el, db) {
     }
 
     return [livroSeq, nivel, parteSeq, secaoSeq];
+}
+
+// ─── Sonoridade (aba Análise > Sonoridade) ─────────────────────
+// Taxonomia dos 6 campos de classificação de uma Escansão (ver
+// db.escansoes/getEscansaoDoPoema em db.js). Única fonte de verdade,
+// mesmo espírito de RELACOES_ELO/TIPOS_ECO acima — usada pelo formulário
+// (forms.js) e pelas colunas dinâmicas da tabela (colunas.js). A matriz
+// de validação/trava em cascata entre esses campos (Soneto → Isométrico
+// + Decassílabo/Alexandrino, etc.) é o Bloco 3, implementado logo abaixo
+// (MATRIZ_VALIDACAO_SONORIDADE/calcularOpcoesCascataSonoridade) — cobre
+// Regularidade Métrica, Tamanho do Verso, Esquema de Rimas (Presença +
+// Padrão) e Origem/Tradição; Registro e Tom ficam de fora da cascata,
+// sempre livres.
+// `Poema em Redondilhas` (opção original da spec) foi removida — não é
+// uma forma fixa (não define nº de versos/estrofes/rima), é só o nome
+// do VERSO de 5 ou 7 sílabas ("medida velha"), já coberto por
+// `tamanhoVerso` (`Redondilha Menor/Maior`), campo independente de
+// `formaPoema` que continua disponível com qualquer forma escolhida
+// (inclusive Forma Livre). Sem lógica no código presa a esse valor
+// (só populava o <select>) e sem nenhum poema no acervo usando-o —
+// remoção sem efeito colateral (ver decisoes.md).
+// `Quadra / Trova` (opção original da spec) virou duas opções
+// separadas, `Trova` e `Quadra Popular` — mesmo problema que motivou
+// separar `Lira`/`Lira Brasileira`: um nome só cobrindo duas coisas
+// com regras bem diferentes (Trova é rígida — sempre 7 sílabas, sempre
+// 1 estrofe, sempre rimada —, Quadra é solta — qualquer nº de sílabas,
+// não precisa ser monostrófica). Ver decisoes.md.
+export const FORMAS_POEMA = [
+    'Soneto Clássico',
+    'Haikai',
+    'Tanka',
+    'Lira Brasileira',
+    'Limerick',
+    'Trova',
+    'Quadra Popular',
+    'Poesia Narrativa / Cordel',
+    'Forma Livre / Indefinida',
+];
+
+export const REGULARIDADES_METRICAS = [
+    'Isométrico',
+    'Heterométrico',
+    'Acentual / Polimétrico',
+    'Versos Livres',
+];
+
+export const TAMANHOS_VERSO = [
+    'Monossílabo (1)',
+    'Dissílabo (2)',
+    'Trissílabo (3)',
+    'Tetrassílabo (4)',
+    'Redondilha Menor / Pentassílabo (5)',
+    'Hexassílabo (6)',
+    'Redondilha Maior / Heptassílabo (7)',
+    'Octossílabo (8)',
+    'Eneassílabo (9)',
+    'Decassílabo (10)',
+    'Hendecassílabo (11)',
+    'Alexandrino / Dodecassílabo (12)',
+    'Bárbaro (>12)',
+    'Múltiplos Metros (Fixos)',
+    'Variável / Sem Metro',
+];
+
+// Esquema de Rimas tem 2 subcampos (ver spec) — Presença (se rima ou
+// não) e Padrão Estrutural (o desenho da rima, só relevante quando
+// Presença = 'Rimado'). Guardados como dois campos próprios
+// (esquemaRimasPresenca/esquemaRimasPadrao), não um objeto aninhado,
+// pra facilitar coluna dinâmica/busca — mesmo padrão de tamanhoVerso
+// separado de regularidadeMetrica em vez de um único campo composto.
+export const ESQUEMA_RIMAS_PRESENCA = [
+    'Rimado',
+    'Versos Brancos (Metrificado sem rima)',
+    'Sem Rimas / Livre',
+    'Rimas Ocasionais',
+];
+
+export const ESQUEMA_RIMAS_PADRAO = [
+    'Monorrima Absoluta (AAAA)',
+    'Monorrima por Blocos / Continuada (AAAA BBBB CCCC)',
+    'Emparelhada (AABB)',
+    'Alternada / Cruzada (ABAB)',
+    'Oposta / Interpolada (ABBA)',
+    'Encadeada / Terza Rima (ABA BCB)',
+    // Padrão da sextilha (estrofe de 6 versos) na variante "aberta" — a
+    // mais usada na literatura de cordel de longe, entre as 5 variantes
+    // documentadas de sextilha (aberta/fechada/solta/corrida/
+    // desencontrada): só os versos pares rimam entre si (mesmo som nos
+    // 3), os ímpares ficam soltos/brancos dentro da estrofe. Não é
+    // exclusiva de cordel (aparece em repente/trova também), por isso
+    // não vira trava — só mais uma opção de padrão.
+    'Sextilha Aberta (ABCBDB)',
+    // Estrofe de 10 versos sistematizada por Vicente Espinel (poeta
+    // espanhol, séc. XVI) — nome consagrado ("espinela") em toda a
+    // tradição ibero-americana, incluindo décima/repente/trova/cordel
+    // brasileiros. Mesmo espírito da Sextilha Aberta: um padrão nomeado
+    // e real do gênero, sem virar trava de nenhuma forma (nem toda
+    // décima usa exatamente esse esquema, e Cordel/Trova usam várias
+    // estrofes diferentes, não só a décima).
+    'Décima Espinela (ABBAACCDDC)',
+    // Esquema fixo do Limerick — nenhuma opção genérica já existente
+    // cobre esse desenho: `Emparelhada (AABB)` chega perto mas perde o
+    // "fecho" do 5º verso voltando à rima A (é isso que faz o limerick
+    // soar como uma piada com "remate"). Mesmo tratamento das outras
+    // duas acima: nome específico da própria forma, não termo genérico
+    // de teoria da rima.
+    'Limerick (AABBA)',
+    // "Rima simples" é o nome usado na própria tradição de trova/quadra
+    // pra esse desenho (só o 2º verso rima com o 4º; 1º e 3º ficam
+    // soltos) — em oposição à "rima completa" (`Alternada/Cruzada
+    // ABAB`, exigida pelas regras modernas de Trova). Fontes divergem
+    // se ABCB conta como Trova de verdade ou já é só Quadra; decisão do
+    // Victor foi tratar como só Quadra (ver MATRIZ_VALIDACAO_SONORIDADE
+    // e decisoes.md) — por isso o nome já nasce como `Quadra`, não
+    // `Trova`, pra não sugerir que a opção também vale pra forma rígida.
+    'Quadra / Rima Simples (ABCB)',
+    'Mista / Completa',
+    'Não Aplicável',
+];
+
+export const ORIGENS_TRADICAO_SONORIDADE = [
+    'Medida Velha',
+    'Medida Nova',
+    'Tradição Importada',
+    'Contemporânea / Livre',
+];
+
+// Registro (formalidade da linguagem) e Tom (atitude/disposição poética)
+// eram um campo único (tomRegistro, 3 opções) — separados a pedido do
+// Victor por serem eixos independentes (dá pra ter um poema Coloquial
+// e Melancólico, por exemplo, combinação que o campo único não
+// representava). Não entram na Matriz de Validação em cascata (spec
+// seção 5) — essa cascata é só a partir de forma_poema, sobre
+// regularidade_metrica/tamanho_verso/esquema_rimas/origem_tradicao.
+export const REGISTROS_SONORIDADE = [
+    'Culto / Erudito',
+    'Padrão / Neutro',
+    'Coloquial / Popular',
+    'Misto / Híbrido',
+    'Neológico / Experimental',
+];
+
+export const TONS_SONORIDADE = [
+    'Lírico / Introspectivo',
+    'Melancólico / Elegíaco',
+    'Reflexivo / Filosófico',
+    'Irônico / Sarcástico / Satírico',
+    'Dramático / Tenso',
+    'Épico / Solene',
+    'Ufano / Exaltativo',
+];
+
+// Classificação de cada PAR de rima (Bloco 2 passo 3, sub-passo 3 —
+// Aba_Sonoridade.md), não do poema inteiro. Posição (Externa/Interna)
+// não vira uma 4ª constante aqui de propósito: é sempre derivada do
+// próprio par na hora de renderizar (calcularPosicaoPar, em
+// editor-sonoridade.js) — mesmo espírito da letra do esquema
+// (calcularLetrasRima), nunca um campo escolhido/salvo.
+export const ACENTUACOES_RIMA = [
+    'Aguda / Oxítona',
+    'Grave / Paroxítona',
+    'Esdrúxula / Proparoxítona',
+];
+
+export const TONALIDADES_RIMA = [
+    'Soante / Consoante (Perfeita)',
+    'Toante (Assonante)',
+    'Imperfeita',
+];
+
+export const RIQUEZAS_RIMA = [
+    'Pobre (mesma classe gramatical)',
+    'Rica (classes gramaticais diferentes)',
+    'Rara (palavra de baixa frequência/pouco usada em rima)',
+    'Preciosa (combinação vocabular incomum, ex. palavra composta/estrangeirismo)',
+];
+
+// ─── Bloco 3 — Matriz de Validação em Cascata (Aba_Sonoridade.md, seção
+// 5) ─────────────────────────────────────────────────────────────────
+// Cada entrada mapeia um valor de `formaPoema` pras restrições que ele
+// impõe sobre os outros 4 campos em cascata (regularidadeMetrica,
+// tamanhoVerso, esquemaRimasPresenca, esquemaRimasPadrao,
+// origemTradicao). "Trava" aqui nunca força nem desabilita o campo —
+// só FILTRA a lista de opções do select pras válidas; o campo continua
+// editável entre elas (decisão do Victor, mesmo quando a spec original
+// fala de um valor único — um select com 1 opção só já é, na prática,
+// uma trava, sem precisar de um mecanismo de autopreencher+desabilitar
+// à parte). Campo ausente numa entrada = sem restrição nesse eixo
+// (usa a constante inteira). `Quadra Popular` fica de fora de
+// propósito — decisão definitiva (ver decisoes.md), não pendência: ao
+// contrário de `Trova` (rígida em quase tudo), "quadra" aceita
+// praticamente qualquer nº de sílabas e não precisa ser monostrófica,
+// então não sobra nada de universal pra travar; `avisoMonorrimaAtipica`
+// também não dispara pra ela (ver `FORMAS_SEM_AVISO_MONORRIMA` abaixo),
+// mesmo tratamento de Forma Livre. `Limerick` e `Poema em Redondilhas`
+// também ficavam de fora "em estudo" numa versão anterior desta matriz
+// — Limerick ganhou linha completa abaixo, e Redondilhas foi removida
+// de `FORMAS_POEMA` de vez (ver comentário lá) por não ser forma fixa.
+// `Poesia Narrativa / Cordel` (adicionada à parte de `FORMAS_POEMA`,
+// fora dessas 8 formas originais da spec) tem uma linha PARCIAL: trava
+// os 3 eixos praticamente universais no gênero, mas deixa
+// `esquemaRimasPadrao` de fora de propósito, porque "Cordel" cobre
+// várias estrofes com padrões de rima diferentes entre si (ver a
+// entrada dela abaixo) — diferente das 3 formas do parágrafo anterior,
+// aqui a ausência de trava nesse eixo específico é definitiva, não uma
+// decisão pendente.
+export const MATRIZ_VALIDACAO_SONORIDADE = {
+    'Soneto Clássico': {
+        regularidadeMetrica: ['Isométrico'],
+        tamanhoVerso: ['Decassílabo (10)', 'Alexandrino / Dodecassílabo (12)'],
+        esquemaRimasPresenca: ESQUEMA_RIMAS_PRESENCA.filter((o) => o !== 'Sem Rimas / Livre'),
+        esquemaRimasPadrao: [
+            'Oposta / Interpolada (ABBA)',
+            'Alternada / Cruzada (ABAB)',
+            'Mista / Completa',
+        ],
+        origemTradicao: ['Medida Nova'],
+    },
+    Haikai: {
+        regularidadeMetrica: ['Heterométrico'],
+        tamanhoVerso: [
+            'Redondilha Menor / Pentassílabo (5)',
+            'Redondilha Maior / Heptassílabo (7)',
+        ],
+        esquemaRimasPresenca: ['Sem Rimas / Livre'],
+        origemTradicao: ['Tradição Importada'],
+    },
+    Tanka: {
+        regularidadeMetrica: ['Heterométrico'],
+        tamanhoVerso: [
+            'Redondilha Menor / Pentassílabo (5)',
+            'Redondilha Maior / Heptassílabo (7)',
+        ],
+        esquemaRimasPresenca: ['Sem Rimas / Livre'],
+        origemTradicao: ['Tradição Importada'],
+    },
+    // Nomeada "Lira Brasileira" (não só "Lira") de propósito: existem
+    // duas tradições distintas com o mesmo nome — a hispano-italiana
+    // (Garcilaso, Fray Luis de León — heptassílabo+hendecassílabo, 7+11)
+    // e a ensinada no Brasil (Marília de Dirceu, de Tomás Antônio
+    // Gonzaga — hexassílabo+decassílabo, 6+10, é a mapeada abaixo).
+    // Decisão do Victor: não criar as duas como formas separadas (o
+    // resto de FORMAS_POEMA já não tenta cobrir toda variante regional
+    // de cada forma — Haikai/Tanka/Limerick também só têm uma convenção
+    // cada), mas deixar explícito no nome que essa é a variante local,
+    // já que o nome "Lira" sozinho seria ambíguo entre as duas.
+    'Lira Brasileira': {
+        regularidadeMetrica: ['Heterométrico'],
+        tamanhoVerso: ['Hexassílabo (6)', 'Decassílabo (10)'],
+        // "Habilita rimas estruturadas" (spec): lido como "exige que rime
+        // de algum jeito", sem travar um padrão específico — diferente do
+        // Soneto, que além de exigir rima também restringe QUAL padrão.
+        esquemaRimasPresenca: ESQUEMA_RIMAS_PRESENCA.filter((o) => o !== 'Sem Rimas / Livre'),
+        origemTradicao: ['Medida Nova'],
+    },
+    // Forma fixa (5 versos, esquema AABBA) — pesquisado a pedido do
+    // Victor. Métrica confirmada em fontes de adaptação pro português:
+    // versos 1/2/5 (mais longos) em 8-9 sílabas, versos 3/4 (mais
+    // curtos) em 5-6 — daí a faixa de 4 tamanhos em `tamanhoVerso`
+    // (não um valor só, porque cada "grupo" de verso tem 2 tamanhos
+    // aceitos nas fontes, não 1). `origemTradicao: Tradição Importada`
+    // não veio de pesquisa — já estava explícito na spec original
+    // (`Aba_Sonoridade.md`, 4.2.5), que cita "Haikai, Tanka, Limerick"
+    // como exemplos dessa opção.
+    Limerick: {
+        regularidadeMetrica: ['Heterométrico'],
+        tamanhoVerso: [
+            'Redondilha Menor / Pentassílabo (5)',
+            'Hexassílabo (6)',
+            'Octossílabo (8)',
+            'Eneassílabo (9)',
+        ],
+        esquemaRimasPresenca: ESQUEMA_RIMAS_PRESENCA.filter((o) => o !== 'Sem Rimas / Livre'),
+        esquemaRimasPadrao: ['Limerick (AABBA)'],
+        origemTradicao: ['Tradição Importada'],
+    },
+    // Nasceu da separação de `Quadra / Trova` (opção original da spec)
+    // em duas — mesmo problema da Lira: um nome só cobrindo duas coisas
+    // com regras diferentes. Trova é a metade RÍGIDA: sempre 1 estrofe
+    // (poema inteiro = 4 versos), sempre redondilha maior (7 sílabas),
+    // sempre rimada. O esquema de rima já divide as fontes: "rimas
+    // alternadas (ABAB) ou cruzadas (ABBA)" é o que a definição
+    // literária/regra de concurso (UBT) exige; o terceiro padrão citado
+    // por fontes mais antigas, `ABCB` ("rima simples" — só o par
+    // 2º/4º rima, 1º/3º soltos), o Victor decidiu tratar como já sendo
+    // Quadra, não Trova de verdade — por isso `Quadra / Rima Simples
+    // (ABCB)` (ver ESQUEMA_RIMAS_PADRAO) fica de fora da trava abaixo.
+    // `Quadra Popular` (a metade solta) fica sem linha na matriz de
+    // propósito — ver comentário geral do bloco acima.
+    Trova: {
+        regularidadeMetrica: ['Isométrico'],
+        tamanhoVerso: ['Redondilha Maior / Heptassílabo (7)'],
+        esquemaRimasPresenca: ESQUEMA_RIMAS_PRESENCA.filter((o) => o !== 'Sem Rimas / Livre'),
+        esquemaRimasPadrao: ['Alternada / Cruzada (ABAB)', 'Oposta / Interpolada (ABBA)'],
+        origemTradicao: ['Medida Velha'],
+    },
+    // Adicionada à parte das 8 formas originais da spec (ver FORMAS_POEMA
+    // acima). Diferente de Soneto/Haikai/Tanka/Lira Brasileira, "Cordel"
+    // não é UMA
+    // forma fixa — é uma tradição que abriga várias estrofes diferentes
+    // (sextilha, septilha, décima...), cada uma com seu próprio padrão de
+    // rima. Por isso só trava os 3 eixos que são praticamente universais
+    // no gênero (metro constante em redondilha maior, herdado da medida
+    // velha) e deixa `esquemaRimasPadrao` DE FORA da trava — a sextilha
+    // aberta (ver ESQUEMA_RIMAS_PADRAO) é a mais comum, mas nem toda
+    // sextilha usa esse padrão, e outras estrofes do gênero (septilha,
+    // décima) têm padrões próprios ainda não modelados aqui.
+    'Poesia Narrativa / Cordel': {
+        regularidadeMetrica: ['Isométrico'],
+        tamanhoVerso: ['Redondilha Maior / Heptassílabo (7)'],
+        esquemaRimasPresenca: ['Rimado'],
+        origemTradicao: ['Medida Velha'],
+    },
+};
+
+// Caso composto (spec seção 5, última linha): só entra quando as DUAS
+// condições estão selecionadas juntas — Forma Livre / Indefinida E
+// Versos Livres. Forma Livre sozinha, com outra regularidade métrica
+// escolhida, fica sem restrição nos 4 eixos (mesmo tratamento de uma
+// forma ausente da matriz acima).
+const MATRIZ_FORMA_LIVRE_VERSOS_LIVRES = {
+    tamanhoVerso: ['Variável / Sem Metro'],
+    esquemaRimasPresenca: ['Sem Rimas / Livre', 'Rimas Ocasionais'],
+    esquemaRimasPadrao: [
+        'Não Aplicável',
+        'Monorrima por Blocos / Continuada (AAAA BBBB CCCC)',
+    ],
+    origemTradicao: ['Contemporânea / Livre'],
+};
+
+// Calcula, a partir do que já foi escolhido em `formaPoema`/
+// `regularidadeMetrica`/`esquemaRimasPresenca`, a lista de opções
+// válidas pra cada um dos 5 campos em cascata. Sempre retorna a
+// constante inteira quando não há restrição — quem popula o select
+// nunca precisa checar "tem trava ou não" à parte, só usar o array que
+// voltar daqui. Pura (recebe os 3 valores, não lê formulário/DOM) pro
+// mesmo motivo de calcularLetrasRima/calcularMaxSilabas em
+// editor-sonoridade.js: testável direto.
+export function calcularOpcoesCascataSonoridade({
+    formaPoema,
+    regularidadeMetrica,
+    esquemaRimasPresenca,
+} = {}) {
+    const opcoes = {
+        regularidadeMetrica: REGULARIDADES_METRICAS,
+        tamanhoVerso: TAMANHOS_VERSO,
+        esquemaRimasPresenca: ESQUEMA_RIMAS_PRESENCA,
+        esquemaRimasPadrao: ESQUEMA_RIMAS_PADRAO,
+        origemTradicao: ORIGENS_TRADICAO_SONORIDADE,
+    };
+
+    const restricoes =
+        formaPoema === 'Forma Livre / Indefinida' && regularidadeMetrica === 'Versos Livres'
+            ? MATRIZ_FORMA_LIVRE_VERSOS_LIVRES
+            : MATRIZ_VALIDACAO_SONORIDADE[formaPoema];
+    if (restricoes) Object.assign(opcoes, restricoes);
+
+    // Regra adicional 1 (spec 5, "Detecção de Versos Brancos"), metade
+    // "filtro": se a Presença já escolhida é 'Sem Rimas / Livre' ou
+    // 'Versos Brancos', o Padrão não tem o que desenhar — só 'Não
+    // Aplicável' faz sentido. Roda POR CIMA de uma trava de forma que já
+    // tenha restringido o Padrão (nunca substitui, só estreita mais).
+    if (
+        esquemaRimasPresenca === 'Sem Rimas / Livre' ||
+        esquemaRimasPresenca === 'Versos Brancos (Metrificado sem rima)'
+    ) {
+        const semRima = opcoes.esquemaRimasPadrao.filter((o) => o === 'Não Aplicável');
+        opcoes.esquemaRimasPadrao = semRima.length ? semRima : ['Não Aplicável'];
+    }
+
+    return opcoes;
+}
+
+// Regra adicional 1, a outra metade ("correção"): escolher 'Sem Rimas /
+// Livre' com uma métrica regular por trás (o poema TEM metro, só não
+// rima) é tecnicamente Versos Brancos, não Sem Rimas/Livre (que
+// pressupõe verso livre, sem metro nem rima). Devolve o valor
+// corrigido, ou o mesmo valor quando a correção não se aplica.
+export function corrigirPresencaRimaSeVersoBranco(esquemaRimasPresenca, regularidadeMetrica) {
+    if (
+        esquemaRimasPresenca === 'Sem Rimas / Livre' &&
+        regularidadeMetrica &&
+        regularidadeMetrica !== 'Versos Livres'
+    ) {
+        return 'Versos Brancos (Metrificado sem rima)';
+    }
+    return esquemaRimasPresenca;
+}
+
+// Regra adicional 2: SUGESTÃO (nunca trava) de Medida Velha/Nova a
+// partir do tamanho do verso — quem chama só aplica o retorno se
+// origemTradicao ainda estiver vazio, pra não pisar numa escolha manual
+// já feita. `null` = tamanho não sugere nada (ex. Bárbaro, Variável).
+export function sugerirOrigemTradicaoPorTamanho(tamanhoVerso) {
+    if (
+        ['Redondilha Menor / Pentassílabo (5)', 'Redondilha Maior / Heptassílabo (7)'].includes(
+            tamanhoVerso,
+        )
+    )
+        return 'Medida Velha';
+    if (['Decassílabo (10)', 'Alexandrino / Dodecassílabo (12)'].includes(tamanhoVerso))
+        return 'Medida Nova';
+    return null;
+}
+
+// Regra adicional 3 (aviso não-bloqueante): monorrima absoluta é
+// atípica pra formas fixas/clássicas. Formas mapeadas na matriz com
+// trava de esquemaRimasPadrao (Soneto, Lira Brasileira, Limerick,
+// Trova) bloqueiam a opção de verdade (não dá nem pra selecionar), então
+// o aviso nunca dispara pra elas na prática — mas ficam de fora da
+// lista abaixo mesmo assim, sem problema, porque a trava já resolve.
+// `Forma Livre / Indefinida` e `Quadra Popular` nunca acionam por não
+// serem "rígidas" (a própria falta de linha na matriz é o motivo: nada
+// nelas é universal o bastante pra travar, então monorrima também não
+// é "erro" nelas). `Poesia Narrativa / Cordel` nunca aciona, mas pelo
+// motivo oposto: é justamente a exceção que a spec (seção 5) já citava
+// pro aviso — nela, monorrima (inclusive por blocos/estrofes) é a
+// norma, não um desvio a sinalizar.
+const FORMAS_SEM_AVISO_MONORRIMA = [
+    'Forma Livre / Indefinida',
+    'Quadra Popular',
+    'Poesia Narrativa / Cordel',
+];
+
+export function avisoMonorrimaAtipica(formaPoema, esquemaRimasPadrao) {
+    if (esquemaRimasPadrao !== 'Monorrima Absoluta (AAAA)') return null;
+    if (!formaPoema || FORMAS_SEM_AVISO_MONORRIMA.includes(formaPoema)) return null;
+    return 'Atenção: a monorrima absoluta é atípica para este formato estrutural.';
 }

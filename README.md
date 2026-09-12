@@ -21,7 +21,18 @@ server:
 - **Python:** `python -m http.server` in the project folder, then visit `http://localhost:8000`
 - **Node:** `npx serve .` in the project folder
 
-No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js and DOMPurify are vendored locally in `assets/js/`.
+No dependencies need to be installed to use the app. Tailwind CSS is loaded via CDN; Chart.js and DOMPurify are vendored locally in `assets/js/`.
+
+### Test suite
+
+For development (not needed just to use the app), install the dependencies and run the suite with Node's built-in test runner:
+
+```
+npm install
+npm test         # node --test (tests/)
+npm run lint     # eslint .
+npm run format:check   # prettier --check .
+```
 
 ---
 
@@ -80,6 +91,14 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
 ├── localizar-substituir.html → Separate find-and-replace tool for
 │                                Poems/Prose (see "Main features" below)
 ├── README.md
+├── README.pt-br.md
+├── CONTRIBUTING.md / CONTRIBUTING.pt-br.md
+├── LICENSE
+├── package.json / package-lock.json  → Scripts (`npm test`, `npm run lint`,
+│                                        `npm run format`) and dev dependencies
+│                                        (docx, eslint, happy-dom, jszip,
+│                                        prettier — see "Test suite" above)
+├── eslint.config.js / .prettierrc.json / .prettierignore
 │
 ├── assets/
 │   ├── css/
@@ -89,6 +108,29 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
 │   ├── logo/
 │   │   └── Logo.png, Logo.ai, Logo (variacoes).png, Logo (com margem).png
 │   └── screenshots/         → Screenshots used in the README
+│
+├── docs/                      → Guides for using external AIs (ChatGPT,
+│   │                            Claude, Gemini, etc.), separate from the
+│   │                            development decision log (see "manutencao/"
+│   │                            below)
+│   ├── export-to-ia.md / export-to-ia-pt-br.md
+│   │                          → Nested vs. flat export format for use with
+│   │                            an AI (see "Main features")
+│   └── scansion-for-ai.md / scansion-for-ai-pt-br.md
+│                              → Instructs an AI to scan a pasted poem
+│                                (syllable grid, stresses, rhyme pairs, and
+│                                the 7 classification fields of the
+│                                Sonoridade tab), ready to transcribe the
+│                                answer back into the system
+│
+├── manutencao/                → Internal development documentation (not a
+│   │                            usage guide — see "docs/" above)
+│   ├── status.md              → Short checklist of what's done/open/pending
+│   │                            manual testing, per session
+│   ├── schema.md               → Breakdown of every field in the data model
+│   ├── decisoes.md             → Reasoning behind product/schema decisions
+│   └── licoes-de-sessao.md     → Known risks and pitfalls when resuming a
+│                                  development session
 │
 ├── js/                       → All app logic (ES Modules)
 │   ├── main.js               → Entry point; wires the HTML onclick="" handlers to
@@ -104,7 +146,7 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
 │   │                           modules below for each one's logic)
 │   ├── render-listas.js      → Rendering of Books/Parts/Sections/
 │   │                           Poems (+ multi-select)/Prose/Elements/
-│   │                           People/Groups/Authors/Eras
+│   │                           People/Groups/Authors/Eras/Sonoridade
 │   ├── render-estrutura.js   → "Structure" tab tree: cascading selection,
 │   │                           move ▲▼, move between levels
 │   ├── render-conexoes.js    → "Connections" tab: builds the Link (pairs/
@@ -118,20 +160,39 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
 │   │                           "Download JSON" — doesn't replace it)
 │   ├── forms.js              → Submit/edit Book, Part, Section, Poem,
 │   │                           Prose, Element, Person, Group, Author, Era
-│   │                           (includes the Merge Person/Era flow)
+│   │                           (includes the Merge Person/Era flow and the
+│   │                           Sonoridade cascading Validation Matrix)
 │   ├── editor.js             → Text formatting toolbar + tags/people
+│   ├── editor-sonoridade.js  → Sonoridade tab: syllable grid, Stressed
+│   │                           Syllable Mode, Rhyme Mode, rhyme pair
+│   │                           mapping/classification, and the read-only
+│   │                           grid reused by the "View" modal
+│   ├── visualizar-sonoridade.js → "View" modal for a scansion (read-only,
+│   │                           same grid as editor-sonoridade.js)
+│   ├── exportar-sonoridade.js → Exports a scansion as .md/.pdf/.docx/.json
+│   │                           — the Syllable Grid renders as a real table
+│   │                           in .pdf/.docx (auto landscape for long
+│   │                           verses in .pdf), linear text with " / " in
+│   │                           .md
 │   ├── coletaneas.js         → Anthologies tab logic
 │   ├── colunas.js            → Which columns are shown and in what order
 │   │                           in the Poems/Prose tables (per-table
 │   │                           preference, saved to localStorage)
+│   ├── colunas-contagem.js   → Per-column/filter item counts in the tables
+│   ├── celulas-tabela.js     → Sortable header, pagination, and bulk
+│   │                           selection for the Poems/Prose tables
+│   ├── selecao-massa.js      → Bulk-action bar (export selection as
+│   │                           JSON/Markdown) in the Poems/Prose listings
 │   ├── acoes-coluna.js       → Which buttons show in the Actions column
 │   │                           (View, Download, Edit, Delete) and the
 │   │                           format used by "Download", per table
+│   │                           (Poems/Prose/Sonoridade)
 │   ├── busca-campo.js        → Ctrl+F scoped to a single text field,
 │   │                           instead of the browser's native Ctrl+F
 │   │                           (which searches the whole page)
-│   ├── visualizar.js         → "View" modal: shows the same content as
-│   │                           the exported `.md`, rendered on screen
+│   ├── visualizar.js         → Poem/Prose "View" modal: shows the same
+│   │                           content as the exported `.md`, rendered on
+│   │                           screen
 │   ├── theme.js              → Light/dark/automatic theme (reacts to the
 │   │                           OS theme changing live)
 │   ├── estatisticas.js       → Statistics panel (Chart.js)
@@ -142,13 +203,16 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
 │   │                           Selective export, table selection, and
 │   │                           nested exports)
 │   ├── exportar-pdf.js       → PDF export generation (Actions column and
-│   │                           the View modal)
+│   │                           the Poem/Prose View modal)
+│   ├── exportar-docx.js      → Word (.docx) export for Poems/Prose and for
+│   │                           the Sonoridade scansion itself
 │   ├── nesting.js            → Hierarchical nesting logic (used by
 │   │                           exportar.js)
 │   └── utils.js              → Pure functions with no internal dependencies;
 │                               includes the delete-confirmation modal,
-│                               ID generation (gerarId), and HTML escaping
-│                               (escapeHtml)
+│                               ID generation (gerarId), HTML escaping
+│                               (escapeHtml), and the Sonoridade tab's
+│                               cascading validation constants/matrix
 │
 ├── modais/                    → HTML for each modal, loaded on demand
 │   ├── modal-livro.html
@@ -163,8 +227,18 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
 │   ├── modal-grupo.html
 │   ├── modal-autor.html
 │   ├── modal-epoca.html
-│   ├── modal-visualizar.html  → "View" modal (see visualizar.js)
+│   ├── modal-sonoridade.html  → Create/edit a scansion (see
+│   │                            editor-sonoridade.js)
+│   ├── modal-visualizar-sonoridade.html → "View" modal for a scansion (see
+│   │                            visualizar-sonoridade.js)
+│   ├── modal-visualizar.html  → Poem/Prose "View" modal (see visualizar.js)
 │   └── modal-mesclar.html     → Generic Merge modal (Person/Era)
+│
+├── scripts/
+│   └── normalizar-datas.js    → One-off data maintenance script (dates)
+│
+├── tests/                     → `node --test` (see "Test suite" above)
+│   └── helpers/
 │
 └── data/                      → Excluded from version control (see .gitignore);
                                   personal backups and exports live here
@@ -301,6 +375,45 @@ No dependencies need to be installed. Tailwind CSS is loaded via CDN; Chart.js a
   `.md`, rendered on screen instead of downloaded.
 - **PDF export**: alongside JSON and Markdown, individual items can be
   downloaded as PDF from the Actions column or the View modal.
+- **Sonoridade** (Analysis > Sonoridade): metrical scansion of an already
+  registered poem, stored as its own record (`db.sonoridades`), linked to
+  the poem via `poemaId`.
+  - **Syllable Grid**: split each verse into syllables by typing `/`
+    between them (an orthographic hyphen doesn't count as a division — same
+    weight as a space) and mark the stressed syllable(s) in **Stressed
+    Syllable Mode**.
+  - **Rhyme Mode**: click a syllable to open one side of the pair
+    (shift-click extends it for a rich rhyme), click a syllable in another
+    verse to open the other side, then confirm the pair — mutually
+    exclusive with Stressed Syllable Mode. The scheme letter (A, B, C...)
+    and Position (External/Internal) are never chosen by hand: the system
+    derives both from the confirmed pairs.
+  - **Rhyme Pairs**: a list below the grid with each pair's classification
+    — Stress (Oxytone/Paroxytone/Proparoxytone), Tonality (Perfect/
+    Assonant/Imperfect), and Richness (Poor/Rich/Rare/Precious) — plus
+    removal with "Undo" and side reassignment without losing the
+    classification already made.
+  - **Poem classification**: 7 closed-option fields (Poem Form, Metrical
+    Regularity, Verse Length, Rhyme Scheme — Presence and Structural
+    Pattern —, Origin/Tradition, Register, and Tone). Choosing the Poem
+    Form **filters** (never auto-fills or disables) the valid options for
+    the other fields for fixed forms with known rules (Classic Sonnet,
+    Haiku, Tanka, Brazilian Lira, Limerick, Trova, and, partially,
+    Narrative Poetry/Cordel) — the field stays editable among the filtered
+    options. Non-blocking warnings flag an atypical monorhyme in a fixed
+    form, or a mismatch between the syllable count in the grid and the
+    chosen Verse Length, without preventing saving.
+  - **View/Download**: same configurable "⚙️ Actions ▾" column as
+    Poems/Prose. "View" opens a read-only grid of the scansion; "Download"
+    exports as `.md`, `.pdf`, `.docx`, or `.json`. In the latter two, the
+    stressed syllable is real bold text and the Syllable Grid renders as a
+    **table** aligned by syllable column (same as on screen) — in the
+    `.pdf`, the page automatically switches to landscape if the poem has
+    verses too long to fit in portrait; in the `.docx`, the whole document
+    is born in landscape when needed instead.
+  - See `docs/scansion-for-ai.md` for a ready-made guide on asking an AI
+    to scan a poem and return the fields already in the right shape to
+    fill in here.
 - **Find and Replace** (`localizar-substituir.html`): a separate tool
   (reachable from the "Tools" nav group) to search for a text snippet in
   Poems and/or Prose — with case-sensitivity, scoping to Poems, Prose, or

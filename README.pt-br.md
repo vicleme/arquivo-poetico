@@ -21,7 +21,18 @@ local estático:
 - **Python:** `python -m http.server` na pasta do projeto, depois acesse `http://localhost:8000`
 - **Node:** `npx serve .` na pasta do projeto
 
-Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN; Chart.js e DOMPurify são vendorizados localmente em `assets/js/`.
+Nenhuma dependência precisa ser instalada pra usar o app. O Tailwind CSS é carregado via CDN; Chart.js e DOMPurify são vendorizados localmente em `assets/js/`.
+
+### Suíte de testes
+
+Pra desenvolvimento (não necessário só pra usar o app), instale as dependências e rode a suíte com o executor de testes nativo do Node:
+
+```
+npm install
+npm test         # node --test (tests/)
+npm run lint     # eslint .
+npm run format:check   # prettier --check .
+```
 
 ---
 
@@ -81,6 +92,15 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
 │                                trechos em Poemas/Prosas (ver "Funcionalidades
 │                                principais" abaixo)
 ├── README.md
+├── README.pt-br.md
+├── CONTRIBUTING.md / CONTRIBUTING.pt-br.md
+├── LICENSE
+├── package.json / package-lock.json  → Scripts (`npm test`, `npm run lint`,
+│                                        `npm run format`) e dependências de
+│                                        desenvolvimento (docx, eslint, happy-dom,
+│                                        jszip, prettier — ver "Suíte de testes"
+│                                        abaixo)
+├── eslint.config.js / .prettierrc.json / .prettierignore
 │
 ├── assets/
 │   ├── css/
@@ -90,6 +110,28 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
 │   ├── logo/
 │   │   └── Logo.png, Logo.ai, Logo (variacoes).png, Logo (com margem).png
 │   └── screenshots/         → Capturas de tela para o README
+│
+├── docs/                      → Guias de uso com IAs externas (ChatGPT, Claude,
+│   │                            Gemini etc.), fora do fluxo de decisões de
+│   │                            desenvolvimento (ver "manutencao/" abaixo)
+│   ├── export-to-ia.md / export-to-ia-pt-br.md
+│   │                          → Formato aninhado vs. flat na exportação do
+│   │                            acervo para uso com IA (ver "Funcionalidades
+│   │                            principais")
+│   └── scansion-for-ai.md / scansion-for-ai-pt-br.md
+│                              → Instrui uma IA a escandir um poema colado
+│                                (grade silábica, tônicas, pares de rima e os 7
+│                                campos de classificação da aba Sonoridade),
+│                                pronto pra transcrever a resposta pro sistema
+│
+├── manutencao/                → Documentação interna de desenvolvimento (não é
+│   │                            guia de uso do app — ver "docs/" acima)
+│   ├── status.md              → Checklist curto do que está fechado/em
+│   │                            aberto/pendente de teste manual, por sessão
+│   ├── schema.md               → Detalhamento de cada campo do modelo de dados
+│   ├── decisoes.md             → Porquês de decisões de produto/schema
+│   └── licoes-de-sessao.md     → Riscos e armadilhas conhecidas ao retomar
+│                                  uma sessão de desenvolvimento
 │
 ├── js/                       → Toda a lógica do app (ES Modules)
 │   ├── main.js               → Ponto de entrada; liga os onclick="" do HTML às
@@ -105,7 +147,7 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
 │   │                           módulos abaixo pra lógica de cada um)
 │   ├── render-listas.js      → Renderização de Livros/Partes/Seções/
 │   │                           Poemas (+ seleção múltipla)/Prosas/Elementos/
-│   │                           Pessoas/Grupos/Autores/Épocas
+│   │                           Pessoas/Grupos/Autores/Épocas/Sonoridade
 │   ├── render-estrutura.js   → Árvore da aba "Estrutura": seleção em
 │   │                           cascata, mover ▲▼, mover entre níveis
 │   ├── render-conexoes.js    → Aba "Conexões": monta os diagramas de Elos
@@ -119,20 +161,36 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
 │   │                           "Baixar JSON" manual — não substitui)
 │   ├── forms.js              → Submit/edição de Livro, Parte, Seção, Poema,
 │   │                           Prosa, Elemento, Pessoa, Grupo, Autor, Época
-│   │                           (inclui o fluxo de Mesclar Pessoa/Época)
+│   │                           (inclui o fluxo de Mesclar Pessoa/Época e a
+│   │                           cascata da Matriz de Validação de Sonoridade)
 │   ├── editor.js             → Toolbar de formatação do texto + tags/pessoas
+│   ├── editor-sonoridade.js  → Aba Sonoridade: grade silábica, Modo Sílaba
+│   │                           Tônica, Modo Rima, mapeamento/classificação de
+│   │                           pares de rima e a grade somente-leitura
+│   │                           reaproveitada pelo modal "Ver"
+│   ├── visualizar-sonoridade.js → Modal "Ver" de uma escansão (somente
+│   │                           leitura, mesma grade de editor-sonoridade.js)
+│   ├── exportar-sonoridade.js → Exportação de uma escansão em .md/.pdf/.docx/
+│   │                           .json — Grade Silábica em tabela real no .pdf/
+│   │                           .docx (com paisagem automática em versos longos
+│   │                           no .pdf), texto linear com " / " no .md
 │   ├── coletaneas.js         → Lógica da aba de Coletâneas
 │   ├── colunas.js            → Colunas visíveis e sua ordem nas tabelas de
 │   │                           Poemas/Prosas (preferência por tabela, salva
 │   │                           no localStorage)
+│   ├── colunas-contagem.js   → Contagem de itens por coluna/filtro nas tabelas
+│   ├── celulas-tabela.js     → Cabeçalho ordenável, paginação e seleção em
+│   │                           massa das tabelas de Poemas/Prosas
+│   ├── selecao-massa.js      → Barra de ações em massa (exportar seleção em
+│   │                           JSON/Markdown) nas listagens de Poemas/Prosas
 │   ├── acoes-coluna.js       → Botões visíveis na coluna Ações (Ver, Baixar,
 │   │                           Editar, Excluir) e formato usado por "Baixar",
-│   │                           nas tabelas de Poemas/Prosas
+│   │                           nas tabelas de Poemas/Prosas/Sonoridade
 │   ├── busca-campo.js        → Ctrl+F restrito a um campo de texto
 │   │                           específico, em vez do Ctrl+F nativo do
 │   │                           navegador (busca a página inteira)
-│   ├── visualizar.js         → Modal "Ver": mostra o mesmo conteúdo do
-│   │                           `.md` exportado, renderizado na tela
+│   ├── visualizar.js         → Modal "Ver" de Poema/Prosa: mostra o mesmo
+│   │                           conteúdo do `.md` exportado, renderizado na tela
 │   ├── theme.js              → Tema claro/escuro/automático (reage a
 │   │                           mudança do tema do sistema operacional)
 │   ├── estatisticas.js       → Painel de estatísticas (Chart.js)
@@ -143,13 +201,16 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
 │   │                           Exportação seletiva, seleção da tabela e
 │   │                           exportações aninhadas)
 │   ├── exportar-pdf.js       → Geração do formato PDF (coluna Ações e
-│   │                           modal Ver)
+│   │                           modal Ver de Poema/Prosa)
+│   ├── exportar-docx.js      → Geração do formato Word (.docx) de Poema/Prosa
+│   │                           e da própria escansão de Sonoridade
 │   ├── nesting.js            → Lógica de encadeamento hierárquico (usada por
 │   │                           exportar.js)
 │   └── utils.js              → Funções puras sem dependências internas;
 │                               inclui modal de confirmação de exclusão,
-│                               geração de ID (gerarId) e escaping de HTML
-│                               (escapeHtml)
+│                               geração de ID (gerarId), escaping de HTML
+│                               (escapeHtml) e as constantes/matriz de
+│                               validação em cascata da aba Sonoridade
 │
 ├── modais/                    → HTML de cada modal, carregado sob demanda
 │   ├── modal-livro.html
@@ -164,8 +225,18 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
 │   ├── modal-grupo.html
 │   ├── modal-autor.html
 │   ├── modal-epoca.html
-│   ├── modal-visualizar.html  → Modal "Ver" (ver visualizar.js)
+│   ├── modal-sonoridade.html  → Cadastro/edição de uma escansão (ver
+│   │                            editor-sonoridade.js)
+│   ├── modal-visualizar-sonoridade.html → Modal "Ver" de uma escansão (ver
+│   │                            visualizar-sonoridade.js)
+│   ├── modal-visualizar.html  → Modal "Ver" de Poema/Prosa (ver visualizar.js)
 │   └── modal-mesclar.html     → Modal genérico de Mesclar (Pessoa/Época)
+│
+├── scripts/
+│   └── normalizar-datas.js    → Script de manutenção pontual de dados (datas)
+│
+├── tests/                     → `node --test` (ver "Suíte de testes" abaixo)
+│   └── helpers/
 │
 └── data/                      → Excluída do controle de versão (ver .gitignore);
                                   backups pessoais e exportações ficam aqui
@@ -303,6 +374,44 @@ Nenhuma dependência precisa ser instalada. O Tailwind CSS é carregado via CDN;
   exportado, renderizado na tela em vez de baixado.
 - **Exportação em PDF**: além de JSON e Markdown, itens individuais podem
   ser baixados em PDF pela coluna Ações ou pelo modal Ver.
+- **Sonoridade** (Análise > Sonoridade): escansão métrica de um poema já
+  cadastrado, guardada como registro próprio (`db.sonoridades`), vinculado
+  ao poema por `poemaId`.
+  - **Grade Silábica**: divida cada verso em sílabas digitando `/` entre
+    elas (hífen ortográfico não conta como divisão, mesmo peso de um
+    espaço) e marque a(s) sílaba(s) tônica(s) no **Modo Sílaba Tônica**.
+  - **Modo Rima**: clique numa sílaba pra abrir um lado do par (shift-clique
+    estende pra rima rica), clique noutro verso pra abrir o outro lado e
+    confirme o par — mutuamente exclusivo com o Modo Tônica. A letra do
+    esquema (A, B, C...) e a Posição (Externa/Interna) nunca são escolhidas
+    à mão: o sistema deriva as duas a partir dos pares confirmados.
+  - **Pares de Rima**: lista abaixo da grade com a classificação de cada
+    par — Acentuação (Aguda/Grave/Esdrúxula), Tonalidade (Soante/Toante/
+    Imperfeita) e Riqueza (Pobre/Rica/Rara/Preciosa) —, remoção com
+    "Desfazer" e correção/reatribuição de lado sem perder a classificação
+    já feita.
+  - **Classificação do poema**: 7 campos de opções fechadas (Forma do
+    Poema, Regularidade Métrica, Tamanho do Verso, Esquema de Rimas —
+    Presença e Padrão Estrutural —, Origem/Tradição, Registro e Tom).
+    Escolher a Forma do Poema **filtra** (nunca autopreenche nem desabilita)
+    as opções válidas dos outros campos pra formas fixas com regras
+    conhecidas (Soneto Clássico, Haikai, Tanka, Lira Brasileira, Limerick,
+    Trova e, parcialmente, Poesia Narrativa/Cordel) — o campo continua
+    editável entre as opções filtradas. Avisos não-bloqueantes alertam
+    sobre monorrima atípica numa forma fixa ou divergência entre a
+    contagem de sílabas da grade e o Tamanho do Verso escolhido, sem
+    impedir salvar.
+  - **Ver/Baixar**: mesma coluna "⚙️ Ações ▾" configurável de Poemas/Prosas.
+    "Ver" abre uma grade somente-leitura da escansão; "Baixar" exporta em
+    `.md`, `.pdf`, `.docx` ou `.json`. Nos dois primeiros, a tônica sai em
+    negrito de verdade e a Grade Silábica vira uma **tabela** alinhada por
+    coluna de sílaba (igual à tela) — no `.pdf`, a página vira paisagem
+    automaticamente se o poema tiver versos longos demais pra caber em
+    retrato; no `.docx`, é o documento inteiro que nasce em paisagem
+    quando necessário.
+  - Ver `docs/scansion-for-ai-pt-br.md` pra um guia pronto de como pedir a
+    uma IA que escanda um poema e devolva os campos já no formato certo
+    pra preencher aqui.
 - **Localizar e Substituir** (`localizar-substituir.html`): ferramenta
   separada (grupo "Ferramentas" na nav) para buscar um trecho em
   Poemas e/ou Prosas — com opção de diferenciar maiúsculas/minúsculas,

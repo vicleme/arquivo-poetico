@@ -48,13 +48,14 @@ import {
     PAPEIS_PESSOA,
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
-import { getColunasAtivas } from './colunas.js';
+import { getColunasAtivas, DEFINICAO_COLUNAS } from './colunas.js';
 import {
     getColunasContagem,
     PREFIXO_ORDENACAO as PREFIXO_ORDENACAO_CONTAGEM,
     itemBateFiltrosContagem,
 } from './colunas-contagem.js';
 import { contarCamposPreenchidos } from './exportar-md.js';
+import { isAcaoAtiva } from './acoes-coluna.js';
 import {
     celulaAcoesItem,
     resolverTituloPoemaOuProsa,
@@ -2341,6 +2342,157 @@ export function renderAutores() {
                 <button data-action="excluir-item" data-tipo="autores" data-id="${a.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
             </div>
         </div>`;
+        })
+        .join('');
+}
+
+// ─── Sonoridade (Escansão) ──────────────────────────────────────
+// Bloco 1 (dados + tabela): tabela própria, mais simples que a de
+// Poemas/Prosas de propósito — sem paginação, seleção em massa nem
+// cabeçalho ordenável (montarCabecalho/thOrdenavel em celulas-tabela.js
+// são hoje específicos de 'poemas'/'prosas', ver ordenacaoPoemas/
+// ordenacaoProsas hardcoded lá). Reaproveita só o que já é genérico por
+// `tabela`: DEFINICAO_COLUNAS/getColunasAtivas/renderSeletorColunas
+// (colunas.js) e o próprio evento 'colunas:alteradas'. Busca é só por
+// título do poema vinculado — sem os operadores de prefixo (`campo:`)
+// que Poemas/Prosas têm.
+const ICONE_VER = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z"/><circle cx="10" cy="10" r="2.25"/></svg>`;
+const ICONE_BAIXAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M10 3v9.5"/><path d="M6 9l4 4 4-4"/><path d="M3.5 15.5h13"/></svg>`;
+
+let filtroSonoridade = '';
+
+export function setFiltroSonoridade(valor) {
+    filtroSonoridade = (valor || '').trim().toLowerCase();
+    renderSonoridade();
+}
+
+window.addEventListener('colunas:alteradas', (ev) => {
+    if (ev.detail?.tabela === 'sonoridade') renderSonoridade();
+});
+// Mesmo padrão do listener de 'colunas:alteradas' acima — reage à
+// configuração de botões/formato do painel "⚙️ Ações ▾" (ver
+// acoes-coluna.js, estendido pra Sonoridade nesta sessão junto com o
+// toggle de botões abaixo, celulaAcoesSonoridade).
+window.addEventListener('acoes-coluna:alteradas', (ev) => {
+    if (ev.detail?.tabela === 'sonoridade') renderSonoridade();
+});
+
+// Valor de exibição de cada coluna dinâmica — os 6 campos de
+// classificação são texto simples (sem badge/cor própria ainda, ao
+// contrário de Etiquetas/Pessoas em Poemas), exceto 'esquemaRimas', que
+// junta os dois subcampos (Presença + Padrão) numa célula só pra não
+// precisar de 2 colunas pra um conceito do formulário.
+function valorColunaSonoridade(es, key) {
+    const vazio = '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    if (key === 'esquemaRimas') {
+        const partes = [es.esquemaRimasPresenca, es.esquemaRimasPadrao].filter(Boolean);
+        return partes.length ? escapeHtml(partes.join(' · ')) : vazio;
+    }
+    return es[key] ? escapeHtml(es[key]) : vazio;
+}
+
+// Botões da coluna Ações da Sonoridade (Ver/Baixar/Editar/Excluir),
+// montados conforme a configuração salva do painel "⚙️ Ações ▾" — só
+// os habilitados, na ordem fixa de DEFINICAO_ACOES (acoes-coluna.js).
+// Bloco 1 tinha isso fixo em 4 botões sempre visíveis (ver
+// comentário antigo em 'ver-sonoridade' de main.js); esta sessão
+// estendeu o mesmo painel genérico que já existia pra Poemas/Prosas
+// (celulaAcoesItem, em celulas-tabela.js) — não reaproveita aquela
+// função porque os data-action de Sonoridade são outros
+// (ver-sonoridade/baixar-sonoridade/editar-sonoridade, não
+// ver-item/baixar-item/editar-${tipo}).
+function celulaAcoesSonoridade(id) {
+    const ativas = new Set(
+        ['ver', 'baixar', 'editar', 'excluir'].filter((k) => isAcaoAtiva('sonoridade', k)),
+    );
+    const botoes = [];
+    if (ativas.has('ver'))
+        botoes.push(
+            `<button data-action="ver-sonoridade" data-id="${id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>`,
+        );
+    if (ativas.has('baixar'))
+        botoes.push(
+            `<button data-action="baixar-sonoridade" data-id="${id}" title="Baixar" aria-label="Baixar" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_BAIXAR}</button>`,
+        );
+    if (ativas.has('editar'))
+        botoes.push(
+            `<button data-action="editar-sonoridade" data-id="${id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 p-1.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800">${ICONE_EDITAR}</button>`,
+        );
+    if (ativas.has('excluir'))
+        botoes.push(
+            `<button data-action="excluir-item" data-tipo="escansoes" data-id="${id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>`,
+        );
+    return botoes.join('');
+}
+
+export function renderSonoridade() {
+    const tbody = document.getElementById('lista-sonoridade');
+    if (!tbody) return;
+
+    atualizarPainelColunas('sonoridade', 'painel-colunas-sonoridade');
+    atualizarPainelAcoes('sonoridade', 'painel-acoes-sonoridade');
+
+    const cabecalho = document.getElementById('cabecalho-sonoridade');
+    if (cabecalho) {
+        const ativas = getColunasAtivas('sonoridade');
+        const def = DEFINICAO_COLUNAS.sonoridade;
+        const thsMeio = ativas
+            .map((key) => def.find((c) => c.key === key))
+            .filter(Boolean)
+            .map(
+                (c) =>
+                    `<th class="p-4 border-b border-gray-200 dark:border-slate-700">${escapeHtml(c.label)}</th>`,
+            )
+            .join('');
+        cabecalho.innerHTML = `
+            <th class="p-4 border-b border-gray-200 dark:border-slate-700">ID / Título</th>
+            ${thsMeio}
+            <th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>`;
+    }
+
+    const ativas = getColunasAtivas('sonoridade');
+    const filtradas = db.escansoes.filter((es) => {
+        if (!filtroSonoridade) return true;
+        const poema = db.poemas.find((p) => p.id == es.poemaId);
+        return (poema?.titulo || '').toLowerCase().includes(filtroSonoridade);
+    });
+    const ordenadas = [...filtradas].sort((a, b) => {
+        const ta = db.poemas.find((p) => p.id == a.poemaId)?.titulo || '';
+        const tb = db.poemas.find((p) => p.id == b.poemaId)?.titulo || '';
+        return ta.localeCompare(tb, 'pt-BR');
+    });
+
+    if (ordenadas.length === 0) {
+        const colspan = 2 + ativas.length;
+        tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
+            db.escansoes.length === 0
+                ? 'Nenhuma escansão cadastrada ainda.'
+                : 'Nenhuma escansão encontrada para essa busca.'
+        }</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = ordenadas
+        .map((es) => {
+            const poema = db.poemas.find((p) => p.id == es.poemaId);
+            const titulo = poema ? escapeHtml(poema.titulo) : '<em>Poema não encontrado</em>';
+            const tds = ativas
+                .map(
+                    (key) =>
+                        `<td class="p-4 border-b border-gray-100 dark:border-slate-800">${valorColunaSonoridade(es, key)}</td>`,
+                )
+                .join('');
+            return `
+        <tr>
+            <td class="p-4 border-b border-gray-100 dark:border-slate-800">
+                <span class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">#${es.id}</span><br>
+                ${titulo}
+            </td>
+            ${tds}
+            <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
+                ${celulaAcoesSonoridade(es.id)}
+            </td>
+        </tr>`;
         })
         .join('');
 }

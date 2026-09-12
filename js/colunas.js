@@ -248,6 +248,32 @@ export const DEFINICAO_COLUNAS = {
         },
         { key: 'contagemLinha', label: 'Contagem de Linhas', default: false },
     ],
+    // Aba Sonoridade — colunas dinâmicas geradas a partir dos 6 campos de
+    // classificação da Escansão (ver Aba_Sonoridade.md, seção 4.2, e
+    // FORMAS_POEMA/etc. em utils.js). ID/Título e Ações são fixas (não
+    // entram aqui — mesmo padrão de poemas/prosas acima). Os 4 primeiros
+    // (na ordem do exemplo do spec, seção 2) já vêm ligados por padrão;
+    // Tamanho do Verso e Origem/Tradição começam desligados, como as
+    // colunas menos consultadas no dia a dia em poemas/prosas.
+    sonoridade: [
+        { key: 'formaPoema', label: 'Forma', default: true, sortType: 'alfabetico' },
+        {
+            key: 'regularidadeMetrica',
+            label: 'Regularidade Métrica',
+            default: true,
+            sortType: 'alfabetico',
+        },
+        { key: 'esquemaRimas', label: 'Esquema de Rimas', default: true, sortType: 'alfabetico' },
+        { key: 'registro', label: 'Registro', default: true, sortType: 'alfabetico' },
+        { key: 'tom', label: 'Tom', default: true, sortType: 'alfabetico' },
+        { key: 'tamanhoVerso', label: 'Tamanho do Verso', default: false, sortType: 'alfabetico' },
+        {
+            key: 'origemTradicao',
+            label: 'Origem e Tradição',
+            default: false,
+            sortType: 'alfabetico',
+        },
+    ],
 };
 
 // Lê o estado salvo ({ ordem, ativas }) e sempre devolve algo íntegro:
