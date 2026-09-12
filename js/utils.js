@@ -2436,6 +2436,88 @@ export function extrairTiposReferenciaExternaUnicos(poemas) {
     return ordenarComOutroPorUltimo(Array.from(tipos));
 }
 
+// Sugestões de autocompletar pra Hipertextualidade (campo Relação) —
+// diferente do Tipo (mídia do hipotexto — ver extrairTiposHipertextualidadeUnicos
+// abaixo, que reaproveita TIPOS_INTERTEXTO_SUGERIDOS), Relação é a
+// natureza do diálogo em si (Releitura, Paródia...), independente de o
+// hipotexto ser um livro, uma música etc. Mesmo papel de
+// TIPOS_INTERTEXTO_SUGERIDOS: semeia com os 8 rótulos padrão pedidos
+// pelo Victor (da teoria da Transtextualidade) e aprende com qualquer
+// relação personalizada já digitada no acervo.
+export const TIPOS_HIPERTEXTUALIDADE_RELACAO_SUGERIDOS = [
+    'Releitura',
+    'Tradução Adaptada',
+    'Paródia',
+    'Pastiche',
+    'Expansão',
+    'Redimensionamento',
+    'Homenagem',
+    'Transposição',
+];
+
+// Hipertextualidade é uma lista de entradas { tipo, relacao, hipotexto,
+// link, linkTexto, nota } — um texto pode ser hipertexto de mais de um
+// hipotexto (mesmo motivo de Intertextualidade/Referências serem listas,
+// não um valor único). Tipo reaproveita as mesmas sugestões de mídia de
+// Intertextualidade (TIPOS_INTERTEXTO_SUGERIDOS) — é o mesmo tipo de
+// artefato (livro, música, série...), só que aqui apontando pro
+// hipotexto de origem específico, não uma referência qualquer.
+export function extrairTiposHipertextualidadeUnicos(itens) {
+    const tipos = new Set(TIPOS_INTERTEXTO_SUGERIDOS);
+    itens.forEach((it) => {
+        if (Array.isArray(it.hipertextualidade)) {
+            it.hipertextualidade.forEach((h) => {
+                if (h && h.tipo) tipos.add(h.tipo);
+            });
+        }
+    });
+    return ordenarComOutroPorUltimo(Array.from(tipos));
+}
+
+export function extrairRelacoesHipertextualidadeUnicas(itens) {
+    const tipos = new Set(TIPOS_HIPERTEXTUALIDADE_RELACAO_SUGERIDOS);
+    itens.forEach((it) => {
+        if (Array.isArray(it.hipertextualidade)) {
+            it.hipertextualidade.forEach((h) => {
+                if (h && h.relacao) tipos.add(h.relacao);
+            });
+        }
+    });
+    return ordenarComOutroPorUltimo(Array.from(tipos));
+}
+
+// Sugestões de autocompletar pro Hipotexto (nome da obra de origem) —
+// mesma lógica de extrairValoresUnicosDeIntertextualidade acima
+// (inclusive o filtro opcional por Tipo, pra focar as sugestões assim
+// que o Tipo de mídia já foi escolhido), mas sobre o campo `hipotexto`
+// da lista `hipertextualidade`. Sem sugestão padrão fixa: o nome da
+// obra de origem não tem uma lista fechada de valores comuns como
+// Tipo/Relação têm.
+export function extrairHipotextosUnicos(itens, tipoFiltro = null) {
+    const valores = new Set();
+    itens.forEach((it) => {
+        if (Array.isArray(it.hipertextualidade)) {
+            it.hipertextualidade.forEach((h) => {
+                if (h && h.hipotexto && (!tipoFiltro || h.tipo === tipoFiltro))
+                    valores.add(h.hipotexto);
+            });
+        }
+    });
+    return Array.from(valores).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// Monta o corpo textual de uma entrada de Hipertextualidade — usado por
+// exportar-md.js, visualizar.js e editor.js (renderItemHipertextualidade),
+// pra não triplicar essa regrinha nos três lugares. Com os dois campos
+// preenchidos, preserva o sabor da frase original ("Releitura da
+// obra/(hipo)texto X"); com só um dos dois, mostra o que tiver.
+export function corpoEntradaHipertextualidade(it) {
+    const relacao = (it?.relacao || '').trim();
+    const hipotexto = (it?.hipotexto || '').trim();
+    if (relacao && hipotexto) return `${relacao} da obra/(hipo)texto ${hipotexto}`;
+    return relacao || hipotexto || '';
+}
+
 // Agrupa as entradas de Intertextualidade por tipo — pra exibição/exportação
 // (visualizar.js, exportar-md.js), em vez de uma linha solta por entrada.
 // tipo é texto livre (ver TIPOS_INTERTEXTO_SUGERIDOS acima), não um enum

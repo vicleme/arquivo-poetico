@@ -738,7 +738,7 @@
                     </details>
 
                     <details class="campo-grupo">
-                        <summary>Intertextualidade e referências</summary>
+                        <summary>Transtextualidade e Referências (Externas)</summary>
                         <div class="campo-grupo-corpo">
                             <label class="form-label"
                                 >Intertextualidade
@@ -807,6 +807,86 @@
                             <datalist id="sugestoes-intertexto-prosa"></datalist>
                             <datalist id="sugestoes-intertexto-tipo-prosa"></datalist>
                             <div id="pr-intertexto-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
+
+                            <label class="form-label"
+                                >Hipertextualidade
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(relação deste texto — o "hipertexto" — com uma ou mais obras
+                                    de origem, os "hipotextos": releitura, tradução adaptada,
+                                    paródia...)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-hipertexto-tipo"
+                                    list="sugestoes-hipertexto-tipo-prosa"
+                                    class="text-xs w-28 flex-shrink-0"
+                                    placeholder="Tipo..."
+                                />
+                                <input
+                                    type="text"
+                                    id="pr-hipertexto-relacao"
+                                    list="sugestoes-hipertexto-relacao-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Relação (ex.: Releitura, Paródia...)"
+                                />
+                                <input
+                                    type="text"
+                                    id="pr-hipertexto-hipotexto"
+                                    list="sugestoes-hipertexto-hipotexto-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Obra/hipotexto de origem..."
+                                />
+                            </div>
+                            <div class="flex items-center justify-end gap-2 mb-2">
+                                <button
+                                    type="button"
+                                    id="pr-hipertexto-btn-cancelar"
+                                    onclick="cancelarEdicaoHipertextualidade('prosas')"
+                                    class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    id="pr-hipertexto-btn-add"
+                                    onclick="adicionarHipertextualidade('prosas')"
+                                    class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold flex-shrink-0"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="url"
+                                    id="pr-hipertexto-link"
+                                    class="text-sm flex-1"
+                                    placeholder="Link (opcional)"
+                                />
+                                <input
+                                    type="text"
+                                    id="pr-hipertexto-link-texto"
+                                    class="text-sm flex-1"
+                                    placeholder="Texto do link (opcional)"
+                                />
+                            </div>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-hipertexto-nota"
+                                    class="text-sm w-full"
+                                    placeholder="Nota opcional..."
+                                />
+                            </div>
+                            <datalist id="sugestoes-hipertexto-tipo-prosa"></datalist>
+                            <datalist id="sugestoes-hipertexto-relacao-prosa"></datalist>
+                            <datalist id="sugestoes-hipertexto-hipotexto-prosa"></datalist>
+                            <div
+                                id="pr-hipertexto-lista"
+                                class="space-y-1 mb-2 min-h-[12px]"
+                            ></div>
 
                             <label class="form-label"
                                 >Referências

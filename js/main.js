@@ -202,6 +202,10 @@ import {
     removerIntertexto,
     editarIntertexto,
     cancelarEdicaoIntertexto,
+    adicionarHipertextualidade,
+    removerHipertextualidade,
+    editarHipertextualidade,
+    cancelarEdicaoHipertextualidade,
     adicionarReferenciaExterna,
     removerReferenciaExterna,
     editarReferenciaExterna,
@@ -639,6 +643,10 @@ window.adicionarIntertexto = adicionarIntertexto;
 window.removerIntertexto = removerIntertexto;
 window.editarIntertexto = editarIntertexto;
 window.cancelarEdicaoIntertexto = cancelarEdicaoIntertexto;
+window.adicionarHipertextualidade = adicionarHipertextualidade;
+window.removerHipertextualidade = removerHipertextualidade;
+window.editarHipertextualidade = editarHipertextualidade;
+window.cancelarEdicaoHipertextualidade = cancelarEdicaoHipertextualidade;
 window.adicionarReferenciaExterna = adicionarReferenciaExterna;
 window.removerReferenciaExterna = removerReferenciaExterna;
 window.editarReferenciaExterna = editarReferenciaExterna;

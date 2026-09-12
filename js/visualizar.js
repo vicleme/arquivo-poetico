@@ -32,6 +32,7 @@ import {
     estaPublicado,
     sinalizacoesAgrupadas,
     agruparIntertextualidadePorTipo,
+    corpoEntradaHipertextualidade,
     escapeHtml,
     sanitizarTextoRico,
 } from './utils.js';
@@ -191,6 +192,14 @@ export function renderVisualizacaoHtml(item) {
     html += blocoTextoHtml('Ocultação', item.ocultacao);
 
     html += listaIntertextualidadeHtml('Intertextualidade', item.intertextualidade);
+    html += listaHtml('Hipertextualidade', item.hipertextualidade, (h) => {
+        const prefixo = h.tipo ? `<strong>${escapeHtml(h.tipo)}:</strong> ` : '';
+        const link = h.link
+            ? ` — <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(h.linkTexto || h.link)}</a>`
+            : '';
+        const nota = h.nota ? ` <em>(${escapeHtml(h.nota)})</em>` : '';
+        return `${prefixo}${escapeHtml(corpoEntradaHipertextualidade(h))}${link}${nota}`;
+    });
     html += listaIntertextualidadeHtml('Referências', item.referenciasExternas);
 
     html += listaHtml('Anexos', item.anexos, (a) => {

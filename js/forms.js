@@ -82,6 +82,9 @@ import {
     obterIntertextualidade,
     carregarIntertextualidade,
     resetIntertextualidade,
+    obterHipertextualidade,
+    carregarHipertextualidade,
+    resetHipertextualidade,
     obterReferenciasExternas,
     carregarReferenciasExternas,
     resetReferenciasExternas,
@@ -1357,6 +1360,7 @@ export function initFormPoema() {
             status: document.getElementById('p-status').value,
             epocaRetratada,
             intertextualidade: obterIntertextualidade('poemas'),
+            hipertextualidade: obterHipertextualidade('poemas'),
             referenciasExternas: obterReferenciasExternas('poemas'),
             anexos: obterAnexos('poemas'),
             anexosNotaGeral: document.getElementById('p-anexos-nota-geral').value,
@@ -1478,6 +1482,10 @@ export async function editarPoema(id) {
     document.getElementById('p-intertexto-tipo').value = '';
     document.getElementById('p-intertexto-texto').value = '';
     carregarIntertextualidade('poemas', p.intertextualidade || []);
+    document.getElementById('p-hipertexto-tipo').value = '';
+    document.getElementById('p-hipertexto-relacao').value = '';
+    document.getElementById('p-hipertexto-hipotexto').value = '';
+    carregarHipertextualidade('poemas', p.hipertextualidade || []);
     document.getElementById('p-refext-tipo').value = '';
     document.getElementById('p-refext-texto').value = '';
     carregarReferenciasExternas('poemas', p.referenciasExternas || []);
@@ -1656,6 +1664,7 @@ export function initFormProsa() {
             status: document.getElementById('pr-status').value,
             epocaRetratada,
             intertextualidade: obterIntertextualidade('prosas'),
+            hipertextualidade: obterHipertextualidade('prosas'),
             referenciasExternas: obterReferenciasExternas('prosas'),
             anexos: obterAnexos('prosas'),
             anexosNotaGeral: document.getElementById('pr-anexos-nota-geral').value,
@@ -1730,6 +1739,7 @@ export function initFormProsa() {
         resetReconhecimentos('prosas');
         resetGeneroProsa();
         resetIntertextualidade('prosas');
+        resetHipertextualidade('prosas');
         resetReferenciasExternas('prosas');
         resetAnexos('prosas');
         resetElos('prosas');
@@ -1775,6 +1785,10 @@ export async function editarProsa(id) {
     document.getElementById('pr-intertexto-tipo').value = '';
     document.getElementById('pr-intertexto-texto').value = '';
     carregarIntertextualidade('prosas', pr.intertextualidade || []);
+    document.getElementById('pr-hipertexto-tipo').value = '';
+    document.getElementById('pr-hipertexto-relacao').value = '';
+    document.getElementById('pr-hipertexto-hipotexto').value = '';
+    carregarHipertextualidade('prosas', pr.hipertextualidade || []);
     document.getElementById('pr-refext-tipo').value = '';
     document.getElementById('pr-refext-texto').value = '';
     carregarReferenciasExternas('prosas', pr.referenciasExternas || []);

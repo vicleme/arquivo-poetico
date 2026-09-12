@@ -17,6 +17,10 @@ import {
     extrairTiposIntertextoUnicos,
     extrairValoresUnicosDeReferenciasExternas,
     extrairTiposReferenciaExternaUnicos,
+    extrairTiposHipertextualidadeUnicos,
+    extrairRelacoesHipertextualidadeUnicas,
+    extrairHipotextosUnicos,
+    corpoEntradaHipertextualidade,
     extrairIdiomasUnicos,
     extrairMeiosEnviosUnicos,
     extrairPremiosUnicos,
@@ -1286,6 +1290,170 @@ export function atualizarDatalistReferenciaExterna(tabela) {
     }
 }
 
+// ─── Hipertextualidade (lista de tipo+relação+hipotexto+link+linkTexto+nota) ─
+// Terceiro campo do grupo "Transtextualidade e Referências (Externas)",
+// entre Intertextualidade e Referências. Diferente da primeira versão
+// (um par único de campos direto no item), agora é uma lista — mesmo
+// motor genérico (criarListaDeEntradas) de Intertextualidade/
+// Referências logo acima — porque um texto pode ser hipertexto de mais
+// de um hipotexto (ex.: uma paródia que mistura duas obras de origem).
+// Tipo reaproveita o mesmo papel de mídia de Intertextualidade (livro,
+// música, série...); Relação é a natureza do diálogo (Releitura,
+// Paródia...); Hipotexto é o nome da obra de origem — ver
+// corpoEntradaHipertextualidade (utils.js) pra como os dois últimos
+// viram texto.
+function renderItemHipertextualidade(h) {
+    const badge = h.tipo
+        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(h.tipo)}</span>`
+        : '';
+    const link = h.link
+        ? ` <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(h.linkTexto || h.link)}</a>`
+        : '';
+    const nota = h.nota ? ` — ${escapeHtml(h.nota)}` : '';
+    return `${badge}${escapeHtml(corpoEntradaHipertextualidade(h))}${link}${nota}`;
+}
+
+const listaHipertextualidadePoema = criarListaDeEntradas({
+    tabela: 'poemas',
+    containerId: 'p-hipertexto-lista',
+    renderItem: renderItemHipertextualidade,
+    nomeFuncaoRemover: 'removerHipertextualidade',
+    nomeFuncaoEditar: 'editarHipertextualidade',
+});
+const listaHipertextualidadeProsa = criarListaDeEntradas({
+    tabela: 'prosas',
+    containerId: 'pr-hipertexto-lista',
+    renderItem: renderItemHipertextualidade,
+    nomeFuncaoRemover: 'removerHipertextualidade',
+    nomeFuncaoEditar: 'editarHipertextualidade',
+});
+function listaHipertextualidade(tabela) {
+    if (tabela === 'poemas') return listaHipertextualidadePoema;
+    if (tabela === 'prosas') return listaHipertextualidadeProsa;
+    throw new Error(`Tabela desconhecida em listaHipertextualidade: ${tabela}`);
+}
+
+function atualizarBotaoHipertextualidade(tabela) {
+    const p = prefixoDom(tabela);
+    const btnAdd = document.getElementById(`${p}-hipertexto-btn-add`);
+    const btnCancelar = document.getElementById(`${p}-hipertexto-btn-cancelar`);
+    const emEdicao = listaHipertextualidade(tabela).estaEditando();
+    if (btnAdd) btnAdd.textContent = emEdicao ? '✓' : '+';
+    if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
+}
+
+// Espelha atualizarDatalistTextoIntertexto acima: refiltra as sugestões
+// de Hipotexto pelo Tipo de mídia já escolhido.
+function atualizarDatalistTextoHipertextualidade(itens, tipoElId, datalistHipotextoId) {
+    const datalist = document.getElementById(datalistHipotextoId);
+    if (!datalist) return;
+    const tipoAtual = document.getElementById(tipoElId)?.value.trim() || null;
+    datalist.innerHTML = extrairHipotextosUnicos(itens, tipoAtual)
+        .map((v) => `<option value="${escapeHtml(v)}">`)
+        .join('');
+}
+
+// Prosa não tem versão global do datalist de Tipo em index.html (só a
+// de Poema) — mesmo motivo do sufixo '-prosa' em atualizarDatalistIntertexto.
+export function atualizarDatalistHipertextualidade(tabela) {
+    const p = prefixoDom(tabela);
+    const dados = tabela === 'prosas' ? db.prosas || [] : db.poemas;
+    const sufixo = tabela === 'prosas' ? '-prosa' : '';
+    atualizarDatalistTextoHipertextualidade(
+        dados,
+        `${p}-hipertexto-tipo`,
+        `sugestoes-hipertexto-hipotexto${sufixo}`,
+    );
+    const datalistTipo = document.getElementById(`sugestoes-hipertexto-tipo${sufixo}`);
+    if (datalistTipo) {
+        datalistTipo.innerHTML = extrairTiposHipertextualidadeUnicos(dados)
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    }
+    const datalistRelacao = document.getElementById(`sugestoes-hipertexto-relacao${sufixo}`);
+    if (datalistRelacao) {
+        datalistRelacao.innerHTML = extrairRelacoesHipertextualidadeUnicas(dados)
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    }
+}
+
+export function adicionarHipertextualidade(tabela) {
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-hipertexto-tipo`);
+    const relacaoEl = document.getElementById(`${p}-hipertexto-relacao`);
+    const hipotextoEl = document.getElementById(`${p}-hipertexto-hipotexto`);
+    const linkEl = document.getElementById(`${p}-hipertexto-link`);
+    const linkTextoEl = document.getElementById(`${p}-hipertexto-link-texto`);
+    const notaEl = document.getElementById(`${p}-hipertexto-nota`);
+    const tipo = tipoEl?.value || '';
+    const relacao = (relacaoEl?.value || '').trim();
+    const hipotexto = (hipotextoEl?.value || '').trim();
+    const link = (linkEl?.value || '').trim();
+    const linkTexto = (linkTextoEl?.value || '').trim();
+    const nota = (notaEl?.value || '').trim();
+    if (!tipo && !relacao && !hipotexto && !link && !linkTexto && !nota) return;
+    listaHipertextualidade(tabela).salvar({ tipo, relacao, hipotexto, link, linkTexto, nota });
+    if (tipoEl) tipoEl.value = '';
+    if (relacaoEl) relacaoEl.value = '';
+    if (hipotextoEl) hipotextoEl.value = '';
+    if (linkEl) linkEl.value = '';
+    if (linkTextoEl) linkTextoEl.value = '';
+    if (notaEl) notaEl.value = '';
+    atualizarBotaoHipertextualidade(tabela);
+    atualizarDatalistHipertextualidade(tabela);
+}
+export function editarHipertextualidade(tabela, indice) {
+    const item = listaHipertextualidade(tabela).iniciarEdicao(indice);
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-hipertexto-tipo`);
+    const relacaoEl = document.getElementById(`${p}-hipertexto-relacao`);
+    const hipotextoEl = document.getElementById(`${p}-hipertexto-hipotexto`);
+    const linkEl = document.getElementById(`${p}-hipertexto-link`);
+    const linkTextoEl = document.getElementById(`${p}-hipertexto-link-texto`);
+    const notaEl = document.getElementById(`${p}-hipertexto-nota`);
+    if (tipoEl) tipoEl.value = item.tipo || '';
+    if (relacaoEl) relacaoEl.value = item.relacao || '';
+    if (hipotextoEl) hipotextoEl.value = item.hipotexto || '';
+    if (linkEl) linkEl.value = item.link || '';
+    if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
+    if (notaEl) notaEl.value = item.nota || '';
+    relacaoEl?.focus();
+    atualizarBotaoHipertextualidade(tabela);
+}
+export function cancelarEdicaoHipertextualidade(tabela) {
+    listaHipertextualidade(tabela).cancelarEdicao();
+    const p = prefixoDom(tabela);
+    const tipoEl = document.getElementById(`${p}-hipertexto-tipo`);
+    const relacaoEl = document.getElementById(`${p}-hipertexto-relacao`);
+    const hipotextoEl = document.getElementById(`${p}-hipertexto-hipotexto`);
+    const linkEl = document.getElementById(`${p}-hipertexto-link`);
+    const linkTextoEl = document.getElementById(`${p}-hipertexto-link-texto`);
+    const notaEl = document.getElementById(`${p}-hipertexto-nota`);
+    if (tipoEl) tipoEl.value = '';
+    if (relacaoEl) relacaoEl.value = '';
+    if (hipotextoEl) hipotextoEl.value = '';
+    if (linkEl) linkEl.value = '';
+    if (linkTextoEl) linkTextoEl.value = '';
+    if (notaEl) notaEl.value = '';
+    atualizarBotaoHipertextualidade(tabela);
+}
+export function removerHipertextualidade(tabela, indice) {
+    listaHipertextualidade(tabela).remover(indice);
+    atualizarBotaoHipertextualidade(tabela);
+}
+export function obterHipertextualidade(tabela) {
+    return listaHipertextualidade(tabela).obterItens();
+}
+export function carregarHipertextualidade(tabela, lista) {
+    listaHipertextualidade(tabela).carregar(lista);
+    atualizarBotaoHipertextualidade(tabela);
+}
+export function resetHipertextualidade(tabela) {
+    listaHipertextualidade(tabela).reset();
+    atualizarBotaoHipertextualidade(tabela);
+}
+
 export function adicionarReferenciaExterna(tabela) {
     const p = prefixoDom(tabela);
     const tipoEl = document.getElementById(`${p}-refext-tipo`);
@@ -2327,6 +2495,7 @@ export function atualizarDatalist() {
     atualizarDatalistAnotacoes();
     atualizarDatalistIntertexto('poemas');
     atualizarDatalistReferenciaExterna('poemas');
+    atualizarDatalistHipertextualidade('poemas');
     atualizarDatalistEpoca();
     atualizarDatalistIdioma();
     atualizarDatalistEnvios();
@@ -2853,6 +3022,7 @@ export function atualizarDatalistProsa() {
     // aqui — atualizarDatalist() (Poema) já cobre as duas pontas.
     atualizarDatalistIntertexto('prosas');
     atualizarDatalistReferenciaExterna('prosas');
+    atualizarDatalistHipertextualidade('prosas');
 }
 
 // Wrappers de Sinalizações (Prosa) unificados acima em
@@ -3041,6 +3211,24 @@ export function initEditor() {
             });
         }
     });
+    // Enter nos inputs de relação/hipotexto/link/nota da Hipertextualidade
+    // — mesmo padrão de Intertextualidade/Referências acima.
+    [
+        'p-hipertexto-relacao',
+        'p-hipertexto-hipotexto',
+        'p-hipertexto-link',
+        'p-hipertexto-nota',
+    ].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    adicionarHipertextualidade('poemas');
+                }
+            });
+        }
+    });
     // Sugestões de Texto mais focadas: refiltra pelo Tipo assim que ele
     // muda (digitado ou escolhido do datalist) — ver
     // atualizarDatalistTextoIntertexto acima.
@@ -3050,6 +3238,11 @@ export function initEditor() {
     document
         .getElementById('p-refext-tipo')
         ?.addEventListener('input', () => atualizarDatalistReferenciaExterna('poemas'));
+    // Mesmo refiltro acima, mas pro Hipotexto (Hipertextualidade) —
+    // ver atualizarDatalistTextoHipertextualidade acima.
+    document
+        .getElementById('p-hipertexto-tipo')
+        ?.addEventListener('input', () => atualizarDatalistHipertextualidade('poemas'));
 
     // Anexos usa textarea (texto longo) — Enter quebra linha na
     // descrição normalmente; Ctrl/Cmd+Enter é quem adiciona o item
@@ -3136,6 +3329,24 @@ export function initEditorProsa() {
             });
         }
     });
+    // Enter nos inputs de relação/hipotexto/link/nota da Hipertextualidade
+    // (Prosa) — mesmo padrão do Poema em initEditor().
+    [
+        'pr-hipertexto-relacao',
+        'pr-hipertexto-hipotexto',
+        'pr-hipertexto-link',
+        'pr-hipertexto-nota',
+    ].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    adicionarHipertextualidade('prosas');
+                }
+            });
+        }
+    });
     // Ver initEditor() — mesmo refiltro de sugestões de Texto pelo Tipo.
     document
         .getElementById('pr-intertexto-tipo')
@@ -3143,4 +3354,7 @@ export function initEditorProsa() {
     document
         .getElementById('pr-refext-tipo')
         ?.addEventListener('input', () => atualizarDatalistReferenciaExterna('prosas'));
+    document
+        .getElementById('pr-hipertexto-tipo')
+        ?.addEventListener('input', () => atualizarDatalistHipertextualidade('prosas'));
 }

@@ -19,6 +19,7 @@ import {
     sinalizacoesCombinadas,
     sinalizacoesAgrupadas,
     agruparIntertextualidadePorTipo,
+    corpoEntradaHipertextualidade,
     rotuloElo,
     paresGrupoPessoa,
     agruparParesGrupoPessoa,
@@ -241,6 +242,7 @@ function verificacoesDeCampos(item) {
         !!(item.contextoHistorico || '').trim(),
         !!(item.ocultacao || '').trim(),
         Array.isArray(item.intertextualidade) && item.intertextualidade.length > 0,
+        Array.isArray(item.hipertextualidade) && item.hipertextualidade.length > 0,
         Array.isArray(item.referenciasExternas) && item.referenciasExternas.length > 0,
         Array.isArray(item.anexos) && item.anexos.length > 0,
         !!(item.anexosNotaGeral || '').trim(),
@@ -414,6 +416,17 @@ function itemParaMarkdownDepoisDoTexto(item) {
             } else {
                 md += `- **${tipo}:** ${entradas.map(linhaEntrada).join(', ')}\n`;
             }
+        });
+        md += '\n';
+    }
+
+    if (Array.isArray(item.hipertextualidade) && item.hipertextualidade.length) {
+        md += '### Hipertextualidade\n\n';
+        item.hipertextualidade.forEach((h) => {
+            const prefixo = h.tipo ? `**${h.tipo}:** ` : '';
+            const link = h.link ? ` — [${h.linkTexto || h.link}](${h.link})` : '';
+            const nota = h.nota ? ` *(${h.nota})*` : '';
+            md += `- ${prefixo}${corpoEntradaHipertextualidade(h)}${link}${nota}\n`;
         });
         md += '\n';
     }
