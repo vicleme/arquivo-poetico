@@ -7,6 +7,9 @@ const {
     construirLinhasIniciais,
     calcularMaxSilabas,
     calcularLetrasRima,
+    calcularDistanciaPar,
+    calcularProximidadePar,
+    calcularClassificacaoSonora,
     inicializarGradeSonoridade,
     obterLinhasSonoridade,
     obterRimasSonoridade,
@@ -91,6 +94,88 @@ describe('calcularLetrasRima', () => {
         assert.equal(letras.get(0), 'A');
         assert.equal(letras.get(1), 'A');
         assert.equal(letras.get(2), 'A');
+    });
+});
+
+describe('calcularDistanciaPar', () => {
+    it('distância é a diferença entre os números de verso (linha.numero), não a posição bruta na grade', () => {
+        // quebra de estrofe (linha vazia) entre os dois versos não deve
+        // inflar a distância: v.1 e v.2 continuam a 1 de distância mesmo
+        // com uma linha em branco entre eles no array.
+        const linhas = [
+            { tipo: 'verso', numero: 1, texto: 'Um' },
+            { tipo: 'vazia' },
+            { tipo: 'verso', numero: 2, texto: 'Dois' },
+        ];
+        const par = { a: { linha: 0, silabas: [0] }, b: { linha: 2, silabas: [0] } };
+        assert.equal(calcularDistanciaPar(par, linhas), 1);
+    });
+
+    it('retorna null se algum dos lados apontar pra uma linha inexistente', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'Um' }];
+        const par = { a: { linha: 0, silabas: [0] }, b: { linha: 5, silabas: [0] } };
+        assert.equal(calcularDistanciaPar(par, linhas), null);
+    });
+});
+
+describe('calcularProximidadePar', () => {
+    it('até a distância limite (2), o par é "Vizinha"', () => {
+        assert.equal(calcularProximidadePar(1), 'Vizinha');
+        assert.equal(calcularProximidadePar(2), 'Vizinha');
+    });
+
+    it('acima da distância limite, o par é "Distante"', () => {
+        assert.equal(calcularProximidadePar(3), 'Distante');
+        assert.equal(calcularProximidadePar(10), 'Distante');
+    });
+
+    it('distância null (par inválido) não recebe rótulo', () => {
+        assert.equal(calcularProximidadePar(null), null);
+    });
+});
+
+describe('calcularClassificacaoSonora', () => {
+    const linhas = Array.from({ length: 10 }, (_, i) => ({
+        tipo: 'verso',
+        numero: i + 1,
+        texto: 'x',
+    }));
+
+    it('sem nenhum par, não há rótulo', () => {
+        assert.deepEqual(calcularClassificacaoSonora([], linhas), {
+            vizinhas: 0,
+            distantes: 0,
+            rotulo: null,
+        });
+    });
+
+    it('mais pares vizinhos que distantes → "Com Rimas mais Próximas"', () => {
+        const rimas = [
+            { a: { linha: 0, silabas: [0] }, b: { linha: 1, silabas: [0] } }, // d=1, vizinha
+            { a: { linha: 2, silabas: [0] }, b: { linha: 3, silabas: [0] } }, // d=1, vizinha
+            { a: { linha: 0, silabas: [0] }, b: { linha: 9, silabas: [0] } }, // d=9, distante
+        ];
+        const resultado = calcularClassificacaoSonora(rimas, linhas);
+        assert.deepEqual(resultado, { vizinhas: 2, distantes: 1, rotulo: 'Com Rimas mais Próximas' });
+    });
+
+    it('mais pares distantes que vizinhos → "Com Rimas mais Distantes"', () => {
+        const rimas = [
+            { a: { linha: 0, silabas: [0] }, b: { linha: 9, silabas: [0] } }, // d=9, distante
+            { a: { linha: 1, silabas: [0] }, b: { linha: 8, silabas: [0] } }, // d=7, distante
+            { a: { linha: 2, silabas: [0] }, b: { linha: 3, silabas: [0] } }, // d=1, vizinha
+        ];
+        const resultado = calcularClassificacaoSonora(rimas, linhas);
+        assert.deepEqual(resultado, { vizinhas: 1, distantes: 2, rotulo: 'Com Rimas mais Distantes' });
+    });
+
+    it('empate entre vizinhas e distantes → "Com Rimas Equilibradas"', () => {
+        const rimas = [
+            { a: { linha: 0, silabas: [0] }, b: { linha: 1, silabas: [0] } }, // d=1, vizinha
+            { a: { linha: 2, silabas: [0] }, b: { linha: 9, silabas: [0] } }, // d=7, distante
+        ];
+        const resultado = calcularClassificacaoSonora(rimas, linhas);
+        assert.deepEqual(resultado, { vizinhas: 1, distantes: 1, rotulo: 'Com Rimas Equilibradas' });
     });
 });
 

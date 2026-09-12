@@ -27,6 +27,9 @@ import {
     calcularMaxSilabas,
     calcularLetrasRima,
     calcularPosicaoPar,
+    calcularDistanciaPar,
+    calcularProximidadePar,
+    calcularClassificacaoSonora,
     celulasRimadas,
     corDaLetra,
     dividirSilabas,
@@ -181,6 +184,7 @@ function paresParaTexto(rimas, linhas) {
             const numA = linhas[par.a.linha]?.numero ?? '?';
             const numB = linhas[par.b.linha]?.numero ?? '?';
             const posicao = calcularPosicaoPar(par, linhas);
+            const proximidade = calcularProximidadePar(calcularDistanciaPar(par, linhas));
             const classificacao = [par.acentuacao, par.tonalidade, par.riqueza]
                 .filter(Boolean)
                 .join(' · ');
@@ -191,9 +195,21 @@ function paresParaTexto(rimas, linhas) {
                 trechoA: trechoLado(par.a, linhas),
                 trechoB: trechoLado(par.b, linhas),
                 posicao,
+                proximidade,
                 classificacao,
             };
         });
+}
+
+// Linha de resumo ("Com Rimas mais Próximas (3 vizinhas · 1 distante)")
+// repetida nos 3 formatos antes da lista de pares — texto puro aqui,
+// cada exportador decide como estilizar (parágrafo simples no .md/.pdf,
+// itálico no .docx). `null` quando o poema não tem par nenhum, mesmo
+// critério de calcularClassificacaoSonora.
+function resumoProximidadeTexto(rimas, linhas) {
+    const { vizinhas, distantes, rotulo } = calcularClassificacaoSonora(rimas, linhas);
+    if (!rotulo) return null;
+    return `${rotulo} (${vizinhas} vizinha${vizinhas === 1 ? '' : 's'} · ${distantes} distante${distantes === 1 ? '' : 's'})`;
 }
 
 // ─── .md ──────────────────────────────────────────────────────────
@@ -221,8 +237,10 @@ export function escansaoParaMarkdown(es, poema) {
     const pares = paresParaTexto(rimas, linhas);
     if (pares.length) {
         md += `### Pares de Rima\n\n`;
+        const resumo = resumoProximidadeTexto(rimas, linhas);
+        if (resumo) md += `_${resumo}_\n\n`;
         pares.forEach((p) => {
-            md += `- **${p.letra || '·'}** — v.${p.numA} "${p.trechoA}" ↔ v.${p.numB} "${p.trechoB}" (${p.posicao})${
+            md += `- **${p.letra || '·'}** — v.${p.numA} "${p.trechoA}" ↔ v.${p.numB} "${p.trechoB}" (${p.posicao} · ${p.proximidade})${
                 p.classificacao ? ` — ${p.classificacao}` : ''
             }\n`;
         });
@@ -481,8 +499,10 @@ export function gerarPdfEscansao(es, poema) {
         // a paisagem foi só pra grade caber, não é o formato do resto.
         if (usouPaisagem) novaPagina('portrait');
         paragrafo('Pares de Rima', { tamanho: 12, negrito: true, espacoDepois: 4 });
+        const resumo = resumoProximidadeTexto(rimas, linhas);
+        if (resumo) paragrafo(resumo, { tamanho: 10, espacoDepois: 4 });
         pares.forEach((p) => {
-            const base = `${p.letra || '·'} — v.${p.numA} "${p.trechoA}" <-> v.${p.numB} "${p.trechoB}" (${p.posicao})`;
+            const base = `${p.letra || '·'} — v.${p.numA} "${p.trechoA}" <-> v.${p.numB} "${p.trechoB}" (${p.posicao} · ${p.proximidade})`;
             paragrafo(p.classificacao ? `${base} — ${p.classificacao}` : base, {
                 tamanho: 10,
                 espacoDepois: 2,
@@ -689,8 +709,17 @@ export function gerarDocxEscansao(es, poema) {
         filhos.push(
             new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun('Pares de Rima')] }),
         );
+        const resumo = resumoProximidadeTexto(rimas, linhas);
+        if (resumo) {
+            filhos.push(
+                new Paragraph({
+                    spacing: { after: 100 },
+                    children: [new TextRun({ text: resumo, italics: true })],
+                }),
+            );
+        }
         pares.forEach((p) => {
-            const texto = `${p.letra || '·'} — v.${p.numA} "${p.trechoA}" ↔ v.${p.numB} "${p.trechoB}" (${p.posicao})${
+            const texto = `${p.letra || '·'} — v.${p.numA} "${p.trechoA}" ↔ v.${p.numB} "${p.trechoB}" (${p.posicao} · ${p.proximidade})${
                 p.classificacao ? ` — ${p.classificacao}` : ''
             }`;
             filhos.push(

@@ -39,6 +39,15 @@
 //   os itens que estavam na fila como "remoção rápida" e "painel
 //   consolidado" separados. O painel pode crescer mais adiante com
 //   outros dados ainda não desenhados, a partir dessa mesma lista.
+//   Sub-passo 5 (Proximidade — identificação e contagem final de pares
+//   Vizinhos/Distantes, e caracterização do poema a partir disso, ver
+//   DISTANCIA_VIZINHO_MAXIMA em utils.js e calcularDistanciaPar/
+//   calcularProximidadePar/calcularClassificacaoSonora abaixo): mesmo
+//   espírito de Posição — nunca selecionado nem salvo, sempre derivado
+//   do próprio par (e, pro rótulo do poema, do conjunto de pares) na
+//   hora de renderizar. Rótulo do poema só some se não houver par
+//   nenhum; empate entre Vizinhas/Distantes vira "Com Rimas
+//   Equilibradas" em vez de forçar um lado (ver decisoes.md).
 //
 // Estado (`linhasAtuais`, `rimasAtuais`) mora neste módulo, não em
 // forms.js — é mutado a cada tecla digitada (ver onInputTexto) ou clique
@@ -58,6 +67,7 @@ import {
     ACENTUACOES_RIMA,
     TONALIDADES_RIMA,
     RIQUEZAS_RIMA,
+    DISTANCIA_VIZINHO_MAXIMA,
 } from './utils.js';
 
 let linhasAtuais = [];
@@ -269,6 +279,51 @@ export function calcularPosicaoPar(par, linhas) {
         return ultima !== -1 && Math.max(...lado.silabas) === ultima;
     }
     return ladoEhExterno(par.a) && ladoEhExterno(par.b) ? 'Externa' : 'Interna';
+}
+
+// Distância entre os dois versos de um par, em nº de verso (`linha.numero`
+// — ignora linhas em branco de quebra de estrofe, então uma estrofe nova
+// no meio não infla a distância). Base de calcularProximidadePar logo
+// abaixo. Exportada com `linhas` como parâmetro, mesmo motivo de
+// calcularPosicaoPar: testável com um array qualquer, sem montar DOM.
+export function calcularDistanciaPar(par, linhas) {
+    const numA = linhas[par.a.linha]?.numero;
+    const numB = linhas[par.b.linha]?.numero;
+    if (numA == null || numB == null) return null;
+    return Math.abs(numA - numB);
+}
+
+// "Vizinha" até DISTANCIA_VIZINHO_MAXIMA versos de distância, "Distante"
+// depois disso (ver a constante em utils.js pro porquê do corte) — mesmo
+// espírito de calcularPosicaoPar: rótulo sempre derivado na hora de
+// renderizar, nunca escolhido nem salvo.
+export function calcularProximidadePar(distancia) {
+    if (distancia == null) return null;
+    return distancia <= DISTANCIA_VIZINHO_MAXIMA ? 'Vizinha' : 'Distante';
+}
+
+// Contagem final de pares Vizinhos/Distantes e caracterização do poema
+// como um todo a partir dela. Empate (mesmo nº dos dois lados) cai numa
+// 3ª categoria ("Com Rimas Equilibradas") em vez de forçar um rótulo pra
+// um lado só — nem todo poema tem uma predominância real de proximidade.
+// Poema sem par nenhum não recebe rótulo (`rotulo: null`), mesmo espírito
+// de um par que ainda não existe não ter Posição. Exportada com `rimas`/
+// `linhas` como parâmetros, mesmo motivo das funções acima.
+export function calcularClassificacaoSonora(rimas, linhas) {
+    let vizinhas = 0;
+    let distantes = 0;
+    rimas.forEach((par) => {
+        const proximidade = calcularProximidadePar(calcularDistanciaPar(par, linhas));
+        if (proximidade === 'Vizinha') vizinhas += 1;
+        else if (proximidade === 'Distante') distantes += 1;
+    });
+    let rotulo = null;
+    if (vizinhas + distantes > 0) {
+        if (vizinhas > distantes) rotulo = 'Com Rimas mais Próximas';
+        else if (distantes > vizinhas) rotulo = 'Com Rimas mais Distantes';
+        else rotulo = 'Com Rimas Equilibradas';
+    }
+    return { vizinhas, distantes, rotulo };
 }
 
 // Trecho de exibição de um lado do par na lista de classificação —
@@ -751,6 +806,7 @@ function montarItemRimaHtml(par, letras) {
     const numA = linhasAtuais[par.a.linha]?.numero ?? '?';
     const numB = linhasAtuais[par.b.linha]?.numero ?? '?';
     const posicao = calcularPosicaoPar(par, linhasAtuais);
+    const proximidade = calcularProximidadePar(calcularDistanciaPar(par, linhasAtuais));
 
     return `
         <div class="border border-gray-200 dark:border-slate-700 rounded p-2 sm:p-3">
@@ -763,6 +819,7 @@ function montarItemRimaHtml(par, letras) {
                         v.${numB} <span class="text-gray-400 dark:text-slate-500">"${escapeHtml(trechoLado(par.b, linhasAtuais))}"</span>
                     </span>
                     <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400">${posicao}</span>
+                    ${proximidade ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400">${proximidade}</span>` : ''}
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
                     <button type="button" class="son-btn-corrigir-par text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline" data-rima-id="${par.id}">Corrigir</button>
@@ -808,6 +865,7 @@ function montarItemRimaLeituraHtml(par, letras, linhas) {
     const numA = linhas[par.a.linha]?.numero ?? '?';
     const numB = linhas[par.b.linha]?.numero ?? '?';
     const posicao = calcularPosicaoPar(par, linhas);
+    const proximidade = calcularProximidadePar(calcularDistanciaPar(par, linhas));
     const classificacao = [par.acentuacao, par.tonalidade, par.riqueza].filter(Boolean).join(' · ');
 
     return `
@@ -820,6 +878,7 @@ function montarItemRimaLeituraHtml(par, letras, linhas) {
                     v.${numB} <span class="text-gray-400 dark:text-slate-500">"${escapeHtml(trechoLado(par.b, linhas))}"</span>
                 </span>
                 <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400">${posicao}</span>
+                ${proximidade ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400">${proximidade}</span>` : ''}
             </div>
             ${classificacao ? `<p class="text-gray-400 dark:text-slate-500 mt-1">${escapeHtml(classificacao)}</p>` : ''}
         </div>`;
@@ -877,9 +936,17 @@ export function renderGradeLeituraHtml(linhas, rimas) {
         })
         .join('');
 
+    const { vizinhas, distantes, rotulo } = calcularClassificacaoSonora(rimasSeguras, linhasSeguras);
+    const resumoProximidade = rotulo
+        ? `<p class="text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-2">
+            ${rotulo}
+            <span class="text-gray-400 dark:text-slate-500 font-normal">(${vizinhas} vizinha${vizinhas === 1 ? '' : 's'} · ${distantes} distante${distantes === 1 ? '' : 's'})</span>
+        </p>`
+        : '';
     const listaRimas = rimasSeguras.length
         ? `<div class="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800">
             <p class="text-xs font-bold text-gray-500 dark:text-slate-400 mb-2">Pares de Rima</p>
+            ${resumoProximidade}
             <div class="flex flex-col gap-2">
                 ${[...rimasSeguras]
                     .sort((r1, r2) => r1.a.linha - r2.a.linha)
@@ -945,6 +1012,20 @@ function renderizarListaRimas() {
     });
 }
 
+// Linha de resumo acima da lista "Pares de Rima" (editor) — contagem
+// final de pares Vizinhos/Distantes e o rótulo do poema (calcularClassifi
+// cacaoSonora). Some sozinha (string vazia) sem par nenhum, mesmo padrão
+// de listaRimas em renderGradeLeituraHtml.
+function renderResumoProximidade() {
+    const { vizinhas, distantes, rotulo } = calcularClassificacaoSonora(rimasAtuais, linhasAtuais);
+    if (!rotulo) return '';
+    return `
+        <p class="text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-2">
+            ${rotulo}
+            <span class="text-gray-400 dark:text-slate-500 font-normal">(${vizinhas} vizinha${vizinhas === 1 ? '' : 's'} · ${distantes} distante${distantes === 1 ? '' : 's'})</span>
+        </p>`;
+}
+
 function renderGrade() {
     if (!containerEl) return;
     if (linhasAtuais.length === 0) {
@@ -966,9 +1047,11 @@ function renderGrade() {
         </div>
         <div class="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800">
             <p class="text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">Pares de Rima</p>
+            ${renderResumoProximidade()}
             <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-3">
                 Classifique cada par confirmado (Acentuação/Tonalidade/Riqueza). Posição
-                (Externa/Interna) é calculada automaticamente a partir do próprio par.
+                (Externa/Interna) e Proximidade (Vizinha/Distante) são calculadas
+                automaticamente a partir do próprio par.
             </p>
             <div id="son-lista-rimas" class="flex flex-col gap-2"></div>
         </div>`;

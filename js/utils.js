@@ -2700,9 +2700,27 @@ export const TONALIDADES_RIMA = [
 export const RIQUEZAS_RIMA = [
     'Pobre (mesma classe gramatical)',
     'Rica (classes gramaticais diferentes)',
-    'Rara (palavra de baixa frequência/pouco usada em rima)',
-    'Preciosa (combinação vocabular incomum, ex. palavra composta/estrangeirismo)',
+    'Rara (palavra com poucas opções de rima)',
+    'Preciosa (combinação vocabular incomum)',
+    'Idêntica (repetição de palavra)',
+    'Homônima (repetição de grafia/som)',
 ];
+
+// Distância (em nº de verso — `linha.numero`, que já ignora linhas em
+// branco de quebra de estrofe) até a qual um par de rima é considerado
+// "Vizinha" — acima disso, "Distante" (ver calcularDistanciaPar/
+// calcularProximidadePar em editor-sonoridade.js). Não existe um corte
+// numérico consagrado pra essa dicotomia na teoria da rima — ela
+// classifica por ESQUEMA nomeado (Emparelhada/AABB, Alternada/ABAB,
+// Interpolada/ABBA — ver ESQUEMA_RIMAS_PADRAO), não por "perto/longe"
+// como eixo à parte. O valor abaixo foi escolhido a partir desses
+// mesmos esquemas: distância 2 cobre tanto a Emparelhada (par sempre a
+// 1 verso de distância) quanto a Alternada (a 2 versos) — os dois
+// esquemas em que o par ainda se lê dentro da mesma janela curta de
+// leitura —, deixando como "Distante" só o par externo da Interpolada
+// (a 3 versos: 1º↔4º) e qualquer rima que atravesse uma quebra de
+// estrofe.
+export const DISTANCIA_VIZINHO_MAXIMA = 2;
 
 // ─── Bloco 3 — Matriz de Validação em Cascata (Aba_Sonoridade.md, seção
 // 5) ─────────────────────────────────────────────────────────────────
