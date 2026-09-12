@@ -178,7 +178,10 @@ npm run format:check   # prettier --check .
 │   ├── colunas.js            → Colunas visíveis e sua ordem nas tabelas de
 │   │                           Poemas/Prosas (preferência por tabela, salva
 │   │                           no localStorage)
-│   ├── colunas-contagem.js   → Contagem de itens por coluna/filtro nas tabelas
+│   ├── colunas-contagem.js   → Colunas de "quantidade de valores" com filtro
+│   │                           numérico opcional, nas tabelas de
+│   │                           Poemas/Prosas/Sonoridade — registro de campos
+│   │                           contáveis por tabela (`registroContavel`)
 │   ├── celulas-tabela.js     → Cabeçalho ordenável, paginação e seleção em
 │   │                           massa das tabelas de Poemas/Prosas
 │   ├── selecao-massa.js      → Barra de ações em massa (exportar seleção em
@@ -396,7 +399,11 @@ npm run format:check   # prettier --check .
     de pares vizinhos x distantes e caracteriza o poema como um todo
     ("Com Rimas mais Próximas"/"Com Rimas mais Distantes", ou "Com Rimas
     Equilibradas" em caso de empate) — mesmo espírito de derivação
-    automática da Posição, nunca escolhido à mão.
+    automática da Posição, nunca escolhido à mão —, seguida de uma linha
+    de contagem por valor para cada um dos outros eixos (Posição,
+    Acentuação, Tonalidade, Riqueza), com aviso de quantos pares ainda
+    não foram classificados naquele eixo quando for o caso. Mesmo resumo
+    reaproveitado nos três formatos de exportação (`.md`/`.pdf`/`.docx`).
   - **Classificação do poema**: 7 campos de opções fechadas (Forma do
     Poema, Regularidade Métrica, Tamanho do Verso, Esquema de Rimas —
     Presença e Padrão Estrutural —, Origem/Tradição, Registro e Tom).
@@ -419,6 +426,14 @@ npm run format:check   # prettier --check .
   - Ver `docs/scansion-for-ai-pt-br.md` pra um guia pronto de como pedir a
     uma IA que escanda um poema e devolva os campos já no formato certo
     pra preencher aqui.
+  - **Colunas de contagem** na tabela da aba: adicione quantas colunas
+    quiser, cada uma contando um valor à escolha (mesmo recurso já disponível
+    nas tabelas de Poemas/Prosas) — em Sonoridade, os campos são Rimas
+    (total), Rimas (por verso), Externas/Internas, Vizinhas/Distantes e um
+    campo por valor de Acentuação/Tonalidade/Riqueza (agrupados em
+    `<optgroup>` no seletor de campo, por serem quase 20 opções) —, cada
+    coluna com filtro numérico opcional (ex. só mostrar poemas com 3 ou
+    mais rimas).
 - **Localizar e Substituir** (`localizar-substituir.html`): ferramenta
   separada (grupo "Ferramentas" na nav) para buscar um trecho em
   Poemas e/ou Prosas — com opção de diferenciar maiúsculas/minúsculas,

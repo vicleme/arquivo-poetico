@@ -14,7 +14,9 @@ const {
     calcularTalyPorEixo,
     EIXOS_CLASSIFICACAO_PAR,
     rotuloCurtoValor,
-    CAMPOS_CONTAVEIS_SONORIDADE,
+    CAMPOS_CONTAVEIS_RIMA,
+    camposContaveisEco,
+    construirCamposContaveisSonoridade,
     inicializarGradeSonoridade,
     obterLinhasSonoridade,
     obterRimasSonoridade,
@@ -319,9 +321,12 @@ describe('calcularTalyPorEixo', () => {
     });
 });
 
-// ─── CAMPOS_CONTAVEIS_SONORIDADE (colunas de contagem, ver colunas-contagem.js) ─
+// ─── CAMPOS_CONTAVEIS_RIMA (colunas de contagem, ver colunas-contagem.js) ─
+// Registro ESTÁTICO — só depende de listas fechadas (ACENTUACOES_RIMA/
+// TONALIDADES_RIMA/RIQUEZAS_RIMA), diferente do de Eco logo abaixo, que
+// depende dos dados (`tipo` é campo livre) e por isso é uma função.
 
-describe('CAMPOS_CONTAVEIS_SONORIDADE', () => {
+describe('CAMPOS_CONTAVEIS_RIMA', () => {
     // 2 versos, 2 de distância (vizinha, já que DISTANCIA_VIZINHO_MAXIMA é
     // 2), o par A é Externo (ambos os lados na última sílaba do verso) e o
     // par B é Interno (lado A não está na última sílaba).
@@ -334,7 +339,7 @@ describe('CAMPOS_CONTAVEIS_SONORIDADE', () => {
     const item = { escansaoLinhas, rimas: [parExterno, parInterno] };
 
     it('tem uma entrada por campo geral, uma por Posição/Proximidade e uma por valor de Acentuação/Tonalidade/Riqueza', () => {
-        const chaves = Object.keys(CAMPOS_CONTAVEIS_SONORIDADE);
+        const chaves = Object.keys(CAMPOS_CONTAVEIS_RIMA);
         assert.ok(chaves.includes('rimasTotal'));
         assert.ok(chaves.includes('rimasProporcao'));
         assert.ok(chaves.includes('rimasExternas'));
@@ -360,36 +365,45 @@ describe('CAMPOS_CONTAVEIS_SONORIDADE', () => {
         );
     });
 
-    it('cada campo tem `grupo` (pro <optgroup> do seletor) — diferente de CAMPOS_CONTAVEIS de Poemas/Prosas', () => {
-        Object.values(CAMPOS_CONTAVEIS_SONORIDADE).forEach((campo) => {
+    it('cada campo tem `grupo` (pro <optgroup> do próprio select de Rima) — diferente de CAMPOS_CONTAVEIS de Poemas/Prosas', () => {
+        Object.values(CAMPOS_CONTAVEIS_RIMA).forEach((campo) => {
             assert.equal(typeof campo.grupo, 'string');
         });
     });
 
+    it('subgrupos: Geral (Total/Proporção), Posição (Externas/Internas), Proximidade (Vizinhas/Distantes)', () => {
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasTotal.grupo, 'Geral');
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasProporcao.grupo, 'Geral');
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasExternas.grupo, 'Posição');
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasInternas.grupo, 'Posição');
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasVizinhas.grupo, 'Proximidade');
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasDistantes.grupo, 'Proximidade');
+    });
+
     it('rimasTotal conta o total de pares', () => {
-        assert.equal(CAMPOS_CONTAVEIS_SONORIDADE.rimasTotal.contar(item), 2);
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasTotal.contar(item), 2);
     });
 
     it('rimasProporcao é pares ÷ versos, arredondado a 2 casas', () => {
-        assert.equal(CAMPOS_CONTAVEIS_SONORIDADE.rimasProporcao.contar(item), 1);
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasProporcao.contar(item), 1);
     });
 
     it('rimasProporcao é 0 quando não há verso nenhum (evita divisão por zero)', () => {
         assert.equal(
-            CAMPOS_CONTAVEIS_SONORIDADE.rimasProporcao.contar({ escansaoLinhas: [], rimas: [] }),
+            CAMPOS_CONTAVEIS_RIMA.rimasProporcao.contar({ escansaoLinhas: [], rimas: [] }),
             0,
         );
     });
 
     it('rimasExternas/rimasInternas contam por posição calculada (nunca lida do par)', () => {
-        assert.equal(CAMPOS_CONTAVEIS_SONORIDADE.rimasExternas.contar(item), 1);
-        assert.equal(CAMPOS_CONTAVEIS_SONORIDADE.rimasInternas.contar(item), 1);
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasExternas.contar(item), 1);
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasInternas.contar(item), 1);
     });
 
     it('rimasVizinhas/rimasDistantes contam por distância calculada', () => {
         // ambos os pares desta fixture estão a 1 verso de distância (< 2)
-        assert.equal(CAMPOS_CONTAVEIS_SONORIDADE.rimasVizinhas.contar(item), 2);
-        assert.equal(CAMPOS_CONTAVEIS_SONORIDADE.rimasDistantes.contar(item), 0);
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasVizinhas.contar(item), 2);
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasDistantes.contar(item), 0);
     });
 
     it('campos por valor de Acentuação/Tonalidade/Riqueza contam só pares com aquele valor exato', () => {
@@ -401,14 +415,107 @@ describe('CAMPOS_CONTAVEIS_SONORIDADE', () => {
                 { riqueza: 'Rica (classes gramaticais diferentes)' },
             ],
         };
-        assert.equal(CAMPOS_CONTAVEIS_SONORIDADE.rimasRiquezaPobre.contar(itemClassificado), 2);
-        assert.equal(CAMPOS_CONTAVEIS_SONORIDADE.rimasRiquezaRica.contar(itemClassificado), 1);
-        assert.equal(CAMPOS_CONTAVEIS_SONORIDADE.rimasRiquezaRara.contar(itemClassificado), 0);
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasRiquezaPobre.contar(itemClassificado), 2);
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasRiquezaRica.contar(itemClassificado), 1);
+        assert.equal(CAMPOS_CONTAVEIS_RIMA.rimasRiquezaRara.contar(itemClassificado), 0);
     });
 
     it('item sem rimas/escansaoLinhas não quebra (trata como vazio)', () => {
-        Object.values(CAMPOS_CONTAVEIS_SONORIDADE).forEach((campo) => {
+        Object.values(CAMPOS_CONTAVEIS_RIMA).forEach((campo) => {
             assert.equal(campo.contar({}), 0);
+        });
+    });
+});
+
+// ─── camposContaveisEco (registro DINÂMICO de Eco, ver colunas-contagem.js) ─
+// Diferente de CAMPOS_CONTAVEIS_RIMA, aqui `tipo` é campo LIVRE — o
+// conjunto de campos contáveis depende de quais tipos já foram digitados
+// na coleção inteira (`escansoes`), não só das 5 sugestões padrão.
+
+describe('camposContaveisEco', () => {
+    it('sem escansoes (ou vazio), tem só Total/Proporção + as 5 sugestões padrão de TIPOS_ECO_SONORO', () => {
+        const registro = camposContaveisEco([]);
+        assert.ok(registro.ecosTotal);
+        assert.ok(registro.ecosProporcao);
+        TIPOS_ECO_SONORO.forEach((tipo) => {
+            const chave = Object.keys(registro).find((k) => registro[k].label === `Ecos ${tipo}`);
+            assert.ok(chave, `esperava um campo pra sugestão "${tipo}"`);
+        });
+        assert.equal(Object.keys(registro).length, 2 + TIPOS_ECO_SONORO.length);
+    });
+
+    it('nenhum campo de Eco tem `grupo` — lista curta o bastante pra não precisar de <optgroup>', () => {
+        Object.values(camposContaveisEco([])).forEach((campo) => {
+            assert.equal(campo.grupo, undefined);
+        });
+    });
+
+    it('ecosTotal conta o total de ecos do item', () => {
+        const item = { ecos: [{ tipo: 'Aliteração' }, { tipo: 'Assonância' }] };
+        assert.equal(camposContaveisEco([]).ecosTotal.contar(item), 2);
+    });
+
+    it('ecosProporcao é ecos ÷ versos, arredondado a 2 casas (0 sem verso nenhum)', () => {
+        const escansaoLinhas = [
+            { tipo: 'verso', numero: 1, texto: 'Um' },
+            { tipo: 'verso', numero: 2, texto: 'Dois' },
+        ];
+        const item = { escansaoLinhas, ecos: [{ tipo: 'Aliteração' }] };
+        assert.equal(camposContaveisEco([]).ecosProporcao.contar(item), 0.5);
+        assert.equal(
+            camposContaveisEco([]).ecosProporcao.contar({ escansaoLinhas: [], ecos: [] }),
+            0,
+        );
+    });
+
+    it('um tipo de Eco personalizado (fora das 5 sugestões) ganha campo próprio assim que aparece em QUALQUER escansão — bug relatado pelo Victor', () => {
+        const escansoes = [{ ecos: [{ tipo: 'Eco disperso' }] }];
+        const registro = camposContaveisEco(escansoes);
+        const chave = Object.keys(registro).find((k) => registro[k].label === 'Ecos Eco disperso');
+        assert.ok(chave, 'tipo personalizado deveria ter um campo contável próprio');
+        assert.equal(registro[chave].contar({ ecos: [{ tipo: 'Eco disperso' }] }), 1);
+    });
+
+    it('tipos personalizados vêm depois das 5 sugestões padrão, em ordem alfabética', () => {
+        const escansoes = [{ ecos: [{ tipo: 'Zeugma' }, { tipo: 'Anáfora' }] }];
+        const labels = Object.values(camposContaveisEco(escansoes)).map((c) => c.label);
+        const idxUltimaSugestao = labels.indexOf(`Ecos ${TIPOS_ECO_SONORO.at(-1)}`);
+        const idxAnafora = labels.indexOf('Ecos Anáfora');
+        const idxZeugma = labels.indexOf('Ecos Zeugma');
+        assert.ok(idxUltimaSugestao !== -1 && idxAnafora !== -1 && idxZeugma !== -1);
+        assert.ok(idxUltimaSugestao < idxAnafora);
+        assert.ok(idxAnafora < idxZeugma);
+    });
+
+    it('um eco sem `tipo` (campo livre não preenchido) não quebra e não vira campo próprio', () => {
+        const escansoes = [{ ecos: [{ tipo: '' }, {}] }];
+        assert.doesNotThrow(() => camposContaveisEco(escansoes));
+    });
+
+    it('item sem ecos/escansaoLinhas não quebra (trata como vazio)', () => {
+        Object.values(camposContaveisEco([])).forEach((campo) => {
+            assert.equal(campo.contar({}), 0);
+        });
+    });
+});
+
+// ─── construirCamposContaveisSonoridade (registro COMBINADO Rima+Eco) ─
+// Usado por registroContavel('sonoridade') em colunas-contagem.js pra
+// validação/ordenação/filtro, que não precisam saber de família — só a
+// camada de UI (dois <select> separados) se importa com a distinção.
+
+describe('construirCamposContaveisSonoridade', () => {
+    it('junta CAMPOS_CONTAVEIS_RIMA e camposContaveisEco num registro só, sem perder nenhuma chave', () => {
+        const escansoes = [{ ecos: [{ tipo: 'Eco disperso' }] }];
+        const combinado = construirCamposContaveisSonoridade(escansoes);
+        Object.keys(CAMPOS_CONTAVEIS_RIMA).forEach((chave) => {
+            assert.ok(
+                combinado[chave],
+                `esperava a chave de Rima "${chave}" no registro combinado`,
+            );
+        });
+        Object.keys(camposContaveisEco(escansoes)).forEach((chave) => {
+            assert.ok(combinado[chave], `esperava a chave de Eco "${chave}" no registro combinado`);
         });
     });
 });

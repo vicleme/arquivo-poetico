@@ -2706,6 +2706,28 @@ export const RIQUEZAS_RIMA = [
     'Homônima (repetição de grafia/som)',
 ];
 
+// ─── Ecos Sonoros (quase-rima intencional, fora da rima "de verdade") ─
+// Campo livre + sugestões (mesmo padrão de Anotações Marginais/
+// Intertextualidade — datalist, não select fechado): a taxonomia de eco
+// sonoro é mais fluida que a de rima (um caso pode ser meio aliterativo
+// meio disperso), forçar categoria fechada geraria a mesma fricção que
+// geraria lá. As 5 sugestões abaixo são o vocabulário mais reconhecido/
+// padronizado da área (confirmado com o Victor) — aparecem primeiro no
+// datalist, mas o campo aceita qualquer texto digitado. NOME
+// DELIBERADAMENTE DIFERENTE de TIPOS_ECO (acima, ~linha 2258): aquele é
+// o "Eco" de Intertextualidade (um poema ecoando outro — conceito
+// unidirecional, sem relação nenhuma com isto). Este aqui,
+// TIPOS_ECO_SONORO, é eco sonoro dentro de um mesmo verso/par de versos
+// (ver editor-sonoridade.js) — as duas coisas não podem se confundir no
+// código nem na UI (pedido explícito do Victor).
+export const TIPOS_ECO_SONORO = [
+    'Assonância',
+    'Aliteração',
+    'Consonância',
+    'Paronomásia',
+    'Homeoteleuto',
+];
+
 // Distância (em nº de verso — `linha.numero`, que já ignora linhas em
 // branco de quebra de estrofe) até a qual um par de rima é considerado
 // "Vizinha" — acima disso, "Distante" (ver calcularDistanciaPar/
@@ -2868,10 +2890,7 @@ export const MATRIZ_VALIDACAO_SONORIDADE = {
 const MATRIZ_FORMA_LIVRE_VERSOS_LIVRES = {
     tamanhoVerso: ['Variável / Sem Metro'],
     esquemaRimasPresenca: ['Sem Rimas / Livre', 'Rimas Ocasionais'],
-    esquemaRimasPadrao: [
-        'Não Aplicável',
-        'Monorrima por Blocos / Continuada (AAAA BBBB CCCC)',
-    ],
+    esquemaRimasPadrao: ['Não Aplicável', 'Monorrima por Blocos / Continuada (AAAA BBBB CCCC)'],
     origemTradicao: ['Contemporânea / Livre'],
 };
 

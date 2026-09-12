@@ -223,6 +223,33 @@ function validarRimas(dados, linhas) {
     return { rimas, aviso };
 }
 
+// ─── Ecos Sonoros ────────────────────────────────────────────────────
+// Mesmo shape/validação de lado de validarRimas (ladoValido é genérica),
+// mas `tipo` é campo LIVRE (ver TIPOS_ECO_SONORO em utils.js) — qualquer string
+// não vazia é aceita, sem lista fechada pra validar contra.
+function validarEcos(dados, linhas) {
+    const ecosJson = Array.isArray(dados.ecos) ? dados.ecos : [];
+    let descartados = 0;
+    const ecos = [];
+    ecosJson.forEach((ecoBruto) => {
+        const a = ladoValido(ecoBruto?.a, linhas);
+        const b = ladoValido(ecoBruto?.b, linhas);
+        if (!a || !b) {
+            descartados += 1;
+            return;
+        }
+        const eco = { id: Number.isInteger(ecoBruto.id) ? ecoBruto.id : gerarId(), a, b };
+        if (typeof ecoBruto.tipo === 'string' && ecoBruto.tipo.trim()) {
+            eco.tipo = ecoBruto.tipo.trim();
+        }
+        ecos.push(eco);
+    });
+    const aviso = descartados
+        ? `${descartados} eco${descartados > 1 ? 's' : ''} sonoro${descartados > 1 ? 's' : ''} com verso/sílaba fora da grade atual foi${descartados > 1 ? 'ram' : ''} descartado${descartados > 1 ? 's' : ''}.`
+        : null;
+    return { ecos, aviso };
+}
+
 // ─── Ponto de entrada ────────────────────────────────────────────────
 // `poemas` = db.poemas; `poemaSelecionadoId` = valor atual do <select>
 // de poema no formulário (string ou número, pode ser vazio).
@@ -250,8 +277,11 @@ export function validarJsonSonoridade(dados, poemas, poemaSelecionadoId) {
     const { valores, aviso: avisoClassificacao } = validarClassificacao(dados);
     const { linhas, aviso: avisoLinhas } = validarLinhas(dados, poema);
     const { rimas, aviso: avisoRimas } = validarRimas(dados, linhas);
+    const { ecos, aviso: avisoEcos } = validarEcos(dados, linhas);
 
-    const avisos = [avisoPoema, avisoClassificacao, avisoLinhas, avisoRimas].filter(Boolean);
+    const avisos = [avisoPoema, avisoClassificacao, avisoLinhas, avisoRimas, avisoEcos].filter(
+        Boolean,
+    );
 
-    return { poema, valores, linhas, rimas, avisos };
+    return { poema, valores, linhas, rimas, ecos, avisos };
 }

@@ -178,7 +178,10 @@ npm run format:check   # prettier --check .
 │   ├── colunas.js            → Which columns are shown and in what order
 │   │                           in the Poems/Prose tables (per-table
 │   │                           preference, saved to localStorage)
-│   ├── colunas-contagem.js   → Per-column/filter item counts in the tables
+│   ├── colunas-contagem.js   → "How many values" count columns with an
+│   │                           optional numeric filter, in the Poems/
+│   │                           Prose/Sonoridade tables — per-table field
+│   │                           registry (`registroContavel`)
 │   ├── celulas-tabela.js     → Sortable header, pagination, and bulk
 │   │                           selection for the Poems/Prose tables
 │   ├── selecao-massa.js      → Bulk-action bar (export selection as
@@ -398,7 +401,11 @@ npm run format:check   # prettier --check .
     final count of neighboring vs. distant pairs and characterizes the
     poem as a whole ("Com Rimas mais Próximas"/"Com Rimas mais Distantes",
     or "Com Rimas Equilibradas" on a tie) — same auto-derived spirit as
-    Position, never chosen by hand.
+    Position, never chosen by hand — followed by a per-value count line
+    for each of the other axes (Position, Stress, Tonality, Richness),
+    with a note for how many pairs are still unclassified on that axis
+    when that's the case. Same summary reused across all three export
+    formats (`.md`/`.pdf`/`.docx`).
   - **Poem classification**: 7 closed-option fields (Poem Form, Metrical
     Regularity, Verse Length, Rhyme Scheme — Presence and Structural
     Pattern —, Origin/Tradition, Register, and Tone). Choosing the Poem
@@ -420,6 +427,14 @@ npm run format:check   # prettier --check .
   - See `docs/scansion-for-ai.md` for a ready-made guide on asking an AI
     to scan a poem and return the fields already in the right shape to
     fill in here.
+  - **Count columns** in the tab's table: add as many columns as you like,
+    each counting a value of your choice (same feature already available
+    in the Poems/Prose tables) — in Sonoridade, the fields are Rhymes
+    (total), Rhymes (per verse), External/Internal, Neighboring/Distant,
+    and one field per value of Stress/Tonality/Richness (grouped into
+    `<optgroup>` in the field selector, since there are nearly 20 options)
+    —, each column with an optional numeric filter (e.g. only show poems
+    with 3 or more rhymes).
 - **Find and Replace** (`localizar-substituir.html`): a separate tool
   (reachable from the "Tools" nav group) to search for a text snippet in
   Poems and/or Prose — with case-sensitivity, scoping to Poems, Prose, or

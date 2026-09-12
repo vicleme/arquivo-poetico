@@ -78,7 +78,30 @@ list all the pairs that form that chain (1↔2, 2↔3, 3↔4, etc. — no need t
 decide whether this counts as "one group", the system merges them
 automatically).
 
-## Step 3 — Classify each rhyme pair
+## Step 3 — Locate sound echoes (quasi-rhymes)
+
+Separately from Step 2, look for **sound echoes** (`ecos sonoros`):
+intentional quasi-rhymes — pairs of verses whose endings (or, less often, a
+stretch in the middle of the verse) sound alike but don't actually rhyme by
+the strict definition used in Step 2/Step 4 (e.g. they share only some of
+the final sounds, or the resemblance is more textural than a true rhyme).
+This is especially relevant in free verse, where the poem may deliberately
+avoid full rhyme while still working with repeated/similar sounds.
+
+Point out **which verses form each echo pair** and exactly which
+syllable(s) on each side create the shared sound — same level of detail as
+the rhyme pairs in Step 2. For each echo pair, also suggest a **type**
+label describing the sound device at play. This is a **free-text field**,
+not a closed list, but prefer one of these common labels when it fits
+before inventing a new one:
+
+Assonância · Aliteração · Consonância · Paronomásia · Homeoteleuto
+
+If the poem has no echoes beyond its actual rhymes (or none beyond what's
+already captured in Step 2), it's fine to report an empty list here — not
+every poem has them.
+
+## Step 4 — Classify each rhyme pair
 
 For each pair identified in Step 2, classify it along the three axes below
 (pick one option from each list per pair):
@@ -104,7 +127,7 @@ For each pair identified in Step 2, classify it along the three axes below
 - Homônima (repetição de grafia/som) — homonym (same spelling/sound,
   different meaning)
 
-## Step 4 — General classification of the poem (7 fields)
+## Step 5 — General classification of the poem (7 fields)
 
 Fill in the 7 fields below based on the whole poem. Always pick from the
 matching closed list, with the exact wording (in Portuguese).
@@ -200,7 +223,7 @@ Two notes that help decide Rhyme Presence/Pattern:
 ## Output format
 
 By default, return your analysis in the **text** format below (sections 1
-to 4) — that's what lets me review it and check things with you before
+to 5) — that's what lets me review it and check things with you before
 transcribing it into the system. Only produce the **JSON** version (see
 "JSON format — on request", further below) when I explicitly ask for it —
 for example, after reviewing the text analysis, I say something like "now
@@ -219,13 +242,20 @@ snippet on each side (you can cite the word or just the rhyming
 syllable(s)), and the classification along the 3 axes (Stress / Tonality /
 Richness).
 
-### 3. General classification
+### 3. Sound echoes
 
-A table or list with the 8 fields from Step 4 and the value chosen for
+Numbered list. For each echo pair: which two verses (by number), the
+echoing snippet on each side, and the suggested `tipo` label (from the
+Step 3 list, or a custom one if none fits). Omit this section (or say
+"none found") if the poem has no echoes.
+
+### 4. General classification
+
+A table or list with the 8 fields from Step 5 and the value chosen for
 each, plus a short sentence justifying the Form chosen (it's the field that
 depends most on interpretive reading — the others mostly follow from it).
 
-### 4. Points to double-check
+### 5. Points to double-check
 
 Any verse where the syllable division was ambiguous (e.g. two possible
 metrical readings), any doubtful rhyme (assonant vs. imperfect, for
@@ -271,6 +301,13 @@ Exact structure the system expects:
       "tonalidade": "Soante / Consoante (Perfeita)",
       "riqueza": "Pobre (mesma classe gramatical)"
     }
+  ],
+  "ecos": [
+    {
+      "a": { "linha": 2, "silabas": [3] },
+      "b": { "linha": 4, "silabas": [2] },
+      "tipo": "Assonância"
+    }
   ]
 }
 ```
@@ -285,7 +322,7 @@ JSON-specific rules — nothing here can be invented or approximated:
   poem's text) — that's how the import finds the right poem.
 - **The 8 classification fields** (`formaPoema`, `regularidadeMetrica`,
   `tamanhoVerso`, `esquemaRimasPresenca`, `esquemaRimasPadrao`,
-  `origemTradicao`, `registro`, `tom`): exact same wording as the Step 4
+  `origemTradicao`, `registro`, `tom`): exact same wording as the Step 5
   lists. If a field doesn't apply (e.g. `esquemaRimasPadrao` when Presence
   isn't "Rimado"), you can simply omit the key.
 - **`escansaoLinhas`**: one item per line of the poem, in order, including
@@ -308,7 +345,16 @@ JSON-specific rules — nothing here can be invented or approximated:
   `tonicas`) of the syllables on that side that form the shared sound (more
   than one index when the rhyme is rich enough to cover more than one
   syllable). `acentuacao`, `tonalidade`, and `riqueza` follow the exact
-  wording from Step 3.
+  wording from Step 4.
+- **`ecos`**: same shape as `rimas` (`a`/`b` sides, same 0-based
+  `linha`/`silabas` scheme), one object per echo pair identified in
+  Step 3 — but instead of `acentuacao`/`tonalidade`/`riqueza`, each
+  object takes a single **`tipo`** key with a free-text string (prefer
+  one of the Step 3 suggestions — Assonância, Aliteração, Consonância,
+  Paronomásia, Homeoteleuto — but any non-empty string is accepted).
+  Omit `tipo` only if you genuinely can't characterize the echo. If the
+  poem has no echoes, omit the `ecos` key entirely (or use an empty
+  array).
 
 If anything was ambiguous or uncertain during the text analysis, resolve it
 with me before I ask for the JSON — the JSON format has no room to flag

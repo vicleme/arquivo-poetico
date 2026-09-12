@@ -44,7 +44,6 @@ import {
     pontoCorGrupo,
     paresAutoria,
     estaPublicado,
-    CAMPOS_CONTAVEIS,
     PAPEIS_PESSOA,
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
@@ -53,6 +52,8 @@ import {
     getColunasContagem,
     PREFIXO_ORDENACAO as PREFIXO_ORDENACAO_CONTAGEM,
     itemBateFiltrosContagem,
+    registroContavel,
+    renderOpcoesCampoContagem,
 } from './colunas-contagem.js';
 import { contarCamposPreenchidos } from './exportar-md.js';
 import { isAcaoAtiva } from './acoes-coluna.js';
@@ -103,6 +104,7 @@ window.addEventListener('acoes-coluna:alteradas', (ev) => {
 window.addEventListener('colunas-contagem:alteradas', (ev) => {
     if (ev.detail?.tabela === 'poemas') renderPoemas();
     if (ev.detail?.tabela === 'prosas') renderProsas();
+    if (ev.detail?.tabela === 'sonoridade') renderSonoridade();
 });
 
 // Ícones dos botões Editar/Excluir dos cards e tabelas abaixo. Ficam como
@@ -1321,7 +1323,7 @@ function aplicarOrdenacao(lista, tabela, estado) {
         // em vez de um comparador fixo em COMPARADORES_ORDENACAO.
         const id = estado.campo.slice(PREFIXO_ORDENACAO_CONTAGEM.length);
         const coluna = getColunasContagem(tabela).find((c) => String(c.id) === id);
-        const contar = coluna ? CAMPOS_CONTAVEIS[coluna.campo]?.contar : null;
+        const contar = coluna ? registroContavel(tabela)[coluna.campo]?.contar : null;
         if (!contar) return lista;
         const asc = estado.direcao === 'asc';
         return [...lista].sort((a, b) => {
@@ -1835,7 +1837,7 @@ export function renderPoemas() {
             // cabeçalho mudar de campo).
             const celulasContagem = colunasContagemAtivas
                 .map((c) => {
-                    const contar = CAMPOS_CONTAVEIS[c.campo]?.contar;
+                    const contar = registroContavel('poemas')[c.campo]?.contar;
                     const valor = contar ? contar(p, db) : 0;
                     return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 font-mono text-right">${valor}</td>`;
                 })
@@ -2112,7 +2114,7 @@ export function renderProsas() {
             // de renderPoemas acima.
             const celulasContagem = colunasContagemAtivas
                 .map((c) => {
-                    const contar = CAMPOS_CONTAVEIS[c.campo]?.contar;
+                    const contar = registroContavel('prosas')[c.campo]?.contar;
                     const valor = contar ? contar(pr, db) : 0;
                     return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 font-mono text-right">${valor}</td>`;
                 })
@@ -2432,6 +2434,31 @@ export function renderSonoridade() {
     atualizarPainelColunas('sonoridade', 'painel-colunas-sonoridade');
     atualizarPainelAcoes('sonoridade', 'painel-acoes-sonoridade');
 
+    // Colunas de contagem (ver colunas-contagem.js) — Sonoridade nunca
+    // teve cabeçalho ordenável nas colunas fixas (ao contrário de
+    // Poemas/Prosas, que passaram por thOrdenavel no item 1 do plano de
+    // integração), então aqui o <th> fica sem o botão de ordenar de
+    // thContagem — só o <select> de campo + remover, no mesmo espírito
+    // simplificado do resto desta tabela.
+    const colunasContagemAtivas = getColunasContagem('sonoridade');
+    const registroSonoridade = registroContavel('sonoridade');
+    const thsContagem = colunasContagemAtivas
+        .map(
+            (c) => `<th class="p-4 border-b border-gray-200 dark:border-slate-700">
+                <div>Qtd.</div>
+                <div class="flex items-center gap-1 mt-1 font-normal">
+                    <select onchange="definirCampoColunaContagem('sonoridade', ${c.id}, this.value)"
+                        class="text-[10px] border border-gray-200 dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-slate-200 py-0.5 max-w-[7rem]">
+                        ${renderOpcoesCampoContagem('sonoridade', c.campo)}
+                    </select>
+                    <button type="button" onclick="removerColunaContagem('sonoridade', ${c.id})"
+                        title="Remover essa coluna de contagem"
+                        class="text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400">✕</button>
+                </div>
+            </th>`,
+        )
+        .join('');
+
     const cabecalho = document.getElementById('cabecalho-sonoridade');
     if (cabecalho) {
         const ativas = getColunasAtivas('sonoridade');
@@ -2447,14 +2474,17 @@ export function renderSonoridade() {
         cabecalho.innerHTML = `
             <th class="p-4 border-b border-gray-200 dark:border-slate-700">ID / Título</th>
             ${thsMeio}
+            ${thsContagem}
             <th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>`;
     }
 
     const ativas = getColunasAtivas('sonoridade');
     const filtradas = db.escansoes.filter((es) => {
-        if (!filtroSonoridade) return true;
-        const poema = db.poemas.find((p) => p.id == es.poemaId);
-        return (poema?.titulo || '').toLowerCase().includes(filtroSonoridade);
+        if (filtroSonoridade) {
+            const poema = db.poemas.find((p) => p.id == es.poemaId);
+            if (!(poema?.titulo || '').toLowerCase().includes(filtroSonoridade)) return false;
+        }
+        return itemBateFiltrosContagem(es, 'sonoridade', db);
     });
     const ordenadas = [...filtradas].sort((a, b) => {
         const ta = db.poemas.find((p) => p.id == a.poemaId)?.titulo || '';
@@ -2463,7 +2493,7 @@ export function renderSonoridade() {
     });
 
     if (ordenadas.length === 0) {
-        const colspan = 2 + ativas.length;
+        const colspan = 2 + ativas.length + colunasContagemAtivas.length;
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
             db.escansoes.length === 0
                 ? 'Nenhuma escansão cadastrada ainda.'
@@ -2482,6 +2512,16 @@ export function renderSonoridade() {
                         `<td class="p-4 border-b border-gray-100 dark:border-slate-800">${valorColunaSonoridade(es, key)}</td>`,
                 )
                 .join('');
+            // Mesmo padrão de celulasContagem em renderPoemas/renderProsas
+            // (linhas 1836/2113 antes da generalização) — uma <td> por
+            // coluna ativa, contar() vindo do registro de Sonoridade.
+            const tdsContagem = colunasContagemAtivas
+                .map((c) => {
+                    const contar = registroSonoridade[c.campo]?.contar;
+                    const valor = contar ? contar(es) : 0;
+                    return `<td class="p-4 border-b border-gray-100 dark:border-slate-800 text-center">${valor}</td>`;
+                })
+                .join('');
             return `
         <tr>
             <td class="p-4 border-b border-gray-100 dark:border-slate-800">
@@ -2489,6 +2529,7 @@ export function renderSonoridade() {
                 ${titulo}
             </td>
             ${tds}
+            ${tdsContagem}
             <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
                 ${celulaAcoesSonoridade(es.id)}
             </td>

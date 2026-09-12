@@ -109,6 +109,7 @@ import {
     inicializarGradeSonoridade,
     obterLinhasSonoridade,
     obterRimasSonoridade,
+    obterEcosSonoridade,
     calcularDivergenciaSilabas,
 } from './editor-sonoridade.js';
 import { validarJsonSonoridade } from './importar-sonoridade.js';
@@ -767,7 +768,8 @@ function carregarGradeSonoridade() {
             ? es.escansaoLinhas
             : construirLinhasIniciais(poema.texto);
     const rimas = es && String(es.poemaId) === String(poemaId) ? es.rimas || [] : [];
-    inicializarGradeSonoridade(container, linhas, rimas);
+    const ecos = es && String(es.poemaId) === String(poemaId) ? es.ecos || [] : [];
+    inicializarGradeSonoridade(container, linhas, rimas, ecos);
 }
 
 // Repopula os 7 selects (poema + 6 campos de classificação) do zero —
@@ -867,7 +869,7 @@ export function importarSonoridadeDeArquivo(event) {
             return;
         }
 
-        const { poema, valores, linhas, rimas, avisos } = resultado;
+        const { poema, valores, linhas, rimas, ecos, avisos } = resultado;
 
         const selPoema = document.getElementById('son-poema-id');
         if (selPoema) selPoema.value = poema.id;
@@ -876,7 +878,7 @@ export function importarSonoridadeDeArquivo(event) {
         aplicarClassificacaoSonoridade(valores);
 
         const container = document.getElementById('son-grade-container');
-        if (container) inicializarGradeSonoridade(container, linhas, rimas);
+        if (container) inicializarGradeSonoridade(container, linhas, rimas, ecos);
 
         if (avisos.length) avisos.forEach((msg) => mostrarAviso(msg));
         else mostrarAviso('JSON importado.', 'sucesso');
@@ -971,6 +973,7 @@ export function initFormSonoridade() {
             tom: document.getElementById('son-tom').value || null,
             escansaoLinhas: obterLinhasSonoridade(),
             rimas: obterRimasSonoridade(),
+            ecos: obterEcosSonoridade(),
         };
 
         // Regra adicional 3 (avisos não-bloqueantes) — não impedem o

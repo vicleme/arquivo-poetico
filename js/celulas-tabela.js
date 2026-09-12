@@ -33,13 +33,14 @@ import {
     classesCorGrupo,
     paresAutoria,
     SINALIZACOES_CATEGORIAS,
-    CAMPOS_CONTAVEIS,
 } from './utils.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
 import { DEFINICAO_COLUNAS, getColunasAtivas, renderSeletorColunas } from './colunas.js';
 import {
     getColunasContagem,
     renderSeletorColunasContagem,
+    renderOpcoesCampoContagem,
+    registroContavel,
     PREFIXO_ORDENACAO as PREFIXO_ORDENACAO_CONTAGEM,
 } from './colunas-contagem.js';
 import { contarCamposPreenchidos, TOTAL_CAMPOS_CONSIDERADOS } from './exportar-md.js';
@@ -545,13 +546,8 @@ function thOrdenavel(tabela, campo, label, estado, classeExtra = '', campoItem =
 function thContagem(tabela, coluna, estado) {
     const campoOrdenacao = PREFIXO_ORDENACAO_CONTAGEM + coluna.id;
     const ativo = estado.campo === campoOrdenacao;
-    const label = CAMPOS_CONTAVEIS[coluna.campo]?.label || coluna.campo;
-    const opcoes = Object.entries(CAMPOS_CONTAVEIS)
-        .map(
-            ([key, { label: l }]) =>
-                `<option value="${key}" ${key === coluna.campo ? 'selected' : ''}>${l}</option>`,
-        )
-        .join('');
+    const label = registroContavel(tabela)[coluna.campo]?.label || coluna.campo;
+    const opcoes = renderOpcoesCampoContagem(tabela, coluna.campo);
     return `<th class="p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700">
         <div class="flex items-center gap-1">
             <button type="button" onclick="ordenarPor('${tabela}', '${campoOrdenacao}')"

@@ -23,18 +23,35 @@ document.body.innerHTML = `
             <tbody id="lista-poemas"></tbody>
         </table>
         <div id="paginacao-poemas"></div>
+
+        <div id="painel-colunas-sonoridade"></div>
+        <div id="painel-acoes-sonoridade"></div>
+        <table>
+            <thead><tr id="cabecalho-sonoridade"></tr></thead>
+            <tbody id="lista-sonoridade"></tbody>
+        </table>
     </main>
 `;
 
 const { db } = await import('../js/db.js');
-const { renderLivros, renderPoemas, renderGrupos } = await import('../js/render-listas.js');
+const { renderLivros, renderPoemas, renderGrupos, renderSonoridade, setFiltroSonoridade } =
+    await import('../js/render-listas.js');
 const { toggleSelecao } = await import('../js/selecao-massa.js');
 const { toggleColuna } = await import('../js/colunas.js');
+const {
+    adicionarColunaContagem,
+    removerColunaContagem,
+    getColunasContagem,
+    definirCampoColunaContagem,
+    definirOperadorColunaContagem,
+    definirValorColunaContagem,
+} = await import('../js/colunas-contagem.js');
 await import('../js/main.js');
 
 function limparDb() {
     db.livros.length = 0;
     db.poemas.length = 0;
+    db.escansoes.length = 0;
     document.getElementById('modal-confirmar-exclusao')?.remove();
     document.getElementById('avisos-toast')?.remove();
 }
@@ -294,5 +311,98 @@ describe('Grupos — exclusão com cascata em gruposDiretos (DOM real via happy-
         assert.equal(db.grupos.length, 1);
         assert.equal(db.grupos[0].nome, 'Família');
         assert.deepEqual(db.poemas[0].gruposDiretos, [10]);
+    });
+});
+
+describe('Sonoridade — colunas de contagem na tabela (DOM real via happy-dom)', () => {
+    beforeEach(() => {
+        limparDb();
+        localStorage.clear();
+        setFiltroSonoridade('');
+        db.poemas.push({ id: 1, titulo: 'Poema com Rima', texto: '' });
+        db.escansoes.push({
+            id: 100,
+            poemaId: 1,
+            escansaoLinhas: [
+                { tipo: 'verso', numero: 1, texto: 'Um/Dois' },
+                { tipo: 'verso', numero: 2, texto: 'Tres/Quatro' },
+            ],
+            // 1 par Externo (ambos os lados na última sílaba) e 1 Interno.
+            rimas: [
+                { a: { linha: 0, silabas: [1] }, b: { linha: 1, silabas: [1] } },
+                { a: { linha: 0, silabas: [0] }, b: { linha: 1, silabas: [1] } },
+            ],
+        });
+    });
+
+    it('sem coluna de contagem adicionada, a tabela renderiza normalmente (sem <th>/<td> extra)', () => {
+        renderSonoridade();
+        const cabecalho = document.getElementById('cabecalho-sonoridade');
+        assert.doesNotMatch(cabecalho.innerHTML, /definirCampoColunaContagem/);
+    });
+
+    it('adicionar uma coluna de contagem cria o <th> com seletor de campo e o <td> com a contagem certa', () => {
+        adicionarColunaContagem('sonoridade');
+        const [coluna] = getColunasContagem('sonoridade');
+        definirCampoColunaContagem('sonoridade', coluna.id, 'rimasTotal');
+        renderSonoridade();
+
+        const cabecalho = document.getElementById('cabecalho-sonoridade');
+        const select = cabecalho.querySelector(
+            `select[onchange*="definirCampoColunaContagem('sonoridade', ${coluna.id}"]`,
+        );
+        assert.ok(select, 'o <th> deveria trazer o seletor de campo da coluna de contagem');
+
+        const linha = document.querySelector('#lista-sonoridade tr');
+        // última <td> antes da coluna de Ações — a de contagem com o total.
+        const tds = linha.querySelectorAll('td');
+        assert.equal(tds[tds.length - 2].textContent.trim(), '2');
+    });
+
+    it('trocar o campo da coluna de contagem (ex.: pra Rimas Externas) atualiza o valor exibido', () => {
+        adicionarColunaContagem('sonoridade');
+        const [coluna] = getColunasContagem('sonoridade');
+        definirCampoColunaContagem('sonoridade', coluna.id, 'rimasExternas');
+        renderSonoridade();
+
+        const linha = document.querySelector('#lista-sonoridade tr');
+        const tds = linha.querySelectorAll('td');
+        assert.equal(tds[tds.length - 2].textContent.trim(), '1');
+    });
+
+    it('remover a coluna de contagem tira o <th> e o <td> da tabela', () => {
+        adicionarColunaContagem('sonoridade');
+        const [coluna] = getColunasContagem('sonoridade');
+        renderSonoridade();
+        removerColunaContagem('sonoridade', coluna.id);
+        renderSonoridade();
+
+        const cabecalho = document.getElementById('cabecalho-sonoridade');
+        assert.doesNotMatch(cabecalho.innerHTML, /definirCampoColunaContagem/);
+    });
+
+    it('filtro numérico na coluna de contagem esconde itens que não batem (ex.: Qtd. Rimas >= 3)', () => {
+        adicionarColunaContagem('sonoridade');
+        const [coluna] = getColunasContagem('sonoridade');
+        definirCampoColunaContagem('sonoridade', coluna.id, 'rimasTotal');
+        definirOperadorColunaContagem('sonoridade', coluna.id, '>=');
+        definirValorColunaContagem('sonoridade', coluna.id, '3');
+        renderSonoridade();
+
+        assert.match(
+            document.getElementById('lista-sonoridade').textContent,
+            /Nenhuma escansão encontrada/,
+        );
+    });
+
+    it('filtro numérico que bate mantém o item visível', () => {
+        adicionarColunaContagem('sonoridade');
+        const [coluna] = getColunasContagem('sonoridade');
+        definirCampoColunaContagem('sonoridade', coluna.id, 'rimasTotal');
+        definirOperadorColunaContagem('sonoridade', coluna.id, '>=');
+        definirValorColunaContagem('sonoridade', coluna.id, '2');
+        renderSonoridade();
+
+        assert.equal(document.querySelectorAll('#lista-sonoridade tr').length, 1);
     });
 });

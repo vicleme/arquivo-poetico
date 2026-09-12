@@ -18,7 +18,7 @@
 
 import { garantirModal, toggleModal } from './modais.js';
 import { db } from './db.js';
-import { renderGradeLeituraHtml } from './editor-sonoridade.js';
+import { renderGradeLeituraHtml, definirMostrarEcos } from './editor-sonoridade.js';
 import { exportarEscansao } from './exportar-sonoridade.js';
 import { escapeHtml } from './utils.js';
 
@@ -32,6 +32,35 @@ function linhaMetaHtml(rotulo, valor) {
     return `<p class="mb-1.5"><strong class="text-gray-600 dark:text-slate-300">${escapeHtml(rotulo)}:</strong> ${escapeHtml(valor)}</p>`;
 }
 
+// Extraído de abrirVisualizacaoSonoridade pra poder ser chamado de novo
+// sozinho quando o toggle "Mostrar Ecos Sonoros" da leitura muda —
+// re-renderiza só o conteúdo do modal, sem reabrir/piscar o modal em si
+// (toggleModal só é chamado na abertura inicial, ver abaixo).
+function renderConteudoSonoridade(es) {
+    const conteudo = document.getElementById('visualizar-sonoridade-conteudo');
+    if (!conteudo) return;
+    let html = '';
+    html += linhaMetaHtml('Forma', es.formaPoema);
+    html += linhaMetaHtml('Regularidade Métrica', es.regularidadeMetrica);
+    html += linhaMetaHtml('Tamanho do Verso', es.tamanhoVerso);
+    html += linhaMetaHtml(
+        'Esquema de Rimas',
+        [es.esquemaRimasPresenca, es.esquemaRimasPadrao].filter(Boolean).join(' · ') || null,
+    );
+    html += linhaMetaHtml('Origem/Tradição', es.origemTradicao);
+    html += linhaMetaHtml('Registro', es.registro);
+    html += linhaMetaHtml('Tom', es.tom);
+    html += `
+        <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-2">Grade Silábica</h4>
+        ${renderGradeLeituraHtml(es.escansaoLinhas, es.rimas, es.ecos)}`;
+    conteudo.innerHTML = html;
+
+    conteudo.querySelector('#son-toggle-mostrar-ecos-leitura')?.addEventListener('change', (e) => {
+        definirMostrarEcos(e.target.checked);
+        renderConteudoSonoridade(es);
+    });
+}
+
 export async function abrirVisualizacaoSonoridade(id) {
     const es = db.escansoes.find((x) => x.id == id);
     if (!es) return;
@@ -43,24 +72,7 @@ export async function abrirVisualizacaoSonoridade(id) {
     const titulo = document.getElementById('modal-visualizar-sonoridade-titulo');
     if (titulo) titulo.innerText = poema?.titulo || `Escansão #${es.id}`;
 
-    const conteudo = document.getElementById('visualizar-sonoridade-conteudo');
-    if (conteudo) {
-        let html = '';
-        html += linhaMetaHtml('Forma', es.formaPoema);
-        html += linhaMetaHtml('Regularidade Métrica', es.regularidadeMetrica);
-        html += linhaMetaHtml('Tamanho do Verso', es.tamanhoVerso);
-        html += linhaMetaHtml(
-            'Esquema de Rimas',
-            [es.esquemaRimasPresenca, es.esquemaRimasPadrao].filter(Boolean).join(' · ') || null,
-        );
-        html += linhaMetaHtml('Origem/Tradição', es.origemTradicao);
-        html += linhaMetaHtml('Registro', es.registro);
-        html += linhaMetaHtml('Tom', es.tom);
-        html += `
-            <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-2">Grade Silábica</h4>
-            ${renderGradeLeituraHtml(es.escansaoLinhas, es.rimas)}`;
-        conteudo.innerHTML = html;
-    }
+    renderConteudoSonoridade(es);
 
     toggleModal('modal-visualizar-sonoridade');
 }

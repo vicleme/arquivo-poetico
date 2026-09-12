@@ -39,15 +39,15 @@
 //   os itens que estavam na fila como "remoção rápida" e "painel
 //   consolidado" separados. O painel pode crescer mais adiante com
 //   outros dados ainda não desenhados, a partir dessa mesma lista.
-//   Sub-passo 5 (Proximidade — identificação e contagem final de pares
-//   Vizinhos/Distantes, e caracterização do poema a partir disso, ver
-//   DISTANCIA_VIZINHO_MAXIMA em utils.js e calcularDistanciaPar/
-//   calcularProximidadePar/calcularClassificacaoSonora abaixo): mesmo
-//   espírito de Posição — nunca selecionado nem salvo, sempre derivado
-//   do próprio par (e, pro rótulo do poema, do conjunto de pares) na
-//   hora de renderizar. Rótulo do poema só some se não houver par
-//   nenhum; empate entre Vizinhas/Distantes vira "Com Rimas
-//   Equilibradas" em vez de forçar um lado (ver decisoes.md).
+//   Sub-passo 5 (Proximidade — Vizinha/Distante, mesmo espírito de
+//   Posição: nunca selecionado nem salvo, sempre derivado do próprio
+//   par via calcularDistanciaPar/calcularProximidadePar, distância em
+//   DISTANCIA_VIZINHO_MAXIMA/utils.js) e o resumo em renderResumoPares
+//   (contagem final Vizinhas/Distantes com o rótulo do poema, mais uma
+//   linha de contagem por valor pra cada um dos outros 3 eixos —
+//   Acentuação/Tonalidade/Riqueza — e também pra Posição, ver
+//   EIXOS_CLASSIFICACAO_PAR/calcularTalyPorEixo) também já estão
+//   implementados, no cabeçalho da seção "Pares de Rima".
 //
 // Estado (`linhasAtuais`, `rimasAtuais`) mora neste módulo, não em
 // forms.js — é mutado a cada tecla digitada (ver onInputTexto) ou clique
@@ -68,17 +68,77 @@ import {
     TONALIDADES_RIMA,
     RIQUEZAS_RIMA,
     DISTANCIA_VIZINHO_MAXIMA,
+    TIPOS_ECO_SONORO,
 } from './utils.js';
 
 let linhasAtuais = [];
 let rimasAtuais = [];
+// Ecos Sonoros — "quase-rima intencional" (Aba_Sonoridade.md não previa
+// isso; adicionado a pedido do Victor): mesma forma de par de
+// rimasAtuais (`{ id, a: { linha, silabas }, b: { linha, silabas },
+// tipo }`), reaproveitando calcularPosicaoPar/calcularDistanciaPar/
+// calcularProximidadePar (genéricas, não dependem de ser rima "de
+// verdade"). Sem esquema de letras (A/B/C...) — eco não é rima
+// estrutural, então não faz sentido "grupo" nenhum aqui; todo eco usa a
+// mesma marcação visual neutra (contorno tracejado, ver PALETA_ECO
+// abaixo). `tipo` é campo livre (não select fechado — ver TIPOS_ECO_SONORO em
+// utils.js), mesmo padrão das Anotações Marginais/Intertextualidade.
+let ecosAtuais = [];
 let containerEl = null;
 let modoTonico = false;
 let modoRima = false;
+let modoEco = false;
 // Par de rima em construção: { ladoA: { linhaIdx, silabas: [...] },
 // ladoB: { linhaIdx, silabas: [...] } | null }. null enquanto não há
 // seleção nenhuma (nem o primeiro clique do lado A ainda).
 let selecaoRima = null;
+// Mesma forma de selecaoRima, só que para o Modo Eco — os dois nunca
+// coexistem (Modo Tônica/Modo Rima/Modo Eco são mutuamente exclusivos,
+// só um ligado por vez).
+let selecaoEco = null;
+// Estado (aberto/fechado) dos grupos colapsáveis "Grade Silábica" (modos +
+// quadro), "Pares de Rima" e "Ecos Sonoros" dentro da grade — como
+// renderGrade() recria o innerHTML inteiro a cada ação (confirmar/remover
+// par ou eco, alternar modo...), sem isso o <details> voltaria a abrir a
+// cada re-render, mesmo que o usuário tivesse acabado de fechar pra pular
+// direto pra seção seguinte (ver os listeners de 'toggle' logo depois do
+// innerHTML, dentro da própria renderGrade()). Vive só na sessão do
+// modal, não persiste entre poemas — cada abertura começa com os três
+// abertos.
+let abertoGrade = true;
+let abertoParesRima = true;
+let abertoEcosSonoros = true;
+
+// ─── Ecos Sonoros — preferência persistida "Mostrar Ecos Sonoros" ────
+// Um único boolean (localStorage, não estado de sessão do modal) lido
+// nos três lugares que precisam saber se a marcação de eco deve
+// aparecer: grade do editor, grade de leitura (renderGradeLeituraHtml)
+// e exportação (exportar-sonoridade.js) — decisão confirmada com o
+// Victor: dois controles separados (visualização x impressão) podiam
+// ficar dessincronizados, um boolean só é mais simples e previsível.
+// Começa LIGADO por padrão (decisão confirmada: "aparece assim que eu
+// marcar ecos"). Guardado com try/catch porque testes (Node/happy-dom)
+// podem rodar sem localStorage disponível — nesse caso, sempre "ligado".
+const CHAVE_MOSTRAR_ECOS = 'arquivo-poetico:mostrar-ecos-sonoros';
+
+export function mostrarEcosAtivo() {
+    try {
+        const valor = window.localStorage?.getItem(CHAVE_MOSTRAR_ECOS);
+        return valor === null || valor === undefined ? true : valor === '1';
+    } catch {
+        return true;
+    }
+}
+
+export function definirMostrarEcos(ativo) {
+    try {
+        window.localStorage?.setItem(CHAVE_MOSTRAR_ECOS, ativo ? '1' : '0');
+    } catch {
+        // sem localStorage disponível (ex. alguns ambientes de teste) — a
+        // preferência simplesmente não persiste entre sessões, mas não
+        // quebra a marcação/desmarcação dentro da sessão atual.
+    }
+}
 
 // Remove só a marcação de ênfase (**negrito**/_itálico_) do texto do poema
 // — a escansão trabalha com o conteúdo fonético do verso, não com os
@@ -251,6 +311,22 @@ export function celulasRimadas(rimas, letras) {
     return mapa;
 }
 
+// ─── Ecos Sonoros — marcação visual (contorno tracejado) ────────────
+// Mapa "linhaIdx:silabaIdx" -> true, só pras sílabas que participam de
+// algum eco CONFIRMADO — mesmo espírito de celulasRimadas, mas sem
+// letra/cor nenhuma associada (não é grupo, é presença). Exportada pelo
+// mesmo motivo de celulasRimadas: os exportadores em tabela real
+// (.docx/.pdf) precisam do mesmo mapa célula→eco que a grade usa, pra
+// desenhar o mesmo contorno tracejado que a tela mostra.
+export function celulasComEco(ecos) {
+    const mapa = new Map();
+    ecos.forEach((eco) => {
+        eco.a.silabas.forEach((s) => mapa.set(`${eco.a.linha}:${s}`, true));
+        eco.b.silabas.forEach((s) => mapa.set(`${eco.b.linha}:${s}`, true));
+    });
+    return mapa;
+}
+
 // ─── Mapeamento de Rimas — classificação de cada par (sub-passo 3) ──
 // Posição (Externa/Interna) nunca é selecionada nem salva — é sempre
 // recalculada a partir do próprio par, mesmo espírito de
@@ -324,6 +400,244 @@ export function calcularClassificacaoSonora(rimas, linhas) {
         else rotulo = 'Com Rimas Equilibradas';
     }
     return { vizinhas, distantes, rotulo };
+}
+
+// Tally por eixo — quantos pares confirmados caem em cada valor de
+// Posição/Acentuação/Tonalidade/Riqueza, pro resumo no cabeçalho de
+// "Pares de Rima" (renderResumoEixos) e pras colunas de contagem por
+// valor em colunas-contagem.js (ex. "Rimas Ricas"). Posição é sempre
+// preenchida (calculada, nunca fica vazia); Acentuação/Tonalidade/
+// Riqueza são opcionais por par — pares sem valor entram em
+// `semClassificar`, não em `valores`, pra não inflar nenhuma contagem
+// com um "vazio" disfarçado de categoria.
+export function calcularTalyPorEixo(rimas, linhas, extrairValor) {
+    const valores = {};
+    let semClassificar = 0;
+    rimas.forEach((par) => {
+        const valor = extrairValor(par, linhas);
+        if (!valor) {
+            semClassificar += 1;
+            return;
+        }
+        valores[valor] = (valores[valor] || 0) + 1;
+    });
+    return { valores, semClassificar, total: rimas.length };
+}
+
+// Os 4 extratores de valor usados por calcularTalyPorEixo — Posição é
+// sempre calculada (calcularPosicaoPar já nunca retorna vazio pra um par
+// válido); Acentuação/Tonalidade/Riqueza são o valor salvo no próprio
+// par (podem ser undefined). Reunidos aqui pra colunas-contagem.js
+// (contagem por valor específico, ex. "quantas rimas são Ricas") usar o
+// mesmo extrator do resumo visual, sem duplicar a leitura do campo.
+export const EIXOS_CLASSIFICACAO_PAR = {
+    posicao: { label: 'Posição', extrairValor: (par, linhas) => calcularPosicaoPar(par, linhas) },
+    acentuacao: { label: 'Acentuação', extrairValor: (par) => par.acentuacao },
+    tonalidade: { label: 'Tonalidade', extrairValor: (par) => par.tonalidade },
+    riqueza: { label: 'Riqueza', extrairValor: (par) => par.riqueza },
+};
+
+// Forma curta de um valor de eixo pro resumo/tally (ex. "Pobre (mesma
+// classe gramatical)" -> "Pobre"; "Aguda / Oxítona" -> "Aguda"): corta
+// no primeiro " (" ou " /", o que vier primeiro — cobre o padrão das 4
+// listas fechadas (ACENTUACOES_RIMA/TONALIDADES_RIMA/RIQUEZAS_RIMA, e
+// "Externa"/"Interna" que não tem nem um nem outro, então fica como
+// está). Puramente de exibição — nunca usada pra comparar/salvar.
+export function rotuloCurtoValor(valor) {
+    if (!valor) return valor;
+    const indices = [valor.indexOf(' ('), valor.indexOf(' /')].filter((i) => i !== -1);
+    if (!indices.length) return valor;
+    return valor.slice(0, Math.min(...indices));
+}
+
+function contarVersos(linhas) {
+    return (Array.isArray(linhas) ? linhas : []).filter((l) => l.tipo === 'verso').length;
+}
+
+// ASCII sem acento/espaço, só pra montar uma key de objeto/valor de
+// <option> estável — puramente mecânico, nunca exibido (ver `label` em
+// vez disso).
+function chaveSlug(texto) {
+    return texto.normalize('NFD').replace(/[^\w]/g, '');
+}
+
+// Um campo contável por valor de uma lista fechada (ex. cada item de
+// RIQUEZAS_RIMA vira um campo "Rimas <Valor>") — usado por
+// CAMPOS_CONTAVEIS_RIMA logo abaixo, pra não escrever os ~12 campos de
+// Acentuação/Tonalidade/Riqueza um por um: gera a partir da própria
+// lista fechada, então uma opção nova (ex. Idêntica/Homônima que
+// acabaram de entrar em RIQUEZAS_RIMA) já aparece automaticamente, sem
+// precisar lembrar de atualizar este arquivo também. Todo valor das 3
+// listas termina em vogal (Pobre, Rica, Aguda, Soante...), então "+s"
+// pluraliza certo pro rótulo em todos os casos — não é uma regra
+// genérica de português, só cobre o vocabulário fechado dessas listas.
+function camposContaveisPorValor(grupo, lista, campo) {
+    return Object.fromEntries(
+        lista.map((valor) => {
+            const curto = rotuloCurtoValor(valor);
+            const chave = `rimas${chaveSlug(grupo)}${chaveSlug(curto)}`;
+            return [
+                chave,
+                {
+                    label: `Rimas ${curto}s`,
+                    // Subgrupo FINO (Acentuação/Tonalidade/Riqueza), pra
+                    // achar rápido em meio às ~18 opções de Rima — o
+                    // próprio select de Rima já é separado do de Eco (dois
+                    // selects distintos, ver "Contagem de Rimas" x
+                    // "Contagem de Ecos" em colunas-contagem.js), então
+                    // este `grupo` só precisa diferenciar DENTRO da rima.
+                    grupo,
+                    contar: (item) =>
+                        (item.rimas || []).filter((par) => par[campo] === valor).length,
+                },
+            ];
+        }),
+    );
+}
+
+// ─── Rima — registro ESTÁTICO (mesmo espírito de CAMPOS_CONTAVEIS em
+// utils.js, pra colunas de contagem — ver colunas-contagem.js — mas
+// aqui `contar` deriva de `rimas`/`escansaoLinhas` do próprio registro
+// de Sonoridade, reaproveitando as mesmas funções do resumo em tela
+// (calcularPosicaoPar/calcularProximidadePar/calcularDistanciaPar) pra
+// nunca divergir do que a pessoa vê no modal. Vive aqui, não em
+// utils.js, pelo mesmo motivo de sempre — utils.js não importa de
+// nenhum outro módulo do projeto). Só depende de listas FECHADAS
+// (ACENTUACOES_RIMA/TONALIDADES_RIMA/RIQUEZAS_RIMA), por isso pode ser
+// uma constante — ao contrário do de Eco logo abaixo, que depende dos
+// dados. `grupo` agrupa o seletor de Rima em <optgroup> (Geral/
+// Posição/Proximidade/Acentuação/Tonalidade/Riqueza) — preservado à
+// parte (pedido do Victor), já que são ~18 opções nesse select sozinho.
+export const CAMPOS_CONTAVEIS_RIMA = {
+    rimasTotal: {
+        label: 'Contagem de Rimas',
+        grupo: 'Geral',
+        contar: (item) => (item.rimas || []).length,
+    },
+    rimasProporcao: {
+        label: 'Rimas (por verso)',
+        grupo: 'Geral',
+        contar: (item) => {
+            const versos = contarVersos(item.escansaoLinhas);
+            // Arredondado a 2 casas — sem isso, a razão de dois inteiros
+            // quase sempre vira dízima, e o filtro numérico (>=, <=...)
+            // ficaria comparando um valor que a pessoa nunca vê exibido
+            // igual na coluna.
+            return versos ? Math.round(((item.rimas || []).length / versos) * 100) / 100 : 0;
+        },
+    },
+    rimasExternas: {
+        label: 'Rimas Externas',
+        grupo: 'Posição',
+        contar: (item) =>
+            (item.rimas || []).filter(
+                (par) => calcularPosicaoPar(par, item.escansaoLinhas) === 'Externa',
+            ).length,
+    },
+    rimasInternas: {
+        label: 'Rimas Internas',
+        grupo: 'Posição',
+        contar: (item) =>
+            (item.rimas || []).filter(
+                (par) => calcularPosicaoPar(par, item.escansaoLinhas) === 'Interna',
+            ).length,
+    },
+    rimasVizinhas: {
+        label: 'Rimas Vizinhas',
+        grupo: 'Proximidade',
+        contar: (item) =>
+            (item.rimas || []).filter(
+                (par) =>
+                    calcularProximidadePar(calcularDistanciaPar(par, item.escansaoLinhas)) ===
+                    'Vizinha',
+            ).length,
+    },
+    rimasDistantes: {
+        label: 'Rimas Distantes',
+        grupo: 'Proximidade',
+        contar: (item) =>
+            (item.rimas || []).filter(
+                (par) =>
+                    calcularProximidadePar(calcularDistanciaPar(par, item.escansaoLinhas)) ===
+                    'Distante',
+            ).length,
+    },
+    ...camposContaveisPorValor('Acentuação', ACENTUACOES_RIMA, 'acentuacao'),
+    ...camposContaveisPorValor('Tonalidade', TONALIDADES_RIMA, 'tonalidade'),
+    ...camposContaveisPorValor('Riqueza', RIQUEZAS_RIMA, 'riqueza'),
+};
+
+// ─── Eco — campo por TIPO REALMENTE PRESENTE nos dados ───────────────
+// Diferente de Acentuação/Tonalidade/Riqueza (listas FECHADAS — todo
+// valor possível já é conhecido de antemão), `tipo` de Eco é campo
+// LIVRE (ver TIPOS_ECO_SONORO em utils.js): um eco com um tipo digitado
+// fora das 5 sugestões padrão (ex. "eco disperso e tal") precisava
+// aparecer como coluna selecionável assim que existir em algum
+// registro — senão fica invisível pra quem quer contar/filtrar por ele
+// (bug relatado pelo Victor: eco personalizado não ia parar no select
+// de Contagem). `escansoes` é o db.escansoes INTEIRO (não só o item
+// aberto no modal), pra achar tipos usados em QUALQUER poema, não só
+// no que está sendo editado agora. As 5 sugestões de TIPOS_ECO_SONORO
+// sempre entram primeiro (mesmo sem uso ainda, pra nunca sumirem do
+// seletor); tipos extras vêm depois, em ordem alfabética.
+function tiposEcoPresentes(escansoes) {
+    const extras = new Set();
+    (Array.isArray(escansoes) ? escansoes : []).forEach((es) => {
+        (es.ecos || []).forEach((eco) => {
+            if (eco.tipo && !TIPOS_ECO_SONORO.includes(eco.tipo)) extras.add(eco.tipo);
+        });
+    });
+    return [...TIPOS_ECO_SONORO, ...[...extras].sort((a, b) => a.localeCompare(b, 'pt-BR'))];
+}
+
+function camposContaveisEcoPorTipo(escansoes) {
+    return Object.fromEntries(
+        tiposEcoPresentes(escansoes).map((valor) => {
+            const chave = `ecosTipo${chaveSlug(valor)}`;
+            return [
+                chave,
+                {
+                    label: valor,
+                    contar: (item) => (item.ecos || []).filter((eco) => eco.tipo === valor).length,
+                },
+            ];
+        }),
+    );
+}
+
+// ─── Eco — registro DINÂMICO — por isso é função, não constante: quem
+// usa (registroContavel('sonoridade') em colunas-contagem.js) chama de
+// novo a cada abertura do seletor, passando o db.escansoes atual, pra
+// sempre refletir os tipos personalizados já usados na coleção. ~7
+// opções no total (Total, por verso, + tipos) — poucas o bastante pra
+// não precisar de subgrupo <optgroup> dentro do próprio select de Eco,
+// ao contrário de Rima.
+export function camposContaveisEco(escansoes = []) {
+    return {
+        ecosTotal: {
+            label: 'Contagem de Ecos',
+            contar: (item) => (item.ecos || []).length,
+        },
+        ecosProporcao: {
+            label: 'Ecos (por verso)',
+            contar: (item) => {
+                const versos = contarVersos(item.escansaoLinhas);
+                return versos ? Math.round(((item.ecos || []).length / versos) * 100) / 100 : 0;
+            },
+        },
+        ...camposContaveisEcoPorTipo(escansoes),
+    };
+}
+
+// ─── Registro combinado (Rima + Eco) — usado por itemBateFiltrosContagem/
+// definirCampoColunaContagem (colunas-contagem.js), que precisam de UM
+// registro só pra validar/calcular qualquer coluna ativa, seja ela de
+// rima ou de eco. A separação em DOIS SELECTS ("Contagem de Rimas" /
+// "Contagem de Ecos") é só na camada de UI — ali embaixo continua tudo
+// junto, senão validação/filtro/ordenação também precisariam saber de
+// família.
+export function construirCamposContaveisSonoridade(escansoes = []) {
+    return { ...CAMPOS_CONTAVEIS_RIMA, ...camposContaveisEco(escansoes) };
 }
 
 // Trecho de exibição de um lado do par na lista de classificação —
@@ -430,22 +744,39 @@ function renderBarraFerramentas() {
     const classesRima = modoRima
         ? 'bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-700'
         : 'bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700';
+    const classesEco = modoEco
+        ? 'bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-slate-200 border-gray-400 dark:border-slate-500'
+        : 'bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700';
 
-    const emCorrecao = Boolean(selecaoRima?.parOriginal);
-    let legenda = 'Ative um dos modos acima pra marcar sílabas tônicas ou vincular rimas.';
+    const emCorrecaoRima = Boolean(selecaoRima?.parOriginal);
+    const emCorrecaoEco = Boolean(selecaoEco?.parOriginal);
+    let legenda = 'Ative um dos modos acima pra marcar sílabas tônicas, rimas ou ecos sonoros.';
     if (modoTonico) legenda = 'Clique numa sílaba pra marcar/desmarcar o acento.';
     if (modoRima) {
         if (!selecaoRima)
             legenda = 'Clique na 1ª sílaba de um par de rima (shift-clique pra estender).';
         else if (!selecaoRima.ladoB)
             legenda = 'Agora clique na sílaba do outro verso que rima (shift-clique pra estender).';
-        else if (emCorrecao)
+        else if (emCorrecaoRima)
             legenda = 'Corrigindo este par — ajuste os lados, salve a alteração ou cancele.';
         else legenda = 'Shift-clique pra ajustar os dois lados, ou confirme o par.';
     }
+    if (modoEco) {
+        if (!selecaoEco)
+            legenda =
+                'Clique na 1ª sílaba de um eco sonoro (quase-rima) — shift-clique pra estender.';
+        else if (!selecaoEco.ladoB)
+            legenda = 'Agora clique na sílaba do outro verso que ecoa (shift-clique pra estender).';
+        else if (emCorrecaoEco)
+            legenda = 'Corrigindo este eco — ajuste os lados, salve a alteração ou cancele.';
+        else legenda = 'Shift-clique pra ajustar os dois lados, ou confirme o eco.';
+    }
 
-    const podeConfirmar = Boolean(
+    const podeConfirmarRima = Boolean(
         selecaoRima?.ladoA?.silabas.length && selecaoRima?.ladoB?.silabas.length,
+    );
+    const podeConfirmarEco = Boolean(
+        selecaoEco?.ladoA?.silabas.length && selecaoEco?.ladoB?.silabas.length,
     );
 
     let controlesRima = '';
@@ -454,23 +785,49 @@ function renderBarraFerramentas() {
             <button
                 type="button"
                 id="son-btn-confirmar-rima"
-                ${podeConfirmar ? '' : 'disabled'}
+                ${podeConfirmarRima ? '' : 'disabled'}
                 class="text-[11px] font-bold px-3 py-1 rounded-full border transition-colors ${
-                    podeConfirmar
+                    podeConfirmarRima
                         ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
                         : 'bg-gray-50 dark:bg-slate-800 text-gray-300 dark:text-slate-600 border-gray-200 dark:border-slate-700 cursor-not-allowed'
                 }"
             >
-                ${emCorrecao ? 'Salvar alteração' : 'Confirmar par'}
+                ${emCorrecaoRima ? 'Salvar alteração' : 'Confirmar par'}
             </button>
             <button
                 type="button"
                 id="son-btn-cancelar-rima"
                 class="text-[11px] font-bold px-3 py-1 rounded-full border transition-colors bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700"
             >
-                ${emCorrecao ? 'Cancelar correção' : 'Cancelar seleção'}
+                ${emCorrecaoRima ? 'Cancelar correção' : 'Cancelar seleção'}
             </button>`;
     }
+
+    let controlesEco = '';
+    if (modoEco && selecaoEco) {
+        controlesEco = `
+            <button
+                type="button"
+                id="son-btn-confirmar-eco"
+                ${podeConfirmarEco ? '' : 'disabled'}
+                class="text-[11px] font-bold px-3 py-1 rounded-full border transition-colors ${
+                    podeConfirmarEco
+                        ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                        : 'bg-gray-50 dark:bg-slate-800 text-gray-300 dark:text-slate-600 border-gray-200 dark:border-slate-700 cursor-not-allowed'
+                }"
+            >
+                ${emCorrecaoEco ? 'Salvar alteração' : 'Confirmar eco'}
+            </button>
+            <button
+                type="button"
+                id="son-btn-cancelar-eco"
+                class="text-[11px] font-bold px-3 py-1 rounded-full border transition-colors bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700"
+            >
+                ${emCorrecaoEco ? 'Cancelar correção' : 'Cancelar seleção'}
+            </button>`;
+    }
+
+    const mostrarEcos = mostrarEcosAtivo();
 
     return `
         <div class="flex items-center flex-wrap gap-2 mb-2">
@@ -490,7 +847,20 @@ function renderBarraFerramentas() {
             >
                 Modo Rima${modoRima ? ': Ligado' : ''}
             </button>
+            <button
+                type="button"
+                id="son-btn-modo-eco"
+                aria-pressed="${modoEco}"
+                class="text-[11px] font-bold px-3 py-1 rounded-full border transition-colors ${classesEco}"
+            >
+                Modo Eco${modoEco ? ': Ligado' : ''}
+            </button>
             ${controlesRima}
+            ${controlesEco}
+            <label class="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-slate-400 ml-auto">
+                <input type="checkbox" id="son-toggle-mostrar-ecos" ${mostrarEcos ? 'checked' : ''} />
+                Mostrar Ecos Sonoros
+            </label>
             <p class="text-[10px] text-gray-400 dark:text-slate-500 w-full sm:w-auto">${legenda}</p>
         </div>`;
 }
@@ -532,6 +902,7 @@ function reconstruirColunas() {
     const n = maxSilabas();
     const letras = calcularLetrasRima(rimasAtuais);
     const rimadas = celulasRimadas(rimasAtuais, letras);
+    const ecoadas = mostrarEcosAtivo() ? celulasComEco(ecosAtuais) : new Map();
 
     const colgroup = containerEl.querySelector('#son-grade-colgroup');
     if (colgroup) {
@@ -574,20 +945,20 @@ function reconstruirColunas() {
             const ehTonica = ehReal && tonicas.includes(i);
             const emLadoA =
                 ehReal &&
-                modoRima &&
-                selecaoRima?.ladoA.linhaIdx === idx &&
-                selecaoRima.ladoA.silabas.includes(i);
+                (modoRima || modoEco) &&
+                (modoRima ? selecaoRima : selecaoEco)?.ladoA.linhaIdx === idx &&
+                (modoRima ? selecaoRima : selecaoEco).ladoA.silabas.includes(i);
             const emLadoB =
                 ehReal &&
-                modoRima &&
-                selecaoRima?.ladoB?.linhaIdx === idx &&
-                selecaoRima.ladoB.silabas.includes(i);
+                (modoRima || modoEco) &&
+                (modoRima ? selecaoRima : selecaoEco)?.ladoB?.linhaIdx === idx &&
+                (modoRima ? selecaoRima : selecaoEco).ladoB.silabas.includes(i);
             let classes =
                 'son-cel-silaba px-1 py-1.5 text-center text-sm border-b border-gray-100 dark:border-slate-800 align-top';
-            if (ehReal && (modoTonico || modoRima))
+            if (ehReal && (modoTonico || modoRima || modoEco))
                 classes += ' cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-800';
             if (ehTonica) classes += ' bg-amber-200 dark:bg-amber-900/60 font-bold rounded';
-            // Destaque de seleção em curso (Modo Rima, ainda não
+            // Destaque de seleção em curso (Modo Rima/Modo Eco, ainda não
             // confirmado) — ring em vez de background, pra não colidir
             // visualmente com o fundo da tônica quando a mesma sílaba é
             // as duas coisas ao mesmo tempo. Tem prioridade sobre a cor
@@ -602,11 +973,32 @@ function reconstruirColunas() {
                     classes += ` ring-2 ring-inset ring-${cor}-400 dark:ring-${cor}-600 rounded`;
                 }
             }
+            // Eco sonoro confirmado — outline (não ring/box-shadow, que
+            // não suporta traço pontilhado) tracejado, cor neutra única
+            // pra TODO eco (sem esquema de letras — não é rima
+            // estrutural). Convive sem conflito com o ring de rima acima
+            // (propriedades CSS diferentes, a mesma sílaba pode ser as
+            // duas coisas ao mesmo tempo e mostrar as duas marcações).
+            if (!emLadoA && !emLadoB && ehReal && ecoadas.get(`${idx}:${i}`)) {
+                classes +=
+                    ' outline outline-2 outline-dashed outline-gray-400 dark:outline-gray-500 rounded';
+            }
             td.className = classes;
             td.textContent = silabas[i] || '';
             if (ehReal) {
                 td.dataset.linhaIdx = String(idx);
                 td.dataset.silabaIdx = String(i);
+                if (ecoadas.get(`${idx}:${i}`)) {
+                    const tiposAqui = ecosAtuais
+                        .filter(
+                            (eco) =>
+                                (eco.a.linha === idx && eco.a.silabas.includes(i)) ||
+                                (eco.b.linha === idx && eco.b.silabas.includes(i)),
+                        )
+                        .map((eco) => eco.tipo)
+                        .filter(Boolean);
+                    td.title = tiposAqui.length ? tiposAqui.join(' · ') : 'Eco sonoro';
+                }
             }
             tr.appendChild(td);
         }
@@ -666,7 +1058,98 @@ function onCliqueCelula(e) {
 
     if (modoRima) {
         onCliqueCelulaRima(linhaIdx, silabaIdx, e.shiftKey);
+        return;
     }
+
+    if (modoEco) {
+        onCliqueCelulaEco(linhaIdx, silabaIdx, e.shiftKey);
+    }
+}
+
+// Mesmo gesto de onCliqueCelulaRima (clique abre/reinicia lado, shift-
+// clique estende, clicar noutro verso abre o outro lado, 3ª linha
+// distinta recomeça a seleção) — reaproveita novoLadoRima/
+// alternarSilabaLado, que já são genéricas (não dependem de ser rima),
+// só o array de destino (`selecaoEco` em vez de `selecaoRima`) muda.
+function onCliqueCelulaEco(linhaIdx, silabaIdx, comShift) {
+    if (!selecaoEco) {
+        selecaoEco = { ladoA: novoLadoRima(linhaIdx, silabaIdx), ladoB: null };
+        renderGrade();
+        return;
+    }
+    const { ladoA, ladoB } = selecaoEco;
+
+    if (!ladoB) {
+        if (linhaIdx === ladoA.linhaIdx) {
+            if (comShift) alternarSilabaLado(ladoA, silabaIdx);
+            else selecaoEco.ladoA = novoLadoRima(linhaIdx, silabaIdx);
+        } else {
+            selecaoEco.ladoB = novoLadoRima(linhaIdx, silabaIdx);
+        }
+        renderGrade();
+        return;
+    }
+
+    if (linhaIdx === ladoB.linhaIdx) {
+        if (comShift) alternarSilabaLado(ladoB, silabaIdx);
+        else selecaoEco.ladoB = novoLadoRima(linhaIdx, silabaIdx);
+    } else if (linhaIdx === ladoA.linhaIdx) {
+        if (comShift) alternarSilabaLado(ladoA, silabaIdx);
+        else selecaoEco.ladoA = novoLadoRima(linhaIdx, silabaIdx);
+    } else {
+        selecaoEco = { ladoA: novoLadoRima(linhaIdx, silabaIdx), ladoB: null };
+    }
+    renderGrade();
+}
+
+// Mesma lógica de confirmarParRima/cancelarSelecaoRima/removerParRima/
+// iniciarCorrecaoPar, sobre ecosAtuais/selecaoEco em vez de
+// rimasAtuais/selecaoRima — `tipo` (campo livre) é preservado do
+// parOriginal na correção, igual acentuacao/tonalidade/riqueza da rima.
+function confirmarParEco() {
+    if (!selecaoEco?.ladoA.silabas.length || !selecaoEco?.ladoB?.silabas.length) return;
+    const { ladoA, ladoB, parOriginal } = selecaoEco;
+    ecosAtuais.push({
+        ...(parOriginal || {}),
+        id: parOriginal?.id ?? gerarId(),
+        a: { linha: ladoA.linhaIdx, silabas: [...ladoA.silabas] },
+        b: { linha: ladoB.linhaIdx, silabas: [...ladoB.silabas] },
+    });
+    selecaoEco = null;
+    renderGrade();
+}
+
+function cancelarSelecaoEco() {
+    if (selecaoEco?.parOriginal) ecosAtuais.push(selecaoEco.parOriginal);
+    selecaoEco = null;
+    renderGrade();
+}
+
+function removerParEco(id) {
+    const idx = ecosAtuais.findIndex((e) => String(e.id) === String(id));
+    if (idx === -1) return;
+    const [removido] = ecosAtuais.splice(idx, 1);
+    renderGrade();
+    mostrarAvisoComAcao('Eco sonoro removido.', 'Desfazer', () => {
+        ecosAtuais.splice(idx, 0, removido);
+        renderGrade();
+    });
+}
+
+function iniciarCorrecaoParEco(id) {
+    const idx = ecosAtuais.findIndex((e) => String(e.id) === String(id));
+    if (idx === -1) return;
+    const [eco] = ecosAtuais.splice(idx, 1);
+    modoEco = true;
+    modoTonico = false;
+    modoRima = false;
+    selecaoRima = null;
+    selecaoEco = {
+        parOriginal: eco,
+        ladoA: { linhaIdx: eco.a.linha, silabas: [...eco.a.silabas] },
+        ladoB: { linhaIdx: eco.b.linha, silabas: [...eco.b.silabas] },
+    };
+    renderGrade();
 }
 
 // Gesto alinhado com o Victor: clique simples numa sílaba abre/reinicia
@@ -849,6 +1332,125 @@ function montarItemRimaHtml(par, letras) {
         </div>`;
 }
 
+// ─── Ecos Sonoros — item da lista + resumo ──────────────────────────
+// Mesmo esqueleto de montarItemRimaHtml, sem letra/cor de esquema
+// (marcador neutro "·"); Posição/Proximidade reaproveitadas das mesmas
+// funções da rima (genéricas — ver comentário em ecosAtuais acima); o
+// campo Acentuação/Tonalidade/Riqueza vira um único campo livre `tipo`
+// (input + datalist, ver TIPOS_ECO_SONORO em utils.js), não 3 selects fechados.
+function montarItemEcoHtml(eco) {
+    const numA = linhasAtuais[eco.a.linha]?.numero ?? '?';
+    const numB = linhasAtuais[eco.b.linha]?.numero ?? '?';
+    const posicao = calcularPosicaoPar(eco, linhasAtuais);
+    const proximidade = calcularProximidadePar(calcularDistanciaPar(eco, linhasAtuais));
+
+    return `
+        <div class="border border-gray-200 dark:border-slate-700 rounded p-2 sm:p-3">
+            <div class="flex items-start justify-between gap-2 flex-wrap">
+                <div class="flex items-center gap-2 text-xs flex-wrap">
+                    <span class="font-bold text-gray-400 dark:text-slate-500">·</span>
+                    <span class="text-gray-600 dark:text-slate-300">
+                        v.${numA} <span class="text-gray-400 dark:text-slate-500">"${escapeHtml(trechoLado(eco.a, linhasAtuais))}"</span>
+                        <span class="text-gray-300 dark:text-slate-600">↔</span>
+                        v.${numB} <span class="text-gray-400 dark:text-slate-500">"${escapeHtml(trechoLado(eco.b, linhasAtuais))}"</span>
+                    </span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400">${posicao}</span>
+                    ${proximidade ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400">${proximidade}</span>` : ''}
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button type="button" class="son-btn-corrigir-eco text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline" data-eco-id="${eco.id}">Corrigir</button>
+                    <button type="button" class="son-btn-remover-eco text-[10px] font-bold text-red-600 dark:text-red-400 hover:underline" data-eco-id="${eco.id}">Remover</button>
+                </div>
+            </div>
+            <div class="mt-2">
+                <label class="form-label text-[10px]">Tipo (opcional — campo livre)</label>
+                <input
+                    type="text"
+                    class="son-input-tipo-eco text-xs"
+                    data-eco-id="${eco.id}"
+                    value="${escapeHtml(eco.tipo || '')}"
+                    list="son-sugestoes-tipo-eco"
+                    placeholder="ex.: Assonância, Aliteração..."
+                />
+            </div>
+        </div>`;
+}
+
+function renderizarListaEcos() {
+    if (!containerEl) return;
+    const lista = containerEl.querySelector('#son-lista-ecos');
+    if (!lista) return;
+
+    if (ecosAtuais.length === 0) {
+        lista.innerHTML = `<p class="text-[11px] text-gray-400 dark:text-slate-500">Nenhum eco sonoro confirmado ainda — use o Modo Eco acima.</p>`;
+        return;
+    }
+
+    const emOrdem = [...ecosAtuais].sort((e1, e2) => e1.a.linha - e2.a.linha);
+    lista.innerHTML = emOrdem.map((eco) => montarItemEcoHtml(eco)).join('');
+
+    lista.querySelectorAll('.son-input-tipo-eco').forEach((input) => {
+        input.addEventListener('input', () => {
+            const eco = ecosAtuais.find((e) => String(e.id) === String(input.dataset.ecoId));
+            if (eco) eco.tipo = input.value || null;
+        });
+    });
+    lista.querySelectorAll('.son-btn-remover-eco').forEach((btn) => {
+        btn.addEventListener('click', () => removerParEco(btn.dataset.ecoId));
+    });
+    lista.querySelectorAll('.son-btn-corrigir-eco').forEach((btn) => {
+        btn.addEventListener('click', () => iniciarCorrecaoParEco(btn.dataset.ecoId));
+    });
+}
+
+// Resumo acima da lista "Ecos Sonoros" — só a contagem total + tally por
+// `tipo` de fato presente (não travado nas 5 sugestões — ver
+// camposContaveisEcoPorTipo pro porquê disso ser diferente lá).
+// Some sozinho sem eco nenhum, mesmo padrão de renderResumoPares.
+function renderResumoEcos(ecos) {
+    if (!ecos.length) return '';
+    const semTipo = ecos.filter((e) => !e.tipo).length;
+    const porTipo = new Map();
+    ecos.forEach((e) => {
+        if (!e.tipo) return;
+        porTipo.set(e.tipo, (porTipo.get(e.tipo) || 0) + 1);
+    });
+    const partes = [...porTipo.entries()].map(([tipo, n]) => `${n} ${tipo}`);
+    const aviso =
+        semTipo > 0
+            ? ` <span class="text-gray-400 dark:text-slate-500">(${semTipo} sem tipo)</span>`
+            : '';
+    return `<p class="text-[11px] text-gray-500 dark:text-slate-400 mb-2">
+        ${ecos.length} eco${ecos.length === 1 ? '' : 's'} sonoro${ecos.length === 1 ? '' : 's'}${
+            partes.length ? ` — ${partes.join(' · ')}` : ''
+        }${aviso}
+    </p>`;
+}
+
+// Mesmo espírito de montarItemRimaLeituraHtml — versão somente-texto
+// pra visualização/exportação em .md, sem inputs nem botões.
+function montarItemEcoLeituraHtml(eco, linhas) {
+    const numA = linhas[eco.a.linha]?.numero ?? '?';
+    const numB = linhas[eco.b.linha]?.numero ?? '?';
+    const posicao = calcularPosicaoPar(eco, linhas);
+    const proximidade = calcularProximidadePar(calcularDistanciaPar(eco, linhas));
+
+    return `
+        <div class="border border-gray-200 dark:border-slate-700 rounded p-2 sm:p-3 text-xs">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-bold text-gray-400 dark:text-slate-500">·</span>
+                <span class="text-gray-600 dark:text-slate-300">
+                    v.${numA} <span class="text-gray-400 dark:text-slate-500">"${escapeHtml(trechoLado(eco.a, linhas))}"</span>
+                    <span class="text-gray-300 dark:text-slate-600">↔</span>
+                    v.${numB} <span class="text-gray-400 dark:text-slate-500">"${escapeHtml(trechoLado(eco.b, linhas))}"</span>
+                </span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400">${posicao}</span>
+                ${proximidade ? `<span class="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400">${proximidade}</span>` : ''}
+            </div>
+            ${eco.tipo ? `<p class="text-gray-400 dark:text-slate-500 mt-1">${escapeHtml(eco.tipo)}</p>` : ''}
+        </div>`;
+}
+
 // ─── Visualização somente-leitura (botão "Ver" da tabela, ver
 // visualizar-sonoridade.js) ──────────────────────────────────────────
 // Mesmo resultado visual de renderGrade()/reconstruirColunas() acima
@@ -889,9 +1491,49 @@ function montarItemRimaLeituraHtml(par, letras, linhas) {
 // indiretamente pelos exportadores de exportar-sonoridade.js, que leem
 // os mesmos `linhas`/`rimas` mas montam saída própria pro formato
 // (esta função aqui é só HTML de tela).
-export function renderGradeLeituraHtml(linhas, rimas) {
+// Bloco de resumo acima da lista "Pares de Rima" (editor e leitura) —
+// linha de Proximidade com o rótulo do poema (calcularClassificacaoSonora,
+// igual antes) seguida de uma linha de contagem por valor pra cada um
+// dos outros eixos (Posição/Acentuação/Tonalidade/Riqueza — ver
+// EIXOS_CLASSIFICACAO_PAR/calcularTalyPorEixo). Cada linha de eixo some
+// sozinha se nenhum par tiver aquele eixo preenchido (Acentuação/
+// Tonalidade/Riqueza são opcionais por par — Posição nunca some, é
+// sempre calculada). Quando há pares sem aquele eixo classificado, um
+// aviso "(N sem <Eixo> definida)" fecha a linha, pra contagem nunca
+// parecer maior do que realmente é. Retorna string vazia sem par nenhum
+// (mesmo padrão de listaRimas/renderGrade — a seção inteira não
+// aparece).
+function renderResumoPares(rimas, linhas) {
+    const { vizinhas, distantes, rotulo } = calcularClassificacaoSonora(rimas, linhas);
+    const linhaProximidade = rotulo
+        ? `<p class="text-[11px] font-semibold text-gray-600 dark:text-slate-300">
+            ${rotulo}
+            <span class="text-gray-400 dark:text-slate-500 font-normal">(${vizinhas} vizinha${vizinhas === 1 ? '' : 's'} · ${distantes} distante${distantes === 1 ? '' : 's'})</span>
+        </p>`
+        : '';
+    const linhasEixos = ['posicao', 'acentuacao', 'tonalidade', 'riqueza']
+        .map((chave) => {
+            const { label, extrairValor } = EIXOS_CLASSIFICACAO_PAR[chave];
+            const { valores, semClassificar } = calcularTalyPorEixo(rimas, linhas, extrairValor);
+            const partes = Object.entries(valores).map(
+                ([valor, n]) => `${n} ${rotuloCurtoValor(valor)}`,
+            );
+            if (!partes.length) return '';
+            const aviso =
+                semClassificar > 0
+                    ? ` <span class="text-gray-400 dark:text-slate-500">(${semClassificar} sem ${label} definida)</span>`
+                    : '';
+            return `<p class="text-[11px] text-gray-500 dark:text-slate-400">${label}: ${partes.join(' · ')}${aviso}</p>`;
+        })
+        .join('');
+    if (!linhaProximidade && !linhasEixos) return '';
+    return `<div class="mb-2 flex flex-col gap-0.5">${linhaProximidade}${linhasEixos}</div>`;
+}
+
+export function renderGradeLeituraHtml(linhas, rimas, ecos) {
     const linhasSeguras = Array.isArray(linhas) ? linhas : [];
     const rimasSeguras = Array.isArray(rimas) ? rimas : [];
+    const ecosSeguros = Array.isArray(ecos) ? ecos : [];
     if (linhasSeguras.length === 0) {
         return `<p class="text-xs text-gray-400 dark:text-slate-500 py-4 text-center">Sem grade de escansão.</p>`;
     }
@@ -899,6 +1541,8 @@ export function renderGradeLeituraHtml(linhas, rimas) {
     const n = calcularMaxSilabas(linhasSeguras);
     const letras = calcularLetrasRima(rimasSeguras);
     const rimadas = celulasRimadas(rimasSeguras, letras);
+    const mostrarEcos = mostrarEcosAtivo();
+    const ecoadas = mostrarEcos ? celulasComEco(ecosSeguros) : new Map();
 
     const linhasHtml = linhasSeguras
         .map((linha, idx) => {
@@ -919,6 +1563,10 @@ export function renderGradeLeituraHtml(linhas, rimas) {
                     const cor = corDaLetra(letraRimada);
                     classes += ` ring-2 ring-inset ring-${cor}-400 dark:ring-${cor}-600 rounded`;
                 }
+                if (ehReal && ecoadas.get(`${idx}:${i}`)) {
+                    classes +=
+                        ' outline outline-2 outline-dashed outline-gray-400 dark:outline-gray-500 rounded';
+                }
                 celulas += `<td class="${classes}">${escapeHtml(silabas[i] || '')}</td>`;
             }
             const letraDaLinha = letras.get(idx);
@@ -936,17 +1584,10 @@ export function renderGradeLeituraHtml(linhas, rimas) {
         })
         .join('');
 
-    const { vizinhas, distantes, rotulo } = calcularClassificacaoSonora(rimasSeguras, linhasSeguras);
-    const resumoProximidade = rotulo
-        ? `<p class="text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-2">
-            ${rotulo}
-            <span class="text-gray-400 dark:text-slate-500 font-normal">(${vizinhas} vizinha${vizinhas === 1 ? '' : 's'} · ${distantes} distante${distantes === 1 ? '' : 's'})</span>
-        </p>`
-        : '';
     const listaRimas = rimasSeguras.length
         ? `<div class="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800">
             <p class="text-xs font-bold text-gray-500 dark:text-slate-400 mb-2">Pares de Rima</p>
-            ${resumoProximidade}
+            ${renderResumoPares(rimasSeguras, linhasSeguras)}
             <div class="flex flex-col gap-2">
                 ${[...rimasSeguras]
                     .sort((r1, r2) => r1.a.linha - r2.a.linha)
@@ -956,7 +1597,32 @@ export function renderGradeLeituraHtml(linhas, rimas) {
         </div>`
         : '';
 
+    // Some sozinha quando o toggle "Mostrar Ecos Sonoros" está desligado
+    // — mesma preferência que já escondeu a marcação tracejada na grade
+    // acima, pro toggle valer os dois lugares junto (ver mostrarEcosAtivo).
+    const listaEcos =
+        mostrarEcos && ecosSeguros.length
+            ? `<div class="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800">
+            <p class="text-xs font-bold text-gray-500 dark:text-slate-400 mb-2">Ecos Sonoros</p>
+            ${renderResumoEcos(ecosSeguros)}
+            <div class="flex flex-col gap-2">
+                ${[...ecosSeguros]
+                    .sort((e1, e2) => e1.a.linha - e2.a.linha)
+                    .map((eco) => montarItemEcoLeituraHtml(eco, linhasSeguras))
+                    .join('')}
+            </div>
+        </div>`
+            : '';
+
+    const toggleEcosLeitura = ecosSeguros.length
+        ? `<label class="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-slate-400 mb-2">
+            <input type="checkbox" id="son-toggle-mostrar-ecos-leitura" ${mostrarEcos ? 'checked' : ''} />
+            Mostrar Ecos Sonoros
+        </label>`
+        : '';
+
     return `
+        ${toggleEcosLeitura}
         <div class="overflow-x-auto border border-gray-200 dark:border-slate-700 rounded">
             <table class="border-collapse w-full" style="table-layout:fixed;">
                 <colgroup>
@@ -973,7 +1639,7 @@ export function renderGradeLeituraHtml(linhas, rimas) {
                 </thead>
                 <tbody>${linhasHtml}</tbody>
             </table>
-        </div>${listaRimas}`;
+        </div>${listaRimas}${listaEcos}`;
 }
 
 // Chamada tanto por renderGrade() quanto por onInputTexto() — o texto do
@@ -1012,20 +1678,6 @@ function renderizarListaRimas() {
     });
 }
 
-// Linha de resumo acima da lista "Pares de Rima" (editor) — contagem
-// final de pares Vizinhos/Distantes e o rótulo do poema (calcularClassifi
-// cacaoSonora). Some sozinha (string vazia) sem par nenhum, mesmo padrão
-// de listaRimas em renderGradeLeituraHtml.
-function renderResumoProximidade() {
-    const { vizinhas, distantes, rotulo } = calcularClassificacaoSonora(rimasAtuais, linhasAtuais);
-    if (!rotulo) return '';
-    return `
-        <p class="text-[11px] font-semibold text-gray-600 dark:text-slate-300 mb-2">
-            ${rotulo}
-            <span class="text-gray-400 dark:text-slate-500 font-normal">(${vizinhas} vizinha${vizinhas === 1 ? '' : 's'} · ${distantes} distante${distantes === 1 ? '' : 's'})</span>
-        </p>`;
-}
-
 function renderGrade() {
     if (!containerEl) return;
     if (linhasAtuais.length === 0) {
@@ -1033,49 +1685,95 @@ function renderGrade() {
         return;
     }
     containerEl.innerHTML = `
-        ${renderBarraFerramentas()}
-        <div class="overflow-x-auto border border-gray-200 dark:border-slate-700 rounded">
-            <table class="border-collapse w-full" style="table-layout:fixed;">
-                <colgroup id="son-grade-colgroup"></colgroup>
-                <thead class="bg-gray-50 dark:bg-slate-800">
-                    <tr id="son-grade-header-row"></tr>
-                </thead>
-                <tbody id="son-grade-body">
-                    ${linhasAtuais.map((linha, idx) => montarLinhaHtml(linha, idx)).join('')}
-                </tbody>
-            </table>
-        </div>
-        <div class="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800">
-            <p class="text-xs font-bold text-gray-500 dark:text-slate-400 mb-1">Pares de Rima</p>
-            ${renderResumoProximidade()}
-            <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-3">
-                Classifique cada par confirmado (Acentuação/Tonalidade/Riqueza). Posição
-                (Externa/Interna) e Proximidade (Vizinha/Distante) são calculadas
-                automaticamente a partir do próprio par.
-            </p>
-            <div id="son-lista-rimas" class="flex flex-col gap-2"></div>
-        </div>`;
+        <details class="campo-grupo" id="son-grupo-grade" ${abertoGrade ? 'open' : ''}>
+            <summary>Grade Silábica</summary>
+            <div class="campo-grupo-corpo">
+                ${renderBarraFerramentas()}
+                <div class="overflow-x-auto border border-gray-200 dark:border-slate-700 rounded">
+                    <table class="border-collapse w-full" style="table-layout:fixed;">
+                        <colgroup id="son-grade-colgroup"></colgroup>
+                        <thead class="bg-gray-50 dark:bg-slate-800">
+                            <tr id="son-grade-header-row"></tr>
+                        </thead>
+                        <tbody id="son-grade-body">
+                            ${linhasAtuais.map((linha, idx) => montarLinhaHtml(linha, idx)).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </details>
+        <details class="campo-grupo mt-4" id="son-grupo-pares-rima" ${abertoParesRima ? 'open' : ''}>
+            <summary>Pares de Rima</summary>
+            <div class="campo-grupo-corpo">
+                ${renderResumoPares(rimasAtuais, linhasAtuais)}
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-3">
+                    Classifique cada par confirmado (Acentuação/Tonalidade/Riqueza). Posição
+                    (Externa/Interna) e Proximidade (Vizinha/Distante) são calculadas
+                    automaticamente a partir do próprio par.
+                </p>
+                <div id="son-lista-rimas" class="flex flex-col gap-2"></div>
+            </div>
+        </details>
+        <details class="campo-grupo" id="son-grupo-ecos-sonoros" ${abertoEcosSonoros ? 'open' : ''}>
+            <summary>Ecos Sonoros</summary>
+            <div class="campo-grupo-corpo">
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                    Quase-rimas intencionais — ecos sonoros de fim/meio de verso que não chegam a
+                    rimar pela teoria (útil em verso livre). Tipo é campo livre; use as sugestões ou
+                    digite o seu.
+                </p>
+                <datalist id="son-sugestoes-tipo-eco">
+                    ${TIPOS_ECO_SONORO.map((t) => `<option value="${escapeHtml(t)}"></option>`).join('')}
+                </datalist>
+                ${renderResumoEcos(ecosAtuais)}
+                <div id="son-lista-ecos" class="flex flex-col gap-2"></div>
+            </div>
+        </details>`;
     reconstruirColunas();
     renderizarListaRimas();
+    renderizarListaEcos();
     containerEl.querySelectorAll('.son-linha-texto').forEach((el) => {
         el.addEventListener('input', onInputTexto);
+    });
+    containerEl.querySelector('#son-grupo-grade')?.addEventListener('toggle', (e) => {
+        abertoGrade = e.target.open;
+    });
+    containerEl.querySelector('#son-grupo-pares-rima')?.addEventListener('toggle', (e) => {
+        abertoParesRima = e.target.open;
+    });
+    containerEl.querySelector('#son-grupo-ecos-sonoros')?.addEventListener('toggle', (e) => {
+        abertoEcosSonoros = e.target.open;
     });
     containerEl.querySelector('#son-grade-body')?.addEventListener('click', onCliqueCelula);
     containerEl.querySelector('#son-btn-modo-tonico')?.addEventListener('click', () => {
         modoTonico = !modoTonico;
-        // Os dois modos são mutuamente exclusivos — ligar um desliga o
-        // outro e descarta qualquer seleção de rima em curso (não dá pra
-        // deixar um par "pela metade" persistindo escondido).
+        // Os 3 modos são mutuamente exclusivos — ligar um desliga os
+        // outros e descarta qualquer seleção de rima/eco em curso (não dá
+        // pra deixar um par "pela metade" persistindo escondido).
         if (modoTonico) {
             modoRima = false;
+            modoEco = false;
             selecaoRima = null;
+            selecaoEco = null;
         }
         renderGrade();
     });
     containerEl.querySelector('#son-btn-modo-rima')?.addEventListener('click', () => {
         modoRima = !modoRima;
-        if (modoRima) modoTonico = false;
-        else selecaoRima = null;
+        if (modoRima) {
+            modoTonico = false;
+            modoEco = false;
+            selecaoEco = null;
+        } else selecaoRima = null;
+        renderGrade();
+    });
+    containerEl.querySelector('#son-btn-modo-eco')?.addEventListener('click', () => {
+        modoEco = !modoEco;
+        if (modoEco) {
+            modoTonico = false;
+            modoRima = false;
+            selecaoRima = null;
+        } else selecaoEco = null;
         renderGrade();
     });
     containerEl
@@ -1084,6 +1782,14 @@ function renderGrade() {
     containerEl
         .querySelector('#son-btn-cancelar-rima')
         ?.addEventListener('click', cancelarSelecaoRima);
+    containerEl.querySelector('#son-btn-confirmar-eco')?.addEventListener('click', confirmarParEco);
+    containerEl
+        .querySelector('#son-btn-cancelar-eco')
+        ?.addEventListener('click', cancelarSelecaoEco);
+    containerEl.querySelector('#son-toggle-mostrar-ecos')?.addEventListener('change', (e) => {
+        definirMostrarEcos(e.target.checked);
+        renderGrade();
+    });
 }
 
 // Ponto de entrada chamado por forms.js sempre que o modal abre (nova
@@ -1091,16 +1797,25 @@ function renderGrade() {
 // poema) pra uma escansão nova/sem grade ainda, ou de
 // es.escansaoLinhas já salvo pra uma edição. `rimas` idem, a partir de
 // es.rimas (ou [] pra escansão nova).
-export function inicializarGradeSonoridade(container, linhas, rimas) {
+export function inicializarGradeSonoridade(container, linhas, rimas, ecos) {
     containerEl = container;
     linhasAtuais = Array.isArray(linhas) ? linhas : [];
     rimasAtuais = Array.isArray(rimas) ? rimas : [];
-    // Modo Sílaba Tônica/Modo Rima são da sessão do modal, não da
-    // escansão salva — sempre começam desligados, tanto abrindo uma
+    ecosAtuais = Array.isArray(ecos) ? ecos : [];
+    // Modo Sílaba Tônica/Modo Rima/Modo Eco são da sessão do modal, não
+    // da escansão salva — sempre começam desligados, tanto abrindo uma
     // escansão nova quanto reabrindo/trocando de poema numa já existente.
     modoTonico = false;
     modoRima = false;
+    modoEco = false;
     selecaoRima = null;
+    selecaoEco = null;
+    // Mesma lógica: "Grade Silábica", "Pares de Rima" e "Ecos Sonoros"
+    // sempre começam abertos numa abertura/troca de poema, mesmo que o
+    // usuário tivesse fechado algum na sessão anterior do modal.
+    abertoGrade = true;
+    abertoParesRima = true;
+    abertoEcosSonoros = true;
     renderGrade();
 }
 
@@ -1111,4 +1826,8 @@ export function obterLinhasSonoridade() {
 
 export function obterRimasSonoridade() {
     return rimasAtuais;
+}
+
+export function obterEcosSonoridade() {
+    return ecosAtuais;
 }

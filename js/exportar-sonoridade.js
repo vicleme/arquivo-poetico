@@ -30,7 +30,12 @@ import {
     calcularDistanciaPar,
     calcularProximidadePar,
     calcularClassificacaoSonora,
+    calcularTalyPorEixo,
+    EIXOS_CLASSIFICACAO_PAR,
+    rotuloCurtoValor,
     celulasRimadas,
+    celulasComEco,
+    mostrarEcosAtivo,
     corDaLetra,
     dividirSilabas,
     trechoLado,
@@ -81,7 +86,10 @@ function camposClassificacao(es) {
         ['Forma', es.formaPoema],
         ['Regularidade Métrica', es.regularidadeMetrica],
         ['Tamanho do Verso', es.tamanhoVerso],
-        ['Esquema de Rimas', [es.esquemaRimasPresenca, es.esquemaRimasPadrao].filter(Boolean).join(' · ')],
+        [
+            'Esquema de Rimas',
+            [es.esquemaRimasPresenca, es.esquemaRimasPadrao].filter(Boolean).join(' · '),
+        ],
         ['Origem/Tradição', es.origemTradicao],
         ['Registro', es.registro],
         ['Tom', es.tom],
@@ -137,6 +145,13 @@ function hexParaRgb(hex) {
 const FUNDO_TONICA_RGB = { r: 253, g: 230, b: 138 };
 const FUNDO_TONICA_HEX = 'FDE68A';
 
+// Cor neutra única do contorno tracejado de Eco Sonoro — mesmo espírito
+// de PALETA_RIMA não se aplicar aqui (eco não é grupo/esquema, então
+// nunca varia por par, sempre a mesma cor). gray-400, igual à tela
+// (outline-gray-400 em renderGradeLeituraHtml/reconstruirColunas).
+const PDF_COR_ECO = { r: 156, g: 163, b: 175 };
+const DOCX_COR_ECO_HEX = '9CA3AF';
+
 // ─── Grade Silábica em TABELA real (mesma estrutura de
 // renderGradeLeituraHtml em editor-sonoridade.js) — usada pelos
 // exportadores .docx/.pdf a pedido do Victor (a tabela alinhada por
@@ -151,10 +166,17 @@ const FUNDO_TONICA_HEX = 'FDE68A';
 // letraRima}], letra }`, uma célula por posição de sílaba (preenchida
 // mesmo quando o verso é mais curto que o maior verso do poema — célula
 // vazia, sem tônica/rima).
-function gradeParaTabela(linhas, rimas) {
+// `ecos` é opcional (chamadas antigas/testes que só passam linhas/rimas
+// continuam funcionando — vira array vazio). A marcação de eco em si só
+// entra na tabela se mostrarEcosAtivo() estiver ligado — mesma
+// preferência persistida que já controla a tela (ver editor-sonoridade.js);
+// isso é o que faz o toggle "Mostrar Ecos Sonoros" valer também na hora
+// de imprimir/exportar, não só na grade em tela.
+function gradeParaTabela(linhas, rimas, ecos = []) {
     const n = calcularMaxSilabas(linhas);
     const letras = calcularLetrasRima(rimas);
     const rimadas = celulasRimadas(rimas, letras);
+    const ecoadas = mostrarEcosAtivo() ? celulasComEco(ecos) : new Map();
 
     const linhasTabela = linhas.map((linha, idx) => {
         if (linha.tipo !== 'verso') return { tipo: 'vazia' };
@@ -167,12 +189,36 @@ function gradeParaTabela(linhas, rimas) {
                 texto: ehReal ? silabas[i] : '',
                 tonica: ehReal && tonicas.includes(i),
                 letraRima: ehReal ? rimadas.get(`${idx}:${i}`) || null : null,
+                eco: ehReal ? Boolean(ecoadas.get(`${idx}:${i}`)) : false,
             });
         }
         return { tipo: 'verso', numero: linha.numero, celulas, letra: letras.get(idx) || null };
     });
 
     return { n, linhas: linhasTabela };
+}
+
+// Mesmo espírito de paresParaTexto, mas pra Ecos Sonoros — sem letra de
+// esquema (não é grupo) nem 3 eixos de classificação, só o `tipo` livre
+// (ver TIPOS_ECO_SONORO em utils.js).
+function ecosParaTexto(ecos, linhas) {
+    return [...ecos]
+        .sort((e1, e2) => e1.a.linha - e2.a.linha)
+        .map((eco) => {
+            const numA = linhas[eco.a.linha]?.numero ?? '?';
+            const numB = linhas[eco.b.linha]?.numero ?? '?';
+            const posicao = calcularPosicaoPar(eco, linhas);
+            const proximidade = calcularProximidadePar(calcularDistanciaPar(eco, linhas));
+            return {
+                numA,
+                numB,
+                trechoA: trechoLado(eco.a, linhas),
+                trechoB: trechoLado(eco.b, linhas),
+                posicao,
+                proximidade,
+                tipo: eco.tipo || null,
+            };
+        });
 }
 
 function paresParaTexto(rimas, linhas) {
@@ -201,21 +247,39 @@ function paresParaTexto(rimas, linhas) {
         });
 }
 
-// Linha de resumo ("Com Rimas mais Próximas (3 vizinhas · 1 distante)")
-// repetida nos 3 formatos antes da lista de pares — texto puro aqui,
-// cada exportador decide como estilizar (parágrafo simples no .md/.pdf,
-// itálico no .docx). `null` quando o poema não tem par nenhum, mesmo
-// critério de calcularClassificacaoSonora.
-function resumoProximidadeTexto(rimas, linhas) {
+// Linhas de resumo (uma por eixo) repetidas nos 3 formatos antes da
+// lista de pares — reaproveita exatamente as mesmas funções de contagem
+// de editor-sonoridade.js (calcularClassificacaoSonora/
+// calcularTalyPorEixo/EIXOS_CLASSIFICACAO_PAR) usadas na tela, pra nunca
+// divergir do que aparece no editor/na leitura. Texto puro aqui — cada
+// exportador decide como estilizar (parágrafo simples no .md/.pdf,
+// itálico no .docx). Array vazio quando o poema não tem par nenhum.
+function linhasResumoParesTexto(rimas, linhas) {
+    const textos = [];
     const { vizinhas, distantes, rotulo } = calcularClassificacaoSonora(rimas, linhas);
-    if (!rotulo) return null;
-    return `${rotulo} (${vizinhas} vizinha${vizinhas === 1 ? '' : 's'} · ${distantes} distante${distantes === 1 ? '' : 's'})`;
+    if (rotulo) {
+        textos.push(
+            `${rotulo} (${vizinhas} vizinha${vizinhas === 1 ? '' : 's'} · ${distantes} distante${distantes === 1 ? '' : 's'})`,
+        );
+    }
+    ['posicao', 'acentuacao', 'tonalidade', 'riqueza'].forEach((chave) => {
+        const { label, extrairValor } = EIXOS_CLASSIFICACAO_PAR[chave];
+        const { valores, semClassificar } = calcularTalyPorEixo(rimas, linhas, extrairValor);
+        const partes = Object.entries(valores).map(
+            ([valor, n]) => `${n} ${rotuloCurtoValor(valor)}`,
+        );
+        if (!partes.length) return;
+        const aviso = semClassificar > 0 ? ` (${semClassificar} sem ${label} definida)` : '';
+        textos.push(`${label}: ${partes.join(' · ')}${aviso}`);
+    });
+    return textos;
 }
 
 // ─── .md ──────────────────────────────────────────────────────────
 export function escansaoParaMarkdown(es, poema) {
     const linhas = Array.isArray(es.escansaoLinhas) ? es.escansaoLinhas : [];
     const rimas = Array.isArray(es.rimas) ? es.rimas : [];
+    const ecos = Array.isArray(es.ecos) ? es.ecos : [];
 
     let md = `## Escansão — ${poema?.titulo || `#${es.id}`}\n\n`;
 
@@ -228,7 +292,9 @@ export function escansaoParaMarkdown(es, poema) {
         md += `### Grade Silábica\n\n`;
         md += `_Sílaba tônica em **negrito**; sílabas separadas por " / "; letra ao final indica o esquema de rima._\n\n`;
         versos.forEach((v) => {
-            const texto = v.unidades.map((u) => (u.tonica ? `**${u.texto}**` : u.texto)).join(' / ');
+            const texto = v.unidades
+                .map((u) => (u.tonica ? `**${u.texto}**` : u.texto))
+                .join(' / ');
             md += `${v.numero}. ${texto}${v.letra ? ` (${v.letra})` : ''}\n`;
         });
         md += `\n`;
@@ -237,11 +303,27 @@ export function escansaoParaMarkdown(es, poema) {
     const pares = paresParaTexto(rimas, linhas);
     if (pares.length) {
         md += `### Pares de Rima\n\n`;
-        const resumo = resumoProximidadeTexto(rimas, linhas);
-        if (resumo) md += `_${resumo}_\n\n`;
+        linhasResumoParesTexto(rimas, linhas).forEach((linha) => {
+            md += `_${linha}_\n\n`;
+        });
         pares.forEach((p) => {
             md += `- **${p.letra || '·'}** — v.${p.numA} "${p.trechoA}" ↔ v.${p.numB} "${p.trechoB}" (${p.posicao} · ${p.proximidade})${
                 p.classificacao ? ` — ${p.classificacao}` : ''
+            }\n`;
+        });
+        md += `\n`;
+    }
+
+    // Some do .md inteiro quando o toggle "Mostrar Ecos Sonoros" está
+    // desligado — mesma preferência que já esconde a marcação na tela e
+    // no .pdf/.docx (ver mostrarEcosAtivo em editor-sonoridade.js).
+    const ecosVisiveis = mostrarEcosAtivo() ? ecosParaTexto(ecos, linhas) : [];
+    if (ecosVisiveis.length) {
+        md += `### Ecos Sonoros\n\n`;
+        md += `_Quase-rimas intencionais — ecos sonoros de fim/meio de verso que não chegam a rimar pela teoria._\n\n`;
+        ecosVisiveis.forEach((e) => {
+            md += `- v.${e.numA} "${e.trechoA}" ↔ v.${e.numB} "${e.trechoB}" (${e.posicao} · ${e.proximidade})${
+                e.tipo ? ` — ${e.tipo}` : ''
             }\n`;
         });
         md += `\n`;
@@ -365,7 +447,14 @@ export function gerarPdfEscansao(es, poema) {
     // aproximada por baseline: y do centro + ~32% do tamanho da fonte,
     // truque padrão pra texto de uma linha só).
     function desenharCelula(x, yCel, largCel, altCel, texto, opts = {}) {
-        const { negrito = false, fundo = null, borda = PDF_COR_BORDA_PADRAO, cor = null, tamanho = 9 } = opts;
+        const {
+            negrito = false,
+            fundo = null,
+            borda = PDF_COR_BORDA_PADRAO,
+            cor = null,
+            tamanho = 9,
+            tracejado = false,
+        } = opts;
         if (fundo) {
             doc.setFillColor(fundo.r, fundo.g, fundo.b);
             doc.rect(x, yCel, largCel, altCel, 'F');
@@ -373,6 +462,19 @@ export function gerarPdfEscansao(es, poema) {
         doc.setDrawColor(borda.r, borda.g, borda.b);
         doc.setLineWidth(borda === PDF_COR_BORDA_PADRAO ? 0.4 : 1.1);
         doc.rect(x, yCel, largCel, altCel);
+        // Eco sonoro (quase-rima) — contorno tracejado cinza-neutro por
+        // cima do contorno normal/colorido acima: as duas marcações
+        // convivem sem conflito (mesma decisão da tela, onde ring/box-
+        // shadow de rima e outline tracejado de eco são propriedades CSS
+        // diferentes) — ver PDF_COR_ECO/setLineDashPattern.
+        if (tracejado) {
+            doc.setLineDashPattern([1, 0.8], 0);
+            doc.setDrawColor(PDF_COR_ECO.r, PDF_COR_ECO.g, PDF_COR_ECO.b);
+            doc.setLineWidth(0.5);
+            const inset = 0.6;
+            doc.rect(x + inset, yCel + inset, largCel - inset * 2, altCel - inset * 2);
+            doc.setLineDashPattern([], 0);
+        }
         if (texto) {
             doc.setFont('helvetica', negrito ? 'bold' : 'normal');
             doc.setFontSize(tamanho);
@@ -392,7 +494,8 @@ export function gerarPdfEscansao(es, poema) {
     function decidirOrientacaoGrade(n) {
         const colRetrato = (larguraUtilRetrato - PDF_LARGURA_COL_NUMERO - PDF_LARGURA_COL_RIMA) / n;
         if (colRetrato >= PDF_MIN_COL_SILABA) return 'portrait';
-        const colPaisagem = (larguraUtilPaisagem - PDF_LARGURA_COL_NUMERO - PDF_LARGURA_COL_RIMA) / n;
+        const colPaisagem =
+            (larguraUtilPaisagem - PDF_LARGURA_COL_NUMERO - PDF_LARGURA_COL_RIMA) / n;
         return colPaisagem > colRetrato ? 'landscape' : 'portrait';
     }
 
@@ -439,22 +542,34 @@ export function gerarPdfEscansao(es, poema) {
             quebrarSeNecessario(PDF_ALTURA_LINHA_GRADE);
             if (y === margem) cabecalho(); // página nova no meio da tabela — repete a régua
             let x = margem;
-            desenharCelula(x, y, PDF_LARGURA_COL_NUMERO, PDF_ALTURA_LINHA_GRADE, String(linha.numero), {
-                tamanho: 8,
-                cor: PDF_COR_RESERVADO,
-            });
+            desenharCelula(
+                x,
+                y,
+                PDF_LARGURA_COL_NUMERO,
+                PDF_ALTURA_LINHA_GRADE,
+                String(linha.numero),
+                {
+                    tamanho: 8,
+                    cor: PDF_COR_RESERVADO,
+                },
+            );
             x += PDF_LARGURA_COL_NUMERO;
             linha.celulas.forEach((c) => {
-                const corBorda = c.letraRima ? hexParaRgb(CORES_RIMA_HEX[corDaLetra(c.letraRima)]) : PDF_COR_BORDA_PADRAO;
+                const corBorda = c.letraRima
+                    ? hexParaRgb(CORES_RIMA_HEX[corDaLetra(c.letraRima)])
+                    : PDF_COR_BORDA_PADRAO;
                 desenharCelula(x, y, colSilaba, PDF_ALTURA_LINHA_GRADE, c.texto, {
                     tamanho: 9,
                     negrito: c.tonica,
                     fundo: c.tonica ? FUNDO_TONICA_RGB : null,
                     borda: corBorda,
+                    tracejado: c.eco,
                 });
                 x += colSilaba;
             });
-            const corLetra = linha.letra ? hexParaRgb(CORES_RIMA_HEX[corDaLetra(linha.letra)]) : null;
+            const corLetra = linha.letra
+                ? hexParaRgb(CORES_RIMA_HEX[corDaLetra(linha.letra)])
+                : null;
             desenharCelula(x, y, PDF_LARGURA_COL_RIMA, PDF_ALTURA_LINHA_GRADE, linha.letra || '', {
                 tamanho: 9,
                 negrito: true,
@@ -467,19 +582,17 @@ export function gerarPdfEscansao(es, poema) {
     paragrafo(`Escansão — ${poema?.titulo || `#${es.id}`}`, { tamanho: 16, negrito: true });
 
     camposClassificacao(es).forEach(([rotulo, valor]) => {
-        linhaMista(
-            [
-                { texto: `${rotulo}: `, negrito: true },
-                { texto: String(valor) },
-            ],
-            { tamanho: 10, espacoDepois: 2 },
-        );
+        linhaMista([{ texto: `${rotulo}: `, negrito: true }, { texto: String(valor) }], {
+            tamanho: 10,
+            espacoDepois: 2,
+        });
     });
     y += 6;
 
     const linhas = Array.isArray(es.escansaoLinhas) ? es.escansaoLinhas : [];
     const rimas = Array.isArray(es.rimas) ? es.rimas : [];
-    const tabelaGrade = gradeParaTabela(linhas, rimas);
+    const ecos = Array.isArray(es.ecos) ? es.ecos : [];
+    const tabelaGrade = gradeParaTabela(linhas, rimas, ecos);
     const temVersos = tabelaGrade.linhas.some((l) => l.tipo === 'verso');
     let usouPaisagem = false;
     if (temVersos) {
@@ -499,14 +612,28 @@ export function gerarPdfEscansao(es, poema) {
         // a paisagem foi só pra grade caber, não é o formato do resto.
         if (usouPaisagem) novaPagina('portrait');
         paragrafo('Pares de Rima', { tamanho: 12, negrito: true, espacoDepois: 4 });
-        const resumo = resumoProximidadeTexto(rimas, linhas);
-        if (resumo) paragrafo(resumo, { tamanho: 10, espacoDepois: 4 });
+        linhasResumoParesTexto(rimas, linhas).forEach((linha) => {
+            paragrafo(linha, { tamanho: 10, espacoDepois: 2 });
+        });
         pares.forEach((p) => {
             const base = `${p.letra || '·'} — v.${p.numA} "${p.trechoA}" <-> v.${p.numB} "${p.trechoB}" (${p.posicao} · ${p.proximidade})`;
             paragrafo(p.classificacao ? `${base} — ${p.classificacao}` : base, {
                 tamanho: 10,
                 espacoDepois: 2,
             });
+        });
+    }
+
+    // Some do PDF inteiro quando o toggle "Mostrar Ecos Sonoros" está
+    // desligado — mesma preferência de mostrarEcosAtivo() já aplicada na
+    // grade acima (ver gradeParaTabela).
+    const ecosVisiveis = mostrarEcosAtivo() ? ecosParaTexto(ecos, linhas) : [];
+    if (ecosVisiveis.length) {
+        if (usouPaisagem && !pares.length) novaPagina('portrait');
+        paragrafo('Ecos Sonoros', { tamanho: 12, negrito: true, espacoDepois: 4 });
+        ecosVisiveis.forEach((e) => {
+            const base = `v.${e.numA} "${e.trechoA}" <-> v.${e.numB} "${e.trechoB}" (${e.posicao} · ${e.proximidade})`;
+            paragrafo(e.tipo ? `${base} — ${e.tipo}` : base, { tamanho: 10, espacoDepois: 2 });
         });
     }
 
@@ -575,8 +702,17 @@ function decidirOrientacaoGradeDocx(n) {
 // Linhas 'vazia' (separador entre estrofes) viram uma linha mesclada
 // (columnSpan) sem borda, só pra abrir espaço visual.
 function construirTabelaGradeDocx(docx, tabela, larguraConteudo) {
-    const { Table, TableRow, TableCell, Paragraph, TextRun, WidthType, VerticalAlign, BorderStyle, AlignmentType } =
-        docx;
+    const {
+        Table,
+        TableRow,
+        TableCell,
+        Paragraph,
+        TextRun,
+        WidthType,
+        VerticalAlign,
+        BorderStyle,
+        AlignmentType,
+    } = docx;
     const colSilaba = Math.max(
         DOCX_MIN_COL_SILABA,
         (larguraConteudo - DOCX_LARGURA_COL_NUMERO - DOCX_LARGURA_COL_RIMA) / tabela.n,
@@ -591,8 +727,24 @@ function construirTabelaGradeDocx(docx, tabela, larguraConteudo) {
         const linha = { style: BorderStyle.SINGLE, size: 10, color: hex };
         return { top: linha, bottom: linha, left: linha, right: linha };
     }
+    // Eco sonoro — mesma ideia de bordaColorida, mas tracejada
+    // (BorderStyle.DASHED) e cor neutra por padrão (DOCX_COR_ECO_HEX). Se
+    // a mesma célula também for rimada, usa a cor da rima só que
+    // tracejada — docx.js só aceita 1 estilo de borda por lado da
+    // célula, então as duas marcações não dá pra sobrepor de verdade
+    // aqui como na tela (ring + outline são camadas CSS distintas); o
+    // tracejado prevalece porque ele já indica "tem algo especial nesta
+    // sílaba", e a cor (quando houver) ainda conta a qual esquema de
+    // rima pertence.
+    function bordaTracejada(hex) {
+        const linha = { style: BorderStyle.DASHED, size: 8, color: hex };
+        return { top: linha, bottom: linha, left: linha, right: linha };
+    }
 
-    function celula(texto, { largura, negrito = false, fundoHex = null, bordas = bordaPadrao(), corHex = null } = {}) {
+    function celula(
+        texto,
+        { largura, negrito = false, fundoHex = null, bordas = bordaPadrao(), corHex = null } = {},
+    ) {
         return new TableCell({
             width: { size: largura, type: WidthType.DXA },
             verticalAlign: VerticalAlign.CENTER,
@@ -601,7 +753,13 @@ function construirTabelaGradeDocx(docx, tabela, larguraConteudo) {
             children: [
                 new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    children: [new TextRun({ text: texto || '', bold: negrito, color: corHex || undefined })],
+                    children: [
+                        new TextRun({
+                            text: texto || '',
+                            bold: negrito,
+                            color: corHex || undefined,
+                        }),
+                    ],
                 }),
             ],
         });
@@ -610,7 +768,9 @@ function construirTabelaGradeDocx(docx, tabela, larguraConteudo) {
     const linhaCabecalho = new TableRow({
         children: [
             celula('Nº', { largura: DOCX_LARGURA_COL_NUMERO }),
-            ...Array.from({ length: tabela.n }, (_, i) => celula(String(i + 1), { largura: colSilaba })),
+            ...Array.from({ length: tabela.n }, (_, i) =>
+                celula(String(i + 1), { largura: colSilaba }),
+            ),
             celula('Rima', { largura: DOCX_LARGURA_COL_RIMA }),
         ],
     });
@@ -621,20 +781,33 @@ function construirTabelaGradeDocx(docx, tabela, larguraConteudo) {
                 children: [
                     new TableCell({
                         columnSpan: tabela.n + 2,
-                        borders: { top: SEM_BORDA, bottom: SEM_BORDA, left: SEM_BORDA, right: SEM_BORDA },
+                        borders: {
+                            top: SEM_BORDA,
+                            bottom: SEM_BORDA,
+                            left: SEM_BORDA,
+                            right: SEM_BORDA,
+                        },
                         children: [new Paragraph({ children: [] })],
                     }),
                 ],
             });
         }
-        const celulasSilaba = linha.celulas.map((c) =>
-            celula(c.texto, {
+        const celulasSilaba = linha.celulas.map((c) => {
+            let bordas = bordaPadrao();
+            if (c.eco) {
+                bordas = bordaTracejada(
+                    c.letraRima ? CORES_RIMA_HEX[corDaLetra(c.letraRima)] : DOCX_COR_ECO_HEX,
+                );
+            } else if (c.letraRima) {
+                bordas = bordaColorida(CORES_RIMA_HEX[corDaLetra(c.letraRima)]);
+            }
+            return celula(c.texto, {
                 largura: colSilaba,
                 negrito: c.tonica,
                 fundoHex: c.tonica ? FUNDO_TONICA_HEX : null,
-                bordas: c.letraRima ? bordaColorida(CORES_RIMA_HEX[corDaLetra(c.letraRima)]) : bordaPadrao(),
-            }),
-        );
+                bordas,
+            });
+        });
         return new TableRow({
             children: [
                 celula(String(linha.numero), { largura: DOCX_LARGURA_COL_NUMERO }),
@@ -685,16 +858,22 @@ export function gerarDocxEscansao(es, poema) {
 
     const linhas = Array.isArray(es.escansaoLinhas) ? es.escansaoLinhas : [];
     const rimas = Array.isArray(es.rimas) ? es.rimas : [];
-    const tabelaGrade = gradeParaTabela(linhas, rimas);
+    const ecos = Array.isArray(es.ecos) ? es.ecos : [];
+    const tabelaGrade = gradeParaTabela(linhas, rimas, ecos);
     const temVersos = tabelaGrade.linhas.some((l) => l.tipo === 'verso');
     const orientacao = temVersos ? decidirOrientacaoGradeDocx(tabelaGrade.n) : 'portrait';
     const emPaisagem = orientacao === 'landscape';
 
     if (temVersos) {
         filhos.push(
-            new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun('Grade Silábica')] }),
+            new Paragraph({
+                heading: HeadingLevel.HEADING_2,
+                children: [new TextRun('Grade Silábica')],
+            }),
         );
-        const larguraPagina = emPaisagem ? DOCX_PAGINA_A4_RETRATO.height : DOCX_PAGINA_A4_RETRATO.width;
+        const larguraPagina = emPaisagem
+            ? DOCX_PAGINA_A4_RETRATO.height
+            : DOCX_PAGINA_A4_RETRATO.width;
         const larguraConteudo = larguraPagina - DOCX_MARGEM_TWIPS * 2;
         filhos.push(construirTabelaGradeDocx(docx, tabelaGrade, larguraConteudo));
         // Parágrafo vazio depois da tabela — a lib docx não aceita duas
@@ -707,20 +886,46 @@ export function gerarDocxEscansao(es, poema) {
     const pares = paresParaTexto(rimas, linhas);
     if (pares.length) {
         filhos.push(
-            new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun('Pares de Rima')] }),
+            new Paragraph({
+                heading: HeadingLevel.HEADING_2,
+                children: [new TextRun('Pares de Rima')],
+            }),
         );
-        const resumo = resumoProximidadeTexto(rimas, linhas);
-        if (resumo) {
+        linhasResumoParesTexto(rimas, linhas).forEach((linha) => {
             filhos.push(
                 new Paragraph({
-                    spacing: { after: 100 },
-                    children: [new TextRun({ text: resumo, italics: true })],
+                    spacing: { after: 60 },
+                    children: [new TextRun({ text: linha, italics: true })],
                 }),
             );
-        }
+        });
         pares.forEach((p) => {
             const texto = `${p.letra || '·'} — v.${p.numA} "${p.trechoA}" ↔ v.${p.numB} "${p.trechoB}" (${p.posicao} · ${p.proximidade})${
                 p.classificacao ? ` — ${p.classificacao}` : ''
+            }`;
+            filhos.push(
+                new Paragraph({
+                    bullet: { level: 0 },
+                    spacing: { after: 60 },
+                    children: [new TextRun(texto)],
+                }),
+            );
+        });
+    }
+
+    // Some do .docx inteiro quando o toggle "Mostrar Ecos Sonoros" está
+    // desligado — mesma preferência já aplicada na grade (gradeParaTabela).
+    const ecosVisiveis = mostrarEcosAtivo() ? ecosParaTexto(ecos, linhas) : [];
+    if (ecosVisiveis.length) {
+        filhos.push(
+            new Paragraph({
+                heading: HeadingLevel.HEADING_2,
+                children: [new TextRun('Ecos Sonoros')],
+            }),
+        );
+        ecosVisiveis.forEach((e) => {
+            const texto = `v.${e.numA} "${e.trechoA}" ↔ v.${e.numB} "${e.trechoB}" (${e.posicao} · ${e.proximidade})${
+                e.tipo ? ` — ${e.tipo}` : ''
             }`;
             filhos.push(
                 new Paragraph({
@@ -741,7 +946,9 @@ export function gerarDocxEscansao(es, poema) {
                         size: {
                             width: DOCX_PAGINA_A4_RETRATO.width,
                             height: DOCX_PAGINA_A4_RETRATO.height,
-                            orientation: emPaisagem ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT,
+                            orientation: emPaisagem
+                                ? PageOrientation.LANDSCAPE
+                                : PageOrientation.PORTRAIT,
                         },
                     },
                 },

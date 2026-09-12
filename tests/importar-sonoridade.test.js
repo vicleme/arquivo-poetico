@@ -199,3 +199,102 @@ describe('validarJsonSonoridade — pares de rima', () => {
         assert.equal(r.rimas.length, 0);
     });
 });
+
+describe('validarJsonSonoridade — Ecos Sonoros', () => {
+    const linhasBase = {
+        poemaId: 222,
+        escansaoLinhas: [
+            { tipo: 'verso', texto: 'a/b/c' },
+            { tipo: 'verso', texto: 'd/e/f' },
+        ],
+    };
+
+    it('aceita um eco válido, com tipo livre (qualquer string, não só as 5 sugestões)', () => {
+        const r = validarJsonSonoridade(
+            {
+                ...linhasBase,
+                ecos: [
+                    {
+                        a: { linha: 0, silabas: [2] },
+                        b: { linha: 1, silabas: [2] },
+                        tipo: 'Eco disperso e tal',
+                    },
+                ],
+            },
+            POEMAS,
+            '',
+        );
+        assert.equal(r.ecos.length, 1);
+        assert.equal(r.ecos[0].tipo, 'Eco disperso e tal');
+        assert.equal(
+            r.avisos.some((a) => a.includes('descartado')),
+            false,
+        );
+    });
+
+    it('eco sem `tipo` (campo opcional) é aceito normalmente, sem o atributo tipo', () => {
+        const r = validarJsonSonoridade(
+            {
+                ...linhasBase,
+                ecos: [{ a: { linha: 0, silabas: [0] }, b: { linha: 1, silabas: [0] } }],
+            },
+            POEMAS,
+            '',
+        );
+        assert.equal(r.ecos.length, 1);
+        assert.equal(r.ecos[0].tipo, undefined);
+    });
+
+    it('descarta eco com índice de linha fora da grade, com aviso próprio (não confundido com aviso de rima)', () => {
+        const r = validarJsonSonoridade(
+            {
+                ...linhasBase,
+                ecos: [{ a: { linha: 0, silabas: [0] }, b: { linha: 9, silabas: [0] } }],
+            },
+            POEMAS,
+            '',
+        );
+        assert.equal(r.ecos.length, 0);
+        assert.ok(r.avisos.some((a) => a.includes('eco sonoro')));
+    });
+
+    it('descarta eco com índice de sílaba fora do verso', () => {
+        const r = validarJsonSonoridade(
+            {
+                ...linhasBase,
+                ecos: [{ a: { linha: 0, silabas: [99] }, b: { linha: 1, silabas: [0] } }],
+            },
+            POEMAS,
+            '',
+        );
+        assert.equal(r.ecos.length, 0);
+    });
+
+    it('rimas e ecos são validados/reportados de forma independente — um não interfere no outro', () => {
+        const r = validarJsonSonoridade(
+            {
+                ...linhasBase,
+                rimas: [{ a: { linha: 0, silabas: [9] }, b: { linha: 1, silabas: [0] } }], // descartado
+                ecos: [{ a: { linha: 0, silabas: [0] }, b: { linha: 1, silabas: [1] } }], // aceito
+            },
+            POEMAS,
+            '',
+        );
+        assert.equal(r.rimas.length, 0);
+        assert.equal(r.ecos.length, 1);
+        assert.ok(r.avisos.some((a) => a.includes('par de rima')));
+        assert.equal(
+            r.avisos.some((a) => a.includes('eco sonoro')),
+            false,
+        );
+    });
+
+    it('sem `ecos` no JSON, retorna array vazio sem aviso', () => {
+        const r = validarJsonSonoridade({ ...linhasBase }, POEMAS, '');
+        assert.deepEqual(r.ecos, []);
+        assert.equal(
+            r.avisos.some((a) => a.includes('eco')),
+            false,
+        );
+    });
+});

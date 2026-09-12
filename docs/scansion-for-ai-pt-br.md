@@ -69,7 +69,30 @@ Se houver monorrima (vários versos com o mesmo som, tipo AAAA), aponte
 todos os pares que formam essa cadeia (1↔2, 2↔3, 3↔4, etc. — não precisa
 decidir se isso vira "um grupo só", o sistema une automaticamente).
 
-## Passo 3 — Classificar cada par de rima
+## Passo 3 — Localizar ecos sonoros (quase-rimas)
+
+Separado do Passo 2, procure **ecos sonoros**: pares de versos cujos finais
+(ou, mais raramente, um trecho no meio do verso) soam parecido mas não
+chegam a rimar de fato pela definição estrita usada no Passo 2/Passo 4
+(ex.: compartilham só parte do som final, ou a semelhança é mais textural
+do que uma rima de verdade). Isso é especialmente relevante em verso livre,
+onde o poema pode evitar de propósito a rima plena mas ainda assim
+trabalhar com sons repetidos/parecidos.
+
+Aponte **quais versos formam cada par de eco** e exatamente quais
+sílaba(s) de cada lado criam o som compartilhado — mesmo nível de detalhe
+dos pares de rima do Passo 2. Pra cada par de eco, sugira também um rótulo
+de **tipo** descrevendo o recurso sonoro em jogo. Esse é um **campo de
+texto livre**, não uma lista fechada, mas prefira um destes rótulos comuns
+quando fizer sentido, antes de inventar um novo:
+
+Assonância · Aliteração · Consonância · Paronomásia · Homeoteleuto
+
+Se o poema não tiver ecos além das rimas de verdade (ou nenhum além do que
+já foi capturado no Passo 2), tudo bem devolver uma lista vazia aqui — nem
+todo poema tem.
+
+## Passo 4 — Classificar cada par de rima
 
 Para cada par identificado no Passo 2, classifique nos três eixos abaixo
 (escolha uma opção de cada lista para cada par):
@@ -92,7 +115,7 @@ Para cada par identificado no Passo 2, classifique nos três eixos abaixo
 - Idêntica (repetição de palavra)
 - Homônima (repetição de grafia/som)
 
-## Passo 4 — Classificação geral do poema (7 campos)
+## Passo 5 — Classificação geral do poema (7 campos)
 
 Preencha os 7 campos abaixo com base no poema inteiro. Escolha sempre da
 lista fechada correspondente, com a grafia exata.
@@ -186,7 +209,7 @@ Duas observações que ajudam a decidir Presença/Padrão de Rima:
 ## Formato de saída
 
 Por padrão, devolva sua análise no formato de **texto** abaixo (seções 1 a
-4) — é nele que dá pra eu revisar e tirar dúvidas com você antes de
+5) — é nele que dá pra eu revisar e tirar dúvidas com você antes de
 transcrever pro sistema. Só gere o **JSON** (seção "Formato JSON — sob
 pedido", mais abaixo) quando eu pedir explicitamente — por exemplo, depois
 de revisar a análise em texto, eu digo algo como "agora me dá isso em JSON
@@ -203,13 +226,20 @@ Lista numerada. Para cada par: quais dois versos (pelo nº), qual trecho
 sonoro de cada lado (pode citar a palavra ou só a(s) sílaba(s) rimante(s)),
 e a classificação nos 3 eixos (Acentuação / Tonalidade / Riqueza).
 
-### 3. Classificação geral
+### 3. Ecos sonoros
 
-Tabela ou lista com os 8 campos do Passo 4 e o valor escolhido para cada
+Lista numerada. Para cada par de eco: quais dois versos (pelo nº), o
+trecho ecoante de cada lado, e o rótulo de `tipo` sugerido (da lista do
+Passo 3, ou um personalizado se nenhum encaixar). Omita esta seção (ou
+diga "nenhum encontrado") se o poema não tiver ecos.
+
+### 4. Classificação geral
+
+Tabela ou lista com os 8 campos do Passo 5 e o valor escolhido para cada
 um, mais uma frase curta justificando a Forma escolhida (é o campo que mais
 depende de leitura interpretativa, os outros decorrem bastante dele).
 
-### 4. Pontos de atenção
+### 5. Pontos de atenção
 
 Qualquer verso onde a divisão silábica ficou ambígua (ex. duas leituras
 métricas possíveis), qualquer rima duvidosa (toante vs. imperfeita, por
@@ -251,6 +281,13 @@ Estrutura exata esperada pelo sistema:
       "tonalidade": "Soante / Consoante (Perfeita)",
       "riqueza": "Pobre (mesma classe gramatical)"
     }
+  ],
+  "ecos": [
+    {
+      "a": { "linha": 2, "silabas": [3] },
+      "b": { "linha": 4, "silabas": [2] },
+      "tipo": "Assonância"
+    }
   ]
 }
 ```
@@ -266,7 +303,7 @@ Regras específicas do JSON — nada aqui pode ser inventado ou aproximado:
 - **Os 8 campos de classificação** (`formaPoema`, `regularidadeMetrica`,
   `tamanhoVerso`, `esquemaRimasPresenca`, `esquemaRimasPadrao`,
   `origemTradicao`, `registro`, `tom`): mesma grafia exata das listas do
-  Passo 4. Se algum campo não se aplicar (ex. `esquemaRimasPadrao` quando a
+  Passo 5. Se algum campo não se aplicar (ex. `esquemaRimasPadrao` quando a
   Presença não é "Rimado"), pode simplesmente omitir a chave.
 - **`escansaoLinhas`**: um item por linha do poema, na ordem, incluindo as
   linhas em branco entre estrofes como `{ "tipo": "vazia" }` (sem `texto`
@@ -286,7 +323,16 @@ Regras específicas do JSON — nada aqui pode ser inventado ou aproximado:
   e `silabas` é a lista de índices (mesma base 0 de `tonicas`) das sílabas
   daquele lado que formam o som compartilhado (mais de um índice quando a
   rima for rica o bastante pra cobrir mais de uma sílaba). `acentuacao`,
-  `tonalidade` e `riqueza` seguem a grafia exata do Passo 3.
+  `tonalidade` e `riqueza` seguem a grafia exata do Passo 4.
+- **`ecos`**: mesmo formato de `rimas` (lados `a`/`b`, mesmo esquema de
+  `linha`/`silabas` base 0), um objeto por par de eco identificado no
+  Passo 3 — mas em vez de `acentuacao`/`tonalidade`/`riqueza`, cada objeto
+  leva uma única chave **`tipo`** com uma string de texto livre (prefira
+  um dos rótulos sugeridos no Passo 3 — Assonância, Aliteração,
+  Consonância, Paronomásia, Homeoteleuto — mas qualquer string não-vazia
+  é aceita). Só omita `tipo` se genuinamente não der pra caracterizar o
+  eco. Se o poema não tiver ecos, omita a chave `ecos` inteira (ou use um
+  array vazio).
 
 Se alguma coisa ficou ambígua ou incerta durante a análise em texto,
 resolva isso comigo antes de eu pedir o JSON — o formato JSON não tem
