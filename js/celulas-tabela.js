@@ -441,6 +441,7 @@ const COLUNA_CAMPO_BUSCA = {
         pessoas: '_buscaPessoas',
         grupos: '_buscaGrupos',
         intertextualidade: '_buscaIntertexto',
+        hipertextualidade: '_buscaHipertexto',
         anexos: '_buscaAnexos',
         anexosNotaGeral: 'anexosNotaGeral',
         anotacoesMarginais: '_buscaAnotacoes',
@@ -481,6 +482,7 @@ const COLUNA_CAMPO_BUSCA = {
         // roda igual pras duas tabelas, então os campos decorados
         // _busca* já existem pra Prosa desde sempre).
         intertextualidade: '_buscaIntertexto',
+        hipertextualidade: '_buscaHipertexto',
         anexos: '_buscaAnexos',
         anexosNotaGeral: 'anexosNotaGeral',
         contextoHistorico: 'contextoHistorico',

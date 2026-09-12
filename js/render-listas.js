@@ -45,6 +45,7 @@ import {
     paresAutoria,
     estaPublicado,
     PAPEIS_PESSOA,
+    corpoEntradaHipertextualidade,
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
 import { getColunasAtivas, DEFINICAO_COLUNAS } from './colunas.js';
@@ -754,6 +755,14 @@ function decorarCamposBusca(item, extraLivros = '') {
                   )
                   .join(' ')
             : '',
+        _buscaHipertexto: Array.isArray(item.hipertextualidade)
+            ? item.hipertextualidade
+                  .map(
+                      (h) =>
+                          `${h.tipo || ''} ${h.relacao || ''} ${h.hipotexto || ''} ${h.link || ''} ${h.nota || ''}`,
+                  )
+                  .join(' ')
+            : '',
         _buscaAnexos: Array.isArray(item.anexos)
             ? item.anexos
                   .map((it) => `${it.tipo || ''} ${it.texto || ''} ${it.link || ''}`)
@@ -1249,6 +1258,11 @@ const COMPARADORES_ORDENACAO = {
             ? p.intertextualidade.map((it) => it.texto).join(' ')
             : '',
     ),
+    hipertextualidade: compararPorTexto((p) =>
+        Array.isArray(p.hipertextualidade)
+            ? p.hipertextualidade.map((h) => corpoEntradaHipertextualidade(h)).join(' ')
+            : '',
+    ),
     referenciasExternas: compararPorTexto((p) =>
         Array.isArray(p.referenciasExternas)
             ? p.referenciasExternas.map((it) => it.texto).join(' ')
@@ -1732,6 +1746,24 @@ export function renderPoemas() {
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
         },
+        hipertextualidade: (p) => {
+            const lista = Array.isArray(p.hipertextualidade) ? p.hipertextualidade : [];
+            if (!lista.length)
+                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            const html = lista
+                .map((h) => {
+                    const badge = h.tipo
+                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(h.tipo)}</span>`
+                        : '';
+                    const link = h.link
+                        ? ` <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(h.link)}</a>`
+                        : '';
+                    const nota = h.nota ? ` — ${trechoNota(h.nota)}` : '';
+                    return `<div>${badge}${trechoNota(corpoEntradaHipertextualidade(h))}${link}${nota}</div>`;
+                })
+                .join('');
+            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
+        },
         referenciasExternas: (p) => {
             const lista = Array.isArray(p.referenciasExternas) ? p.referenciasExternas : [];
             if (!lista.length)
@@ -2035,6 +2067,24 @@ export function renderProsas() {
                         : '';
                     const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
                     return `<div>${badge}${trechoNota(it.texto)}${link}${nota}</div>`;
+                })
+                .join('');
+            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
+        },
+        hipertextualidade: (pr) => {
+            const lista = Array.isArray(pr.hipertextualidade) ? pr.hipertextualidade : [];
+            if (!lista.length)
+                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            const html = lista
+                .map((h) => {
+                    const badge = h.tipo
+                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(h.tipo)}</span>`
+                        : '';
+                    const link = h.link
+                        ? ` <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(h.link)}</a>`
+                        : '';
+                    const nota = h.nota ? ` — ${trechoNota(h.nota)}` : '';
+                    return `<div>${badge}${trechoNota(corpoEntradaHipertextualidade(h))}${link}${nota}</div>`;
                 })
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;

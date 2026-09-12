@@ -66,6 +66,12 @@ export const DEFINICAO_COLUNAS = {
             sortType: 'alfabetico',
         },
         {
+            key: 'hipertextualidade',
+            label: 'Hipertextualidade',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
             key: 'referenciasExternas',
             label: 'Referências',
             default: false,
@@ -189,6 +195,12 @@ export const DEFINICAO_COLUNAS = {
         {
             key: 'intertextualidade',
             label: 'Intertextualidade',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'hipertextualidade',
+            label: 'Hipertextualidade',
             default: false,
             sortType: 'alfabetico',
         },
