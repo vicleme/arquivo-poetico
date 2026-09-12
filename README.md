@@ -385,14 +385,20 @@ npm run format:check   # prettier --check .
   - **Rhyme Mode**: click a syllable to open one side of the pair
     (shift-click extends it for a rich rhyme), click a syllable in another
     verse to open the other side, then confirm the pair — mutually
-    exclusive with Stressed Syllable Mode. The scheme letter (A, B, C...)
-    and Position (External/Internal) are never chosen by hand: the system
-    derives both from the confirmed pairs.
+    exclusive with Stressed Syllable Mode. The scheme letter (A, B, C...),
+    Position (External/Internal), and Proximity (Neighboring/Distant) are
+    never chosen by hand: the system derives all three from the confirmed
+    pairs — Proximity from how many verses apart the two sides are (see
+    `DISTANCIA_VIZINHO_MAXIMA` in `js/utils.js`).
   - **Rhyme Pairs**: a list below the grid with each pair's classification
     — Stress (Oxytone/Paroxytone/Proparoxytone), Tonality (Perfect/
-    Assonant/Imperfect), and Richness (Poor/Rich/Rare/Precious) — plus
-    removal with "Undo" and side reassignment without losing the
-    classification already made.
+    Assonant/Imperfect), and Richness (Poor/Rich/Rare/Precious/Identical/
+    Homonymous) — plus removal with "Undo" and side reassignment without
+    losing the classification already made. The panel header shows the
+    final count of neighboring vs. distant pairs and characterizes the
+    poem as a whole ("Com Rimas mais Próximas"/"Com Rimas mais Distantes",
+    or "Com Rimas Equilibradas" on a tie) — same auto-derived spirit as
+    Position, never chosen by hand.
   - **Poem classification**: 7 closed-option fields (Poem Form, Metrical
     Regularity, Verse Length, Rhyme Scheme — Presence and Structural
     Pattern —, Origin/Tradition, Register, and Tone). Choosing the Poem

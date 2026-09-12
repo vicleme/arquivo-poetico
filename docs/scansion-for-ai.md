@@ -67,10 +67,11 @@ Go through the poem and identify **pairs of verses that rhyme with each
 other** based on the final sound (starting from the last stressed syllable
 of each verse — this can include more than one syllable on each side when
 the rhyme is rich, covering more than one shared sound). Don't worry about
-computing the scheme "letter" (A, B, C...) or whether the rhyme is
-external/internal — the system calculates that on its own from the pairs;
-you only need to point out **which verses rhyme with which**, and exactly
-which syllables on each side form the shared sound.
+computing the scheme "letter" (A, B, C...), whether the rhyme is
+external/internal, or how close/far apart the two verses are — the system
+calculates all of that on its own from the pairs; you only need to point
+out **which verses rhyme with which**, and exactly which syllables on each
+side form the shared sound.
 
 If there's a monorhyme (several verses sharing the same sound, like AAAA),
 list all the pairs that form that chain (1↔2, 2↔3, 3↔4, etc. — no need to
@@ -96,11 +97,12 @@ For each pair identified in Step 2, classify it along the three axes below
 **Richness** (grammatical relationship between the rhyming words):
 - Pobre (mesma classe gramatical) — same part of speech
 - Rica (classes gramaticais diferentes) — different parts of speech
-- Rara (palavra de baixa frequência/pouco usada em rima) — rare/uncommon
-  word in rhyme
-- Preciosa (combinação vocabular incomum, ex. palavra composta/
-  estrangeirismo) — unusual word combination, e.g. compound word or
-  loanword
+- Rara (palavra com poucas opções de rima) — word with few rhyming
+  options
+- Preciosa (combinação vocabular incomum) — unusual word combination
+- Idêntica (repetição de palavra) — identical/repeated word
+- Homônima (repetição de grafia/som) — homonym (same spelling/sound,
+  different meaning)
 
 ## Step 4 — General classification of the poem (7 fields)
 

@@ -383,13 +383,20 @@ npm run format:check   # prettier --check .
   - **Modo Rima**: clique numa sílaba pra abrir um lado do par (shift-clique
     estende pra rima rica), clique noutro verso pra abrir o outro lado e
     confirme o par — mutuamente exclusivo com o Modo Tônica. A letra do
-    esquema (A, B, C...) e a Posição (Externa/Interna) nunca são escolhidas
-    à mão: o sistema deriva as duas a partir dos pares confirmados.
+    esquema (A, B, C...), a Posição (Externa/Interna) e a Proximidade
+    (Vizinha/Distante) nunca são escolhidas à mão: o sistema deriva as três
+    a partir dos pares confirmados — Proximidade a partir de quantos
+    versos separam os dois lados (ver `DISTANCIA_VIZINHO_MAXIMA` em
+    `js/utils.js`).
   - **Pares de Rima**: lista abaixo da grade com a classificação de cada
     par — Acentuação (Aguda/Grave/Esdrúxula), Tonalidade (Soante/Toante/
-    Imperfeita) e Riqueza (Pobre/Rica/Rara/Preciosa) —, remoção com
-    "Desfazer" e correção/reatribuição de lado sem perder a classificação
-    já feita.
+    Imperfeita) e Riqueza (Pobre/Rica/Rara/Preciosa/Idêntica/Homônima) —,
+    remoção com "Desfazer" e correção/reatribuição de lado sem perder a
+    classificação já feita. O cabeçalho da lista mostra a contagem final
+    de pares vizinhos x distantes e caracteriza o poema como um todo
+    ("Com Rimas mais Próximas"/"Com Rimas mais Distantes", ou "Com Rimas
+    Equilibradas" em caso de empate) — mesmo espírito de derivação
+    automática da Posição, nunca escolhido à mão.
   - **Classificação do poema**: 7 campos de opções fechadas (Forma do
     Poema, Regularidade Métrica, Tamanho do Verso, Esquema de Rimas —
     Presença e Padrão Estrutural —, Origem/Tradição, Registro e Tom).

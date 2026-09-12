@@ -60,10 +60,10 @@ Percorra o poema e identifique **pares de versos que rimam entre si** pela
 sonoridade final (a partir da última sílaba tônica de cada verso — pode
 incluir mais de uma sílaba do lado de cada verso quando a rima for rica,
 cobrindo mais de uma sílaba sonora). Não se preocupe em calcular a "letra"
-do esquema (A, B, C...) nem se a rima é externa/interna — isso o sistema
-calcula sozinho a partir dos pares; você só precisa apontar **quais versos
-rimam com quais**, e quais sílabas exatas de cada lado formam o som
-compartilhado.
+do esquema (A, B, C...), se a rima é externa/interna, nem a distância entre
+os dois versos — isso o sistema calcula sozinho a partir dos pares; você só
+precisa apontar **quais versos rimam com quais**, e quais sílabas exatas de
+cada lado formam o som compartilhado.
 
 Se houver monorrima (vários versos com o mesmo som, tipo AAAA), aponte
 todos os pares que formam essa cadeia (1↔2, 2↔3, 3↔4, etc. — não precisa
@@ -87,8 +87,10 @@ Para cada par identificado no Passo 2, classifique nos três eixos abaixo
 **Riqueza** (relação gramatical entre as palavras que rimam):
 - Pobre (mesma classe gramatical)
 - Rica (classes gramaticais diferentes)
-- Rara (palavra de baixa frequência/pouco usada em rima)
-- Preciosa (combinação vocabular incomum, ex. palavra composta/estrangeirismo)
+- Rara (palavra com poucas opções de rima)
+- Preciosa (combinação vocabular incomum)
+- Idêntica (repetição de palavra)
+- Homônima (repetição de grafia/som)
 
 ## Passo 4 — Classificação geral do poema (7 campos)
 
