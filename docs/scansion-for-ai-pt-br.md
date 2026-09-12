@@ -183,7 +183,12 @@ Duas observações que ajudam a decidir Presença/Padrão de Rima:
 
 ## Formato de saída
 
-Devolva sua análise nesta estrutura:
+Por padrão, devolva sua análise no formato de **texto** abaixo (seções 1 a
+4) — é nele que dá pra eu revisar e tirar dúvidas com você antes de
+transcrever pro sistema. Só gere o **JSON** (seção "Formato JSON — sob
+pedido", mais abaixo) quando eu pedir explicitamente — por exemplo, depois
+de revisar a análise em texto, eu digo algo como "agora me dá isso em JSON
+pra eu importar". Não pule direto pro JSON por conta própria.
 
 ### 1. Grade silábica
 
@@ -208,3 +213,79 @@ Qualquer verso onde a divisão silábica ficou ambígua (ex. duas leituras
 métricas possíveis), qualquer rima duvidosa (toante vs. imperfeita, por
 exemplo) ou qualquer combinação incomum sinalizada acima — para eu revisar
 antes de considerar a escansão fechada e transcrever pro sistema.
+
+---
+
+## Formato JSON — sob pedido
+
+Só gere esta versão se eu pedir explicitamente, depois de já termos
+alinhado a análise em texto acima. Quando eu pedir, gere o JSON a partir da
+mesma análise já feita (não refaça a leitura do poema do zero) e devolva só
+o bloco de código, pronto pra eu salvar como `.json` e subir direto no
+botão "Importar JSON" da aba Sonoridade.
+
+Estrutura exata esperada pelo sistema:
+
+```json
+{
+  "poemaTitulo": "Título exato do poema",
+  "formaPoema": "Forma Livre / Indefinida",
+  "regularidadeMetrica": "Versos Livres",
+  "tamanhoVerso": "Variável / Sem Metro",
+  "esquemaRimasPresenca": "Rimas Ocasionais",
+  "origemTradicao": "Contemporânea / Livre",
+  "registro": "Coloquial / Popular",
+  "tom": "Lírico / Introspectivo",
+  "escansaoLinhas": [
+    { "tipo": "verso", "texto": "Be/be/co/mo eu/be/bi:/de/bru/ça-te", "tonicas": [1, 5, 8] },
+    { "tipo": "verso", "texto": "..." },
+    { "tipo": "vazia" }
+  ],
+  "rimas": [
+    {
+      "a": { "linha": 0, "silabas": [8] },
+      "b": { "linha": 1, "silabas": [8] },
+      "acentuacao": "Grave / Paroxítona",
+      "tonalidade": "Soante / Consoante (Perfeita)",
+      "riqueza": "Pobre (mesma classe gramatical)"
+    }
+  ]
+}
+```
+
+Regras específicas do JSON — nada aqui pode ser inventado ou aproximado:
+
+- **`poemaId`**: nunca inclua esse campo. É o id interno do meu banco de
+  dados, que você não tem como saber — deixe de fora e o sistema resolve o
+  poema pelo `poemaTitulo`.
+- **`poemaTitulo`**: obrigatório, com o título **exatamente igual** ao que
+  está cadastrado no meu sistema (por isso eu colo o título junto do texto
+  do poema) — é assim que a importação encontra o poema certo.
+- **Os 8 campos de classificação** (`formaPoema`, `regularidadeMetrica`,
+  `tamanhoVerso`, `esquemaRimasPresenca`, `esquemaRimasPadrao`,
+  `origemTradicao`, `registro`, `tom`): mesma grafia exata das listas do
+  Passo 4. Se algum campo não se aplicar (ex. `esquemaRimasPadrao` quando a
+  Presença não é "Rimado"), pode simplesmente omitir a chave.
+- **`escansaoLinhas`**: um item por linha do poema, na ordem, incluindo as
+  linhas em branco entre estrofes como `{ "tipo": "vazia" }` (sem `texto`
+  nem `tonicas`). Para cada verso: `"tipo": "verso"`, `texto` com a mesma
+  divisão silábica do Passo 1 (sílabas separadas por `/`, sem espaço ao
+  redor — o hífen ortográfico pode continuar dentro da sílaba ou aparecer
+  como posição vazia isolada entre barras, tanto faz, o sistema ignora
+  hífen no cálculo), e `tonicas` como array de **índices base 0**, contando
+  as posições separadas por `/` da esquerda pra direita (a posição de um
+  hífen isolado entre barras conta como um índice, mas nunca deve aparecer
+  em `tonicas`). Não inclua `numero` — o sistema renumera sozinho.
+- **`rimas`**: um objeto por par identificado no Passo 2, com `a` e `b`
+  apontando pro lado esquerdo/direito do par. Cada lado é
+  `{ "linha": X, "silabas": [...] }`, onde **`linha` é o índice (base 0) da
+  posição do verso dentro do array `escansaoLinhas`** — contando também as
+  linhas vazias nessa numeração, já que elas ocupam uma posição no array —
+  e `silabas` é a lista de índices (mesma base 0 de `tonicas`) das sílabas
+  daquele lado que formam o som compartilhado (mais de um índice quando a
+  rima for rica o bastante pra cobrir mais de uma sílaba). `acentuacao`,
+  `tonalidade` e `riqueza` seguem a grafia exata do Passo 3.
+
+Se alguma coisa ficou ambígua ou incerta durante a análise em texto,
+resolva isso comigo antes de eu pedir o JSON — o formato JSON não tem
+espaço pra sinalizar dúvida como a seção "Pontos de atenção" tem.

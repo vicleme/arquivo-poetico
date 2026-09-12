@@ -258,6 +258,7 @@ import {
     initFormSonoridade,
     editarSonoridade,
     prepararNovaSonoridade,
+    importarSonoridadeDeArquivo,
     rastreadorPoema,
     rastreadorProsa,
 } from './forms.js';
@@ -579,6 +580,7 @@ window.toggleMenuMobile = toggleMenuMobile;
 window.toggleModal = toggleModal;
 window.prepararNovo = prepararNovo;
 window.prepararNovaSonoridade = prepararNovaSonoridade;
+window.importarSonoridadeDeArquivo = importarSonoridadeDeArquivo;
 window.sugerirSequencia = sugerirSequencia;
 window.filtrarDestinoPoema = filtrarDestinoPoema;
 window.filtrarDestinoProsa = filtrarDestinoProsa;

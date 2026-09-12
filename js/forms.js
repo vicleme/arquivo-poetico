@@ -111,6 +111,7 @@ import {
     obterRimasSonoridade,
     calcularDivergenciaSilabas,
 } from './editor-sonoridade.js';
+import { validarJsonSonoridade } from './importar-sonoridade.js';
 
 // Lê o par Livro/Seção de texto livre dos campos de Migração (Cortado
 // de / Lançado em) — compartilhado por Poema e Prosa (item 4), por isso
@@ -666,8 +667,7 @@ function popularSelectOpcoes(id, opcoes, valorAtual = '') {
 function aplicarCascataSonoridade() {
     const formaPoema = document.getElementById('son-forma-poema')?.value || '';
     const regularidadeMetrica = document.getElementById('son-regularidade-metrica')?.value || '';
-    const esquemaRimasPresenca =
-        document.getElementById('son-esquema-rimas-presenca')?.value || '';
+    const esquemaRimasPresenca = document.getElementById('son-esquema-rimas-presenca')?.value || '';
 
     const opcoes = calcularOpcoesCascataSonoridade({
         formaPoema,
@@ -675,7 +675,11 @@ function aplicarCascataSonoridade() {
         esquemaRimasPresenca,
     });
 
-    popularSelectOpcoes('son-regularidade-metrica', opcoes.regularidadeMetrica, regularidadeMetrica);
+    popularSelectOpcoes(
+        'son-regularidade-metrica',
+        opcoes.regularidadeMetrica,
+        regularidadeMetrica,
+    );
     popularSelectOpcoes(
         'son-tamanho-verso',
         opcoes.tamanhoVerso,
@@ -697,7 +701,6 @@ function aplicarCascataSonoridade() {
         document.getElementById('son-origem-tradicao')?.value,
     );
 }
-
 
 // junto com um aviso (não bloqueante) se o poema escolhido já tiver
 // uma escansão cadastrada (edição em cima dela substitui; cadastro novo
@@ -805,6 +808,84 @@ function popularCamposSonoridade(valores = {}) {
     carregarGradeSonoridade();
 }
 
+// Aplica só os 7 selects de classificação (sem mexer no <select> de
+// Poema nem na grade) — subconjunto de popularCamposSonoridade(),
+// reaproveitado pela importação de JSON abaixo, que resolve poema e
+// grade separadamente (poema pode já estar selecionado antes do
+// upload; a grade vem sanitizada de validarJsonSonoridade, não de
+// construirLinhasIniciais/es.escansaoLinhas).
+function aplicarClassificacaoSonoridade(valores) {
+    popularSelectOpcoes('son-forma-poema', FORMAS_POEMA, valores.formaPoema);
+    popularSelectOpcoes(
+        'son-regularidade-metrica',
+        REGULARIDADES_METRICAS,
+        valores.regularidadeMetrica,
+    );
+    popularSelectOpcoes('son-tamanho-verso', TAMANHOS_VERSO, valores.tamanhoVerso);
+    popularSelectOpcoes(
+        'son-esquema-rimas-presenca',
+        ESQUEMA_RIMAS_PRESENCA,
+        valores.esquemaRimasPresenca,
+    );
+    popularSelectOpcoes(
+        'son-esquema-rimas-padrao',
+        ESQUEMA_RIMAS_PADRAO,
+        valores.esquemaRimasPadrao,
+    );
+    popularSelectOpcoes('son-origem-tradicao', ORIGENS_TRADICAO_SONORIDADE, valores.origemTradicao);
+    popularSelectOpcoes('son-registro', REGISTROS_SONORIDADE, valores.registro);
+    popularSelectOpcoes('son-tom', TONS_SONORIDADE, valores.tom);
+    aplicarCascataSonoridade();
+}
+
+// Botão "Importar JSON" do modal de Sonoridade — lê um .json no mesmo
+// formato do baixado por baixarEscansaoJson (exportar-sonoridade.js) e
+// preenche poema/classificação/grade a partir dele, em vez de tudo
+// manual. A validação/sanitização em si mora em importar-sonoridade.js
+// (módulo puro, sem DOM); esta função só lê o arquivo e aplica o
+// resultado no formulário já aberto.
+export function importarSonoridadeDeArquivo(event) {
+    const arquivo = event.target?.files?.[0];
+    if (!arquivo) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        let dados;
+        try {
+            dados = JSON.parse(e.target.result);
+        } catch {
+            mostrarAviso('Erro ao ler o arquivo — confira se é um .json válido.');
+            event.target.value = '';
+            return;
+        }
+
+        const poemaSelecionadoId = document.getElementById('son-poema-id')?.value;
+        const resultado = validarJsonSonoridade(dados, db.poemas, poemaSelecionadoId);
+        if (resultado.erro) {
+            mostrarAviso(resultado.erro);
+            event.target.value = '';
+            return;
+        }
+
+        const { poema, valores, linhas, rimas, avisos } = resultado;
+
+        const selPoema = document.getElementById('son-poema-id');
+        if (selPoema) selPoema.value = poema.id;
+        atualizarAvisoPoemaSonoridade();
+
+        aplicarClassificacaoSonoridade(valores);
+
+        const container = document.getElementById('son-grade-container');
+        if (container) inicializarGradeSonoridade(container, linhas, rimas);
+
+        if (avisos.length) avisos.forEach((msg) => mostrarAviso(msg));
+        else mostrarAviso('JSON importado.', 'sucesso');
+
+        event.target.value = '';
+    };
+    reader.readAsText(arquivo);
+}
+
 // Abre o modal pra uma escansão NOVA (botão "Adicionar Escansão") — a
 // contraparte de editarSonoridade abaixo. Função própria (em vez de
 // reaproveitar prepararNovo(tipo) de ui.js) porque o reset desse modal
@@ -899,7 +980,10 @@ export function initFormSonoridade() {
         const avisoMonorrima = avisoMonorrimaAtipica(dados.formaPoema, dados.esquemaRimasPadrao);
         if (avisoMonorrima) mostrarAviso(avisoMonorrima);
         if (dados.regularidadeMetrica === 'Isométrico') {
-            const divergentes = calcularDivergenciaSilabas(dados.escansaoLinhas, dados.tamanhoVerso);
+            const divergentes = calcularDivergenciaSilabas(
+                dados.escansaoLinhas,
+                dados.tamanhoVerso,
+            );
             if (divergentes.length) {
                 mostrarAviso(
                     `Verso${divergentes.length > 1 ? 's' : ''} ${divergentes.join(', ')} ${

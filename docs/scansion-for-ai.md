@@ -197,7 +197,13 @@ Two notes that help decide Rhyme Presence/Pattern:
 
 ## Output format
 
-Return your analysis in this structure:
+By default, return your analysis in the **text** format below (sections 1
+to 4) — that's what lets me review it and check things with you before
+transcribing it into the system. Only produce the **JSON** version (see
+"JSON format — on request", further below) when I explicitly ask for it —
+for example, after reviewing the text analysis, I say something like "now
+give me this as JSON so I can import it." Don't jump straight to JSON on
+your own.
 
 ### 1. Syllable grid
 
@@ -223,3 +229,85 @@ Any verse where the syllable division was ambiguous (e.g. two possible
 metrical readings), any doubtful rhyme (assonant vs. imperfect, for
 instance), or any unusual combination flagged above — for me to review
 before considering the scansion final and transcribing it into the system.
+
+---
+
+## JSON format — on request
+
+Only produce this version if I explicitly ask for it, after we've already
+aligned on the text analysis above. When I do ask, generate the JSON from
+the same analysis you already did (don't re-read the poem from scratch)
+and return just the code block, ready for me to save as `.json` and upload
+straight into the "Importar JSON" button in the Sonoridade tab.
+
+Note: the field names and values below stay in Portuguese even in this
+English document — that's the exact shape my system's import expects, not
+a translation choice.
+
+Exact structure the system expects:
+
+```json
+{
+  "poemaTitulo": "Exact poem title",
+  "formaPoema": "Forma Livre / Indefinida",
+  "regularidadeMetrica": "Versos Livres",
+  "tamanhoVerso": "Variável / Sem Metro",
+  "esquemaRimasPresenca": "Rimas Ocasionais",
+  "origemTradicao": "Contemporânea / Livre",
+  "registro": "Coloquial / Popular",
+  "tom": "Lírico / Introspectivo",
+  "escansaoLinhas": [
+    { "tipo": "verso", "texto": "Be/be/co/mo eu/be/bi:/de/bru/ça-te", "tonicas": [1, 5, 8] },
+    { "tipo": "verso", "texto": "..." },
+    { "tipo": "vazia" }
+  ],
+  "rimas": [
+    {
+      "a": { "linha": 0, "silabas": [8] },
+      "b": { "linha": 1, "silabas": [8] },
+      "acentuacao": "Grave / Paroxítona",
+      "tonalidade": "Soante / Consoante (Perfeita)",
+      "riqueza": "Pobre (mesma classe gramatical)"
+    }
+  ]
+}
+```
+
+JSON-specific rules — nothing here can be invented or approximated:
+
+- **`poemaId`**: never include this field. It's my database's internal id,
+  which you have no way of knowing — leave it out and the system resolves
+  the poem via `poemaTitulo` instead.
+- **`poemaTitulo`**: required, with the title **exactly matching** the one
+  registered in my system (that's why I paste the title along with the
+  poem's text) — that's how the import finds the right poem.
+- **The 8 classification fields** (`formaPoema`, `regularidadeMetrica`,
+  `tamanhoVerso`, `esquemaRimasPresenca`, `esquemaRimasPadrao`,
+  `origemTradicao`, `registro`, `tom`): exact same wording as the Step 4
+  lists. If a field doesn't apply (e.g. `esquemaRimasPadrao` when Presence
+  isn't "Rimado"), you can simply omit the key.
+- **`escansaoLinhas`**: one item per line of the poem, in order, including
+  the blank lines between stanzas as `{ "tipo": "vazia" }` (no `texto` or
+  `tonicas`). For each verse: `"tipo": "verso"`, `texto` with the same
+  syllable division from Step 1 (syllables separated by `/`, no space
+  around it — an orthographic hyphen can stay inside the syllable or show
+  up as an isolated empty slot between slashes, either way, the system
+  ignores the hyphen in its calculation), and `tonicas` as an array of
+  **0-based indices**, counting the slash-separated positions left to
+  right (an isolated hyphen slot between slashes counts as an index, but
+  should never appear in `tonicas`). Don't include `numero` — the system
+  renumbers on its own.
+- **`rimas`**: one object per pair identified in Step 2, with `a` and `b`
+  pointing to the left/right side of the pair. Each side is
+  `{ "linha": X, "silabas": [...] }`, where **`linha` is the 0-based index
+  of the verse's position within the `escansaoLinhas` array** — counting
+  blank lines toward that position too, since they occupy a slot in the
+  array — and `silabas` is the list of indices (same 0-based scheme as
+  `tonicas`) of the syllables on that side that form the shared sound (more
+  than one index when the rhyme is rich enough to cover more than one
+  syllable). `acentuacao`, `tonalidade`, and `riqueza` follow the exact
+  wording from Step 3.
+
+If anything was ambiguous or uncertain during the text analysis, resolve it
+with me before I ask for the JSON — the JSON format has no room to flag
+doubt the way the "Points to double-check" section does.

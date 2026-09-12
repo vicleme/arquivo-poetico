@@ -69,6 +69,41 @@
                         id="son-poema-aviso"
                         class="hidden text-[10px] text-amber-600 dark:text-amber-400 mt-1"
                     ></p>
+                    <div class="mt-2">
+                        <label
+                            for="son-importar-json"
+                            class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                class="w-3.5 h-3.5"
+                            >
+                                <path
+                                    d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 1 0 1.09 1.03L9.25 4.636v8.614Z"
+                                />
+                                <path
+                                    d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"
+                                />
+                            </svg>
+                            Importar JSON de escansão
+                        </label>
+                        <input
+                            type="file"
+                            id="son-importar-json"
+                            accept="application/json,.json"
+                            class="hidden"
+                            onchange="importarSonoridadeDeArquivo(event)"
+                        />
+                        <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                            Mesmo formato do arquivo baixado no botão "Baixar" de uma escansão
+                            (JSON). Preenche a classificação e a grade abaixo — se um poema já
+                            estiver escolhido acima, ele é mantido, a não ser que o JSON traga o id
+                            de outro poema já cadastrado no acervo, caso em que a seleção troca
+                            automaticamente.
+                        </p>
+                    </div>
                 </div>
 
                 <div class="pt-2 border-t border-gray-100 dark:border-slate-700">
@@ -81,9 +116,9 @@
                         sílabas do maior verso. Ative o Modo Sílaba Tônica (botão acima da grade) e
                         clique numa sílaba pra marcar o acento. Ative o Modo Rima pra montar pares
                         (clique abre um lado, shift-clique estende pra rima rica, clique numa outra
-                        linha abre o outro lado) — confirme ou cancele nos botões que aparecem.
-                        Cada par confirmado entra na lista "Pares de Rima" abaixo da grade, onde dá
-                        pra classificar Acentuação/Tonalidade/Riqueza, corrigir um lado ou remover.
+                        linha abre o outro lado) — confirme ou cancele nos botões que aparecem. Cada
+                        par confirmado entra na lista "Pares de Rima" abaixo da grade, onde dá pra
+                        classificar Acentuação/Tonalidade/Riqueza, corrigir um lado ou remover.
                     </p>
                     <div id="son-grade-container"></div>
                 </div>
@@ -144,9 +179,9 @@
                     </div>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-3">
                         As opções de Regularidade Métrica, Tamanho do Verso, Esquema de Rimas e
-                        Origem/Tradição já se restringem automaticamente a partir da Forma
-                        escolhida (ex.: Soneto Clássico exige Decassílabo/Alexandrino). Registro e
-                        Tom ficam fora dessa cascata — continuam sempre livres.
+                        Origem/Tradição já se restringem automaticamente a partir da Forma escolhida
+                        (ex.: Soneto Clássico exige Decassílabo/Alexandrino). Registro e Tom ficam
+                        fora dessa cascata — continuam sempre livres.
                     </p>
                 </div>
 
