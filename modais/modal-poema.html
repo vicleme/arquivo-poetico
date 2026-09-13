@@ -295,7 +295,7 @@
                     >
                         <button
                             type="button"
-                            onclick="wrapText('**', '**')"
+                            onclick="wrapText('**', '**', 'p')"
                             class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 font-bold border-gray-300 dark:border-slate-600"
                             title="Negrito"
                         >
@@ -303,7 +303,7 @@
                         </button>
                         <button
                             type="button"
-                            onclick="wrapText('_', '_')"
+                            onclick="wrapText('_', '_', 'p')"
                             class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 italic border-gray-300 dark:border-slate-600"
                             title="Itálico"
                         >
@@ -311,17 +311,25 @@
                         </button>
                         <button
                             type="button"
-                            onclick="wrapText('<u>', '</u>')"
+                            onclick="wrapText('<u>', '</u>', 'p')"
                             class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 underline border-gray-300 dark:border-slate-600"
                             title="Sublinhado"
                         >
                             U
                         </button>
+                        <button
+                            type="button"
+                            onclick="wrapText('~~', '~~', 'p')"
+                            class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 line-through border-gray-300 dark:border-slate-600"
+                            title="Tachado"
+                        >
+                            S
+                        </button>
                         <div class="h-6 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
                         <button
                             type="button"
-                            id="toolAlign-left"
-                            onclick="setAlign('left')"
+                            id="p-toolAlign-left"
+                            onclick="setAlign('left', 'p')"
                             class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-xs border-gray-300 dark:border-slate-600"
                             title="Alinhar à esquerda"
                         >
@@ -329,12 +337,30 @@
                         </button>
                         <button
                             type="button"
-                            id="toolAlign-right"
-                            onclick="setAlign('right')"
+                            id="p-toolAlign-center"
+                            onclick="setAlign('center', 'p')"
+                            class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-xs border-gray-300 dark:border-slate-600"
+                            title="Centralizar"
+                        >
+                            ⬍
+                        </button>
+                        <button
+                            type="button"
+                            id="p-toolAlign-right"
+                            onclick="setAlign('right', 'p')"
                             class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-xs border-gray-300 dark:border-slate-600"
                             title="Alinhar à direita"
                         >
                             ➡
+                        </button>
+                        <button
+                            type="button"
+                            id="p-toolAlign-justify"
+                            onclick="setAlign('justify', 'p')"
+                            class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-xs border-gray-300 dark:border-slate-600"
+                            title="Justificar"
+                        >
+                            ☰
                         </button>
                         <div class="h-6 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
                         <div
@@ -342,13 +368,13 @@
                         >
                             <input
                                 type="color"
-                                id="toolColor"
+                                id="p-toolColor"
                                 class="w-6 h-6 cursor-pointer border-none bg-transparent"
                                 title="Paleta de Cores"
                             />
                             <input
                                 type="text"
-                                id="toolHex"
+                                id="p-toolHex"
                                 placeholder="#000000"
                                 class="text-[10px] w-14 border-none uppercase focus:outline-none"
                                 maxlength="7"
@@ -356,14 +382,14 @@
                         </div>
                         <input
                             type="text"
-                            id="toolFont"
+                            id="p-toolFont"
                             placeholder="Nome da fonte..."
                             class="text-xs border rounded px-2 h-8 w-32 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600"
                             title="Digite o nome da fonte (ex: Arial, Garrit, Serif)"
                         />
                         <input
                             type="number"
-                            id="toolSize"
+                            id="p-toolSize"
                             placeholder="Tamanho (pt)"
                             class="text-xs border rounded px-2 h-8 w-24 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600"
                             title="Tamanho da fonte em pt (ex: 12, 18, 24)"
@@ -371,10 +397,45 @@
                         />
                         <button
                             type="button"
-                            onclick="applyStyle()"
+                            onclick="applyStyle('p')"
                             class="px-3 h-8 bg-blue-900 text-white text-[10px] uppercase tracking-wider rounded font-black hover:bg-blue-800 dark:hover:bg-blue-600 transition-colors"
                         >
                             Aplicar Estilo
+                        </button>
+                        <div class="h-6 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                        <div
+                            class="flex items-center gap-1 bg-white dark:bg-slate-900 border rounded px-1 border-gray-300 dark:border-slate-600"
+                            title="Cor de fundo do trecho selecionado (envolve numa caixa com respiro e cantos arredondados)"
+                        >
+                            <input
+                                type="color"
+                                id="p-toolBgColor"
+                                class="w-6 h-6 cursor-pointer border-none bg-transparent"
+                                title="Paleta de cor de fundo"
+                            />
+                            <input
+                                type="text"
+                                id="p-toolBgHex"
+                                placeholder="#000000"
+                                class="text-[10px] w-14 border-none uppercase focus:outline-none"
+                                maxlength="7"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onclick="applyBackground('p')"
+                            class="px-3 h-8 bg-slate-700 text-white text-[10px] uppercase tracking-wider rounded font-black hover:bg-slate-600 transition-colors"
+                        >
+                            Aplicar Fundo
+                        </button>
+                        <div class="h-6 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                        <button
+                            type="button"
+                            onclick="wrapText('<!-- ', ' -->', 'p')"
+                            class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-xs border-gray-300 dark:border-slate-600"
+                            title="Comentário — anotação sua, invisível na Visualização e nas exportações"
+                        >
+                            💬
                         </button>
                     </div>
                     <textarea
@@ -877,6 +938,11 @@
                                     id="p-anotacao-texto"
                                     class="text-sm h-20"
                                     placeholder="Texto da anotação..."
+                                ></textarea>
+                                <textarea
+                                    id="p-anotacao-notas"
+                                    class="text-xs h-14"
+                                    placeholder="Observações (opcional) — ex.: texto escrito na diagonal, tachado..."
                                 ></textarea>
                                 <button
                                     type="button"

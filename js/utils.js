@@ -85,9 +85,19 @@ const ALLOWLIST_TEXTO_RICO = {
 // mas barramos mesmo assim por segurança extra.
 const VALOR_DE_ESTILO_PERIGOSO = /url\s*\(|expression\s*\(|javascript:/i;
 
+// Comentário HTML (<!-- ... -->) inserido pela toolbar do editor (botão
+// 💬, ver wrapText em editor.js) — anotação pessoal que não deve
+// aparecer em NENHUMA leitura do campo: nem na Visualização (aqui),
+// nem nas exportações (.pdf/.docx/.md, ver corpoParaLinhasRicas abaixo
+// e corpoParaMarkdown em exportar-md.js). Removido no início de cada
+// função de leitura em vez de uma só vez no dado salvo, porque o
+// comentário deve continuar existindo no campo `texto` bruto (é assim
+// que a pessoa volta a editá-lo depois).
+const COMENTARIO_REGEX = /<!--[\s\S]*?-->/g;
+
 export function sanitizarTextoRico(valor) {
     if (valor === null || valor === undefined) return '';
-    const bruto = String(valor);
+    const bruto = String(valor).replace(COMENTARIO_REGEX, '');
 
     // Nada de "<" no texto — não há o que sanitizar, e evita qualquer
     // efeito colateral de passar texto puro por um parser de HTML.
@@ -149,8 +159,10 @@ export function sanitizarTextoRico(valor) {
 }
 
 // ─── Corpo rico do Texto: parser compartilhado ──────────────────────────
-// Reproduz a cascata de **negrito**/_itálico_/<u>/<div style="...">
-// aplicada pela toolbar do editor (ver wrapText/applyStyle em editor.js)
+// Reproduz a cascata de **negrito**/_itálico_/~~tachado~~/<u>/
+// <div style="..."> aplicada pela toolbar do editor (ver
+// wrapText/applyStyle/applyBackground em editor.js) — comentários
+// (<!-- ... -->, botão 💬) são removidos antes de tudo, nunca viram run
 // como uma árvore de "runs" já resolvidos — usado por exportar-pdf.js
 // (desenho no PDF), exportar-docx.js (spans em HTML) e exportar-md.js
 // (legenda textual de cor/fonte que o Markdown puro não consegue
@@ -205,7 +217,7 @@ function analisarEstiloDeDiv(atributoStyle) {
     if (fonteMatch) estilo.fonte = fonteMatch[1].trim().replace(/^['"]|['"]$/g, '');
     const tamanhoMatch = atributoStyle.match(/font-size:\s*([\d.]+)pt/);
     if (tamanhoMatch) estilo.tamanho = Math.min(28, Math.max(7, parseFloat(tamanhoMatch[1])));
-    const alinhoMatch = atributoStyle.match(/text-align:\s*(left|right|center)/);
+    const alinhoMatch = atributoStyle.match(/text-align:\s*(left|right|center|justify)/);
     if (alinhoMatch) estilo.alinhamento = alinhoMatch[1];
     const paddingMatch = atributoStyle.match(/padding:\s*([\d.]+)px\s*;/);
     if (paddingMatch) estilo.padding = parseFloat(paddingMatch[1]);
@@ -218,6 +230,7 @@ const ESTILO_BASE = {
     negrito: false,
     italico: false,
     sublinhado: false,
+    tachado: false,
     cor: null,
     fundo: null,
     fonte: null,
@@ -235,6 +248,13 @@ const ESTILO_BASE = {
 // dado real do acervo tem anos de HTML colado de fontes diversas (ver
 // comentário em sanitizarTextoRico, acima).
 export function corpoParaLinhasRicas(textoOriginal) {
+    // Comentários (<!-- ... -->, botão 💬 da toolbar) são anotação
+    // pessoal — nunca devem chegar a um export (ver COMENTARIO_REGEX,
+    // acima de sanitizarTextoRico). Removidos antes de tokenizar, não
+    // token a token, porque o conteúdo interno do comentário pode ter
+    // qualquer coisa (inclusive `<div`, `**` etc.) sem que isso deva
+    // contar como formatação de verdade.
+    const semComentarios = (textoOriginal || '').replace(COMENTARIO_REGEX, '');
     const linhas = [[]];
     // Pilha de frames { estilo, origem }; origem identifica quem abriu o
     // frame ('negrito'/'italico'/'u'/'div'), pra saber qual token fecha
@@ -254,13 +274,13 @@ export function corpoParaLinhasRicas(textoOriginal) {
         linhas[linhas.length - 1].push({ texto, ...topo().estilo });
     }
 
-    const tokenRegex = /(<div style="([^"]*)"[^>]*>|<\/div>|<u>|<\/u>|\n|\*\*|_)/g;
+    const tokenRegex = /(<div style="([^"]*)"[^>]*>|<\/div>|<u>|<\/u>|~~|\n|\*\*|_)/g;
     let ultimoIndex = 0;
     let match;
 
-    while ((match = tokenRegex.exec(textoOriginal)) !== null) {
+    while ((match = tokenRegex.exec(semComentarios)) !== null) {
         if (match.index > ultimoIndex) {
-            emitirRun(textoOriginal.slice(ultimoIndex, match.index));
+            emitirRun(semComentarios.slice(ultimoIndex, match.index));
         }
         const token = match[1];
         if (token === '\n') {
@@ -271,6 +291,9 @@ export function corpoParaLinhasRicas(textoOriginal) {
         } else if (token === '_') {
             if (topo().origem === 'italico') desempilharSeForOrigem('italico');
             else empurrar('italico', { italico: true });
+        } else if (token === '~~') {
+            if (topo().origem === 'tachado') desempilharSeForOrigem('tachado');
+            else empurrar('tachado', { tachado: true });
         } else if (token === '<u>') {
             empurrar('u', { sublinhado: true });
         } else if (token === '</u>') {
@@ -282,8 +305,8 @@ export function corpoParaLinhasRicas(textoOriginal) {
         }
         ultimoIndex = tokenRegex.lastIndex;
     }
-    if (ultimoIndex < textoOriginal.length) {
-        emitirRun(textoOriginal.slice(ultimoIndex));
+    if (ultimoIndex < semComentarios.length) {
+        emitirRun(semComentarios.slice(ultimoIndex));
     }
 
     return linhas;
@@ -2573,8 +2596,9 @@ export function agruparIntertextualidadePorTipo(lista) {
 // Sugestões de autocompletar pras Anotações Marginais (Posição e Fonte):
 // diferente de Pessoas/Sinalizações, não são strings separadas por vírgula
 // dentro do poema — cada poema tem uma lista de objetos
-// { trecho, posicao, fonte, texto } (ver criarListaDeEntradas em editor.js),
-// então extraímos o valor de `campo` de cada anotação de cada poema.
+// { trecho, posicao, fonte, texto, notas } (ver criarListaDeEntradas em
+// editor.js), então extraímos o valor de `campo` de cada anotação de cada
+// poema.
 export function extrairValoresUnicosDeAnotacoes(poemas, campo) {
     const valores = new Set();
     poemas.forEach((p) => {

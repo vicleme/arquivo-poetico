@@ -772,7 +772,7 @@ function decorarCamposBusca(item, extraLivros = '') {
             ? item.anotacoesMarginais
                   .map(
                       (it) =>
-                          `${it.trecho || ''} ${it.posicao || ''} ${it.fonte || ''} ${it.texto || ''}`,
+                          `${it.trecho || ''} ${it.posicao || ''} ${it.fonte || ''} ${it.texto || ''} ${it.notas || ''}`,
                   )
                   .join(' ')
             : '',

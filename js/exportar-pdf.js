@@ -9,8 +9,8 @@
 // entram nem em que ordem. O corpo do Texto em si é a exceção: é
 // renderizado a partir do HTML/Markdown híbrido ORIGINAL do item (ver
 // renderizarCorpoRico), não do Markdown já achatado, porque só assim dá
-// pra reproduzir cor/negrito/itálico/sublinhado/alinhamento de verdade
-// no PDF (ver corpoParaMarkdown em exportar-md.js, que descarta tudo
+// pra reproduzir cor/negrito/itálico/sublinhado/tachado/alinhamento (incl.
+// justificado) de verdade no PDF (ver corpoParaMarkdown em exportar-md.js, que descarta tudo
 // isso — não tem como recuperar o estilo de um Markdown que já não o
 // carrega mais).
 //
@@ -183,6 +183,7 @@ function empacotarPalavras(doc, runsDaLinha, larguraUtilLinha, tamanhoBase) {
                 negrito: run.negrito,
                 italico: run.italico,
                 sublinhado: run.sublinhado,
+                tachado: run.tachado,
                 cor: run.cor,
                 fundo: run.fundo,
                 tamanho: run.tamanho || tamanhoBase,
@@ -410,7 +411,7 @@ function renderizarLinhaRica(doc, linhas, indice, opcoes) {
             return doc.getTextWidth(' ');
         };
 
-        subLinhas.forEach((sub) => {
+        subLinhas.forEach((sub, indiceSub) => {
             const maiorTamanho = Math.max(...sub.map((p) => p.tamanho));
             const alturaLinha = maiorTamanho * 1.4;
             quebrarPaginaSeNecessario(alturaLinha);
@@ -421,8 +422,24 @@ function renderizarLinhaRica(doc, linhas, indice, opcoes) {
                 0,
             );
             let x = margem;
-            if (alinhamento === 'right') x = margem + (larguraUtil - larguraTotal);
-            else if (alinhamento === 'center') x = margem + (larguraUtil - larguraTotal) / 2;
+            // Justificado: em vez de deslocar o x inicial (como right/
+            // center), aumenta o ESPAÇO ENTRE PALAVRAS pra ocupar a
+            // largura útil inteira — mas só quando há pelo menos 2
+            // palavras (senão não há espaço nenhum pra esticar) e a
+            // sub-linha NÃO é a última da linha/verso (a última
+            // sub-linha de um parágrafo não é esticada em tipografia
+            // convencional — senão a última linha de um trecho curto
+            // ficaria com espaços enormes entre 2-3 palavras soltas).
+            const ehUltimaSubLinha = indiceSub === subLinhas.length - 1;
+            let espacoEntrePalavras = larguraEspaco();
+            if (alinhamento === 'right') {
+                x = margem + (larguraUtil - larguraTotal);
+            } else if (alinhamento === 'center') {
+                x = margem + (larguraUtil - larguraTotal) / 2;
+            } else if (alinhamento === 'justify' && !ehUltimaSubLinha && sub.length > 1) {
+                const larguraPalavras = sub.reduce((acc, p) => acc + largura(p), 0);
+                espacoEntrePalavras = (larguraUtil - larguraPalavras) / (sub.length - 1);
+            }
 
             // 1º passo: só calcula onde cada palavra vai cair (sem
             // desenhar nada ainda) — o fundo precisa ser desenhado ANTES
@@ -431,7 +448,7 @@ function renderizarLinhaRica(doc, linhas, indice, opcoes) {
             // largura(palavra) já usado acima pro empacotamento, reaproveitado
             // aqui em vez de medido de novo dentro do laço de desenho).
             const posicoes = sub.map((palavra, i) => {
-                if (i > 0) x += larguraEspaco();
+                if (i > 0) x += espacoEntrePalavras;
                 const w = largura(palavra);
                 const posicao = { palavra, x, w };
                 x += w;
@@ -508,6 +525,23 @@ function renderizarLinhaRica(doc, linhas, indice, opcoes) {
                         palavra.cor ? palavra.cor.b : 0,
                     );
                     doc.line(xPalavra, estadoY.y + 1.5, xPalavra + w, estadoY.y + 1.5);
+                }
+                if (palavra.tachado) {
+                    // Traço na altura média da palavra (proporcional ao
+                    // tamanho da fonte, ao contrário do sublinhado acima
+                    // que usa um deslocamento fixo de 1.5pt — abaixo da
+                    // linha de base um valor fixo funciona bem porque a
+                    // descida das letras é pequena e pouco variável;
+                    // achar o "meio" do texto precisa escalar com o
+                    // tamanho, senão um trecho grande (ex.: 24pt) ficaria
+                    // com o traço baixo demais, quase colado no sublinhado).
+                    doc.setDrawColor(
+                        palavra.cor ? palavra.cor.r : 0,
+                        palavra.cor ? palavra.cor.g : 0,
+                        palavra.cor ? palavra.cor.b : 0,
+                    );
+                    const yTachado = estadoY.y - palavra.tamanho * 0.3;
+                    doc.line(xPalavra, yTachado, xPalavra + w, yTachado);
                 }
             });
 

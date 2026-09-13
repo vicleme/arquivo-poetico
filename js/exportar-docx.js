@@ -7,7 +7,7 @@
 // Anexos etc. — assim os três formatos nunca divergem em QUAIS campos
 // entram nem em que ordem. O corpo do Texto em si reaproveita
 // corpoParaLinhasRicas (utils.js) — as mesmas runs
-// (texto/negrito/itálico/sublinhado/cor/fundo/fonte/tamanho/alinhamento)
+// (texto/negrito/itálico/sublinhado/tachado/cor/fundo/fonte/tamanho/alinhamento)
 // que o PDF usa pra desenhar, só que aqui viram TextRun de verdade da
 // lib docx em vez de comandos de desenho — negrito/itálico/sublinhado/
 // cor/fundo/fonte sobrevivem no .docx igual já sobrevivem no PDF (fundo
@@ -260,6 +260,7 @@ function linhaParaDocxParagrafo(docx, runsDaLinha, { suprimirFundo = false } = {
         left: AlignmentType.LEFT,
         right: AlignmentType.RIGHT,
         center: AlignmentType.CENTER,
+        justify: AlignmentType.JUSTIFIED,
     };
 
     if (!runsDaLinha.length) {
@@ -276,6 +277,7 @@ function linhaParaDocxParagrafo(docx, runsDaLinha, { suprimirFundo = false } = {
         if (run.negrito) opcoes.bold = true;
         if (run.italico) opcoes.italics = true;
         if (run.sublinhado) opcoes.underline = {};
+        if (run.tachado) opcoes.strike = true;
         if (run.cor) opcoes.color = corRgbParaHex(run.cor);
         if (run.fundo && !fundoUniforme && !suprimirFundo) {
             // Sombreamento de RUN — colado ao texto, nunca à linha inteira

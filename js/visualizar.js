@@ -66,6 +66,7 @@ let itemAtual = null;
 function realcarEnfaseMarkdown(html) {
     return html
         .replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/~~([\s\S]+?)~~/g, '<s>$1</s>')
         .replace(/(^|[^\w])_([\s\S]+?)_(?!\w)/g, '$1<em>$2</em>');
 }
 
@@ -213,7 +214,8 @@ export function renderVisualizacaoHtml(item) {
         const meta = [a.posicao, a.fonte].filter(Boolean).join(', ');
         const trecho = a.trecho ? `<em>(${escapeHtml(a.trecho)})</em> ` : '';
         const prefixo = meta ? `<strong>${escapeHtml(meta)}:</strong> ` : '';
-        return `${trecho}${prefixo}${escapeHtml(a.texto || '')}`;
+        const notas = a.notas ? ` <em>(${escapeHtml(a.notas)})</em>` : '';
+        return `${trecho}${prefixo}${escapeHtml(a.texto || '')}${notas}`;
     });
 
     html += listaHtml('Envios e Reações', item.envios, (e) => {

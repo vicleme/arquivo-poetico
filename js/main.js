@@ -185,6 +185,7 @@ import {
     removerSinalOutros,
     editarSinalOutros,
     applyStyle,
+    applyBackground,
     wrapText,
     setAlign,
     adicionarPessoa,
@@ -685,6 +686,7 @@ window.removerLoja = removerLoja;
 window.editarLoja = editarLoja;
 window.cancelarEdicaoLoja = cancelarEdicaoLoja;
 window.applyStyle = applyStyle;
+window.applyBackground = applyBackground;
 window.wrapText = wrapText;
 // Debounce de 200ms: cada tecla digitada dispara um renderPoemas()/
 // renderProsas() completo (reconstrói a tabela via innerHTML), então

@@ -303,7 +303,158 @@
 
                     <div>
                         <label class="form-label">Conteúdo da Prosa</label>
-                        <textarea id="pr-texto" class="h-64 leading-relaxed"></textarea>
+                        <div
+                            class="flex flex-wrap items-center gap-2 mb-1 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-t-md"
+                        >
+                            <button
+                                type="button"
+                                onclick="wrapText('**', '**', 'pr')"
+                                class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 font-bold border-gray-300 dark:border-slate-600"
+                                title="Negrito"
+                            >
+                                B
+                            </button>
+                            <button
+                                type="button"
+                                onclick="wrapText('_', '_', 'pr')"
+                                class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 italic border-gray-300 dark:border-slate-600"
+                                title="Itálico"
+                            >
+                                I
+                            </button>
+                            <button
+                                type="button"
+                                onclick="wrapText('<u>', '</u>', 'pr')"
+                                class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 underline border-gray-300 dark:border-slate-600"
+                                title="Sublinhado"
+                            >
+                                U
+                            </button>
+                            <button
+                                type="button"
+                                onclick="wrapText('~~', '~~', 'pr')"
+                                class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 line-through border-gray-300 dark:border-slate-600"
+                                title="Tachado"
+                            >
+                                S
+                            </button>
+                            <div class="h-6 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                            <button
+                                type="button"
+                                id="pr-toolAlign-left"
+                                onclick="setAlign('left', 'pr')"
+                                class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-xs border-gray-300 dark:border-slate-600"
+                                title="Alinhar à esquerda"
+                            >
+                                ⬅
+                            </button>
+                            <button
+                                type="button"
+                                id="pr-toolAlign-center"
+                                onclick="setAlign('center', 'pr')"
+                                class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-xs border-gray-300 dark:border-slate-600"
+                                title="Centralizar"
+                            >
+                                ⬍
+                            </button>
+                            <button
+                                type="button"
+                                id="pr-toolAlign-right"
+                                onclick="setAlign('right', 'pr')"
+                                class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-xs border-gray-300 dark:border-slate-600"
+                                title="Alinhar à direita"
+                            >
+                                ➡
+                            </button>
+                            <button
+                                type="button"
+                                id="pr-toolAlign-justify"
+                                onclick="setAlign('justify', 'pr')"
+                                class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-xs border-gray-300 dark:border-slate-600"
+                                title="Justificar"
+                            >
+                                ☰
+                            </button>
+                            <div class="h-6 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                            <div
+                                class="flex items-center gap-1 bg-white dark:bg-slate-900 border rounded px-1 border-gray-300 dark:border-slate-600"
+                            >
+                                <input
+                                    type="color"
+                                    id="pr-toolColor"
+                                    class="w-6 h-6 cursor-pointer border-none bg-transparent"
+                                    title="Paleta de Cores"
+                                />
+                                <input
+                                    type="text"
+                                    id="pr-toolHex"
+                                    placeholder="#000000"
+                                    class="text-[10px] w-14 border-none uppercase focus:outline-none"
+                                    maxlength="7"
+                                />
+                            </div>
+                            <input
+                                type="text"
+                                id="pr-toolFont"
+                                placeholder="Nome da fonte..."
+                                class="text-xs border rounded px-2 h-8 w-32 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600"
+                                title="Digite o nome da fonte (ex: Arial, Garrit, Serif)"
+                            />
+                            <input
+                                type="number"
+                                id="pr-toolSize"
+                                placeholder="Tamanho (pt)"
+                                class="text-xs border rounded px-2 h-8 w-24 bg-white dark:bg-slate-900 border-gray-300 dark:border-slate-600"
+                                title="Tamanho da fonte em pt (ex: 12, 18, 24)"
+                                min="1"
+                            />
+                            <button
+                                type="button"
+                                onclick="applyStyle('pr')"
+                                class="px-3 h-8 bg-blue-900 text-white text-[10px] uppercase tracking-wider rounded font-black hover:bg-blue-800 dark:hover:bg-blue-600 transition-colors"
+                            >
+                                Aplicar Estilo
+                            </button>
+                            <div class="h-6 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                            <div
+                                class="flex items-center gap-1 bg-white dark:bg-slate-900 border rounded px-1 border-gray-300 dark:border-slate-600"
+                                title="Cor de fundo do trecho selecionado (envolve numa caixa com respiro e cantos arredondados)"
+                            >
+                                <input
+                                    type="color"
+                                    id="pr-toolBgColor"
+                                    class="w-6 h-6 cursor-pointer border-none bg-transparent"
+                                    title="Paleta de cor de fundo"
+                                />
+                                <input
+                                    type="text"
+                                    id="pr-toolBgHex"
+                                    placeholder="#000000"
+                                    class="text-[10px] w-14 border-none uppercase focus:outline-none"
+                                    maxlength="7"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onclick="applyBackground('pr')"
+                                class="px-3 h-8 bg-slate-700 text-white text-[10px] uppercase tracking-wider rounded font-black hover:bg-slate-600 transition-colors"
+                            >
+                                Aplicar Fundo
+                            </button>
+                            <div class="h-6 w-px bg-slate-300 dark:bg-slate-600 mx-1"></div>
+                            <button
+                                type="button"
+                                onclick="wrapText('<!-- ', ' -->', 'pr')"
+                                class="w-8 h-8 bg-white dark:bg-slate-900 border rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-xs border-gray-300 dark:border-slate-600"
+                                title="Comentário — anotação sua, invisível na Visualização e nas exportações"
+                            >
+                                💬
+                            </button>
+                        </div>
+                        <textarea
+                            id="pr-texto"
+                            class="h-64 leading-relaxed border-t-0 rounded-t-none"
+                        ></textarea>
                     </div>
 
                     <label class="form-label mt-3">Notas</label>

@@ -43,12 +43,26 @@ import {
 // ─── Estado local ─────────────────────────────────────────────
 
 export let lastSelection = { start: 0, end: 0 };
-let alignAtual = null;
+
+// Alinhamento pendente (escolhido via setAlign, some no próximo applyStyle)
+// — um por prefixo ('p' = Poema, 'pr' = Prosa), não uma variável única
+// compartilhada: os modais ficam os dois carregados no DOM ao mesmo tempo
+// depois de abertos uma vez (ver garantirModal em modais.js, que só
+// esconde via classe, nunca remove), então sem isolar por prefixo um
+// alinhamento escolhido na Prosa vazaria pro próximo "Aplicar Estilo" do
+// Poema (ou vice-versa) se os dois ficassem abertos/fechados fora de ordem.
+const ALINHAMENTOS = ['left', 'right', 'center', 'justify'];
+const alignAtualPorPrefixo = { p: null, pr: null };
 
 // ─── Formatação inline ───────────────────────────────────────
+// prefixo identifica QUAL textarea (Poema = 'p-texto', Prosa = 'pr-texto')
+// e, por extensão (ver applyStyle/applyBackground abaixo), quais inputs
+// de cor/fonte/tamanho/alinhamento ler — mesmos botões, mesma lógica, só
+// muda o alvo. Poema continua sendo o padrão pra não obrigar a reescrever
+// os onclick já existentes no modal de Poema.
 
-export function wrapText(before, after) {
-    const textarea = document.getElementById('p-texto');
+export function wrapText(before, after, prefixo = 'p') {
+    const textarea = document.getElementById(`${prefixo}-texto`);
     if (!textarea) return;
 
     textarea.focus();
@@ -64,38 +78,84 @@ export function wrapText(before, after) {
     textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
 }
 
-export function applyStyle() {
+// Só entra no style="..." o que a pessoa realmente escolheu — nada de
+// "font-family: inherit; font-size: inherit;" quando só a cor foi
+// definida. Além de mais limpo, evitava um bug real: o parser
+// compartilhado (analisarEstiloDeDiv, utils.js) lê qualquer valor depois
+// de "font-family:" — incluindo a palavra "inherit" literal — e ela
+// descia pro .docx (exportar-docx.js define opcoes.font = run.fonte) como
+// se "inherit" fosse o nome de uma fonte de verdade, e pro .md
+// (exportar-md.js) como uma legenda falsa tipo `fonte "inherit"`. Sem
+// nenhum desses três campos, não faz sentido embrulhar em <div> nenhum —
+// avisa e não faz nada, em vez de gerar uma tag vazia.
+export function applyStyle(prefixo = 'p') {
     const colorInput =
-        document.getElementById('toolHex')?.value || document.getElementById('toolColor')?.value;
-    const fontInput = document.getElementById('toolFont')?.value.trim();
-    const sizeInput = document.getElementById('toolSize')?.value.trim();
+        document.getElementById(`${prefixo}-toolHex`)?.value ||
+        document.getElementById(`${prefixo}-toolColor`)?.value;
+    const fontInput = document.getElementById(`${prefixo}-toolFont`)?.value.trim();
+    const sizeInput = document.getElementById(`${prefixo}-toolSize`)?.value.trim();
+    const alignAtual = alignAtualPorPrefixo[prefixo];
 
-    const font = fontInput ? `'${fontInput}'` : 'inherit';
-    const size = sizeInput ? `${sizeInput}pt` : 'inherit';
-    let color = colorInput || 'inherit';
-    if (color !== 'inherit' && !color.startsWith('#')) color = '#' + color;
+    let color = colorInput || '';
+    if (color && !color.startsWith('#')) color = '#' + color;
 
-    const alignStyle = alignAtual ? ` text-align: ${alignAtual};` : '';
+    const declaracoes = [];
+    if (color) declaracoes.push(`color: ${color};`);
+    if (fontInput) declaracoes.push(`font-family: '${fontInput}';`);
+    if (sizeInput) declaracoes.push(`font-size: ${sizeInput}pt;`);
+    if (alignAtual) declaracoes.push(`text-align: ${alignAtual};`);
 
-    wrapText(
-        `<div style="color: ${color}; font-family: ${font}; font-size: ${size};${alignStyle} display: inline;">`,
-        `</div>`,
-    );
+    if (!declaracoes.length) {
+        mostrarAviso('Escolha uma cor, fonte, tamanho ou alinhamento antes de aplicar.');
+        return;
+    }
+    // display: inline evita a quebra de linha extra que um <div> (block
+    // por padrão) causaria na hora de visualizar um trecho no meio do
+    // verso — ver corpoParaLinhasRicas (utils.js), que depende de cada
+    // <div> não introduzir parágrafo novo sozinho.
+    declaracoes.push('display: inline;');
+
+    wrapText(`<div style="${declaracoes.join(' ')}">`, `</div>`, prefixo);
 
     // reseta alinhamento após aplicar
-    alignAtual = null;
-    ['left', 'right'].forEach((a) => {
-        document.getElementById(`toolAlign-${a}`)?.classList.remove('bg-blue-100');
+    alignAtualPorPrefixo[prefixo] = null;
+    ALINHAMENTOS.forEach((a) => {
+        document.getElementById(`${prefixo}-toolAlign-${a}`)?.classList.remove('bg-blue-100');
     });
 }
 
-export function setAlign(valor) {
-    alignAtual = alignAtual === valor ? null : valor;
-    ['left', 'right'].forEach((a) => {
+export function setAlign(valor, prefixo = 'p') {
+    alignAtualPorPrefixo[prefixo] = alignAtualPorPrefixo[prefixo] === valor ? null : valor;
+    ALINHAMENTOS.forEach((a) => {
         document
-            .getElementById(`toolAlign-${a}`)
-            ?.classList.toggle('bg-blue-100', alignAtual === a);
+            .getElementById(`${prefixo}-toolAlign-${a}`)
+            ?.classList.toggle('bg-blue-100', alignAtualPorPrefixo[prefixo] === a);
     });
+}
+
+// Cor de fundo — botão separado do "Aplicar Estilo" de cima porque o uso
+// típico é diferente: envolve um trecho/estrofe inteiro numa caixa (com
+// respiro e cantos arredondados), não uma palavra solta no meio da linha
+// — por isso NÃO leva display: inline (ao contrário de applyStyle),
+// deixando o <div> como block mesmo, pra caixa poder abraçar várias
+// linhas seguidas de uma vez. padding/border-radius fixos em 20px/8px por
+// ora (mesma proporção já usada manualmente); dá pra virar input
+// configurável depois se um valor único não bastar.
+export function applyBackground(prefixo = 'p') {
+    const bgInput =
+        document.getElementById(`${prefixo}-toolBgHex`)?.value ||
+        document.getElementById(`${prefixo}-toolBgColor`)?.value;
+    if (!bgInput) {
+        mostrarAviso('Escolha uma cor de fundo antes de aplicar.');
+        return;
+    }
+    const cor = bgInput.startsWith('#') ? bgInput : `#${bgInput}`;
+
+    wrapText(
+        `<div style="background-color: ${cor}; padding: 20px; border-radius: 8px;">`,
+        `</div>`,
+        prefixo,
+    );
 }
 
 // ─── Fábrica de grupos de tags/pessoas ────────────────────────
@@ -2070,7 +2130,7 @@ export function renderPainelElosDerivadosProsa(prosaId) {
     renderizarPainelElosDerivadosEm('pr-elos-derivados', prosaId);
 }
 
-// ─── Anotações Marginais (lista de trecho+posição+fonte+texto) ─
+// ─── Anotações Marginais (lista de trecho+posição+fonte+texto+notas) ─
 // Comentários de outra "voz" escritos por cima do texto — em geral
 // numa fonte cursiva diferente da do poema — associados a um verso ou
 // estrofe específico. Diferente de Intertextualidade (diálogo com algo
@@ -2088,6 +2148,15 @@ export function renderPainelElosDerivadosProsa(prosaId) {
 // ex.: uma "à direita" e sua continuação "abaixo e à esquerda" — cada
 // lado é uma entrada própria, agrupadas na lista por aparecerem com a
 // mesma referência de trecho.
+//
+// `notas` é observação SUA sobre a anotação em si (ex.: "texto escrito
+// na diagonal", "trecho riscado/tachado por cima") — diferente de
+// `texto`, que é a TRANSCRIÇÃO do que está escrito na margem. Mesmo
+// papel que `notas` já cumpre em Envios e Reações (ver renderItemEnvio
+// logo abaixo): campo livre opcional, exibido em itálico depois do
+// conteúdo principal, tanto na lista do editor quanto na Visualização
+// e no .md (ver listaHtml/'Anotações Marginais' em visualizar.js e o
+// bloco correspondente em exportar-md.js).
 
 const listaAnotacoesPoema = criarListaDeEntradas({
     containerId: 'p-anotacoes-lista',
@@ -2099,7 +2168,10 @@ const listaAnotacoesPoema = criarListaDeEntradas({
         const metaHtml = meta
             ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 text-[10px] font-bold align-middle">${meta}</span>`
             : '';
-        return `${trecho}${metaHtml}${escapeHtml(it.texto || '')}`;
+        const notas = it.notas
+            ? `<span class="block text-[11px] text-gray-400 dark:text-slate-500 italic mt-0.5">${escapeHtml(it.notas)}</span>`
+            : '';
+        return `${trecho}${metaHtml}${escapeHtml(it.texto || '')}${notas}`;
     },
     nomeFuncaoRemover: 'removerAnotacao',
     nomeFuncaoEditar: 'editarAnotacao',
@@ -2133,18 +2205,21 @@ export function adicionarAnotacao() {
     const posicaoEl = document.getElementById('p-anotacao-posicao');
     const fonteEl = document.getElementById('p-anotacao-fonte');
     const textoEl = document.getElementById('p-anotacao-texto');
+    const notasEl = document.getElementById('p-anotacao-notas');
 
     const trecho = (trechoEl?.value || '').trim();
     const posicao = (posicaoEl?.value || '').trim();
     const fonte = (fonteEl?.value || '').trim();
     const texto = (textoEl?.value || '').trim();
-    if (!trecho && !posicao && !fonte && !texto) return;
+    const notas = (notasEl?.value || '').trim();
+    if (!trecho && !posicao && !fonte && !texto && !notas) return;
 
-    listaAnotacoesPoema.salvar({ trecho, posicao, fonte, texto });
+    listaAnotacoesPoema.salvar({ trecho, posicao, fonte, texto, notas });
     if (trechoEl) trechoEl.value = '';
     if (posicaoEl) posicaoEl.value = '';
     if (fonteEl) fonteEl.value = '';
     if (textoEl) textoEl.value = '';
+    if (notasEl) notasEl.value = '';
     atualizarBotaoAnotacao();
     atualizarDatalistAnotacoes();
 }
@@ -2154,10 +2229,12 @@ export function editarAnotacao(indice) {
     const posicaoEl = document.getElementById('p-anotacao-posicao');
     const fonteEl = document.getElementById('p-anotacao-fonte');
     const textoEl = document.getElementById('p-anotacao-texto');
+    const notasEl = document.getElementById('p-anotacao-notas');
     if (trechoEl) trechoEl.value = item.trecho || '';
     if (posicaoEl) posicaoEl.value = item.posicao || '';
     if (fonteEl) fonteEl.value = item.fonte || '';
     if (textoEl) textoEl.value = item.texto || '';
+    if (notasEl) notasEl.value = item.notas || '';
     trechoEl?.focus();
     atualizarBotaoAnotacao();
 }
@@ -2167,10 +2244,12 @@ export function cancelarEdicaoAnotacao() {
     const posicaoEl = document.getElementById('p-anotacao-posicao');
     const fonteEl = document.getElementById('p-anotacao-fonte');
     const textoEl = document.getElementById('p-anotacao-texto');
+    const notasEl = document.getElementById('p-anotacao-notas');
     if (trechoEl) trechoEl.value = '';
     if (posicaoEl) posicaoEl.value = '';
     if (fonteEl) fonteEl.value = '';
     if (textoEl) textoEl.value = '';
+    if (notasEl) notasEl.value = '';
     atualizarBotaoAnotacao();
 }
 export function removerAnotacao(indice) {

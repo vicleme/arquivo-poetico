@@ -38,12 +38,26 @@ export const INFO_STATUS = {
 };
 
 // ─── Corpo do texto: HTML da textarea rica → Markdown legível ─────────────
-// A textarea já guarda **negrito**/_itálico_ como Markdown puro (inseridos
-// pela toolbar via wrapText) — só <u> (sublinhado) e os <div style="...">
-// de cor/fonte/tamanho/alinhamento (de applyStyle) são HTML de verdade.
-// <u> é mantido como está (Markdown aceita HTML inline, a maioria dos
-// leitores renderiza); os <div> de estilo não têm equivalente em Markdown
-// puro, então só sobra o texto de dentro, sem a formatação visual.
+// A textarea já guarda **negrito**/_itálico_/~~tachado~~ como Markdown puro
+// (inseridos pela toolbar via wrapText) — só <u> (sublinhado) e os
+// <div style="..."> de cor/fonte/tamanho/alinhamento (de applyStyle) são
+// HTML de verdade. <u> é mantido como está (Markdown aceita HTML inline, a
+// maioria dos leitores renderiza); os <div> de estilo não têm equivalente
+// em Markdown puro, então só sobra o texto de dentro, sem a formatação
+// visual.
+//
+// Comentários (<!-- ... -->, botão 💬) são a ÚNICA formatação que NÃO é
+// removida/convertida aqui — ao contrário de sanitizarTextoRico
+// (Visualização) e corpoParaLinhasRicas (.pdf/.docx, utils.js), que
+// descartam o comentário por completo. Decisão deliberada: comentário
+// HTML é invisível quando RENDERIZADO (navegador já ignora nativamente; um
+// leitor de Markdown que converta pra HTML também ignora, mesmo motivo),
+// mas o .md é o único dos três formatos pensado pra ser lido também como
+// TEXTO BRUTO (ver cabeçalho do arquivo — "legível tanto por humanos
+// quanto por IAs"), onde a sintaxe de comentário continua visível. .pdf e
+// .docx desenham cada caractere como texto de verdade — sem conceito de
+// "invisível" — por isso precisam remover o comentário de fato, ou ele
+// apareceria cru no meio do poema publicado.
 //
 // Quebras de linha da textarea viram "hard breaks" (2 espaços + \n) linha
 // a linha, preservando a quebra de verso a verso — importante pra poesia,
@@ -474,7 +488,8 @@ function itemParaMarkdownDepoisDoTexto(item) {
             const meta = [a.posicao, a.fonte].filter(Boolean).join(', ');
             const trecho = a.trecho ? `*(${a.trecho})* ` : '';
             const prefixo = meta ? `**${meta}:** ` : '';
-            md += `- ${trecho}${prefixo}${a.texto || ''}\n`;
+            const notas = a.notas ? ` *(${a.notas})*` : '';
+            md += `- ${trecho}${prefixo}${a.texto || ''}${notas}\n`;
         });
         md += '\n';
     }
