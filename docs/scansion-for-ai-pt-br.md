@@ -11,6 +11,12 @@ Siga os passos na ordem abaixo e devolva a resposta no formato descrito em
 escolha **exatamente uma delas, com a grafia idêntica** à listada aqui — não
 invente variações.
 
+> Este documento é um pedido de tarefa (peça uma análise do zero). Para
+> interpretar um registro de Sonoridade já preenchido/exportado — o que
+> cada campo significa, o que é derivado e nunca salvo, e a colisão de
+> nome entre este `ecos` e o `ecos` de Intratextualidade de Poema/Prosa —
+> veja `sonoridade-for-ai.md`, complementar a este.
+
 ---
 
 ## Passo 1 — Divisão silábica (escansão métrica, não gramatical)

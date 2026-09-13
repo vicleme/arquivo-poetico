@@ -11,6 +11,12 @@ described in "Output format", at the end. Whenever a field has a closed set
 of options, pick **exactly one, with the exact wording** listed here — don't
 invent variations.
 
+> This document is a task request (asking for an analysis from scratch).
+> To interpret an already-filled/exported Sonoridade record — what each
+> field means, what's derived and never stored, and the name collision
+> between this `ecos` and Poem/Prose's Intratextuality `ecos` — see
+> `sonoridade-for-ai.md`, complementary to this one.
+
 Note: this system's data model and field names are in Portuguese (the poems
 themselves are also in Portuguese). Keep your syllable division, stress
 marks, and field values in Portuguese/matching the original text, but feel
