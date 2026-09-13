@@ -224,6 +224,10 @@ export function aplicarPessoaEmMassa(tabela) {
         mensagem: `Isso vai adicionar "${nome}" aos dedicados de ${n} ${rotuloSelecao(tabela, n)}.`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#e11d48',
+        // Ação puramente aditiva (nada é removido) — foca Confirmar pra
+        // Enter no campo de texto → Enter no modal encadear sem precisar
+        // de Tab/shift-Tab ou mouse (ver nota em abrirModalConfirmacao).
+        focarConfirmar: true,
         onConfirmar: () => {
             const pessoa = obterOuCriarPessoaPorNome(nome);
             db[tabela].forEach((item) => {
@@ -299,6 +303,8 @@ export function aplicarSinalEmMassa(tabela) {
         mensagem: `Isso vai adicionar a sinalização "${tag}" a ${n} ${rotuloSelecao(tabela, n)}.`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#2563eb',
+        // Ação aditiva — ver nota em aplicarPessoaEmMassa/abrirModalConfirmacao.
+        focarConfirmar: true,
         onConfirmar: () => {
             db[tabela].forEach((item) => {
                 if (c.selecao.has(item.id)) adicionarValorEmCampo(item, campo, tag);
@@ -424,6 +430,8 @@ export function aplicarDataEmMassa(tabela) {
         mensagem: `Isso vai definir ${partes.join(', ')} na ${rotuloCampo} de ${n} ${rotuloSelecao(tabela, n)}, mantendo os demais campos da data (se já preenchidos em cada um).`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#2563eb',
+        // Ação aditiva — ver nota em aplicarPessoaEmMassa/abrirModalConfirmacao.
+        focarConfirmar: true,
         onConfirmar: () => {
             db[tabela].forEach((item) => {
                 if (!c.selecao.has(item.id)) return;
@@ -480,6 +488,8 @@ export function aplicarGeneroEmMassaProsa() {
         mensagem: `Isso vai adicionar o gênero "${genero}" a ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#d97706',
+        // Ação aditiva — ver nota em aplicarPessoaEmMassa/abrirModalConfirmacao.
+        focarConfirmar: true,
         onConfirmar: () => {
             db.prosas.forEach((pr) => {
                 if (selecaoProsas.has(pr.id)) adicionarValorEmCampo(pr, 'genero', genero);

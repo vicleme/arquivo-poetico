@@ -676,6 +676,17 @@ export function getPosicaoElemento(el, db) {
 // mesmo assim" vs "Cancelar"). Fica escondido quando não informado —
 // quem já chama abrirModalConfirmacao sem essa opção não muda nada.
 //
+// `focarConfirmar` decide qual botão recebe o foco ao abrir (e portanto
+// o que um Enter em seguida dispara). Default `false` (foca Cancelar) —
+// a escolha serve pra ação destrutiva/irreversível, onde um Enter
+// acidental não deve bastar pra confirmar (ver excluirSelecao,
+// removerPessoaEmMassa etc.). Passe `true` só quando a ação é puramente
+// aditiva (nada é removido/apagado) e a pessoa comumente chega ao modal
+// já querendo confirmar — ex.: dar Enter no campo de texto da barra de
+// seleção pra abrir o modal e Enter de novo pra confirmar, sem precisar
+// de Tab/shift-Tab ou mouse (ver aplicarPessoaEmMassa/aplicarSinalEmMassa
+// em selecao-massa.js).
+//
 // Uso:
 //   abrirModalConfirmacao({
 //       titulo: 'Título do item',
@@ -694,6 +705,7 @@ export function abrirModalConfirmacao({
     textoConfirmar = 'Confirmar',
     corConfirmar = '#dc2626',
     acaoSecundaria = null,
+    focarConfirmar = false,
     onConfirmar,
 }) {
     let overlay = document.getElementById('modal-confirmar-exclusao');
@@ -781,7 +793,7 @@ export function abrirModalConfirmacao({
     }
 
     overlay.style.display = 'flex';
-    setTimeout(() => btnCancelar.focus(), 0);
+    setTimeout(() => (focarConfirmar ? btnConfirmar : btnCancelar).focus(), 0);
 }
 
 // Atalho pro caso mais comum (exclusão permanente) — mesma assinatura
