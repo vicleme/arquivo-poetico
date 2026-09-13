@@ -25,6 +25,7 @@ const {
 } = await import('../js/editor-sonoridade.js');
 const { ACENTUACOES_RIMA, TONALIDADES_RIMA, RIQUEZAS_RIMA, TIPOS_ECO, TIPOS_ECO_SONORO } =
     await import('../js/utils.js');
+const { db } = await import('../js/db.js');
 
 describe('construirLinhasIniciais', () => {
     it('numera só os versos, pulando linhas vazias/quebras de estrofe', () => {
@@ -1080,5 +1081,34 @@ describe('Modo Eco (Ecos Sonoros) — DOM real (happy-dom)', () => {
         const linhas = [{ tipo: 'verso', numero: 1, texto: 'Um/ verso' }];
         inicializarGradeSonoridade(container, linhas, []);
         assert.deepEqual(obterEcosSonoridade(), []);
+    });
+
+    it('um tipo de Eco personalizado digitado antes vira sugestão (datalist) das próximas vezes — bug relatado pelo Victor', () => {
+        // Antes: o datalist #son-sugestoes-tipo-eco só listava as 5
+        // sugestões padrão (TIPOS_ECO_SONORO), sempre — um tipo digitado
+        // fora delas nunca aparecia como sugestão depois, nem num poema
+        // diferente do que ele foi digitado. Mesmo princípio do bug já
+        // corrigido pro seletor de Contagem (ver
+        // tiposEcoPresentes/camposContaveisEcoPorTipo acima): o tipo
+        // precisa "grudar" assim que existe em QUALQUER escansão salva
+        // (db.escansoes inteiro, não só o poema aberto agora).
+        const escansaoAnterior = db.escansoes;
+        db.escansoes = [{ ecos: [{ tipo: 'Eco disperso' }] }];
+        try {
+            const linhas = [{ tipo: 'verso', numero: 1, texto: 'Um/ verso' }];
+            inicializarGradeSonoridade(container, linhas);
+            const opcoes = [...container.querySelectorAll('#son-sugestoes-tipo-eco option')].map(
+                (o) => o.value,
+            );
+            assert.ok(
+                opcoes.includes('Eco disperso'),
+                'tipo personalizado já salvo deveria aparecer como sugestão',
+            );
+            TIPOS_ECO_SONORO.forEach((tipo) => {
+                assert.ok(opcoes.includes(tipo), `sugestão padrão "${tipo}" não deveria sumir`);
+            });
+        } finally {
+            db.escansoes = escansaoAnterior;
+        }
     });
 });

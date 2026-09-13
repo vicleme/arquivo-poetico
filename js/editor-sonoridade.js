@@ -70,6 +70,7 @@ import {
     DISTANCIA_VIZINHO_MAXIMA,
     TIPOS_ECO_SONORO,
 } from './utils.js';
+import { db } from './db.js';
 
 let linhasAtuais = [];
 let rimasAtuais = [];
@@ -1720,10 +1721,13 @@ function renderGrade() {
                 <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
                     Quase-rimas intencionais — ecos sonoros de fim/meio de verso que não chegam a
                     rimar pela teoria (útil em verso livre). Tipo é campo livre; use as sugestões ou
-                    digite o seu.
+                    digite o seu — um tipo digitado aqui uma vez fica disponível como sugestão dali
+                    pra frente, em qualquer poema/prosa.
                 </p>
                 <datalist id="son-sugestoes-tipo-eco">
-                    ${TIPOS_ECO_SONORO.map((t) => `<option value="${escapeHtml(t)}"></option>`).join('')}
+                    ${tiposEcoPresentes(db.escansoes)
+                        .map((t) => `<option value="${escapeHtml(t)}"></option>`)
+                        .join('')}
                 </datalist>
                 ${renderResumoEcos(ecosAtuais)}
                 <div id="son-lista-ecos" class="flex flex-col gap-2"></div>
