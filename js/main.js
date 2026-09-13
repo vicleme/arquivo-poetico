@@ -11,7 +11,7 @@ import {
     getUsoStorage,
     migrarImagensLegadasParaIndexedDB,
 } from './db.js';
-import { mostrarAviso, avisarSalvo, debounce } from './utils.js';
+import { mostrarAviso, avisarSalvo, debounce, aoEnterAplicar } from './utils.js';
 import { listarSnapshots, baixarSnapshot } from './autobackup.js';
 import {
     openTab,
@@ -764,6 +764,7 @@ window.exportarSelecaoAtualJson = exportarSelecaoAtualJson;
 window.exportarSelecaoAtualMarkdown = exportarSelecaoAtualMarkdown;
 window.exportarSelecaoAtualPdf = exportarSelecaoAtualPdf;
 window.exportarSelecaoAtualDocx = exportarSelecaoAtualDocx;
+window.aoEnterAplicar = aoEnterAplicar;
 window.aplicarPessoaEmMassa = aplicarPessoaEmMassa;
 window.removerPessoaEmMassa = removerPessoaEmMassa;
 window.aplicarSinalEmMassa = aplicarSinalEmMassa;

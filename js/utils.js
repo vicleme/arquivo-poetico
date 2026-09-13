@@ -387,6 +387,21 @@ export function blocosDeFundoContinuos(linhas) {
     return blocos;
 }
 
+// ─── Enter como atalho pra ação positiva ───────────────────────
+// Usado nos campos de texto/número da barra de ação em massa
+// (Pessoa, Sinalização, Data — em Poemas e Prosas): sem isso, Enter
+// nesses inputs não faz nada, já que a página não tem <form> nenhum.
+// Só a ação POSITIVA (Dedicar/Marcar/Aplicar) fica no Enter — nunca
+// Remover/Excluir/Limpar, que continuam exigindo o clique explícito
+// no botão certo. `acao` já abre o modal de confirmação de sempre
+// (ver abrirModalConfirmacao em aplicarPessoaEmMassa e afins), então
+// Enter aqui só agiliza chegar até a confirmação, não pula ela.
+export function aoEnterAplicar(event, acao) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    acao();
+}
+
 // ─── Debounce ────────────────────────────────────────────────
 // Atrasa a chamada de fn até `espera` ms depois da última invocação.
 // Usado nos campos de busca (Poemas/Prosas): cada renderPoemas()/

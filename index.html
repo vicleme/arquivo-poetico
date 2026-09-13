@@ -1087,6 +1087,7 @@
                         list="sugestoes-pessoas"
                         placeholder="Nome da pessoa..."
                         class="flex-1 min-w-[160px] mb-0"
+                        onkeydown="aoEnterAplicar(event, () => aplicarPessoaEmMassa('poemas'))"
                     />
                     <button
                         onclick="aplicarPessoaEmMassa('poemas')"
@@ -1121,6 +1122,7 @@
                         list="sugestoes-sinais-estilo-bulk"
                         placeholder="Sinalização..."
                         class="flex-1 min-w-[160px] mb-0"
+                        onkeydown="aoEnterAplicar(event, () => aplicarSinalEmMassa('poemas'))"
                     />
                     <button
                         onclick="aplicarSinalEmMassa('poemas')"
@@ -1203,6 +1205,7 @@
                                 min="1"
                                 max="31"
                                 class="w-16 text-xs p-2"
+                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('poemas'))"
                             />
                         </div>
                         <div>
@@ -1216,6 +1219,7 @@
                                 min="1"
                                 max="12"
                                 class="w-16 text-xs p-2"
+                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('poemas'))"
                             />
                         </div>
                         <div>
@@ -1229,6 +1233,7 @@
                                 min="1900"
                                 max="2100"
                                 class="w-20 text-xs p-2"
+                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('poemas'))"
                             />
                         </div>
                         <label
@@ -1724,6 +1729,7 @@
                         list="sugestoes-pessoas-bulk-prosa"
                         placeholder="Nome da pessoa..."
                         class="flex-1 min-w-[160px] mb-0"
+                        onkeydown="aoEnterAplicar(event, () => aplicarPessoaEmMassa('prosas'))"
                     />
                     <button
                         onclick="aplicarPessoaEmMassa('prosas')"
@@ -1758,6 +1764,7 @@
                         list="sugestoes-sinais-estilo-bulk-prosa"
                         placeholder="Sinalização..."
                         class="flex-1 min-w-[160px] mb-0"
+                        onkeydown="aoEnterAplicar(event, () => aplicarSinalEmMassa('prosas'))"
                     />
                     <button
                         onclick="aplicarSinalEmMassa('prosas')"
@@ -1777,6 +1784,7 @@
                         list="sugestoes-genero-bulk-prosa"
                         placeholder="Gênero..."
                         class="flex-1 min-w-[160px] mb-0"
+                        onkeydown="aoEnterAplicar(event, () => aplicarGeneroEmMassaProsa())"
                     />
                     <button
                         onclick="aplicarGeneroEmMassaProsa()"
@@ -1859,6 +1867,7 @@
                                 min="1"
                                 max="31"
                                 class="w-16 text-xs p-2"
+                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('prosas'))"
                             />
                         </div>
                         <div>
@@ -1872,6 +1881,7 @@
                                 min="1"
                                 max="12"
                                 class="w-16 text-xs p-2"
+                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('prosas'))"
                             />
                         </div>
                         <div>
@@ -1885,6 +1895,7 @@
                                 min="1900"
                                 max="2100"
                                 class="w-20 text-xs p-2"
+                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('prosas'))"
                             />
                         </div>
                         <label
