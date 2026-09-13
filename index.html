@@ -33,6 +33,12 @@
              importação HTML do Word, que era o esquema do antigo
              html-docx-js (ver comentário no topo de exportar-docx.js). -->
         <script src="https://unpkg.com/docx@9.7.1/dist/index.umd.cjs"></script>
+        <!-- JSZip: só usada pelo modo ".zip único" do download em lote da aba
+             Exportações Frequentes (ver js/exportar-frequentes.js) — mesmo
+             padrão via CDN do jsPDF/docx acima; registra a si mesma como
+             window.JSZip. O modo "downloads separados em sequência" da mesma
+             aba não depende dela. -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
         <script>
             // Sem isso o Tailwind usa a variante "media" (segue só o SO) e ignora
             // a classe .dark que a gente aplica manualmente no <html> — o toggle
@@ -373,13 +379,36 @@
                     </div>
                 </div>
 
-                <button
-                    id="btn-exportar-filtrado"
-                    onclick="abrirAba('exportar-filtrado')"
-                    class="tab-btn pb-2 font-medium whitespace-nowrap"
-                >
-                    Exportação
-                </button>
+                <div class="relative nav-dropdown-wrap">
+                    <button
+                        type="button"
+                        id="grupo-exportacao-btn"
+                        class="grupo-nav-btn pb-2 font-medium whitespace-nowrap inline-flex items-center gap-1 hover:text-blue-700 dark:hover:text-blue-300"
+                    >
+                        Exportação
+                        <span class="text-[9px] opacity-60">▾</span>
+                    </button>
+                    <div class="nav-dropdown absolute left-0 top-full pt-1 z-20 min-w-[190px]">
+                        <div
+                            class="flex flex-col gap-0.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1"
+                        >
+                            <button
+                                id="btn-exportar-filtrado"
+                                onclick="abrirAba('exportar-filtrado')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Exportação Geral
+                            </button>
+                            <button
+                                id="btn-exportacoes-frequentes"
+                                onclick="abrirAba('exportacoes-frequentes')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Exportações Frequentes
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="relative nav-dropdown-wrap">
                     <button
@@ -1205,7 +1234,9 @@
                                 min="1"
                                 max="31"
                                 class="w-16 text-xs p-2"
-                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('poemas'))"
+                                onkeydown="
+                                    aoEnterAplicar(event, () => aplicarDataEmMassa('poemas'))
+                                "
                             />
                         </div>
                         <div>
@@ -1219,7 +1250,9 @@
                                 min="1"
                                 max="12"
                                 class="w-16 text-xs p-2"
-                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('poemas'))"
+                                onkeydown="
+                                    aoEnterAplicar(event, () => aplicarDataEmMassa('poemas'))
+                                "
                             />
                         </div>
                         <div>
@@ -1233,7 +1266,9 @@
                                 min="1900"
                                 max="2100"
                                 class="w-20 text-xs p-2"
-                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('poemas'))"
+                                onkeydown="
+                                    aoEnterAplicar(event, () => aplicarDataEmMassa('poemas'))
+                                "
                             />
                         </div>
                         <label
@@ -1867,7 +1902,9 @@
                                 min="1"
                                 max="31"
                                 class="w-16 text-xs p-2"
-                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('prosas'))"
+                                onkeydown="
+                                    aoEnterAplicar(event, () => aplicarDataEmMassa('prosas'))
+                                "
                             />
                         </div>
                         <div>
@@ -1881,7 +1918,9 @@
                                 min="1"
                                 max="12"
                                 class="w-16 text-xs p-2"
-                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('prosas'))"
+                                onkeydown="
+                                    aoEnterAplicar(event, () => aplicarDataEmMassa('prosas'))
+                                "
                             />
                         </div>
                         <div>
@@ -1895,7 +1934,9 @@
                                 min="1900"
                                 max="2100"
                                 class="w-20 text-xs p-2"
-                                onkeydown="aoEnterAplicar(event, () => aplicarDataEmMassa('prosas'))"
+                                onkeydown="
+                                    aoEnterAplicar(event, () => aplicarDataEmMassa('prosas'))
+                                "
                             />
                         </div>
                         <label
@@ -2441,6 +2482,170 @@
                             edição.
                         </p>
                         <div id="lista-snapshots" class="space-y-1.5 text-xs"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="exportacoes-frequentes" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Exportações Frequentes</h2>
+                </div>
+                <p class="text-xs text-gray-400 dark:text-slate-500 mb-4">
+                    Atalhos pros downloads que você faz sempre — cada um com nome de arquivo
+                    configurável (lembrado entre sessões), pra sempre substituir o mesmo arquivo na
+                    sua pasta. Tokens disponíveis: <code>{data}</code> (ex.: 2026-09-13) e
+                    <code>{hora}</code> — nos templates abaixo, também <code>{nome}</code> e
+                    <code>{formato}</code>.
+                </p>
+
+                <div
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-3 mb-6"
+                >
+                    <div class="flex justify-between items-center flex-wrap gap-2">
+                        <h3 class="font-bold text-sm">Fixos</h3>
+                        <div class="flex items-center gap-2">
+                            <label
+                                class="text-xs text-gray-500 dark:text-slate-400 flex items-center gap-1"
+                            >
+                                Baixar tudo em
+                                <select id="modo-lote-exportacoes-frequentes" class="text-xs mb-0">
+                                    <option value="zip">.zip único</option>
+                                    <option value="sequencial">downloads separados</option>
+                                </select>
+                            </label>
+                            <button
+                                onclick="baixarTodosFixos()"
+                                class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                            >
+                                ⬇ Baixar todos os fixos
+                            </button>
+                        </div>
+                    </div>
+                    <div id="lista-fixos-exportacao" class="space-y-2"></div>
+                </div>
+
+                <div
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-3"
+                >
+                    <div class="flex justify-between items-center flex-wrap gap-2">
+                        <h3 class="font-bold text-sm">Templates</h3>
+                        <div class="flex items-center gap-2">
+                            <button
+                                onclick="baixarTodosTemplates()"
+                                class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                            >
+                                ⬇ Baixar todos os templates
+                            </button>
+                            <button
+                                onclick="abrirFormularioTemplate()"
+                                class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                            >
+                                + Novo template
+                            </button>
+                        </div>
+                    </div>
+                    <div id="lista-templates-exportacao" class="space-y-2"></div>
+
+                    <div
+                        id="painel-form-template"
+                        class="hidden mt-3 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg space-y-3"
+                    >
+                        <div>
+                            <label class="form-label">Nome do template</label>
+                            <input
+                                type="text"
+                                id="form-tpl-nome"
+                                placeholder="Ex.: Poemas pra Dalton"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="form-label"
+                                >Critérios (todos precisam bater — "E" lógico)</label
+                            >
+                            <div id="form-criterios-template" class="space-y-2"></div>
+                            <button
+                                type="button"
+                                onclick="adicionarCriterioFormulario()"
+                                class="text-xs text-blue-600 dark:text-blue-400 underline mt-1"
+                            >
+                                + Adicionar critério
+                            </button>
+                        </div>
+
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-2 text-sm"
+                                ><input
+                                    type="checkbox"
+                                    id="form-tpl-tipo-poema"
+                                    style="width: auto; margin: 0"
+                                />
+                                Poemas</label
+                            >
+                            <label class="flex items-center gap-2 text-sm"
+                                ><input
+                                    type="checkbox"
+                                    id="form-tpl-tipo-prosa"
+                                    style="width: auto; margin: 0"
+                                />
+                                Prosas</label
+                            >
+                        </div>
+
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-2 text-sm"
+                                ><input
+                                    type="checkbox"
+                                    id="form-tpl-formato-json"
+                                    style="width: auto; margin: 0"
+                                />
+                                Gerar JSON</label
+                            >
+                            <label class="flex items-center gap-2 text-sm"
+                                ><input
+                                    type="checkbox"
+                                    id="form-tpl-formato-md"
+                                    style="width: auto; margin: 0"
+                                />
+                                Gerar MD</label
+                            >
+                        </div>
+
+                        <label
+                            class="flex items-center gap-2 text-sm cursor-pointer"
+                            title="Substitui título/texto pela versão alternativa cadastrada em Ferramentas → Versões Alternativas, quando existir uma pro item."
+                        >
+                            <input
+                                type="checkbox"
+                                id="form-tpl-versao-filtrada"
+                                style="width: auto; margin: 0"
+                            />
+                            Baixar filtrado (versão alternativa) em vez da convencional
+                        </label>
+
+                        <div>
+                            <label class="form-label">Nome do arquivo</label>
+                            <input
+                                type="text"
+                                id="form-tpl-nome-arquivo"
+                                placeholder="Padrão: {nome}-{formato}"
+                            />
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button
+                                onclick="salvarFormularioTemplate()"
+                                class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                            >
+                                Salvar template
+                            </button>
+                            <button
+                                onclick="fecharFormularioTemplate()"
+                                class="text-xs text-gray-500 dark:text-slate-400 underline whitespace-nowrap"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
                     </div>
                 </div>
             </section>

@@ -207,6 +207,14 @@ npm run format:check   # prettier --check .
 │   │                           modal Ver de Poema/Prosa)
 │   ├── exportar-docx.js      → Geração do formato Word (.docx) de Poema/Prosa
 │   │                           e da própria escansão de Sonoridade
+│   ├── exportar-frequentes.js → Aba "Exportações Frequentes" (dentro do menu
+│   │                           Exportação): os 6 downloads fixos (Backup,
+│   │                           Aninhado, Flat e Filtrado em JSON/MD) com nome
+│   │                           de arquivo configurável, mais templates de
+│   │                           filtro salvos (Pessoa/Sinalização por
+│   │                           categoria/Gênero, combináveis com "E" lógico).
+│   │                           Baixar em lote gera um único `.zip` (JSZip) ou
+│   │                           downloads separados, à escolha da pessoa
 │   ├── nesting.js            → Lógica de encadeamento hierárquico (usada por
 │   │                           exportar.js)
 │   └── utils.js              → Funções puras sem dependências internas;
@@ -351,6 +359,25 @@ npm run format:check   # prettier --check .
   mais o contexto (Livro/Parte/Seção) já resolvido em texto, sem necessidade
   de cruzar IDs. Disponível tanto em JSON (formato de trabalho, reimportável)
   quanto em Markdown (formato de leitura — ver seção própria abaixo).
+- **Exportações Frequentes** (aba própria, dentro do menu Exportação):
+  atalhos pros downloads recorrentes. "Fixos" cobre os 7 mais comuns —
+  Backup, Aninhado completo, Flat completo e Filtrado completo (esse último
+  aplicando por cima as Versões Alternativas cadastradas em `filtrar.html`),
+  Flat/Filtrado em JSON e Markdown, e o Banco de versões filtradas (JSON —
+  o cadastro bruto de `filtrar.html`, não o acervo já com as substituições
+  aplicadas; mesmo formato do `exportarBanco()` de lá) — cada um com nome
+  de arquivo configurável (lembrado entre sessões, com tokens
+  `{data}`/`{hora}`), pra sempre substituir o mesmo arquivo na pasta local.
+  "Templates" são filtros salvos
+  e reutilizáveis: qualquer combinação de critérios (Pessoa dedicada,
+  qualquer categoria de Sinalização — tratadas separadamente, então
+  "Tecnologia" em Domínio Imagético não se confunde com "Tecnologia" em
+  Tema — ou Gênero de Prosa), combináveis com "E" lógico, com formatos
+  (JSON/MD) e nome de arquivo próprios (tokens `{nome}`/`{formato}` além dos
+  dois acima), e a opção de baixar a versão filtrada em vez da convencional.
+  Tanto Fixos quanto Templates podem ser baixados um a um ou todos de uma
+  vez — em lote, a pessoa escolhe entre um único `.zip` (via JSZip) ou
+  downloads separados em sequência.
 - **Exportação pela seleção da tabela** (Poemas/Prosas): marque itens pelas
   caixas de seleção da própria listagem e exporte só esses, em JSON ou
   Markdown, pela barra de ações em massa ("⬇ JSON" / "⬇ MD") — complementa

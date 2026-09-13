@@ -25,7 +25,9 @@ import { baixarMarkdown } from './exportar-md.js';
 import { baixarPdf } from './exportar-pdf.js';
 import { baixarDocx } from './exportar-docx.js';
 
-function listaDeCampo(valor) {
+// Exportada pra ser reaproveitada por exportar-frequentes.js (critérios
+// de template comparam contra essa mesma lista normalizada).
+export function listaDeCampo(valor) {
     if (!valor) return [];
     return valor
         .split(',')
@@ -265,7 +267,11 @@ function resolverContexto(item) {
     };
 }
 
-function montarRegistro(tipo, item) {
+// Exportado pra ser reaproveitado por exportar-frequentes.js (templates
+// de exportação e os 6 "fixos" da aba Exportações Frequentes) — mesmo
+// formato de registro (item + tipo + contexto resolvido) usado em toda
+// exportação seletiva/flat/seleção daqui.
+export function montarRegistro(tipo, item) {
     // Spread garante que todos os campos do item chegam ao JSON
     // (notas, conceitos, livrosIds, etc.) sem precisar listá-los
     // manualmente. tipo e contexto são adicionados/sobrescritos depois.

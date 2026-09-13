@@ -31,6 +31,7 @@ import {
 import { toggleModal, garantirModal } from './modais.js';
 import { renderEstatisticas } from './estatisticas.js';
 import { renderConexoes } from './render-conexoes.js';
+import { renderExportacoesFrequentes } from './exportar-frequentes.js';
 
 // Reexportados pra quem já importava toggleModal a partir de ui.js
 // (forms.js, coletaneas.js, main.js) não precisar trocar o caminho.
@@ -89,7 +90,10 @@ export const GRUPOS_NAV = [
     {
         id: 'exportacao',
         rotulo: 'Exportação',
-        abas: [{ id: 'exportar-filtrado', rotulo: 'Exportação' }],
+        abas: [
+            { id: 'exportar-filtrado', rotulo: 'Exportação Geral' },
+            { id: 'exportacoes-frequentes', rotulo: 'Exportações Frequentes' },
+        ],
     },
 ];
 
@@ -119,6 +123,7 @@ export function abrirAba(tabName) {
     openTab(tabName);
     if (tabName === 'conexoes') renderConexoes();
     if (tabName === 'estatisticas') renderEstatisticas();
+    if (tabName === 'exportacoes-frequentes') renderExportacoesFrequentes();
     atualizarRotuloAbaAtual(tabName);
     atualizarGrupoAtivoNavDesktop(tabName);
     fecharDropdownNavDesktop(tabName);

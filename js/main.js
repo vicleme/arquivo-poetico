@@ -144,6 +144,17 @@ import {
     exportarTudoFlatPdf,
     exportarTudoFlatDocx,
 } from './exportar.js';
+import {
+    baixarFixo,
+    baixarTodosFixos,
+    baixarTemplate,
+    baixarTodosTemplates,
+    excluirTemplate,
+    abrirFormularioTemplate,
+    fecharFormularioTemplate,
+    salvarFormularioTemplate,
+    adicionarCriterioFormulario,
+} from './exportar-frequentes.js';
 import { renderEstatisticas } from './estatisticas.js';
 import { renderConexoes, baixarDiagramaEcos } from './render-conexoes.js';
 import {
@@ -795,6 +806,15 @@ window.exportarTudoFlatJson = exportarTudoFlatJson;
 window.exportarTudoFlatMarkdown = exportarTudoFlatMarkdown;
 window.exportarTudoFlatPdf = exportarTudoFlatPdf;
 window.exportarTudoFlatDocx = exportarTudoFlatDocx;
+window.baixarFixo = baixarFixo;
+window.baixarTodosFixos = baixarTodosFixos;
+window.baixarTemplate = baixarTemplate;
+window.baixarTodosTemplates = baixarTodosTemplates;
+window.excluirTemplate = excluirTemplate;
+window.abrirFormularioTemplate = abrirFormularioTemplate;
+window.fecharFormularioTemplate = fecharFormularioTemplate;
+window.salvarFormularioTemplate = salvarFormularioTemplate;
+window.adicionarCriterioFormulario = adicionarCriterioFormulario;
 
 window.toggleSelecaoEstrutura = toggleSelecaoEstrutura;
 window.marcarTodosEstrutura = marcarTodosEstrutura;

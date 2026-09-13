@@ -209,6 +209,14 @@ npm run format:check   # prettier --check .
 │   │                           the Poem/Prose View modal)
 │   ├── exportar-docx.js      → Word (.docx) export for Poems/Prose and for
 │   │                           the Sonoridade scansion itself
+│   ├── exportar-frequentes.js → "Frequent Exports" tab (inside the Export
+│   │                           menu): the 6 fixed downloads (Backup, Nested,
+│   │                           Flat and Filtered in JSON/MD) with a
+│   │                           configurable filename, plus saved filter
+│   │                           templates (Person/Tag-by-category/Genre,
+│   │                           combinable with logical "AND"). Batch
+│   │                           download produces a single `.zip` (JSZip) or
+│   │                           separate downloads, the person's choice
 │   ├── nesting.js            → Hierarchical nesting logic (used by
 │   │                           exportar.js)
 │   └── utils.js              → Pure functions with no internal dependencies;
@@ -352,6 +360,25 @@ npm run format:check   # prettier --check .
   the context (Book/Part/Section) already resolved to text, with no need to
   cross-reference IDs. Available both in JSON (working format, re-importable)
   and Markdown (reading format — see the dedicated section below).
+- **Frequent Exports** (its own tab, inside the Export menu): shortcuts for
+  recurring downloads. "Fixed" covers the 7 most common ones — Backup,
+  Nested complete, Flat complete, and Filtered complete (this last one
+  applying on top of the Alternative Versions saved in `filtrar.html`),
+  Flat/Filtered in both JSON and Markdown, and the raw Filtered Versions
+  bank (JSON — `filtrar.html`'s own record, not the collection with
+  substitutions already applied; same shape as its `exportarBanco()`) —
+  each with a configurable filename (remembered between sessions, with
+  `{data}`/`{hora}` tokens), so the same file in a local folder can always
+  be overwritten. "Templates" are
+  saved, reusable filters: any combination of criteria (dedicated Person,
+  any Tag category — kept separate, so "Technology" under Imagery Domain
+  never gets confused with "Technology" under Theme — or Prose Genre),
+  combinable with logical "AND", with their own formats (JSON/MD) and
+  filename (tokens `{nome}`/`{formato}` in addition to the two above), plus
+  the option to download the filtered version instead of the regular one.
+  Both Fixed items and Templates can be downloaded one at a time or all at
+  once — in batch, the person chooses between a single `.zip` (via JSZip) or
+  separate downloads in sequence.
 - **Export by table selection** (Poems/Prose): check items via the
   listing's own checkboxes and export just those, in JSON or Markdown, from
   the bulk-action bar ("⬇ JSON" / "⬇ MD") — complements Selective Export
