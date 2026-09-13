@@ -60,10 +60,16 @@ Percorra o poema e identifique **pares de versos que rimam entre si** pela
 sonoridade final (a partir da última sílaba tônica de cada verso — pode
 incluir mais de uma sílaba do lado de cada verso quando a rima for rica,
 cobrindo mais de uma sílaba sonora). Não se preocupe em calcular a "letra"
-do esquema (A, B, C...), se a rima é externa/interna, nem a distância entre
-os dois versos — isso o sistema calcula sozinho a partir dos pares; você só
-precisa apontar **quais versos rimam com quais**, e quais sílabas exatas de
-cada lado formam o som compartilhado.
+do esquema (A, B, C...) nem a distância entre os dois versos — isso o
+sistema calcula sozinho a partir dos pares; você só precisa apontar
+**quais versos rimam com quais**, e quais sílabas exatas de cada lado
+formam o som compartilhado.
+
+Rima interna (os dois lados do par caem no mesmo verso) entra aqui
+normalmente, sem regra à parte: segue exatamente os mesmos critérios
+estritos deste passo e do Passo 4, sem afrouxar nada. Se o encontro sonoro
+não passar nesse teste estrito, ele não vira rima interna — vai pro
+Passo 3 como candidato a eco.
 
 Se houver monorrima (vários versos com o mesmo som, tipo AAAA), aponte
 todos os pares que formam essa cadeia (1↔2, 2↔3, 3↔4, etc. — não precisa
@@ -71,13 +77,31 @@ decidir se isso vira "um grupo só", o sistema une automaticamente).
 
 ## Passo 3 — Localizar ecos sonoros (quase-rimas)
 
-Separado do Passo 2, procure **ecos sonoros**: pares de versos cujos finais
-(ou, mais raramente, um trecho no meio do verso) soam parecido mas não
-chegam a rimar de fato pela definição estrita usada no Passo 2/Passo 4
-(ex.: compartilham só parte do som final, ou a semelhança é mais textural
-do que uma rima de verdade). Isso é especialmente relevante em verso livre,
-onde o poema pode evitar de propósito a rima plena mas ainda assim
-trabalhar com sons repetidos/parecidos.
+Separado do Passo 2, procure **ecos sonoros**: pares de sílabas tônicas
+cujo som é parecido mas falha em pelo menos um dos testes estritos do
+Passo 2/Passo 4 (ex.: mesma vogal tônica com nasalização diferente, mesmo
+esqueleto vocálico com consoante final diferente, mesmo ditongo tônico com
+acentuação diferente). Isso é especialmente relevante em verso livre, onde
+o poema pode evitar de propósito a rima plena mas ainda assim trabalhar
+com sons repetidos/parecidos.
+
+Pra não registrar coincidências sem relevância pra experiência real de ler
+ou declamar o poema, um par só conta como eco se atender **aos dois
+critérios abaixo ao mesmo tempo**:
+
+1. **Posição estrutural** — as sílabas que ecoam precisam ser tônicas e
+   cair numa posição análoga à de uma rima de verdade: no fim do verso
+   (espelhando rima externa — o caso mais comum) ou numa sílaba tônica no
+   meio do verso ecoando com o fim do mesmo verso ou de um verso próximo
+   (espelhando rima interna, só que sem passar no teste estrito). Nunca
+   aponte eco entre sílabas átonas soltas, ou entre sons no meio de
+   palavras sem relação com fim de verso, mesmo que a vogal bata.
+2. **Proximidade** — os dois versos precisam estar na mesma estrofe, ou
+   em estrofes adjacentes, no máximo. Fora desse raio, mesmo um encontro
+   sonoro tecnicamente exato não é percebido como eco na leitura — vira
+   coincidência estatística. Se aparecer algo assim (preciso no som, mas
+   longe demais), sinalize na seção "Pontos de atenção", não no array de
+   ecos.
 
 Aponte **quais versos formam cada par de eco** e exatamente quais
 sílaba(s) de cada lado criam o som compartilhado — mesmo nível de detalhe
@@ -88,9 +112,9 @@ quando fizer sentido, antes de inventar um novo:
 
 Assonância · Aliteração · Consonância · Paronomásia · Homeoteleuto
 
-Se o poema não tiver ecos além das rimas de verdade (ou nenhum além do que
-já foi capturado no Passo 2), tudo bem devolver uma lista vazia aqui — nem
-todo poema tem.
+Se nenhum par do poema atender aos dois critérios ao mesmo tempo, devolva
+uma lista vazia — a maioria dos poemas não vai ter eco nenhum sob esse
+padrão, e está tudo bem.
 
 ## Passo 4 — Classificar cada par de rima
 

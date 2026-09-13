@@ -67,11 +67,16 @@ Go through the poem and identify **pairs of verses that rhyme with each
 other** based on the final sound (starting from the last stressed syllable
 of each verse — this can include more than one syllable on each side when
 the rhyme is rich, covering more than one shared sound). Don't worry about
-computing the scheme "letter" (A, B, C...), whether the rhyme is
-external/internal, or how close/far apart the two verses are — the system
-calculates all of that on its own from the pairs; you only need to point
-out **which verses rhyme with which**, and exactly which syllables on each
-side form the shared sound.
+computing the scheme "letter" (A, B, C...) or how close/far apart the two
+verses are — the system calculates all of that on its own from the pairs;
+you only need to point out **which verses rhyme with which**, and exactly
+which syllables on each side form the shared sound.
+
+Internal rhyme (both sides of the pair fall on the same verse) belongs
+here too, with no separate rule: it follows the exact same strict criteria
+as this step and Step 4, nothing loosened. If the sound match fails that
+strict test, it doesn't count as internal rhyme — it becomes an echo
+candidate for Step 3 instead.
 
 If there's a monorhyme (several verses sharing the same sound, like AAAA),
 list all the pairs that form that chain (1↔2, 2↔3, 3↔4, etc. — no need to
@@ -80,13 +85,32 @@ automatically).
 
 ## Step 3 — Locate sound echoes (quasi-rhymes)
 
-Separately from Step 2, look for **sound echoes** (`ecos sonoros`):
-intentional quasi-rhymes — pairs of verses whose endings (or, less often, a
-stretch in the middle of the verse) sound alike but don't actually rhyme by
-the strict definition used in Step 2/Step 4 (e.g. they share only some of
-the final sounds, or the resemblance is more textural than a true rhyme).
-This is especially relevant in free verse, where the poem may deliberately
-avoid full rhyme while still working with repeated/similar sounds.
+Separately from Step 2, look for **sound echoes** (`ecos sonoros`): pairs
+of stressed syllables whose sound is similar but fails at least one of the
+strict tests from Step 2/Step 4 (e.g. same stressed vowel but different
+nasalization, same vowel skeleton but different final consonant, same
+stressed diphthong but different stress pattern). This is especially
+relevant in free verse, where the poem may deliberately avoid full rhyme
+while still working with repeated/similar sounds.
+
+To avoid logging coincidences with no real relevance to the experience of
+reading or reciting the poem, a pair only counts as an echo if it meets
+**both criteria below at the same time**:
+
+1. **Structural position** — the echoing syllables must be stressed, and
+   fall in a position analogous to a real rhyme: at the end of the verse
+   (mirroring external rhyme — the most common case) or on a stressed
+   syllable in the middle of the verse echoing with the end of that same
+   verse or of a nearby verse (mirroring internal rhyme, just without
+   passing the strict test). Never flag an echo between loose unstressed
+   syllables, or between sounds in the middle of words unrelated to the
+   verse ending, even if the vowel matches.
+2. **Proximity** — the two verses need to be in the same stanza, or in
+   adjacent stanzas at most. Beyond that range, even a technically exact
+   sound match isn't perceived as an echo while reading — it becomes
+   statistical coincidence. If something like that shows up (sonically
+   precise but too far apart), flag it in the "Points to double-check"
+   section instead of the echoes array.
 
 Point out **which verses form each echo pair** and exactly which
 syllable(s) on each side create the shared sound — same level of detail as
@@ -97,9 +121,8 @@ before inventing a new one:
 
 Assonância · Aliteração · Consonância · Paronomásia · Homeoteleuto
 
-If the poem has no echoes beyond its actual rhymes (or none beyond what's
-already captured in Step 2), it's fine to report an empty list here — not
-every poem has them.
+If no pair in the poem meets both criteria at once, return an empty list —
+most poems won't have any echoes under this standard, and that's fine.
 
 ## Step 4 — Classify each rhyme pair
 
