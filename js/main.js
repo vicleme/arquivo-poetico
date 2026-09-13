@@ -105,6 +105,7 @@ import {
 import {
     toggleSelecao,
     toggleSelecaoTodos,
+    selecionarPagina,
     limparSelecao,
     excluirSelecao,
     exportarSelecaoAtualJson,
@@ -393,6 +394,10 @@ const ACOES_LISTA = {
         toggleSelecao('prosas', el.checked, Number(el.dataset.id), e?.shiftKey),
     'toggle-todos-poemas': (el) => toggleSelecaoTodos('poemas', el.checked),
     'toggle-todos-prosas': (el) => toggleSelecaoTodos('prosas', el.checked),
+    'selecionar-pagina-poemas': (el) =>
+        selecionarPagina('poemas', el.dataset.ids.split(',').map(Number)),
+    'selecionar-pagina-prosas': (el) =>
+        selecionarPagina('prosas', el.dataset.ids.split(',').map(Number)),
     'baixar-diagrama-ecos': (el) => baixarDiagramaEcos(el),
 };
 

@@ -1102,6 +1102,30 @@
                     </div>
                 </div>
 
+                <div class="overflow-auto max-h-[75vh] bg-white dark:bg-slate-900 rounded shadow">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-100 dark:bg-slate-700 text-sm">
+                            <tr id="cabecalho-poemas">
+                                <th class="p-4 border-b w-8 border-gray-200 dark:border-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        id="check-todos-poemas"
+                                        onclick="toggleSelecaoTodos('poemas', this.checked)"
+                                    />
+                                </th>
+                                <th class="p-4 border-b border-gray-200 dark:border-slate-700">
+                                    ID / Título
+                                </th>
+                                <th
+                                    class="p-4 border-b text-right border-gray-200 dark:border-slate-700"
+                                >
+                                    Ações
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-poemas" class="text-sm"></tbody>
+                    </table>
+                </div>
                 <div
                     id="barra-acoes-poemas"
                     class="hidden mb-3 p-3 bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-center gap-2"
@@ -1300,30 +1324,6 @@
                     </div>
                 </div>
 
-                <div class="overflow-auto max-h-[75vh] bg-white dark:bg-slate-900 rounded shadow">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-gray-100 dark:bg-slate-700 text-sm">
-                            <tr id="cabecalho-poemas">
-                                <th class="p-4 border-b w-8 border-gray-200 dark:border-slate-700">
-                                    <input
-                                        type="checkbox"
-                                        id="check-todos-poemas"
-                                        onclick="toggleSelecaoTodos('poemas', this.checked)"
-                                    />
-                                </th>
-                                <th class="p-4 border-b border-gray-200 dark:border-slate-700">
-                                    ID / Título
-                                </th>
-                                <th
-                                    class="p-4 border-b text-right border-gray-200 dark:border-slate-700"
-                                >
-                                    Ações
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="lista-poemas" class="text-sm"></tbody>
-                    </table>
-                </div>
                 <div id="paginacao-poemas"></div>
             </section>
             <section id="prosas" class="tab-content">
@@ -1750,6 +1750,30 @@
                     </div>
                 </div>
 
+                <div class="overflow-auto max-h-[75vh] bg-white dark:bg-slate-900 rounded shadow">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-100 dark:bg-slate-700 text-sm">
+                            <tr id="cabecalho-prosas">
+                                <th class="p-4 border-b w-8 border-gray-200 dark:border-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        id="check-todos-prosas"
+                                        onclick="toggleSelecaoTodos('prosas', this.checked)"
+                                    />
+                                </th>
+                                <th class="p-4 border-b border-gray-200 dark:border-slate-700">
+                                    Título
+                                </th>
+                                <th
+                                    class="p-4 border-b text-right border-gray-200 dark:border-slate-700"
+                                >
+                                    Ações
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-prosas" class="text-sm"></tbody>
+                    </table>
+                </div>
                 <div
                     id="barra-acoes-prosas"
                     class="hidden mb-3 p-3 bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-center gap-2"
@@ -1968,30 +1992,6 @@
                     </div>
                 </div>
 
-                <div class="overflow-auto max-h-[75vh] bg-white dark:bg-slate-900 rounded shadow">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-gray-100 dark:bg-slate-700 text-sm">
-                            <tr id="cabecalho-prosas">
-                                <th class="p-4 border-b w-8 border-gray-200 dark:border-slate-700">
-                                    <input
-                                        type="checkbox"
-                                        id="check-todos-prosas"
-                                        onclick="toggleSelecaoTodos('prosas', this.checked)"
-                                    />
-                                </th>
-                                <th class="p-4 border-b border-gray-200 dark:border-slate-700">
-                                    Título
-                                </th>
-                                <th
-                                    class="p-4 border-b text-right border-gray-200 dark:border-slate-700"
-                                >
-                                    Ações
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="lista-prosas" class="text-sm"></tbody>
-                    </table>
-                </div>
                 <div id="paginacao-prosas"></div>
             </section>
 

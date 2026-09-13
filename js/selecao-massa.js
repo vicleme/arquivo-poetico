@@ -148,6 +148,19 @@ export function limparSelecao(tabela) {
     c.render();
 }
 
+// Soma os ids da página atual (`idsPagina`, vindos do botão "Selecionar
+// estes N" na barra de paginação — ver montarPaginacao em celulas-tabela.js)
+// à seleção existente. Sempre aditivo, mesmo espírito do checkbox de
+// cabeçalho e do shift-click — não existe um "substituir" próprio aqui de
+// propósito: já dá pra fazer isso com Limpar seleção → Selecionar esta
+// página (2 cliques com peças que já existem), sem precisar de um segundo
+// controle — decisão registrada na conversa de projeto.
+export function selecionarPagina(tabela, idsPagina) {
+    const c = cfg(tabela);
+    idsPagina.forEach((id) => c.selecao.add(id));
+    c.render();
+}
+
 export function atualizarBarraSelecao(tabela) {
     const c = cfg(tabela);
     const barra = document.getElementById(`barra-acoes-${tabela}`);

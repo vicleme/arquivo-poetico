@@ -382,7 +382,11 @@ export function celulaCamposPreenchidos(item) {
 // (checkbox, título e Ações), que não passam pelo seletor de colunas.
 // Monta a barra de paginação (itens por página + Anterior/Próxima) exibida
 // abaixo da tabela. totalItens é o total já filtrado (não só o da página).
-export function montarPaginacao(totalItens, paginaAtual, acaoPagina) {
+// `tabela` ('poemas'|'prosas') e `idsPagina` (ids dos itens exibidos na
+// página atual, na ordem da lista filtrada) são opcionais — sem eles, o
+// botão "Selecionar estes N" não é renderizado (ver chamadas em
+// render-listas.js pra quem passa os dois).
+export function montarPaginacao(totalItens, paginaAtual, acaoPagina, tabela, idsPagina) {
     if (totalItens === 0) return '';
 
     const porPagina = itensPorPagina === Infinity ? totalItens : itensPorPagina;
@@ -401,6 +405,25 @@ export function montarPaginacao(totalItens, paginaAtual, acaoPagina) {
             </select>
         </label>`;
 
+    // Só aparece com mais de 1 página: com página única (ou "Todos"
+    // escolhido no seletor), selecionar a página inteira e selecionar tudo
+    // seriam a mesma ação — o checkbox do cabeçalho já cobre esse caso.
+    // Sempre aditivo (mesmo espírito do checkbox de cabeçalho e do
+    // shift-click); "substituir" fica de graça na combinação já existente
+    // Limpar seleção → Selecionar esta página, sem precisar de um segundo
+    // controle aqui — decisão registrada na conversa de projeto.
+    const botaoSelecionarPagina =
+        totalPaginas > 1 && tabela && idsPagina && idsPagina.length
+            ? `<button data-action="selecionar-pagina-${tabela}" data-ids="${idsPagina.join(',')}"
+                class="px-2 py-1 border border-gray-300 dark:border-slate-600 rounded hover:bg-gray-50 dark:hover:bg-slate-700">Selecionar estes ${idsPagina.length}</button>`
+            : '';
+
+    const meio = `
+        <span class="flex items-center gap-2 text-xs text-gray-400 dark:text-slate-500">
+            ${inicio}–${fim} de ${totalItens}
+            ${botaoSelecionarPagina}
+        </span>`;
+
     const navegacao =
         totalPaginas > 1
             ? `
@@ -416,7 +439,7 @@ export function montarPaginacao(totalItens, paginaAtual, acaoPagina) {
     return `
         <div class="flex flex-wrap items-center justify-between gap-3 mt-3 px-1">
             ${seletor}
-            <span class="text-xs text-gray-400 dark:text-slate-500">${inicio}–${fim} de ${totalItens}</span>
+            ${meio}
             ${navegacao}
         </div>`;
 }

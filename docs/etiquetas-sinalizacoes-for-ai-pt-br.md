@@ -16,6 +16,21 @@ fechada de opções pré-definidas — quem cataloga digita a etiqueta que
 quiser, com autocompletar sugerindo o que já foi usado antes na mesma
 categoria, pra evitar variantes da mesma ideia).
 
+Cada um desses 8 campos é, de fato, uma **lista** — aceita quantas
+etiquetas fizerem sentido para o texto, não um valor único por categoria.
+Isso importa para uma decisão recorrente: quando o texto carrega duas
+coisas percebidas ao mesmo tempo (duas tradições, dois temas, duas
+sensações de Tom), o padrão é registrar cada uma como uma etiqueta própria
+na lista — não fundir as duas num rótulo composto. Só vale fundir num
+único rótulo quando a combinação é, ela mesma, uma sensação ou ideia
+indivisível, que não é a soma das partes — em Tom, por exemplo, "Muito
+meloso" não é "romântico" + "intenso" acontecendo em paralelo, é uma
+textura de leitura própria, então funciona como uma etiqueta só. Fora esse
+caso (ex.: um poema que é ao mesmo tempo melancólico *e*, num outro
+trecho, esperançoso — duas sensações reais, mas distintas, não uma coisa
+só), etiquetas separadas mantêm a lista mais útil para filtrar e cruzar
+dados depois.
+
 Os 8 campos, na ordem em que aparecem no editor:
 
 | Campo (chave)                 | Rótulo            |
@@ -105,3 +120,8 @@ não a string combinada.
    "conteúdo sensível" (presença de um parágrafo em `conteudoSensivel`) —
    são coisas diferentes que não devem ser somadas nem tratadas como
    sinônimos.
+5. Cada campo é uma lista (múltiplos valores por texto): via de regra,
+   registre aspectos ou sensações distintas como etiquetas separadas na
+   mesma lista. Só proponha uma etiqueta composta/fundida quando a
+   combinação for, ela mesma, uma ideia indivisível que não se reduz à
+   soma das partes — quando em dúvida, prefira separar.

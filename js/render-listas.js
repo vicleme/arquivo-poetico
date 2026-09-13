@@ -1681,6 +1681,8 @@ export function renderPoemas() {
             listaFiltrada.length,
             paginaPoemas,
             'pagina-poemas',
+            'poemas',
+            listaPagina.map((p) => p.id),
         );
 
     const CELULAS_POEMAS = {
@@ -2000,6 +2002,8 @@ export function renderProsas() {
             listaFiltrada.length,
             paginaProsas,
             'pagina-prosas',
+            'prosas',
+            listaPaginaPr.map((pr) => pr.id),
         );
 
     const CELULAS_PROSAS = {

@@ -16,6 +16,20 @@ pre-defined options — whoever catalogs types the tag they want, with
 autocomplete suggesting whatever has already been used in that same
 category, to avoid variants of the same idea).
 
+Each of these 8 fields is, in fact, a **list** — it accepts as many tags
+as make sense for the text, not a single value per category. This matters
+for a recurring decision: when a text carries two things perceived at
+once (two traditions, two themes, two Tone impressions), the default is
+to record each as its own tag in the list — not merge the two into one
+composite label. It's only worth merging into a single label when the
+combination is itself an indivisible feeling or idea, one that isn't the
+sum of its parts — in Tone, for example, "Very saccharine" isn't
+"romantic" + "intense" happening in parallel, it's a reading texture of
+its own, so it works as a single tag. Outside that case (e.g., a poem
+that is melancholic *and*, in a different passage, hopeful — two real but
+distinct impressions, not one single thing), separate tags keep the list
+more useful for filtering and cross-referencing later.
+
 The 8 fields, in the order they appear in the editor:
 
 | Field (key)                    | Label              |
@@ -110,3 +124,8 @@ the 8 separate fields, not the combined string.
    "sensitive content" flag (presence of a paragraph in
    `conteudoSensivel`) — they are different things that shouldn't be
    merged or treated as synonyms.
+5. Each field is a list (multiple values per text): as a rule, record
+   distinct aspects or impressions as separate tags in the same list.
+   Only propose a composite/merged tag when the combination is itself an
+   indivisible idea that doesn't reduce to the sum of its parts — when in
+   doubt, prefer keeping them separate.
