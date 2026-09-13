@@ -25,6 +25,7 @@ import {
     agruparParesGrupoPessoa,
     paresAutoria,
     corpoParaLinhasRicas,
+    formatarAutoclassificacaoTexto,
 } from './utils.js';
 import { db } from './db.js';
 
@@ -252,6 +253,7 @@ function verificacoesDeCampos(item) {
         !!(item.texto || '').trim(),
         !!(item.notas || '').trim(),
         !!(item.autoavaliacao || '').trim(),
+        !!item.autoclassificacao,
         !!(item.descricaoVisual || '').trim(),
         !!(item.contextoHistorico || '').trim(),
         !!(item.ocultacao || '').trim(),
@@ -413,24 +415,26 @@ function itemParaMarkdownDepoisDoTexto(item) {
             const nota = it.nota ? ` *(${it.nota})*` : '';
             return `${it.texto || ''}${link}${nota}`;
         };
-        agruparIntertextualidadePorTipo(item.intertextualidade).forEach(({ tipo, entradas, subBullet }) => {
-            if (!tipo) {
-                // Sem tipo: sem rótulo pra agrupar embaixo, cada entrada
-                // continua solta como já era antes do agrupamento.
-                entradas.forEach((it) => {
-                    md += `- ${linhaEntrada(it)}\n`;
-                });
-                return;
-            }
-            if (subBullet) {
-                md += `- **${tipo}:**\n`;
-                entradas.forEach((it) => {
-                    md += `  - ${linhaEntrada(it)}\n`;
-                });
-            } else {
-                md += `- **${tipo}:** ${entradas.map(linhaEntrada).join(', ')}\n`;
-            }
-        });
+        agruparIntertextualidadePorTipo(item.intertextualidade).forEach(
+            ({ tipo, entradas, subBullet }) => {
+                if (!tipo) {
+                    // Sem tipo: sem rótulo pra agrupar embaixo, cada entrada
+                    // continua solta como já era antes do agrupamento.
+                    entradas.forEach((it) => {
+                        md += `- ${linhaEntrada(it)}\n`;
+                    });
+                    return;
+                }
+                if (subBullet) {
+                    md += `- **${tipo}:**\n`;
+                    entradas.forEach((it) => {
+                        md += `  - ${linhaEntrada(it)}\n`;
+                    });
+                } else {
+                    md += `- **${tipo}:** ${entradas.map(linhaEntrada).join(', ')}\n`;
+                }
+            },
+        );
         md += '\n';
     }
 
@@ -452,22 +456,24 @@ function itemParaMarkdownDepoisDoTexto(item) {
             const nota = it.nota ? ` *(${it.nota})*` : '';
             return `${it.texto || ''}${link}${nota}`;
         };
-        agruparIntertextualidadePorTipo(item.referenciasExternas).forEach(({ tipo, entradas, subBullet }) => {
-            if (!tipo) {
-                entradas.forEach((it) => {
-                    md += `- ${linhaEntrada(it)}\n`;
-                });
-                return;
-            }
-            if (subBullet) {
-                md += `- **${tipo}:**\n`;
-                entradas.forEach((it) => {
-                    md += `  - ${linhaEntrada(it)}\n`;
-                });
-            } else {
-                md += `- **${tipo}:** ${entradas.map(linhaEntrada).join(', ')}\n`;
-            }
-        });
+        agruparIntertextualidadePorTipo(item.referenciasExternas).forEach(
+            ({ tipo, entradas, subBullet }) => {
+                if (!tipo) {
+                    entradas.forEach((it) => {
+                        md += `- ${linhaEntrada(it)}\n`;
+                    });
+                    return;
+                }
+                if (subBullet) {
+                    md += `- **${tipo}:**\n`;
+                    entradas.forEach((it) => {
+                        md += `  - ${linhaEntrada(it)}\n`;
+                    });
+                } else {
+                    md += `- **${tipo}:** ${entradas.map(linhaEntrada).join(', ')}\n`;
+                }
+            },
+        );
         md += '\n';
     }
 
@@ -522,6 +528,7 @@ function itemParaMarkdownDepoisDoTexto(item) {
         md += '\n';
     }
 
+    md += blocoTexto('Autoclassificação', formatarAutoclassificacaoTexto(item.autoclassificacao));
     md += blocoTexto('Autoavaliação', item.autoavaliacao);
 
     // Conteúdo Sensível / Vocabulário Hiperacionante em destaque (blockquote),

@@ -96,6 +96,10 @@ No item:
 ]
 ```
 
+### Autoavaliação / Autoclassificação
+
+`autoavaliacao`: string livre (opiniões sobre o texto). `autoclassificacao`: número de 0,5 a 5, passo 0,5 — "quantos corações" a pessoa dá pro próprio texto, campo puramente afetivo/qualitativo, sem pretensão de nota técnica. `0` (ou ausente) é o valor especial "não avaliado", nunca uma nota — a nota mínima de verdade já é 0,5. `autoclassificacaoValida`/`formatarAutoclassificacaoTexto`/`renderCoracoesHtml` (`utils.js`) centralizam validação/formatação ("3,5 corações")/renderização (compartilhada entre o widget clicável do modal e as exibições somente-leitura da tabela e da Visualização). Exportação (`.md`/docx/pdf, que reaproveitam `blocoTexto`) é só texto — "3,5 corações" — sem o emoji de coração, pra não depender de suporte a emoji na geração do PDF.
+
 ### Sinalizações (8 categorias, cada uma string por vírgula)
 
 `sinalizacoesTradicao`, `sinalizacoesEstilo`, `sinalizacoesTema`, `sinalizacoesRelacao`, `sinalizacoesSensibilidade`, `sinalizacoesTom`, `sinalizacoesDominioImagetico` (vocabulário/imagética de um domínio de conhecimento que o texto usa como registro — ex.: Astrologia, Mitologia — diferente de Intertextualidade, que é diálogo com um artefato externo específico), `sinalizacoesOutros` (balde temporário pra tags sem categoria própria).

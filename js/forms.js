@@ -105,6 +105,7 @@ import {
     obterLojas,
     carregarLojas,
     resetLojas,
+    renderAutoclassificacao,
 } from './editor.js';
 import { renderPessoas, renderEpocas } from './render-listas.js';
 import {
@@ -1357,6 +1358,7 @@ export function initFormPoema() {
             envios: obterEnvios('poemas'),
             reconhecimentos: obterReconhecimentos('poemas'),
             autoavaliacao: document.getElementById('p-autoavaliacao').value,
+            autoclassificacao: Number(document.getElementById('p-autoclassificacao').value) || 0,
             status: document.getElementById('p-status').value,
             epocaRetratada,
             intertextualidade: obterIntertextualidade('poemas'),
@@ -1450,6 +1452,7 @@ const MAPA_POEMA = {
     idioma: ['p-idioma', 'pt-BR'],
     notas: 'p-notas',
     autoavaliacao: 'p-autoavaliacao',
+    autoclassificacao: ['p-autoclassificacao', 0],
     anexosNotaGeral: 'p-anexos-nota-geral',
     status: 'p-status', // select — preencherCampos seta .value por já não ser checkbox
     descricaoVisual: 'p-visual',
@@ -1470,6 +1473,7 @@ export async function editarPoema(id) {
     atualizarDatalist();
 
     preencherCampos(p, MAPA_POEMA);
+    renderAutoclassificacao('poemas');
     preencherDataParcial('p-data-esc', p.dataEscrita);
     preencherDataParcial('p-data-pub', p.dataPublicacao);
     document.getElementById('p-data-esc-exata').checked = !!p.dataEscrita?.exata;
@@ -1659,6 +1663,7 @@ export function initFormProsa() {
             envios: obterEnvios('prosas'),
             reconhecimentos: obterReconhecimentos('prosas'),
             autoavaliacao: document.getElementById('pr-autoavaliacao').value,
+            autoclassificacao: Number(document.getElementById('pr-autoclassificacao').value) || 0,
             genero: document.getElementById('pr-genero').value,
             publicado: document.getElementById('pr-pub').checked,
             status: document.getElementById('pr-status').value,
@@ -1756,6 +1761,7 @@ const MAPA_PROSA = {
     idioma: ['pr-idioma', 'pt-BR'],
     notas: 'pr-notas',
     autoavaliacao: 'pr-autoavaliacao',
+    autoclassificacao: ['pr-autoclassificacao', 0],
     publicado: 'pr-pub',
     anexosNotaGeral: 'pr-anexos-nota-geral',
     contextoHistorico: 'pr-contexto',
@@ -1773,6 +1779,7 @@ export async function editarProsa(id) {
     renderDropdowns();
 
     preencherCampos(pr, MAPA_PROSA);
+    renderAutoclassificacao('prosas');
     preencherDataParcial('pr-data-esc', pr.dataEscrita);
     preencherDataParcial('pr-data-pub', pr.dataPublicacao);
     document.getElementById('pr-data-esc-exata').checked = !!pr.dataEscrita?.exata;

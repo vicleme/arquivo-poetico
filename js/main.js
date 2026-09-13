@@ -245,6 +245,8 @@ import {
     editarLoja,
     cancelarEdicaoLoja,
     renderSinalizacoesProsa,
+    definirAutoclassificacao,
+    limparAutoclassificacao,
 } from './editor.js';
 import {
     initFormLivro,
@@ -640,6 +642,8 @@ window.removerGrupoDireto = removerGrupoDireto;
 window.adicionarAutoria = adicionarAutoria;
 window.removerAutoria = removerAutoria;
 window.alterarPapelAutoria = alterarPapelAutoria;
+window.definirAutoclassificacao = definirAutoclassificacao;
+window.limparAutoclassificacao = limparAutoclassificacao;
 window.adicionarEnvio = adicionarEnvio;
 window.editarEnvio = editarEnvio;
 window.cancelarEdicaoEnvio = cancelarEdicaoEnvio;

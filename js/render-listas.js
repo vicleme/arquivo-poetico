@@ -65,6 +65,7 @@ import {
     rotuloEntradaElo,
     rotuloEntradaEco,
     trechoNota,
+    celulaAutoclassificacao,
     celulaCamposPreenchidos,
     montarPaginacao,
     montarCabecalho,
@@ -1159,6 +1160,24 @@ function compararPorTexto(pegarTexto) {
     };
 }
 
+// Comparador numérico genérico — mesmo critério de "vazio por último,
+// independente da direção" do comparador de texto acima, só que aqui
+// "vazio" é 0 (ou não-número), não string vazia. Usado por
+// Autoclassificação, onde 0 é exatamente "não avaliado" (ver
+// autoclassificacaoValida em utils.js) — nunca uma nota de verdade,
+// então tratá-lo como "sem valor" na ordenação é o comportamento certo,
+// não um efeito colateral de tratar 0 como falsy.
+function compararPorNumero(pegarNumero) {
+    return (a, b, asc) => {
+        const na = Number(pegarNumero(a)) || 0;
+        const nb = Number(pegarNumero(b)) || 0;
+        if (!na && !nb) return 0;
+        if (!na) return 1;
+        if (!nb) return -1;
+        return asc ? na - nb : nb - na;
+    };
+}
+
 // Sem uma ordem "natural" entre os status (não é alfabético nem
 // cronológico), então esse é só um critério fixo e arbitrário, mas
 // consistente, do "menos pronto" ao "mais pronto".
@@ -1283,6 +1302,7 @@ const COMPARADORES_ORDENACAO = {
     ),
     contextoHistorico: compararPorTexto((p) => p.contextoHistorico),
     autoavaliacao: compararPorTexto((p) => p.autoavaliacao),
+    autoclassificacao: compararPorNumero((p) => p.autoclassificacao),
     etiquetas: compararPorTexto((p) => sinalizacoesCombinadas(p)),
     notas: compararPorTexto((p) => p.notas),
     ocultacao: compararPorTexto((p) => p.ocultacao),
@@ -1723,6 +1743,7 @@ export function renderPoemas() {
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.notas)}</td>`,
         autoavaliacao: (p) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.autoavaliacao)}</td>`,
+        autoclassificacao: (p) => celulaAutoclassificacao(p),
         epocaRetratada: (p) => {
             const epoca = p.epocaRetratada;
             const na = epoca?.na;
@@ -2042,6 +2063,7 @@ export function renderProsas() {
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.notas)}</td>`,
         autoavaliacao: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.autoavaliacao)}</td>`,
+        autoclassificacao: (pr) => celulaAutoclassificacao(pr),
         epocaRetratada: (pr) => {
             const epoca = pr.epocaRetratada;
             const na = epoca?.na;

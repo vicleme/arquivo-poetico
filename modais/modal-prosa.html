@@ -772,6 +772,31 @@
                     <details class="campo-grupo">
                         <summary>Autoavaliação</summary>
                         <div class="campo-grupo-corpo">
+                            <div>
+                                <label class="form-label"
+                                    >Autoclassificação
+                                    <span
+                                        class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                        >(quanto você gosta deste texto — não é nota técnica)</span
+                                    ></label
+                                >
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <input type="hidden" id="pr-autoclassificacao" value="0" />
+                                    <div id="pr-autoclassificacao-corar"></div>
+                                    <span
+                                        id="pr-autoclassificacao-legenda"
+                                        class="text-xs text-gray-400 dark:text-slate-500"
+                                        >Sem autoclassificação</span
+                                    >
+                                    <button
+                                        type="button"
+                                        onclick="limparAutoclassificacao('prosas')"
+                                        class="text-xs text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 underline"
+                                    >
+                                        Limpar
+                                    </button>
+                                </div>
+                            </div>
                             <label class="form-label"
                                 >Autoavaliação
                                 <span
@@ -859,7 +884,10 @@
                                 ></label
                             >
                             <div class="flex gap-2 mb-2">
-                                <select id="pr-eco-tipo" class="text-xs w-28 flex-shrink-0"></select>
+                                <select
+                                    id="pr-eco-tipo"
+                                    class="text-xs w-28 flex-shrink-0"
+                                ></select>
                                 <select id="pr-eco-poema" class="text-xs flex-1"></select>
                                 <button
                                     type="button"
@@ -1036,10 +1064,7 @@
                             <datalist id="sugestoes-hipertexto-tipo-prosa"></datalist>
                             <datalist id="sugestoes-hipertexto-relacao-prosa"></datalist>
                             <datalist id="sugestoes-hipertexto-hipotexto-prosa"></datalist>
-                            <div
-                                id="pr-hipertexto-lista"
-                                class="space-y-1 mb-2 min-h-[12px]"
-                            ></div>
+                            <div id="pr-hipertexto-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
 
                             <label class="form-label"
                                 >Referências

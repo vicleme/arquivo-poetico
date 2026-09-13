@@ -38,6 +38,8 @@ import {
     lerDataParcial,
     preencherDataParcial,
     formatarDataParcial,
+    renderCoracoesHtml,
+    formatarAutoclassificacaoTexto,
 } from './utils.js';
 
 // ─── Estado local ─────────────────────────────────────────────
@@ -1122,6 +1124,55 @@ function prefixoDom(tabela) {
     if (tabela === 'poemas') return 'p';
     if (tabela === 'prosas') return 'pr';
     throw new Error(`Tabela desconhecida em prefixoDom: ${tabela}`);
+}
+
+// ─── Autoclassificação (corações) ───────────────────────────────
+// Widget de 5 corações (0,5 a 5, passo 0,5 — ver renderCoracoesHtml/
+// autoclassificacaoValida em utils.js). O valor de verdade mora no
+// hidden #p(r)-autoclassificacao; esta função só redesenha os corações
+// e a legenda a partir dele — chamada sempre que o valor muda (clique
+// num coração, "Limpar", ou ao popular o formulário em editarPoema/
+// editarProsa/prepararNovo).
+export function renderAutoclassificacao(tabela) {
+    const p = prefixoDom(tabela);
+    const hidden = document.getElementById(`${p}-autoclassificacao`);
+    const container = document.getElementById(`${p}-autoclassificacao-corar`);
+    if (!hidden || !container) return;
+    const valor = Number(hidden.value) || 0;
+    container.innerHTML = renderCoracoesHtml(valor, { tabela });
+    const legenda = document.getElementById(`${p}-autoclassificacao-legenda`);
+    if (legenda)
+        legenda.textContent = formatarAutoclassificacaoTexto(valor) || 'Sem autoclassificação';
+}
+
+// Clicar num coração (ou numa das metades) chama isto com o valor
+// correspondente. Clicar de novo no MESMO valor já selecionado apaga a
+// autoclassificação (volta a "não avaliado") — junto com o botão
+// "Limpar" (limparAutoclassificacao abaixo), é a forma de voltar a zero
+// sem precisar de um sexto estado/botão dedicado.
+// Dispara 'change' manualmente no hidden: preencherCampos/editarPoema
+// setam .value direto sem disparar evento de propósito (ver comentário
+// de criarRastreadorDeAlteracoes em utils.js), mas aqui é o oposto —
+// é uma interação real do usuário (o clique no coração), então precisa
+// marcar o formulário como "sujo" igual a qualquer outro campo editado.
+export function definirAutoclassificacao(tabela, valor) {
+    const p = prefixoDom(tabela);
+    const hidden = document.getElementById(`${p}-autoclassificacao`);
+    if (!hidden) return;
+    const atual = Number(hidden.value) || 0;
+    hidden.value = atual === valor ? 0 : valor;
+    hidden.dispatchEvent(new Event('change', { bubbles: true }));
+    renderAutoclassificacao(tabela);
+}
+
+export function limparAutoclassificacao(tabela) {
+    const p = prefixoDom(tabela);
+    const hidden = document.getElementById(`${p}-autoclassificacao`);
+    if (!hidden) return;
+    if (Number(hidden.value) === 0) return; // já limpo — evita 'change'/dirty à toa
+    hidden.value = 0;
+    hidden.dispatchEvent(new Event('change', { bubbles: true }));
+    renderAutoclassificacao(tabela);
 }
 
 function renderItemIntertexto(it) {
@@ -3336,7 +3387,6 @@ export function initEditor() {
             }
         });
     }
-
 }
 
 // Wiring de Enter dos campos de Prosa (Sinalizações, pessoas, gênero,

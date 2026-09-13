@@ -1231,6 +1231,31 @@
                     <details class="campo-grupo">
                         <summary>Autoavaliação</summary>
                         <div class="campo-grupo-corpo">
+                            <div>
+                                <label class="form-label"
+                                    >Autoclassificação
+                                    <span
+                                        class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                        >(quanto você gosta deste texto — não é nota técnica)</span
+                                    ></label
+                                >
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <input type="hidden" id="p-autoclassificacao" value="0" />
+                                    <div id="p-autoclassificacao-corar"></div>
+                                    <span
+                                        id="p-autoclassificacao-legenda"
+                                        class="text-xs text-gray-400 dark:text-slate-500"
+                                        >Sem autoclassificação</span
+                                    >
+                                    <button
+                                        type="button"
+                                        onclick="limparAutoclassificacao('poemas')"
+                                        class="text-xs text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 underline"
+                                    >
+                                        Limpar
+                                    </button>
+                                </div>
+                            </div>
                             <label class="form-label"
                                 >Autoavaliação
                                 <span

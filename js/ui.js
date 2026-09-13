@@ -19,6 +19,7 @@ import {
     resetReferenciasExternas,
     renderPainelElosDerivados,
     atualizarRotulosDirecaoElo,
+    renderAutoclassificacao,
 } from './editor.js';
 import {
     extrairFasesUnicas,
@@ -693,6 +694,7 @@ export async function prepararNovo(tipo) {
         resetElos('poemas');
         resetEcos('poemas');
         renderPainelElosDerivados(null);
+        renderAutoclassificacao('poemas');
         atualizarDatalist();
         const infoP = document.getElementById('p-coletaneas-info');
         if (infoP) infoP.innerHTML = '';
@@ -716,6 +718,7 @@ export async function prepararNovo(tipo) {
         resetElos('prosas');
         resetEcos('prosas');
         renderPainelElosDerivados(null);
+        renderAutoclassificacao('prosas');
         import('./editor.js').then(
             ({ resetGeneroProsa, atualizarDatalistProsa, renderPainelElosDerivadosProsa }) => {
                 resetGeneroProsa();

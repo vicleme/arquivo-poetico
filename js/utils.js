@@ -36,6 +36,59 @@ export function escapeHtml(valor) {
         .replaceAll("'", '&#39;');
 }
 
+// ─── Autoclassificação (corações) ───────────────────────────────
+// Campo qualitativo de "quanto a pessoa gosta do próprio texto" — 0,5 a
+// 5, passo 0,5, mostrado como corações. Puramente subjetivo/afetivo, sem
+// pretensão de nota técnica (por isso corações, não estrelas/número
+// solto) — ver manutencao/decisoes.md. `0` (ou ausente/inválido) significa
+// especificamente "não avaliado", nunca "avaliação mínima": a avaliação
+// mínima de verdade já é 0,5.
+export function autoclassificacaoValida(valor) {
+    const n = Number(valor);
+    return Number.isFinite(n) && n >= 0.5 && n <= 5 && Math.round(n * 2) === n * 2;
+}
+
+// "3,5 corações" / "1 coração" / '' quando não avaliado — usado tanto na
+// legenda do widget (editor.js) quanto nas exportações (exportar-md.js,
+// reaproveitado por docx/pdf via itemParaMarkdownPartes).
+export function formatarAutoclassificacaoTexto(valor) {
+    if (!autoclassificacaoValida(valor)) return '';
+    const n = Number(valor);
+    const numero = n.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
+    return `${numero} ${n === 1 ? 'coração' : 'corações'}`;
+}
+
+// HTML dos 5 corações — fundo (vazio) + preenchimento clipado por
+// largura (0%/50%/100% por coração, conforme o valor). Uma função só,
+// compartilhada entre o widget interativo do editor (celulas-tabela.js/
+// editor.js chamam com somenteLeitura=false, dentro do modal) e as
+// exibições read-only (tabela e visualização/impressão, somenteLeitura=
+// true) — pra nunca divergir visualmente entre "editando" e "vendo".
+// Os dois "meios" clicáveis (esquerdo/direito) de cada coração existem
+// só na versão interativa, cada um chamando definirAutoclassificacao
+// (editor.js) com o valor correspondente (i-0,5 / i) — nada de calcular
+// posição do clique em runtime, mais simples e mais acessível (cada
+// metade é um <button> de verdade, com título próprio).
+export function renderCoracoesHtml(valor, { tabela = '', somenteLeitura = false } = {}) {
+    const n = autoclassificacaoValida(valor) ? Number(valor) : 0;
+    const rotulo = formatarAutoclassificacaoTexto(n) || 'Sem autoclassificação';
+    let html = `<span class="corar-container" role="${somenteLeitura ? 'img' : 'radiogroup'}" aria-label="${escapeHtml(rotulo)}">`;
+    for (let i = 1; i <= 5; i++) {
+        const preenchido = Math.max(0, Math.min(1, n - (i - 1))) * 100; // 0 / 50 / 100
+        html += `<span class="corar-item">`;
+        html += `<span class="corar-fundo" aria-hidden="true">🤍</span>`;
+        html += `<span class="corar-preenchido" aria-hidden="true" style="width:${preenchido}%"><span>❤️</span></span>`;
+        if (!somenteLeitura) {
+            const meio = i - 0.5;
+            html += `<button type="button" class="corar-meio-esq" title="${meio} coração${meio === 1 ? '' : 's'}" onclick="definirAutoclassificacao('${tabela}', ${meio})"></button>`;
+            html += `<button type="button" class="corar-meio-dir" title="${i} coração${i === 1 ? '' : 's'}" onclick="definirAutoclassificacao('${tabela}', ${i})"></button>`;
+        }
+        html += `</span>`;
+    }
+    html += '</span>';
+    return html;
+}
+
 // ─── Sanitização do campo `texto` (HTML cru intencional) ────────
 // O campo `texto` de Poema/Prosa/Elemento guarda HTML de propósito
 // (ver comentário de escapeHtml acima) — mas "guardar HTML cru" não

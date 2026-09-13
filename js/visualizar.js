@@ -35,6 +35,9 @@ import {
     corpoEntradaHipertextualidade,
     escapeHtml,
     sanitizarTextoRico,
+    renderCoracoesHtml,
+    formatarAutoclassificacaoTexto,
+    autoclassificacaoValida,
 } from './utils.js';
 
 // tipo/id do item atualmente aberto no modal — os botões de Baixar do
@@ -237,6 +240,12 @@ export function renderVisualizacaoHtml(item) {
         const prefixo = meta ? `<strong>${escapeHtml(meta)}:</strong> ` : '';
         return `${prefixo}${escapeHtml(r.texto || '')}`;
     });
+
+    if (autoclassificacaoValida(item.autoclassificacao)) {
+        html += `
+            <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1">Autoclassificação</h4>
+            <div class="text-sm flex items-center gap-2">${renderCoracoesHtml(item.autoclassificacao, { somenteLeitura: true })}<span class="text-xs text-gray-400 dark:text-slate-500">${escapeHtml(formatarAutoclassificacaoTexto(item.autoclassificacao))}</span></div>`;
+    }
 
     html += blocoTextoHtml('Autoavaliação', item.autoavaliacao);
 

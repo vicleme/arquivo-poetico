@@ -53,6 +53,14 @@ export const DEFINICAO_COLUNAS = {
         { key: 'reconhecimentos', label: 'Reconhecimentos', default: false },
         // Autoavaliação — grupo novo, logo depois de Reconhecimentos no modal.
         { key: 'autoavaliacao', label: 'Autoavaliação', default: false, sortType: 'alfabetico' },
+        // Autoclassificação — corações (0,5 a 5), dentro do mesmo grupo do
+        // modal, logo acima do campo de texto livre Autoavaliação.
+        {
+            key: 'autoclassificacao',
+            label: 'Autoclassificação',
+            default: false,
+            sortType: 'numero',
+        },
         // "Livros e destino" — vínculo estrutural.
         { key: 'estrutura', label: 'Estrutura', default: true, sortType: 'estrutura' },
         // "Intratextualidade" (Elos + Ecos).
@@ -188,6 +196,14 @@ export const DEFINICAO_COLUNAS = {
         { key: 'reconhecimentos', label: 'Reconhecimentos', default: false },
         // Autoavaliação — grupo novo, logo depois de Reconhecimentos no modal.
         { key: 'autoavaliacao', label: 'Autoavaliação', default: false, sortType: 'alfabetico' },
+        // Autoclassificação — corações (0,5 a 5), dentro do mesmo grupo do
+        // modal, logo acima do campo de texto livre Autoavaliação.
+        {
+            key: 'autoclassificacao',
+            label: 'Autoclassificação',
+            default: false,
+            sortType: 'numero',
+        },
         // "Intratextualidade" (Elos + Ecos).
         { key: 'elos', label: 'Elos', default: false, sortType: 'alfabetico' },
         { key: 'ecos', label: 'Ecos', default: false, sortType: 'alfabetico' },

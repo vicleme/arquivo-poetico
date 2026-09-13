@@ -33,6 +33,7 @@ import {
     classesCorGrupo,
     paresAutoria,
     SINALIZACOES_CATEGORIAS,
+    renderCoracoesHtml,
 } from './utils.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
 import { DEFINICAO_COLUNAS, getColunasAtivas, renderSeletorColunas } from './colunas.js';
@@ -350,6 +351,13 @@ export function trechoNota(notas) {
     const limpo = notas.trim();
     const trecho = limpo.length > 80 ? limpo.slice(0, 80) + '…' : limpo;
     return `<span title="${escapeHtml(limpo)}">${escapeHtml(trecho)}</span>`;
+}
+
+// Célula da coluna "Autoclassificação" — mesma marcação de corações do
+// widget do modal (ver renderCoracoesHtml em utils.js), só que
+// somenteLeitura (sem os botões de clique).
+export function celulaAutoclassificacao(item) {
+    return `<td class="p-4">${renderCoracoesHtml(item.autoclassificacao, { somenteLeitura: true })}</td>`;
 }
 
 // Célula da coluna "Campos Preenchidos" (ver contarCamposPreenchidos em

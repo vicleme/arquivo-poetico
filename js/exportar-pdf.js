@@ -666,7 +666,7 @@ export function gerarPdfExportacao(itens) {
             // colado direto no conteúdo anterior, sem blank entre eles
             // (motivo original desta regra, ver comentário acima).
             if (nivelTitulo && estadoY.y > margem && !ultimaFoiBranco) {
-                const preEspacoTitulo = nivelTitulo === 1 ? 16 : nivelTitulo === 2 ? 12 : 4;
+                const preEspacoTitulo = nivelTitulo === 1 ? 16 : nivelTitulo === 2 ? 12 : 8;
                 if (estadoY.y + preEspacoTitulo + tamanho * 1.4 > alturaPagina - margem) {
                     // Título ficaria colado no rodapé (ou cortado) — quebra a
                     // página em vez de gastar o respiro extra num espaço que

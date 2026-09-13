@@ -55,6 +55,9 @@ import {
     TAMANHOS_VERSO,
     ORIGENS_TRADICAO_SONORIDADE,
     calcularOpcoesCascataSonoridade,
+    autoclassificacaoValida,
+    formatarAutoclassificacaoTexto,
+    renderCoracoesHtml,
 } from '../js/utils.js';
 
 describe('gerarId', () => {
@@ -1727,5 +1730,63 @@ describe('calcularOpcoesCascataSonoridade — Poesia Narrativa / Cordel', () => 
     it('NÃO trava esquemaRimasPadrao — deixa a lista inteira, incluindo Sextilha Aberta', () => {
         const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Poesia Narrativa / Cordel' });
         assert.deepEqual(opcoes.esquemaRimasPadrao, ESQUEMA_RIMAS_PADRAO);
+    });
+});
+
+describe('autoclassificacaoValida', () => {
+    it('aceita 0,5 a 5 em passo de 0,5', () => {
+        assert.equal(autoclassificacaoValida(0.5), true);
+        assert.equal(autoclassificacaoValida(1), true);
+        assert.equal(autoclassificacaoValida(3.5), true);
+        assert.equal(autoclassificacaoValida(5), true);
+    });
+
+    it('rejeita 0/ausente (é "não avaliado", não uma nota) e fora do passo/faixa', () => {
+        assert.equal(autoclassificacaoValida(0), false);
+        assert.equal(autoclassificacaoValida(null), false);
+        assert.equal(autoclassificacaoValida(undefined), false);
+        assert.equal(autoclassificacaoValida(''), false);
+        assert.equal(autoclassificacaoValida(0.3), false);
+        assert.equal(autoclassificacaoValida(5.5), false);
+        assert.equal(autoclassificacaoValida(-1), false);
+    });
+});
+
+describe('formatarAutoclassificacaoTexto', () => {
+    it('formata número + "corações"/"coração" (singular só em 1)', () => {
+        assert.equal(formatarAutoclassificacaoTexto(3.5), '3,5 corações');
+        assert.equal(formatarAutoclassificacaoTexto(5), '5 corações');
+        assert.equal(formatarAutoclassificacaoTexto(0.5), '0,5 corações');
+        assert.equal(formatarAutoclassificacaoTexto(1), '1 coração');
+    });
+
+    it('devolve string vazia pra "não avaliado"', () => {
+        assert.equal(formatarAutoclassificacaoTexto(0), '');
+        assert.equal(formatarAutoclassificacaoTexto(null), '');
+        assert.equal(formatarAutoclassificacaoTexto(undefined), '');
+    });
+});
+
+describe('renderCoracoesHtml', () => {
+    it('modo somente-leitura não inclui botões clicáveis', () => {
+        const html = renderCoracoesHtml(3, { somenteLeitura: true });
+        assert.ok(!html.includes('<button'));
+        assert.ok(html.includes('role="img"'));
+    });
+
+    it('modo interativo inclui os 10 botões (2 por coração) chamando definirAutoclassificacao', () => {
+        const html = renderCoracoesHtml(2, { tabela: 'poemas' });
+        const chamadas = html.match(/definirAutoclassificacao\('poemas', [0-9.]+\)/g) || [];
+        assert.equal(chamadas.length, 10);
+        assert.ok(html.includes("definirAutoclassificacao('poemas', 0.5)"));
+        assert.ok(html.includes("definirAutoclassificacao('poemas', 5)"));
+        assert.ok(html.includes('role="radiogroup"'));
+    });
+
+    it('0/valor inválido renderiza os 5 corações vazios (0% de preenchimento)', () => {
+        const html = renderCoracoesHtml(0, { somenteLeitura: true });
+        const preenchidos = html.match(/width:(\d+)%/g) || [];
+        assert.equal(preenchidos.length, 5);
+        assert.ok(preenchidos.every((p) => p === 'width:0%'));
     });
 });
