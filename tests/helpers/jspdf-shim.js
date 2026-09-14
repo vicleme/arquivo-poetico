@@ -1,8 +1,9 @@
 // jsPDF é carregado só via CDN no navegador (ver <script> em index.html)
 // e não é uma dependência do package.json — não tem como `import` a lib
 // de verdade aqui. Este shim implementa só a fatia da API que
-// js/exportar-pdf.js efetivamente usa (setFont, setFontSize,
-// setTextColor, setDrawColor, setFillColor, rect, text, line,
+// js/exportar-pdf.js e js/exportar-sonoridade.js efetivamente usam
+// (setFont, setFontSize, setTextColor, setDrawColor, setFillColor,
+// setLineWidth, setLineDashPattern, rect, text, line,
 // splitTextToSize, getTextWidth, addPage, internal.pageSize,
 // output/save) e grava um log de chamadas
 // (`doc.chamadas`) pra os testes inspecionarem.
@@ -59,6 +60,14 @@ export function criarConstrutorJsPdfFalso() {
 
         setDrawColor(r, g, b) {
             this.chamadas.push({ tipo: 'setDrawColor', r, g, b });
+        }
+
+        setLineWidth(largura) {
+            this.chamadas.push({ tipo: 'setLineWidth', largura });
+        }
+
+        setLineDashPattern(padrao, fase) {
+            this.chamadas.push({ tipo: 'setLineDashPattern', padrao, fase });
         }
 
         setFillColor(r, g, b) {

@@ -11,7 +11,17 @@ import {
     mesclarPessoas,
     mesclarEpocas,
     getEscansaoDoPoema,
+    getEstruturaDoPoema,
 } from './db.js';
+import {
+    inicializarEstruturaTextual,
+    obterUnidadesAtuais,
+    obterEventosAtuais,
+    adicionarUnidade,
+    adicionarEvento,
+    aplicarTemplateNoEstado,
+    extrairClassificacaoParaTemplate,
+} from './estrutura-textual.js';
 import {
     reordenarPosicao,
     fecharEspaco,
@@ -1022,6 +1032,258 @@ export async function editarSonoridade(id) {
     popularCamposSonoridade(es);
     document.getElementById('modal-sonoridade-titulo').innerText = 'Editar Escansão';
     toggleModal('modal-sonoridade');
+}
+
+// ─── Morfofuncionalidade (Progressão Morfofuncional) ───────────
+// Ver manutencao/progressao-morfofuncional.md pro requisito completo.
+// Estado de edição (Unidades/Eventos atuais, estrofes derivadas do
+// poema) mora em estrutura-textual.js — mesma separação de
+// responsabilidade que já existe entre este arquivo e
+// editor-sonoridade.js: aqui só decide QUANDO chamar e lê o
+// resultado final na hora de salvar.
+
+function popularSelectPoemasEstrutura(poemaIdAtual = '') {
+    const sel = document.getElementById('estr-poema-id');
+    if (!sel) return;
+    const ordenados = [...db.poemas].sort((a, b) =>
+        (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR'),
+    );
+    sel.innerHTML = '<option value="">-- Escolha um poema --</option>';
+    ordenados.forEach((p) => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.titulo || `#${p.id}`;
+        sel.appendChild(opt);
+    });
+    sel.value = poemaIdAtual || '';
+}
+
+// Embutidos primeiro (regra 8 do .md — só duplicáveis), depois os do
+// usuário em ordem alfabética.
+function popularSelectTemplatesEstrutura() {
+    const sel = document.getElementById('estr-template-id');
+    if (!sel) return;
+    const embutidos = db.templatesEstrutura.filter((t) => t.embutido);
+    const doUsuario = [...db.templatesEstrutura]
+        .filter((t) => !t.embutido)
+        .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+    sel.innerHTML =
+        '<option value="">-- Escolha um template --</option>' +
+        [...embutidos, ...doUsuario]
+            .map(
+                (t) =>
+                    `<option value="${t.id}">${escapeHtml(t.nome)}${t.embutido ? ' (padrão)' : ''}</option>`,
+            )
+            .join('');
+}
+
+// Datalists dos 3 campos livres crescem com o que já foi usado no
+// acervo, além de um ponto de partida com os valores do template
+// Soneto (mesmo espírito de atualizarDatalistIntertexto em editor.js,
+// versão mais simples — sem filtrar por tipo, já que não há campo
+// dependente aqui, ver decisão de design 1 do .md).
+function atualizarDatalistsEstruturaTextual() {
+    const valoresUnicos = (extrator) => {
+        const vistos = new Set();
+        db.estruturasTextuais.forEach((e) => {
+            (e.unidades || []).forEach((u) => {
+                const v = extrator(u);
+                if (v) vistos.add(v);
+            });
+            (e.eventos || []).forEach((ev) => {
+                const v = extrator(ev);
+                if (v) vistos.add(v);
+            });
+        });
+        return [...vistos].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    };
+    const preencher = (id, base, valores) => {
+        const datalist = document.getElementById(id);
+        if (!datalist) return;
+        datalist.innerHTML = [...new Set([...base, ...valores])]
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    };
+    preencher(
+        'sugestoes-unidade-estrofica',
+        ['Oitava', 'Sexteto', 'Quartetos', 'Tercetos', 'Dístico'],
+        valoresUnicos((i) => i.unidadeEstrofica),
+    );
+    preencher(
+        'sugestoes-unidade-discursiva',
+        ['Proposição', 'Resolução'],
+        valoresUnicos((i) => i.unidadeDiscursiva),
+    );
+    preencher(
+        'sugestoes-progressao-dialetica',
+        ['Tensão', 'Volta', 'Síntese'],
+        valoresUnicos((i) => i.progressaoDialetica),
+    );
+}
+
+// Mesmo padrão de atualizarAvisoPoemaSonoridade — avisa, não bloqueia
+// (regra "no máximo um registro por poema" do .md).
+function atualizarAvisoPoemaEstrutura() {
+    const sel = document.getElementById('estr-poema-id');
+    const aviso = document.getElementById('estr-poema-aviso');
+    const idEmEdicao = document.getElementById('estr-edit-id')?.value;
+    if (!sel || !aviso) return;
+    const existente = sel.value ? getEstruturaDoPoema(parseInt(sel.value)) : null;
+    if (existente && String(existente.id) !== String(idEmEdicao)) {
+        aviso.textContent =
+            'Esse poema já tem uma Progressão Morfofuncional cadastrada — salvar aqui substitui a existente.';
+        aviso.classList.remove('hidden');
+    } else {
+        aviso.classList.add('hidden');
+    }
+}
+
+// Trocar de poema no meio da edição recalcula as estrofes derivadas do
+// texto novo, mas preserva a classificação já digitada nesta sessão do
+// modal (trocar de poema não deveria descartar Unidades/Eventos que a
+// pessoa já cadastrou, mesmo que a posição marcada não faça mais
+// sentido no texto novo — ela ajusta na mão).
+function carregarEstrofesDoPoemaEstrutura() {
+    const poemaId = parseInt(document.getElementById('estr-poema-id')?.value);
+    const poema = db.poemas.find((p) => p.id == poemaId) || null;
+    inicializarEstruturaTextual(
+        document.getElementById('estr-lista-unidades'),
+        document.getElementById('estr-lista-eventos'),
+        poema,
+        { unidades: obterUnidadesAtuais(), eventos: obterEventosAtuais() },
+    );
+    atualizarAvisoPoemaEstrutura();
+}
+
+// Abre o modal pra uma Progressão NOVA — a contraparte de
+// editarEstruturaTextual abaixo. Função própria (em vez de reaproveitar
+// prepararNovo(tipo) de ui.js) pelo mesmo motivo de
+// prepararNovaSonoridade: precisa repopular selects a cada abertura.
+export async function prepararNovaEstruturaTextual() {
+    await garantirModal('modal-morfofuncionalidade');
+    const form = document.getElementById('form-estrutura-textual');
+    if (!form) return;
+    form.reset();
+    document.getElementById('estr-edit-id').value = '';
+    document.getElementById('modal-morfofuncionalidade-titulo').innerText = 'Adicionar Progressão';
+    popularSelectPoemasEstrutura();
+    popularSelectTemplatesEstrutura();
+    atualizarDatalistsEstruturaTextual();
+    inicializarEstruturaTextual(
+        document.getElementById('estr-lista-unidades'),
+        document.getElementById('estr-lista-eventos'),
+        null,
+        null,
+    );
+    atualizarAvisoPoemaEstrutura();
+    toggleModal('modal-morfofuncionalidade');
+}
+
+export async function editarEstruturaTextual(id) {
+    const estrutura = db.estruturasTextuais.find((x) => x.id == id);
+    if (!estrutura) return;
+    await garantirModal('modal-morfofuncionalidade');
+    document.getElementById('estr-edit-id').value = estrutura.id;
+    document.getElementById('modal-morfofuncionalidade-titulo').innerText = 'Editar Progressão';
+    popularSelectPoemasEstrutura(estrutura.poemaId);
+    popularSelectTemplatesEstrutura();
+    atualizarDatalistsEstruturaTextual();
+    const poema = db.poemas.find((p) => p.id == estrutura.poemaId) || null;
+    inicializarEstruturaTextual(
+        document.getElementById('estr-lista-unidades'),
+        document.getElementById('estr-lista-eventos'),
+        poema,
+        estrutura,
+    );
+    atualizarAvisoPoemaEstrutura();
+    toggleModal('modal-morfofuncionalidade');
+}
+
+// Botão "Aplicar" da seção Templates — concatena (não substitui) com o
+// que já está no estado (regra 8 do .md).
+export function aplicarTemplateEstruturaTextual() {
+    const id = document.getElementById('estr-template-id')?.value;
+    if (!id) return;
+    const template = db.templatesEstrutura.find((t) => t.id == id);
+    if (!template) return;
+    aplicarTemplateNoEstado(template);
+}
+
+export function adicionarUnidadeEstruturaTextual() {
+    const estroficaEl = document.getElementById('estr-nova-unidade-estrofica');
+    const discursivaEl = document.getElementById('estr-nova-unidade-discursiva');
+    adicionarUnidade(estroficaEl?.value || '', discursivaEl?.value || '');
+    if (estroficaEl) estroficaEl.value = '';
+    if (discursivaEl) discursivaEl.value = '';
+    atualizarDatalistsEstruturaTextual();
+}
+
+export function adicionarEventoEstruturaTextual() {
+    const el = document.getElementById('estr-novo-evento');
+    adicionarEvento(el?.value || '');
+    if (el) el.value = '';
+    atualizarDatalistsEstruturaTextual();
+}
+
+// Botão "Salvar como Template" — extrai só a classificação atual
+// (regra 8: nunca a posição) e pede um nome.
+export function salvarComoTemplateEstruturaTextual() {
+    const unidades = obterUnidadesAtuais();
+    const eventos = obterEventosAtuais();
+    if (unidades.length === 0 && eventos.length === 0) {
+        mostrarAviso('Classifique ao menos uma Unidade ou Evento antes de salvar como Template.');
+        return;
+    }
+    const nome = (prompt('Nome do Template:') || '').trim();
+    if (!nome) return;
+    db.templatesEstrutura.push({
+        id: gerarId(),
+        nome,
+        embutido: false,
+        ...extrairClassificacaoParaTemplate(unidades, eventos),
+    });
+    save();
+    popularSelectTemplatesEstrutura();
+    mostrarAviso(`Template "${nome}" salvo.`, 'sucesso');
+}
+
+export function initFormEstruturaTextual() {
+    const selPoema = document.getElementById('estr-poema-id');
+    if (selPoema) selPoema.onchange = carregarEstrofesDoPoemaEstrutura;
+
+    const form = document.getElementById('form-estrutura-textual');
+    if (!form) return;
+
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const id = document.getElementById('estr-edit-id').value;
+        const poemaId = parseInt(document.getElementById('estr-poema-id').value);
+        if (!poemaId) return;
+
+        // Substitui a Progressão existente do poema (se houver e não for
+        // a que já está em edição), em vez de criar uma segunda — mesmo
+        // padrão de Sonoridade (ver form.onsubmit de initFormSonoridade).
+        const existente = getEstruturaDoPoema(poemaId);
+        const idAlvo = id ? parseInt(id) : existente ? existente.id : gerarId();
+
+        const dados = {
+            id: idAlvo,
+            poemaId,
+            unidades: obterUnidadesAtuais(),
+            eventos: obterEventosAtuais(),
+        };
+
+        const anterior = db.estruturasTextuais.find((x) => x.id == idAlvo);
+        if (anterior) {
+            const idx = db.estruturasTextuais.findIndex((x) => x.id == idAlvo);
+            db.estruturasTextuais[idx] = dados;
+        } else {
+            db.estruturasTextuais.push(dados);
+        }
+
+        save();
+        toggleModal('modal-morfofuncionalidade');
+    };
 }
 
 export async function abrirModalMesclar(tipo, origemId) {

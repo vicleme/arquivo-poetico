@@ -1,0 +1,200 @@
+<div
+    id="modal-morfofuncionalidade"
+    class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-morfofuncionalidade-titulo"
+    tabindex="-1"
+>
+    <div
+        class="bg-white dark:bg-slate-900 rounded-lg w-[95vw] max-w-4xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+    >
+        <div
+            class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0"
+        >
+            <h3 id="modal-morfofuncionalidade-titulo" class="text-2xl font-bold">
+                Adicionar Progressão
+            </h3>
+            <div class="flex items-center gap-1 ml-4">
+                <button
+                    type="button"
+                    onclick="document.getElementById('form-estrutura-textual').requestSubmit()"
+                    title="Salvar (atalho: Ctrl+Enter)"
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors border border-emerald-200 dark:border-emerald-800"
+                    aria-label="Salvar"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        class="w-4 h-4"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                            clip-rule="evenodd"
+                        />
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    onclick="toggleModal('modal-morfofuncionalidade')"
+                    title="Fechar (Esc)"
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-600 dark:hover:text-slate-300 transition-colors border border-gray-200 dark:border-slate-700"
+                    aria-label="Fechar"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        class="w-4 h-4"
+                    >
+                        <path
+                            d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+                        />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-y-auto flex-1 px-8 py-6">
+            <form id="form-estrutura-textual" class="grid grid-cols-1 gap-4">
+                <input type="hidden" id="estr-edit-id" />
+
+                <details class="campo-grupo" open>
+                    <summary>Poema</summary>
+                    <div class="campo-grupo-corpo">
+                        <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                            Cada poema tem no máximo uma Progressão Morfofuncional cadastrada.
+                        </p>
+                        <select id="estr-poema-id" required>
+                            <option value="">-- Escolha um poema --</option>
+                        </select>
+                        <p
+                            id="estr-poema-aviso"
+                            class="hidden text-[10px] text-amber-600 dark:text-amber-400 mt-1"
+                        ></p>
+                    </div>
+                </details>
+
+                <details class="campo-grupo">
+                    <summary>Templates</summary>
+                    <div class="campo-grupo-corpo">
+                        <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                            Aplicar instancia Unidades/Eventos "não posicionados", prontos pra
+                            você marcar a posição de cada um abaixo. Pode aplicar mais de um
+                            template — o que já estiver classificado permanece.
+                        </p>
+                        <div class="flex gap-2 items-center mb-2">
+                            <select id="estr-template-id" class="flex-1">
+                                <option value="">-- Escolha um template --</option>
+                            </select>
+                            <button
+                                type="button"
+                                onclick="aplicarTemplateEstruturaTextual()"
+                                class="text-xs bg-gray-100 dark:bg-slate-700 dark:text-slate-200 px-3 py-1.5 rounded font-medium flex-shrink-0"
+                            >
+                                Aplicar
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            onclick="salvarComoTemplateEstruturaTextual()"
+                            class="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            Salvar classificação atual como Template
+                        </button>
+                    </div>
+                </details>
+
+                <details class="campo-grupo" open>
+                    <summary
+                        >Unidades
+                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                            >(seção com forma e função — ex.: Quartetos / Proposição)</span
+                        ></summary
+                    >
+                    <div class="campo-grupo-corpo">
+                        <div class="flex gap-2 mb-3">
+                            <input
+                                type="text"
+                                id="estr-nova-unidade-estrofica"
+                                list="sugestoes-unidade-estrofica"
+                                class="text-sm flex-1"
+                                placeholder="Unidade estrófica (ex.: Quartetos)"
+                            />
+                            <input
+                                type="text"
+                                id="estr-nova-unidade-discursiva"
+                                list="sugestoes-unidade-discursiva"
+                                class="text-sm flex-1"
+                                placeholder="Unidade discursiva (ex.: Proposição)"
+                            />
+                            <button
+                                type="button"
+                                onclick="adicionarUnidadeEstruturaTextual()"
+                                title="Adicionar Unidade"
+                                aria-label="Adicionar Unidade"
+                                class="text-sm bg-blue-600 text-white w-8 rounded font-bold flex-shrink-0"
+                            >
+                                +
+                            </button>
+                        </div>
+                        <div id="estr-lista-unidades"></div>
+                    </div>
+                </details>
+
+                <details class="campo-grupo" open>
+                    <summary
+                        >Eventos
+                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                            >(movimento pontual, sem forma própria — ex.: Volta)</span
+                        ></summary
+                    >
+                    <div class="campo-grupo-corpo">
+                        <div class="flex gap-2 mb-3">
+                            <input
+                                type="text"
+                                id="estr-novo-evento"
+                                list="sugestoes-progressao-dialetica"
+                                class="text-sm flex-1"
+                                placeholder="Progressão dialética (ex.: Volta)"
+                            />
+                            <button
+                                type="button"
+                                onclick="adicionarEventoEstruturaTextual()"
+                                title="Adicionar Evento"
+                                aria-label="Adicionar Evento"
+                                class="text-sm bg-blue-600 text-white w-8 rounded font-bold flex-shrink-0"
+                            >
+                                +
+                            </button>
+                        </div>
+                        <div id="estr-lista-eventos"></div>
+                    </div>
+                </details>
+
+                <datalist id="sugestoes-unidade-estrofica"></datalist>
+                <datalist id="sugestoes-unidade-discursiva"></datalist>
+                <datalist id="sugestoes-progressao-dialetica"></datalist>
+
+                <div
+                    class="flex justify-end gap-2 border-t pt-6 border-gray-200 dark:border-slate-700"
+                >
+                    <button
+                        type="button"
+                        onclick="toggleModal('modal-morfofuncionalidade')"
+                        class="text-gray-600 dark:text-slate-300 px-4 py-2"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        class="bg-blue-600 text-white px-8 py-2 rounded font-bold"
+                    >
+                        SALVAR
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

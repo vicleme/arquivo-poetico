@@ -25,6 +25,7 @@ import {
     renderAutores,
     renderEpocas,
     renderSonoridade,
+    renderEstruturaTextual,
 } from './render-listas.js';
 import { popularSeletorEstrutura, renderEstrutura } from './render-estrutura.js';
 
@@ -37,6 +38,7 @@ export function renderLists() {
     renderAutores();
     renderEpocas();
     renderSonoridade();
+    renderEstruturaTextual();
     renderPoemas();
     renderProsas();
     renderElementos();

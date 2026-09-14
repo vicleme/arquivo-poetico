@@ -34,15 +34,26 @@ const {
     itemBateFiltrosContagem,
     registroContavel,
     renderOpcoesCampoContagem,
+    renderSeletorColunasContagem,
 } = await import('../js/colunas-contagem.js');
 const { CAMPOS_CONTAVEIS } = await import('../js/utils.js');
-const { CAMPOS_CONTAVEIS_SONORIDADE } = await import('../js/editor-sonoridade.js');
+const { CAMPOS_CONTAVEIS_RIMA, camposContaveisEco, construirCamposContaveisSonoridade } =
+    await import('../js/editor-sonoridade.js');
+// colunas-contagem.js lê db.escansoes pra montar o registro dinâmico de
+// Eco (ver camposContaveisEco/tiposEcoPresentes em editor-sonoridade.js)
+// — importa o mesmo `db` singleton pra poder popular escansoes com um
+// tipo de Eco personalizado nos testes que cobrem esse caso.
+const { db } = await import('../js/db.js');
 
 const LS_PREFIX = 'arquivoPoetico_colunasContagem_';
 
 function resetar() {
     localStorage.clear();
     window._eventos = [];
+    // `db` é o singleton de verdade (ver import acima) — zera escansoes a
+    // cada teste pra um tipo de Eco personalizado criado num teste não
+    // vazar pro registro dinâmico (camposContaveisEco) de outro.
+    db.escansoes = [];
 }
 
 // ─── bateFiltroContagem (comparador puro) ─────────────────────────
@@ -199,26 +210,55 @@ describe('registroContavel', () => {
         assert.equal(registroContavel('prosas'), CAMPOS_CONTAVEIS);
     });
 
-    it("'sonoridade' usa o registro próprio CAMPOS_CONTAVEIS_SONORIDADE", () => {
-        assert.equal(registroContavel('sonoridade'), CAMPOS_CONTAVEIS_SONORIDADE);
+    it("'sonoridade' devolve o registro COMBINADO Rima+Eco (mesmas chaves de construirCamposContaveisSonoridade)", () => {
+        const registro = registroContavel('sonoridade');
+        const esperado = construirCamposContaveisSonoridade(db.escansoes);
+        assert.deepEqual(Object.keys(registro).sort(), Object.keys(esperado).sort());
+        assert.ok(registro.rimasTotal);
+        assert.ok(registro.ecosTotal);
     });
 
-    it('adicionarColunaContagem usa o primeiro campo do registro daquela tabela como padrão', () => {
+    it("'sonoridade' reflete tipo de Eco personalizado já presente em db.escansoes (bug relatado pelo Victor)", () => {
+        db.escansoes = [{ ecos: [{ tipo: 'Eco disperso' }] }];
+        const registro = registroContavel('sonoridade');
+        const chave = Object.keys(registro).find((k) => registro[k].label === 'Eco disperso');
+        assert.ok(chave, 'tipo personalizado deveria aparecer no registro de Sonoridade');
+    });
+
+    it("adicionarColunaContagem('sonoridade') sem família usa o primeiro campo de Rima como padrão", () => {
         adicionarColunaContagem('sonoridade');
         const [coluna] = getColunasContagem('sonoridade');
-        assert.equal(coluna.campo, Object.keys(CAMPOS_CONTAVEIS_SONORIDADE)[0]);
+        assert.equal(coluna.campo, Object.keys(CAMPOS_CONTAVEIS_RIMA)[0]);
     });
 
-    it('definirCampoColunaContagem valida o campo contra o registro certo da tabela', () => {
+    it("adicionarColunaContagem('sonoridade', 'eco') usa o primeiro campo de Eco como padrão", () => {
+        localStorage.clear();
+        adicionarColunaContagem('sonoridade', 'eco');
+        const [coluna] = getColunasContagem('sonoridade');
+        assert.equal(coluna.campo, Object.keys(camposContaveisEco(db.escansoes))[0]);
+    });
+
+    it('adicionarColunaContagem usa o primeiro campo do registro daquela tabela como padrão (Poemas/Prosas)', () => {
+        adicionarColunaContagem('poemas');
+        const [coluna] = getColunasContagem('poemas');
+        assert.equal(coluna.campo, Object.keys(CAMPOS_CONTAVEIS)[0]);
+    });
+
+    it('definirCampoColunaContagem valida o campo contra o registro certo da tabela — aceita tanto Rima quanto Eco em Sonoridade', () => {
         adicionarColunaContagem('sonoridade');
         const [coluna] = getColunasContagem('sonoridade');
         definirCampoColunaContagem('sonoridade', coluna.id, 'rimasExternas');
         assert.equal(getColunasContagem('sonoridade')[0].campo, 'rimasExternas');
 
+        // Trocar pra um campo de Eco também é válido — os dois selects
+        // escrevem no mesmo estado, só a apresentação é separada.
+        definirCampoColunaContagem('sonoridade', coluna.id, 'ecosTotal');
+        assert.equal(getColunasContagem('sonoridade')[0].campo, 'ecosTotal');
+
         // 'pessoas' é campo de Poemas/Prosas, não existe no registro de
         // Sonoridade — não deve sobrescrever o campo válido anterior.
         definirCampoColunaContagem('sonoridade', coluna.id, 'pessoas');
-        assert.equal(getColunasContagem('sonoridade')[0].campo, 'rimasExternas');
+        assert.equal(getColunasContagem('sonoridade')[0].campo, 'ecosTotal');
     });
 
     it('estado salvo de uma tabela não vaza pra outra ao filtrar por campos válidos', () => {
@@ -235,6 +275,10 @@ describe('registroContavel', () => {
 });
 
 // ─── renderOpcoesCampoContagem (<option>s do seletor, com/sem <optgroup>) ─
+// Em Sonoridade, isto monta o <select> de UMA família só (a que contém o
+// campo já escolhido) — nunca as duas juntas, pra cada um dos dois
+// blocos (Rima/Eco, ver renderSeletorColunasContagem mais abaixo) ficar
+// pequeno em vez de um select gigante combinando os ~18+7 campos.
 
 describe('renderOpcoesCampoContagem', () => {
     it('Poemas/Prosas (sem `grupo` em nenhum campo) rendem lista achatada, sem <optgroup>', () => {
@@ -245,24 +289,105 @@ describe('renderOpcoesCampoContagem', () => {
         });
     });
 
-    it('Sonoridade (todo campo com `grupo`) agrupa em <optgroup> por grupo', () => {
-        const html = renderOpcoesCampoContagem('sonoridade', '');
-        // Total/Proporção/Posição/Proximidade de rima foram unificados em
-        // 'Contagem de Rimas' (junto de Acentuação/Tonalidade/Riqueza), e
-        // Ecos Sonoros ganhou seu próprio grupo 'Contagem de Ecos' — as
-        // duas sonoridades do sistema (rima "de verdade" x eco/quase-rima)
-        // nunca se misturam no seletor (ver camposContaveisEcoPorTipoSugerido
-        // em editor-sonoridade.js).
-        assert.match(html, /<optgroup label="Contagem de Rimas">/);
-        assert.match(html, /<optgroup label="Contagem de Ecos">/);
-        Object.keys(CAMPOS_CONTAVEIS_SONORIDADE).forEach((chave) => {
+    it('Sonoridade com um campo de Rima escolhido: só as opções de Rima, agrupadas em <optgroup> por subgrupo', () => {
+        const html = renderOpcoesCampoContagem('sonoridade', 'rimasTotal');
+        assert.match(html, /<optgroup label="Geral">/);
+        assert.match(html, /<optgroup label="Posição">/);
+        assert.match(html, /<optgroup label="Proximidade">/);
+        assert.match(html, /<optgroup label="Acentuação">/);
+        assert.match(html, /<optgroup label="Tonalidade">/);
+        assert.match(html, /<optgroup label="Riqueza">/);
+        Object.keys(CAMPOS_CONTAVEIS_RIMA).forEach((chave) => {
             assert.match(html, new RegExp(`value="${chave}"`));
+        });
+        // Nenhuma opção de Eco deve vazar pro select de Rima.
+        Object.keys(camposContaveisEco(db.escansoes)).forEach((chave) => {
+            assert.doesNotMatch(html, new RegExp(`value="${chave}"`));
         });
     });
 
-    it('marca `selected` na option do campo atualmente escolhido', () => {
-        const campo = Object.keys(CAMPOS_CONTAVEIS_SONORIDADE)[0];
-        const html = renderOpcoesCampoContagem('sonoridade', campo);
-        assert.match(html, new RegExp(`value="${campo}" selected`));
+    it('Sonoridade com um campo de Eco escolhido: só as opções de Eco, lista achatada (sem <optgroup>)', () => {
+        const html = renderOpcoesCampoContagem('sonoridade', 'ecosTotal');
+        assert.doesNotMatch(html, /<optgroup/);
+        Object.keys(camposContaveisEco(db.escansoes)).forEach((chave) => {
+            assert.match(html, new RegExp(`value="${chave}"`));
+        });
+        Object.keys(CAMPOS_CONTAVEIS_RIMA).forEach((chave) => {
+            assert.doesNotMatch(html, new RegExp(`value="${chave}"`));
+        });
+    });
+
+    it('sem campo escolhido (coluna nova), cai no select de Rima por padrão', () => {
+        const html = renderOpcoesCampoContagem('sonoridade', '');
+        assert.match(html, new RegExp(`value="${Object.keys(CAMPOS_CONTAVEIS_RIMA)[0]}"`));
+    });
+
+    it('marca `selected` na option do campo atualmente escolhido, tanto em Rima quanto em Eco', () => {
+        const campoRima = Object.keys(CAMPOS_CONTAVEIS_RIMA)[0];
+        assert.match(
+            renderOpcoesCampoContagem('sonoridade', campoRima),
+            new RegExp(`value="${campoRima}" selected`),
+        );
+        const campoEco = Object.keys(camposContaveisEco(db.escansoes))[0];
+        assert.match(
+            renderOpcoesCampoContagem('sonoridade', campoEco),
+            new RegExp(`value="${campoEco}" selected`),
+        );
+    });
+
+    it('um tipo de Eco personalizado em db.escansoes aparece como opção selecionável', () => {
+        db.escansoes = [{ ecos: [{ tipo: 'Eco disperso' }] }];
+        const chave = Object.keys(camposContaveisEco(db.escansoes)).find(
+            (k) => camposContaveisEco(db.escansoes)[k].label === 'Eco disperso',
+        );
+        const html = renderOpcoesCampoContagem('sonoridade', chave);
+        assert.match(html, new RegExp(`value="${chave}"`));
+        assert.match(html, />Eco disperso</);
+    });
+});
+
+// ─── renderSeletorColunasContagem('sonoridade') — dois blocos (Rima/Eco) ─
+
+describe("renderSeletorColunasContagem('sonoridade')", () => {
+    it('sem nenhuma coluna ativa, ainda renderiza os dois blocos com seus botões de adicionar', () => {
+        const html = renderSeletorColunasContagem('sonoridade');
+        assert.match(html, /Colunas de contagem — Rimas/);
+        assert.match(html, /Colunas de contagem — Ecos/);
+        assert.match(html, /adicionarColunaContagem\('sonoridade', 'rima'\)/);
+        assert.match(html, /adicionarColunaContagem\('sonoridade', 'eco'\)/);
+    });
+
+    it('uma coluna de Rima ativa aparece só no bloco de Rima, e uma de Eco só no bloco de Eco', () => {
+        adicionarColunaContagem('sonoridade'); // Rima (padrão)
+        adicionarColunaContagem('sonoridade', 'eco');
+        const [colRima, colEco] = getColunasContagem('sonoridade');
+
+        const html = renderSeletorColunasContagem('sonoridade');
+        const blocoRima = html.slice(0, html.indexOf('Colunas de contagem — Ecos'));
+        const blocoEco = html.slice(html.indexOf('Colunas de contagem — Ecos'));
+
+        assert.match(
+            blocoRima,
+            new RegExp(`definirCampoColunaContagem\\('sonoridade', ${colRima.id}`),
+        );
+        assert.doesNotMatch(
+            blocoRima,
+            new RegExp(`definirCampoColunaContagem\\('sonoridade', ${colEco.id}`),
+        );
+        assert.match(
+            blocoEco,
+            new RegExp(`definirCampoColunaContagem\\('sonoridade', ${colEco.id}`),
+        );
+        assert.doesNotMatch(
+            blocoEco,
+            new RegExp(`definirCampoColunaContagem\\('sonoridade', ${colRima.id}`),
+        );
+    });
+
+    it('Poemas/Prosas continuam com um bloco só (não têm família Rima/Eco)', () => {
+        const html = renderSeletorColunasContagem('poemas');
+        assert.doesNotMatch(html, /Colunas de contagem — Rimas/);
+        assert.match(html, /Colunas de contagem(?!\s*—)/);
+        assert.match(html, /adicionarColunaContagem\('poemas'\)/);
     });
 });

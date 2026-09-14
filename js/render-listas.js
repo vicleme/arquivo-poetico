@@ -2614,6 +2614,112 @@ export function renderSonoridade() {
         .join('');
 }
 
+// ─── Morfofuncionalidade (Progressão Morfofuncional) ───────────
+// Ver manutencao/progressao-morfofuncional.md pro requisito completo.
+// Tabela com as 4 colunas sempre fixas (sem seletor de "🧱 Colunas ▾"
+// — a pedido do Victor, que achou a tabela fixa suficiente aqui), mas
+// com o painel "⚙️ Ações ▾" de Sonoridade replicado (Ver/Baixar/
+// Editar/Excluir configuráveis + formato do Baixar), já que esse ele
+// quis trazer. Ver/Baixar reaproveitam visualizar-estrutura-textual.js
+// e exportar-estrutura-textual.js, no mesmo espírito de Sonoridade.
+
+let filtroEstruturaTextual = '';
+
+export function setFiltroEstruturaTextual(valor) {
+    filtroEstruturaTextual = (valor || '').trim().toLowerCase();
+    renderEstruturaTextual();
+}
+
+window.addEventListener('acoes-coluna:alteradas', (ev) => {
+    if (ev.detail?.tabela === 'estrutura-textual') renderEstruturaTextual();
+});
+
+// Resumo de Unidades/Eventos pra célula da tabela — junta os itens já
+// classificados (o campo de posição não aparece aqui, só no modal).
+function resumoItensEstrutura(itens, rotulador) {
+    if (!itens || itens.length === 0) {
+        return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    }
+    return itens.map((item) => escapeHtml(rotulador(item) || '(sem classificação)')).join(', ');
+}
+
+// Mesmo padrão de celulaAcoesSonoridade acima: só os botões
+// habilitados no painel "⚙️ Ações ▾" (isAcaoAtiva/DEFINICAO_ACOES em
+// acoes-coluna.js), na ordem fixa Ver/Baixar/Editar/Excluir.
+function celulaAcoesEstruturaTextual(id) {
+    const ativas = new Set(
+        ['ver', 'baixar', 'editar', 'excluir'].filter((k) => isAcaoAtiva('estrutura-textual', k)),
+    );
+    const botoes = [];
+    if (ativas.has('ver'))
+        botoes.push(
+            `<button data-action="ver-estrutura-textual" data-id="${id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>`,
+        );
+    if (ativas.has('baixar'))
+        botoes.push(
+            `<button data-action="baixar-estrutura-textual" data-id="${id}" title="Baixar" aria-label="Baixar" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_BAIXAR}</button>`,
+        );
+    if (ativas.has('editar'))
+        botoes.push(
+            `<button data-action="editar-estrutura-textual" data-id="${id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 p-1.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800">${ICONE_EDITAR}</button>`,
+        );
+    if (ativas.has('excluir'))
+        botoes.push(
+            `<button data-action="excluir-item" data-tipo="estruturasTextuais" data-id="${id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>`,
+        );
+    return botoes.join('');
+}
+
+export function renderEstruturaTextual() {
+    const tbody = document.getElementById('lista-estrutura-textual');
+    if (!tbody) return;
+
+    atualizarPainelAcoes('estrutura-textual', 'painel-acoes-estrutura-textual');
+
+    const filtradas = db.estruturasTextuais.filter((e) => {
+        if (!filtroEstruturaTextual) return true;
+        const poema = db.poemas.find((p) => p.id == e.poemaId);
+        return (poema?.titulo || '').toLowerCase().includes(filtroEstruturaTextual);
+    });
+    const ordenadas = [...filtradas].sort((a, b) => {
+        const ta = db.poemas.find((p) => p.id == a.poemaId)?.titulo || '';
+        const tb = db.poemas.find((p) => p.id == b.poemaId)?.titulo || '';
+        return ta.localeCompare(tb, 'pt-BR');
+    });
+
+    if (ordenadas.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
+            db.estruturasTextuais.length === 0
+                ? 'Nenhuma progressão cadastrada ainda.'
+                : 'Nenhuma progressão encontrada para essa busca.'
+        }</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = ordenadas
+        .map((e) => {
+            const poema = db.poemas.find((p) => p.id == e.poemaId);
+            const titulo = poema ? escapeHtml(poema.titulo) : '<em>Poema não encontrado</em>';
+            const unidadesTxt = resumoItensEstrutura(e.unidades, (u) =>
+                [u.unidadeEstrofica, u.unidadeDiscursiva].filter(Boolean).join(' · '),
+            );
+            const eventosTxt = resumoItensEstrutura(e.eventos, (ev) => ev.progressaoDialetica);
+            return `
+        <tr>
+            <td class="p-4 border-b border-gray-100 dark:border-slate-800">
+                <span class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">#${e.id}</span><br>
+                ${titulo}
+            </td>
+            <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-sm">${unidadesTxt}</td>
+            <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-sm">${eventosTxt}</td>
+            <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
+                ${celulaAcoesEstruturaTextual(e.id)}
+            </td>
+        </tr>`;
+        })
+        .join('');
+}
+
 // ─── Épocas ──────────────────────────────────────────────────
 // Cadastro central (ver migrarEpocas em db.js), item 3 do plano de
 // schema — mesmo espírito de renderAutores acima: sem grupos/badges

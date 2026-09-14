@@ -85,6 +85,7 @@ export const GRUPOS_NAV = [
             { id: 'estrutura', rotulo: 'Estrutura' },
             { id: 'conexoes', rotulo: 'Conexões' },
             { id: 'sonoridade', rotulo: 'Sonoridade' },
+            { id: 'morfofuncionalidade', rotulo: 'Morfofuncionalidade' },
             { id: 'estatisticas', rotulo: 'Estatísticas' },
         ],
     },

@@ -73,6 +73,31 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // registro/tom eram um único campo (tomRegistro) — ver
     // migrarRegistroTomSonoridade.
     escansoes: [],
+    // Análise de Progressão Morfofuncional (menu "Morfofuncionalidade") —
+    // Unidades (forma+função de uma seção do texto: unidadeEstrofica +
+    // unidadeDiscursiva) e Eventos (movimento pontual: progressaoDialetica)
+    // são entidades separadas desde o cadastro, sem herdar campo uma da
+    // outra, mas convivem no mesmo registro por poema (no máximo um por
+    // poema, mesmo espírito de escansoes — ver getEstruturaDoPoema).
+    // `posicao` ({ estrofes: [n,...], versos: 'todos' | [n,...] }) é
+    // sempre opcional — item sem estrofe nenhuma marcada fica
+    // "não posicionado" (ver itemPosicionado em estrutura-textual.js);
+    // seleção fina de verso só é válida quando estrofes.length === 1,
+    // com mais de uma estrofe versos é sempre 'todos'. Sobreposição
+    // entre quaisquer dois itens (Unidade×Unidade, Evento×Evento,
+    // Unidade×Evento) é esperada, não é erro — ver detectarSobrepostos.
+    // { id, poemaId, unidades: [{ id, unidadeEstrofica, unidadeDiscursiva, posicao }],
+    //   eventos: [{ id, progressaoDialetica, posicao }] }
+    estruturasTextuais: [],
+    // Templates de Progressão Morfofuncional — salvam só a classificação
+    // (unidadeEstrofica/unidadeDiscursiva/progressaoDialetica), nunca a
+    // posição; aplicar um template instancia Unidades/Eventos
+    // "não posicionados" no poema. `embutido: true` = template de
+    // fábrica (só duplicável, não editável direto — ver
+    // TEMPLATES_ESTRUTURA_EMBUTIDOS/migrarTemplatesEstruturaEmbutidos).
+    // { id, nome, embutido, unidades: [{ unidadeEstrofica, unidadeDiscursiva }],
+    //   eventos: [{ progressaoDialetica }] }
+    templatesEstrutura: [],
 };
 
 // Garante que dados importados de versões antigas tenham os campos novos
@@ -82,6 +107,8 @@ if (!db.grupos) db.grupos = [];
 if (!db.autores) db.autores = [];
 if (!db.epocas) db.epocas = [];
 if (!db.escansoes) db.escansoes = [];
+if (!db.estruturasTextuais) db.estruturasTextuais = [];
+if (!db.templatesEstrutura) db.templatesEstrutura = [];
 
 // Migração: `tomRegistro` (Tom/Registro, 3 opções) virou dois campos
 // independentes — `registro` (formalidade da linguagem, 5 opções) e
@@ -108,6 +135,41 @@ export function migrarRegistroTomSonoridade(escansoes) {
     });
 }
 migrarRegistroTomSonoridade(db.escansoes);
+
+// Templates de fábrica de Progressão Morfofuncional — hoje só Soneto
+// (Quartetos/Proposição + Tercetos/Resolução nas Unidades,
+// Tensão/Volta/Síntese nos Eventos). `embutido: true` impede edição
+// direta (só duplicar — ver forms.js); reseeda se faltar (ex.: db
+// zerado, ou template embutido apagado por engano em alguma versão
+// antiga), sem duplicar se já existir (checa por nome+embutido).
+export const TEMPLATES_ESTRUTURA_EMBUTIDOS = [
+    {
+        nome: 'Soneto',
+        unidades: [
+            { unidadeEstrofica: 'Quartetos', unidadeDiscursiva: 'Proposição' },
+            { unidadeEstrofica: 'Tercetos', unidadeDiscursiva: 'Resolução' },
+        ],
+        eventos: [
+            { progressaoDialetica: 'Tensão' },
+            { progressaoDialetica: 'Volta' },
+            { progressaoDialetica: 'Síntese' },
+        ],
+    },
+];
+export function migrarTemplatesEstruturaEmbutidos(templatesEstrutura) {
+    TEMPLATES_ESTRUTURA_EMBUTIDOS.forEach((modelo) => {
+        const jaExiste = templatesEstrutura.some((t) => t.embutido && t.nome === modelo.nome);
+        if (jaExiste) return;
+        templatesEstrutura.push({
+            id: gerarId(),
+            nome: modelo.nome,
+            embutido: true,
+            unidades: modelo.unidades.map((u) => ({ ...u })),
+            eventos: modelo.eventos.map((e) => ({ ...e })),
+        });
+    });
+}
+migrarTemplatesEstruturaEmbutidos(db.templatesEstrutura);
 
 // Migração: em Poemas, o campo `publicado` (boolean) virou `status`, com
 // 3 valores — 'publicado' | 'completo' | 'incompleto' — pra diferenciar
@@ -838,6 +900,9 @@ export async function importarDB(novoDb) {
     db.epocas = novoDb.epocas || [];
     db.escansoes = novoDb.escansoes || [];
     migrarRegistroTomSonoridade(db.escansoes);
+    db.estruturasTextuais = novoDb.estruturasTextuais || [];
+    db.templatesEstrutura = novoDb.templatesEstrutura || [];
+    migrarTemplatesEstruturaEmbutidos(db.templatesEstrutura);
     migrarStatusPoemas(db.poemas);
     migrarIntertextualidadePoemas(db.poemas);
     migrarReferenciasParaEcos(db.poemas);
@@ -988,6 +1053,8 @@ const ROTULOS_COL = {
     autores: 'Autor',
     epocas: 'Época',
     escansoes: 'Escansão',
+    estruturasTextuais: 'Progressão Morfofuncional',
+    templatesEstrutura: 'Template de Progressão',
 };
 
 // Plural + particípio com concordância de gênero certa pro toast de
@@ -1442,6 +1509,14 @@ function tituloEscansao(escansao) {
     return poema ? poema.titulo : `#${escansao.id}`;
 }
 
+// Mesmo padrão de tituloEscansao, agora pra Progressão Morfofuncional
+// (Unidades+Eventos não têm título próprio — pertencem a um poema).
+function tituloEstruturaTextual(estrutura) {
+    if (!estrutura) return null;
+    const poema = db.poemas.find((p) => p.id == estrutura.poemaId);
+    return poema ? poema.titulo : `#${estrutura.id}`;
+}
+
 // Uma Escansão por poema (não é histórico de versões — ver comentário no
 // db inicial) — usado pela tabela da aba Sonoridade e pelo modal de
 // cadastro/edição (pra saber se já existe uma escansão daquele poema).
@@ -1449,12 +1524,21 @@ export function getEscansaoDoPoema(poemaId) {
     return db.escansoes.find((e) => e.poemaId == poemaId) || null;
 }
 
+// Uma Estrutura Textual (Unidades + Eventos) por poema — mesmo espírito
+// de getEscansaoDoPoema. Usada pela tabela da aba Morfofuncionalidade e
+// pelo modal de cadastro/edição.
+export function getEstruturaDoPoema(poemaId) {
+    return db.estruturasTextuais.find((e) => e.poemaId == poemaId) || null;
+}
+
 export function deleteItem(col, id) {
     const item = db[col]?.find((i) => i.id == id);
     const titulo =
         col === 'escansoes'
             ? tituloEscansao(item)
-            : item?.titulo || item?.tipo || item?.nome || `#${id}`;
+            : col === 'estruturasTextuais'
+              ? tituloEstruturaTextual(item)
+              : item?.titulo || item?.tipo || item?.nome || `#${id}`;
     let rotulo = ROTULOS_COL[col] || col;
 
     // Para coletâneas, informa quantas partes e itens serão removidos em cascata

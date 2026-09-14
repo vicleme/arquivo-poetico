@@ -113,15 +113,38 @@ npm run format:check   # prettier --check .
 │   │                            Claude, Gemini, etc.), separate from the
 │   │                            development decision log (see "manutencao/"
 │   │                            below)
+│   ├── campos-poema-prosa-for-ai.md / campos-poema-prosa-for-ai-pt-br.md
+│   │                          → Full map of every field in a Poem/Prose
+│   │                            record, for reading exported data without
+│   │                            opening the code
+│   ├── etiquetas-sinalizacoes-for-ai.md / etiquetas-sinalizacoes-for-ai-pt-br.md
+│   │                          → Logic of the archive's tags ("Sinalizações"
+│   │                            in the UI) — which category each one
+│   │                            represents
 │   ├── export-to-ia.md / export-to-ia-pt-br.md
 │   │                          → Nested vs. flat export format for use with
 │   │                            an AI (see "Main features")
-│   └── scansion-for-ai.md / scansion-for-ai-pt-br.md
-│                              → Instructs an AI to scan a pasted poem
-│                                (syllable grid, stresses, rhyme pairs, and
-│                                the 7 classification fields of the
-│                                Sonoridade tab), ready to transcribe the
-│                                answer back into the system
+│   ├── morfofuncionalidade-for-ai.md / morfofuncionalidade-for-ai-pt-br.md
+│   │                          → Fields of the Morfofuncionalidade record
+│   │                            (Units/Events, position in the text,
+│   │                            Templates) — the "Morfofuncionalidade" tab
+│   ├── pessoas-papeis-for-ai.md / pessoas-papeis-for-ai-pt-br.md
+│   │                          → Logic of the `pessoas` field on Poems/Prose
+│   │                            — roles assigned to each mentioned person
+│   ├── scansion-for-ai.md / scansion-for-ai-pt-br.md
+│   │                          → Instructs an AI to scan a pasted poem
+│   │                            (syllable grid, stresses, rhyme pairs, and
+│   │                            the 7 classification fields of the
+│   │                            Sonoridade tab), ready to transcribe the
+│   │                            answer back into the system
+│   ├── sonoridade-for-ai.md / sonoridade-for-ai-pt-br.md
+│   │                          → Fields of the Sonoridade record (general
+│   │                            classification, syllable grid, rhymes and
+│   │                            echoes) — complements scansion-for-ai.md
+│   └── transtextualidade-referencias-for-ai.md / transtextualidade-referencias-for-ai-pt-br.md
+│                              → The three fields of the "Transtextualidade e
+│                                Referências (Externas)" group: Intertextuality,
+│                                Hypertextuality, and External References
 │
 ├── manutencao/                → Internal development documentation (not a
 │   │                            usage guide — see "docs/" above)
@@ -261,7 +284,9 @@ npm run format:check   # prettier --check .
 
 - **Hierarchical registration**: Books → Parts → Sections, with Poems, Prose,
   and Text Elements (introduction, multimedia, commentary, interlude,
-  afterword) able to link to any of these three levels.
+  afterword) able to link to any of these three levels. See
+  `docs/campos-poema-prosa-for-ai.md` for the full field-by-field map of a
+  Poem/Prose record.
 - **Anthologies**: a separate tab for curating collections. An Anthology is a
   record in `db.livros` with `tipo: "Coletânea"`; it has Parts (the same
   `db.partes` collection as regular Parts, distinguished by `livroId`) and
@@ -284,13 +309,16 @@ npm run format:check   # prettier --check .
   single role per text (Author/Co-author). Renaming a Person or Era to an
   already-existing name doesn't merge the records automatically — the form
   offers **Merge now** (unites the two, moving links over), **Save anyway**
-  (keeps them separate), or **Cancel**.
+  (keeps them separate), or **Cancel**. See `docs/pessoas-papeis-for-ai.md`
+  for the full logic behind assigning roles to each Person.
 - **Eras**: its own registry (name, relationship context, notes) that a
   Poem/Prose can reference under "Depicted Era", with a start/end (partial
   dates) and a `recorte` — "moment" (just the event) or "aftermath" (its
   later effect).
 - **Tags and people**: theme tags and "dedicated to / about whom" as
-  reusable labels, with `<datalist>` suggestions.
+  reusable labels, with `<datalist>` suggestions. See
+  `docs/etiquetas-sinalizacoes-for-ai.md` for the full logic behind each
+  tag category.
 - **Poem status**: 🟡 Incomplete, ⚪ Complete, 🟢 Published, 🔵 Migrated
   (text moved from one book/section to another), 🔴 Discarded, and 🔒 Private
   (never intended for publication, unlike Discarded).
@@ -323,10 +351,28 @@ npm run format:check   # prettier --check .
 - **Editorial status for Books/Anthologies**: Unpublished, Out of print,
   Public domain, or Re-edited — a publishing concept for the book as a
   whole, separate from the individual Poem/Prose status.
-- **Intertextuality** (Poem): a list of external references (song, book,
-  film/series, video, quote...), each with a type + text — a poem can
-  reference several different reference types at once. Each item can be
-  edited in-place (click ✎ to reopen a saved item before deleting it).
+- **Intertextuality** (Poem and Prose): a list of external references
+  (song, book, film/series, video, quote...), each with a type + text —
+  a text can reference several different reference types at once. Each
+  item can be edited in-place (click ✎ to reopen a saved item before
+  deleting it).
+- **Hypertextuality** (Poem and Prose): a list of direct transformations
+  of a specific source work — type (same suggestions as Intertextuality)
+  + relation (Rereading, Adapted Translation, Parody, Pastiche,
+  Expansion, Rescaling, Homage, Transposition) + hypotext (the source
+  work's name). A stronger, more structural relationship than
+  Intertextuality: the archive's text isn't just dialoguing with or
+  quoting the source, it's deriving from/transforming it. Editable
+  in-place like Intertextuality.
+- **External References** (Poem and Prose): a list of real-world anchors
+  — a historical landmark, news, or public figure — with no work or
+  authorship involved, which is what sets it apart from Intertextuality
+  and Hypertextuality. A public figure named here is free text, not a
+  link into the central People registry; if the person has a role in
+  the text's origin (depicted, dedicatee, etc.) and is already a
+  registered Person, use the `pessoas` field instead. See
+  `docs/transtextualidade-referencias-for-ai.md` for the full criteria
+  distinguishing these three fields.
 - **Attachments** (Poem): a list of items accompanying the text —
   Illustration, Photo, Lettering, Recited video, Video comments, or Other —
   each with a type + description, and a link (required for video types,
@@ -451,9 +497,10 @@ npm run format:check   # prettier --check .
     `.pdf`, the page automatically switches to landscape if the poem has
     verses too long to fit in portrait; in the `.docx`, the whole document
     is born in landscape when needed instead.
-  - See `docs/scansion-for-ai.md` for a ready-made guide on asking an AI
-    to scan a poem and return the fields already in the right shape to
-    fill in here.
+  - See `docs/sonoridade-for-ai.md` for the full field breakdown of this
+    record, and `docs/scansion-for-ai.md` for a ready-made guide on
+    asking an AI to scan a poem and return the fields already in the
+    right shape to fill in here.
   - **Count columns** in the tab's table: add as many columns as you like,
     each counting a value of your choice (same feature already available
     in the Poems/Prose tables) — in Sonoridade, the fields are Rhymes
@@ -462,6 +509,35 @@ npm run format:check   # prettier --check .
     `<optgroup>` in the field selector, since there are nearly 20 options)
     —, each column with an optional numeric filter (e.g. only show poems
     with 3 or more rhymes).
+- **Morfofuncionalidade** (Analysis > Morfofuncionalidade): argumentative/
+  formal analysis of an already registered poem, stored as its own record
+  (`db.estruturasTextuais`, shown in the UI as "Progressão
+  Morfofuncional"), linked to the poem via `poemaId` — like Sonoridade, at
+  most one record per poem; re-cataloging replaces the previous one. Two
+  independent lists, both free text with `<datalist>` suggestions (no
+  closed vocabulary, since terminology varies by poetic form):
+  - **Unidades** ("Units"): sections that have both a form (**Unidade
+    Estrófica** — e.g. Quatrains, Tercets, Octave) and an argumentative
+    function (**Unidade Discursiva** — e.g. Proposição, Resolução).
+    Either field can be left empty, but not both.
+  - **Eventos** ("Events"): one-off movements with no form of their own
+    (**Progressão Dialética** — e.g. Tensão, Volta, Síntese).
+  - Both types share a **position** (stanzas + verses, 1-based, derived
+    automatically from the poem's blank lines, never typed by hand) — an
+    "unpositioned" item (`estrofes: []`) is a valid, expected state, not
+    missing data. Overlap between items and the position's text summary
+    are always recomputed on read, never stored.
+  - **Templates** (`db.templatesEstrutura`): reusable classification
+    combos, independent of any specific poem (a built-in "Soneto"
+    template plus any the user saves) — applying one instantiates new,
+    unpositioned items ready to place on the poem at hand.
+  - **View/Download**: same configurable "⚙️ Actions ▾" column as
+    Sonoridade (View/Download/Edit/Delete); "Download" exports as `.md`,
+    `.pdf`, `.docx`, or `.json`. Unlike Poems/Prose and Sonoridade, this
+    table's columns aren't configurable — they're fixed.
+  - See `docs/morfofuncionalidade-for-ai.md` for the full field
+    breakdown, including how this differs from the similarly-named
+    "Estrutura" button (the archive's Book/Part/Section hierarchy).
 - **Find and Replace** (`localizar-substituir.html`): a separate tool
   (reachable from the "Tools" nav group) to search for a text snippet in
   Poems and/or Prose — with case-sensitivity, scoping to Poems, Prose, or

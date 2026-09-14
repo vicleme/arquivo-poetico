@@ -55,6 +55,11 @@ import {
     abrirVisualizacaoSonoridade,
     baixarDoModalVisualizacaoSonoridade,
 } from './visualizar-sonoridade.js';
+import { exportarEstruturaTextual } from './exportar-estrutura-textual.js';
+import {
+    abrirVisualizacaoEstruturaTextual,
+    baixarDoModalVisualizacaoEstruturaTextual,
+} from './visualizar-estrutura-textual.js';
 import { initTema, setTema } from './theme.js';
 import { renderLists } from './render.js';
 import {
@@ -101,6 +106,7 @@ import {
     limparFiltroDataPoemas,
     limparFiltroDataProsas,
     setFiltroSonoridade,
+    setFiltroEstruturaTextual,
 } from './render-listas.js';
 import {
     toggleSelecao,
@@ -278,9 +284,24 @@ import {
     editarSonoridade,
     prepararNovaSonoridade,
     importarSonoridadeDeArquivo,
+    initFormEstruturaTextual,
+    editarEstruturaTextual,
+    prepararNovaEstruturaTextual,
+    aplicarTemplateEstruturaTextual,
+    adicionarUnidadeEstruturaTextual,
+    adicionarEventoEstruturaTextual,
+    salvarComoTemplateEstruturaTextual,
     rastreadorPoema,
     rastreadorProsa,
 } from './forms.js';
+import {
+    toggleEstrofeItem,
+    toggleVersoItem,
+    setVersosTodosItem,
+    removerUnidade,
+    removerEvento,
+    onToggleDetalhesPosicaoEstrutura,
+} from './estrutura-textual.js';
 import {
     renderColetaneas,
     selecionarColetanea,
@@ -339,6 +360,11 @@ registrarModal('modal-grupo', 'modal-grupo.html', initFormGrupo);
 registrarModal('modal-autor', 'modal-autor.html', initFormAutor);
 registrarModal('modal-epoca', 'modal-epoca.html', initFormEpoca);
 registrarModal('modal-sonoridade', 'modal-sonoridade.html', initFormSonoridade);
+registrarModal(
+    'modal-morfofuncionalidade',
+    'modal-morfofuncionalidade.html',
+    initFormEstruturaTextual,
+);
 registrarModal('modal-mesclar', 'modal-mesclar.html', initFormMesclar);
 registrarModal('modal-col-parte', 'modal-col-parte.html', initFormColParte);
 registrarModal('modal-col-item', 'modal-col-item.html', initFormColItem);
@@ -349,6 +375,12 @@ registrarModal('modal-visualizar', 'modal-visualizar.html', () => {});
 // Mesmo espírito acima, agora pra Sonoridade (ver visualizar-sonoridade.js)
 // — extensão desta sessão, antes só Poemas/Prosas tinham essa visualização.
 registrarModal('modal-visualizar-sonoridade', 'modal-visualizar-sonoridade.html', () => {});
+// Idem, agora pra Morfofuncionalidade (ver visualizar-estrutura-textual.js).
+registrarModal(
+    'modal-visualizar-estrutura-textual',
+    'modal-visualizar-estrutura-textual.html',
+    () => {},
+);
 
 // ─── Listener delegado para as listas (render-listas.js) ─────
 // render-listas.js gera botões/checkboxes com data-action + data-id/
@@ -373,6 +405,7 @@ const ACOES_LISTA = {
     'editar-autor': (el) => editarAutor(Number(el.dataset.id)),
     'editar-epoca': (el) => editarEpoca(Number(el.dataset.id)),
     'editar-sonoridade': (el) => editarSonoridade(Number(el.dataset.id)),
+    'editar-estrutura-textual': (el) => editarEstruturaTextual(Number(el.dataset.id)),
     // "Ver" ganhou visualização somente-leitura própria nesta sessão
     // (antes abria o mesmo modal de edição — ver visualizar-sonoridade.js
     // pro porquê de ser um modal à parte em vez de reaproveitar
@@ -380,6 +413,13 @@ const ACOES_LISTA = {
     'ver-sonoridade': (el) => abrirVisualizacaoSonoridade(Number(el.dataset.id)),
     'baixar-sonoridade': (el) =>
         exportarEscansao(Number(el.dataset.id), getFormatoBaixar('sonoridade')),
+    // Mesmo padrão de Ver/Baixar de Sonoridade acima, agora pra
+    // Morfofuncionalidade (item pedido por Victor: replicar o painel
+    // "⚙️ Ações ▾" de Sonoridade aqui, sem o painel de Colunas — ver
+    // celulaAcoesEstruturaTextual em render-listas.js).
+    'ver-estrutura-textual': (el) => abrirVisualizacaoEstruturaTextual(Number(el.dataset.id)),
+    'baixar-estrutura-textual': (el) =>
+        exportarEstruturaTextual(Number(el.dataset.id), getFormatoBaixar('estrutura-textual')),
     'mesclar-item': (el) => abrirModalMesclar(el.dataset.tipo, Number(el.dataset.id)),
     'excluir-item': (el) => deleteItem(el.dataset.tipo, Number(el.dataset.id)),
     'ver-item': (el) => abrirVisualizacao(el.dataset.tipo, Number(el.dataset.id)),
@@ -702,6 +742,22 @@ window.wrapText = wrapText;
 // sem isso a digitação rápida engasga conforme o acervo cresce.
 window.setFiltroPoemas = debounce(setFiltroPoemas, 200);
 window.setFiltroSonoridade = debounce(setFiltroSonoridade, 200);
+window.setFiltroEstruturaTextual = debounce(setFiltroEstruturaTextual, 200);
+window.prepararNovaEstruturaTextual = prepararNovaEstruturaTextual;
+window.aplicarTemplateEstruturaTextual = aplicarTemplateEstruturaTextual;
+window.adicionarUnidadeEstruturaTextual = adicionarUnidadeEstruturaTextual;
+window.adicionarEventoEstruturaTextual = adicionarEventoEstruturaTextual;
+window.salvarComoTemplateEstruturaTextual = salvarComoTemplateEstruturaTextual;
+// Chamadas diretamente pelo HTML gerado em estrutura-textual.js
+// (montarSeletorPosicaoHtml/montarCartaoHtml) — mapeiam 1:1 pras
+// funções do módulo, sem wrapper, já que as assinaturas já batem
+// com o que o onchange/onclick inline passa.
+window.toggleEstrofeEstrutura = toggleEstrofeItem;
+window.toggleVersoEstrutura = toggleVersoItem;
+window.setVersosTodosEstrutura = setVersosTodosItem;
+window.removerUnidadeEstrutura = removerUnidade;
+window.removerEventoEstrutura = removerEvento;
+window.onToggleDetalhesPosicaoEstrutura = onToggleDetalhesPosicaoEstrutura;
 window.setFiltroProsas = debounce(setFiltroProsas, 200);
 window.setFiltroConteudoPoemas = debounce(setFiltroConteudoPoemas, 200);
 window.setFiltroConteudoProsas = debounce(setFiltroConteudoProsas, 200);
@@ -761,6 +817,7 @@ window.setFormatoBaixarColuna = setFormatoBaixarColuna;
 window.resetarAcoesColuna = resetarAcoesColuna;
 window.baixarDoModalVisualizacao = baixarDoModalVisualizacao;
 window.baixarDoModalVisualizacaoSonoridade = baixarDoModalVisualizacaoSonoridade;
+window.baixarDoModalVisualizacaoEstruturaTextual = baixarDoModalVisualizacaoEstruturaTextual;
 window.setTema = setTema;
 window.setFiltroDataEscritaPoemas = setFiltroDataEscritaPoemas;
 window.setFiltroDataPublicacaoPoemas = setFiltroDataPublicacaoPoemas;

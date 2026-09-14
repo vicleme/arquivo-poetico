@@ -114,15 +114,38 @@ npm run format:check   # prettier --check .
 ├── docs/                      → Guias de uso com IAs externas (ChatGPT, Claude,
 │   │                            Gemini etc.), fora do fluxo de decisões de
 │   │                            desenvolvimento (ver "manutencao/" abaixo)
+│   ├── campos-poema-prosa-for-ai.md / campos-poema-prosa-for-ai-pt-br.md
+│   │                          → Mapa de todos os campos de um registro de
+│   │                            Poema/Prosa, pra quem for ler dados exportados
+│   │                            sem abrir o código
+│   ├── etiquetas-sinalizacoes-for-ai.md / etiquetas-sinalizacoes-for-ai-pt-br.md
+│   │                          → Lógica das etiquetas do acervo ("Sinalizações"
+│   │                            na interface) — que categoria cada uma
+│   │                            representa
 │   ├── export-to-ia.md / export-to-ia-pt-br.md
 │   │                          → Formato aninhado vs. flat na exportação do
 │   │                            acervo para uso com IA (ver "Funcionalidades
 │   │                            principais")
-│   └── scansion-for-ai.md / scansion-for-ai-pt-br.md
-│                              → Instrui uma IA a escandir um poema colado
-│                                (grade silábica, tônicas, pares de rima e os 7
-│                                campos de classificação da aba Sonoridade),
-│                                pronto pra transcrever a resposta pro sistema
+│   ├── morfofuncionalidade-for-ai.md / morfofuncionalidade-for-ai-pt-br.md
+│   │                          → Campos do registro de Morfofuncionalidade
+│   │                            (Unidades/Eventos, posição no texto,
+│   │                            Templates) — aba "Morfofuncionalidade"
+│   ├── pessoas-papeis-for-ai.md / pessoas-papeis-for-ai-pt-br.md
+│   │                          → Lógica do campo `pessoas` de Poemas/Prosas —
+│   │                            papéis atribuídos a cada pessoa citada
+│   ├── scansion-for-ai.md / scansion-for-ai-pt-br.md
+│   │                          → Instrui uma IA a escandir um poema colado
+│   │                            (grade silábica, tônicas, pares de rima e os 7
+│   │                            campos de classificação da aba Sonoridade),
+│   │                            pronto pra transcrever a resposta pro sistema
+│   ├── sonoridade-for-ai.md / sonoridade-for-ai-pt-br.md
+│   │                          → Campos do registro de Sonoridade
+│   │                            (classificação geral, grade silábica, rimas e
+│   │                            ecos) — complementar a scansion-for-ai.md
+│   └── transtextualidade-referencias-for-ai.md / transtextualidade-referencias-for-ai-pt-br.md
+│                              → Os três campos do grupo "Transtextualidade e
+│                                Referências (Externas)": Intertextualidade,
+│                                Hipertextualidade e Referências
 │
 ├── manutencao/                → Documentação interna de desenvolvimento (não é
 │   │                            guia de uso do app — ver "docs/" acima)
@@ -259,7 +282,9 @@ npm run format:check   # prettier --check .
 
 - **Cadastro hierárquico**: Livros → Partes → Seções, com Poemas, Prosas e
   Elementos Textuais (introdução, multimídia, comentário, respiro, posfácio)
-  podendo se vincular a qualquer um desses três níveis.
+  podendo se vincular a qualquer um desses três níveis. Veja
+  `docs/campos-poema-prosa-for-ai-pt-br.md` para o mapa completo de campos
+  de um registro de Poema/Prosa.
 - **Coletâneas**: aba separada para montar curadorias. Uma Coletânea é um
   registro em `db.livros` com `tipo: "Coletânea"`; ela tem Partes (mesma
   coleção `db.partes` das Partes normais, distinguidas pelo `livroId`) e cada
@@ -284,9 +309,12 @@ npm run format:check   # prettier --check .
   (Autor/Coautor). Renomear uma Pessoa ou Época para um nome já existente
   não funde os registros automaticamente — o formulário oferece **Mesclar
   agora** (une os dois, movendo vínculos), **Salvar mesmo assim** (mantém
-  os dois separados) ou **Cancelar**.
+  os dois separados) ou **Cancelar**. Veja `docs/pessoas-papeis-for-ai-pt-br.md`
+  para a lógica completa dos papéis atribuídos a cada Pessoa.
 - **Tags e pessoas**: sinalizações (temas) e "dedicado a / sobre quem" como
-  etiquetas reutilizáveis, com sugestão por `<datalist>`.
+  etiquetas reutilizáveis, com sugestão por `<datalist>`. Veja
+  `docs/etiquetas-sinalizacoes-for-ai-pt-br.md` para a lógica completa de
+  cada categoria de sinalização.
 - **Épocas**: cadastro próprio (nome, contexto da relação, notas) que um
   Poema/Prosa pode referenciar em "Época Retratada", com início/fim (datas
   parciais) e `recorte` — "momento" (só o evento) ou "repercussão" (o efeito
@@ -321,11 +349,28 @@ npm run format:check   # prettier --check .
 - **Status editorial de Livros/Coletâneas**: Inédito, Esgotado, Domínio
   público ou Reeditado — conceito de publicação do livro como um todo,
   separado do Status do Poema/Prosa individual.
-- **Intertextualidade** (Poema): lista de referências externas (música,
-  livro, filme/série, vídeo, citação...), cada uma com tipo + texto — um
-  poema pode dialogar com várias referências de tipos diferentes ao mesmo
-  tempo. Cada item pode ser editado in-place (clique em ✎ pra reabrir um
-  item já salvo antes de excluí-lo).
+- **Intertextualidade** (Poema e Prosa): lista de referências externas
+  (música, livro, filme/série, vídeo, citação...), cada uma com tipo +
+  texto — um texto pode dialogar com várias referências de tipos
+  diferentes ao mesmo tempo. Cada item pode ser editado in-place (clique
+  em ✎ pra reabrir um item já salvo antes de excluí-lo).
+- **Hipertextualidade** (Poema e Prosa): lista de transformações diretas
+  de uma obra de origem específica — tipo (mesmas sugestões de
+  Intertextualidade) + relação (Releitura, Tradução Adaptada, Paródia,
+  Pastiche, Expansão, Reescala, Homenagem, Transposição) + hipotexto (o
+  nome da obra de origem). Uma relação mais forte e estrutural que
+  Intertextualidade: o texto do acervo não só dialoga com a fonte ou a
+  cita, ele deriva dela/a transforma. Editável in-place como
+  Intertextualidade.
+- **Referências (Externas)** (Poema e Prosa): lista de âncoras do mundo
+  real — um marco histórico, uma notícia ou uma figura pública — sem
+  nenhuma obra ou autoria envolvida, o que a diferencia de
+  Intertextualidade e Hipertextualidade. Uma figura pública citada aqui é
+  texto livre, sem vínculo com o cadastro central de Pessoas; se a pessoa
+  tem um papel na origem do texto (retratada, dedicatária etc.) e já é
+  uma Pessoa cadastrada, o campo certo é `pessoas`, não uma entrada aqui.
+  Veja `docs/transtextualidade-referencias-for-ai-pt-br.md` para o
+  critério completo que diferencia esses três campos.
 - **Anexos** (Poema): lista de itens que acompanham o texto — Ilustração,
   Foto, Lettering, Declamação em vídeo, Comentários em vídeo ou Outro —,
   cada um com tipo + descrição, e um link (obrigatório para os tipos de
@@ -450,9 +495,10 @@ npm run format:check   # prettier --check .
     automaticamente se o poema tiver versos longos demais pra caber em
     retrato; no `.docx`, é o documento inteiro que nasce em paisagem
     quando necessário.
-  - Ver `docs/scansion-for-ai-pt-br.md` pra um guia pronto de como pedir a
-    uma IA que escanda um poema e devolva os campos já no formato certo
-    pra preencher aqui.
+  - Ver `docs/sonoridade-for-ai-pt-br.md` para o detalhamento completo dos
+    campos desse registro, e `docs/scansion-for-ai-pt-br.md` pra um guia
+    pronto de como pedir a uma IA que escanda um poema e devolva os campos
+    já no formato certo pra preencher aqui.
   - **Colunas de contagem** na tabela da aba: adicione quantas colunas
     quiser, cada uma contando um valor à escolha (mesmo recurso já disponível
     nas tabelas de Poemas/Prosas) — em Sonoridade, os campos são Rimas
@@ -461,6 +507,38 @@ npm run format:check   # prettier --check .
     `<optgroup>` no seletor de campo, por serem quase 20 opções) —, cada
     coluna com filtro numérico opcional (ex. só mostrar poemas com 3 ou
     mais rimas).
+- **Morfofuncionalidade** (Análise > Morfofuncionalidade): análise
+  argumentativa/formal de um poema já cadastrado, guardada como registro
+  próprio (`db.estruturasTextuais`, mostrado na interface como "Progressão
+  Morfofuncional"), vinculado ao poema por `poemaId` — assim como
+  Sonoridade, no máximo um registro por poema; recatalogar substitui o
+  anterior. Duas listas independentes, ambas texto livre com sugestão por
+  `<datalist>` (sem vocabulário fechado, já que a terminologia varia
+  conforme a forma poética):
+  - **Unidades**: trechos que têm forma (**Unidade Estrófica** — ex.
+    Quartetos, Tercetos, Oitava) e função argumentativa (**Unidade
+    Discursiva** — ex. Proposição, Resolução) ao mesmo tempo. Qualquer um
+    dos dois campos pode ficar vazio, mas não os dois.
+  - **Eventos**: movimentos pontuais sem forma própria (**Progressão
+    Dialética** — ex. Tensão, Volta, Síntese).
+  - Os dois tipos compartilham uma **posição** (estrofes + versos, base 1,
+    derivada automaticamente das linhas em branco do poema, nunca
+    digitada à mão) — um item "não posicionado" (`estrofes: []`) é um
+    estado válido e esperado, não dado faltando. A sobreposição entre
+    itens e o resumo textual da posição são sempre recalculados na
+    leitura, nunca armazenados.
+  - **Templates** (`db.templatesEstrutura`): combos de classificação
+    reutilizáveis, independentes de um poema específico (um template
+    embutido "Soneto" mais os que o usuário salvar) — aplicar um instancia
+    itens novos, não posicionados, prontos pra posicionar no poema em
+    questão.
+  - **Ver/Baixar**: mesma coluna "⚙️ Ações ▾" configurável de Sonoridade
+    (Ver/Baixar/Editar/Excluir); "Baixar" exporta em `.md`, `.pdf`, `.docx`
+    ou `.json`. Diferente de Poemas/Prosas e Sonoridade, as colunas dessa
+    tabela não são configuráveis — são fixas.
+  - Ver `docs/morfofuncionalidade-for-ai-pt-br.md` para o detalhamento
+    completo dos campos, incluindo a diferença com o botão de nome
+    parecido "Estrutura" (a hierarquia Livro/Parte/Seção do acervo).
 - **Localizar e Substituir** (`localizar-substituir.html`): ferramenta
   separada (grupo "Ferramentas" na nav) para buscar um trecho em
   Poemas e/ou Prosas — com opção de diferenciar maiúsculas/minúsculas,

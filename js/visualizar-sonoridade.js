@@ -36,9 +36,15 @@ function linhaMetaHtml(rotulo, valor) {
 // sozinho quando o toggle "Mostrar Ecos Sonoros" da leitura muda —
 // re-renderiza só o conteúdo do modal, sem reabrir/piscar o modal em si
 // (toggleModal só é chamado na abertura inicial, ver abaixo).
-function renderConteudoSonoridade(es) {
-    const conteudo = document.getElementById('visualizar-sonoridade-conteudo');
-    if (!conteudo) return;
+//
+// renderVisualizacaoSonoridadeHtml é a parte pura (só monta e devolve a
+// string de HTML, sem tocar em `document`) — mesmo padrão de
+// renderVisualizacaoHtml em visualizar.js, extraído nesta sessão pra
+// poder ser testado sem precisar de DOM de verdade (ver
+// tests/visualizar-sonoridade.test.js). renderConteudoSonoridade
+// continua sendo a parte "impura" (escreve no DOM e liga o listener do
+// toggle de Ecos), agora só uma casca fina em volta da função pura.
+export function renderVisualizacaoSonoridadeHtml(es) {
     let html = '';
     html += linhaMetaHtml('Forma', es.formaPoema);
     html += linhaMetaHtml('Regularidade Métrica', es.regularidadeMetrica);
@@ -53,7 +59,13 @@ function renderConteudoSonoridade(es) {
     html += `
         <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-2">Grade Silábica</h4>
         ${renderGradeLeituraHtml(es.escansaoLinhas, es.rimas, es.ecos)}`;
-    conteudo.innerHTML = html;
+    return html;
+}
+
+function renderConteudoSonoridade(es) {
+    const conteudo = document.getElementById('visualizar-sonoridade-conteudo');
+    if (!conteudo) return;
+    conteudo.innerHTML = renderVisualizacaoSonoridadeHtml(es);
 
     conteudo.querySelector('#son-toggle-mostrar-ecos-leitura')?.addEventListener('change', (e) => {
         definirMostrarEcos(e.target.checked);
