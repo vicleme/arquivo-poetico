@@ -50,6 +50,10 @@ import {
 } from './acoes-coluna.js';
 import { exportarItem } from './exportar.js';
 import { abrirVisualizacao, baixarDoModalVisualizacao } from './visualizar.js';
+import {
+    toggleDownloadAbrangente,
+    sincronizarCheckboxesComEstadoSalvo,
+} from './download-abrangente.js';
 import { exportarEscansao } from './exportar-sonoridade.js';
 import {
     abrirVisualizacaoSonoridade,
@@ -469,6 +473,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     atualizarIndicadorBackup();
     atualizarIndicadorStorage();
     renderListaSnapshots();
+    // Aplica o estado salvo de "Download abrangente" ao checkbox estático
+    // da barra de seleção em massa de Poemas (o do modal "Ver" e o do
+    // painel "⚙️ Ações ▾" já nascem com o estado certo, um por ser
+    // atualizado a cada abertura — visualizar.js — e o outro por ser
+    // remontado via innerHTML a cada render — celulas-tabela.js).
+    sincronizarCheckboxesComEstadoSalvo();
 
     // Lembra a última escolha de "incluir capas" no backup (padrão: marcado,
     // já que o botão "Baixar JSON" é o backup "de verdade" — melhor pecar
@@ -815,6 +825,7 @@ window.definirValorColunaContagem = definirValorColunaContagem;
 window.toggleAcaoColuna = toggleAcaoColuna;
 window.setFormatoBaixarColuna = setFormatoBaixarColuna;
 window.resetarAcoesColuna = resetarAcoesColuna;
+window.toggleDownloadAbrangente = toggleDownloadAbrangente;
 window.baixarDoModalVisualizacao = baixarDoModalVisualizacao;
 window.baixarDoModalVisualizacaoSonoridade = baixarDoModalVisualizacaoSonoridade;
 window.baixarDoModalVisualizacaoEstruturaTextual = baixarDoModalVisualizacaoEstruturaTextual;

@@ -1203,6 +1203,18 @@
                     >
                         📅 Datas ▾
                     </button>
+                    <label
+                        class="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 whitespace-nowrap px-1"
+                        title="Inclui a Sonoridade e a Progressão Morfofuncional dos poemas selecionados, quando cadastradas (.md/.json por enquanto)"
+                    >
+                        <input
+                            type="checkbox"
+                            class="download-abrangente-check"
+                            style="width: auto; margin: 0"
+                            onchange="toggleDownloadAbrangente(this.checked)"
+                        />
+                        📦 Abrangente
+                    </label>
                     <button
                         onclick="exportarSelecaoAtualJson('poemas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"

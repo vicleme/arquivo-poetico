@@ -36,6 +36,7 @@ import {
     renderCoracoesHtml,
 } from './utils.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
+import { renderCheckboxDownloadAbrangenteAcoes } from './download-abrangente.js';
 import { DEFINICAO_COLUNAS, getColunasAtivas, renderSeletorColunas } from './colunas.js';
 import {
     getColunasContagem,
@@ -663,5 +664,12 @@ export function atualizarPainelColunas(tabela, painelId) {
 
 export function atualizarPainelAcoes(tabela, painelId) {
     const painel = document.getElementById(painelId);
-    if (painel) painel.innerHTML = renderSeletorAcoes(tabela);
+    if (!painel) return;
+    // "Download abrangente" só existe pra Poemas — Sonoridade e
+    // Morfofuncionalidade são sempre ligadas a poemaId, Prosa não tem
+    // nenhuma das duas (ver download-abrangente.js). Bloco extra
+    // anexado por fora de renderSeletorAcoes (compartilhado entre as 4
+    // tabelas), não um campo novo em DEFINICAO_ACOES/FORMATOS_BAIXAR.
+    const extra = tabela === 'poemas' ? renderCheckboxDownloadAbrangenteAcoes() : '';
+    painel.innerHTML = renderSeletorAcoes(tabela) + extra;
 }

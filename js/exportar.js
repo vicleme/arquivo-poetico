@@ -24,6 +24,7 @@ import {
 import { baixarMarkdown } from './exportar-md.js';
 import { baixarPdf } from './exportar-pdf.js';
 import { baixarDocx } from './exportar-docx.js';
+import { enriquecerItensComExtras } from './download-abrangente.js';
 
 // Exportada pra ser reaproveitada por exportar-frequentes.js (critérios
 // de template comparam contra essa mesma lista normalizada).
@@ -382,10 +383,21 @@ export function executarExportacaoSeletivaMarkdown() {
 // listagem é independente — ver selecaoPoemas/selecaoProsas em
 // render-listas.js). Reaproveita montarRegistro (mesmo formato/contexto
 // resolvido da exportação seletiva) e baixarMarkdown (mesmo documento .md).
+// enriquecerItensComExtras (download-abrangente.js) só age em itens de
+// Poema, e só quando o toggle "Download abrangente" está ligado —
+// anexa item.sonoridade/item.estruturaTextual quando existirem, pro
+// JSON sair com tudo junto e pro .md (gerarMarkdownExportacao,
+// exportar-md.js) gerar as seções extras a partir desses mesmos campos.
+// Único ponto de entrada compartilhado pelo botão "Baixar" da linha, o
+// modal de Visualização e a barra de seleção em massa — cobre os três
+// lugares combinados sem repetir a checagem em cada um.
 export function itensDaSelecao(tipo, ids) {
     const idsSet = new Set(ids);
     const colecao = tipo === 'prosa' ? db.prosas : db.poemas;
-    return colecao.filter((item) => idsSet.has(item.id)).map((item) => montarRegistro(tipo, item));
+    const itens = colecao
+        .filter((item) => idsSet.has(item.id))
+        .map((item) => montarRegistro(tipo, item));
+    return enriquecerItensComExtras(itens);
 }
 
 export function exportarSelecaoJson(tipo, ids) {

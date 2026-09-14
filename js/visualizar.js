@@ -18,6 +18,7 @@
 import { garantirModal, toggleModal } from './modais.js';
 import { db } from './db.js';
 import { itensDaSelecao, exportarItem } from './exportar.js';
+import { isDownloadAbrangenteAtivo } from './download-abrangente.js';
 import {
     INFO_STATUS,
     textoPessoas,
@@ -293,6 +294,17 @@ export async function abrirVisualizacao(tipo, id) {
 
     const conteudo = document.getElementById('visualizar-conteudo');
     if (conteudo) conteudo.innerHTML = renderVisualizacaoHtml(item);
+
+    // "Download abrangente" só existe pra Poema (Sonoridade e
+    // Morfofuncionalidade são sempre ligadas a poemaId) — pra Prosa o
+    // checkbox fica escondido (ver acoes-coluna.js/index.html pro mesmo
+    // recorte nos outros dois lugares).
+    const wrapAbrangente = document.getElementById('download-abrangente-modal-visualizar-wrap');
+    if (wrapAbrangente) {
+        wrapAbrangente.classList.toggle('hidden', tipo !== 'poema');
+        const check = wrapAbrangente.querySelector('.download-abrangente-check');
+        if (check) check.checked = isDownloadAbrangenteAtivo();
+    }
 
     toggleModal('modal-visualizar');
 }

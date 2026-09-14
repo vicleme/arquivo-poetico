@@ -28,6 +28,7 @@ import {
     formatarAutoclassificacaoTexto,
 } from './utils.js';
 import { db } from './db.js';
+import { blocosExtrasMarkdown } from './download-abrangente.js';
 
 export const INFO_STATUS = {
     publicado: { emoji: '🟢', titulo: 'Publicado' },
@@ -590,6 +591,11 @@ export function gerarMarkdownExportacao(itens) {
 
     itens.forEach((item, i) => {
         md += itemParaMarkdown(item, i + 1);
+        // Seções extras de Sonoridade/Morfofuncionalidade — só presentes
+        // quando o item passou por enriquecerItensComExtras (ver
+        // itensDaSelecao, exportar.js) com o toggle "Download abrangente"
+        // ligado; do contrário blocosExtrasMarkdown devolve string vazia.
+        md += blocosExtrasMarkdown(item);
         md += `---\n\n`;
     });
 
