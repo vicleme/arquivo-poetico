@@ -23,6 +23,14 @@
 
 import { itemParaMarkdownPartes } from './exportar-md.js';
 import { corpoParaLinhasRicas, linhaTemFundoUniforme, blocosDeFundoContinuos } from './utils.js';
+import { blocoEstruturaMarkdown } from './download-abrangente.js';
+import {
+    escansaoCabecalhoMarkdown,
+    escansaoParesEcosMarkdown,
+    gradeParaTabela,
+    desenharGradeSilabicaPdf,
+    decidirOrientacaoGradePdf,
+} from './exportar-sonoridade.js';
 
 function obterConstrutorJsPdf() {
     return window.jspdf?.jsPDF || null;
@@ -61,7 +69,11 @@ function saneParaPdf(texto) {
     });
     // Rede de segurança: qualquer outro caractere fora do Latin-1 que
     // ainda passar (emoji novo, símbolo esquecido na lista acima etc.)
-    // é melhor sumir do que corromper a linha inteira de novo.
+    // é melhor sumir do que corromper a linha inteira de novo. O range
+    // \u0000-\u00ff é Latin-1 de propósito (inclui os controles 0-31 e
+    // 127-159, que fazem parte da tabela e nunca corrompem o PDF) — não
+    // é um \x00 perdido por engano, daí o eslint-disable.
+    // eslint-disable-next-line no-control-regex
     return t.replace(/[^\u0000-\u00ff]/g, '');
 }
 
@@ -593,14 +605,39 @@ export function gerarPdfExportacao(itens) {
 
     const doc = new JsPDF({ unit: 'pt', format: 'a4' });
     const margem = 48;
-    const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
-    const alturaPagina = doc.internal.pageSize.getHeight();
+    // Capturadas ANTES de qualquer addPage — a folha 'a4' é sempre a
+    // mesma, só gira; a largura útil de uma página paisagem é a ALTURA da
+    // página retrato menos as mesmas margens (e vice-versa). Mesmo padrão
+    // de gerarPdfEscansao (exportar-sonoridade.js) — só existem aqui pra
+    // alimentar decidirOrientacaoGradePdf na hora da Grade Silábica, logo
+    // abaixo: o resto do documento (texto corrido) nunca sai do retrato.
+    const larguraUtilRetrato = doc.internal.pageSize.getWidth() - margem * 2;
+    const larguraUtilPaisagem = doc.internal.pageSize.getHeight() - margem * 2;
+
+    let orientacaoAtual = 'portrait';
+    let larguraUtil = larguraUtilRetrato;
+    let alturaPagina = doc.internal.pageSize.getHeight();
     const estadoY = { y: margem };
+
+    // Cria uma página nova na orientação pedida (default: a atual) e
+    // recalcula largura/altura úteis a partir da própria página recém-
+    // criada — depois de doc.addPage('a4', 'landscape'), pageSize.getWidth/
+    // getHeight já vêm trocados, então não precisamos de nenhuma constante
+    // própria de "altura da paisagem". SEMPRE passa a orientação explícita
+    // pro addPage (nunca doc.addPage() sem argumentos) — mesmo cuidado
+    // documentado em novaPagina/gerarPdfEscansao (exportar-sonoridade.js),
+    // pra não depender de jsPDF "lembrar" a orientação anterior sozinho.
+    function mudarPagina(orientacao = orientacaoAtual) {
+        doc.addPage('a4', orientacao);
+        orientacaoAtual = orientacao;
+        larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
+        alturaPagina = doc.internal.pageSize.getHeight();
+        estadoY.y = margem;
+    }
 
     function quebrarPaginaSeNecessario(alturaLinha) {
         if (estadoY.y + alturaLinha > alturaPagina - margem) {
-            doc.addPage();
-            estadoY.y = margem;
+            mudarPagina(orientacaoAtual);
         }
     }
 
@@ -671,8 +708,7 @@ export function gerarPdfExportacao(itens) {
                     // Título ficaria colado no rodapé (ou cortado) — quebra a
                     // página em vez de gastar o respiro extra num espaço que
                     // a página não tem mais.
-                    doc.addPage();
-                    estadoY.y = margem;
+                    mudarPagina(orientacaoAtual);
                 } else {
                     estadoY.y += preEspacoTitulo;
                 }
@@ -736,6 +772,91 @@ export function gerarPdfExportacao(itens) {
         }
 
         renderizarLinhasSimples(depoisDoTexto);
+
+        // Seção extra de Sonoridade — só presente quando o item passou por
+        // enriquecerItensComExtras (itensDaSelecao, exportar.js) com
+        // "Download abrangente" ligado (do contrário item.sonoridade nem
+        // existe e este bloco inteiro não roda). Cabeçalho (campos de
+        // classificação) e Pares de Rima/Ecos Sonoros continuam como texto
+        // simples via escansaoCabecalhoMarkdown/escansaoParesEcosMarkdown
+        // (mesmo renderizarLinhasSimples de sempre) — só a Grade Silábica
+        // muda: em vez do texto linear "1. sí / la (A)" (o que esta seção
+        // usava até aqui, herdado de escansaoParaMarkdown), desenha a
+        // MESMA tabela de verdade que a aba de Sonoridade já desenha no
+        // download avulso (gerarPdfEscansao/desenharGradeSilabicaPdf, ver
+        // exportar-sonoridade.js) — inclusive a decisão de página paisagem
+        // (decidirOrientacaoGradePdf, mesmo limiar de lá): só enquanto a
+        // grade dura, e só quando o poema é longo o bastante em sílabas
+        // pra precisar; o resto deste documento, item a item, nunca sai
+        // do retrato — assim os dois PDFs nunca mais divergem em como
+        // mostram a grade, com ou sem paisagem.
+        if (item.sonoridade) {
+            const poemaRef = { titulo: item.titulo };
+            renderizarLinhasSimples(escansaoCabecalhoMarkdown(item.sonoridade, poemaRef));
+
+            const linhasGrade = Array.isArray(item.sonoridade.escansaoLinhas)
+                ? item.sonoridade.escansaoLinhas
+                : [];
+            const rimasGrade = Array.isArray(item.sonoridade.rimas) ? item.sonoridade.rimas : [];
+            const ecosGrade = Array.isArray(item.sonoridade.ecos) ? item.sonoridade.ecos : [];
+            const tabelaGrade = gradeParaTabela(linhasGrade, rimasGrade, ecosGrade);
+            if (tabelaGrade.linhas.some((l) => l.tipo === 'verso')) {
+                // Mesma decisão de paisagem que o download avulso de
+                // Escansão já faz (gerarPdfEscansao, exportar-sonoridade.js)
+                // — reaproveita a função de módulo pra nunca divergir do
+                // limiar de lá. `orientacaoAtual` só entra aqui porque cada
+                // item começa sempre em retrato (garantido pelo `if
+                // (usouPaisagem)` que volta antes de sair deste bloco, logo
+                // abaixo) — então só muda de página quando a grade PEDE
+                // paisagem de verdade, poema estreito continua sem nenhuma
+                // página extra, exatamente como antes desta mudança.
+                const orientacaoGrade = decidirOrientacaoGradePdf(
+                    tabelaGrade.n,
+                    larguraUtilRetrato,
+                    larguraUtilPaisagem,
+                );
+                const usouPaisagem = orientacaoGrade === 'landscape';
+                if (orientacaoGrade !== orientacaoAtual) mudarPagina(orientacaoGrade);
+
+                // "###" pra herdar o mesmo respiro-antes-de-título que
+                // renderizarLinhasSimples já dá a qualquer subtítulo do
+                // documento (ver preEspacoTitulo ali embaixo) — só que o
+                // conteúdo que vem a seguir não é mais texto, por isso a
+                // tabela é desenhada à parte, não incluída nesta string.
+                renderizarLinhasSimples('### Grade Silábica\n\n');
+                desenharGradeSilabicaPdf(doc, tabelaGrade, {
+                    margem,
+                    largura: larguraUtil,
+                    obterY: () => estadoY.y,
+                    definirY: (novoY) => {
+                        estadoY.y = novoY;
+                    },
+                    quebrarPaginaSeNecessario,
+                });
+                // Respiro depois da tabela — mesmo valor de "blank line"
+                // usado no resto do documento (ver blank/--- acima), pra
+                // "Pares de Rima" não vir colado na borda de baixo da
+                // tabela.
+                estadoY.y += 8;
+
+                // Volta pro retrato antes de continuar (Pares de Rima/Ecos
+                // Sonoros, Morfofuncionalidade, o próximo item...) — a
+                // paisagem foi só pra grade caber, não é o formato do
+                // resto do documento. Mesma lógica de gerarPdfEscansao,
+                // só que aqui precisa rodar sempre (não só quando há
+                // Pares de Rima a seguir), porque depois deste item ainda
+                // vem blocoEstruturaMarkdown() e, possivelmente, outro
+                // item inteiro — nenhum dos dois pode herdar a paisagem.
+                if (usouPaisagem) mudarPagina('portrait');
+            }
+
+            renderizarLinhasSimples(escansaoParesEcosMarkdown(item.sonoridade, poemaRef));
+        }
+
+        // Seção extra de Morfofuncionalidade — mesmo texto linear de
+        // sempre (estruturaParaMarkdown não tem nenhuma tabela pra
+        // desenhar, então continua pelo caminho de Markdown genérico).
+        renderizarLinhasSimples(blocoEstruturaMarkdown(item));
         renderizarLinhasSimples('---\n\n');
     });
 

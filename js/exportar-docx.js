@@ -41,6 +41,7 @@
 
 import { itemParaMarkdownPartes } from './exportar-md.js';
 import { corpoParaLinhasRicas, linhaTemFundoUniforme, blocosDeFundoContinuos } from './utils.js';
+import { blocosExtrasMarkdown } from './download-abrangente.js';
 
 function obterDocx() {
     return window.docx || null;
@@ -456,6 +457,15 @@ export function gerarDocxDocumento(itens) {
         }
 
         corpo = corpo.concat(markdownParaParagrafos(docx, depoisDoTexto));
+        // Seções extras de Sonoridade/Morfofuncionalidade — mesmo
+        // markdown linear que escansaoParaMarkdown/estruturaParaMarkdown
+        // já geram pros downloads avulsos; markdownParaParagrafos (acima)
+        // já sabe ler título/negrito/itálico/citação/lista, então não
+        // precisa de nenhum parser novo aqui. Só presentes quando o item
+        // passou por enriquecerItensComExtras (itensDaSelecao, exportar.js)
+        // com "Download abrangente" ligado — do contrário blocosExtrasMarkdown
+        // devolve string vazia e nada muda.
+        corpo = corpo.concat(markdownParaParagrafos(docx, blocosExtrasMarkdown(item)));
         corpo = corpo.concat(markdownParaParagrafos(docx, '---\n\n'));
     });
 

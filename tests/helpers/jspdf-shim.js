@@ -116,9 +116,22 @@ export function criarConstrutorJsPdfFalso() {
             this.chamadas.push({ tipo: 'line', x1, y1, x2, y2 });
         }
 
-        addPage() {
+        // `orientacao` opcional (2º argumento, como jsPDF de verdade —
+        // addPage(format, orientation)) — default 'portrait', igual antes
+        // desta mudança, pra não afetar nenhum chamador existente que só
+        // fazia addPage() sem argumentos. Quando vem 'landscape', troca
+        // getWidth()/getHeight() da mesma forma que a lib real faz numa
+        // folha 'a4' virada: é o que js/exportar-sonoridade.js
+        // (gerarPdfEscansao) e js/exportar-pdf.js (Grade Silábica larga do
+        // Download Abrangente) dependem pra decidir a largura útil da
+        // página logo depois de chamar addPage.
+        addPage(formato, orientacao = 'portrait') {
             this.paginas += 1;
-            this.chamadas.push({ tipo: 'addPage' });
+            this.chamadas.push({ tipo: 'addPage', formato, orientacao });
+            this.internal.pageSize.getWidth = () =>
+                orientacao === 'landscape' ? A4_ALTURA_PT : A4_LARGURA_PT;
+            this.internal.pageSize.getHeight = () =>
+                orientacao === 'landscape' ? A4_LARGURA_PT : A4_ALTURA_PT;
         }
 
         output() {

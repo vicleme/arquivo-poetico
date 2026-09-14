@@ -667,8 +667,8 @@ describe('legendaCorParaMarkdown (cor/fundo/fonte perdidos na conversão para Ma
         // Só uma ocorrência de "fundo #710808" (não uma por trecho de cor).
         assert.equal((md.match(/fundo #710808/g) || []).length, 1);
         assert.match(md, /- fundo #710808 no trecho "cinza \/ branco":/);
-        assert.match(md, /  - "cinza" — cor do texto #727272/);
-        assert.match(md, /  - "branco" — cor do texto #FFFFFF/);
+        assert.match(md, / {2}- "cinza" — cor do texto #727272/);
+        assert.match(md, / {2}- "branco" — cor do texto #FFFFFF/);
     });
 
     it('fundo isolado (sem outro trecho de cor no mesmo bloco) mantém o formato antigo, sem aninhar', () => {

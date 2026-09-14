@@ -54,6 +54,12 @@ export default [
                 // happy-dom, usado só pelos testes de renderização/interação).
                 window: 'writable',
                 document: 'writable',
+                // dom-real.js também copia KeyboardEvent de window pra
+                // globalThis (junto com CustomEvent/MouseEvent/etc., que
+                // nenhum teste referencia direto pelo nome — só esta
+                // precisa entrar aqui) — usada em editor.test.js pra
+                // simular Enter de verdade em input (dispatchEvent).
+                KeyboardEvent: 'writable',
             },
         },
         rules: {

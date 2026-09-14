@@ -589,3 +589,65 @@ describe('gerarPdfExportacao', () => {
         assert.equal(chamadaSave?.nomeArquivo, 'arquivo-teste.pdf');
     });
 });
+
+// ─── Grade Silábica em paisagem (Sonoridade, Download Abrangente) ───
+//
+// Mesma decisão de página (decidirOrientacaoGradePdf) que gerarPdfEscansao
+// já usa no download avulso de Escansão (exportar-sonoridade.js) — aqui só
+// verificamos que gerarPdfExportacao aplica o MESMO limiar sem vazar a
+// paisagem pro resto do documento (nem pro próximo item).
+describe('gerarPdfExportacao — Grade Silábica em paisagem', () => {
+    beforeEach(() => {
+        resetarDb();
+        instalarJsPdfFalso();
+    });
+    afterEach(removerJsPdfFalso);
+
+    function orientacoesDePagina(doc) {
+        return doc.chamadas.filter((c) => c.tipo === 'addPage').map((c) => c.orientacao);
+    }
+
+    // Verso curto (poucas sílabas) — a Grade Silábica cabe numa coluna
+    // larga o bastante em retrato, então nenhuma página extra deveria
+    // ser criada só por causa dela (comportamento de antes desta
+    // funcionalidade, que continua valendo pro caso comum).
+    function itemComGrade(id, silabas) {
+        return {
+            id,
+            tipo: 'poema',
+            titulo: `Poema ${id}`,
+            texto: 'verso único',
+            sonoridade: {
+                escansaoLinhas: [
+                    { tipo: 'verso', numero: 1, texto: Array(silabas).fill('sí').join('/'), tonicas: [] },
+                ],
+                rimas: [],
+                ecos: [],
+            },
+        };
+    }
+
+    it('grade curta (poucas sílabas): nenhuma página vira paisagem', () => {
+        const doc = gerarPdfExportacao([itemComGrade(1, 2)]);
+        assert.deepEqual(orientacoesDePagina(doc), []);
+        assert.match(textoCompleto(doc), /Grade Silábica/);
+    });
+
+    it('grade muito longa em sílabas: usa paisagem só pra grade, e volta pro retrato depois', () => {
+        const doc = gerarPdfExportacao([itemComGrade(1, 30)]);
+        assert.deepEqual(orientacoesDePagina(doc), ['landscape', 'portrait']);
+        assert.match(textoCompleto(doc), /Grade Silábica/);
+    });
+
+    it('dois itens com grade longa: cada um abre e fecha sua própria paisagem (não vaza pro outro)', () => {
+        const doc = gerarPdfExportacao([itemComGrade(1, 30), itemComGrade(2, 32)]);
+        assert.deepEqual(orientacoesDePagina(doc), ['landscape', 'portrait', 'landscape', 'portrait']);
+    });
+
+    it('item com grade longa seguido de item sem sonoridade: o segundo item continua em retrato', () => {
+        const semSonoridade = { id: 2, tipo: 'poema', titulo: 'Poema 2', texto: 'x' };
+        const doc = gerarPdfExportacao([itemComGrade(1, 30), semSonoridade]);
+        assert.deepEqual(orientacoesDePagina(doc), ['landscape', 'portrait']);
+        assert.match(textoCompleto(doc), /Poema 2/);
+    });
+});

@@ -107,3 +107,13 @@ export function blocosExtrasMarkdown(item) {
     if (item.estruturaTextual) md += estruturaParaMarkdown(item.estruturaTextual, poemaRef);
     return md;
 }
+
+// Só a Morfofuncionalidade — usado pelo PDF abrangente (exportar-pdf.js),
+// que trata a Sonoridade à parte (Grade Silábica desenhada como tabela
+// de verdade, não como texto — ver desenharGradeSilabicaPdf em
+// exportar-sonoridade.js). .md/.docx continuam pela blocosExtrasMarkdown
+// de cima, sem mudança nenhuma.
+export function blocoEstruturaMarkdown(item) {
+    if (!item.estruturaTextual) return '';
+    return estruturaParaMarkdown(item.estruturaTextual, { titulo: item.titulo });
+}
