@@ -988,7 +988,9 @@ function aplicarFiltroStatus(base, status) {
 export function getListaVisivelPoemas() {
     let base = aplicarFiltroStatus(db.poemas, statusPoemas);
 
-    if (filtroLivroPoemas) {
+    if (filtroLivroPoemas === '__avulsos__') {
+        base = base.filter((p) => !p.paiTipo || !p.paiId);
+    } else if (filtroLivroPoemas) {
         const livroSel = db.livros.find((l) => String(l.id) === String(filtroLivroPoemas));
         if (livroSel?.tipo === 'Coletânea') {
             // Poemas numa coletânea vivem em itensColetanea (via refId), não em paiId
@@ -1072,7 +1074,9 @@ export function getListaVisivelPoemas() {
 // estado que só este arquivo é dono.
 export function getListaVisivelProsas() {
     let base = aplicarFiltroStatus(db.prosas, statusProsas);
-    if (filtroLivroProsa) {
+    if (filtroLivroProsa === '__avulsos__') {
+        base = base.filter((pr) => !pr.paiTipo || !pr.paiId);
+    } else if (filtroLivroProsa) {
         const livroSel = db.livros.find((l) => String(l.id) === String(filtroLivroProsa));
         if (livroSel?.tipo === 'Coletânea') {
             // Prosas numa coletânea vivem em itensColetanea (via refId), não em paiId
@@ -1629,6 +1633,7 @@ export function renderPoemas() {
         const coletaneas = db.livros.filter((l) => l.tipo === 'Coletânea');
         filtroSel.innerHTML =
             '<option value="">-- Todos os livros --</option>' +
+            '<option value="__avulsos__">Avulsos</option>' +
             (livrosComuns.length
                 ? '<optgroup label="Livros">' +
                   livrosComuns
@@ -1953,6 +1958,7 @@ export function renderProsas() {
         const coletaneas = db.livros.filter((l) => l.tipo === 'Coletânea');
         filtroSelPr.innerHTML =
             '<option value="">-- Todos os livros --</option>' +
+            '<option value="__avulsos__">Avulsos</option>' +
             (livrosComuns.length
                 ? '<optgroup label="Livros">' +
                   livrosComuns
@@ -2749,8 +2755,7 @@ function celulaAcoesEstruturaTextual(id) {
 // simples.
 function valorColunaEstruturaTextual(e, key) {
     if (key === 'unidades') return resumoItensEstrutura(e.unidades, rotuloUnidadeNaTabela);
-    if (key === 'eventos')
-        return resumoItensEstrutura(e.eventos, (ev) => ev.progressaoDialetica);
+    if (key === 'eventos') return resumoItensEstrutura(e.eventos, (ev) => ev.progressaoDialetica);
     return '';
 }
 
