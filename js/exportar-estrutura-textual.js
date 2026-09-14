@@ -55,14 +55,18 @@ function baixarBlob(blob, nomeArquivo) {
     }, 100);
 }
 
-// Rótulo de uma Unidade ("Quartetos · Proposição") ou Evento ("Volta")
-// — mesmo critério de título usado no cartão do modal (montarCartaoHtml
-// em estrutura-textual.js). Exportado pra visualizar-estrutura-textual.js
+// Rótulo de uma Unidade ("Presença e ausência — Dísticos · Proposição",
+// ou "Quartetos · Proposição" sem nome) ou Evento ("Volta") — mesmo
+// critério de título usado no cartão do modal (montarCartaoHtml em
+// estrutura-textual.js). Exportado pra visualizar-estrutura-textual.js
 // reaproveitar sem duplicar o critério.
 export function rotuloItem(tipo, item) {
     if (tipo === 'unidade') {
-        return [item.unidadeEstrofica, item.unidadeDiscursiva].filter(Boolean).join(' · ') ||
-            'Sem classificação';
+        const classificacao = [item.unidadeEstrofica, item.unidadeDiscursiva]
+            .filter(Boolean)
+            .join(' · ');
+        if (item.nome && classificacao) return `${item.nome} — ${classificacao}`;
+        return item.nome || classificacao || 'Sem classificação';
     }
     return item.progressaoDialetica || 'Sem classificação';
 }
@@ -225,7 +229,12 @@ export function gerarDocxEstrutura(estrutura, poema) {
             filhos.push(
                 new Paragraph({
                     spacing: { after: 80 },
-                    children: [new TextRun({ text: `Nenhum${tipo === 'unidade' ? 'a' : ''} ${titulo.slice(0, -1).toLowerCase()} cadastrad${tipo === 'unidade' ? 'a' : 'o'}.`, italics: true })],
+                    children: [
+                        new TextRun({
+                            text: `Nenhum${tipo === 'unidade' ? 'a' : ''} ${titulo.slice(0, -1).toLowerCase()} cadastrad${tipo === 'unidade' ? 'a' : 'o'}.`,
+                            italics: true,
+                        }),
+                    ],
                 }),
             );
             return;

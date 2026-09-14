@@ -41,36 +41,57 @@ between them:
   different category of thing.
 
 When reading exported data, an item in `unidades` always has
-`unidadeEstrofica`/`unidadeDiscursiva`; an item in `eventos` always has
-`progressaoDialetica`. There's no item with all three fields at once, and
-no field shared by both types.
+`unidadeEstrofica`/`unidadeDiscursiva`, and may also have `nome`; an item
+in `eventos` always has `progressaoDialetica`, and never has `nome`. No
+item has fields from both types at once.
 
 ## 1. `unidades` — sections with form and function
 
 ```json
 {
   "id": 1757856000000,
+  "nome": "Presença e ausência",
   "unidadeEstrofica": "Quartetos",
   "unidadeDiscursiva": "Proposição",
   "posicao": { "estrofes": [1, 2], "versos": "todos" }
 }
 ```
 
+- **Nome** ("Name", `nome`) — an optional free-text label for this
+  Unidade, naming the "layer" or role that the Unidade
+  Estrófica/Discursiva pair plays in this specific poem (e.g. "Presença
+  e ausência" — "Presence and absence", "Corpo de aprendizados" — "Body
+  of learnings"). Plain free text, with no datalist suggestions (unlike
+  the two fields below). It's purely descriptive: an Evento never has a
+  `nome`, and a Template extracted from a Unidade (section 4) never
+  carries its `nome` over — only the reusable Estrófica/Discursiva
+  classification is, since the name is specific to this poem, not a
+  reusable category.
 - **Unidade Estrófica** ("Stanzaic Unit", `unidadeEstrofica`) — the
   section's form (e.g. Oitava — Octave, Sexteto — Sestet, Quartetos —
   Quatrains, Tercetos — Tercets, Dístico — Couplet).
 - **Unidade Discursiva** ("Discursive Unit", `unidadeDiscursiva`) — the
   same section's argumentative function (e.g. Proposição — Proposition,
   Resolução — Resolution).
-- Both are **free text with suggestions** (datalist), not a closed list
-  — unlike Sonoridade's fields, terminology varies a lot by poetic form
-  (a sonnet uses Oitava/Sexteto, other forms use other names), so there
-  is no closed universal vocabulary to lock this to.
-- Either field can be empty (a Unidade with only a form, or only a
-  function, is valid) — only both being empty at once is rejected by
-  the UI when creating an item.
+- `unidadeEstrofica`/`unidadeDiscursiva` are **free text with
+  suggestions** (datalist), not a closed list — unlike Sonoridade's
+  fields, terminology varies a lot by poetic form (a sonnet uses
+  Oitava/Sexteto, other forms use other names), so there is no closed
+  universal vocabulary to lock this to.
+- Any of the three fields (`nome`, `unidadeEstrofica`,
+  `unidadeDiscursiva`) can be empty on its own — a Unidade with only a
+  name, only a form, only a function, or any combination of the three,
+  is valid. Only all three being empty at once is rejected by the UI
+  when creating an item.
 - `id` is a number (`gerarId()`, timestamp-based) — it only identifies
   the item within the record's lists; it carries no other meaning.
+- When a display label is needed (UI cards, exports), it's derived, not
+  stored: `nome` and the Estrófica/Discursiva pair are combined as
+  "`nome` — `unidadeEstrofica` · `unidadeDiscursiva`" when both are
+  present, or whichever side is present falls back alone, or "Sem
+  classificação" ("No classification") if all three are empty
+  (`rotuloItem()` in `exportar-estrutura-textual.js`, reused by the
+  modal's card and by `visualizar-estrutura-textual.js`).
 
 ## 2. `eventos` — one-off movements, with no form of their own
 
@@ -163,9 +184,13 @@ A collection **separate** from `db.estruturasTextuais`, with no
 ```
 
 - A Template only stores the **classification** of its Unidades/Eventos
-  (the same free-text fields described above) — never `id` nor
-  `posicao`. Applying a Template instantiates new items, always
-  "unpositioned", ready for someone to mark each one's position on the
+  — `unidadeEstrofica`/`unidadeDiscursiva` for Unidades,
+  `progressaoDialetica` for Eventos — never `id`, `posicao`, nor a
+  Unidade's `nome` (see section 1: the name is specific to the poem it
+  came from, not a reusable category, so `extrairClassificacaoParaTemplate()`
+  drops it when building a Template). Applying a Template instantiates
+  new items, always "unpositioned" and with an empty `nome`, ready for
+  someone to mark each one's position — and optionally name — on the
   specific poem.
 - `embutido: true` ("built-in") marks a factory Template (today, only
   "Soneto") — only duplicable through the UI, not directly editable, so
@@ -191,18 +216,24 @@ A collection **separate** from `db.estruturasTextuais`, with no
 ## Summary for practical use
 
 1. `unidades` and `eventos` are separate lists with their own fields —
-   never mix `unidadeEstrofica`/`unidadeDiscursiva` (Unidade) with
-   `progressaoDialetica` (Evento) on the same item.
-2. The three classification fields are free text (no closed list to
-   validate against) — any value is possible; the ones seen in
-   `TEMPLATES_ESTRUTURA_EMBUTIDOS`/the default suggestions (Oitava,
-   Sexteto, Quartetos, Tercetos, Dístico / Proposição, Resolução /
-   Tensão, Volta, Síntese) are just a starting point, not an enum.
+   never mix `nome`/`unidadeEstrofica`/`unidadeDiscursiva` (Unidade) with
+   `progressaoDialetica` (Evento) on the same item; `nome` only ever
+   appears on a Unidade.
+2. `unidadeEstrofica`, `unidadeDiscursiva`, and `progressaoDialetica` are
+   free text (no closed list to validate against) — any value is
+   possible; the ones seen in `TEMPLATES_ESTRUTURA_EMBUTIDOS`/the default
+   suggestions (Oitava, Sexteto, Quartetos, Tercetos, Dístico /
+   Proposição, Resolução / Tensão, Volta, Síntese) are just a starting
+   point, not an enum. `nome` is also free text, but it's a per-poem
+   label, not a classification — it's never suggested via datalist and
+   never carried into `db.templatesEstrutura`.
 3. An empty `posicao.estrofes` means "unpositioned" — a valid, expected
    state, not accidentally missing data.
 4. The position summary and the overlap between items never come
    ready-made in the JSON — recompute them from `posicao` if the task
-   needs them.
+   needs them. The same goes for a Unidade's display label (`nome`
+   combined with the Estrófica/Discursiva pair) — recompute it with
+   `rotuloItem()` rather than assuming the JSON carries a ready label.
 5. Don't confuse this record with the "Estrutura" button (Book/Part/
    Section hierarchy), nor with Sonoridade (meter) or Conexões
    (cross-text links) — Morfofuncionalidade is only about the

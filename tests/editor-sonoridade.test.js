@@ -49,6 +49,35 @@ describe('construirLinhasIniciais', () => {
         assert.deepEqual(construirLinhasIniciais(''), [{ tipo: 'vazia' }]);
         assert.deepEqual(construirLinhasIniciais(undefined), [{ tipo: 'vazia' }]);
     });
+
+    it('linhasIgnoradas remove a linha inteira, não conta nem como linha vazia', () => {
+        const linhas = construirLinhasIniciais('Título\nVerso 1\nVerso 2', '1');
+        assert.deepEqual(
+            linhas.map((l) => l.tipo),
+            ['verso', 'verso'],
+        );
+        assert.equal(linhas[0].texto, 'Verso 1');
+        assert.equal(linhas[0].numero, 1);
+        assert.equal(linhas[1].numero, 2);
+    });
+
+    it('linhasIgnoradas aceita intervalos e números soltos misturados', () => {
+        const linhas = construirLinhasIniciais('A\nB\nC\nD\nE', '1-2, 4');
+        assert.deepEqual(
+            linhas.map((l) => l.texto),
+            ['C', 'E'],
+        );
+    });
+
+    it('remove comentário HTML por completo', () => {
+        const linhas = construirLinhasIniciais('Verso com <!-- nota --> comentário');
+        assert.equal(linhas[0].texto, 'Verso com  comentário');
+    });
+
+    it('remove só a tag de um elemento HTML, preservando o conteúdo', () => {
+        const linhas = construirLinhasIniciais('<div style="color:red">Verso</div> normal');
+        assert.equal(linhas[0].texto, 'Verso normal');
+    });
 });
 
 describe('calcularMaxSilabas', () => {

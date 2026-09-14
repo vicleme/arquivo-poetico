@@ -6,7 +6,7 @@
 // existe entre forms.js e editor-sonoridade.js).
 // ============================================================
 
-import { escapeHtml, gerarId } from './utils.js';
+import { escapeHtml, gerarId, parseListaIntervalos, limparElementosHtmlLinha } from './utils.js';
 
 // ─── Lógica pura (testável sem DOM) ─────────────────────────────
 
@@ -25,13 +25,21 @@ function removerMarcacaoMarkdown(texto) {
 // só); cada linha não-vazia é um verso, numerado de forma contínua ao
 // longo do poema inteiro (não reinicia a cada estrofe) — mesmo
 // raciocínio de numeração de construirLinhasIniciais (editor-sonoridade.js).
-export function construirEstrofesDoTexto(textoPoema) {
+// `linhasIgnoradasStr` (opcional, mesmo campo/formato da Sonoridade —
+// ver parseListaIntervalos em utils.js): linhas listadas ali são
+// removidas ANTES de tudo, como se não existissem no texto — não
+// contam nem como quebra de estrofe. Cada linha também passa por
+// limparElementosHtmlLinha antes da remoção de marcação markdown.
+export function construirEstrofesDoTexto(textoPoema, linhasIgnoradasStr = '') {
+    const linhasIgnoradas = parseListaIntervalos(linhasIgnoradasStr);
     const linhas = (textoPoema || '').split('\n');
     const estrofes = [];
     let estrofeAberta = null;
     let numeroVerso = 0;
-    linhas.forEach((linhaBruta) => {
-        const texto = removerMarcacaoMarkdown(linhaBruta).trim();
+    linhas.forEach((linhaBruta, idx) => {
+        if (linhasIgnoradas.has(idx + 1)) return;
+        const semHtml = limparElementosHtmlLinha(linhaBruta);
+        const texto = removerMarcacaoMarkdown(semHtml).trim();
         if (texto === '') {
             estrofeAberta = null; // a próxima linha não-vazia abre uma nova
             return;
@@ -44,6 +52,34 @@ export function construirEstrofesDoTexto(textoPoema) {
         estrofeAberta.versos.push({ numero: numeroVerso, texto });
     });
     return estrofes;
+}
+
+// Reconcilia a posição de itens já classificados com uma nova lista de
+// estrofes (bug reportado pelo Victor: criar uma Unidade/Evento ANTES
+// de preencher/ajustar "Linhas a ignorar" deixava a posição marcada
+// presa aos números antigos de estrofe/verso — depois de ignorar uma
+// linha, a estrofe N podia passar a significar um trecho diferente do
+// texto, mas o item continuava "marcado" nela sem nenhuma validação.
+// Só remove números que não existem mais (ou que, com uma única
+// estrofe restante, apontam pra um verso que sumiu dela) — nunca
+// inventa uma posição nova. Mesmo espírito de carregarGradeSonoridade
+// descartar uma grade que não bate mais com o recorte atual, mas aqui
+// item por item em vez de tudo de uma vez.
+function reconciliarItensComEstrofes(itens, estrofesNovas) {
+    const numerosValidos = new Set(estrofesNovas.map((es) => es.numero));
+    const versosValidosPorEstrofe = new Map(
+        estrofesNovas.map((es) => [es.numero, new Set(es.versos.map((v) => v.numero))]),
+    );
+    itens.forEach((item) => {
+        const estrofesFiltradas = item.posicao.estrofes.filter((n) => numerosValidos.has(n));
+        item.posicao.estrofes = estrofesFiltradas;
+        if (estrofesFiltradas.length === 1 && Array.isArray(item.posicao.versos)) {
+            const versosValidos = versosValidosPorEstrofe.get(estrofesFiltradas[0]) || new Set();
+            item.posicao.versos = item.posicao.versos.filter((v) => versosValidos.has(v));
+        } else if (estrofesFiltradas.length !== 1) {
+            item.posicao.versos = 'todos';
+        }
+    });
 }
 
 // Item "não posicionado" (regra 5 do .md) = nenhuma estrofe marcada —
@@ -132,6 +168,7 @@ export function ordenarPorPosicao(itens) {
 export function instanciarTemplateEstrutura(template) {
     const unidadesNovas = (template?.unidades || []).map((u) => ({
         id: gerarId(),
+        nome: u.nome || '',
         unidadeEstrofica: u.unidadeEstrofica || '',
         unidadeDiscursiva: u.unidadeDiscursiva || '',
         posicao: { estrofes: [], versos: 'todos' },
@@ -194,23 +231,38 @@ let containerEventosEl = null;
 // montarSeletorPosicaoHtml/onToggleDetalhesPosicao abaixo).
 let detalhesPosicaoAbertos = new Set();
 
+// Mesmo padrão do Set acima, agora pro <details> "✏️ Editar" de cada
+// cartão (nome/unidadeEstrofica/unidadeDiscursiva/progressaoDialetica)
+// — ver montarEdicaoClassificacaoHtml/onToggleEdicaoEstrutura abaixo.
+let edicaoAbertos = new Set();
+
 function clonar(itens) {
     return itens.map((item) => ({
         ...item,
-        posicao: { estrofes: [...(item.posicao?.estrofes || [])], versos: item.posicao?.versos ?? 'todos' },
+        posicao: {
+            estrofes: [...(item.posicao?.estrofes || [])],
+            versos: item.posicao?.versos ?? 'todos',
+        },
     }));
 }
 
 // Chamada ao abrir o modal (nova Progressão ou edição) — deriva as
 // estrofes do poema escolhido e carrega Unidades/Eventos já salvos (ou
 // vazio, se for nova).
-export function inicializarEstruturaTextual(containerUnidades, containerEventos, poema, estrutura) {
+export function inicializarEstruturaTextual(
+    containerUnidades,
+    containerEventos,
+    poema,
+    estrutura,
+    linhasIgnoradasStr = '',
+) {
     containerUnidadesEl = containerUnidades;
     containerEventosEl = containerEventos;
-    estrofesAtuais = poema ? construirEstrofesDoTexto(poema.texto) : [];
+    estrofesAtuais = poema ? construirEstrofesDoTexto(poema.texto, linhasIgnoradasStr) : [];
     unidadesAtuais = clonar(estrutura?.unidades || []);
     eventosAtuais = clonar(estrutura?.eventos || []);
     detalhesPosicaoAbertos = new Set();
+    edicaoAbertos = new Set();
     renderTudo();
 }
 
@@ -222,10 +274,17 @@ export function obterEventosAtuais() {
     return eventosAtuais;
 }
 
-export function adicionarUnidade(unidadeEstrofica, unidadeDiscursiva) {
-    if (!unidadeEstrofica.trim() && !unidadeDiscursiva.trim()) return;
+// `nome` (opcional): rótulo livre pro par Unidade Estrófica/Discursiva
+// — a "camada" ou função que aquele par representa (ex.: "Presença e
+// ausência", "Corpo de aprendizados", ver conversa de referência do
+// .md em manutencao/progressao-morfofuncional.md). Puramente
+// descritivo, não entra em templates de classificação reaproveitável
+// (ver extrairClassificacaoParaTemplate) por ser específico do poema.
+export function adicionarUnidade(nome = '', unidadeEstrofica = '', unidadeDiscursiva = '') {
+    if (!nome.trim() && !unidadeEstrofica.trim() && !unidadeDiscursiva.trim()) return;
     unidadesAtuais.push({
         id: gerarId(),
+        nome: nome.trim(),
         unidadeEstrofica: unidadeEstrofica.trim(),
         unidadeDiscursiva: unidadeDiscursiva.trim(),
         posicao: { estrofes: [], versos: 'todos' },
@@ -263,6 +322,21 @@ export function aplicarTemplateNoEstado(template) {
     renderTudo();
 }
 
+// Chamada só pelo listener de "Linhas a ignorar" (não pela troca de
+// poema — ver comentário de carregarEstrofesDoPoemaEstrutura em
+// forms.js sobre a diferença deliberada entre os dois casos).
+// Recalcula estrofesAtuais pro texto/recorte atual e reconcilia a
+// posição de cada Unidade/Evento já classificado contra a nova lista
+// (ver reconciliarItensComEstrofes acima) — corrige o bug de posição
+// presa a um número de estrofe que já não corresponde mais ao mesmo
+// trecho do texto.
+export function recalcularEstrofesLinhasIgnoradas(poema, linhasIgnoradasStr = '') {
+    estrofesAtuais = poema ? construirEstrofesDoTexto(poema.texto, linhasIgnoradasStr) : [];
+    reconciliarItensComEstrofes(unidadesAtuais, estrofesAtuais);
+    reconciliarItensComEstrofes(eventosAtuais, estrofesAtuais);
+    renderTudo();
+}
+
 // Só atualiza o Set (ver detalhesPosicaoAbertos acima) — nunca chama
 // renderTudo(), pra não disparar o evento 'toggle' de novo em loop.
 // Disparado tanto por clique do usuário no <summary> quanto pelo
@@ -273,9 +347,31 @@ export function onToggleDetalhesPosicaoEstrutura(id, aberto) {
     else detalhesPosicaoAbertos.delete(id);
 }
 
+// Mesmo padrão acima, agora pro <details> "✏️ Editar" de classificação
+// (ver montarEdicaoClassificacaoHtml/atualizarCampoEstrutura abaixo).
+export function onToggleEdicaoEstrutura(id, aberto) {
+    if (aberto) edicaoAbertos.add(id);
+    else edicaoAbertos.delete(id);
+}
+
 function encontrarItem(tipo, id) {
     const lista = tipo === 'unidade' ? unidadesAtuais : eventosAtuais;
     return lista.find((i) => i.id === id);
+}
+
+// Botão "✏️ Editar" do cartão (item que faltava: só a posição era
+// editável depois de criado, o resto — nome/unidadeEstrofica/
+// unidadeDiscursiva/progressaoDialetica — não tinha como mudar sem
+// excluir e recriar o item). `campo` é um dos 4 nomes de campo válidos
+// pro tipo (`nome`/`unidadeEstrofica`/`unidadeDiscursiva` pra Unidade,
+// `progressaoDialetica` pra Evento) — chamada só pelo `onchange` dos
+// inputs (não a cada tecla), pra não perder o foco a cada
+// renderTudo().
+export function atualizarCampoEstrutura(tipo, id, campo, valor) {
+    const item = encontrarItem(tipo, id);
+    if (!item) return;
+    item[campo] = (valor || '').trim();
+    renderTudo();
 }
 
 // Marca/desmarca uma estrofe na posição do item. Passar de 1 pra 2+
@@ -340,7 +436,9 @@ function montarSeletorPosicaoHtml(tipo, item) {
         const versosMarcados = Array.isArray(item.posicao.versos) ? item.posicao.versos : [];
         const linhasVerso = (estrofe?.versos || [])
             .map(
-                (v) => `<label class="flex items-center gap-2 text-xs py-0.5 ${versosTodos ? 'opacity-40' : ''}">
+                (
+                    v,
+                ) => `<label class="flex items-center gap-2 text-xs py-0.5 ${versosTodos ? 'opacity-40' : ''}">
                     <input type="checkbox" ${versosMarcados.includes(v.numero) ? 'checked' : ''} ${versosTodos ? 'disabled' : ''}
                         onchange="toggleVersoEstrutura('${tipo}', ${item.id}, ${v.numero})">
                     Verso ${v.numero} <span class="text-gray-400 dark:text-slate-500 truncate">— ${escapeHtml(v.texto)}</span>
@@ -366,6 +464,43 @@ function montarSeletorPosicaoHtml(tipo, item) {
     </details>`;
 }
 
+// Botão "✏️ Editar" do cartão — mesmo esqueleto de <details> de
+// montarSeletorPosicaoHtml (aberto/fechado persistido em
+// edicaoAbertos), com os campos de classificação como inputs de texto
+// com datalist (mesmos ids do formulário de "Nova Unidade"/"Novo
+// Evento" — sugestoes-unidade-estrofica/sugestoes-unidade-discursiva/
+// sugestoes-progressao-dialetica). `onchange` (não `oninput`) chamando
+// atualizarCampoEstrutura — só recalcula/re-renderiza quando o campo
+// perde o foco ou o Enter é confirmado, pra não perder o cursor a cada
+// tecla digitada.
+function montarEdicaoClassificacaoHtml(tipo, item) {
+    const aberto = edicaoAbertos.has(item.id);
+    const campos =
+        tipo === 'unidade'
+            ? `<input type="text" value="${escapeHtml(item.nome || '')}"
+                    placeholder="Nome/descrição da camada (opcional)"
+                    class="text-xs w-full mb-1.5"
+                    onchange="atualizarCampoEstrutura('${tipo}', ${item.id}, 'nome', this.value)">
+                <div class="flex gap-1.5">
+                    <input type="text" value="${escapeHtml(item.unidadeEstrofica || '')}"
+                        list="sugestoes-unidade-estrofica" placeholder="Unidade estrófica"
+                        class="text-xs flex-1"
+                        onchange="atualizarCampoEstrutura('${tipo}', ${item.id}, 'unidadeEstrofica', this.value)">
+                    <input type="text" value="${escapeHtml(item.unidadeDiscursiva || '')}"
+                        list="sugestoes-unidade-discursiva" placeholder="Unidade discursiva"
+                        class="text-xs flex-1"
+                        onchange="atualizarCampoEstrutura('${tipo}', ${item.id}, 'unidadeDiscursiva', this.value)">
+                </div>`
+            : `<input type="text" value="${escapeHtml(item.progressaoDialetica || '')}"
+                    list="sugestoes-progressao-dialetica" placeholder="Progressão dialética"
+                    class="text-xs w-full"
+                    onchange="atualizarCampoEstrutura('${tipo}', ${item.id}, 'progressaoDialetica', this.value)">`;
+    return `<details class="mt-1.5" ${aberto ? 'open' : ''} ontoggle="onToggleEdicaoEstrutura(${item.id}, this.open)">
+        <summary class="text-xs text-blue-600 dark:text-blue-400 cursor-pointer select-none">✏️ Editar</summary>
+        <div class="mt-1.5 pl-2">${campos}</div>
+    </details>`;
+}
+
 function montarCartaoHtml(tipo, item, sobrepostos) {
     const sobreposto = sobrepostos.has(item.id);
     // Regra 4 do .md: sinaliza sobreposição sem julgar se é "esperada"
@@ -379,20 +514,32 @@ function montarCartaoHtml(tipo, item, sobrepostos) {
     const selo = sobreposto
         ? ` <span class="text-slate-400 dark:text-slate-500" title="A posição deste item se sobrepõe à de outro Unidade/Evento — sobreposição é esperada, não é erro.">⚭ sobreposto</span>`
         : '';
-    const titulo =
+    const classificacao =
         tipo === 'unidade'
-            ? [item.unidadeEstrofica, item.unidadeDiscursiva].filter(Boolean).join(' · ') ||
-              '<em>Sem classificação</em>'
-            : item.progressaoDialetica || '<em>Sem classificação</em>';
+            ? [item.unidadeEstrofica, item.unidadeDiscursiva].filter(Boolean).join(' · ')
+            : item.progressaoDialetica;
+    // Nome (só Unidade) vem primeiro, em destaque — a classificação
+    // (unidadeEstrofica · unidadeDiscursiva) fica como subtítulo, igual
+    // ao padrão da conversa de referência (nome dado antes de definir
+    // as duas unidades — ver comentário de adicionarUnidade acima).
+    const nomeHtml =
+        tipo === 'unidade' && item.nome
+            ? `<div class="text-sm font-semibold">${escapeHtml(item.nome)}</div>`
+            : '';
+    const titulo = classificacao || (nomeHtml ? '' : '<em>Sem classificação</em>');
     const removerFn = tipo === 'unidade' ? 'removerUnidadeEstrutura' : 'removerEventoEstrutura';
     return `<div class="rounded-md p-2.5 ${destaque}" data-id="${item.id}">
         <div class="flex items-start justify-between gap-2">
-            <div class="text-sm font-medium">${titulo}</div>
+            <div class="min-w-0">
+                ${nomeHtml}
+                <div class="text-sm ${nomeHtml ? 'text-gray-500 dark:text-slate-400' : 'font-medium'}">${titulo}</div>
+            </div>
             <button type="button" onclick="${removerFn}(${item.id})"
                 title="Remover" aria-label="Remover"
                 class="text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 text-xs">✕</button>
         </div>
         <div class="text-[11px] text-gray-500 dark:text-slate-400">${resumoPosicao(item.posicao)}${selo}</div>
+        ${montarEdicaoClassificacaoHtml(tipo, item)}
         ${montarSeletorPosicaoHtml(tipo, item)}
     </div>`;
 }
@@ -418,6 +565,8 @@ function montarListaHtml(tipo, itens, sobrepostos) {
 
 function renderTudo() {
     const sobrepostos = detectarSobrepostos(unidadesAtuais, eventosAtuais);
-    if (containerUnidadesEl) containerUnidadesEl.innerHTML = montarListaHtml('unidade', unidadesAtuais, sobrepostos);
-    if (containerEventosEl) containerEventosEl.innerHTML = montarListaHtml('evento', eventosAtuais, sobrepostos);
+    if (containerUnidadesEl)
+        containerUnidadesEl.innerHTML = montarListaHtml('unidade', unidadesAtuais, sobrepostos);
+    if (containerEventosEl)
+        containerEventosEl.innerHTML = montarListaHtml('evento', eventosAtuais, sobrepostos);
 }

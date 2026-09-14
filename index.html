@@ -2204,6 +2204,7 @@
                         <tbody id="lista-sonoridade" class="text-sm"></tbody>
                     </table>
                 </div>
+                <div id="paginacao-sonoridade"></div>
             </section>
 
             <section id="morfofuncionalidade" class="tab-content">
@@ -2227,6 +2228,19 @@
                     <div class="relative">
                         <button
                             type="button"
+                            onclick="togglePainel('painel-colunas-estrutura-textual', this)"
+                            class="text-xs font-bold text-gray-600 dark:text-slate-300 border border-gray-300 dark:border-slate-600 rounded px-3 py-2 whitespace-nowrap hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            Colunas ▾
+                        </button>
+                        <div
+                            id="painel-colunas-estrutura-textual"
+                            class="hidden absolute right-0 top-full mt-1 z-20 min-w-[220px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-2"
+                        ></div>
+                    </div>
+                    <div class="relative">
+                        <button
+                            type="button"
                             onclick="togglePainel('painel-acoes-estrutura-textual', this)"
                             class="text-xs font-bold text-gray-600 dark:text-slate-300 border border-gray-300 dark:border-slate-600 rounded px-3 py-2 whitespace-nowrap hover:bg-gray-50 dark:hover:bg-slate-800"
                         >
@@ -2242,7 +2256,7 @@
                 <div class="overflow-auto max-h-[75vh] bg-white dark:bg-slate-900 rounded shadow">
                     <table class="w-full text-left border-collapse">
                         <thead class="bg-gray-100 dark:bg-slate-700 text-sm">
-                            <tr>
+                            <tr id="cabecalho-estrutura-textual">
                                 <th class="p-4 border-b border-gray-200 dark:border-slate-700">
                                     ID / Título
                                 </th>
@@ -2262,6 +2276,7 @@
                         <tbody id="lista-estrutura-textual" class="text-sm"></tbody>
                     </table>
                 </div>
+                <div id="paginacao-estrutura-textual"></div>
             </section>
 
             <section id="exportar-filtrado" class="tab-content">

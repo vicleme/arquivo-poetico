@@ -48,7 +48,7 @@ import {
     corpoEntradaHipertextualidade,
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
-import { getColunasAtivas, DEFINICAO_COLUNAS } from './colunas.js';
+import { getColunasAtivas, DEFINICAO_COLUNAS, renderSeletorColunas } from './colunas.js';
 import {
     getColunasContagem,
     PREFIXO_ORDENACAO as PREFIXO_ORDENACAO_CONTAGEM,
@@ -209,6 +209,13 @@ function lerItensPorPaginaSalvo() {
 export let itensPorPagina = lerItensPorPaginaSalvo();
 let paginaPoemas = 1;
 let paginaProsas = 1;
+// Réplica do mesmo esquema pra Sonoridade e Morfofuncionalidade —
+// ambas também podem crescer bastante (poema com escansão + estrofes
+// classificadas linha a linha), então ganham paginação no mesmo
+// espírito de Poemas/Prosas, com a mesma preferência "itens por
+// página" compartilhada (ver setItensPorPagina abaixo).
+let paginaSonoridade = 1;
+let paginaEstruturaTextual = 1;
 
 // Quantos itens ficaram de fora da lista atual só por não terem a data
 // cadastrada que o filtro de data (ativo) precisaria pra avaliar —
@@ -526,8 +533,12 @@ export function setItensPorPagina(valor) {
     localStorage.setItem(LS_KEY_ITENS_POR_PAGINA, valor);
     paginaPoemas = 1;
     paginaProsas = 1;
+    paginaSonoridade = 1;
+    paginaEstruturaTextual = 1;
     renderPoemas();
     renderProsas();
+    renderSonoridade();
+    renderEstruturaTextual();
 }
 
 export function setPaginaPoemas(pagina) {
@@ -538,6 +549,16 @@ export function setPaginaPoemas(pagina) {
 export function setPaginaProsas(pagina) {
     paginaProsas = pagina;
     renderProsas();
+}
+
+export function setPaginaSonoridade(pagina) {
+    paginaSonoridade = pagina;
+    renderSonoridade();
+}
+
+export function setPaginaEstruturaTextual(pagina) {
+    paginaEstruturaTextual = pagina;
+    renderEstruturaTextual();
 }
 
 // ─── Filtros de faixa de data (Escrita / Publicação) ───────────
@@ -2568,6 +2589,8 @@ export function renderSonoridade() {
         return ta.localeCompare(tb, 'pt-BR');
     });
 
+    const paginacaoContainerSon = document.getElementById('paginacao-sonoridade');
+
     if (ordenadas.length === 0) {
         const colspan = 2 + ativas.length + colunasContagemAtivas.length;
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
@@ -2575,10 +2598,37 @@ export function renderSonoridade() {
                 ? 'Nenhuma escansão cadastrada ainda.'
                 : 'Nenhuma escansão encontrada para essa busca.'
         }</td></tr>`;
+        if (paginacaoContainerSon) paginacaoContainerSon.innerHTML = '';
         return;
     }
 
-    tbody.innerHTML = ordenadas
+    // Clampa a página atual, mesmo raciocínio de renderPoemas/renderProsas
+    // (o filtro pode ter reduzido o total desde a última renderização, ou
+    // "itens por página" pode ter mudado).
+    const totalPaginasSon =
+        itensPorPagina === Infinity ? 1 : Math.max(1, Math.ceil(ordenadas.length / itensPorPagina));
+    if (paginaSonoridade > totalPaginasSon) paginaSonoridade = totalPaginasSon;
+    if (paginaSonoridade < 1) paginaSonoridade = 1;
+
+    const paginaAtualOrdenadas =
+        itensPorPagina === Infinity
+            ? ordenadas
+            : ordenadas.slice(
+                  (paginaSonoridade - 1) * itensPorPagina,
+                  paginaSonoridade * itensPorPagina,
+              );
+
+    // Sem `tabela`/`idsPagina` — Sonoridade não tem seleção em massa
+    // (checkbox de linha), então o botão "Selecionar estes N" não faz
+    // sentido aqui (ver montarPaginacao em celulas-tabela.js).
+    if (paginacaoContainerSon)
+        paginacaoContainerSon.innerHTML = montarPaginacao(
+            ordenadas.length,
+            paginaSonoridade,
+            'pagina-sonoridade',
+        );
+
+    tbody.innerHTML = paginaAtualOrdenadas
         .map((es) => {
             const poema = db.poemas.find((p) => p.id == es.poemaId);
             const titulo = poema ? escapeHtml(poema.titulo) : '<em>Poema não encontrado</em>';
@@ -2616,12 +2666,16 @@ export function renderSonoridade() {
 
 // ─── Morfofuncionalidade (Progressão Morfofuncional) ───────────
 // Ver manutencao/progressao-morfofuncional.md pro requisito completo.
-// Tabela com as 4 colunas sempre fixas (sem seletor de "🧱 Colunas ▾"
-// — a pedido do Victor, que achou a tabela fixa suficiente aqui), mas
-// com o painel "⚙️ Ações ▾" de Sonoridade replicado (Ver/Baixar/
-// Editar/Excluir configuráveis + formato do Baixar), já que esse ele
-// quis trazer. Ver/Baixar reaproveitam visualizar-estrutura-textual.js
-// e exportar-estrutura-textual.js, no mesmo espírito de Sonoridade.
+// Colunas Unidades/Eventos agora são toggleáveis (ver DEFINICAO_COLUNAS
+// em colunas.js, chave 'estrutura-textual') — o Victor tinha decidido
+// deixá-las fixas na leva anterior, mas voltou atrás depois que a
+// exibição enumerada (ver resumoItensEstrutura abaixo) passou a
+// crescer verticalmente: poder ocultar a coluna mais densa ajuda a
+// rolar. ID/Título e Ações continuam sempre fixas, mesmo padrão de
+// Sonoridade (ver renderSonoridade acima — cabeçalho montado à mão
+// aqui também, não via montarCabecalho, que é só pra Poemas/Prosas).
+// Painel "⚙️ Ações ▾" continua igual (Ver/Baixar/Editar/Excluir
+// configuráveis + formato do Baixar).
 
 let filtroEstruturaTextual = '';
 
@@ -2630,17 +2684,36 @@ export function setFiltroEstruturaTextual(valor) {
     renderEstruturaTextual();
 }
 
+window.addEventListener('colunas:alteradas', (ev) => {
+    if (ev.detail?.tabela === 'estrutura-textual') renderEstruturaTextual();
+});
+
 window.addEventListener('acoes-coluna:alteradas', (ev) => {
     if (ev.detail?.tabela === 'estrutura-textual') renderEstruturaTextual();
 });
 
-// Resumo de Unidades/Eventos pra célula da tabela — junta os itens já
-// classificados (o campo de posição não aparece aqui, só no modal).
+// Resumo de Unidades/Eventos pra célula da tabela: um item por linha,
+// enumerado (1., 2., 3.) em vez do texto corrido separado por vírgula
+// de antes — ficava poluído com poemas de muitas Unidades (ver
+// screenshot que o Victor mandou). Pra Unidade, prioriza o `nome`
+// (rótulo livre da camada, ex. "Presença e ausência") quando
+// preenchido — só cai pra "unidadeEstrofica · unidadeDiscursiva"
+// quando não há nome; Evento não tem campo `nome`, então usa sempre
+// `progressaoDialetica`.
 function resumoItensEstrutura(itens, rotulador) {
     if (!itens || itens.length === 0) {
         return '<span class="text-gray-300 dark:text-slate-600">—</span>';
     }
-    return itens.map((item) => escapeHtml(rotulador(item) || '(sem classificação)')).join(', ');
+    return itens
+        .map(
+            (item, idx) =>
+                `<div>${idx + 1}. ${escapeHtml(rotulador(item) || '(sem classificação)')}</div>`,
+        )
+        .join('');
+}
+
+function rotuloUnidadeNaTabela(u) {
+    return u.nome || [u.unidadeEstrofica, u.unidadeDiscursiva].filter(Boolean).join(' · ');
 }
 
 // Mesmo padrão de celulaAcoesSonoridade acima: só os botões
@@ -2670,11 +2743,54 @@ function celulaAcoesEstruturaTextual(id) {
     return botoes.join('');
 }
 
+// Valor de exibição de cada coluna dinâmica (Unidades/Eventos) — mesmo
+// papel de valorColunaSonoridade acima, só que aqui cada "valor" já é
+// o bloco enumerado inteiro de resumoItensEstrutura, não um campo
+// simples.
+function valorColunaEstruturaTextual(e, key) {
+    if (key === 'unidades') return resumoItensEstrutura(e.unidades, rotuloUnidadeNaTabela);
+    if (key === 'eventos')
+        return resumoItensEstrutura(e.eventos, (ev) => ev.progressaoDialetica);
+    return '';
+}
+
+function atualizarPainelColunasEstruturaTextual() {
+    const painel = document.getElementById('painel-colunas-estrutura-textual');
+    if (!painel) return;
+    // Reaproveita renderSeletorColunas (colunas.js) direto, sem passar
+    // por atualizarPainelColunas (celulas-tabela.js) — aquele também
+    // anexa o seletor de "colunas de contagem" (colunas-contagem.js),
+    // que não faz sentido aqui: os campos contáveis são os de
+    // Poemas/Prosas/Sonoridade, nada bate com um registro de
+    // Unidades/Eventos.
+    painel.innerHTML = renderSeletorColunas('estrutura-textual');
+}
+
 export function renderEstruturaTextual() {
     const tbody = document.getElementById('lista-estrutura-textual');
     if (!tbody) return;
 
+    atualizarPainelColunasEstruturaTextual();
     atualizarPainelAcoes('estrutura-textual', 'painel-acoes-estrutura-textual');
+
+    const ativas = getColunasAtivas('estrutura-textual');
+    const def = DEFINICAO_COLUNAS['estrutura-textual'];
+
+    const cabecalho = document.getElementById('cabecalho-estrutura-textual');
+    if (cabecalho) {
+        const thsMeio = ativas
+            .map((key) => def.find((c) => c.key === key))
+            .filter(Boolean)
+            .map(
+                (c) =>
+                    `<th class="p-4 border-b border-gray-200 dark:border-slate-700">${escapeHtml(c.label)}</th>`,
+            )
+            .join('');
+        cabecalho.innerHTML = `
+            <th class="p-4 border-b border-gray-200 dark:border-slate-700">ID / Título</th>
+            ${thsMeio}
+            <th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>`;
+    }
 
     const filtradas = db.estruturasTextuais.filter((e) => {
         if (!filtroEstruturaTextual) return true;
@@ -2687,31 +2803,59 @@ export function renderEstruturaTextual() {
         return ta.localeCompare(tb, 'pt-BR');
     });
 
+    const paginacaoContainerEstr = document.getElementById('paginacao-estrutura-textual');
+
     if (ordenadas.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
+        const colspan = 2 + ativas.length;
+        tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
             db.estruturasTextuais.length === 0
                 ? 'Nenhuma progressão cadastrada ainda.'
                 : 'Nenhuma progressão encontrada para essa busca.'
         }</td></tr>`;
+        if (paginacaoContainerEstr) paginacaoContainerEstr.innerHTML = '';
         return;
     }
 
-    tbody.innerHTML = ordenadas
+    // Mesma paginação de Sonoridade (ver renderSonoridade acima) — sem
+    // `tabela`/`idsPagina`, já que esta tabela também não tem seleção
+    // em massa.
+    const totalPaginasEstr =
+        itensPorPagina === Infinity ? 1 : Math.max(1, Math.ceil(ordenadas.length / itensPorPagina));
+    if (paginaEstruturaTextual > totalPaginasEstr) paginaEstruturaTextual = totalPaginasEstr;
+    if (paginaEstruturaTextual < 1) paginaEstruturaTextual = 1;
+
+    const paginaAtualOrdenadas =
+        itensPorPagina === Infinity
+            ? ordenadas
+            : ordenadas.slice(
+                  (paginaEstruturaTextual - 1) * itensPorPagina,
+                  paginaEstruturaTextual * itensPorPagina,
+              );
+
+    if (paginacaoContainerEstr)
+        paginacaoContainerEstr.innerHTML = montarPaginacao(
+            ordenadas.length,
+            paginaEstruturaTextual,
+            'pagina-estrutura-textual',
+        );
+
+    tbody.innerHTML = paginaAtualOrdenadas
         .map((e) => {
             const poema = db.poemas.find((p) => p.id == e.poemaId);
             const titulo = poema ? escapeHtml(poema.titulo) : '<em>Poema não encontrado</em>';
-            const unidadesTxt = resumoItensEstrutura(e.unidades, (u) =>
-                [u.unidadeEstrofica, u.unidadeDiscursiva].filter(Boolean).join(' · '),
-            );
-            const eventosTxt = resumoItensEstrutura(e.eventos, (ev) => ev.progressaoDialetica);
+            const tds = ativas
+                .map(
+                    (key) =>
+                        `<td class="p-4 border-b border-gray-100 dark:border-slate-800 text-sm">${valorColunaEstruturaTextual(e, key)}</td>`,
+                )
+                .join('');
             return `
         <tr>
             <td class="p-4 border-b border-gray-100 dark:border-slate-800">
                 <span class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">#${e.id}</span><br>
                 ${titulo}
             </td>
-            <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-sm">${unidadesTxt}</td>
-            <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-sm">${eventosTxt}</td>
+            ${tds}
             <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
                 ${celulaAcoesEstruturaTextual(e.id)}
             </td>

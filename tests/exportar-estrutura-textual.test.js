@@ -60,12 +60,28 @@ describe('rotuloItem', () => {
         assert.equal(rotuloItem('evento', { progressaoDialetica: 'Volta' }), 'Volta');
         assert.equal(rotuloItem('evento', {}), 'Sem classificação');
     });
+
+    it('Unidade com nome antepõe "nome — classificação"', () => {
+        const u = {
+            nome: 'Presença e ausência',
+            unidadeEstrofica: 'Dísticos',
+            unidadeDiscursiva: 'Proposição',
+        };
+        assert.equal(rotuloItem('unidade', u), 'Presença e ausência — Dísticos · Proposição');
+    });
+
+    it('Unidade só com nome (sem classificação) usa só o nome', () => {
+        assert.equal(rotuloItem('unidade', { nome: 'Só um nome' }), 'Só um nome');
+    });
 });
 
 // ─── .md ──────────────────────────────────────────────────────────
 describe('estruturaParaMarkdown', () => {
     it('usa o título do poema, ou "#id" se o poema não for encontrado', () => {
-        assert.match(estruturaParaMarkdown({ id: 9 }, poema), /^## Progressão Morfofuncional — Soneto de Separação/);
+        assert.match(
+            estruturaParaMarkdown({ id: 9 }, poema),
+            /^## Progressão Morfofuncional — Soneto de Separação/,
+        );
         assert.match(estruturaParaMarkdown({ id: 9 }, null), /^## Progressão Morfofuncional — #9/);
     });
 

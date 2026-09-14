@@ -58,7 +58,70 @@ import {
     autoclassificacaoValida,
     formatarAutoclassificacaoTexto,
     renderCoracoesHtml,
+    parseListaIntervalos,
+    limparElementosHtmlLinha,
 } from '../js/utils.js';
+
+describe('parseListaIntervalos', () => {
+    it('números soltos separados por vírgula', () => {
+        assert.deepEqual(
+            [...parseListaIntervalos('1, 5, 9')].sort((a, b) => a - b),
+            [1, 5, 9],
+        );
+    });
+
+    it('intervalos com hífen, expandidos', () => {
+        assert.deepEqual(
+            [...parseListaIntervalos('1-5, 6-9')].sort((a, b) => a - b),
+            [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        );
+    });
+
+    it('mistura números soltos e intervalos', () => {
+        assert.deepEqual(
+            [...parseListaIntervalos('1, 3-5, 9')].sort((a, b) => a - b),
+            [1, 3, 4, 5, 9],
+        );
+    });
+
+    it('intervalo invertido (fim menor que início) é normalizado', () => {
+        assert.deepEqual(
+            [...parseListaIntervalos('5-3')].sort((a, b) => a - b),
+            [3, 4, 5],
+        );
+    });
+
+    it('tokens inválidos são ignorados silenciosamente, string vazia dá conjunto vazio', () => {
+        assert.deepEqual([...parseListaIntervalos('')], []);
+        assert.deepEqual([...parseListaIntervalos(undefined)], []);
+        assert.deepEqual([...parseListaIntervalos('abc, , 2')], [2]);
+    });
+});
+
+describe('limparElementosHtmlLinha', () => {
+    it('remove comentário HTML por completo, marcadores inclusos', () => {
+        assert.equal(
+            limparElementosHtmlLinha('Verso com <!-- nota da autora --> comentário'),
+            'Verso com  comentário',
+        );
+    });
+
+    it('remove só a tag de um elemento (div com atributos), mantendo o conteúdo', () => {
+        assert.equal(
+            limparElementosHtmlLinha('<div style="font-weight:bold">Verso</div> normal'),
+            'Verso normal',
+        );
+    });
+
+    it('linha sem HTML nenhum passa intacta', () => {
+        assert.equal(limparElementosHtmlLinha('Verso comum, sem tag'), 'Verso comum, sem tag');
+    });
+
+    it('linha vazia/ausente retorna string vazia', () => {
+        assert.equal(limparElementosHtmlLinha(''), '');
+        assert.equal(limparElementosHtmlLinha(undefined), '');
+    });
+});
 
 describe('gerarId', () => {
     it('nunca repete um id, mesmo em chamadas em rajada no mesmo milissegundo', () => {

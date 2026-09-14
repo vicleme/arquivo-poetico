@@ -35,36 +35,54 @@ entre elas:
   em si uma Proposição ou Resolução; é outra categoria de coisa.
 
 Ao ler dados exportados, um item em `unidades` sempre tem
-`unidadeEstrofica`/`unidadeDiscursiva`; um item em `eventos` sempre tem
-`progressaoDialetica`. Não existe um item com os três campos ao mesmo
-tempo, nem um campo que sirva pros dois tipos.
+`unidadeEstrofica`/`unidadeDiscursiva`, e pode também ter `nome`; um item
+em `eventos` sempre tem `progressaoDialetica`, e nunca tem `nome`. Nenhum
+item mistura campos dos dois tipos.
 
 ## 1. `unidades` — seções com forma e função
 
 ```json
 {
   "id": 1757856000000,
+  "nome": "Presença e ausência",
   "unidadeEstrofica": "Quartetos",
   "unidadeDiscursiva": "Proposição",
   "posicao": { "estrofes": [1, 2], "versos": "todos" }
 }
 ```
 
+- **Nome** (`nome`) — rótulo livre e opcional pra essa Unidade, nomeando
+  a "camada" ou função que o par Unidade Estrófica/Discursiva representa
+  nesse poema específico (ex.: "Presença e ausência", "Corpo de
+  aprendizados"). Texto livre puro, sem sugestão de datalist (diferente
+  dos dois campos abaixo). É puramente descritivo: um Evento nunca tem
+  `nome`, e um Template extraído de uma Unidade (seção 4) nunca carrega
+  seu `nome` — só a classificação Estrófica/Discursiva, reaproveitável,
+  é levada, porque o nome é específico do poema, não uma categoria
+  reaproveitável.
 - **Unidade Estrófica** (`unidadeEstrofica`) — a forma da seção (ex.:
   Oitava, Sexteto, Quartetos, Tercetos, Dístico).
 - **Unidade Discursiva** (`unidadeDiscursiva`) — a função argumentativa
   da mesma seção (ex.: Proposição, Resolução).
-- Os dois são **texto livre com sugestão** (datalist), não lista
-  fechada — ao contrário dos campos de Sonoridade, a nomenclatura varia
-  muito por forma poética (soneto usa Oitava/Sexteto, outras formas usam
-  outros nomes), então não há um vocabulário universal fechado pra
-  travar aqui.
-- Qualquer um dos dois pode estar vazio (uma Unidade só com forma, ou só
-  com função, é válida) — só os dois vazios ao mesmo tempo é que a UI
-  recusa criar.
+- `unidadeEstrofica`/`unidadeDiscursiva` são **texto livre com
+  sugestão** (datalist), não lista fechada — ao contrário dos campos de
+  Sonoridade, a nomenclatura varia muito por forma poética (soneto usa
+  Oitava/Sexteto, outras formas usam outros nomes), então não há um
+  vocabulário universal fechado pra travar aqui.
+- Qualquer um dos três campos (`nome`, `unidadeEstrofica`,
+  `unidadeDiscursiva`) pode estar vazio sozinho — uma Unidade só com
+  nome, só com forma, só com função, ou qualquer combinação dos três, é
+  válida. Só os três vazios ao mesmo tempo é que a UI recusa criar.
 - `id` é um número (`gerarId()`, baseado em timestamp) — só serve pra
   identificar o item dentro das listas do registro; não carrega
   significado.
+- Quando é preciso um rótulo de exibição (cartões da UI, exportações),
+  ele é derivado, não armazenado: `nome` e o par Estrófica/Discursiva se
+  combinam como "`nome` — `unidadeEstrofica` · `unidadeDiscursiva`"
+  quando os dois estão presentes, ou o lado presente sozinho serve de
+  fallback, ou "Sem classificação" se os três estiverem vazios
+  (`rotuloItem()` em `exportar-estrutura-textual.js`, reaproveitado pelo
+  cartão do modal e por `visualizar-estrutura-textual.js`).
 
 ## 2. `eventos` — movimentos pontuais, sem forma própria
 
@@ -154,11 +172,15 @@ pertence a nenhum poema específico:
 }
 ```
 
-- Um Template guarda só a **classificação** das Unidades/Eventos (os
-  mesmos campos de texto livre descritos acima) — nunca `id` nem
-  `posicao`. Aplicar um Template instancia itens novos, sempre "não
-  posicionados", prontos pra alguém marcar a posição de cada um no
-  poema específico.
+- Um Template guarda só a **classificação** das Unidades/Eventos —
+  `unidadeEstrofica`/`unidadeDiscursiva` pras Unidades,
+  `progressaoDialetica` pros Eventos — nunca `id`, `posicao`, nem o
+  `nome` de uma Unidade (ver seção 1: o nome é específico do poema de
+  origem, não uma categoria reaproveitável, então
+  `extrairClassificacaoParaTemplate()` descarta ele ao montar um
+  Template). Aplicar um Template instancia itens novos, sempre "não
+  posicionados" e com `nome` vazio, prontos pra alguém marcar a posição
+  — e opcionalmente nomear — cada um no poema específico.
 - `embutido: true` marca um Template de fábrica (hoje só "Soneto") —
   só duplicável pela UI, não editável direto, pra não estragar o
   original.
@@ -184,17 +206,24 @@ pertence a nenhum poema específico:
 ## Resumo para uso prático
 
 1. `unidades` e `eventos` são listas separadas, com campos próprios —
-   nunca misture `unidadeEstrofica`/`unidadeDiscursiva` (Unidade) com
-   `progressaoDialetica` (Evento) num mesmo item.
-2. Os três campos de classificação são texto livre (sem lista fechada
-   pra validar contra) — qualquer valor é possível, os vistos no
-   `TEMPLATES_ESTRUTURA_EMBUTIDOS`/nas sugestões padrão (Oitava,
-   Sexteto, Quartetos, Tercetos, Dístico / Proposição, Resolução /
-   Tensão, Volta, Síntese) são só ponto de partida, não um enum.
+   nunca misture `nome`/`unidadeEstrofica`/`unidadeDiscursiva` (Unidade)
+   com `progressaoDialetica` (Evento) num mesmo item; `nome` só aparece
+   em Unidade.
+2. `unidadeEstrofica`, `unidadeDiscursiva` e `progressaoDialetica` são
+   texto livre (sem lista fechada pra validar contra) — qualquer valor é
+   possível, os vistos no `TEMPLATES_ESTRUTURA_EMBUTIDOS`/nas sugestões
+   padrão (Oitava, Sexteto, Quartetos, Tercetos, Dístico / Proposição,
+   Resolução / Tensão, Volta, Síntese) são só ponto de partida, não um
+   enum. `nome` também é texto livre, mas é um rótulo por poema, não uma
+   classificação — nunca tem sugestão de datalist e nunca é carregado
+   pra `db.templatesEstrutura`.
 3. `posicao.estrofes` vazio = "não posicionado" — estado válido e
    esperado, não dado faltando por engano.
 4. Resumo de posição e sobreposição entre itens nunca vêm prontos no
-   JSON — recalcule a partir de `posicao` se a tarefa precisar deles.
+   JSON — recalcule a partir de `posicao` se a tarefa precisar deles. O
+   mesmo vale pro rótulo de exibição de uma Unidade (`nome` combinado
+   com o par Estrófica/Discursiva) — recalcule com `rotuloItem()` em vez
+   de assumir que o JSON já traz um rótulo pronto.
 5. Não confunda este registro com o botão "Estrutura" (hierarquia
    Livro/Parte/Seção) nem com Sonoridade (métrica) ou Conexões
    (vínculos entre textos) — Morfofuncionalidade é só sobre a

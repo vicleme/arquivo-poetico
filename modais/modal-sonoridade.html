@@ -70,6 +70,22 @@
                             id="son-poema-aviso"
                             class="hidden text-[10px] text-amber-600 dark:text-amber-400 mt-1"
                         ></p>
+                        <label
+                            for="son-linhas-ignoradas"
+                            class="block text-[10px] text-gray-400 dark:text-slate-500 mt-3 mb-1"
+                            >Linhas a ignorar
+                            <span class="normal-case"
+                                >— linhas do campo Texto que não fazem parte do poema (ex.: título
+                                digitado ali). Números soltos e/ou intervalos: "1, 5, 9" ou "1-5,
+                                6-9".</span
+                            ></label
+                        >
+                        <input
+                            type="text"
+                            id="son-linhas-ignoradas"
+                            class="text-sm w-full"
+                            placeholder="ex.: 1, 5, 9-12"
+                        />
                         <div class="mt-2">
                             <label
                                 for="son-importar-json"
@@ -100,9 +116,9 @@
                             <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
                                 Mesmo formato do arquivo baixado no botão "Baixar" de uma escansão
                                 (JSON). Preenche a classificação e a grade abaixo — se um poema já
-                                estiver escolhido acima, ele é mantido, a não ser que o JSON traga o id
-                                de outro poema já cadastrado no acervo, caso em que a seleção troca
-                                automaticamente.
+                                estiver escolhido acima, ele é mantido, a não ser que o JSON traga o
+                                id de outro poema já cadastrado no acervo, caso em que a seleção
+                                troca automaticamente.
                             </p>
                         </div>
                     </div>
@@ -113,16 +129,17 @@
                     <div class="campo-grupo-corpo">
                         <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-3">
                             Divida cada verso em sílabas digitando <code>/</code> entre elas (ex.:
-                            <code>Quan/do o/ sol/ se/ pôs</code>). A régua no topo mostra o número de
-                            sílabas do maior verso. Ative o Modo Sílaba Tônica (botão acima da grade) e
-                            clique numa sílaba pra marcar o acento. Ative o Modo Rima pra montar pares
-                            (clique abre um lado, shift-clique estende pra rima rica, clique numa outra
-                            linha abre o outro lado) — confirme ou cancele nos botões que aparecem. Cada
-                            par confirmado entra na lista "Pares de Rima" abaixo da grade, onde dá pra
-                            classificar Acentuação/Tonalidade/Riqueza, corrigir um lado ou remover.
-                            Posição (Externa/Interna) e Proximidade (Vizinha/Distante) são calculadas
-                            automaticamente; o topo da lista mostra a contagem final por eixo e a
-                            caracterização do poema (Com Rimas mais Próximas/Distantes/Equilibradas).
+                            <code>Quan/do o/ sol/ se/ pôs</code>). A régua no topo mostra o número
+                            de sílabas do maior verso. Ative o Modo Sílaba Tônica (botão acima da
+                            grade) e clique numa sílaba pra marcar o acento. Ative o Modo Rima pra
+                            montar pares (clique abre um lado, shift-clique estende pra rima rica,
+                            clique numa outra linha abre o outro lado) — confirme ou cancele nos
+                            botões que aparecem. Cada par confirmado entra na lista "Pares de Rima"
+                            abaixo da grade, onde dá pra classificar Acentuação/Tonalidade/Riqueza,
+                            corrigir um lado ou remover. Posição (Externa/Interna) e Proximidade
+                            (Vizinha/Distante) são calculadas automaticamente; o topo da lista
+                            mostra a contagem final por eixo e a caracterização do poema (Com Rimas
+                            mais Próximas/Distantes/Equilibradas).
                         </p>
                         <div id="son-grade-container"></div>
                     </div>
@@ -153,7 +170,10 @@
                             <div>
                                 <label class="form-label">Esquema de Rimas</label>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <select id="son-esquema-rimas-presenca" title="Presença de rima">
+                                    <select
+                                        id="son-esquema-rimas-presenca"
+                                        title="Presença de rima"
+                                    >
                                         <option value="">-- Presença --</option>
                                     </select>
                                     <select id="son-esquema-rimas-padrao" title="Padrão estrutural">
@@ -182,9 +202,9 @@
                         </div>
                         <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-3">
                             As opções de Regularidade Métrica, Tamanho do Verso, Esquema de Rimas e
-                            Origem/Tradição já se restringem automaticamente a partir da Forma escolhida
-                            (ex.: Soneto Clássico exige Decassílabo/Alexandrino). Registro e Tom ficam
-                            fora dessa cascata — continuam sempre livres.
+                            Origem/Tradição já se restringem automaticamente a partir da Forma
+                            escolhida (ex.: Soneto Clássico exige Decassílabo/Alexandrino). Registro
+                            e Tom ficam fora dessa cascata — continuam sempre livres.
                         </p>
                     </div>
                 </details>

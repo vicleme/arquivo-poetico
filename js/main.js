@@ -91,6 +91,8 @@ import {
     setItensPorPagina,
     setPaginaPoemas,
     setPaginaProsas,
+    setPaginaSonoridade,
+    setPaginaEstruturaTextual,
     setFiltroLivroPartes,
     setFiltroLivroSecoes,
     setFiltroParteSecoes,
@@ -305,6 +307,8 @@ import {
     removerUnidade,
     removerEvento,
     onToggleDetalhesPosicaoEstrutura,
+    onToggleEdicaoEstrutura,
+    atualizarCampoEstrutura,
 } from './estrutura-textual.js';
 import {
     renderColetaneas,
@@ -418,9 +422,10 @@ const ACOES_LISTA = {
     'baixar-sonoridade': (el) =>
         exportarEscansao(Number(el.dataset.id), getFormatoBaixar('sonoridade')),
     // Mesmo padrão de Ver/Baixar de Sonoridade acima, agora pra
-    // Morfofuncionalidade (item pedido por Victor: replicar o painel
-    // "⚙️ Ações ▾" de Sonoridade aqui, sem o painel de Colunas — ver
-    // celulaAcoesEstruturaTextual em render-listas.js).
+    // Morfofuncionalidade (painel "⚙️ Ações ▾" replicado de Sonoridade;
+    // painel "Colunas ▾" — Unidades/Eventos — adicionado numa leva
+    // seguinte, ver celulaAcoesEstruturaTextual/renderEstruturaTextual
+    // em render-listas.js).
     'ver-estrutura-textual': (el) => abrirVisualizacaoEstruturaTextual(Number(el.dataset.id)),
     'baixar-estrutura-textual': (el) =>
         exportarEstruturaTextual(Number(el.dataset.id), getFormatoBaixar('estrutura-textual')),
@@ -432,6 +437,8 @@ const ACOES_LISTA = {
     'mover-livro': (el) => moverLivro(Number(el.dataset.id), el.dataset.dir),
     'pagina-poemas': (el) => setPaginaPoemas(Number(el.dataset.pagina)),
     'pagina-prosas': (el) => setPaginaProsas(Number(el.dataset.pagina)),
+    'pagina-sonoridade': (el) => setPaginaSonoridade(Number(el.dataset.pagina)),
+    'pagina-estrutura-textual': (el) => setPaginaEstruturaTextual(Number(el.dataset.pagina)),
     'toggle-poema': (el, e) =>
         toggleSelecao('poemas', el.checked, Number(el.dataset.id), e?.shiftKey),
     'toggle-prosa': (el, e) =>
@@ -768,6 +775,11 @@ window.setVersosTodosEstrutura = setVersosTodosItem;
 window.removerUnidadeEstrutura = removerUnidade;
 window.removerEventoEstrutura = removerEvento;
 window.onToggleDetalhesPosicaoEstrutura = onToggleDetalhesPosicaoEstrutura;
+// Botão "✏️ Editar" (nome/unidadeEstrofica/unidadeDiscursiva/
+// progressaoDialetica) que faltava nos cartões — só a posição era
+// editável antes desta sessão.
+window.onToggleEdicaoEstrutura = onToggleEdicaoEstrutura;
+window.atualizarCampoEstrutura = atualizarCampoEstrutura;
 window.setFiltroProsas = debounce(setFiltroProsas, 200);
 window.setFiltroConteudoPoemas = debounce(setFiltroConteudoPoemas, 200);
 window.setFiltroConteudoProsas = debounce(setFiltroConteudoProsas, 200);

@@ -372,17 +372,187 @@ literal e as respostas:
      o painel já eram genéricos por `tabela`, só precisou de uma nova
      chave.
 
-## O que falta
+## O que falta (fim da segunda leva)
 
-- Testar manualmente no navegador todo o fluxo desta segunda leva: os
-  botões Ver/Baixar da coluna Ações, os 4 formatos de download (modal
-  de visualização e coluna), o painel "⚙️ Ações ▾" (toggle de botões +
-  formato do Baixar + Restaurar padrão) na aba Morfofuncionalidade.
-- Rodar a suíte completa (`npm test`) — só `estrutura-textual.test.js`
-  foi confirmado (26/26, sem regressão da mudança de cor/selo do
-  overlap); `exportar-estrutura-textual.js`/`visualizar-estrutura-textual.js`
-  ainda não têm teste automatizado (não existe precedente direto pra
-  `exportar-sonoridade.js`/`visualizar-sonoridade.js` na suíte hoje).
 - *(Ainda fora do escopo, não descartado: visão combinada
   Unidades+Eventos numa "linha do tempo" só.)*
 
+## Terceira leva (bugs de uso real + 2 pedidos novos)
+
+Victor usou o modal de verdade num poema (ver `conversa-referencia.md`
+com a sessão de cadastro do poema "Crisantemos") e trouxe 4 pontos:
+
+1. **Enter fechava o modal em vez de adicionar** — nos 3 campos de
+   texto livre (unidade estrófica, unidade discursiva, progressão
+   dialética), Enter caía no submit nativo do `<form>` (o botão SALVAR
+   é `type="submit"`). Corrigido com `keydown` nos 3 campos + no novo
+   campo de nome (ver item 2) chamando a função de adicionar e
+   `preventDefault()` — `initEnterAdicionaEstruturaTextual()` em
+   `forms.js`, chamada uma vez dentro de `initFormEstruturaTextual()`.
+2. **Nome/descrição por par de Unidade** — na conversa de referência,
+   antes de definir `unidadeEstrofica`/`unidadeDiscursiva` de cada
+   trecho, cada um ganhava um nome (“Presença e ausência”, “Corpo de
+   aprendizados”...). Novo campo opcional `nome` no item de Unidade
+   (não existe em Evento — Volta/Tensão/Síntese já são o nome).
+   Campo de fora de Templates (`extrairClassificacaoParaTemplate`) por
+   ser específico do poema, não uma classificação reaproveitável.
+   Aparece em destaque no cartão do modal (`montarCartaoHtml`) e no
+   rótulo compartilhado por Visualização/.md/.pdf/.docx (`rotuloItem`
+   em `exportar-estrutura-textual.js`): `"nome — classificação"`, ou só
+   um dos dois quando o outro está vazio.
+3. **Campo "Linhas a ignorar" (Escansão + Morfofuncionalidade)** —
+   Victor às vezes digita o título no campo Texto do poema só pra
+   registrar recurso gráfico/divisão em linhas; esse título não é
+   verso de verdade e não deveria entrar na grade nem contar pra
+   estrofe. Novo campo de texto livre nos dois modais (`son-linhas-
+   ignoradas`/`estr-linhas-ignoradas`), aceitando números soltos e/ou
+   intervalos misturados ("1, 5, 9" / "1-5, 6-9") — números de linha
+   BRUTOS do campo Texto (1-based, antes de qualquer processamento).
+   `parseListaIntervalos` (utils.js) faz o parse (tokens inválidos são
+   ignorados, nunca travam a digitação). As linhas listadas são
+   removidas ANTES de tudo em `construirLinhasIniciais`
+   (editor-sonoridade.js) e `construirEstrofesDoTexto`
+   (estrutura-textual.js) — como se não existissem, não geram nem
+   linha "vazia"/quebra de estrofe. Mudar o campo recalcula a grade na
+   hora (mesmo padrão de trocar de poema — perde grade/rimas já
+   editadas manualmente se elas não baterem com o novo recorte, ver
+   `carregarGradeSonoridade`). Persistido como string (`linhasIgnoradas`)
+   em `db.escansoes`/`db.estruturasTextuais`.
+4. **Tratamento de elemento HTML nos dois modais** — o campo Texto
+   guarda HTML de propósito (comentário `<!-- -->` da toolbar 💬,
+   `<div style="...">` de negrito/itálico/cor do `applyStyle` em
+   editor.js), mas nem a grade de Escansão nem a de Morfofuncionalidade
+   filtravam isso antes — comentário aparecia como texto literal, tag
+   de `<div>` virava "palavra"/sílaba própria. `limparElementosHtmlLinha`
+   (utils.js): comentário é removido por inteiro (marcadores inclusos);
+   qualquer outra tag perde só a tag, o conteúdo entre elas fica.
+   Aplicado por LINHA (não no texto inteiro) de propósito — mantém a
+   correspondência 1:1 com os números que o campo "Linhas a ignorar"
+   (item 3) recebe; um comentário/div que cruze quebra de linha não é
+   coberto (não visto no acervo até agora — `wrapText` sempre embrulha
+   a seleção dentro de uma linha/verso só).
+
+Testes novos: `parseListaIntervalos`/`limparElementosHtmlLinha`
+(`utils.test.js`), linhas ignoradas + HTML em
+`construirLinhasIniciais`/`construirEstrofesDoTexto`
+(`editor-sonoridade.test.js`/`estrutura-textual.test.js`), campo `nome`
+em `adicionarUnidade` e no `rotuloItem` (`exportar-estrutura-textual.test.js`)
+— 950/950 passando, ESLint/Prettier limpos.
+
+### O que falta (terceira leva)
+
+- Testar manualmente no navegador: Enter nos 3+1 campos, nome no
+  cartão/exportações, "Linhas a ignorar" nos dois modais com um poema
+  que tenha título digitado no campo Texto, e um poema com `<div
+  style="...">`/comentário no meio de um verso.
+
+## Quarta leva (edição pós-criação, bug de reconciliação, tabela e paginação)
+
+Victor trouxe 4 pontos novos (ver `conversa-referencia.md`, sessão
+"Melhorias na edição de unidades em progressão"):
+
+1. **Botão "✏️ Editar" faltando no cartão** — só a Posição era
+   editável depois de criado o item; nome/`unidadeEstrofica`/
+   `unidadeDiscursiva`/`progressaoDialetica` exigiam excluir e
+   recriar. Novo `<details>✏️ Editar</details>` em cada cartão
+   (`montarEdicaoClassificacaoHtml`, ao lado do já existente seletor
+   de Posição), reaproveitando os mesmos `datalist` do formulário de
+   "Nova Unidade"/"Novo Evento" (`sugestoes-unidade-estrofica`/
+   `sugestoes-unidade-discursiva`/`sugestoes-progressao-dialetica`,
+   já existentes em `modal-morfofuncionalidade.html`). `onchange` (não
+   a cada tecla) chama `atualizarCampoEstrutura(tipo, id, campo,
+   valor)`, nova função exportada em `estrutura-textual.js`. Estado
+   aberto/fechado do `<details>` persistido entre re-renders em
+   `edicaoAbertos` (mesmo padrão de `detalhesPosicaoAbertos`, já
+   existente pro seletor de Posição) via `onToggleEdicaoEstrutura`.
+2. **Bug: "Linhas a ignorar" não revalidava a posição já marcada** —
+   criar uma Unidade/Evento ANTES de preencher/ajustar esse campo
+   deixava a posição presa aos números antigos de estrofe/verso;
+   depois de ignorar uma linha, a estrofe N podia passar a significar
+   um trecho diferente do texto, e o item continuava "marcado" nela
+   sem nenhum aviso. Nova `reconciliarItensComEstrofes(itens,
+   estrofesNovas)` (privada, `estrutura-textual.js`): remove da
+   posição só os números de estrofe que não existem mais no recorte
+   novo (e, com uma única estrofe restante, os números de verso que
+   sumiram dela) — nunca inventa uma posição nova. Chamada por
+   `recalcularEstrofesLinhasIgnoradas(poema, linhasIgnoradasStr)`
+   (nova função exportada), por sua vez chamada só pelo listener
+   `change` do campo "Linhas a ignorar" em `forms.js`
+   (`recalcularLinhasIgnoradasEstrutura`) — **trocar de poema
+   continua sem reconciliar** (decisão deliberada mantida da terceira
+   leva, ver item 3 acima: o Victor prefere ajustar a posição na mão
+   nesse caso).
+3. **Tabela de Morfofuncionalidade poluída** — `resumoItensEstrutura`
+   (`render-listas.js`) trocou de texto corrido (`join(', ')`) pra um
+   `<div>` por item, numerado (`1.`, `2.`...), cada um em sua própria
+   linha. Pra Unidade, o rótulo prioriza o campo `nome` (rótulo livre
+   da camada — ex. "Presença e ausência") quando preenchido, caindo
+   pra `unidadeEstrofica · unidadeDiscursiva` só na ausência de nome
+   (nova `rotuloUnidadeNaTabela`); Evento continua sempre por
+   `progressaoDialetica` (não tem campo `nome`).
+4. **Controle de colunas (Unidades/Eventos) em Morfofuncionalidade** —
+   reversão da decisão da segunda leva (item 3 acima: "Colunas não...
+   tabela continua com as 4 colunas sempre fixas"). O motivo da
+   reversão é o item 3 desta leva: com a exibição enumerada
+   (potencialmente várias linhas por célula), a tabela cresce
+   verticalmente, e poder ocultar a coluna mais densa ajuda a rolar.
+   Reaproveita 100% a infra genérica já usada por Sonoridade
+   (`colunas.js`): nova entrada `'estrutura-textual': [{key:
+   'unidades', ...}, {key: 'eventos', ...}]` em `DEFINICAO_COLUNAS`
+   (as duas com `default: true` — mesmo comportamento "sempre
+   visíveis" que a tabela já tinha antes deste seletor existir);
+   `<thead>` dinâmico em `renderEstruturaTextual()` (mesmo padrão de
+   `renderSonoridade()` — cabeçalho montado à mão, não via
+   `montarCabecalho`, que é só pra Poemas/Prosas); popover "Colunas
+   ▾" novo em `index.html`, ao lado do "Ações ▾" já existente.
+5. **Paginação em Sonoridade e Morfofuncionalidade** — confirmado que
+   só Poemas/Prosas tinham (Sonoridade e Morfofuncionalidade, não).
+   Réplica direta da infra já genérica (`itensPorPagina`/
+   `montarPaginacao`, preferência compartilhada entre as 4 tabelas):
+   `paginaSonoridade`/`paginaEstruturaTextual` (module-level,
+   `render-listas.js`) + `setPaginaSonoridade`/
+   `setPaginaEstruturaTextual` exportadas, clamping de página
+   idêntico ao de Poemas/Prosas (filtro pode reduzir o total, ou
+   "itens por página" pode mudar), `setItensPorPagina` agora
+   re-renderiza as 4 tabelas e zera as 4 páginas. **Sem** `tabela`/
+   `idsPagina` em `montarPaginacao` pras duas — nenhuma das duas tem
+   seleção em massa (checkbox de linha), então o botão "Selecionar
+   estes N" não se aplica.
+
+Testes novos: `atualizarCampoEstrutura` e `recalcularEstrofesLinhasIgnoradas`/
+`reconciliarItensComEstrofes` (lógica pura, sem DOM) em
+`estrutura-textual.test.js`; paginação de Sonoridade/Morfofuncionalidade
+e colunas dinâmicas de Morfofuncionalidade (DOM real via happy-dom) em
+novo `estrutura-textual-tabela.test.js`. **Não roda `colunas.test.js`
+novo** — a suíte genérica de lá já cobre `DEFINICAO_COLUNAS` por
+qualquer tabela, sem precisar de um caso hardcoded pra
+`'estrutura-textual'`.
+
+**Suíte não rodada nesta leva** — sessão sem acesso à rede pra
+`npm install` (dependências de teste, incluindo `happy-dom`, não
+estavam instaladas no ambiente). Os arquivos novos/editados passaram
+por `node --check` (sintaxe) e os testes puramente lógicos de
+`estrutura-textual.test.js` (que não dependem de nenhum pacote
+externo) rodaram de verdade com `node --test` — 41/41 passando. Os
+testes de DOM novos (`estrutura-textual-tabela.test.js`) foram
+escritos espelhando de perto o padrão já validado de
+`colunas-contagem-estrutura-linha.test.js`, com a lógica conferida à
+mão passo a passo, mas **ainda não foram executados** — rodar
+`npm install && npm test` antes de dar esta leva por fechada.
+
+### O que falta (quarta leva)
+
+- Rodar `npm install && npm test` (suíte completa) — ainda não feito
+  nesta sessão, ver nota acima.
+- `eslint`/`prettier --check` nos arquivos tocados — não rodados
+  (mesmo motivo).
+- Testar manualmente no navegador: abrir "✏️ Editar" em Unidade e
+  Evento e confirmar que o `<details>` permanece aberto entre
+  re-renders (mesmo comportamento do seletor de Posição); reproduzir
+  o bug original (criar Unidade/Evento antes de preencher "Linhas a
+  ignorar", depois preencher o campo) e confirmar que a posição some
+  em vez de continuar marcada num trecho errado; popover "Colunas ▾"
+  de Morfofuncionalidade ligando/desligando Unidades/Eventos com
+  persistência no localStorage; paginação de Sonoridade e
+  Morfofuncionalidade com o seletor "Itens por página" compartilhado
+  de Poemas/Prosas.

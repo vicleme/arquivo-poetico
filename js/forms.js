@@ -15,6 +15,7 @@ import {
 } from './db.js';
 import {
     inicializarEstruturaTextual,
+    recalcularEstrofesLinhasIgnoradas,
     obterUnidadesAtuais,
     obterEventosAtuais,
     adicionarUnidade,
@@ -762,10 +763,18 @@ function atualizarAvisoPoemaSonoridade() {
 //   reconstrói do zero a partir do texto do poema (construirLinhasIniciais)
 //   — troca de poema no meio de uma edição existente perde a grade
 //   anterior, decisão aceita (ver conversa do Bloco 2).
+// Reconstrói do texto do poema sempre que "Linhas a ignorar" muda,
+// mesmo com escansaoLinhas já salva pra esse poema — senão a grade
+// salva (de antes do ajuste) ficaria presa, ignorando o campo. Só
+// reaproveita es.escansaoLinhas quando o valor salvo de
+// linhasIgnoradas bate com o que está no campo agora (mesma lógica de
+// "trocar de poema descarta a grade anterior", ver comentário logo
+// abaixo — trocar as linhas ignoradas é tratado do mesmo jeito).
 function carregarGradeSonoridade() {
     const container = document.getElementById('son-grade-container');
     if (!container) return;
     const poemaId = parseInt(document.getElementById('son-poema-id')?.value);
+    const linhasIgnoradas = document.getElementById('son-linhas-ignoradas')?.value || '';
     if (!poemaId) {
         inicializarGradeSonoridade(container, []);
         return;
@@ -777,12 +786,14 @@ function carregarGradeSonoridade() {
     }
     const idEmEdicao = document.getElementById('son-edit-id')?.value;
     const es = idEmEdicao ? db.escansoes.find((x) => String(x.id) === idEmEdicao) : null;
+    const mesmoRecorte = es && (es.linhasIgnoradas || '') === linhasIgnoradas;
     const linhas =
-        es && String(es.poemaId) === String(poemaId) && es.escansaoLinhas?.length
+        es && String(es.poemaId) === String(poemaId) && mesmoRecorte && es.escansaoLinhas?.length
             ? es.escansaoLinhas
-            : construirLinhasIniciais(poema.texto);
-    const rimas = es && String(es.poemaId) === String(poemaId) ? es.rimas || [] : [];
-    const ecos = es && String(es.poemaId) === String(poemaId) ? es.ecos || [] : [];
+            : construirLinhasIniciais(poema.texto, linhasIgnoradas);
+    const rimas =
+        es && String(es.poemaId) === String(poemaId) && mesmoRecorte ? es.rimas || [] : [];
+    const ecos = es && String(es.poemaId) === String(poemaId) && mesmoRecorte ? es.ecos || [] : [];
     inicializarGradeSonoridade(container, linhas, rimas, ecos);
 }
 
@@ -795,6 +806,8 @@ function carregarGradeSonoridade() {
 // prepararNovo a cada abertura.
 function popularCamposSonoridade(valores = {}) {
     popularSelectPoemasSonoridade(valores.poemaId || '');
+    const campoLinhasIgnoradas = document.getElementById('son-linhas-ignoradas');
+    if (campoLinhasIgnoradas) campoLinhasIgnoradas.value = valores.linhasIgnoradas || '';
     popularSelectOpcoes('son-forma-poema', FORMAS_POEMA, valores.formaPoema);
     popularSelectOpcoes(
         'son-regularidade-metrica',
@@ -890,6 +903,8 @@ export function importarSonoridadeDeArquivo(event) {
         atualizarAvisoPoemaSonoridade();
 
         aplicarClassificacaoSonoridade(valores);
+        const campoLinhasIgnoradas = document.getElementById('son-linhas-ignoradas');
+        if (campoLinhasIgnoradas) campoLinhasIgnoradas.value = valores.linhasIgnoradas || '';
 
         const container = document.getElementById('son-grade-container');
         if (container) inicializarGradeSonoridade(container, linhas, rimas, ecos);
@@ -946,6 +961,12 @@ export function initFormSonoridade() {
         if (corrigido !== e.target.value) e.target.value = corrigido;
         aplicarCascataSonoridade();
     });
+    // "Linhas a ignorar" — recalcula a grade a cada mudança, mesmo
+    // padrão de trocar de poema (ver carregarGradeSonoridade acima).
+    document.getElementById('son-linhas-ignoradas')?.addEventListener('change', () => {
+        carregarGradeSonoridade();
+    });
+
     // Regra adicional 2 — sugestão, não trava: só preenche Origem/
     // Tradição se o campo ainda estiver vazio, pra não sobrescrever uma
     // escolha manual já feita.
@@ -985,6 +1006,7 @@ export function initFormSonoridade() {
             origemTradicao: document.getElementById('son-origem-tradicao').value || null,
             registro: document.getElementById('son-registro').value || null,
             tom: document.getElementById('son-tom').value || null,
+            linhasIgnoradas: document.getElementById('son-linhas-ignoradas')?.value || '',
             escansaoLinhas: obterLinhasSonoridade(),
             rimas: obterRimasSonoridade(),
             ecos: obterEcosSonoridade(),
@@ -1146,12 +1168,33 @@ function atualizarAvisoPoemaEstrutura() {
 function carregarEstrofesDoPoemaEstrutura() {
     const poemaId = parseInt(document.getElementById('estr-poema-id')?.value);
     const poema = db.poemas.find((p) => p.id == poemaId) || null;
+    const linhasIgnoradas = document.getElementById('estr-linhas-ignoradas')?.value || '';
     inicializarEstruturaTextual(
         document.getElementById('estr-lista-unidades'),
         document.getElementById('estr-lista-eventos'),
         poema,
         { unidades: obterUnidadesAtuais(), eventos: obterEventosAtuais() },
+        linhasIgnoradas,
     );
+    atualizarAvisoPoemaEstrutura();
+}
+
+// Contraparte de carregarEstrofesDoPoemaEstrutura acima, só pro campo
+// "Linhas a ignorar" (poema continua o mesmo, só o recorte de linhas
+// muda) — usa recalcularEstrofesLinhasIgnoradas em vez de
+// inicializarEstruturaTextual pra RECONCILIAR a posição já marcada nas
+// Unidades/Eventos existentes contra as novas estrofes, em vez de só
+// preservá-la como está (bug reportado pelo Victor: unidade criada
+// antes de preencher o campo continuava "marcada" numa estrofe que,
+// depois de ignorar a linha, passou a significar outro trecho do
+// texto). Trocar de poema continua sem reconciliar — decisão
+// deliberada, ver comentário de carregarEstrofesDoPoemaEstrutura no
+// .md (o Victor prefere ajustar a posição na mão nesse caso).
+function recalcularLinhasIgnoradasEstrutura() {
+    const poemaId = parseInt(document.getElementById('estr-poema-id')?.value);
+    const poema = db.poemas.find((p) => p.id == poemaId) || null;
+    const linhasIgnoradas = document.getElementById('estr-linhas-ignoradas')?.value || '';
+    recalcularEstrofesLinhasIgnoradas(poema, linhasIgnoradas);
     atualizarAvisoPoemaEstrutura();
 }
 
@@ -1166,6 +1209,7 @@ export async function prepararNovaEstruturaTextual() {
     form.reset();
     document.getElementById('estr-edit-id').value = '';
     document.getElementById('modal-morfofuncionalidade-titulo').innerText = 'Adicionar Progressão';
+    document.getElementById('estr-linhas-ignoradas').value = '';
     popularSelectPoemasEstrutura();
     popularSelectTemplatesEstrutura();
     atualizarDatalistsEstruturaTextual();
@@ -1185,6 +1229,7 @@ export async function editarEstruturaTextual(id) {
     await garantirModal('modal-morfofuncionalidade');
     document.getElementById('estr-edit-id').value = estrutura.id;
     document.getElementById('modal-morfofuncionalidade-titulo').innerText = 'Editar Progressão';
+    document.getElementById('estr-linhas-ignoradas').value = estrutura.linhasIgnoradas || '';
     popularSelectPoemasEstrutura(estrutura.poemaId);
     popularSelectTemplatesEstrutura();
     atualizarDatalistsEstruturaTextual();
@@ -1194,6 +1239,7 @@ export async function editarEstruturaTextual(id) {
         document.getElementById('estr-lista-eventos'),
         poema,
         estrutura,
+        estrutura.linhasIgnoradas || '',
     );
     atualizarAvisoPoemaEstrutura();
     toggleModal('modal-morfofuncionalidade');
@@ -1210,9 +1256,11 @@ export function aplicarTemplateEstruturaTextual() {
 }
 
 export function adicionarUnidadeEstruturaTextual() {
+    const nomeEl = document.getElementById('estr-nova-unidade-nome');
     const estroficaEl = document.getElementById('estr-nova-unidade-estrofica');
     const discursivaEl = document.getElementById('estr-nova-unidade-discursiva');
-    adicionarUnidade(estroficaEl?.value || '', discursivaEl?.value || '');
+    adicionarUnidade(nomeEl?.value || '', estroficaEl?.value || '', discursivaEl?.value || '');
+    if (nomeEl) nomeEl.value = '';
     if (estroficaEl) estroficaEl.value = '';
     if (discursivaEl) discursivaEl.value = '';
     atualizarDatalistsEstruturaTextual();
@@ -1247,9 +1295,40 @@ export function salvarComoTemplateEstruturaTextual() {
     mostrarAviso(`Template "${nome}" salvo.`, 'sucesso');
 }
 
+// Enter, dentro de qualquer um dos 3 campos de adicionar Unidade/Evento
+// (regra: unidade estrófica, unidade discursiva e progressão dialética
+// nunca fecham o modal ao dar Enter — adicionam o item, como clicar no
+// "+"). Sem isso, Enter cai no submit nativo do <form> (o botão
+// SALVAR é type="submit"), fechando o modal em vez de adicionar.
+function initEnterAdicionaEstruturaTextual() {
+    const camposUnidade = [
+        'estr-nova-unidade-nome',
+        'estr-nova-unidade-estrofica',
+        'estr-nova-unidade-discursiva',
+    ];
+    camposUnidade.forEach((id) => {
+        document.getElementById(id)?.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            adicionarUnidadeEstruturaTextual();
+        });
+    });
+    document.getElementById('estr-novo-evento')?.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        adicionarEventoEstruturaTextual();
+    });
+}
+
 export function initFormEstruturaTextual() {
     const selPoema = document.getElementById('estr-poema-id');
     if (selPoema) selPoema.onchange = carregarEstrofesDoPoemaEstrutura;
+
+    document.getElementById('estr-linhas-ignoradas')?.addEventListener('change', () => {
+        recalcularLinhasIgnoradasEstrutura();
+    });
+
+    initEnterAdicionaEstruturaTextual();
 
     const form = document.getElementById('form-estrutura-textual');
     if (!form) return;
@@ -1269,6 +1348,7 @@ export function initFormEstruturaTextual() {
         const dados = {
             id: idAlvo,
             poemaId,
+            linhasIgnoradas: document.getElementById('estr-linhas-ignoradas')?.value || '',
             unidades: obterUnidadesAtuais(),
             eventos: obterEventosAtuais(),
         };

@@ -73,6 +73,22 @@
                             id="estr-poema-aviso"
                             class="hidden text-[10px] text-amber-600 dark:text-amber-400 mt-1"
                         ></p>
+                        <label
+                            for="estr-linhas-ignoradas"
+                            class="block text-[10px] text-gray-400 dark:text-slate-500 mt-3 mb-1"
+                            >Linhas a ignorar
+                            <span class="normal-case"
+                                >— linhas do campo Texto que não fazem parte do poema (ex.: título
+                                digitado ali). Números soltos e/ou intervalos: "1, 5, 9" ou "1-5,
+                                6-9".</span
+                            ></label
+                        >
+                        <input
+                            type="text"
+                            id="estr-linhas-ignoradas"
+                            class="text-sm w-full"
+                            placeholder="ex.: 1, 5, 9-12"
+                        />
                     </div>
                 </details>
 
@@ -80,9 +96,9 @@
                     <summary>Templates</summary>
                     <div class="campo-grupo-corpo">
                         <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
-                            Aplicar instancia Unidades/Eventos "não posicionados", prontos pra
-                            você marcar a posição de cada um abaixo. Pode aplicar mais de um
-                            template — o que já estiver classificado permanece.
+                            Aplicar instancia Unidades/Eventos "não posicionados", prontos pra você
+                            marcar a posição de cada um abaixo. Pode aplicar mais de um template — o
+                            que já estiver classificado permanece.
                         </p>
                         <div class="flex gap-2 items-center mb-2">
                             <select id="estr-template-id" class="flex-1">
@@ -107,13 +123,19 @@
                 </details>
 
                 <details class="campo-grupo" open>
-                    <summary
-                        >Unidades
+                    <summary>
+                        Unidades
                         <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
                             >(seção com forma e função — ex.: Quartetos / Proposição)</span
-                        ></summary
-                    >
+                        >
+                    </summary>
                     <div class="campo-grupo-corpo">
+                        <input
+                            type="text"
+                            id="estr-nova-unidade-nome"
+                            class="text-sm w-full mb-2"
+                            placeholder="Nome/descrição da camada (ex.: Presença e ausência) — opcional"
+                        />
                         <div class="flex gap-2 mb-3">
                             <input
                                 type="text"
@@ -144,12 +166,12 @@
                 </details>
 
                 <details class="campo-grupo" open>
-                    <summary
-                        >Eventos
+                    <summary>
+                        Eventos
                         <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
                             >(movimento pontual, sem forma própria — ex.: Volta)</span
-                        ></summary
-                    >
+                        >
+                    </summary>
                     <div class="campo-grupo-corpo">
                         <div class="flex gap-2 mb-3">
                             <input

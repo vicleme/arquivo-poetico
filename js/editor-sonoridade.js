@@ -69,6 +69,8 @@ import {
     RIQUEZAS_RIMA,
     DISTANCIA_VIZINHO_MAXIMA,
     TIPOS_ECO_SONORO,
+    parseListaIntervalos,
+    limparElementosHtmlLinha,
 } from './utils.js';
 import { db } from './db.js';
 
@@ -154,15 +156,31 @@ function removerMarcacaoMarkdown(texto) {
 // versos — linhas vazias/quebras de estrofe ficam sem número, mas
 // continuam ocupando uma linha na grade (spec 3.1: "Numeração de Linhas
 // ... ignorando linhas vazias/quebras de estrofe").
-export function construirLinhasIniciais(textoPoema) {
+// `linhasIgnoradasStr` (opcional): string do campo "Linhas a ignorar"
+// (ver parseListaIntervalos em utils.js) — linhas listadas ali (ex.:
+// título digitado no campo Texto só pra registrar recurso gráfico) são
+// removidas ANTES de tudo, como se não existissem no poema; não geram
+// nem linha 'vazia' na grade. Numeração de verso segue contígua sobre
+// o que sobrou. Cada linha também passa por limparElementosHtmlLinha
+// antes da remoção de marcação markdown, pra comentário HTML não
+// entrar e <div>/outra tag sumir sem levar o conteúdo junto.
+export function construirLinhasIniciais(textoPoema, linhasIgnoradasStr = '') {
+    const linhasIgnoradas = parseListaIntervalos(linhasIgnoradasStr);
     const brutas = (textoPoema || '').split('\n');
     let numero = 0;
-    return brutas.map((linhaBruta) => {
-        const semMarcacao = removerMarcacaoMarkdown(linhaBruta).trim();
-        if (semMarcacao === '') return { tipo: 'vazia' };
+    const resultado = [];
+    brutas.forEach((linhaBruta, idx) => {
+        if (linhasIgnoradas.has(idx + 1)) return;
+        const semHtml = limparElementosHtmlLinha(linhaBruta);
+        const semMarcacao = removerMarcacaoMarkdown(semHtml).trim();
+        if (semMarcacao === '') {
+            resultado.push({ tipo: 'vazia' });
+            return;
+        }
         numero += 1;
-        return { tipo: 'verso', numero, texto: semMarcacao };
+        resultado.push({ tipo: 'verso', numero, texto: semMarcacao });
     });
+    return resultado;
 }
 
 // Divide um verso em sílabas pela barra `/` digitada pelo usuário — sem

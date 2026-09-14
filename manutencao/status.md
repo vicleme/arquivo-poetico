@@ -34,6 +34,7 @@
 ## Em aberto
 
 - **`Quadra Popular` sem linha na Matriz de Validação (Bloco 3)** — decisão definitiva (não pendência): "quadra" aceita qualquer nº de sílabas e não precisa ser monostrófica, então nada nela é universal o bastante pra travar. As outras 2 formas que também ficavam nessa situação (`Limerick`, `Quadra / Trova`) já foram resolvidas — `Limerick` ganhou linha completa, `Quadra / Trova` virou `Trova` (linha completa) + `Quadra Popular`, e `Poema em Redondilhas` foi removida de `FORMAS_POEMA`. Ver `decisoes.md`.
+- **Progressão Morfofuncional — quarta leva sem `npm test` rodado** (edição pós-criação de Unidades/Eventos, correção do bug de reconciliação de "Linhas a ignorar", tabela enumerada priorizando `nome`, colunas Unidades/Eventos toggleáveis, paginação em Sonoridade + Morfofuncionalidade): implementação e testes novos escritos, mas a sessão não teve acesso à rede pra `npm install`/`npm test` — só a parte de `estrutura-textual.test.js` sem dependência externa foi executada de verdade (41/41). Rodar a suíte completa antes de dar por fechada. Ver `progressao-morfofuncional.md` (Quarta leva) pro detalhamento.
 
 ## Pendências de teste manual (sem cobertura automatizada — padrão do projeto pra motores de DOM/formulário)
 

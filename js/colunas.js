@@ -302,6 +302,19 @@ export const DEFINICAO_COLUNAS = {
             sortType: 'alfabetico',
         },
     ],
+    // Aba Morfofuncionalidade — só as 2 colunas de conteúdo (Unidades e
+    // Eventos), as duas ligadas por padrão (mesmo comportamento de
+    // sempre visíveis que a tabela já tinha antes deste seletor
+    // existir). ID/Título e Ações são fixas, mesmo padrão de
+    // poemas/prosas/sonoridade acima. Sem sortType — a leva anterior
+    // decidiu não ter cabeçalho ordenável nesta tabela (ver
+    // progressao-morfofuncional.md), então thOrdenavel não é usado
+    // aqui (ver renderEstruturaTextual em render-listas.js, cabeçalho
+    // montado à mão como o de Sonoridade).
+    'estrutura-textual': [
+        { key: 'unidades', label: 'Unidades', default: true },
+        { key: 'eventos', label: 'Eventos', default: true },
+    ],
 };
 
 // Lê o estado salvo ({ ordem, ativas }) e sempre devolve algo íntegro:

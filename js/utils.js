@@ -19,6 +19,58 @@ export function gerarId() {
     return _ultimoIdEmitido;
 }
 
+// ─── Linhas a ignorar (Escansão / Morfofuncionalidade) ──────────
+// Campo de texto livre onde a pessoa lista, em números de linha brutos
+// do campo Texto do poema (1-based, contando exatamente como aparece
+// no textarea), quais linhas não fazem parte do poema em si — título
+// digitado ali só pra registrar recurso gráfico, divisão em linhas
+// etc. Aceita números soltos ("1, 5, 9") e/ou intervalos ("1-5, 6-9"),
+// misturados livremente na mesma string. Tokens inválidos (vazio,
+// não-numérico) são ignorados silenciosamente, nunca lançam erro —
+// campo de digitação livre, não deve travar a pessoa no meio da
+// digitação. Usado por construirLinhasIniciais (editor-sonoridade.js)
+// e construirEstrofesDoTexto (estrutura-textual.js).
+export function parseListaIntervalos(str) {
+    const resultado = new Set();
+    (str || '').split(',').forEach((parteBruta) => {
+        const parte = parteBruta.trim();
+        if (!parte) return;
+        const intervalo = /^(\d+)\s*-\s*(\d+)$/.exec(parte);
+        if (intervalo) {
+            const a = parseInt(intervalo[1], 10);
+            const b = parseInt(intervalo[2], 10);
+            const inicio = Math.min(a, b);
+            const fim = Math.max(a, b);
+            for (let n = inicio; n <= fim; n++) resultado.add(n);
+        } else if (/^\d+$/.test(parte)) {
+            resultado.add(parseInt(parte, 10));
+        }
+    });
+    return resultado;
+}
+
+// ─── Tratamento de elemento HTML numa linha do campo Texto ──────
+// O campo Texto de Poema guarda HTML de propósito (ver
+// sanitizarTextoRico abaixo) — comentários inseridos pela toolbar
+// (💬) e <div style="..."> de formatação (negrito/itálico/cor, ver
+// applyStyle em editor.js) acabam misturados no texto bruto que
+// construirLinhasIniciais/construirEstrofesDoTexto usam pra montar a
+// grade de escansão e a estrutura de estrofes/versos. Sem tratamento,
+// o comentário aparecia como texto literal e a tag do <div> virava
+// "sílaba"/palavra própria na grade.
+// Regra: comentário (<!-- ... -->) é anotação, não entra de jeito
+// nenhum — remove o trecho inteiro, marcadores inclusos. Qualquer
+// outra tag (<div style="...">, </div>, ou outro elemento) só perde a
+// tag em si; o conteúdo entre elas permanece. Operação por LINHA (não
+// no texto inteiro) de propósito: mantém a correspondência 1:1 entre
+// número de linha bruto e o que parseListaIntervalos acima recebe —
+// um comentário/div que por acaso cruze quebra de linha não é
+// coberto (caso não visto no acervo até agora; wrapText sempre
+// embrulha a seleção dentro de uma linha/verso só).
+export function limparElementosHtmlLinha(linha) {
+    return (linha || '').replace(/<!--.*?-->/g, '').replace(/<\/?[a-zA-Z][^>]*>/g, '');
+}
+
 // ─── Escaping de HTML ───────────────────────────────────────────
 // Usado por render.js em todo campo de texto livre (título, notas,
 // tags, pessoas...) antes de injetar via innerHTML/template string.
