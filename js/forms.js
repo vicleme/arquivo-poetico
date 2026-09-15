@@ -12,6 +12,7 @@ import {
     mesclarEpocas,
     getEscansaoDoPoema,
     getEstruturaDoPoema,
+    deleteItem,
 } from './db.js';
 import {
     inicializarEstruturaTextual,
@@ -1097,6 +1098,181 @@ function popularSelectTemplatesEstrutura() {
                     `<option value="${t.id}">${escapeHtml(t.nome)}${t.embutido ? ' (padrão)' : ''}</option>`,
             )
             .join('');
+}
+
+// ─── Editar/Excluir Template ────────────────────────────────────
+// Estado local da edição de um Template — separado de
+// unidadesAtuais/eventosAtuais (estrutura-textual.js), que pertencem à
+// Progressão do poema em edição, não ao Template em si. Templates não
+// têm posição/estrofes, só a classificação (mesmo formato de
+// extrairClassificacaoParaTemplate); o `id` de cada linha aqui é só
+// pra a lista da UI conseguir remover a linha certa, não é salvo.
+let templateEmEdicaoId = null;
+let templateUnidadesEdicao = [];
+let templateEventosEdicao = [];
+
+function renderListaTemplateUnidades() {
+    const container = document.getElementById('tpl-lista-unidades');
+    if (!container) return;
+    if (templateUnidadesEdicao.length === 0) {
+        container.innerHTML =
+            '<p class="text-xs text-gray-400 dark:text-slate-500 italic">Nenhuma Unidade ainda.</p>';
+        return;
+    }
+    container.innerHTML = templateUnidadesEdicao
+        .map(
+            (
+                u,
+            ) => `<div class="flex items-center justify-between gap-2 text-sm border border-gray-200 dark:border-slate-700 rounded px-2 py-1 mb-1">
+                <span>${escapeHtml([u.unidadeEstrofica, u.unidadeDiscursiva].filter(Boolean).join(' · ') || '—')}</span>
+                <button type="button" onclick="removerUnidadeTemplateEdicao(${u.id})" title="Remover" aria-label="Remover"
+                    class="text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 text-xs">✕</button>
+            </div>`,
+        )
+        .join('');
+}
+
+function renderListaTemplateEventos() {
+    const container = document.getElementById('tpl-lista-eventos');
+    if (!container) return;
+    if (templateEventosEdicao.length === 0) {
+        container.innerHTML =
+            '<p class="text-xs text-gray-400 dark:text-slate-500 italic">Nenhum Evento ainda.</p>';
+        return;
+    }
+    container.innerHTML = templateEventosEdicao
+        .map(
+            (
+                e,
+            ) => `<div class="flex items-center justify-between gap-2 text-sm border border-gray-200 dark:border-slate-700 rounded px-2 py-1 mb-1">
+                <span>${escapeHtml(e.progressaoDialetica || '—')}</span>
+                <button type="button" onclick="removerEventoTemplateEdicao(${e.id})" title="Remover" aria-label="Remover"
+                    class="text-gray-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 text-xs">✕</button>
+            </div>`,
+        )
+        .join('');
+}
+
+export function adicionarUnidadeTemplateEdicao() {
+    const estroficaEl = document.getElementById('tpl-nova-unidade-estrofica');
+    const discursivaEl = document.getElementById('tpl-nova-unidade-discursiva');
+    const unidadeEstrofica = (estroficaEl?.value || '').trim();
+    const unidadeDiscursiva = (discursivaEl?.value || '').trim();
+    if (!unidadeEstrofica && !unidadeDiscursiva) return;
+    templateUnidadesEdicao.push({ id: gerarId(), unidadeEstrofica, unidadeDiscursiva });
+    if (estroficaEl) estroficaEl.value = '';
+    if (discursivaEl) discursivaEl.value = '';
+    renderListaTemplateUnidades();
+}
+
+export function adicionarEventoTemplateEdicao() {
+    const el = document.getElementById('tpl-novo-evento');
+    const progressaoDialetica = (el?.value || '').trim();
+    if (!progressaoDialetica) return;
+    templateEventosEdicao.push({ id: gerarId(), progressaoDialetica });
+    if (el) el.value = '';
+    renderListaTemplateEventos();
+}
+
+export function removerUnidadeTemplateEdicao(id) {
+    templateUnidadesEdicao = templateUnidadesEdicao.filter((u) => u.id !== id);
+    renderListaTemplateUnidades();
+}
+
+export function removerEventoTemplateEdicao(id) {
+    templateEventosEdicao = templateEventosEdicao.filter((e) => e.id !== id);
+    renderListaTemplateEventos();
+}
+
+// Botão "✏️" ao lado do seletor de Templates — abre o modal de edição
+// já populado. Embutidos entram aqui também: "padrão" não trava mais
+// edição, só sinaliza origem (decisão do Victor — se pensa diferente
+// do template de fábrica, edita). A única diferença de tratamento
+// acontece ao salvar, ver salvarTemplateEstrutura abaixo.
+export async function editarTemplateEstruturaSelecionado() {
+    const id = document.getElementById('estr-template-id')?.value;
+    if (!id) {
+        mostrarAviso('Escolha um template pra editar.');
+        return;
+    }
+    const template = db.templatesEstrutura.find((t) => t.id == id);
+    if (!template) return;
+    await garantirModal('modal-template-estrutura');
+    templateEmEdicaoId = template.id;
+    templateUnidadesEdicao = (template.unidades || []).map((u) => ({
+        id: gerarId(),
+        unidadeEstrofica: u.unidadeEstrofica || '',
+        unidadeDiscursiva: u.unidadeDiscursiva || '',
+    }));
+    templateEventosEdicao = (template.eventos || []).map((e) => ({
+        id: gerarId(),
+        progressaoDialetica: e.progressaoDialetica || '',
+    }));
+    document.getElementById('tpl-nome').value = template.nome || '';
+    const aviso = document.getElementById('tpl-aviso-padrao');
+    if (aviso) aviso.classList.toggle('hidden', !template.embutido);
+    renderListaTemplateUnidades();
+    renderListaTemplateEventos();
+    toggleModal('modal-template-estrutura');
+}
+
+// Salva as alterações do Template em edição. Renomear um embutido vira
+// um "fork": a cópia editada perde `embutido` (some o "(padrão)" e a
+// prioridade no topo da lista) e o original de fábrica volta a ser
+// recriado sozinho no próximo carregamento, sob o nome antigo (mesma
+// checagem por nome+embutido de migrarTemplatesEstruturaEmbutidos em
+// db.js) — assim não sobra um embutido com nome fora da lista de
+// fábrica, o mesmo problema que gerou o "Soneto" órfão. Só mudar o
+// conteúdo (Unidades/Eventos) sem renomear não dispara isso: o
+// template embutido continua representando o mesmo nome, só que agora
+// com a classificação sua.
+export function salvarTemplateEstrutura() {
+    const template = db.templatesEstrutura.find((t) => t.id == templateEmEdicaoId);
+    if (!template) return;
+    const novoNome = (document.getElementById('tpl-nome')?.value || '').trim();
+    if (!novoNome) {
+        mostrarAviso('Dê um nome ao Template antes de salvar.');
+        return;
+    }
+    if (templateUnidadesEdicao.length === 0 && templateEventosEdicao.length === 0) {
+        mostrarAviso('O Template precisa de ao menos uma Unidade ou Evento.');
+        return;
+    }
+    if (template.embutido && novoNome !== template.nome) {
+        template.embutido = false;
+    }
+    template.nome = novoNome;
+    template.unidades = templateUnidadesEdicao.map((u) => ({
+        unidadeEstrofica: u.unidadeEstrofica,
+        unidadeDiscursiva: u.unidadeDiscursiva,
+    }));
+    template.eventos = templateEventosEdicao.map((e) => ({
+        progressaoDialetica: e.progressaoDialetica,
+    }));
+    save();
+    popularSelectTemplatesEstrutura();
+    const sel = document.getElementById('estr-template-id');
+    if (sel) sel.value = template.id;
+    toggleModal('modal-template-estrutura');
+    mostrarAviso(`Template "${template.nome}" salvo.`, 'sucesso');
+}
+
+// Botão "🗑️" ao lado do seletor — mesmo fluxo de confirmação/desfazer
+// do resto do app (deleteItem, db.js). Passa um callback pra refazer o
+// select só depois que a exclusão for de fato confirmada (não antes —
+// abrirModalExclusao só chama o onConfirmar depois do clique em
+// "Excluir" no modal de confirmação).
+export function excluirTemplateEstruturaSelecionado() {
+    const id = document.getElementById('estr-template-id')?.value;
+    if (!id) {
+        mostrarAviso('Escolha um template pra excluir.');
+        return;
+    }
+    deleteItem('templatesEstrutura', id, () => {
+        popularSelectTemplatesEstrutura();
+        const sel = document.getElementById('estr-template-id');
+        if (sel) sel.value = '';
+    });
 }
 
 // Datalists dos 3 campos livres crescem com o que já foi usado no

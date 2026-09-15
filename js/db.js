@@ -93,11 +93,20 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // (unidadeEstrofica/unidadeDiscursiva/progressaoDialetica), nunca a
     // posição; aplicar um template instancia Unidades/Eventos
     // "não posicionados" no poema. `embutido: true` = template de
-    // fábrica (só duplicável, não editável direto — ver
-    // TEMPLATES_ESTRUTURA_EMBUTIDOS/migrarTemplatesEstruturaEmbutidos).
+    // fábrica (editável e excluível como qualquer outro — ver
+    // TEMPLATES_ESTRUTURA_EMBUTIDOS/migrarTemplatesEstruturaEmbutidos —
+    // só sinaliza origem, mostrando "(padrão)" e ordenando primeiro na
+    // lista).
     // { id, nome, embutido, unidades: [{ unidadeEstrofica, unidadeDiscursiva }],
     //   eventos: [{ progressaoDialetica }] }
     templatesEstrutura: [],
+    // Nomes de templates embutidos que o usuário excluiu de propósito —
+    // migrarTemplatesEstruturaEmbutidos consulta essa lista pra nunca
+    // recriar um embutido que já foi excluído (senão a exclusão nunca
+    // "pegaria": o item voltaria sozinho no próximo carregamento). Não
+    // entra aqui por renomear um embutido (isso vira fork — ver
+    // salvarTemplateEstrutura em forms.js), só por excluir mesmo.
+    templatesEstruturaOcultos: [],
 };
 
 // Garante que dados importados de versões antigas tenham os campos novos
@@ -109,6 +118,7 @@ if (!db.epocas) db.epocas = [];
 if (!db.escansoes) db.escansoes = [];
 if (!db.estruturasTextuais) db.estruturasTextuais = [];
 if (!db.templatesEstrutura) db.templatesEstrutura = [];
+if (!db.templatesEstruturaOcultos) db.templatesEstruturaOcultos = [];
 
 // Migração: `tomRegistro` (Tom/Registro, 3 opções) virou dois campos
 // independentes — `registro` (formalidade da linguagem, 5 opções) e
@@ -198,14 +208,18 @@ export const TEMPLATES_ESTRUTURA_EMBUTIDOS = [
             { unidadeEstrofica: 'Quarteto III', unidadeDiscursiva: 'Intensificação' },
             { unidadeEstrofica: 'Dístico', unidadeDiscursiva: 'Resolução' },
         ],
-        eventos: [
-            { progressaoDialetica: 'Tensão' },
-            { progressaoDialetica: 'Volta' },
-        ],
+        eventos: [{ progressaoDialetica: 'Tensão' }, { progressaoDialetica: 'Volta' }],
     },
 ];
-export function migrarTemplatesEstruturaEmbutidos(templatesEstrutura) {
+// `ocultos` (nomes excluídos de propósito pelo usuário — ver
+// db.templatesEstruturaOcultos acima): pulados de propósito, nunca
+// recriados. Sem essa checagem, excluir um template embutido não
+// "pegaria" de vez — ele voltaria sozinho no próximo carregamento,
+// igual ao "Soneto" órfão que sobrou de uma versão antiga desta mesma
+// lista (ver manutencao/decisoes.md).
+export function migrarTemplatesEstruturaEmbutidos(templatesEstrutura, ocultos = []) {
     TEMPLATES_ESTRUTURA_EMBUTIDOS.forEach((modelo) => {
+        if (ocultos.includes(modelo.nome)) return;
         const jaExiste = templatesEstrutura.some((t) => t.embutido && t.nome === modelo.nome);
         if (jaExiste) return;
         templatesEstrutura.push({
@@ -217,7 +231,7 @@ export function migrarTemplatesEstruturaEmbutidos(templatesEstrutura) {
         });
     });
 }
-migrarTemplatesEstruturaEmbutidos(db.templatesEstrutura);
+migrarTemplatesEstruturaEmbutidos(db.templatesEstrutura, db.templatesEstruturaOcultos);
 
 // Migração: em Poemas, o campo `publicado` (boolean) virou `status`, com
 // 3 valores — 'publicado' | 'completo' | 'incompleto' — pra diferenciar
@@ -950,7 +964,8 @@ export async function importarDB(novoDb) {
     migrarRegistroTomSonoridade(db.escansoes);
     db.estruturasTextuais = novoDb.estruturasTextuais || [];
     db.templatesEstrutura = novoDb.templatesEstrutura || [];
-    migrarTemplatesEstruturaEmbutidos(db.templatesEstrutura);
+    db.templatesEstruturaOcultos = novoDb.templatesEstruturaOcultos || [];
+    migrarTemplatesEstruturaEmbutidos(db.templatesEstrutura, db.templatesEstruturaOcultos);
     migrarStatusPoemas(db.poemas);
     migrarIntertextualidadePoemas(db.poemas);
     migrarReferenciasParaEcos(db.poemas);
@@ -1437,6 +1452,21 @@ function _removerParaExclusao(col, id) {
         });
     }
 
+    // Excluir Template de Progressão: se for embutido (de fábrica),
+    // registra o nome em templatesEstruturaOcultos pra
+    // migrarTemplatesEstruturaEmbutidos nunca recriar (ver comentário lá) —
+    // senão a exclusão não "pegaria" de vez. _restaurar desfaz isso se a
+    // exclusão for desfeita a tempo.
+    let ocultoAdicionado = null;
+    if (
+        col === 'templatesEstrutura' &&
+        item?.embutido &&
+        !db.templatesEstruturaOcultos.includes(item.nome)
+    ) {
+        db.templatesEstruturaOcultos.push(item.nome);
+        ocultoAdicionado = item.nome;
+    }
+
     // Fecha o buraco deixado na numeração do grupo de onde o item saiu
     // (mesma lógica de sempre — só guardamos os "irmãos" pra poder
     // reverter com abrirEspaco() se a exclusão for desfeita).
@@ -1468,6 +1498,7 @@ function _removerParaExclusao(col, id) {
         capasParaDescartar,
         posicaoRemovida,
         irmaos,
+        ocultoAdicionado,
     };
 }
 
@@ -1487,9 +1518,15 @@ function _restaurar(removido) {
         vinculosEpocaRemovidos,
         posicaoRemovida,
         irmaos,
+        ocultoAdicionado,
     } = removido;
 
     if (irmaos) abrirEspaco(irmaos, posicaoRemovida);
+
+    if (ocultoAdicionado) {
+        const idx = db.templatesEstruturaOcultos.indexOf(ocultoAdicionado);
+        if (idx !== -1) db.templatesEstruturaOcultos.splice(idx, 1);
+    }
 
     db[col].push(item);
     if (partesRemovidas.length) db.partes.push(...partesRemovidas);
@@ -1579,7 +1616,7 @@ export function getEstruturaDoPoema(poemaId) {
     return db.estruturasTextuais.find((e) => e.poemaId == poemaId) || null;
 }
 
-export function deleteItem(col, id) {
+export function deleteItem(col, id, aposConfirmar = null) {
     const item = db[col]?.find((i) => i.id == id);
     const titulo =
         col === 'escansoes'
@@ -1657,6 +1694,14 @@ export function deleteItem(col, id) {
         rotulo = partes.length ? `Grupo · ${partes.join(' e ')}` : 'Grupo';
     }
 
+    // Avisa quando o Template é um dos de fábrica: excluir aqui é
+    // definitivo, não volta sozinho no próximo carregamento (ver
+    // templatesEstruturaOcultos acima).
+    if (col === 'templatesEstrutura' && item?.embutido) {
+        rotulo =
+            'Template de Progressão · é um dos templates padrão do app; excluído, não volta sozinho';
+    }
+
     abrirModalExclusao(titulo, rotulo, () => {
         // Só um "desfazer" pendente por vez — uma nova exclusão confirma
         // a anterior de vez (apaga a capa dela) antes de continuar.
@@ -1671,6 +1716,7 @@ export function deleteItem(col, id) {
         );
         const timeoutId = setTimeout(_finalizarExclusaoPendente, 6000);
         _pendingExclusao = { removidos: [removido], timeoutId, toast };
+        aposConfirmar?.();
     });
 }
 

@@ -297,6 +297,13 @@ import {
     adicionarUnidadeEstruturaTextual,
     adicionarEventoEstruturaTextual,
     salvarComoTemplateEstruturaTextual,
+    editarTemplateEstruturaSelecionado,
+    excluirTemplateEstruturaSelecionado,
+    salvarTemplateEstrutura,
+    adicionarUnidadeTemplateEdicao,
+    adicionarEventoTemplateEdicao,
+    removerUnidadeTemplateEdicao,
+    removerEventoTemplateEdicao,
     rastreadorPoema,
     rastreadorProsa,
 } from './forms.js';
@@ -373,6 +380,10 @@ registrarModal(
     'modal-morfofuncionalidade.html',
     initFormEstruturaTextual,
 );
+// Sem init próprio — o conteúdo é preenchido a cada abertura por
+// editarTemplateEstruturaSelecionado() (forms.js), mesmo espírito de
+// modal-visualizar acima.
+registrarModal('modal-template-estrutura', 'modal-template-estrutura.html', () => {});
 registrarModal('modal-mesclar', 'modal-mesclar.html', initFormMesclar);
 registrarModal('modal-col-parte', 'modal-col-parte.html', initFormColParte);
 registrarModal('modal-col-item', 'modal-col-item.html', initFormColItem);
@@ -765,6 +776,13 @@ window.aplicarTemplateEstruturaTextual = aplicarTemplateEstruturaTextual;
 window.adicionarUnidadeEstruturaTextual = adicionarUnidadeEstruturaTextual;
 window.adicionarEventoEstruturaTextual = adicionarEventoEstruturaTextual;
 window.salvarComoTemplateEstruturaTextual = salvarComoTemplateEstruturaTextual;
+window.editarTemplateEstruturaSelecionado = editarTemplateEstruturaSelecionado;
+window.excluirTemplateEstruturaSelecionado = excluirTemplateEstruturaSelecionado;
+window.salvarTemplateEstrutura = salvarTemplateEstrutura;
+window.adicionarUnidadeTemplateEdicao = adicionarUnidadeTemplateEdicao;
+window.adicionarEventoTemplateEdicao = adicionarEventoTemplateEdicao;
+window.removerUnidadeTemplateEdicao = removerUnidadeTemplateEdicao;
+window.removerEventoTemplateEdicao = removerEventoTemplateEdicao;
 // Chamadas diretamente pelo HTML gerado em estrutura-textual.js
 // (montarSeletorPosicaoHtml/montarCartaoHtml) — mapeiam 1:1 pras
 // funções do módulo, sem wrapper, já que as assinaturas já batem
