@@ -2795,8 +2795,21 @@ export function getElementHierarchy(el, db) {
 // com regras bem diferentes (Trova é rígida — sempre 7 sílabas, sempre
 // 1 estrofe, sempre rimada —, Quadra é solta — qualquer nº de sílabas,
 // não precisa ser monostrófica). Ver decisoes.md.
+// `Soneto Clássico` (opção original da spec) virou 3 opções — decisão
+// do Victor: "Clássico"/"padrão" não dizia a tradição, e Petrarquiano/
+// Camoniano (octeto ABBA ABBA + sexteto variável) e Shakespeariano (3
+// quartetos ABAB + dístico final) são estruturalmente diferentes o
+// bastante pra merecer nome próprio — mesmo espírito de `Lira
+// Brasileira` (nomear a variante em vez de deixar o nome genérico
+// ambíguo). `Soneto (Genérico)` cobre o caso de não querer/poder
+// comprometer com uma tradição específica ainda; ver `decisoes.md`
+// pro detalhamento completo (inclusive por que a trava de
+// `esquemaRimasPadrao` das duas variantes específicas, logo abaixo em
+// MATRIZ_VALIDACAO_SONORIDADE, difere da do Genérico).
 export const FORMAS_POEMA = [
-    'Soneto Clássico',
+    'Soneto (Genérico)',
+    'Soneto Petrarquiano / Camoniano',
+    'Soneto Shakespeariano',
     'Haikai',
     'Tanka',
     'Lira Brasileira',
@@ -3015,7 +3028,13 @@ export const DISTANCIA_VIZINHO_MAXIMA = 2;
 // aqui a ausência de trava nesse eixo específico é definitiva, não uma
 // decisão pendente.
 export const MATRIZ_VALIDACAO_SONORIDADE = {
-    'Soneto Clássico': {
+    // Genérico herda a trava antiga de `Soneto Clássico` tal e qual —
+    // os 2 eixos universais a qualquer soneto (Isométrico,
+    // Decassílabo/Alexandrino, Medida Nova) mais um `esquemaRimasPadrao`
+    // deliberadamente largo (as 2 travas específicas abaixo, somadas),
+    // já que "genérico" existe justo pra quando ainda não se sabe (ou
+    // não importa) qual das duas tradições o poema segue.
+    'Soneto (Genérico)': {
         regularidadeMetrica: ['Isométrico'],
         tamanhoVerso: ['Decassílabo (10)', 'Alexandrino / Dodecassílabo (12)'],
         esquemaRimasPresenca: ESQUEMA_RIMAS_PRESENCA.filter((o) => o !== 'Sem Rimas / Livre'),
@@ -3024,6 +3043,39 @@ export const MATRIZ_VALIDACAO_SONORIDADE = {
             'Alternada / Cruzada (ABAB)',
             'Mista / Completa',
         ],
+        origemTradicao: ['Medida Nova'],
+    },
+    // Octeto sempre ABBA ABBA (`Oposta / Interpolada`) — é o traço que
+    // de fato define a tradição. O sexteto varia entre fontes (CDC DCD,
+    // CDE CDE, CDCDCD...) sem um único padrão nomeado no acervo de
+    // ESQUEMA_RIMAS_PADRAO, e como o campo descreve o poema INTEIRO (não
+    // por estrofe), um soneto com octeto ABBA + sexteto em qualquer
+    // desses outros arranjos descreve melhor como `Mista / Completa` — por
+    // isso as 2 opções, nunca uma trava de padrão único. Não inclui
+    // `Alternada / Cruzada (ABAB)` sozinho: ABAB no octeto descaracteriza
+    // a tradição petrarquiana/camoniana (vira Shakespeariano ou solto).
+    'Soneto Petrarquiano / Camoniano': {
+        regularidadeMetrica: ['Isométrico'],
+        tamanhoVerso: ['Decassílabo (10)', 'Alexandrino / Dodecassílabo (12)'],
+        esquemaRimasPresenca: ESQUEMA_RIMAS_PRESENCA.filter((o) => o !== 'Sem Rimas / Livre'),
+        esquemaRimasPadrao: ['Oposta / Interpolada (ABBA)', 'Mista / Completa'],
+        origemTradicao: ['Medida Nova'],
+    },
+    // Os 3 quartetos são ABAB (`Alternada / Cruzada`), mas o dístico
+    // final (GG, rima emparelhada só nos 2 últimos versos) quebra esse
+    // padrão — o poema inteiro nunca é ABAB "puro" do início ao fim,
+    // por isso `Mista / Completa` entra como a leitura mais honesta do
+    // conjunto (mesmo raciocínio do Petrarquiano/Camoniano acima:
+    // padrão dominante + composto, não um único código pro poema
+    // inteiro). `origemTradicao` continua `Medida Nova` mesmo sendo
+    // tradição de língua inglesa — o eixo mede a métrica em português
+    // (decassílabo/alexandrino, herança camoniana), não a origem
+    // geográfica da forma.
+    'Soneto Shakespeariano': {
+        regularidadeMetrica: ['Isométrico'],
+        tamanhoVerso: ['Decassílabo (10)', 'Alexandrino / Dodecassílabo (12)'],
+        esquemaRimasPresenca: ESQUEMA_RIMAS_PRESENCA.filter((o) => o !== 'Sem Rimas / Livre'),
+        esquemaRimasPadrao: ['Alternada / Cruzada (ABAB)', 'Mista / Completa'],
         origemTradicao: ['Medida Nova'],
     },
     Haikai: {

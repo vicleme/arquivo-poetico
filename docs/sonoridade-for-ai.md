@@ -25,11 +25,11 @@ history; re-scanning replaces the previous one. It has three parts:
 One closed-list value per field, for the whole poem:
 
 - **Forma do Poema** ("Poem Form", `formaPoema`) — the recognized
-  form/stanza (Soneto Clássico — Classic Sonnet, Haikai, Tanka, Lira
-  Brasileira — Brazilian Lira, Limerick, Trova, Quadra Popular — Popular
-  Quatrain, Poesia Narrativa / Cordel — Narrative Poetry/Cordel) or
-  "Forma Livre / Indefinida" (Free/Undefined Form) when it fits none of
-  them.
+  form/stanza (Soneto (Genérico) — Generic Sonnet, Soneto Petrarquiano /
+  Camoniano, Soneto Shakespeariano, Haikai, Tanka, Lira Brasileira —
+  Brazilian Lira, Limerick, Trova, Quadra Popular — Popular Quatrain,
+  Poesia Narrativa / Cordel — Narrative Poetry/Cordel) or "Forma Livre /
+  Indefinida" (Free/Undefined Form) when it fits none of them.
 - **Regularidade Métrica** ("Metrical Regularity",
   `regularidadeMetrica`) — Isométrico (all verses with the same syllable
   count), Heterométrico (lengths vary in a patterned way),

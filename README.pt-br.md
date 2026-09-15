@@ -481,7 +481,8 @@ npm run format:check   # prettier --check .
     Presença e Padrão Estrutural —, Origem/Tradição, Registro e Tom).
     Escolher a Forma do Poema **filtra** (nunca autopreenche nem desabilita)
     as opções válidas dos outros campos pra formas fixas com regras
-    conhecidas (Soneto Clássico, Haikai, Tanka, Lira Brasileira, Limerick,
+    conhecidas (Soneto — Genérico, Petrarquiano/Camoniano ou Shakespeariano —,
+    Haikai, Tanka, Lira Brasileira, Limerick,
     Trova e, parcialmente, Poesia Narrativa/Cordel) — o campo continua
     editável entre as opções filtradas. Avisos não-bloqueantes alertam
     sobre monorrima atípica numa forma fixa ou divergência entre a

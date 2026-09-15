@@ -151,8 +151,11 @@ Preencha os 7 campos abaixo com base no poema inteiro. Escolha sempre da
 lista fechada correspondente, com a grafia exata.
 
 **1. Forma do Poema** (`formaPoema`) — escolha uma:
-Soneto Clássico · Haikai · Tanka · Lira Brasileira · Limerick · Trova ·
-Quadra Popular · Poesia Narrativa / Cordel · Forma Livre / Indefinida
+Soneto (Genérico) (quando não dá pra saber/não importa qual tradição) ·
+Soneto Petrarquiano / Camoniano (octeto ABBA ABBA + sexteto variável) ·
+Soneto Shakespeariano (3 quartetos ABAB + dístico final) · Haikai · Tanka
+· Lira Brasileira · Limerick · Trova · Quadra Popular · Poesia Narrativa
+/ Cordel · Forma Livre / Indefinida
 
 **2. Regularidade Métrica** (`regularidadeMetrica`) — escolha uma:
 Isométrico (todos os versos com o mesmo nº de sílabas) · Heterométrico
@@ -204,8 +207,14 @@ conferir se a combinação faz sentido antes de responder — se o poema não
 bater com nenhum desses padrões, é sinal de que a Forma provavelmente é
 "Forma Livre / Indefinida":
 
-- **Soneto Clássico** → Isométrico · Decassílabo ou Alexandrino · rimado
+- **Soneto (Genérico)** → Isométrico · Decassílabo ou Alexandrino · rimado
   (não "Sem Rimas") · padrão ABBA, ABAB ou Mista · Medida Nova.
+- **Soneto Petrarquiano / Camoniano** → mesma métrica/presença de rima
+  acima, mas padrão ABBA (o octeto) ou Mista (octeto ABBA + sexteto com
+  rima diferente) — nunca ABAB sozinho.
+- **Soneto Shakespeariano** → mesma métrica/presença de rima, mas padrão
+  ABAB (os 3 quartetos) ou Mista (quartetos ABAB + dístico que quebra o
+  padrão) — nunca ABBA sozinho.
 - **Haikai / Tanka** → Heterométrico · versos em 5 e 7 sílabas · Sem Rimas ·
   Tradição Importada.
 - **Lira Brasileira** → Heterométrico · versos em 6 e 10 sílabas · rimado

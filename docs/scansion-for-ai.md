@@ -162,10 +162,13 @@ Fill in the 7 fields below based on the whole poem. Always pick from the
 matching closed list, with the exact wording (in Portuguese).
 
 **1. Poem Form** (`formaPoema`) — pick one:
-Soneto Clássico (Classic Sonnet) · Haikai (Haiku) · Tanka · Lira Brasileira
-(Brazilian Lira) · Limerick · Trova · Quadra Popular (Popular Quatrain) ·
-Poesia Narrativa / Cordel (Narrative Poetry / Cordel) · Forma Livre /
-Indefinida (Free / Undefined Form)
+Soneto (Genérico) (Generic Sonnet, use when you can't tell/it doesn't
+matter which tradition) · Soneto Petrarquiano / Camoniano (octave ABBA
+ABBA + variable sestet) · Soneto Shakespeariano (3 ABAB quatrains + a
+closing couplet) · Haikai (Haiku) · Tanka · Lira Brasileira (Brazilian
+Lira) · Limerick · Trova · Quadra Popular (Popular Quatrain) · Poesia
+Narrativa / Cordel (Narrative Poetry / Cordel) · Forma Livre / Indefinida
+(Free / Undefined Form)
 
 **2. Metrical Regularity** (`regularidadeMetrica`) — pick one:
 Isométrico (all verses with the same syllable count) · Heterométrico
@@ -217,8 +220,14 @@ These aren't rigid rules you need to enforce, but use them to sanity-check
 your answer before submitting it — if the poem doesn't match any of these
 patterns, that's a sign the Form is probably "Forma Livre / Indefinida":
 
-- **Soneto Clássico** → Isométrico · Decassílabo or Alexandrino · rhymed
+- **Soneto (Genérico)** → Isométrico · Decassílabo or Alexandrino · rhymed
   (not "Sem Rimas") · ABBA, ABAB, or Mista pattern · Medida Nova.
+- **Soneto Petrarquiano / Camoniano** → same metre/rhyme presence as
+  above, but pattern is ABBA (the octave) or Mista (octave ABBA + a
+  differently-rhymed sestet) — never ABAB alone.
+- **Soneto Shakespeariano** → same metre/rhyme presence, but pattern is
+  ABAB (the three quatrains) or Mista (quatrains ABAB + a couplet that
+  breaks the pattern) — never ABBA alone.
 - **Haikai / Tanka** → Heterométrico · verses of 5 and 7 syllables · Sem
   Rimas · Tradição Importada.
 - **Lira Brasileira** → Heterométrico · verses of 6 and 10 syllables ·

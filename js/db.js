@@ -136,15 +136,35 @@ export function migrarRegistroTomSonoridade(escansoes) {
 }
 migrarRegistroTomSonoridade(db.escansoes);
 
-// Templates de fábrica de Progressão Morfofuncional — hoje só Soneto
-// (Quartetos/Proposição + Tercetos/Resolução nas Unidades,
-// Tensão/Volta/Síntese nos Eventos). `embutido: true` impede edição
-// direta (só duplicar — ver forms.js); reseeda se faltar (ex.: db
-// zerado, ou template embutido apagado por engano em alguma versão
+// Templates de fábrica de Progressão Morfofuncional — 2 variantes de
+// Soneto (Petrarquiano/Camoniano e Shakespeariano; ver FORMAS_POEMA em
+// utils.js pro lado da Sonoridade, que mantém um terceiro valor,
+// `Soneto (Genérico)`, sem equivalente aqui). `embutido: true` impede
+// edição direta (só duplicar — ver forms.js); reseeda se faltar (ex.:
+// db zerado, ou template embutido apagado por engano em alguma versão
 // antiga), sem duplicar se já existir (checa por nome+embutido).
+//
+// Não existe `Soneto (Genérico)` aqui de propósito: um template é
+// sempre um chute concreto de forma estrófica (quantas estrofes,
+// quantos versos, que função discursiva cada uma carrega), e não há
+// uma "forma genérica de soneto" que seja estruturalmente diferente de
+// Petrarquiano ou Shakespeariano — só uma das duas, ou nenhuma (poema
+// montado à mão, sem template). Um template genérico repetindo o
+// conteúdo do Petrarquiano não define nada de diferente, então não
+// estava fazendo o trabalho de um template (ver decisoes.md). Os
+// campos Forma do Poema (Sonoridade) e Progressão Morfofuncional não
+// são amarrados um ao outro no código — um poema classificado como
+// `Soneto (Genérico)` na Sonoridade pode receber o template
+// Petrarquiano/Camoniano ou Shakespeariano aqui (o que bater com a
+// estrofação real), ou nenhum.
 export const TEMPLATES_ESTRUTURA_EMBUTIDOS = [
+    // Octeto (2 Quartetos) = Proposição, sexteto (2 Tercetos) =
+    // Resolução — a volta clássica cai exatamente na virada
+    // octeto→sexteto (verso 9), daí o evento `Volta` entre `Tensão`
+    // (construção ao longo do octeto) e `Síntese` (resolução no
+    // sexteto).
     {
-        nome: 'Soneto',
+        nome: 'Soneto Petrarquiano / Camoniano',
         unidades: [
             { unidadeEstrofica: 'Quartetos', unidadeDiscursiva: 'Proposição' },
             { unidadeEstrofica: 'Tercetos', unidadeDiscursiva: 'Resolução' },
@@ -153,6 +173,34 @@ export const TEMPLATES_ESTRUTURA_EMBUTIDOS = [
             { progressaoDialetica: 'Tensão' },
             { progressaoDialetica: 'Volta' },
             { progressaoDialetica: 'Síntese' },
+        ],
+    },
+    // Estrutura bem diferente da petrarquiana/camoniana — 3 Quartetos
+    // (não 2) seguidos de um Dístico (não 2 Tercetos), refletindo o
+    // ABAB ABAB ABAB GG do original inglês. Rótulos discursivos dos 3
+    // quartetos seguem a leitura crítica corrente da forma: 1º expõe o
+    // tema, 2º desenvolve, 3º intensifica/complica antes da virada; o
+    // Dístico final concentra Volta (o "turno" característico do
+    // soneto shakespeariano cai só nos 2 últimos versos, não entre
+    // estrofes maiores como na forma petrarquiana) e Síntese num só
+    // par de versos — por isso um único evento `Volta` faz as vezes
+    // dos dois no template (a distinção entre "virada" e "síntese"
+    // dentro do dístico fica pra classificação manual, caso o poema em
+    // questão realmente separe as duas coisas em versos diferentes).
+    // `Dístico` já constava como sugestão-base em
+    // atualizarDatalistsEstruturaTextual (forms.js) antes mesmo dessa
+    // mudança — sinal de que já era esperado precisar dele aqui.
+    {
+        nome: 'Soneto Shakespeariano',
+        unidades: [
+            { unidadeEstrofica: 'Quarteto I', unidadeDiscursiva: 'Proposição' },
+            { unidadeEstrofica: 'Quarteto II', unidadeDiscursiva: 'Desenvolvimento' },
+            { unidadeEstrofica: 'Quarteto III', unidadeDiscursiva: 'Intensificação' },
+            { unidadeEstrofica: 'Dístico', unidadeDiscursiva: 'Resolução' },
+        ],
+        eventos: [
+            { progressaoDialetica: 'Tensão' },
+            { progressaoDialetica: 'Volta' },
         ],
     },
 ];
