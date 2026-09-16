@@ -69,9 +69,12 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // próximos sub-passos.
     // { id, poemaId, formaPoema, regularidadeMetrica, tamanhoVerso,
     //   esquemaRimasPresenca, esquemaRimasPadrao, origemTradicao,
-    //   registro, tom, escansaoLinhas: [], rimas: [] }
+    //   peMetrico, registro, tom, escansaoLinhas: [], rimas: [] }
     // registro/tom eram um único campo (tomRegistro) — ver
-    // migrarRegistroTomSonoridade.
+    // migrarRegistroTomSonoridade. peMetrico é campo novo (ver
+    // PES_METRICOS em utils.js) — trava bidirecional com tamanhoVerso,
+    // por enquanto sem cálculo de divergência (isso é o sub-passo 2 do
+    // Molde, replicado aqui por simetria).
     escansoes: [],
     // Análise de Progressão Morfofuncional (menu "Morfofuncionalidade") —
     // Unidades (forma+função de uma seção do texto: unidadeEstrofica +
@@ -107,6 +110,31 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // entra aqui por renomear um embutido (isso vira fork — ver
     // salvarTemplateEstrutura em forms.js), só por excluir mesmo.
     templatesEstruturaOcultos: [],
+    // Moldes (aba Criação) — rascunho estruturado, o inverso de
+    // escansoes: aqui a classificação vem ANTES do texto, como meta a
+    // cumprir, não como constatação sobre um poema já escrito. Bloco 1
+    // (dados + tabela) cobre só título + os mesmos 6 campos de
+    // classificação da Sonoridade (reaproveita FORMAS_POEMA/
+    // REGULARIDADES_METRICAS/etc. e calcularOpcoesCascataSonoridade —
+    // mesma taxonomia, mesma matriz de validação em cascata; ver
+    // utils.js). Sem vínculo com poemaId nem grade de versos ainda —
+    // isso é Bloco 2 (editor de escrita orientado pela meta) e Bloco 3
+    // (pareamento de rima + promoção a Poema), que vão estender este
+    // objeto com moldeLinhas/paresRima/poemaId/status quando chegarem,
+    // mesmo espírito incremental de escansoes (ver comentário acima).
+    // { id, titulo, formaPoema, regularidadeMetrica, tamanhoVerso,
+    //   esquemaRimasPresenca, esquemaRimasPadrao, origemTradicao,
+    //   peMetrico, registro, tom, moldeLinhas: [], paresRima: [],
+    //   poemaId, status }
+    // Bloco 3 (Pareamento de Rima + Promoção a Poema, ver
+    // manutencao/criacao-molde.md): `paresRima` no mesmo formato de
+    // escansoes.rimas (`{ id, a: { linha, silabas }, b: { linha,
+    // silabas } }`); `poemaId` (nulo até a promoção) e `status`
+    // ('em andamento' / 'promovido') controlam a "Promover a Poema" —
+    // o Molde original nunca é apagado na promoção, fica arquivado
+    // como origem/processo do Poema (ver migrarCamposBloco3Molde,
+    // abaixo, pra Moldes salvos antes desses três campos existirem).
+    moldes: [],
 };
 
 // Garante que dados importados de versões antigas tenham os campos novos
@@ -119,6 +147,21 @@ if (!db.escansoes) db.escansoes = [];
 if (!db.estruturasTextuais) db.estruturasTextuais = [];
 if (!db.templatesEstrutura) db.templatesEstrutura = [];
 if (!db.templatesEstruturaOcultos) db.templatesEstruturaOcultos = [];
+if (!db.moldes) db.moldes = [];
+
+// Moldes salvos antes do Bloco 3 (Pareamento de Rima + Promoção a
+// Poema) não tinham `paresRima`/`poemaId`/`status` — preenche os
+// valores padrão sem mexer em Molde que já tiver algum dos três (ex.:
+// reimportação de um backup já migrado). Idempotente, mesmo espírito
+// de migrarRegistroTomSonoridade logo abaixo.
+export function migrarCamposBloco3Molde(moldes) {
+    moldes.forEach((m) => {
+        if (m.paresRima === undefined) m.paresRima = [];
+        if (m.status === undefined) m.status = 'em andamento';
+        if (m.poemaId === undefined) m.poemaId = null;
+    });
+}
+migrarCamposBloco3Molde(db.moldes);
 
 // Migração: `tomRegistro` (Tom/Registro, 3 opções) virou dois campos
 // independentes — `registro` (formalidade da linguagem, 5 opções) e
@@ -966,6 +1009,8 @@ export async function importarDB(novoDb) {
     db.templatesEstrutura = novoDb.templatesEstrutura || [];
     db.templatesEstruturaOcultos = novoDb.templatesEstruturaOcultos || [];
     migrarTemplatesEstruturaEmbutidos(db.templatesEstrutura, db.templatesEstruturaOcultos);
+    db.moldes = novoDb.moldes || [];
+    migrarCamposBloco3Molde(db.moldes);
     migrarStatusPoemas(db.poemas);
     migrarIntertextualidadePoemas(db.poemas);
     migrarReferenciasParaEcos(db.poemas);
@@ -1118,6 +1163,7 @@ const ROTULOS_COL = {
     escansoes: 'Escansão',
     estruturasTextuais: 'Progressão Morfofuncional',
     templatesEstrutura: 'Template de Progressão',
+    moldes: 'Molde',
 };
 
 // Plural + particípio com concordância de gênero certa pro toast de
@@ -1214,6 +1260,19 @@ export function calcularImpactoExclusaoEpoca(dbRef, epocaId) {
         poemasIds: (dbRef.poemas || []).filter(acha).map((p) => p.id),
         prosasIds: (dbRef.prosas || []).filter(acha).map((p) => p.id),
     };
+}
+
+/**
+ * Quem referencia o Poema `poemaId` do lado de Moldes — o(s) Molde(s)
+ * de origem que foram promovidos a esse Poema (`status: 'promovido'`,
+ * `poemaId` apontando pra ele; ver "Promover a Poema" em forms.js).
+ * Mesmo espírito de calcularImpactoExclusaoPessoa/Autor/Época acima:
+ * excluir o Poema não pode deixar o Molde apontando pra um id que não
+ * existe mais.
+ */
+export function calcularImpactoExclusaoPoema(dbRef, poemaId) {
+    const moldesIds = (dbRef.moldes || []).filter((m) => m.poemaId == poemaId).map((m) => m.id);
+    return { moldesIds };
 }
 
 // ─── Mesclar (Pessoa/Época) ────────────────────────────────────
@@ -1418,6 +1477,29 @@ function _removerParaExclusao(col, id) {
         });
     }
 
+    // Excluir Poema: se ele era o destino da promoção de algum Molde
+    // (Bloco 3 da aba Criação, ver calcularImpactoExclusaoPoema acima),
+    // esse Molde volta a "em andamento" (status/poemaId limpos) — senão
+    // o botão da coluna e o selo do modal continuariam apontando pra um
+    // Poema que não existe mais. O Molde em si nunca é apagado, só perde
+    // o vínculo — decisão do Victor. Guarda status/poemaId anteriores
+    // pra restaurar no "Desfazer", mesmo padrão de vinculosEpocaRemovidos
+    // acima.
+    let vinculosMoldeRemovidos = [];
+    if (col === 'poemas') {
+        (db.moldes || []).forEach((m) => {
+            if (m.poemaId == id) {
+                vinculosMoldeRemovidos.push({
+                    moldeId: m.id,
+                    statusAnterior: m.status,
+                    poemaIdAnterior: m.poemaId,
+                });
+                m.status = 'em andamento';
+                m.poemaId = null;
+            }
+        });
+    }
+
     // Excluir Grupo: some do cadastro e some de `grupoIds` de toda
     // Pessoa que pertencia a ele — a Pessoa continua existindo, só deixa
     // de fazer parte desse grupo específico (ela pode estar em outros).
@@ -1495,6 +1577,7 @@ function _removerParaExclusao(col, id) {
         vinculosGrupoRemovidos,
         vinculosGrupoDiretoRemovidos,
         vinculosEpocaRemovidos,
+        vinculosMoldeRemovidos,
         capasParaDescartar,
         posicaoRemovida,
         irmaos,
@@ -1516,6 +1599,7 @@ function _restaurar(removido) {
         vinculosGrupoRemovidos,
         vinculosGrupoDiretoRemovidos,
         vinculosEpocaRemovidos,
+        vinculosMoldeRemovidos,
         posicaoRemovida,
         irmaos,
         ocultoAdicionado,
@@ -1552,6 +1636,13 @@ function _restaurar(removido) {
     (vinculosEpocaRemovidos || []).forEach(({ itemCol, itemId, epocaId }) => {
         const it = db[itemCol]?.find((i) => i.id == itemId);
         if (it && it.epocaRetratada) it.epocaRetratada.epocaId = epocaId;
+    });
+    (vinculosMoldeRemovidos || []).forEach(({ moldeId, statusAnterior, poemaIdAnterior }) => {
+        const m = db.moldes?.find((i) => i.id == moldeId);
+        if (m) {
+            m.status = statusAnterior;
+            m.poemaId = poemaIdAnterior;
+        }
     });
 }
 
@@ -1692,6 +1783,21 @@ export function deleteItem(col, id, aposConfirmar = null) {
             );
         }
         rotulo = partes.length ? `Grupo · ${partes.join(' e ')}` : 'Grupo';
+    }
+
+    // Para Poema, avisa quando ele é a origem de algum Molde promovido
+    // (Bloco 3 da aba Criação) — excluir o Poema devolve o Molde pra
+    // "em andamento" (decisão do Victor, ver _removerParaExclusao),
+    // então o toast já adianta isso em vez do usuário só descobrir
+    // depois na aba Criação. Mesmo padrão de aviso de Pessoa/Autor/Época
+    // acima.
+    if (col === 'poemas') {
+        const { moldesIds } = calcularImpactoExclusaoPoema(db, id);
+        const total = moldesIds.length;
+        rotulo =
+            total > 0
+                ? `Poema · ${total} Molde${total !== 1 ? 's' : ''} de origem voltará${total !== 1 ? 'ão' : ''} a "em andamento"`
+                : 'Poema';
     }
 
     // Avisa quando o Template é um dos de fábrica: excluir aqui é

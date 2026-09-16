@@ -30,14 +30,29 @@ document.body.innerHTML = `
             <thead><tr id="cabecalho-sonoridade"></tr></thead>
             <tbody id="lista-sonoridade"></tbody>
         </table>
+
+        <div id="painel-colunas-moldes"></div>
+        <div id="painel-acoes-moldes"></div>
+        <table>
+            <thead><tr id="cabecalho-moldes"></tr></thead>
+            <tbody id="lista-moldes"></tbody>
+        </table>
+        <div id="paginacao-moldes"></div>
     </main>
 `;
 
 const { db } = await import('../js/db.js');
-const { renderLivros, renderPoemas, renderGrupos, renderSonoridade, setFiltroSonoridade } =
-    await import('../js/render-listas.js');
+const {
+    renderLivros,
+    renderPoemas,
+    renderGrupos,
+    renderSonoridade,
+    setFiltroSonoridade,
+    renderMoldes,
+} = await import('../js/render-listas.js');
 const { toggleSelecao } = await import('../js/selecao-massa.js');
 const { toggleColuna } = await import('../js/colunas.js');
+const { toggleAcaoColuna } = await import('../js/acoes-coluna.js');
 const {
     adicionarColunaContagem,
     removerColunaContagem,
@@ -311,6 +326,147 @@ describe('Grupos — exclusão com cascata em gruposDiretos (DOM real via happy-
         assert.equal(db.grupos.length, 1);
         assert.equal(db.grupos[0].nome, 'Família');
         assert.deepEqual(db.poemas[0].gruposDiretos, [10]);
+    });
+});
+
+describe('Poemas — exclusão desvincula Molde promovido (DOM real via happy-dom)', () => {
+    beforeEach(() => {
+        limparDb();
+        db.moldes.length = 0;
+    });
+
+    it('mensagem de confirmação avisa quando o Poema é origem de um Molde promovido', () => {
+        db.poemas.push({ id: 100, titulo: 'Poema A', sequencia: 1 });
+        db.moldes.push({ id: 5, titulo: 'Molde A', status: 'promovido', poemaId: 100 });
+        renderPoemas();
+
+        document.querySelector('[data-action="excluir-item"][data-tipo="poemas"]').click();
+
+        const rotulo = document.getElementById('excl-rotulo').textContent;
+        assert.match(rotulo, /1 Molde de origem voltará a "em andamento"/);
+    });
+
+    it('confirmar a exclusão devolve o Molde a "em andamento" (status/poemaId limpos)', () => {
+        db.poemas.push({ id: 100, titulo: 'Poema A', sequencia: 1 });
+        db.moldes.push({ id: 5, titulo: 'Molde A', status: 'promovido', poemaId: 100 });
+        renderPoemas();
+
+        document.querySelector('[data-action="excluir-item"][data-tipo="poemas"]').click();
+        document.getElementById('excl-confirmar').click();
+
+        assert.equal(db.poemas.length, 0);
+        assert.equal(db.moldes.length, 1, 'o Molde continua existindo, só perde o vínculo');
+        assert.equal(db.moldes[0].status, 'em andamento');
+        assert.equal(db.moldes[0].poemaId, null);
+    });
+
+    it('"Desfazer" restaura o Poema e o vínculo de promoção no Molde', () => {
+        db.poemas.push({ id: 100, titulo: 'Poema A', sequencia: 1 });
+        db.moldes.push({ id: 5, titulo: 'Molde A', status: 'promovido', poemaId: 100 });
+        renderPoemas();
+
+        document.querySelector('[data-action="excluir-item"][data-tipo="poemas"]').click();
+        document.getElementById('excl-confirmar').click();
+        assert.equal(db.moldes[0].status, 'em andamento');
+
+        document.querySelector('#avisos-toast button')?.click();
+
+        assert.equal(db.poemas.length, 1);
+        assert.equal(db.moldes[0].status, 'promovido');
+        assert.equal(db.moldes[0].poemaId, 100);
+    });
+
+    it('excluir um Poema sem nenhum Molde vinculado não mexe em db.moldes', () => {
+        db.poemas.push({ id: 100, titulo: 'Poema A', sequencia: 1 });
+        db.moldes.push({ id: 5, titulo: 'Molde solto', status: 'em andamento', poemaId: null });
+        renderPoemas();
+
+        document.querySelector('[data-action="excluir-item"][data-tipo="poemas"]').click();
+        document.getElementById('excl-confirmar').click();
+
+        assert.equal(db.moldes[0].status, 'em andamento');
+        assert.equal(db.moldes[0].poemaId, null);
+    });
+});
+
+describe('Moldes — controle de Colunas e Ações (DOM real via happy-dom)', () => {
+    beforeEach(() => {
+        db.moldes.length = 0;
+        localStorage.clear();
+        document.getElementById('modal-confirmar-exclusao')?.remove();
+        document.getElementById('avisos-toast')?.remove();
+    });
+
+    it('todas as 8 colunas (Status + 7 de classificação) aparecem por padrão', () => {
+        db.moldes.push({ id: 1, titulo: 'Molde A', status: 'em andamento', poemaId: null });
+        renderMoldes();
+
+        const labels = document.getElementById('cabecalho-moldes').querySelectorAll('th');
+        // ID/Título + Status + 7 colunas de classificação + Ações
+        assert.equal(labels.length, 10);
+    });
+
+    it('desligar uma coluna (toggleColuna) some com ela do cabeçalho e das linhas', () => {
+        db.moldes.push({
+            id: 1,
+            titulo: 'Molde A',
+            formaPoema: 'Soneto (Genérico)',
+            status: 'em andamento',
+            poemaId: null,
+        });
+        renderMoldes();
+        assert.match(document.getElementById('cabecalho-moldes').textContent, /Forma do Poema/);
+
+        toggleColuna('moldes', 'formaPoema', false);
+
+        assert.doesNotMatch(
+            document.getElementById('cabecalho-moldes').textContent,
+            /Forma do Poema/,
+        );
+        assert.doesNotMatch(document.getElementById('lista-moldes').textContent, /Soneto/);
+    });
+
+    it('por padrão os 3 botões (Editar/Promover/Excluir) aparecem, sem Ver/Baixar', () => {
+        db.moldes.push({ id: 1, titulo: 'Molde A', status: 'em andamento', poemaId: null });
+        renderMoldes();
+
+        assert.ok(document.querySelector('[data-action="editar-molde"][data-id="1"]'));
+        assert.ok(document.querySelector('[data-action="promover-molde"][data-id="1"]'));
+        assert.ok(
+            document.querySelector('[data-action="excluir-item"][data-tipo="moldes"][data-id="1"]'),
+        );
+        assert.equal(document.querySelectorAll('[data-action="ver-molde"]').length, 0);
+    });
+
+    it('desligar a ação "excluir" (toggleAcaoColuna) some só com o botão Excluir', () => {
+        db.moldes.push({ id: 1, titulo: 'Molde A', status: 'em andamento', poemaId: null });
+        renderMoldes();
+
+        toggleAcaoColuna('moldes', 'excluir', false);
+
+        assert.equal(
+            document.querySelectorAll('[data-action="excluir-item"][data-tipo="moldes"]').length,
+            0,
+        );
+        assert.ok(document.querySelector('[data-action="editar-molde"]'), 'Editar continua ativo');
+        assert.ok(
+            document.querySelector('[data-action="promover-molde"]'),
+            'Promover continua ativo',
+        );
+    });
+
+    it('desligar a ação "promover" some só o botão da coluna Ações — o link da coluna Status continua (é conteúdo, não ação)', () => {
+        db.moldes.push({ id: 1, titulo: 'Molde A', status: 'promovido', poemaId: 77 });
+        renderMoldes();
+        // 2 ocorrências: o badge da coluna Status + o ícone da coluna Ações
+        assert.equal(
+            document.querySelectorAll('[data-action="editar-poema"][data-id="77"]').length,
+            2,
+        );
+
+        toggleAcaoColuna('moldes', 'promover', false);
+
+        assert.equal(document.querySelectorAll('[data-action="editar-poema"]').length, 1);
     });
 });
 

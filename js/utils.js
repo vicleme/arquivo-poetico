@@ -3286,3 +3286,125 @@ export function avisoMonorrimaAtipica(formaPoema, esquemaRimasPadrao) {
     if (!formaPoema || FORMAS_SEM_AVISO_MONORRIMA.includes(formaPoema)) return null;
     return 'Atenção: a monorrima absoluta é atípica para este formato estrutural.';
 }
+
+// ─── Pé Métrico — catálogo + trava bidirecional com Tamanho do Verso ──
+// Campo novo (motivado pelo Molde, Bloco 2 sub-passo 2 — ver
+// manutencao/criacao-molde.md — e replicado também em Sonoridade por
+// pedido do Victor, pra manter simetria entre as duas telas de
+// classificação). Não nasceu junto com os outros 7 campos porque só fez
+// sentido quando o Molde precisou de uma "tônica esperada" mais rica do
+// que "última tônica cai na sílaba N" (o que calcularDivergenciaSilabas
+// já cobria). Dois tipos:
+// - 'continuo': o padrão de sílaba forte se repete verso afora
+//   (posicaoInicial + intervalo), sem depender de nenhum Tamanho do
+//   Verso fixo — Iambo, Troqueu, Dáctilo, Anapéstico, Anfibráquio, Peão
+//   Quarto/Corimbo (este último, pé de 4 sílabas contestado pela maioria
+//   dos teóricos da métrica portuguesa — Said Ali, Cavalcanti Proença —
+//   que só reconhecem pés de 2-3 sílabas por causa do fenômeno da tônica
+//   secundária; mantido por pedido explícito do Victor. O rótulo já
+//   trouxe "— pé raro/contestado" no select, mas o Victor pediu pra
+//   remover — a ressalva sobre o pé não ser consensual continua
+//   documentada aqui, só não aparece mais na UI).
+// - 'fixo': forma nomeada de sílaba fixa — só as posições em
+//   `posicoesObrigatorias` são exigidas, o resto do verso fica livre —
+//   Decassílabo Heroico, Decassílabo Sáfico, Martelo Agalopado (cordel)
+//   e Pé de Arte Maior, cada um amarrado a um `tamanhoVersoExigido`.
+// Espondeu (forte-forte) e Pirríquio (fraca-fraca) ficam de fora de
+// propósito, por decisão do Victor: são pés de substituição usados
+// pontualmente no meio de um verso que segue outro metro, não um padrão
+// que o verso inteiro segue — não têm "posição esperada" que faça
+// sentido calcular, então nem entram no catálogo (nem como opção
+// documentada/não verificada).
+export const PES_METRICOS = [
+    {
+        chave: 'iambo',
+        rotulo: 'Iambo (fraca-forte)',
+        tipo: 'continuo',
+        posicaoInicial: 2,
+        intervalo: 2,
+    },
+    {
+        chave: 'troqueu',
+        rotulo: 'Troqueu (forte-fraca)',
+        tipo: 'continuo',
+        posicaoInicial: 1,
+        intervalo: 2,
+    },
+    {
+        chave: 'dactilo',
+        rotulo: 'Dáctilo (forte-fraca-fraca)',
+        tipo: 'continuo',
+        posicaoInicial: 1,
+        intervalo: 3,
+    },
+    {
+        chave: 'anapestico',
+        rotulo: 'Anapéstico (fraca-fraca-forte)',
+        tipo: 'continuo',
+        posicaoInicial: 3,
+        intervalo: 3,
+    },
+    {
+        chave: 'anfibraquio',
+        rotulo: 'Anfibráquio (fraca-forte-fraca)',
+        tipo: 'continuo',
+        posicaoInicial: 2,
+        intervalo: 3,
+    },
+    {
+        chave: 'peao-quarto',
+        rotulo: 'Peão Quarto / Corimbo (fraca-fraca-fraca-forte)',
+        tipo: 'continuo',
+        posicaoInicial: 4,
+        intervalo: 4,
+    },
+    {
+        chave: 'decassilabo-heroico',
+        rotulo: 'Decassílabo Heroico',
+        tipo: 'fixo',
+        posicoesObrigatorias: [6, 10],
+        tamanhoVersoExigido: 'Decassílabo (10)',
+    },
+    {
+        chave: 'decassilabo-safico',
+        rotulo: 'Decassílabo Sáfico',
+        tipo: 'fixo',
+        posicoesObrigatorias: [4, 8, 10],
+        tamanhoVersoExigido: 'Decassílabo (10)',
+    },
+    {
+        chave: 'martelo-agalopado',
+        rotulo: 'Martelo Agalopado',
+        tipo: 'fixo',
+        posicoesObrigatorias: [2, 5, 8, 10],
+        tamanhoVersoExigido: 'Decassílabo (10)',
+    },
+    {
+        chave: 'arte-maior',
+        rotulo: 'Pé de Arte Maior',
+        tipo: 'fixo',
+        posicoesObrigatorias: [2, 5, 8, 11],
+        tamanhoVersoExigido: 'Alexandrino / Dodecassílabo (12)',
+    },
+];
+
+// Metade 1 da trava bidirecional: opções de Pé Métrico disponíveis pra
+// um Tamanho do Verso atual — pés contínuos sempre aparecem (não
+// dependem de tamanho fixo); pés fixos só aparecem quando o Tamanho já
+// selecionado bate com o que exigem, ou quando nenhum Tamanho foi
+// escolhido ainda (nada a conflitar, então todos aparecem).
+export function calcularOpcoesPeMetrico(tamanhoVerso) {
+    return PES_METRICOS.filter(
+        (p) => p.tipo === 'continuo' || !tamanhoVerso || p.tamanhoVersoExigido === tamanhoVerso,
+    ).map((p) => p.rotulo);
+}
+
+// Metade 2 da trava: um Pé Métrico fixo já escolhido força o Tamanho do
+// Verso pro valor que exige (mesmo espírito de MATRIZ_VALIDACAO_SONORIDADE
+// forçando Tamanho a partir de Forma do Poema, só que aqui a via inversa
+// também existe — ver calcularOpcoesPeMetrico acima). `null` quando o Pé
+// Métrico é contínuo, não reconhecido, ou vazio — nada a forçar.
+export function calcularTamanhoVersoForcadoPorPe(peMetrico) {
+    const pe = PES_METRICOS.find((p) => p.rotulo === peMetrico);
+    return pe && pe.tipo === 'fixo' ? pe.tamanhoVersoExigido : null;
+}

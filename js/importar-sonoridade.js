@@ -34,8 +34,16 @@ import {
     ACENTUACOES_RIMA,
     TONALIDADES_RIMA,
     RIQUEZAS_RIMA,
+    PES_METRICOS,
 } from './utils.js';
 import { construirLinhasIniciais, dividirSilabas } from './editor-sonoridade.js';
+
+// Lista fechada de grafias válidas de Pé Métrico — mesmos `rotulo` de
+// PES_METRICOS (utils.js), não as `chave` internas; é a grafia que
+// aparece no <select>/no JSON exportado (ver camposClassificacao em
+// exportar-sonoridade.js e popularSelectOpcoes('son-pe-metrico', ...)
+// em forms.js).
+const PES_METRICOS_ROTULOS = PES_METRICOS.map((p) => p.rotulo);
 
 // Campo do payload → { chave em `valores`, lista fechada } — usado tanto
 // pra validar quanto, depois, pra popular os selects (mesma ordem dos 7
@@ -48,6 +56,7 @@ const CAMPOS_CLASSIFICACAO = [
         opcoes: REGULARIDADES_METRICAS,
     },
     { chave: 'tamanhoVerso', label: 'Tamanho do Verso', opcoes: TAMANHOS_VERSO },
+    { chave: 'peMetrico', label: 'Pé Métrico', opcoes: PES_METRICOS_ROTULOS },
     {
         chave: 'esquemaRimasPresenca',
         label: 'Esquema de Rimas (Presença)',

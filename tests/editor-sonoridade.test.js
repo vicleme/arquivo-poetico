@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 
 const {
     construirLinhasIniciais,
+    dividirSilabas,
     calcularMaxSilabas,
     calcularLetrasRima,
     calcularPosicaoPar,
@@ -22,6 +23,8 @@ const {
     obterRimasSonoridade,
     obterEcosSonoridade,
     celulasComEco,
+    celulasDivergentesPeMetrico,
+    calcularLetraRimaEsperada,
     mostrarEcosAtivo,
     definirMostrarEcos,
 } = await import('../js/editor-sonoridade.js');
@@ -77,6 +80,36 @@ describe('construirLinhasIniciais', () => {
     it('remove só a tag de um elemento HTML, preservando o conteúdo', () => {
         const linhas = construirLinhasIniciais('<div style="color:red">Verso</div> normal');
         assert.equal(linhas[0].texto, 'Verso normal');
+    });
+
+    it('escapa barra já presente no texto do poema, pra não nascer pré-dividida', () => {
+        const linhas = construirLinhasIniciais('pós-p/a/r/t/i/d/a');
+        assert.equal(linhas[0].texto, 'pós-p\\/a\\/r\\/t\\/i\\/d\\/a');
+        // Como o resto da função documenta: sem barra "de verdade" (não
+        // escapada), o verso inteiro é uma única sílaba até o usuário
+        // começar a dividir — mesmo tendo barra no texto original.
+        assert.equal(dividirSilabas(linhas[0].texto).length, 1);
+    });
+});
+
+describe('dividirSilabas', () => {
+    it('divide pela barra não escapada', () => {
+        assert.deepEqual(dividirSilabas('Quan/do o/ sol'), ['Quan', 'do o', 'sol']);
+    });
+
+    it('barra escapada (\\/) não divide e volta a ser barra literal na sílaba', () => {
+        assert.deepEqual(dividirSilabas('p\\/a\\/r\\/t\\/i\\/d\\/a'), ['p/a/r/t/i/d/a']);
+    });
+
+    it('mistura barra real com barra escapada na mesma linha', () => {
+        // Hífen é removido do segmento como sempre (não é exclusividade
+        // desse teste) — o que se verifica aqui é só a barra escapada
+        // sobrevivendo dentro do mesmo segmento que a divisão real.
+        assert.deepEqual(dividirSilabas('pós-p\\/a\\/ra/da'), ['pósp/a/ra', 'da']);
+    });
+
+    it('ainda remove hífen ortográfico normalmente ao redor de barra escapada', () => {
+        assert.deepEqual(dividirSilabas('di-ze\\/-me'), ['dize/me']);
     });
 });
 
@@ -993,6 +1026,185 @@ describe('celulasComEco', () => {
 
     it('sem ecos, o mapa vem vazio', () => {
         assert.equal(celulasComEco([]).size, 0);
+    });
+});
+
+describe('celulasDivergentesPeMetrico', () => {
+    it('pé contínuo (iambo): marca as posições pares não-tônicas até o total real de sílabas', () => {
+        // "Quan/do o/ sol/ se/ pôs" = 5 sílabas reais, tônicas em [1, 3]
+        // (posições 2 e 4, 0-based) — iambo espera 2, 4 (todas pares até
+        // 5): posição 2 já está marcada, só a 4 diverge.
+        const linhas = [
+            { tipo: 'verso', numero: 1, texto: 'Quan/do o/ sol/ se/ pôs', tonicas: [1] },
+        ];
+        const mapa = celulasDivergentesPeMetrico(linhas, 'Iambo (fraca-forte)');
+        assert.equal(mapa.get('0:1'), undefined);
+        assert.equal(mapa.get('0:3'), true);
+        assert.equal(mapa.size, 1);
+    });
+
+    it('pé fixo (Decassílabo Heroico): só cobra as posições obrigatórias que cabem no verso', () => {
+        // Verso com só 8 sílabas reais (ainda sendo escrito) — a posição
+        // 10 não existe ainda, não pode ser cobrada; só a 6 é verificada.
+        const oitoSilabas = 'a/a/a/a/a/a/a/a';
+        const linhas = [{ tipo: 'verso', numero: 1, texto: oitoSilabas, tonicas: [] }];
+        const mapa = celulasDivergentesPeMetrico(linhas, 'Decassílabo Heroico');
+        assert.equal(mapa.get('0:5'), true); // posição 6, 0-based
+        assert.equal(mapa.get('0:9'), undefined); // posição 10 não cabe ainda
+        assert.equal(mapa.size, 1);
+    });
+
+    it('nenhuma divergência quando todas as posições esperadas já estão marcadas', () => {
+        const dezSilabas = 'a/a/a/a/a/a/a/a/a/a';
+        const linhas = [{ tipo: 'verso', numero: 1, texto: dezSilabas, tonicas: [5, 9] }];
+        assert.equal(celulasDivergentesPeMetrico(linhas, 'Decassílabo Heroico').size, 0);
+    });
+
+    it('sobrar tônica fora do padrão nunca gera divergência (não-punitivo)', () => {
+        const dezSilabas = 'a/a/a/a/a/a/a/a/a/a';
+        const linhas = [{ tipo: 'verso', numero: 1, texto: dezSilabas, tonicas: [0, 5, 9] }];
+        assert.equal(celulasDivergentesPeMetrico(linhas, 'Decassílabo Heroico').size, 0);
+    });
+
+    it('linha vazia/quebra de estrofe é ignorada', () => {
+        const linhas = [{ tipo: 'vazia' }];
+        assert.equal(celulasDivergentesPeMetrico(linhas, 'Iambo (fraca-forte)').size, 0);
+    });
+
+    it('sem Pé Métrico selecionado (ou rótulo desconhecido), mapa vem vazio', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'Quan/do o/ sol', tonicas: [] }];
+        assert.equal(celulasDivergentesPeMetrico(linhas, '').size, 0);
+        assert.equal(celulasDivergentesPeMetrico(linhas, 'Pé Inexistente').size, 0);
+    });
+
+    it('linha.tonicas ausente conta como nenhuma tônica marcada — padrão inteiro diverge', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'Quan/do o/ sol/ se' }];
+        const mapa = celulasDivergentesPeMetrico(linhas, 'Iambo (fraca-forte)');
+        assert.equal(mapa.get('0:1'), true);
+        assert.equal(mapa.get('0:3'), true);
+        assert.equal(mapa.size, 2);
+    });
+});
+
+// ─── calcularLetraRimaEsperada — Molde, Bloco 2 sub-passo 3 (contraparte
+// prescritiva de calcularLetrasRima: aqui não existe par confirmado
+// nenhum, a letra vem só do esquema declarado) ────────────────────────
+describe('calcularLetraRimaEsperada', () => {
+    const verso = () => ({ tipo: 'verso' });
+    const vazia = () => ({ tipo: 'vazia' });
+
+    it('Presença diferente de "Rimado" — mapa sempre vazio, mesmo com Padrão preenchido', () => {
+        const linhas = [verso(), verso(), verso(), verso()];
+        assert.equal(
+            calcularLetraRimaEsperada(linhas, 'Sem Rimas / Livre', 'Alternada / Cruzada (ABAB)')
+                .size,
+            0,
+        );
+        assert.equal(calcularLetraRimaEsperada(linhas, '', 'Alternada / Cruzada (ABAB)').size, 0);
+    });
+
+    it('Padrão sem fórmula fixa (Mista/Completa) — mapa vazio', () => {
+        const linhas = [verso(), verso(), verso(), verso()];
+        assert.equal(calcularLetraRimaEsperada(linhas, 'Rimado', 'Mista / Completa').size, 0);
+    });
+
+    it('Monorrima Absoluta (AAAA) — todo verso é A, inclusive atravessando quebra de estrofe', () => {
+        const linhas = [verso(), verso(), vazia(), verso()];
+        const letras = calcularLetraRimaEsperada(linhas, 'Rimado', 'Monorrima Absoluta (AAAA)');
+        assert.equal(letras.get(0), 'A');
+        assert.equal(letras.get(1), 'A');
+        assert.equal(letras.get(3), 'A');
+        assert.equal(letras.has(2), false); // linha vazia nunca entra no mapa
+    });
+
+    it('Monorrima por Blocos — só quebra de estrofe avança a letra, não uma contagem fixa de versos', () => {
+        const linhas = [verso(), verso(), verso(), vazia(), verso(), verso()];
+        const letras = calcularLetraRimaEsperada(
+            linhas,
+            'Rimado',
+            'Monorrima por Blocos / Continuada (AAAA BBBB CCCC)',
+        );
+        assert.equal(letras.get(0), 'A');
+        assert.equal(letras.get(1), 'A');
+        assert.equal(letras.get(2), 'A');
+        assert.equal(letras.get(4), 'B');
+        assert.equal(letras.get(5), 'B');
+    });
+
+    it('Emparelhada (AABB) — 1º ciclo AABB, ciclo seguinte avança pra CCDD', () => {
+        const linhas = [verso(), verso(), verso(), verso(), verso(), verso(), verso(), verso()];
+        const letras = calcularLetraRimaEsperada(linhas, 'Rimado', 'Emparelhada (AABB)');
+        assert.deepEqual(
+            [0, 1, 2, 3, 4, 5, 6, 7].map((i) => letras.get(i)),
+            ['A', 'A', 'B', 'B', 'C', 'C', 'D', 'D'],
+        );
+    });
+
+    it('Alternada / Cruzada (ABAB)', () => {
+        const linhas = [verso(), verso(), verso(), verso()];
+        const letras = calcularLetraRimaEsperada(linhas, 'Rimado', 'Alternada / Cruzada (ABAB)');
+        assert.deepEqual(
+            [0, 1, 2, 3].map((i) => letras.get(i)),
+            ['A', 'B', 'A', 'B'],
+        );
+    });
+
+    it('Oposta / Interpolada (ABBA)', () => {
+        const linhas = [verso(), verso(), verso(), verso()];
+        const letras = calcularLetraRimaEsperada(linhas, 'Rimado', 'Oposta / Interpolada (ABBA)');
+        assert.deepEqual(
+            [0, 1, 2, 3].map((i) => letras.get(i)),
+            ['A', 'B', 'B', 'A'],
+        );
+    });
+
+    it('Quadra / Rima Simples (ABCB) — 1º e 3º versos são soltos, ficam sem letra', () => {
+        const linhas = [verso(), verso(), verso(), verso()];
+        const letras = calcularLetraRimaEsperada(linhas, 'Rimado', 'Quadra / Rima Simples (ABCB)');
+        assert.equal(letras.has(0), false);
+        assert.equal(letras.get(1), 'B');
+        assert.equal(letras.has(2), false);
+        assert.equal(letras.get(3), 'B');
+    });
+
+    it('Sextilha Aberta (ABCBDB) — só os versos pares (letra B) recebem letra, os ímpares ficam soltos', () => {
+        const linhas = [verso(), verso(), verso(), verso(), verso(), verso()];
+        const letras = calcularLetraRimaEsperada(linhas, 'Rimado', 'Sextilha Aberta (ABCBDB)');
+        assert.equal(letras.has(0), false);
+        assert.equal(letras.get(1), 'B');
+        assert.equal(letras.has(2), false);
+        assert.equal(letras.get(3), 'B');
+        assert.equal(letras.has(4), false);
+        assert.equal(letras.get(5), 'B');
+    });
+
+    it('Encadeada / Terza Rima (ABA BCB) — a rima do meio de um terceto vira a externa do próximo', () => {
+        const linhas = [verso(), verso(), verso(), verso(), verso(), verso()];
+        const letras = calcularLetraRimaEsperada(
+            linhas,
+            'Rimado',
+            'Encadeada / Terza Rima (ABA BCB)',
+        );
+        assert.deepEqual(
+            [0, 1, 2, 3, 4, 5].map((i) => letras.get(i)),
+            ['A', 'B', 'A', 'B', 'C', 'B'],
+        );
+    });
+
+    it('quebra de estrofe força um ciclo novo (letras avançadas) mesmo com o ciclo em curso incompleto', () => {
+        // AABB começou (A, A), quebra no meio do ciclo — o resto do
+        // poema começa do zero, com letras já avançadas (C, D), nunca
+        // reaproveitando A/B da 1ª estrofe.
+        const linhas = [verso(), verso(), vazia(), verso(), verso()];
+        const letras = calcularLetraRimaEsperada(linhas, 'Rimado', 'Emparelhada (AABB)');
+        assert.equal(letras.get(0), 'A');
+        assert.equal(letras.get(1), 'A');
+        assert.equal(letras.get(3), 'C');
+        assert.equal(letras.get(4), 'C');
+    });
+
+    it('sem nenhuma linha, mapa vem vazio', () => {
+        assert.equal(calcularLetraRimaEsperada([], 'Rimado', 'Alternada / Cruzada (ABAB)').size, 0);
     });
 });
 

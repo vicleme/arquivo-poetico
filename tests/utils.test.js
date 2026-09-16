@@ -55,6 +55,9 @@ import {
     TAMANHOS_VERSO,
     ORIGENS_TRADICAO_SONORIDADE,
     calcularOpcoesCascataSonoridade,
+    PES_METRICOS,
+    calcularOpcoesPeMetrico,
+    calcularTamanhoVersoForcadoPorPe,
     autoclassificacaoValida,
     formatarAutoclassificacaoTexto,
     renderCoracoesHtml,
@@ -1793,6 +1796,101 @@ describe('calcularOpcoesCascataSonoridade — Poesia Narrativa / Cordel', () => 
     it('NÃO trava esquemaRimasPadrao — deixa a lista inteira, incluindo Sextilha Aberta', () => {
         const opcoes = calcularOpcoesCascataSonoridade({ formaPoema: 'Poesia Narrativa / Cordel' });
         assert.deepEqual(opcoes.esquemaRimasPadrao, ESQUEMA_RIMAS_PADRAO);
+    });
+});
+
+describe('PES_METRICOS / calcularOpcoesPeMetrico / calcularTamanhoVersoForcadoPorPe', () => {
+    it('catálogo não inclui Espondeu nem Pirríquio (pés de substituição, sem posição esperada)', () => {
+        const chaves = PES_METRICOS.map((p) => p.chave);
+        assert.ok(!chaves.includes('espondeu'));
+        assert.ok(!chaves.includes('pirriquio'));
+    });
+
+    it('pés contínuos têm posicaoInicial/intervalo, não posicoesObrigatorias/tamanhoVersoExigido', () => {
+        const continuos = PES_METRICOS.filter((p) => p.tipo === 'continuo');
+        assert.equal(continuos.length, 6);
+        continuos.forEach((p) => {
+            assert.equal(typeof p.posicaoInicial, 'number');
+            assert.equal(typeof p.intervalo, 'number');
+            assert.equal(p.posicoesObrigatorias, undefined);
+            assert.equal(p.tamanhoVersoExigido, undefined);
+        });
+    });
+
+    it('pés fixos têm posicoesObrigatorias/tamanhoVersoExigido, não posicaoInicial/intervalo', () => {
+        const fixos = PES_METRICOS.filter((p) => p.tipo === 'fixo');
+        assert.equal(fixos.length, 4);
+        fixos.forEach((p) => {
+            assert.ok(Array.isArray(p.posicoesObrigatorias));
+            assert.equal(typeof p.tamanhoVersoExigido, 'string');
+            assert.equal(p.posicaoInicial, undefined);
+            assert.equal(p.intervalo, undefined);
+        });
+    });
+
+    it('Decassílabo Heroico exige tônica nas sílabas 6 e 10, sobre Decassílabo', () => {
+        const pe = PES_METRICOS.find((p) => p.chave === 'decassilabo-heroico');
+        assert.deepEqual(pe.posicoesObrigatorias, [6, 10]);
+        assert.equal(pe.tamanhoVersoExigido, 'Decassílabo (10)');
+    });
+
+    it('Decassílabo Sáfico exige tônica nas sílabas 4, 8 e 10, sobre Decassílabo', () => {
+        const pe = PES_METRICOS.find((p) => p.chave === 'decassilabo-safico');
+        assert.deepEqual(pe.posicoesObrigatorias, [4, 8, 10]);
+        assert.equal(pe.tamanhoVersoExigido, 'Decassílabo (10)');
+    });
+
+    it('Martelo Agalopado exige tônica nas sílabas 2, 5, 8 e 10, sobre Decassílabo', () => {
+        const pe = PES_METRICOS.find((p) => p.chave === 'martelo-agalopado');
+        assert.deepEqual(pe.posicoesObrigatorias, [2, 5, 8, 10]);
+        assert.equal(pe.tamanhoVersoExigido, 'Decassílabo (10)');
+    });
+
+    it('Pé de Arte Maior exige tônica nas sílabas 2, 5, 8 e 11, sobre Alexandrino/Dodecassílabo', () => {
+        const pe = PES_METRICOS.find((p) => p.chave === 'arte-maior');
+        assert.deepEqual(pe.posicoesObrigatorias, [2, 5, 8, 11]);
+        assert.equal(pe.tamanhoVersoExigido, 'Alexandrino / Dodecassílabo (12)');
+    });
+
+    it('calcularOpcoesPeMetrico sem Tamanho do Verso escolhido retorna o catálogo inteiro', () => {
+        const opcoes = calcularOpcoesPeMetrico('');
+        assert.equal(opcoes.length, PES_METRICOS.length);
+    });
+
+    it('calcularOpcoesPeMetrico com Decassílabo inclui os contínuos + os 3 fixos que exigem Decassílabo', () => {
+        const opcoes = calcularOpcoesPeMetrico('Decassílabo (10)');
+        assert.equal(opcoes.length, 9);
+        assert.ok(opcoes.includes('Decassílabo Heroico'));
+        assert.ok(opcoes.includes('Decassílabo Sáfico'));
+        assert.ok(opcoes.includes('Martelo Agalopado'));
+        assert.ok(!opcoes.includes('Pé de Arte Maior'));
+        assert.ok(opcoes.includes('Iambo (fraca-forte)'));
+    });
+
+    it('calcularOpcoesPeMetrico com um Tamanho sem forma fixa correspondente só traz os contínuos', () => {
+        const opcoes = calcularOpcoesPeMetrico('Redondilha Maior / Heptassílabo (7)');
+        assert.equal(opcoes.length, 6);
+        opcoes.forEach((rotulo) => {
+            const pe = PES_METRICOS.find((p) => p.rotulo === rotulo);
+            assert.equal(pe.tipo, 'continuo');
+        });
+    });
+
+    it('calcularTamanhoVersoForcadoPorPe retorna o Tamanho exigido por um pé fixo', () => {
+        assert.equal(
+            calcularTamanhoVersoForcadoPorPe('Decassílabo Heroico'),
+            'Decassílabo (10)',
+        );
+        assert.equal(
+            calcularTamanhoVersoForcadoPorPe('Pé de Arte Maior'),
+            'Alexandrino / Dodecassílabo (12)',
+        );
+    });
+
+    it('calcularTamanhoVersoForcadoPorPe retorna null pra pé contínuo, valor vazio ou desconhecido', () => {
+        assert.equal(calcularTamanhoVersoForcadoPorPe('Iambo (fraca-forte)'), null);
+        assert.equal(calcularTamanhoVersoForcadoPorPe(''), null);
+        assert.equal(calcularTamanhoVersoForcadoPorPe('Não existe'), null);
     });
 });
 

@@ -48,9 +48,11 @@ export function openTab(tabName) {
 }
 
 // ─── Navegação agrupada: dropdowns no desktop + menu hambúrguer (mobile) ─
-// As 11 abas, organizadas nos 4 grupos combinados com Victor: Estrutura
-// do acervo, Conteúdo, Análise, e Exportação sozinha. Única fonte de
-// verdade tanto pro painel mobile quanto pro destaque do grupo ativo na
+// As abas, organizadas nos grupos combinados com Victor: Estrutura
+// do acervo, Conteúdo, Análise, Criação (aba Moldes — rascunho
+// estruturado, ver forms.js/render-listas.js) e Exportação. Única
+// fonte de verdade tanto pro painel mobile quanto pro destaque do
+// grupo ativo na
 // nav desktop — a nav desktop em si (os dropdowns, que abrem no hover
 // via CSS puro, ver .nav-dropdown em style.css) continua estática no
 // HTML, só o "qual botão de grupo fica destacado" é calculado daqui.
@@ -88,6 +90,11 @@ export const GRUPOS_NAV = [
             { id: 'morfofuncionalidade', rotulo: 'Morfofuncionalidade' },
             { id: 'estatisticas', rotulo: 'Estatísticas' },
         ],
+    },
+    {
+        id: 'criacao',
+        rotulo: 'Criação',
+        abas: [{ id: 'moldes', rotulo: 'Moldes' }],
     },
     {
         id: 'exportacao',
@@ -699,6 +706,20 @@ export async function prepararNovo(tipo) {
         atualizarDatalist();
         const infoP = document.getElementById('p-coletaneas-info');
         if (infoP) infoP.innerHTML = '';
+        // Import dinâmico pra evitar ciclo (forms.js já importa de
+        // ui.js estaticamente, ver import no topo de forms.js — mesmo
+        // motivo do bloco 'prosa'/'grupo' abaixo). Limpa por segurança
+        // uma eventual promoção de Molde pendente (ver
+        // moldePromovendoContexto, forms.js): "Adicionar Poema" comum
+        // nunca deveria herdar isso. AWAITED (diferente do bloco
+        // 'prosa'/'grupo' abaixo, que dispara e esquece) — sem isso,
+        // iniciarPromocaoMolde (forms.js) setaria o contexto logo
+        // depois do `await prepararNovo('poema')` só pra correr risco
+        // de este import ainda resolver depois e limpar o contexto que
+        // acabou de ser setado.
+        await import('./forms.js').then(({ limparPromocaoMoldeEmCurso }) => {
+            limparPromocaoMoldeEmCurso();
+        });
     }
 
     if (tipo === 'prosa') {

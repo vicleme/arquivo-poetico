@@ -57,6 +57,8 @@ import {
     corrigirPresencaRimaSeVersoBranco,
     sugerirOrigemTradicaoPorTamanho,
     avisoMonorrimaAtipica,
+    calcularOpcoesPeMetrico,
+    calcularTamanhoVersoForcadoPorPe,
 } from './utils.js';
 
 // Rastreadores de alterações não salvas dos formulários de texto longo
@@ -68,7 +70,13 @@ export const rastreadorPoema = criarRastreadorDeAlteracoes();
 export const rastreadorProsa = criarRastreadorDeAlteracoes();
 import { salvarCapa, deletarCapa } from './capas.js';
 import { getColetaneasDeItem } from './coletaneas.js';
-import { toggleModal, garantirModal, renderDropdowns, sincronizarFiltroDestino } from './ui.js';
+import {
+    toggleModal,
+    garantirModal,
+    renderDropdowns,
+    sincronizarFiltroDestino,
+    prepararNovo,
+} from './ui.js';
 import {
     atualizarDatalist,
     carregarPessoas,
@@ -119,15 +127,27 @@ import {
     resetLojas,
     renderAutoclassificacao,
 } from './editor.js';
-import { renderPessoas, renderEpocas } from './render-listas.js';
+import { renderPessoas, renderEpocas, renderMoldes } from './render-listas.js';
 import {
     construirLinhasIniciais,
     inicializarGradeSonoridade,
+    atualizarPeMetricoSonoridade,
     obterLinhasSonoridade,
     obterRimasSonoridade,
     obterEcosSonoridade,
     calcularDivergenciaSilabas,
 } from './editor-sonoridade.js';
+import {
+    inicializarGradeMolde,
+    atualizarAlvoGradeMolde,
+    atualizarPeMetricoGradeMolde,
+    atualizarEsquemaRimaGradeMolde,
+    obterLinhasMolde,
+    obterParesRimaMolde,
+    linhasMoldeParaTextoPoema,
+    definirCallbackPromocaoMolde,
+    definirCallbackAbrirPoema,
+} from './editor-molde.js';
 import { validarJsonSonoridade } from './importar-sonoridade.js';
 
 // Lê o par Livro/Seção de texto livre dos campos de Migração (Cortado
@@ -717,6 +737,20 @@ function aplicarCascataSonoridade() {
         opcoes.origemTradicao,
         document.getElementById('son-origem-tradicao')?.value,
     );
+
+    // Pé Métrico trava nos dois sentidos com Tamanho do Verso (ver
+    // calcularOpcoesPeMetrico/calcularTamanhoVersoForcadoPorPe em
+    // utils.js) — essa é a metade "Tamanho manda no Pé": sempre que a
+    // cascata acima roda (troca de Forma/Regularidade), recalcula as
+    // opções de Pé Métrico a partir do Tamanho do Verso já resolvido
+    // (popularSelectOpcoes já limpa o valor se ele deixou de ser válido).
+    // A outra metade ("Pé manda no Tamanho") mora no listener de
+    // son-pe-metrico, em initFormSonoridade.
+    popularSelectOpcoes(
+        'son-pe-metrico',
+        calcularOpcoesPeMetrico(document.getElementById('son-tamanho-verso')?.value || ''),
+        document.getElementById('son-pe-metrico')?.value,
+    );
 }
 
 // junto com um aviso (não bloqueante) se o poema escolhido já tiver
@@ -776,13 +810,14 @@ function carregarGradeSonoridade() {
     if (!container) return;
     const poemaId = parseInt(document.getElementById('son-poema-id')?.value);
     const linhasIgnoradas = document.getElementById('son-linhas-ignoradas')?.value || '';
+    const peMetrico = document.getElementById('son-pe-metrico')?.value || '';
     if (!poemaId) {
-        inicializarGradeSonoridade(container, []);
+        inicializarGradeSonoridade(container, [], [], [], peMetrico);
         return;
     }
     const poema = db.poemas.find((p) => p.id === poemaId);
     if (!poema) {
-        inicializarGradeSonoridade(container, []);
+        inicializarGradeSonoridade(container, [], [], [], peMetrico);
         return;
     }
     const idEmEdicao = document.getElementById('son-edit-id')?.value;
@@ -795,7 +830,7 @@ function carregarGradeSonoridade() {
     const rimas =
         es && String(es.poemaId) === String(poemaId) && mesmoRecorte ? es.rimas || [] : [];
     const ecos = es && String(es.poemaId) === String(poemaId) && mesmoRecorte ? es.ecos || [] : [];
-    inicializarGradeSonoridade(container, linhas, rimas, ecos);
+    inicializarGradeSonoridade(container, linhas, rimas, ecos, peMetrico);
 }
 
 // Repopula os 7 selects (poema + 6 campos de classificação) do zero —
@@ -829,6 +864,15 @@ function popularCamposSonoridade(valores = {}) {
     popularSelectOpcoes('son-origem-tradicao', ORIGENS_TRADICAO_SONORIDADE, valores.origemTradicao);
     popularSelectOpcoes('son-registro', REGISTROS_SONORIDADE, valores.registro);
     popularSelectOpcoes('son-tom', TONS_SONORIDADE, valores.tom);
+    // Pé Métrico já nasce restrito ao Tamanho do Verso salvo (se houver)
+    // — aplicarCascataSonoridade, logo abaixo, relê esse valor do DOM e
+    // preserva se ainda for válido, mesmo padrão dos outros campos da
+    // cascata.
+    popularSelectOpcoes(
+        'son-pe-metrico',
+        calcularOpcoesPeMetrico(valores.tamanhoVerso || ''),
+        valores.peMetrico,
+    );
     // Bloco 3: estreita os 5 selects em cascata pro que já está salvo em
     // formaPoema/regularidadeMetrica/esquemaRimasPresenca — feito depois
     // de popular tudo com a lista cheia (acima), não antes, senão os
@@ -865,6 +909,14 @@ function aplicarClassificacaoSonoridade(valores) {
     popularSelectOpcoes('son-origem-tradicao', ORIGENS_TRADICAO_SONORIDADE, valores.origemTradicao);
     popularSelectOpcoes('son-registro', REGISTROS_SONORIDADE, valores.registro);
     popularSelectOpcoes('son-tom', TONS_SONORIDADE, valores.tom);
+    // Mesmo raciocínio de popularCamposSonoridade acima: Pé Métrico nasce
+    // restrito ao Tamanho do Verso já populado, e aplicarCascataSonoridade
+    // (chamada logo abaixo) relê o valor do DOM depois.
+    popularSelectOpcoes(
+        'son-pe-metrico',
+        calcularOpcoesPeMetrico(valores.tamanhoVerso || ''),
+        valores.peMetrico,
+    );
     aplicarCascataSonoridade();
 }
 
@@ -908,7 +960,10 @@ export function importarSonoridadeDeArquivo(event) {
         if (campoLinhasIgnoradas) campoLinhasIgnoradas.value = valores.linhasIgnoradas || '';
 
         const container = document.getElementById('son-grade-container');
-        if (container) inicializarGradeSonoridade(container, linhas, rimas, ecos);
+        if (container) {
+            const peMetrico = document.getElementById('son-pe-metrico')?.value || '';
+            inicializarGradeSonoridade(container, linhas, rimas, ecos, peMetrico);
+        }
 
         if (avisos.length) avisos.forEach((msg) => mostrarAviso(msg));
         else mostrarAviso('JSON importado.', 'sucesso');
@@ -980,6 +1035,44 @@ export function initFormSonoridade() {
         }
     });
 
+    // Pé Métrico ↔ Tamanho do Verso — trava bidirecional (ver
+    // utils.js). Metade "Tamanho manda no Pé": trocar o Tamanho direto
+    // (sem passar por Forma/Regularidade, que já disparam
+    // aplicarCascataSonoridade sozinhas) também precisa refiltrar as
+    // opções de Pé Métrico — senão um Pé fixo incompatível com o novo
+    // Tamanho ficaria selecionado até a próxima troca de Forma.
+    document.getElementById('son-tamanho-verso')?.addEventListener('change', (e) => {
+        popularSelectOpcoes(
+            'son-pe-metrico',
+            calcularOpcoesPeMetrico(e.target.value || ''),
+            document.getElementById('son-pe-metrico')?.value,
+        );
+        // A troca de Tamanho pode ter zerado o Pé Métrico selecionado
+        // (um fixo que não cabia mais no novo Tamanho) — relê o valor já
+        // resolvido pelo popularSelectOpcoes acima, não e.target.value
+        // (que é o Tamanho, não o Pé).
+        atualizarPeMetricoSonoridade(document.getElementById('son-pe-metrico')?.value);
+    });
+
+    // Metade "Pé manda no Tamanho": um Pé Métrico fixo (Heroico, Sáfico,
+    // Martelo Agalopado, Arte Maior) força o Tamanho do Verso pro valor
+    // que exige — mesmo espírito da trava de Forma do Poema, só que essa
+    // via também existe no sentido contrário (ver
+    // calcularTamanhoVersoForcadoPorPe). Pé contínuo não força nada.
+    document.getElementById('son-pe-metrico')?.addEventListener('change', (e) => {
+        const forcado = calcularTamanhoVersoForcadoPorPe(e.target.value);
+        if (forcado) {
+            const selTamanho = document.getElementById('son-tamanho-verso');
+            if (selTamanho) selTamanho.value = forcado;
+        }
+        aplicarCascataSonoridade();
+        // Recalcula a divergência de tônica esperada na grade (Bloco 2
+        // sub-passo 2) — reconstrói só as colunas de sílaba, sem perder
+        // Modo Tônica/Rima em curso nem o cursor de quem estiver
+        // digitando um verso.
+        atualizarPeMetricoSonoridade(e.target.value);
+    });
+
     const form = document.getElementById('form-sonoridade');
     if (!form) return;
 
@@ -1005,6 +1098,7 @@ export function initFormSonoridade() {
                 document.getElementById('son-esquema-rimas-presenca').value || null,
             esquemaRimasPadrao: document.getElementById('son-esquema-rimas-padrao').value || null,
             origemTradicao: document.getElementById('son-origem-tradicao').value || null,
+            peMetrico: document.getElementById('son-pe-metrico')?.value || null,
             registro: document.getElementById('son-registro').value || null,
             tom: document.getElementById('son-tom').value || null,
             linhasIgnoradas: document.getElementById('son-linhas-ignoradas')?.value || '',
@@ -1055,6 +1149,460 @@ export async function editarSonoridade(id) {
     popularCamposSonoridade(es);
     document.getElementById('modal-sonoridade-titulo').innerText = 'Editar Escansão';
     toggleModal('modal-sonoridade');
+}
+
+// ─── Molde (aba Criação) ─────────────────────────────────────
+// Bloco 1 (dados + tabela + meta). Reaproveita a mesma taxonomia e a
+// mesma matriz de validação em cascata da Sonoridade (aplicarCascataMolde
+// é uma réplica de aplicarCascataSonoridade, só com os ids 'molde-*') —
+// decisão explícita da conversa: Molde é a mesma classificação, só que
+// preenchida ANTES do texto existir, como meta, não como constatação.
+// Sem <select> de Poema (Molde ainda não tem um) nem grade de versos —
+// isso entra no Bloco 2 (editor de escrita orientado pela meta).
+
+// ─── Bloco 3, 2ª metade — "Promover a Poema" ─────────────────────────
+// Guarda só o id do Molde sendo promovido (não o objeto inteiro) entre
+// iniciarPromocaoMolde (abre modal-poema pré-preenchido) e o
+// form.onsubmit de Poema salvar de verdade — só nesse momento (ver
+// aplicarPromocaoMoldeSePendente) o Molde é marcado como promovido e a
+// Escansão é criada, nunca antes. `null` significa "nenhuma promoção em
+// curso" — é o estado de praticamente todo o tempo; qualquer caminho de
+// abrir/editar um Poema que NÃO seja através da promoção precisa
+// limpá-lo explicitamente (ver limparPromocaoMoldeEmCurso, exportada,
+// chamada por ui.js dentro de prepararNovo('poema') e por editarPoema
+// logo abaixo) — senão um Poema comum salvo por acaso enquanto uma
+// promoção ficou pendente acabaria promovendo o Molde errado.
+let moldePromovendoContexto = null;
+
+export function limparPromocaoMoldeEmCurso() {
+    moldePromovendoContexto = null;
+}
+
+// Lê os mesmos campos que o form.onsubmit do Molde (initFormMolde,
+// abaixo) grava em db.moldes — extraído pra função própria porque
+// promoverMoldeAoVivo (chamada pelo botão de DENTRO do modal, ver
+// definirCallbackPromocaoMolde) precisa do mesmo snapshot sem passar
+// por um submit de verdade. status/poemaId ficam de fora de propósito:
+// nunca são lidos do form (não existe campo pra eles na UI) — quem
+// grava os dois é sempre o chamador (form.onsubmit ou
+// promoverMoldeAoVivo), preservando o que já estiver salvo.
+function coletarEstadoAtualMolde() {
+    return {
+        titulo: document.getElementById('molde-titulo')?.value.trim() || '',
+        formaPoema: document.getElementById('molde-forma-poema').value || null,
+        regularidadeMetrica: document.getElementById('molde-regularidade-metrica').value || null,
+        tamanhoVerso: document.getElementById('molde-tamanho-verso').value || null,
+        esquemaRimasPresenca: document.getElementById('molde-esquema-rimas-presenca').value || null,
+        esquemaRimasPadrao: document.getElementById('molde-esquema-rimas-padrao').value || null,
+        origemTradicao: document.getElementById('molde-origem-tradicao').value || null,
+        peMetrico: document.getElementById('molde-pe-metrico')?.value || null,
+        registro: document.getElementById('molde-registro').value || null,
+        tom: document.getElementById('molde-tom').value || null,
+        moldeLinhas: obterLinhasMolde(),
+        paresRima: obterParesRimaMolde(),
+    };
+}
+
+// Abre modal-poema pré-preenchido (Título/Texto vindos do Molde) — o
+// Victor completa Livro/Data/etc. e salva normalmente; a Escansão só é
+// criada de verdade quando esse Poema for salvo (ver
+// aplicarPromocaoMoldeSePendente, chamada no fim do form.onsubmit de
+// Poema, só quando for um Poema NOVO). Reaproveita prepararNovo('poema')
+// (ui.js) pra herdar toda a limpeza de estado de "Adicionar Poema"
+// (Sinalizações/Pessoas/Autoria/etc.) — moldePromovendoContexto só é
+// setado DEPOIS de prepararNovo resolver, porque prepararNovo('poema')
+// já limpa esse mesmo contexto por segurança (ver
+// limparPromocaoMoldeEmCurso acima), sempre que "Adicionar Poema" é
+// aberto por qualquer caminho, promoção incluída.
+async function iniciarPromocaoMolde(molde) {
+    await prepararNovo('poema');
+    moldePromovendoContexto = { moldeId: molde.id };
+    const campoTitulo = document.getElementById('p-titulo');
+    if (campoTitulo) campoTitulo.value = molde.titulo || '';
+    const campoTexto = document.getElementById('p-texto');
+    if (campoTexto) campoTexto.value = linhasMoldeParaTextoPoema(molde.moldeLinhas || []);
+}
+
+// Chamada pelo botão "Promover a Poema" de DENTRO do modal de Molde
+// (ver definirCallbackPromocaoMolde, registrada em initFormMolde
+// abaixo) — salva o Molde com o estado AO VIVO do editor (o mesmo que
+// um clique em SALVAR gravaria), fecha o modal-molde e só então abre
+// o modal-poema por cima (iniciarPromocaoMolde). Sem isso, promover um
+// Molde recém-editado mas ainda não salvo perderia o que foi escrito
+// desde a última vez que o formulário foi submetido.
+function promoverMoldeAoVivo() {
+    const id = document.getElementById('molde-edit-id')?.value;
+    const idAlvo = id ? parseInt(id) : gerarId();
+    const anterior = db.moldes.find((x) => x.id == idAlvo);
+
+    const dados = {
+        id: idAlvo,
+        ...coletarEstadoAtualMolde(),
+        status: anterior?.status ?? 'em andamento',
+        poemaId: anterior?.poemaId ?? null,
+    };
+
+    if (anterior) {
+        const idx = db.moldes.findIndex((x) => x.id == idAlvo);
+        db.moldes[idx] = dados;
+    } else {
+        db.moldes.push(dados);
+    }
+    save();
+    // Molde novo (nunca salvo antes de clicar em "Promover a Poema")
+    // ganha o id agora — sem isso, o campo oculto ficaria vazio depois
+    // do form.reset() implícito de toggleModal, e uma eventual reedição
+    // desse mesmo Molde (ex.: reabrir pra corrigir algo) não acharia o
+    // registro já promovido.
+    const campoId = document.getElementById('molde-edit-id');
+    if (campoId) campoId.value = dados.id;
+
+    toggleModal('modal-molde');
+    iniciarPromocaoMolde(dados);
+}
+
+// Chamada pela ação "Promover a Poema" da TABELA de Moldes (Molde já
+// salvo, sem modal aberto — ver ACOES_LISTA em main.js e
+// celulaAcoesMolde em render-listas.js) — diferente de
+// promoverMoldeAoVivo acima, usa direto o que já está em db.moldes, sem
+// coletar nada de formulário nenhum.
+export function promoverMolde(id) {
+    const molde = db.moldes.find((x) => x.id == id);
+    if (!molde) return;
+    // Já promovido: a própria tabela já troca essa ação por "Ver Poema"
+    // (celulaAcoesMolde) — clique repetido (ex. atalho de teclado,
+    // clique duplo) não deveria abrir uma 2ª promoção pro mesmo Molde.
+    if (molde.status === 'promovido') return;
+    iniciarPromocaoMolde(molde);
+}
+
+// Chamada no fim do form.onsubmit de Poema (initFormPoema, abaixo), só
+// quando `!idInput` — Poema NOVO, nunca numa edição comum — pra nunca
+// promover o Molde errado se alguém editar um Poema qualquer enquanto
+// uma promoção ficasse pendente por engano. Marca o Molde original como
+// promovido (status/poemaId) e cria a Escansão correspondente a partir
+// do que já foi declarado durante a escrita (moldeLinhas/paresRima),
+// sem precisar re-escandir do zero (ver Bloco 3, criacao-molde.md). O
+// Molde original nunca é apagado — fica arquivado como origem/processo
+// do Poema, mesma pegada arquivística do resto do projeto. Não chama
+// save() por conta própria: o form.onsubmit de Poema que a invoca já
+// chama save() logo depois, persistindo Poema/Molde/Escansão juntos
+// numa única gravação.
+function aplicarPromocaoMoldeSePendente(poemaId) {
+    if (!moldePromovendoContexto) return;
+    const { moldeId } = moldePromovendoContexto;
+    moldePromovendoContexto = null;
+
+    const idxMolde = db.moldes.findIndex((x) => x.id == moldeId);
+    if (idxMolde === -1) return;
+    const molde = db.moldes[idxMolde];
+    db.moldes[idxMolde] = { ...molde, status: 'promovido', poemaId };
+
+    // Substitui uma Escansão pré-existente do Poema em vez de criar uma
+    // segunda (mesmo cuidado de initFormSonoridade/getEscansaoDoPoema) —
+    // não deveria acontecer num Poema recém-criado pela própria
+    // promoção, mas por segurança segue a mesma regra do resto do app.
+    const existente = getEscansaoDoPoema(poemaId);
+    const idAlvo = existente ? existente.id : gerarId();
+    const escansao = {
+        id: idAlvo,
+        poemaId,
+        formaPoema: molde.formaPoema,
+        regularidadeMetrica: molde.regularidadeMetrica,
+        tamanhoVerso: molde.tamanhoVerso,
+        esquemaRimasPresenca: molde.esquemaRimasPresenca,
+        esquemaRimasPadrao: molde.esquemaRimasPadrao,
+        origemTradicao: molde.origemTradicao,
+        peMetrico: molde.peMetrico,
+        registro: molde.registro,
+        tom: molde.tom,
+        linhasIgnoradas: '',
+        escansaoLinhas: molde.moldeLinhas || [],
+        rimas: molde.paresRima || [],
+        ecos: [],
+    };
+    if (existente) {
+        const idxEs = db.escansoes.findIndex((x) => x.id == idAlvo);
+        db.escansoes[idxEs] = escansao;
+    } else {
+        db.escansoes.push(escansao);
+    }
+
+    // Render imediato da tabela de Moldes (mesmo padrão de renderPessoas/
+    // renderEpocas após mesclarPessoas/mesclarEpocas, acima) — o
+    // form.onsubmit de Poema já chama save() (dispara 'db:saved', que
+    // recobre isso também), mas o Victor está vendo o modal de Poema
+    // fechar agora, não a tabela de Moldes por trás.
+    renderMoldes();
+}
+
+function aplicarCascataMolde() {
+    const formaPoema = document.getElementById('molde-forma-poema')?.value || '';
+    const regularidadeMetrica = document.getElementById('molde-regularidade-metrica')?.value || '';
+    const esquemaRimasPresenca =
+        document.getElementById('molde-esquema-rimas-presenca')?.value || '';
+
+    const opcoes = calcularOpcoesCascataSonoridade({
+        formaPoema,
+        regularidadeMetrica,
+        esquemaRimasPresenca,
+    });
+
+    popularSelectOpcoes(
+        'molde-regularidade-metrica',
+        opcoes.regularidadeMetrica,
+        regularidadeMetrica,
+    );
+    popularSelectOpcoes(
+        'molde-tamanho-verso',
+        opcoes.tamanhoVerso,
+        document.getElementById('molde-tamanho-verso')?.value,
+    );
+    popularSelectOpcoes(
+        'molde-esquema-rimas-presenca',
+        opcoes.esquemaRimasPresenca,
+        esquemaRimasPresenca,
+    );
+    popularSelectOpcoes(
+        'molde-esquema-rimas-padrao',
+        opcoes.esquemaRimasPadrao,
+        document.getElementById('molde-esquema-rimas-padrao')?.value,
+    );
+    popularSelectOpcoes(
+        'molde-origem-tradicao',
+        opcoes.origemTradicao,
+        document.getElementById('molde-origem-tradicao')?.value,
+    );
+
+    // A cascata pode restringir/resetar o Tamanho do Verso (ex.: trocar
+    // pra "Soneto" trava as opções) — a coluna de alvo da grade precisa
+    // acompanhar o valor final, não só reagir ao listener 'change' direto
+    // do próprio select (que não dispara quando é a cascata, não o
+    // usuário, quem muda o valor).
+    atualizarAlvoGradeMolde(document.getElementById('molde-tamanho-verso')?.value || '');
+
+    // Réplica da metade "Tamanho manda no Pé" de aplicarCascataSonoridade
+    // (ver comentário lá) — molde-pe-metrico precisa do mesmo tratamento,
+    // já que a cascata acima também pode ter mexido no Tamanho do Verso.
+    popularSelectOpcoes(
+        'molde-pe-metrico',
+        calcularOpcoesPeMetrico(document.getElementById('molde-tamanho-verso')?.value || ''),
+        document.getElementById('molde-pe-metrico')?.value,
+    );
+    // Recalcula a divergência de tônica esperada na grade (Bloco 2
+    // sub-passo 2, lado do Molde) — relê o valor já resolvido pelo
+    // popularSelectOpcoes acima (a cascata pode ter zerado um Pé fixo
+    // que não cabia mais), mesmo padrão de atualizarAlvoGradeMolde logo
+    // acima nesta função.
+    atualizarPeMetricoGradeMolde(document.getElementById('molde-pe-metrico')?.value || '');
+
+    // Recalcula a coluna "Rima" (Bloco 2 sub-passo 3) — a cascata acima
+    // pode ter mexido em molde-esquema-rimas-presenca/-padrao (ex.:
+    // trocar Forma do Poema trava/reseta o Padrão), então relê os dois
+    // já resolvidos, mesmo padrão das duas chamadas acima.
+    atualizarEsquemaRimaGradeMolde(
+        document.getElementById('molde-esquema-rimas-presenca')?.value || '',
+        document.getElementById('molde-esquema-rimas-padrao')?.value || '',
+    );
+}
+
+// Repopula título + os 7 selects de classificação do zero — mesmo
+// motivo de popularCamposSonoridade (chamada tanto ao abrir "Adicionar
+// Molde" quanto ao editar um já existente).
+function popularCamposMolde(valores = {}) {
+    const campoTitulo = document.getElementById('molde-titulo');
+    if (campoTitulo) campoTitulo.value = valores.titulo || '';
+    popularSelectOpcoes('molde-forma-poema', FORMAS_POEMA, valores.formaPoema);
+    popularSelectOpcoes(
+        'molde-regularidade-metrica',
+        REGULARIDADES_METRICAS,
+        valores.regularidadeMetrica,
+    );
+    popularSelectOpcoes('molde-tamanho-verso', TAMANHOS_VERSO, valores.tamanhoVerso);
+    popularSelectOpcoes(
+        'molde-esquema-rimas-presenca',
+        ESQUEMA_RIMAS_PRESENCA,
+        valores.esquemaRimasPresenca,
+    );
+    popularSelectOpcoes(
+        'molde-esquema-rimas-padrao',
+        ESQUEMA_RIMAS_PADRAO,
+        valores.esquemaRimasPadrao,
+    );
+    popularSelectOpcoes(
+        'molde-origem-tradicao',
+        ORIGENS_TRADICAO_SONORIDADE,
+        valores.origemTradicao,
+    );
+    popularSelectOpcoes('molde-registro', REGISTROS_SONORIDADE, valores.registro);
+    popularSelectOpcoes('molde-tom', TONS_SONORIDADE, valores.tom);
+    // Mesmo raciocínio de popularCamposSonoridade: nasce restrito ao
+    // Tamanho do Verso já salvo, aplicarCascataMolde (abaixo) confirma.
+    popularSelectOpcoes(
+        'molde-pe-metrico',
+        calcularOpcoesPeMetrico(valores.tamanhoVerso || ''),
+        valores.peMetrico,
+    );
+    // Estreita os 5 selects em cascata pro que já está salvo — feito
+    // depois de popular tudo com a lista cheia, mesmo motivo de
+    // popularCamposSonoridade.
+    aplicarCascataMolde();
+
+    // Grade de escrita (Bloco 2, sub-passo 1) — nasce vazia em "Adicionar
+    // Molde" (valores.moldeLinhas indefinido) ou carrega o que já foi
+    // escrito em "Editar Molde". O alvo (sílabas esperadas) é sempre o
+    // Tamanho do Verso já populado acima, nunca um valor salvo à parte.
+    const container = document.getElementById('molde-grade-container');
+    if (container) {
+        inicializarGradeMolde(
+            container,
+            valores.moldeLinhas || [],
+            document.getElementById('molde-tamanho-verso')?.value || '',
+            document.getElementById('molde-pe-metrico')?.value || '',
+            document.getElementById('molde-esquema-rimas-presenca')?.value || '',
+            document.getElementById('molde-esquema-rimas-padrao')?.value || '',
+            valores.paresRima || [],
+            valores.status || 'em andamento',
+            valores.poemaId ?? null,
+        );
+    }
+}
+
+// Abre o modal pra um Molde NOVO — contraparte de editarMolde abaixo,
+// mesmo padrão de prepararNovaSonoridade (função própria em vez de
+// prepararNovo(tipo) de ui.js, porque precisa repopular os selects a
+// cada abertura, não só uma vez).
+export async function prepararNovoMolde() {
+    await garantirModal('modal-molde');
+    const form = document.getElementById('form-molde');
+    if (!form) return;
+    form.reset();
+    document.getElementById('molde-edit-id').value = '';
+    document.getElementById('modal-molde-titulo').innerText = 'Adicionar Molde';
+    popularCamposMolde();
+    toggleModal('modal-molde');
+}
+
+export function initFormMolde() {
+    // Registrado uma única vez (initFormMolde só roda uma vez, ao
+    // resolver o fetch do modal — ver registrarModal em main.js) — o
+    // próprio editor-molde.js não sabe nada sobre Poema/Escansão, só
+    // avisa o clique (ver definirCallbackPromocaoMolde, editor-molde.js).
+    definirCallbackPromocaoMolde(promoverMoldeAoVivo);
+    // Mesmo raciocínio, pro link do id de Poema dentro do selo "✓
+    // Promovido" (ver definirCallbackAbrirPoema, editor-molde.js) — o
+    // modal do Molde fica fora de <main> (ver registrarModal), então
+    // não dá pra reaproveitar a delegação global de data-action;
+    // editarPoema é quem sabe abrir o modal de Poema.
+    definirCallbackAbrirPoema(editarPoema);
+
+    // Mesmo raciocínio do Bloco 3 de Sonoridade: formaPoema e
+    // regularidadeMetrica recalculam a cascata inteira; esquemaRimasPresenca
+    // primeiro corrige o próprio valor (regra "Versos Brancos") e só depois
+    // recalcula.
+    document.getElementById('molde-forma-poema')?.addEventListener('change', () => {
+        aplicarCascataMolde();
+    });
+    document.getElementById('molde-regularidade-metrica')?.addEventListener('change', () => {
+        aplicarCascataMolde();
+    });
+    document.getElementById('molde-esquema-rimas-presenca')?.addEventListener('change', (e) => {
+        const regularidadeMetrica = document.getElementById('molde-regularidade-metrica')?.value;
+        const corrigido = corrigirPresencaRimaSeVersoBranco(e.target.value, regularidadeMetrica);
+        if (corrigido !== e.target.value) e.target.value = corrigido;
+        aplicarCascataMolde();
+    });
+    // Padrão não participa da cascata em cima de outros campos (só
+    // Presença/Forma/Regularidade fazem isso) — trocar só ele não
+    // precisa de aplicarCascataMolde inteira, só recalcular a coluna
+    // "Rima" (Bloco 2 sub-passo 3).
+    document.getElementById('molde-esquema-rimas-padrao')?.addEventListener('change', (e) => {
+        atualizarEsquemaRimaGradeMolde(
+            document.getElementById('molde-esquema-rimas-presenca')?.value || '',
+            e.target.value || '',
+        );
+    });
+
+    // Sugestão (não trava) de Medida Velha/Nova — só se Origem/Tradição
+    // ainda estiver vazio, mesmo cuidado de não sobrescrever escolha manual.
+    document.getElementById('molde-tamanho-verso')?.addEventListener('change', (e) => {
+        atualizarAlvoGradeMolde(e.target.value || '');
+        const selOrigem = document.getElementById('molde-origem-tradicao');
+        if (!selOrigem || selOrigem.value) return;
+        const sugestao = sugerirOrigemTradicaoPorTamanho(e.target.value);
+        if (sugestao && Array.from(selOrigem.options).some((o) => o.value === sugestao)) {
+            selOrigem.value = sugestao;
+        }
+    });
+
+    // Pé Métrico ↔ Tamanho do Verso — réplica das duas metades wireadas
+    // em initFormSonoridade (ver comentários lá).
+    document.getElementById('molde-tamanho-verso')?.addEventListener('change', (e) => {
+        popularSelectOpcoes(
+            'molde-pe-metrico',
+            calcularOpcoesPeMetrico(e.target.value || ''),
+            document.getElementById('molde-pe-metrico')?.value,
+        );
+        // A troca de Tamanho pode ter zerado o Pé Métrico selecionado
+        // (um fixo que não cabia mais no novo Tamanho) — relê o valor
+        // já resolvido pelo popularSelectOpcoes acima, mesmo padrão de
+        // son-tamanho-verso em initFormSonoridade.
+        atualizarPeMetricoGradeMolde(document.getElementById('molde-pe-metrico')?.value || '');
+    });
+    document.getElementById('molde-pe-metrico')?.addEventListener('change', (e) => {
+        const forcado = calcularTamanhoVersoForcadoPorPe(e.target.value);
+        if (forcado) {
+            const selTamanho = document.getElementById('molde-tamanho-verso');
+            if (selTamanho) selTamanho.value = forcado;
+        }
+        aplicarCascataMolde();
+        // Recalcula a divergência de tônica esperada na grade — mesmo
+        // padrão de son-pe-metrico em initFormSonoridade.
+        atualizarPeMetricoGradeMolde(e.target.value);
+    });
+
+    const form = document.getElementById('form-molde');
+    if (!form) return;
+
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const id = document.getElementById('molde-edit-id').value;
+        const idAlvo = id ? parseInt(id) : gerarId();
+        const anterior = db.moldes.find((x) => x.id == idAlvo);
+
+        const dados = {
+            id: idAlvo,
+            ...coletarEstadoAtualMolde(),
+            // status/poemaId nunca são preenchidos por este formulário
+            // (não existe campo pra eles na UI, ver modal-molde.html) —
+            // só a promoção (aplicarPromocaoMoldeSePendente, acima) os
+            // toca. Preserva o que já estiver salvo; um Molde novo nasce
+            // no mesmo padrão de migrarCamposBloco3Molde (db.js).
+            status: anterior?.status ?? 'em andamento',
+            poemaId: anterior?.poemaId ?? null,
+        };
+
+        if (anterior) {
+            const idx = db.moldes.findIndex((x) => x.id == idAlvo);
+            db.moldes[idx] = dados;
+        } else {
+            db.moldes.push(dados);
+        }
+
+        save();
+        toggleModal('modal-molde');
+    };
+}
+
+export async function editarMolde(id) {
+    const molde = db.moldes.find((x) => x.id == id);
+    if (!molde) return;
+    await garantirModal('modal-molde');
+
+    document.getElementById('molde-edit-id').value = molde.id;
+    popularCamposMolde(molde);
+    document.getElementById('modal-molde-titulo').innerText = 'Editar Molde';
+    toggleModal('modal-molde');
 }
 
 // ─── Morfofuncionalidade (Progressão Morfofuncional) ───────────
@@ -1949,6 +2497,12 @@ export function initFormPoema() {
             );
         }
 
+        // Só quando este Poema é NOVO (nunca numa edição comum) — evita
+        // que editar um Poema qualquer, com uma promoção pendente por
+        // engano, acabe promovendo um Molde que não tem nada a ver com
+        // ele (ver aplicarPromocaoMoldeSePendente, seção Molde acima).
+        if (!idInput) aplicarPromocaoMoldeSePendente(dados.id);
+
         save();
         rastreadorPoema.marcarLimpo();
         toggleModal('modal-poema');
@@ -1985,6 +2539,10 @@ const MAPA_POEMA = {
 export async function editarPoema(id) {
     const p = db.poemas.find((x) => x.id == id);
     if (!p) return;
+    // Nunca herda uma promoção de Molde pendente (ex.: o Victor abriu a
+    // promoção, mudou de ideia e foi editar outro Poema qualquer antes
+    // de salvar o de promoção) — ver moldePromovendoContexto acima.
+    limparPromocaoMoldeEmCurso();
     await garantirModal('modal-poema');
 
     renderDropdowns();

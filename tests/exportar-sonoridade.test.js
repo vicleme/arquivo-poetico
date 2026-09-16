@@ -14,7 +14,12 @@ import assert from 'node:assert/strict';
 import { Packer } from 'docx';
 import JSZip from 'jszip';
 
-import { escansaoParaMarkdown, gerarPdfEscansao, gerarDocxEscansao } from '../js/exportar-sonoridade.js';
+import {
+    escansaoParaMarkdown,
+    gerarPdfEscansao,
+    gerarDocxEscansao,
+    baixarEscansaoJson,
+} from '../js/exportar-sonoridade.js';
 import { definirMostrarEcos } from '../js/editor-sonoridade.js';
 
 // ─── Fixture compartilhado ───────────────────────────────────────────
@@ -186,5 +191,66 @@ describe('gerarDocxEscansao', () => {
         const xml = await zip.file('word/document.xml').async('string');
         assert.match(xml, /Meu Poema/);
         assert.match(xml, /Soneto/);
+    });
+});
+
+// ─── .json ────────────────────────────────────────────────────────
+// baixarEscansaoJson cria um <a download> e clica nele — mesma técnica
+// de captura de tests/exportar-frequentes.test.js: substitui
+// document.createElement/URL.createObjectURL só pra esses testes,
+// registrando cada download disparado (nome + blob) numa lista
+// inspecionável, sem depender da UI de verdade.
+describe('baixarEscansaoJson', () => {
+    let downloads;
+    let createElementOriginal;
+    let createObjectURLOriginal;
+    let revokeObjectURLOriginal;
+
+    beforeEach(() => {
+        downloads = [];
+        createElementOriginal = document.createElement;
+        createObjectURLOriginal = globalThis.URL.createObjectURL;
+        revokeObjectURLOriginal = globalThis.URL.revokeObjectURL;
+
+        const urlParaBlob = new Map();
+        globalThis.URL.createObjectURL = (blob) => {
+            const url = `blob:test-${urlParaBlob.size}`;
+            urlParaBlob.set(url, blob);
+            return url;
+        };
+        globalThis.URL.revokeObjectURL = () => {};
+
+        document.createElement = (tag) => {
+            const el = createElementOriginal.call(document, tag);
+            if (tag !== 'a') return el;
+            const clickOriginal = el.click.bind(el);
+            el.click = () => {
+                downloads.push({ nome: el.download, blob: urlParaBlob.get(el.href) });
+                clickOriginal();
+            };
+            return el;
+        };
+    });
+
+    afterEach(() => {
+        document.createElement = createElementOriginal;
+        globalThis.URL.createObjectURL = createObjectURLOriginal;
+        globalThis.URL.revokeObjectURL = revokeObjectURLOriginal;
+    });
+
+    async function textoDoBlob(blob) {
+        return Buffer.from(await blob.arrayBuffer()).toString('utf-8');
+    }
+
+    it('inclui peMetrico no JSON exportado quando presente na escansão', async () => {
+        baixarEscansaoJson({ ...esCompleta(), peMetrico: 'Decassílabo Heroico' }, poema);
+        const saida = JSON.parse(await textoDoBlob(downloads[0].blob));
+        assert.equal(saida.peMetrico, 'Decassílabo Heroico');
+    });
+
+    it('sem peMetrico na escansão, o JSON exportado não inventa um valor', async () => {
+        baixarEscansaoJson(esCompleta(), poema);
+        const saida = JSON.parse(await textoDoBlob(downloads[0].blob));
+        assert.equal(saida.peMetrico, undefined);
     });
 });

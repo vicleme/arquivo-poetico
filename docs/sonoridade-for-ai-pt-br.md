@@ -64,10 +64,13 @@ Um item por linha do texto original do poema, na ordem em que aparecem:
 - `tipo: "vazia"` marca quebra de estrofe (linha em branco) — ocupa uma
   posição na grade, sem `texto` nem `tonicas`.
 - `texto` traz a divisão silábica com `/` entre sílabas (hífen ortográfico
-  não tem peso métrico, tratado como espaço).
-- `tonicas` é um array de índices **base 0**, contando as sílabas de
-  `texto.split('/')` da esquerda pra direita — as posições marcadas como
-  tônicas daquele verso.
+  não tem peso métrico, tratado como espaço). Se o verso original já tem
+  uma barra como recurso gráfico (ex.: "pós-p/a/r/t/i/d/a"), escape com
+  `\/` — essa barra não conta como divisão, e o caractere `/` volta a
+  aparecer normalmente dentro da sílaba depois de lido.
+- `tonicas` é um array de índices **base 0**, contando as sílabas
+  resultantes da divisão (barra escapada não separa sílaba) da esquerda
+  pra direita — as posições marcadas como tônicas daquele verso.
 - Editar a divisão silábica de um verso depois de marcar tônicas descarta
   qualquer índice de `tonicas` que fique fora do novo total de sílabas.
 

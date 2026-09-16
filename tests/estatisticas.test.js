@@ -10,9 +10,20 @@ import {
     contarPorLivro,
     contarPorTema,
     contarPorPessoa,
+    agregarPorPessoa,
     palavrasMaisFrequentes,
     resumoGeral,
     filtrarPorIntervalo,
+    filtrarOcultos,
+    getTiposEtiquetaSelecionados,
+    toggleTipoEtiqueta,
+    getModoGraficoPessoas,
+    definirModoGraficoPessoas,
+    getGruposFiltroPessoas,
+    toggleGrupoFiltroPessoas,
+    getOcultosGrafico,
+    toggleOcultoItem,
+    restaurarOcultosGrafico,
 } from '../js/estatisticas.js';
 
 function resetarDb() {
@@ -26,6 +37,7 @@ function resetarDb() {
     db.itensColetanea = [];
     db.pessoas = [];
     db.grupos = [];
+    localStorage.clear(); // zera tipos/modo/grupo-filtro/ocultos salvos por um teste anterior
 }
 
 // ─── contarPorAno ───────────────────────────────────────────────
@@ -163,10 +175,10 @@ describe('contarPorTema', () => {
             { sinalizacoesTema: null },
             { sinalizacoesTema: undefined },
         ];
-        assert.deepEqual(contarPorTema(), { labels: [], data: [] });
+        assert.deepEqual(contarPorTema(), { labels: [], data: [], categorias: [] });
     });
 
-    it('combina as 8 categorias de Sinalizações na mesma contagem', () => {
+    it('combina as 8 categorias de Sinalizações na mesma contagem, por padrão (nenhum tipo salvo em preferências)', () => {
         db.poemas = [
             { sinalizacoesEstilo: 'Concretista', sinalizacoesTema: 'mar' },
             { sinalizacoesRelacao: '∞ Pedrictor', sinalizacoesTom: 'mar' },
@@ -174,6 +186,22 @@ describe('contarPorTema', () => {
         const { labels, data } = contarPorTema();
         assert.deepEqual(labels.slice().sort(), ['Concretista', '∞ Pedrictor', 'mar'].sort());
         assert.deepEqual(data[labels.indexOf('mar')], 2);
+    });
+
+    it('cada label vem acompanhado da categoria de origem, na mesma ordem/índice', () => {
+        db.poemas = [{ sinalizacoesEstilo: 'Concretista', sinalizacoesTema: 'mar' }];
+        const { labels, categorias } = contarPorTema();
+        assert.equal(categorias[labels.indexOf('Concretista')], 'estilo');
+        assert.equal(categorias[labels.indexOf('mar')], 'tema');
+    });
+
+    it('parâmetro `tipos` restringe a contagem só às categorias informadas', () => {
+        db.poemas = [{ sinalizacoesEstilo: 'Concretista', sinalizacoesTema: 'mar' }];
+        assert.deepEqual(contarPorTema(12, ['tema']), {
+            labels: ['mar'],
+            data: [1],
+            categorias: ['tema'],
+        });
     });
 
     it('respeita o parâmetro `top`, cortando os menos frequentes', () => {
@@ -185,12 +213,36 @@ describe('contarPorTema', () => {
             { sinalizacoesTema: 'b' },
             { sinalizacoesTema: 'c' },
         ];
-        assert.deepEqual(contarPorTema(2), { labels: ['a', 'b'], data: [3, 2] });
+        assert.deepEqual(contarPorTema(2), {
+            labels: ['a', 'b'],
+            data: [3, 2],
+            categorias: ['tema', 'tema'],
+        });
     });
 
     it('valor padrão de `top` é 12', () => {
         db.poemas = Array.from({ length: 15 }, (_, i) => ({ sinalizacoesTema: `tema${i}` }));
         assert.equal(contarPorTema().labels.length, 12);
+    });
+});
+
+describe('getTiposEtiquetaSelecionados / toggleTipoEtiqueta (preferência persistida)', () => {
+    beforeEach(resetarDb);
+
+    it('sem nada salvo, retorna as 8 categorias (equivalente ao combinado de antes)', () => {
+        assert.equal(getTiposEtiquetaSelecionados().length, 8);
+    });
+
+    it('toggleTipoEtiqueta(tipo, false) tira o tipo da seleção salva', () => {
+        toggleTipoEtiqueta('estilo', false);
+        assert.ok(!getTiposEtiquetaSelecionados().includes('estilo'));
+    });
+
+    it('desmarcar o último tipo restante volta pro padrão (todos), em vez de ficar vazio', () => {
+        const TODOS = getTiposEtiquetaSelecionados();
+        TODOS.forEach((t) => (t === TODOS[0] ? null : toggleTipoEtiqueta(t, false)));
+        toggleTipoEtiqueta(TODOS[0], false);
+        assert.equal(getTiposEtiquetaSelecionados().length, 8);
     });
 });
 
@@ -203,10 +255,151 @@ describe('contarPorPessoa', () => {
             { id: 2, nome: 'Dani', grupoIds: [] },
         ];
         db.poemas = [
-            { pessoas: [{ pessoaId: 1, papeis: [] }, { pessoaId: 2, papeis: [] }] },
+            {
+                pessoas: [
+                    { pessoaId: 1, papeis: [] },
+                    { pessoaId: 2, papeis: [] },
+                ],
+            },
             { pessoas: [{ pessoaId: 1, papeis: ['Dedicatário(a)'] }] },
         ];
         assert.deepEqual(contarPorPessoa(), { labels: ['Dalton', 'Dani'], data: [2, 1] });
+    });
+
+    it('modo "grupo": conta por Grupo (via paresGrupoPessoa), não por Pessoa', () => {
+        db.grupos = [{ id: 10, nome: 'Amigos' }];
+        db.pessoas = [
+            { id: 1, nome: 'Dalton', grupoIds: [10] },
+            { id: 2, nome: 'Dani', grupoIds: [10] },
+        ];
+        db.poemas = [
+            {
+                pessoas: [
+                    { pessoaId: 1, papeis: [] },
+                    { pessoaId: 2, papeis: [] },
+                ],
+            },
+        ];
+        assert.deepEqual(contarPorPessoa(12, { modo: 'grupo' }), { labels: ['Amigos'], data: [2] });
+    });
+
+    it('modo "pessoa" com `grupoIds`: só conta pessoas de algum dos grupos informados', () => {
+        db.grupos = [
+            { id: 10, nome: 'Família' },
+            { id: 20, nome: 'Trabalho' },
+        ];
+        db.pessoas = [
+            { id: 1, nome: 'Dalton', grupoIds: [10] },
+            { id: 2, nome: 'Dani', grupoIds: [20] },
+        ];
+        db.poemas = [
+            {
+                pessoas: [
+                    { pessoaId: 1, papeis: [] },
+                    { pessoaId: 2, papeis: [] },
+                ],
+            },
+        ];
+        assert.deepEqual(contarPorPessoa(12, { modo: 'pessoa', grupoIds: [10] }), {
+            labels: ['Dalton'],
+            data: [1],
+        });
+    });
+});
+
+describe('getModoGraficoPessoas / definirModoGraficoPessoas (preferência persistida)', () => {
+    beforeEach(resetarDb);
+
+    it('sem nada salvo, o padrão é "pessoa"', () => {
+        assert.equal(getModoGraficoPessoas(), 'pessoa');
+    });
+
+    it('definirModoGraficoPessoas("grupo") persiste a escolha', () => {
+        definirModoGraficoPessoas('grupo');
+        assert.equal(getModoGraficoPessoas(), 'grupo');
+    });
+});
+
+describe('getGruposFiltroPessoas / toggleGrupoFiltroPessoas (preferência persistida)', () => {
+    beforeEach(resetarDb);
+
+    it('sem nada salvo, retorna lista vazia (sem filtro)', () => {
+        assert.deepEqual(getGruposFiltroPessoas(), []);
+    });
+
+    it('toggleGrupoFiltroPessoas liga e desliga um grupo específico', () => {
+        toggleGrupoFiltroPessoas(10, true);
+        assert.deepEqual(getGruposFiltroPessoas(), ['10']);
+        toggleGrupoFiltroPessoas(10, false);
+        assert.deepEqual(getGruposFiltroPessoas(), []);
+    });
+});
+
+describe('getOcultosGrafico / toggleOcultoItem / restaurarOcultosGrafico (preferência persistida)', () => {
+    beforeEach(resetarDb);
+
+    it('sem nada salvo, retorna Set vazio', () => {
+        assert.deepEqual(getOcultosGrafico('pessoas-pessoa'), new Set());
+    });
+
+    it('toggleOcultoItem liga e desliga a ocultação de um item específico', () => {
+        toggleOcultoItem('pessoas-pessoa', 'Dalton');
+        assert.deepEqual(getOcultosGrafico('pessoas-pessoa'), new Set(['Dalton']));
+        toggleOcultoItem('pessoas-pessoa', 'Dalton');
+        assert.deepEqual(getOcultosGrafico('pessoas-pessoa'), new Set());
+    });
+
+    it('cada `chave` de gráfico guarda sua própria lista de ocultos, sem misturar', () => {
+        toggleOcultoItem('pessoas-pessoa', 'Dalton');
+        toggleOcultoItem('ano', '2020');
+        assert.deepEqual(getOcultosGrafico('pessoas-pessoa'), new Set(['Dalton']));
+        assert.deepEqual(getOcultosGrafico('ano'), new Set(['2020']));
+    });
+
+    it('restaurarOcultosGrafico limpa só a lista daquela chave', () => {
+        toggleOcultoItem('pessoas-pessoa', 'Dalton');
+        toggleOcultoItem('ano', '2020');
+        restaurarOcultosGrafico('pessoas-pessoa');
+        assert.deepEqual(getOcultosGrafico('pessoas-pessoa'), new Set());
+        assert.deepEqual(getOcultosGrafico('ano'), new Set(['2020']));
+    });
+});
+
+describe('filtrarOcultos', () => {
+    it('sem ocultos, retorna a lista intacta', () => {
+        const base = { labels: ['a', 'b'], data: [1, 2] };
+        assert.deepEqual(filtrarOcultos(base, new Set()), base);
+    });
+
+    it('remove só os labels presentes no Set de ocultos', () => {
+        const base = { labels: ['a', 'b', 'c'], data: [1, 2, 3] };
+        assert.deepEqual(filtrarOcultos(base, new Set(['b'])), {
+            labels: ['a', 'c'],
+            data: [1, 3],
+        });
+    });
+
+    it('preserva `categorias` (alinhado por índice) quando presente', () => {
+        const base = { labels: ['a', 'b'], data: [1, 2], categorias: ['tema', 'tom'] };
+        assert.deepEqual(filtrarOcultos(base, new Set(['a'])), {
+            labels: ['b'],
+            data: [2],
+            categorias: ['tom'],
+        });
+    });
+});
+
+describe('agregarPorPessoa (lista completa, sem corte de Top N)', () => {
+    beforeEach(resetarDb);
+
+    it('traz todas as pessoas, não só as 12 mais frequentes — pra alimentar o seletor de "ocultar"', () => {
+        db.pessoas = Array.from({ length: 15 }, (_, i) => ({
+            id: i,
+            nome: `Pessoa${i}`,
+            grupoIds: [],
+        }));
+        db.poemas = db.pessoas.map((p) => ({ pessoas: [{ pessoaId: p.id, papeis: [] }] }));
+        assert.equal(agregarPorPessoa().labels.length, 15);
     });
 });
 

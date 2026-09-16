@@ -1,9 +1,9 @@
 <div
-    id="modal-sonoridade"
+    id="modal-molde"
     class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50"
     role="dialog"
     aria-modal="true"
-    aria-labelledby="modal-sonoridade-titulo"
+    aria-labelledby="modal-molde-titulo"
     tabindex="-1"
 >
     <div
@@ -12,11 +12,11 @@
         <div
             class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0"
         >
-            <h3 id="modal-sonoridade-titulo" class="text-2xl font-bold">Adicionar Escansão</h3>
+            <h3 id="modal-molde-titulo" class="text-2xl font-bold">Adicionar Molde</h3>
             <div class="flex items-center gap-1 ml-4">
                 <button
                     type="button"
-                    onclick="document.getElementById('form-sonoridade').requestSubmit()"
+                    onclick="document.getElementById('form-molde').requestSubmit()"
                     title="Salvar (atalho: Ctrl+Enter)"
                     class="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors border border-emerald-200 dark:border-emerald-800"
                     aria-label="Salvar"
@@ -36,7 +36,7 @@
                 </button>
                 <button
                     type="button"
-                    onclick="toggleModal('modal-sonoridade')"
+                    onclick="toggleModal('modal-molde')"
                     title="Fechar (Esc)"
                     class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-600 dark:hover:text-slate-300 transition-colors border border-gray-200 dark:border-slate-700"
                     aria-label="Fechar"
@@ -55,121 +55,54 @@
             </div>
         </div>
         <div class="overflow-y-auto flex-1 px-8 py-6">
-            <form id="form-sonoridade" class="grid grid-cols-1 gap-4">
-                <input type="hidden" id="son-edit-id" />
+            <form id="form-molde" class="grid grid-cols-1 gap-4">
+                <input type="hidden" id="molde-edit-id" />
                 <details class="campo-grupo" open>
-                    <summary>Poema</summary>
+                    <summary>Título</summary>
                     <div class="campo-grupo-corpo">
                         <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
-                            Cada poema tem no máximo uma escansão cadastrada.
+                            Nome de trabalho, só pra identificar o Molde na lista — não precisa ser
+                            definitivo.
                         </p>
-                        <select id="son-poema-id" required>
-                            <option value="">-- Escolha um poema --</option>
-                        </select>
-                        <p
-                            id="son-poema-aviso"
-                            class="hidden text-[10px] text-amber-600 dark:text-amber-400 mt-1"
-                        ></p>
-                        <label
-                            for="son-linhas-ignoradas"
-                            class="block text-[10px] text-gray-400 dark:text-slate-500 mt-3 mb-1"
-                            >Linhas a ignorar
-                            <span class="normal-case"
-                                >— linhas do campo Texto que não fazem parte do poema (ex.: título
-                                digitado ali). Números soltos e/ou intervalos: "1, 5, 9" ou "1-5,
-                                6-9".</span
-                            ></label
-                        >
                         <input
                             type="text"
-                            id="son-linhas-ignoradas"
+                            id="molde-titulo"
                             class="text-sm w-full"
-                            placeholder="ex.: 1, 5, 9-12"
+                            placeholder="Sem título ainda"
                         />
-                        <div class="mt-2">
-                            <label
-                                for="son-importar-json"
-                                class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 cursor-pointer hover:underline"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 20 20"
-                                    fill="currentColor"
-                                    class="w-3.5 h-3.5"
-                                >
-                                    <path
-                                        d="M9.25 13.25a.75.75 0 0 0 1.5 0V4.636l2.955 3.129a.75.75 0 0 0 1.09-1.03l-4.25-4.5a.75.75 0 0 0-1.09 0l-4.25 4.5a.75.75 0 1 0 1.09 1.03L9.25 4.636v8.614Z"
-                                    />
-                                    <path
-                                        d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"
-                                    />
-                                </svg>
-                                Importar JSON de escansão
-                            </label>
-                            <input
-                                type="file"
-                                id="son-importar-json"
-                                accept="application/json,.json"
-                                class="hidden"
-                                onchange="importarSonoridadeDeArquivo(event)"
-                            />
-                            <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
-                                Mesmo formato do arquivo baixado no botão "Baixar" de uma escansão
-                                (JSON). Preenche a classificação e a grade abaixo — se um poema já
-                                estiver escolhido acima, ele é mantido, a não ser que o JSON traga o
-                                id de outro poema já cadastrado no acervo, caso em que a seleção
-                                troca automaticamente.
-                            </p>
-                        </div>
                     </div>
                 </details>
 
                 <details class="campo-grupo" open>
-                    <summary>Editor visual — escansão silábica</summary>
+                    <summary>Meta Estrutural</summary>
                     <div class="campo-grupo-corpo">
                         <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-3">
-                            Divida cada verso em sílabas digitando <code>/</code> entre elas (ex.:
-                            <code>Quan/do o/ sol/ se/ pôs</code>). A régua no topo mostra o número
-                            de sílabas do maior verso. Ative o Modo Sílaba Tônica (botão acima da
-                            grade) e clique numa sílaba pra marcar o acento. Ative o Modo Rima pra
-                            montar pares (clique abre um lado, shift-clique estende pra rima rica,
-                            clique numa outra linha abre o outro lado) — confirme ou cancele nos
-                            botões que aparecem. Cada par confirmado entra na lista "Pares de Rima"
-                            abaixo da grade, onde dá pra classificar Acentuação/Tonalidade/Riqueza,
-                            corrigir um lado ou remover. Posição (Externa/Interna) e Proximidade
-                            (Vizinha/Distante) são calculadas automaticamente; o topo da lista
-                            mostra a contagem final por eixo e a caracterização do poema (Com Rimas
-                            mais Próximas/Distantes/Equilibradas).
+                            O que você planeja escrever, antes de escrever — a mesma classificação
+                            da Sonoridade, só que aqui é meta, não constatação. Pode mudar a
+                            qualquer momento sem perder o que já foi escrito no Molde.
                         </p>
-                        <div id="son-grade-container"></div>
-                    </div>
-                </details>
-
-                <details class="campo-grupo" open>
-                    <summary>Classificação Poética</summary>
-                    <div class="campo-grupo-corpo">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="form-label">Forma do Poema</label>
-                                <select id="son-forma-poema">
+                                <select id="molde-forma-poema">
                                     <option value="">-- Não classificado --</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="form-label">Regularidade Métrica</label>
-                                <select id="son-regularidade-metrica">
+                                <select id="molde-regularidade-metrica">
                                     <option value="">-- Não classificado --</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="form-label">Tamanho do Verso / Metragem</label>
-                                <select id="son-tamanho-verso">
+                                <select id="molde-tamanho-verso">
                                     <option value="">-- Não classificado --</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="form-label">Pé Métrico</label>
-                                <select id="son-pe-metrico">
+                                <select id="molde-pe-metrico">
                                     <option value="">-- Não classificado --</option>
                                 </select>
                             </div>
@@ -177,31 +110,34 @@
                                 <label class="form-label">Esquema de Rimas</label>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <select
-                                        id="son-esquema-rimas-presenca"
+                                        id="molde-esquema-rimas-presenca"
                                         title="Presença de rima"
                                     >
                                         <option value="">-- Presença --</option>
                                     </select>
-                                    <select id="son-esquema-rimas-padrao" title="Padrão estrutural">
+                                    <select
+                                        id="molde-esquema-rimas-padrao"
+                                        title="Padrão estrutural"
+                                    >
                                         <option value="">-- Padrão estrutural --</option>
                                     </select>
                                 </div>
                             </div>
                             <div>
                                 <label class="form-label">Origem e Tradição</label>
-                                <select id="son-origem-tradicao">
+                                <select id="molde-origem-tradicao">
                                     <option value="">-- Não classificado --</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="form-label">Registro</label>
-                                <select id="son-registro">
+                                <select id="molde-registro">
                                     <option value="">-- Não classificado --</option>
                                 </select>
                             </div>
                             <div>
                                 <label class="form-label">Tom</label>
-                                <select id="son-tom">
+                                <select id="molde-tom">
                                     <option value="">-- Não classificado --</option>
                                 </select>
                             </div>
@@ -218,12 +154,25 @@
                     </div>
                 </details>
 
+                <details class="campo-grupo" open>
+                    <summary>Escrita</summary>
+                    <div class="campo-grupo-corpo">
+                        <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                            Escreva verso a verso. A contagem silábica (dividida por
+                            <code>/</code>) é comparada ao alvo do Tamanho do Verso escolhido acima
+                            — divergência é só um aviso, nunca trava. Trocar a Meta Estrutural
+                            durante a escrita não apaga o que já foi escrito aqui.
+                        </p>
+                        <div id="molde-grade-container"></div>
+                    </div>
+                </details>
+
                 <div
                     class="flex justify-end gap-2 border-t pt-6 border-gray-200 dark:border-slate-700"
                 >
                     <button
                         type="button"
-                        onclick="toggleModal('modal-sonoridade')"
+                        onclick="toggleModal('modal-molde')"
                         class="text-gray-600 dark:text-slate-300 px-4 py-2"
                     >
                         Cancelar

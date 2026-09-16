@@ -45,7 +45,9 @@ que importam:
 
 Represente a divisão de cada verso com **barra (`/`) entre as sílabas**,
 sem espaço ao redor da barra. Marque a(s) sílaba(s) tônica(s) de cada verso
-em **negrito**.
+em **negrito**. Se o verso já tiver uma barra como recurso gráfico do
+próprio poema (não sua, de divisão), escape com `\/` pra ela não ser lida
+como divisão silábica.
 
 Exemplo (decassílabo heroico, tônica na 6ª e na 10ª):
 

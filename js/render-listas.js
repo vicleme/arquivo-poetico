@@ -1346,6 +1346,9 @@ const COMPARADORES_ORDENACAO = {
         const diff = contarCamposPreenchidos(a) - contarCamposPreenchidos(b);
         return asc ? diff : -diff;
     },
+    // 'idSistema' — ver comentário em colunas.js (compartilhado entre
+    // Poemas e Prosas, mesmo campo `id` nos dois).
+    idSistema: compararPorNumero((p) => p.id),
     // Ordenar por "Contagem de Poemas/Prosas" dá o mesmo resultado que
     // ordenar pela coluna de estrutura ('estrutura'/'vinculo'), já que
     // _numEstrutura É a posição nessa ordem (ver getListaVisivelPoemas/
@@ -1889,6 +1892,12 @@ export function renderPoemas() {
         pendencia: (p) =>
             `<td class="p-4 text-xs max-w-xs ${p.pendencia ? 'text-orange-700 dark:text-orange-400 border-l-2 border-orange-300 dark:border-orange-700' : 'text-gray-300 dark:text-slate-600'}">${p.pendencia ? trechoNota(p.pendencia) : '—'}</td>`,
         camposPreenchidos: (p) => celulaCamposPreenchidos(p),
+        // Id real no banco (p.id) — ver comentário em colunas.js. Mesmo
+        // estilo visual do id que já aparece em Molde/Sonoridade/Estrutura
+        // Textual (mono, cinza, discreto) — aqui é opcional, não a coluna
+        // fixa (que mostra a sequência estrutural, um dado diferente).
+        idSistema: (p) =>
+            `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">#${p.id}</td>`,
         // 'contagemTipo' usa o número já calculado em getListaVisivelPoemas
         // (_numEstrutura) — não depende da posição na página.
         contagemTipo: (p) =>
@@ -2193,6 +2202,9 @@ export function renderProsas() {
         descarte: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.descarte)}</td>`,
         camposPreenchidos: (pr) => celulaCamposPreenchidos(pr),
+        // Ver comentário equivalente (idSistema) em CELULAS_POEMAS acima.
+        idSistema: (pr) =>
+            `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">#${pr.id}</td>`,
         // Ver comentário equivalente em CELULAS_POEMAS acima.
         contagemTipo: (pr) =>
             `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono text-right">${pr._numEstrutura ?? '—'}</td>`,
@@ -2664,6 +2676,190 @@ export function renderSonoridade() {
             ${tdsContagem}
             <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
                 ${celulaAcoesSonoridade(es.id)}
+            </td>
+        </tr>`;
+        })
+        .join('');
+}
+
+// ─── Moldes (aba Criação) ────────────────────────────────────────
+// Bloco 1 (dados + tabela + meta): tabela própria, ainda mais simples
+// que a de Sonoridade de propósito — colunas fixas (sem
+// DEFINICAO_COLUNAS/colunas de contagem, que Molde não tem por ora) e
+// Ações fixas (Editar/Excluir só, sem Ver/Baixar — Molde ainda não tem
+// visualização somente-leitura nem exportação própria). Busca é só por
+// título.
+let filtroMoldes = '';
+let paginaMoldes = 1;
+
+export function setFiltroMoldes(valor) {
+    filtroMoldes = (valor || '').trim().toLowerCase();
+    paginaMoldes = 1;
+    renderMoldes();
+}
+
+export function setPaginaMoldes(pagina) {
+    paginaMoldes = pagina;
+    renderMoldes();
+}
+
+function valorColunaMolde(molde, key) {
+    const vazio = '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    if (key === 'esquemaRimas') {
+        const partes = [molde.esquemaRimasPresenca, molde.esquemaRimasPadrao].filter(Boolean);
+        return partes.length ? escapeHtml(partes.join(' · ')) : vazio;
+    }
+    if (key === 'status') {
+        if (molde.status === 'promovido' && molde.poemaId != null) {
+            return `<span class="cursor-pointer hover:underline text-[11px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700" data-action="editar-poema" data-id="${molde.poemaId}" title="Ver Poema promovido">✓ Promovido</span>`;
+        }
+        return `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full border bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border-gray-200 dark:border-slate-700">Em andamento</span>`;
+    }
+    return molde[key] ? escapeHtml(molde[key]) : vazio;
+}
+
+// Bloco 3 (Promoção a Poema, ver criacao-molde.md) — seta pra cima, sem
+// círculo (diferente de ICONE_VER/ICONE_MESCLAR, que usam formas
+// fechadas): "elevar" o Molde a Poema, mesmo espírito do selo "✓
+// Promovido" que editor-molde.js mostra dentro do próprio modal.
+const ICONE_PROMOVER = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M10 16V6"/><path d="M5.5 10.5L10 6l4.5 4.5"/><path d="M4 16h12"/></svg>`;
+
+// Molde ainda não promovido ganha o botão "Promover a Poema"
+// (data-action="promover-molde", ver ACOES_LISTA em main.js); já
+// promovido (status/poemaId já salvos, ver migrarCamposBloco3Molde em
+// db.js) reaproveita a mesma ação de "editar-poema" apontando pro
+// poemaId — mesmo padrão de link direto que o selo dentro do modal usa
+// (blocoPromocaoMolde, editor-molde.js), só que aqui como botão em vez
+// de selo estático (a tabela sempre tem espaço pra ação, o modal só
+// mostra selo quando não há mais nada a fazer ali).
+// Botões conforme o painel "⚙️ Ações ▾" (isAcaoAtiva/DEFINICAO_ACOES,
+// acoes-coluna.js) — Moldes só tem Editar/Promover/Excluir (sem
+// Ver/Baixar, ver ACOES_APLICAVEIS lá). "Promover" cobre os dois
+// estados: botão de promover (ainda não promovido) ou link pro Poema
+// já promovido — comportamento inalterado, só passou a ser opcional.
+function celulaAcoesMolde(id, status, poemaId) {
+    const botoes = [];
+    if (isAcaoAtiva('moldes', 'editar')) {
+        botoes.push(
+            `<button data-action="editar-molde" data-id="${id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 p-1.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800">${ICONE_EDITAR}</button>`,
+        );
+    }
+    if (isAcaoAtiva('moldes', 'promover')) {
+        botoes.push(
+            status === 'promovido' && poemaId != null
+                ? `<button data-action="editar-poema" data-id="${poemaId}" title="Ver Poema promovido" aria-label="Ver Poema promovido" class="inline-flex items-center justify-center p-1.5 rounded text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40">${ICONE_PROMOVER}</button>`
+                : `<button data-action="promover-molde" data-id="${id}" title="Promover a Poema" aria-label="Promover a Poema" class="inline-flex items-center justify-center p-1.5 rounded text-violet-600 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-900/40">${ICONE_PROMOVER}</button>`,
+        );
+    }
+    if (isAcaoAtiva('moldes', 'excluir')) {
+        botoes.push(
+            `<button data-action="excluir-item" data-tipo="moldes" data-id="${id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>`,
+        );
+    }
+    return botoes.join('');
+}
+
+// Painel "🧱 Colunas ▾" dos Moldes — reaproveita renderSeletorColunas
+// (colunas.js) direto, sem passar por atualizarPainelColunas
+// (celulas-tabela.js): aquele também anexa "colunas de contagem"
+// (colunas-contagem.js), que não se aplica aqui (nenhum campo de Molde
+// é uma lista pra contar itens dentro). Mesmo motivo/padrão de
+// atualizarPainelColunasEstruturaTextual, mais abaixo neste arquivo.
+function atualizarPainelColunasMoldes() {
+    const painel = document.getElementById('painel-colunas-moldes');
+    if (!painel) return;
+    painel.innerHTML = renderSeletorColunas('moldes');
+}
+
+window.addEventListener('colunas:alteradas', (ev) => {
+    if (ev.detail?.tabela === 'moldes') renderMoldes();
+});
+window.addEventListener('acoes-coluna:alteradas', (ev) => {
+    if (ev.detail?.tabela === 'moldes') renderMoldes();
+});
+
+export function renderMoldes() {
+    const tbody = document.getElementById('lista-moldes');
+    if (!tbody) return;
+
+    atualizarPainelColunasMoldes();
+    atualizarPainelAcoes('moldes', 'painel-acoes-moldes');
+
+    const ativas = getColunasAtivas('moldes');
+    const def = DEFINICAO_COLUNAS.moldes;
+    const colunas = ativas.map((key) => def.find((c) => c.key === key)).filter(Boolean);
+
+    const cabecalho = document.getElementById('cabecalho-moldes');
+    if (cabecalho) {
+        const thsMeio = colunas
+            .map(
+                (c) =>
+                    `<th class="p-4 border-b border-gray-200 dark:border-slate-700">${escapeHtml(c.label)}</th>`,
+            )
+            .join('');
+        cabecalho.innerHTML = `
+            <th class="p-4 border-b border-gray-200 dark:border-slate-700">ID / Título</th>
+            ${thsMeio}
+            <th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>`;
+    }
+
+    const filtradas = db.moldes.filter((m) =>
+        filtroMoldes ? (m.titulo || '').toLowerCase().includes(filtroMoldes) : true,
+    );
+    const ordenadas = [...filtradas].sort((a, b) =>
+        (a.titulo || '').localeCompare(b.titulo || '', 'pt-BR'),
+    );
+
+    const paginacaoContainer = document.getElementById('paginacao-moldes');
+
+    if (ordenadas.length === 0) {
+        const colspan = 2 + colunas.length;
+        tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
+            db.moldes.length === 0
+                ? 'Nenhum Molde cadastrado ainda.'
+                : 'Nenhum Molde encontrado para essa busca.'
+        }</td></tr>`;
+        if (paginacaoContainer) paginacaoContainer.innerHTML = '';
+        return;
+    }
+
+    const totalPaginas =
+        itensPorPagina === Infinity ? 1 : Math.max(1, Math.ceil(ordenadas.length / itensPorPagina));
+    if (paginaMoldes > totalPaginas) paginaMoldes = totalPaginas;
+    if (paginaMoldes < 1) paginaMoldes = 1;
+
+    const paginaAtualOrdenadas =
+        itensPorPagina === Infinity
+            ? ordenadas
+            : ordenadas.slice((paginaMoldes - 1) * itensPorPagina, paginaMoldes * itensPorPagina);
+
+    if (paginacaoContainer)
+        paginacaoContainer.innerHTML = montarPaginacao(
+            ordenadas.length,
+            paginaMoldes,
+            'pagina-moldes',
+        );
+
+    tbody.innerHTML = paginaAtualOrdenadas
+        .map((m) => {
+            const titulo = m.titulo
+                ? escapeHtml(m.titulo)
+                : '<em class="text-gray-400 dark:text-slate-500">Sem título ainda</em>';
+            const tds = colunas
+                .map(
+                    (c) =>
+                        `<td class="p-4 border-b border-gray-100 dark:border-slate-800">${valorColunaMolde(m, c.key)}</td>`,
+                )
+                .join('');
+            return `
+        <tr>
+            <td class="p-4 border-b border-gray-100 dark:border-slate-800">
+                <span class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">#${m.id}</span><br>
+                ${titulo}
+            </td>
+            ${tds}
+            <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
+                ${celulaAcoesMolde(m.id, m.status, m.poemaId)}
             </td>
         </tr>`;
         })

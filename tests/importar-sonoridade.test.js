@@ -88,6 +88,30 @@ describe('validarJsonSonoridade — classificação (7 campos)', () => {
             false,
         );
     });
+
+    it('aceita um Pé Métrico válido (mesma grafia de PES_METRICOS)', () => {
+        const r = validarJsonSonoridade(
+            { poemaId: 111, tamanhoVerso: 'Decassílabo (10)', peMetrico: 'Decassílabo Heroico' },
+            POEMAS,
+            '',
+        );
+        assert.equal(r.valores.peMetrico, 'Decassílabo Heroico');
+    });
+
+    it('Pé Métrico com grafia não reconhecida vira null, com aviso próprio', () => {
+        const r = validarJsonSonoridade({ poemaId: 111, peMetrico: 'pé inventado' }, POEMAS, '');
+        assert.equal(r.valores.peMetrico, null);
+        assert.ok(r.avisos.some((a) => a.includes('Pé Métrico')));
+    });
+
+    it('Pé Métrico ausente no JSON fica null sem gerar aviso', () => {
+        const r = validarJsonSonoridade({ poemaId: 111 }, POEMAS, '');
+        assert.equal(r.valores.peMetrico, null);
+        assert.equal(
+            r.avisos.some((a) => a.includes('Pé Métrico')),
+            false,
+        );
+    });
 });
 
 describe('validarJsonSonoridade — grade silábica', () => {

@@ -150,6 +150,17 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'numero',
         },
+        // Também não corresponde a campo do modal — o id real do item no
+        // banco (p.id), diferente da "sequência" que já aparece fixa na
+        // coluna ID/Título (essa é posição na estrutura, reordenável, não
+        // identifica o item de forma estável). Esse id nunca tinha por
+        // que aparecer na UI, mas passou a "vazar" pra fora da tabela toda
+        // vez que outra coisa referencia o Poema por id (ex.: selo
+        // "Promovido a Poema #..." do Molde, Elos/Referências, Sonoridade)
+        // — coluna opcional pra poder conferir contra esses ids sem sair
+        // da tabela. Desligada por padrão, mesmo critério das colunas
+        // menos consultadas no dia a dia acima.
+        { key: 'idSistema', label: 'ID do Sistema', default: false, sortType: 'numero' },
         // Também não correspondem a campo do modal — duas numerações de
         // linha com regras diferentes (ver getListaVisivelPoemas em
         // render-listas.js): 'contagemTipo' conta 1..N na ordem da
@@ -267,6 +278,8 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'numero',
         },
+        // Ver comentário equivalente (idSistema) em poemas[] acima.
+        { key: 'idSistema', label: 'ID do Sistema', default: false, sortType: 'numero' },
         // Ver comentário equivalente em poemas[] acima.
         {
             key: 'contagemTipo',
@@ -278,11 +291,12 @@ export const DEFINICAO_COLUNAS = {
     ],
     // Aba Sonoridade — colunas dinâmicas geradas a partir dos 6 campos de
     // classificação da Escansão (ver Aba_Sonoridade.md, seção 4.2, e
-    // FORMAS_POEMA/etc. em utils.js). ID/Título e Ações são fixas (não
+    // FORMAS_POEMA/etc. em utils.js), mais Pé Métrico (campo adicionado
+    // depois, ver comentário em db.js). ID/Título e Ações são fixas (não
     // entram aqui — mesmo padrão de poemas/prosas acima). Os 4 primeiros
     // (na ordem do exemplo do spec, seção 2) já vêm ligados por padrão;
-    // Tamanho do Verso e Origem/Tradição começam desligados, como as
-    // colunas menos consultadas no dia a dia em poemas/prosas.
+    // Tamanho do Verso, Origem/Tradição e Pé Métrico começam desligados,
+    // como as colunas menos consultadas no dia a dia em poemas/prosas.
     sonoridade: [
         { key: 'formaPoema', label: 'Forma', default: true, sortType: 'alfabetico' },
         {
@@ -301,6 +315,7 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'alfabetico',
         },
+        { key: 'peMetrico', label: 'Pé Métrico', default: false, sortType: 'alfabetico' },
     ],
     // Aba Morfofuncionalidade — só as 2 colunas de conteúdo (Unidades e
     // Eventos), as duas ligadas por padrão (mesmo comportamento de
@@ -314,6 +329,38 @@ export const DEFINICAO_COLUNAS = {
     'estrutura-textual': [
         { key: 'unidades', label: 'Unidades', default: true },
         { key: 'eventos', label: 'Eventos', default: true },
+    ],
+    // Aba Criação (Moldes) — os mesmos 7 campos de classificação do
+    // Bloco 1 (reaproveita FORMAS_POEMA/etc., ver comentário em db.js),
+    // ligados por padrão: são as colunas que a tabela já tinha fixas
+    // antes deste seletor existir (mesmo critério de 'estrutura-textual'
+    // acima). Pé Métrico (campo adicionado depois) entra desligado por
+    // padrão, mesmo critério usado em 'sonoridade' acima. Status
+    // (em andamento/promovido, ver migrarCamposBloco3Molde em db.js) não
+    // é campo de classificação, mas é opcional como os outros e ligado
+    // por padrão — é a mesma informação que o ícone de "Promover" na
+    // coluna Ações já sinaliza, só que em texto. ID/Título e Ações
+    // continuam fixas.
+    moldes: [
+        { key: 'status', label: 'Status', default: true, sortType: 'alfabetico' },
+        { key: 'formaPoema', label: 'Forma do Poema', default: true, sortType: 'alfabetico' },
+        {
+            key: 'regularidadeMetrica',
+            label: 'Regularidade Métrica',
+            default: true,
+            sortType: 'alfabetico',
+        },
+        { key: 'tamanhoVerso', label: 'Tamanho do Verso', default: true, sortType: 'alfabetico' },
+        { key: 'esquemaRimas', label: 'Esquema de Rimas', default: true, sortType: 'alfabetico' },
+        {
+            key: 'origemTradicao',
+            label: 'Origem e Tradição',
+            default: true,
+            sortType: 'alfabetico',
+        },
+        { key: 'registro', label: 'Registro', default: true, sortType: 'alfabetico' },
+        { key: 'tom', label: 'Tom', default: true, sortType: 'alfabetico' },
+        { key: 'peMetrico', label: 'Pé Métrico', default: false, sortType: 'alfabetico' },
     ],
 };
 

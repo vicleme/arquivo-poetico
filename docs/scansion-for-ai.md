@@ -52,7 +52,9 @@ The rules that matter:
   syllables before the end).
 
 Mark the division of each verse with a **slash (`/`) between syllables**, no
-space around the slash. Mark the stressed syllable(s) of each verse in
+space around the slash. If the verse already has a slash as the poem's own
+graphic device (not your syllable division), escape it as `\/` so it isn't
+read as a division. Mark the stressed syllable(s) of each verse in
 **bold**.
 
 Example (decasyllable, stress on the 6th and 10th syllable):

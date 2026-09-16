@@ -76,10 +76,13 @@ One item per line of the poem's original text, in order:
   occupies a slot in the grid, with no `texto` or `tonicas`.
 - `texto` ("text") holds the syllable division with `/` between
   syllables (an orthographic hyphen carries no metrical weight, treated
-  like a space).
+  like a space). If the original verse already has a slash as a graphic
+  device (e.g. "pós-p/a/r/t/i/d/a"), escape it as `\/` — it won't count
+  as a division, and the plain `/` character is restored inside the
+  syllable once read back.
 - `tonicas` ("stresses") is an array of **0-based** indices, counting the
-  syllables of `texto.split('/')` left to right — the positions marked
-  as stressed in that verse.
+  syllables from the division (an escaped slash doesn't split) left to
+  right — the positions marked as stressed in that verse.
 - Editing a verse's syllable division after marking stresses discards any
   `tonicas` index that falls outside the new syllable count.
 

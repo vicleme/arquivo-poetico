@@ -113,6 +113,8 @@ import {
     limparFiltroDataProsas,
     setFiltroSonoridade,
     setFiltroEstruturaTextual,
+    setFiltroMoldes,
+    setPaginaMoldes,
 } from './render-listas.js';
 import {
     toggleSelecao,
@@ -168,7 +170,14 @@ import {
     salvarFormularioTemplate,
     adicionarCriterioFormulario,
 } from './exportar-frequentes.js';
-import { renderEstatisticas } from './estatisticas.js';
+import {
+    renderEstatisticas,
+    toggleTipoEtiqueta,
+    definirModoGraficoPessoas,
+    toggleGrupoFiltroPessoas,
+    toggleOcultoItem,
+    restaurarOcultosGrafico,
+} from './estatisticas.js';
 import { renderConexoes, baixarDiagramaEcos } from './render-conexoes.js';
 import {
     initEditor,
@@ -290,6 +299,10 @@ import {
     editarSonoridade,
     prepararNovaSonoridade,
     importarSonoridadeDeArquivo,
+    initFormMolde,
+    editarMolde,
+    prepararNovoMolde,
+    promoverMolde,
     initFormEstruturaTextual,
     editarEstruturaTextual,
     prepararNovaEstruturaTextual,
@@ -375,6 +388,7 @@ registrarModal('modal-grupo', 'modal-grupo.html', initFormGrupo);
 registrarModal('modal-autor', 'modal-autor.html', initFormAutor);
 registrarModal('modal-epoca', 'modal-epoca.html', initFormEpoca);
 registrarModal('modal-sonoridade', 'modal-sonoridade.html', initFormSonoridade);
+registrarModal('modal-molde', 'modal-molde.html', initFormMolde);
 registrarModal(
     'modal-morfofuncionalidade',
     'modal-morfofuncionalidade.html',
@@ -424,6 +438,8 @@ const ACOES_LISTA = {
     'editar-autor': (el) => editarAutor(Number(el.dataset.id)),
     'editar-epoca': (el) => editarEpoca(Number(el.dataset.id)),
     'editar-sonoridade': (el) => editarSonoridade(Number(el.dataset.id)),
+    'editar-molde': (el) => editarMolde(Number(el.dataset.id)),
+    'promover-molde': (el) => promoverMolde(Number(el.dataset.id)),
     'editar-estrutura-textual': (el) => editarEstruturaTextual(Number(el.dataset.id)),
     // "Ver" ganhou visualização somente-leitura própria nesta sessão
     // (antes abria o mesmo modal de edição — ver visualizar-sonoridade.js
@@ -449,6 +465,7 @@ const ACOES_LISTA = {
     'pagina-poemas': (el) => setPaginaPoemas(Number(el.dataset.pagina)),
     'pagina-prosas': (el) => setPaginaProsas(Number(el.dataset.pagina)),
     'pagina-sonoridade': (el) => setPaginaSonoridade(Number(el.dataset.pagina)),
+    'pagina-moldes': (el) => setPaginaMoldes(Number(el.dataset.pagina)),
     'pagina-estrutura-textual': (el) => setPaginaEstruturaTextual(Number(el.dataset.pagina)),
     'toggle-poema': (el, e) =>
         toggleSelecao('poemas', el.checked, Number(el.dataset.id), e?.shiftKey),
@@ -671,6 +688,7 @@ window.toggleMenuMobile = toggleMenuMobile;
 window.toggleModal = toggleModal;
 window.prepararNovo = prepararNovo;
 window.prepararNovaSonoridade = prepararNovaSonoridade;
+window.prepararNovoMolde = prepararNovoMolde;
 window.importarSonoridadeDeArquivo = importarSonoridadeDeArquivo;
 window.sugerirSequencia = sugerirSequencia;
 window.filtrarDestinoPoema = filtrarDestinoPoema;
@@ -770,6 +788,7 @@ window.wrapText = wrapText;
 // sem isso a digitação rápida engasga conforme o acervo cresce.
 window.setFiltroPoemas = debounce(setFiltroPoemas, 200);
 window.setFiltroSonoridade = debounce(setFiltroSonoridade, 200);
+window.setFiltroMoldes = debounce(setFiltroMoldes, 200);
 window.setFiltroEstruturaTextual = debounce(setFiltroEstruturaTextual, 200);
 window.prepararNovaEstruturaTextual = prepararNovaEstruturaTextual;
 window.aplicarTemplateEstruturaTextual = aplicarTemplateEstruturaTextual;
@@ -907,6 +926,11 @@ window.executarExportacaoSeletivaMarkdown = executarExportacaoSeletivaMarkdown;
 window.executarExportacaoSeletivaPdf = executarExportacaoSeletivaPdf;
 window.executarExportacaoSeletivaDocx = executarExportacaoSeletivaDocx;
 window.renderEstatisticas = renderEstatisticas;
+window.toggleTipoEtiqueta = toggleTipoEtiqueta;
+window.definirModoGraficoPessoas = definirModoGraficoPessoas;
+window.toggleGrupoFiltroPessoas = toggleGrupoFiltroPessoas;
+window.toggleOcultoItem = toggleOcultoItem;
+window.restaurarOcultosGrafico = restaurarOcultosGrafico;
 window.renderConexoes = renderConexoes;
 window.exportarTudoAninhado = exportarTudoAninhado;
 window.exportarLivroCompleto = exportarLivroCompleto;

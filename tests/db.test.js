@@ -18,6 +18,7 @@ import {
     calcularImpactoExclusaoAutor,
     migrarEpocas,
     calcularImpactoExclusaoEpoca,
+    calcularImpactoExclusaoPoema,
     mesclarPessoas,
     mesclarEpocas,
     obterOuCriarGrupoPorNome,
@@ -806,6 +807,33 @@ describe('calcularImpactoExclusaoEpoca (quem referencia a Época, pra avisar ant
         const { poemasIds, prosasIds } = calcularImpactoExclusaoEpoca({}, 10);
         assert.deepEqual(poemasIds, []);
         assert.deepEqual(prosasIds, []);
+    });
+});
+
+// ─── calcularImpactoExclusaoPoema ───────────────────────────────────
+
+describe('calcularImpactoExclusaoPoema (quem referencia o Poema do lado de Moldes, pra avisar antes de excluir)', () => {
+    it('encontra o Molde cujo poemaId aponta pra esse Poema (já promovido)', () => {
+        const dbRef = {
+            moldes: [
+                { id: 1, status: 'promovido', poemaId: 50 },
+                { id: 2, status: 'em andamento', poemaId: null },
+                { id: 3, status: 'promovido', poemaId: 51 },
+            ],
+        };
+        const { moldesIds } = calcularImpactoExclusaoPoema(dbRef, 50);
+        assert.deepEqual(moldesIds, [1]);
+    });
+
+    it('poema sem nenhum Molde de origem retorna lista vazia', () => {
+        const dbRef = { moldes: [{ id: 1, status: 'promovido', poemaId: 50 }] };
+        const { moldesIds } = calcularImpactoExclusaoPoema(dbRef, 999);
+        assert.deepEqual(moldesIds, []);
+    });
+
+    it('funciona mesmo se moldes estiver ausente do db (backup antigo)', () => {
+        const { moldesIds } = calcularImpactoExclusaoPoema({}, 50);
+        assert.deepEqual(moldesIds, []);
     });
 });
 

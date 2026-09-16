@@ -4,7 +4,12 @@
 // ============================================================
 
 import { db } from './db.js';
-import { escapeHtml, anoDeDataParcial, sinalizacoesCombinadas, nomesPessoas } from './utils.js';
+import {
+    escapeHtml,
+    anoDeDataParcial,
+    SINALIZACOES_CATEGORIAS,
+    paresGrupoPessoa,
+} from './utils.js';
 
 const STOPWORDS = new Set([
     'a',
@@ -298,6 +303,190 @@ function listaDeCampo(valor) {
         .filter(Boolean);
 }
 
+// ─── Preferências da aba (persistidas em localStorage) ─────────
+// Mesmo padrão já usado em colunas.js/acoes-coluna.js: cada escolha do
+// usuário nessa aba (tipos de Etiqueta marcados, modo do gráfico de
+// Pessoas, filtro de grupo, itens ocultos) fica salva no navegador pra
+// não precisar reconfigurar toda vez que a aba é reaberta.
+const LS_PREFIX_EST = 'arquivoPoetico_est_';
+
+function lerJSON(chave, padrao) {
+    try {
+        const raw = localStorage.getItem(LS_PREFIX_EST + chave);
+        if (raw === null) return padrao;
+        const valor = JSON.parse(raw);
+        return valor === null || valor === undefined ? padrao : valor;
+    } catch {
+        return padrao; // JSON inválido — cai pro padrão, igual a lerEstado() em colunas.js
+    }
+}
+
+function salvarJSON(chave, valor) {
+    localStorage.setItem(LS_PREFIX_EST + chave, JSON.stringify(valor));
+}
+
+// Escapa um valor pra uso dentro de onclick/onchange="...('valor')": precisa
+// escapar primeiro pro contexto JS (aspas simples do argumento, já que o
+// atributo em si usa aspas duplas) e SÓ DEPOIS pro contexto HTML do
+// atributo — na ordem inversa, a entidade de aspas simples (&#39;) volta a
+// virar aspas simples de verdade antes do handler rodar (o navegador
+// decodifica entidades HTML antes de interpretar o atributo como JS) e
+// fecha a string do argumento cedo demais.
+function escapeParaOnclick(valor) {
+    const jsEscapado = String(valor ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'");
+    return escapeHtml(jsEscapado);
+}
+
+// Mesmas 8 categorias de SINALIZACOES_CATEGORIAS (utils.js), na mesma
+// ordem de definição (Object.keys preserva ordem de inserção pra chaves
+// string) — é essa ordem que aparece no seletor de tipos do gráfico
+// "Etiquetas mais frequentes".
+const TIPOS_ETIQUETA = Object.keys(SINALIZACOES_CATEGORIAS);
+
+// Rótulos por extenso — espelha ROTULOS_SINALIZACOES (utils.js, não
+// exportado) e CORES_CATEGORIA_SINALIZACAO (celulas-tabela.js), mas
+// redefinido aqui pra não criar dependência entre módulos que não se
+// conhecem hoje; se um rótulo mudar num lugar, muda no outro também
+// (mesmo espírito do comentário sobre ROTULOS_SINALIZACOES em utils.js).
+const ROTULOS_TIPOS_ETIQUETA = {
+    tradicao: 'Tradição',
+    estilo: 'Estilo',
+    tema: 'Tema',
+    relacao: 'Relação',
+    sensibilidade: 'Sensibilidade',
+    tom: 'Tom',
+    dominioImagetico: 'Domínio Imagético',
+    outros: 'Outros',
+};
+
+// Mesma família de cor (por matiz) usada nos badges de
+// badgesEtiquetasPorCategoria (celulas-tabela.js — ex.: Tradição em
+// violeta, Tema em verde-esmeralda), só que em hex: Chart.js não lê
+// classe Tailwind, precisa da cor concreta pro backgroundColor da barra.
+const CORES_TIPOS_ETIQUETA = {
+    tradicao: '#8b5cf6',
+    estilo: '#6366f1',
+    tema: '#10b981',
+    relacao: '#ec4899',
+    sensibilidade: '#ef4444',
+    tom: '#0ea5e9',
+    dominioImagetico: '#06b6d4',
+    outros: '#9ca3af',
+};
+
+export function getTiposEtiquetaSelecionados() {
+    const salvo = lerJSON('tiposEtiqueta', null);
+    if (Array.isArray(salvo)) {
+        const validos = salvo.filter((t) => TIPOS_ETIQUETA.includes(t));
+        if (validos.length) return validos;
+    }
+    // padrão: todos os tipos combinados — igual ao comportamento de antes
+    // dessa feature, quando não existia filtro por tipo nenhum.
+    return [...TIPOS_ETIQUETA];
+}
+
+export function toggleTipoEtiqueta(tipo, ativo) {
+    if (!TIPOS_ETIQUETA.includes(tipo)) return;
+    const atuais = new Set(getTiposEtiquetaSelecionados());
+    if (ativo) atuais.add(tipo);
+    else atuais.delete(tipo);
+    // nunca salva a lista vazia — sem nenhum tipo marcado não sobra o que
+    // mostrar; volta pro padrão (todos) em vez de deixar o gráfico mudo
+    // sem nenhum aviso do que aconteceu.
+    salvarJSON('tiposEtiqueta', atuais.size ? Array.from(atuais) : [...TIPOS_ETIQUETA]);
+    renderEstatisticas();
+}
+
+// ─── Gráfico de Pessoas: modo (por pessoa / por grupo) + filtro ────
+
+export function getModoGraficoPessoas() {
+    const valor = localStorage.getItem(LS_PREFIX_EST + 'modoPessoas');
+    return valor === 'grupo' ? 'grupo' : 'pessoa';
+}
+
+export function definirModoGraficoPessoas(modo) {
+    localStorage.setItem(LS_PREFIX_EST + 'modoPessoas', modo === 'grupo' ? 'grupo' : 'pessoa');
+    renderEstatisticas();
+}
+
+// Filtro por Grupo só se aplica no modo "por pessoa" (restringe às
+// pessoas que pertencem a algum dos grupos marcados); vazio = sem
+// filtro, mostra todo mundo — mesmo critério de "sem limite" já usado
+// em filtrarPorIntervalo (min/max vazios = sem limite naquele lado).
+export function getGruposFiltroPessoas() {
+    const salvo = lerJSON('gruposFiltroPessoas', []);
+    return Array.isArray(salvo) ? salvo : [];
+}
+
+export function toggleGrupoFiltroPessoas(grupoId, ativo) {
+    const atuais = new Set(getGruposFiltroPessoas().map(String));
+    if (ativo) atuais.add(String(grupoId));
+    else atuais.delete(String(grupoId));
+    salvarJSON('gruposFiltroPessoas', Array.from(atuais));
+    renderEstatisticas();
+}
+
+// ─── Ocultar itens: vale pros 4 gráficos (Ano, Livro, Etiquetas, ───
+// Pessoas), cada um com sua própria lista salva — ocultar "Pedro" no
+// gráfico de Pessoas não tem nada a ver com ocultar "2020" no de Ano,
+// mas o mecanismo (checkbox por item, persistido, sem reconfigurar
+// toda vez que a aba reabre) é o mesmo nos quatro. `chave` é uma de
+// 'ano' | 'livro' | 'temas' | 'pessoas-pessoa' | 'pessoas-grupo' —
+// Pessoas usa uma lista por modo, já que os rótulos mudam de nome de
+// pessoa pra nome de grupo entre um modo e outro.
+
+export function getOcultosGrafico(chave) {
+    const salvo = lerJSON('ocultos_' + chave, []);
+    return new Set(Array.isArray(salvo) ? salvo : []);
+}
+
+export function toggleOcultoItem(chave, label) {
+    const atuais = getOcultosGrafico(chave);
+    if (atuais.has(label)) atuais.delete(label);
+    else atuais.add(label);
+    salvarJSON('ocultos_' + chave, Array.from(atuais));
+    renderEstatisticas();
+}
+
+export function restaurarOcultosGrafico(chave) {
+    localStorage.removeItem(LS_PREFIX_EST + 'ocultos_' + chave);
+    renderEstatisticas();
+}
+
+// Remove de { labels, data, categorias? } as entradas cujo label está no
+// conjunto de ocultos — mesmo espírito de filtrarPorIntervalo (função já
+// existente logo abaixo), só que filtrando por identidade do item em vez
+// de faixa de valor. Preserva `categorias` quando presente (gráfico de
+// Etiquetas), pra não perder a cor de cada barra remanescente.
+export function filtrarOcultos({ labels, data, categorias }, ocultos) {
+    if (!ocultos || ocultos.size === 0)
+        return categorias ? { labels, data, categorias } : { labels, data };
+
+    const labelsF = [];
+    const dataF = [];
+    const catF = categorias ? [] : undefined;
+    labels.forEach((l, i) => {
+        if (ocultos.has(l)) return;
+        labelsF.push(l);
+        dataF.push(data[i]);
+        if (catF) catF.push(categorias[i]);
+    });
+    return catF
+        ? { labels: labelsF, data: dataF, categorias: catF }
+        : { labels: labelsF, data: dataF };
+}
+
+// Corta { labels, data, categorias? } pros `n` primeiros — usado depois
+// de filtrarOcultos, pra ocultar um item promover o próximo pro Top N em
+// vez de simplesmente encolher a lista visível.
+function topN({ labels, data, categorias }, n) {
+    return categorias
+        ? { labels: labels.slice(0, n), data: data.slice(0, n), categorias: categorias.slice(0, n) }
+        : { labels: labels.slice(0, n), data: data.slice(0, n) };
+}
+
 // ─── Resolução de Livro (pra agrupar Por Livro / Por Ano) ──────
 
 function livroIdDoItem(item) {
@@ -374,33 +563,82 @@ export function contarPorLivro() {
     return { labels: ordenado.map((o) => o[0]), data: ordenado.map((o) => o[1]) };
 }
 
-export function contarPorTema(top = 12) {
+// Agregação completa (sem corte de Top N) por Etiqueta, só dentre os
+// `tipos` informados (chaves de SINALIZACOES_CATEGORIAS — ex.: só
+// 'tema' e 'tom', ou os 8 combinados como no comportamento antigo).
+// `categorias[i]` é a categoria de origem de `labels[i]` (a primeira em
+// que a tag aparece, se o mesmo nome de tag existir em mais de uma
+// categoria selecionada — caso raro, mas possível já que cada categoria
+// é um campo de texto livre independente).
+export function agregarPorTema(tipos = getTiposEtiquetaSelecionados()) {
+    const tiposValidos = tipos.filter((t) => TIPOS_ETIQUETA.includes(t));
+    const tiposAUsar = tiposValidos.length ? tiposValidos : TIPOS_ETIQUETA;
+
     const contagem = {};
+    const categoriaDoLabel = {};
     todosOsTextos().forEach((t) => {
-        // Etiquetas mais frequentes = as 8 categorias de Sinalizações
-        // combinadas (ver sinalizacoesCombinadas em utils.js), igual já
-        // era quando isso era um campo único — só mudou onde o dado mora.
-        listaDeCampo(sinalizacoesCombinadas(t)).forEach((tag) => {
-            contagem[tag] = (contagem[tag] || 0) + 1;
+        tiposAUsar.forEach((tipoKey) => {
+            listaDeCampo(t[SINALIZACOES_CATEGORIAS[tipoKey]]).forEach((tag) => {
+                contagem[tag] = (contagem[tag] || 0) + 1;
+                if (!categoriaDoLabel[tag]) categoriaDoLabel[tag] = tipoKey;
+            });
         });
     });
-    const ordenado = Object.entries(contagem)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, top);
+    const ordenado = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
+    return {
+        labels: ordenado.map((o) => o[0]),
+        data: ordenado.map((o) => o[1]),
+        categorias: ordenado.map((o) => categoriaDoLabel[o[0]]),
+    };
+}
+
+export function contarPorTema(top = 12, tipos = getTiposEtiquetaSelecionados()) {
+    return topN(agregarPorTema(tipos), top);
+}
+
+// Agregação completa (sem corte de Top N) do gráfico de Pessoas.
+// `opcoes.modo`: 'pessoa' (padrão) conta por Pessoa — cada uma das
+// pessoas do item.pessoas, opcionalmente restrita às que pertencem a
+// algum grupo em `opcoes.grupoIds` (vazio = sem restrição); 'grupo'
+// conta por Grupo, via paresGrupoPessoa (utils.js) — mesma convenção já
+// usada ali: uma pessoa em mais de um grupo gera um par por grupo, não
+// uma linha combinada, então um item com 2 pessoas do mesmo grupo soma
+// 2 pro grupo (uma dedicatória por pessoa envolvida).
+export function agregarPorPessoa(opcoes = {}) {
+    const modo =
+        opcoes.modo === 'grupo' || opcoes.modo === 'pessoa' ? opcoes.modo : getModoGraficoPessoas();
+    const grupoIds = opcoes.grupoIds || getGruposFiltroPessoas();
+
+    const contagem = {};
+    if (modo === 'grupo') {
+        todosOsTextos().forEach((t) => {
+            paresGrupoPessoa(t, db.pessoas, db.grupos).forEach(({ grupo }) => {
+                contagem[grupo.nome] = (contagem[grupo.nome] || 0) + 1;
+            });
+        });
+    } else {
+        const setGrupoFiltro = new Set((grupoIds || []).map(String));
+        todosOsTextos().forEach((t) => {
+            if (!Array.isArray(t.pessoas)) return;
+            t.pessoas.forEach((p) => {
+                const pessoa = db.pessoas.find((x) => x.id === p.pessoaId);
+                if (!pessoa) return;
+                if (
+                    setGrupoFiltro.size &&
+                    !(pessoa.grupoIds || []).some((g) => setGrupoFiltro.has(String(g)))
+                ) {
+                    return;
+                }
+                contagem[pessoa.nome] = (contagem[pessoa.nome] || 0) + 1;
+            });
+        });
+    }
+    const ordenado = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
     return { labels: ordenado.map((o) => o[0]), data: ordenado.map((o) => o[1]) };
 }
 
-export function contarPorPessoa(top = 12) {
-    const contagem = {};
-    todosOsTextos().forEach((t) => {
-        nomesPessoas(t, db.pessoas).forEach((nome) => {
-            contagem[nome] = (contagem[nome] || 0) + 1;
-        });
-    });
-    const ordenado = Object.entries(contagem)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, top);
-    return { labels: ordenado.map((o) => o[0]), data: ordenado.map((o) => o[1]) };
+export function contarPorPessoa(top = 12, opcoes = {}) {
+    return topN(agregarPorPessoa(opcoes), top);
 }
 
 export function palavrasMaisFrequentes(livroId = '', top = 40) {
@@ -616,26 +854,172 @@ function renderListaPalavras() {
         : '<p class="text-gray-400 dark:text-slate-500 col-span-full">Sem texto suficiente pra analisar ainda.</p>';
 }
 
+function montarPainel(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+}
+
+// Painel de checkboxes por tipo de Etiqueta (popover "🏷️ Tipos ▾" do
+// gráfico de Etiquetas) — cada linha já mostra a bolinha da cor daquele
+// tipo, pra reconhecer de cara qual cor vai virar cada barra.
+function renderSeletorTiposEtiqueta() {
+    const selecionados = new Set(getTiposEtiquetaSelecionados());
+    return TIPOS_ETIQUETA.map(
+        (tipo) => `
+        <label class="flex items-center gap-2 py-0.5 px-1 text-xs cursor-pointer whitespace-nowrap">
+            <input type="checkbox" ${selecionados.has(tipo) ? 'checked' : ''}
+                onchange="toggleTipoEtiqueta('${tipo}', this.checked)">
+            <span class="inline-block w-2 h-2 rounded-full" style="background:${CORES_TIPOS_ETIQUETA[tipo]}"></span>
+            ${ROTULOS_TIPOS_ETIQUETA[tipo]}
+        </label>`,
+    ).join('');
+}
+
+// Legenda de cor abaixo do gráfico de Etiquetas — só aparece quando o
+// Top N atual mistura 2+ tipos diferentes (com 1 tipo só, a cor não
+// carrega informação nenhuma, é só decoração).
+function renderLegendaTipos(categoriasNoGrafico) {
+    const unicas = Array.from(new Set(categoriasNoGrafico)).filter(Boolean);
+    if (unicas.length < 2) return '';
+    return unicas
+        .map(
+            (cat) => `
+        <span class="inline-flex items-center gap-1 mr-3">
+            <span class="inline-block w-2 h-2 rounded-full" style="background:${CORES_TIPOS_ETIQUETA[cat]}"></span>
+            ${ROTULOS_TIPOS_ETIQUETA[cat]}
+        </span>`,
+        )
+        .join('');
+}
+
+// Par de botões "Por pessoa" / "Por grupo" do gráfico de Pessoas.
+function renderSeletorModoPessoas() {
+    const modo = getModoGraficoPessoas();
+    const botao = (valor, rotulo) => `
+        <button type="button" onclick="definirModoGraficoPessoas('${valor}')"
+            class="px-2 py-0.5 rounded text-[11px] font-semibold ${
+                modo === valor
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'
+            }">${rotulo}</button>`;
+    return botao('pessoa', 'Por pessoa') + botao('grupo', 'Por grupo');
+}
+
+// Painel de checkboxes por Grupo (popover "👥 Grupos ▾") — restringe o
+// modo "Por pessoa" às pessoas de algum dos grupos marcados. Só faz
+// sentido nesse modo; renderEstatisticas() decide se mostra isso ou o
+// aviso de "não se aplica" conforme o modo atual.
+function renderSeletorGrupoFiltroPessoas() {
+    if (!db.grupos.length) {
+        return '<p class="text-[11px] text-gray-400 dark:text-slate-500 px-1">Nenhum grupo cadastrado.</p>';
+    }
+    const selecionados = new Set(getGruposFiltroPessoas().map(String));
+    return db.grupos
+        .map(
+            (g) => `
+        <label class="flex items-center gap-2 py-0.5 px-1 text-xs cursor-pointer whitespace-nowrap">
+            <input type="checkbox" ${selecionados.has(String(g.id)) ? 'checked' : ''}
+                onchange="toggleGrupoFiltroPessoas('${g.id}', this.checked)">
+            ${escapeHtml(g.nome)}
+        </label>`,
+        )
+        .join('');
+}
+
+// Painel de checkboxes "ocultar item" (popover "🚫 Ocultar ▾"), comum
+// aos 4 gráficos — `labels` é a lista completa (sem corte de Top N) já
+// filtrada pelo que se aplica (tipos/modo/grupo), pra ocultar algo que
+// nem está no Top N atual mesmo assim funcionar quando ele entrar.
+function renderSeletorOcultos(chave, labels) {
+    if (!labels.length) {
+        return '<p class="text-[11px] text-gray-400 dark:text-slate-500 px-1">Nada pra ocultar ainda.</p>';
+    }
+    const ocultos = getOcultosGrafico(chave);
+    const restaurar = ocultos.size
+        ? `<button type="button" onclick="restaurarOcultosGrafico('${chave}')"
+            class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline block mb-1.5">
+            Mostrar todos (${ocultos.size} oculto${ocultos.size > 1 ? 's' : ''})
+          </button>`
+        : '';
+    return (
+        restaurar +
+        labels
+            .map(
+                (label) => `
+        <label class="flex items-center gap-2 py-0.5 px-1 text-xs cursor-pointer whitespace-nowrap">
+            <input type="checkbox" ${ocultos.has(label) ? 'checked' : ''}
+                onchange="toggleOcultoItem('${chave}', '${escapeParaOnclick(label)}')">
+            ${escapeHtml(label)}
+        </label>`,
+            )
+            .join('')
+    );
+}
+
 export function renderEstatisticas() {
     renderResumo();
     popularSeletorLivroPalavras();
     renderListaPalavras();
 
+    // ── Textos por Ano ──
+    const baseAno = contarPorAno();
     const [minAno, maxAno] = lerIntervalo('ano');
-    const porAno = filtrarPorIntervalo(contarPorAno(), minAno, maxAno);
+    const porAno = filtrarPorIntervalo(
+        filtrarOcultos(baseAno, getOcultosGrafico('ano')),
+        minAno,
+        maxAno,
+    );
     criarBarChart('grafico-ano', porAno.labels, porAno.data, '#1d4ed8');
+    montarPainel('painel-ocultos-ano', renderSeletorOcultos('ano', baseAno.labels));
 
+    // ── Textos por Livro/Coletânea ──
+    const baseLivro = contarPorLivro();
     const [minLivro, maxLivro] = lerIntervalo('livro');
-    const porLivro = filtrarPorIntervalo(contarPorLivro(), minLivro, maxLivro);
+    const porLivro = filtrarPorIntervalo(
+        filtrarOcultos(baseLivro, getOcultosGrafico('livro')),
+        minLivro,
+        maxLivro,
+    );
     criarBarChart('grafico-livro', porLivro.labels, porLivro.data, '#4f46e5');
+    montarPainel('painel-ocultos-livro', renderSeletorOcultos('livro', baseLivro.labels));
 
+    // ── Etiquetas mais frequentes (filtro por tipo + cor por tipo) ──
+    const tiposSelecionados = getTiposEtiquetaSelecionados();
+    const baseTemas = agregarPorTema(tiposSelecionados);
+    const categoriaPorLabelTema = new Map(
+        baseTemas.labels.map((l, i) => [l, baseTemas.categorias[i]]),
+    );
     const [minTemas, maxTemas] = lerIntervalo('temas');
-    const porTema = filtrarPorIntervalo(contarPorTema(), minTemas, maxTemas);
-    criarBarChart('grafico-temas', porTema.labels, porTema.data, '#0d9488');
+    let porTema = topN(filtrarOcultos(baseTemas, getOcultosGrafico('temas')), 12);
+    porTema = filtrarPorIntervalo(porTema, minTemas, maxTemas);
+    const categoriasNoGrafico = porTema.labels.map((l) => categoriaPorLabelTema.get(l));
+    const coresPorBarra = categoriasNoGrafico.map(
+        (cat) => CORES_TIPOS_ETIQUETA[cat] || CORES_TIPOS_ETIQUETA.outros,
+    );
+    criarBarChart('grafico-temas', porTema.labels, porTema.data, coresPorBarra);
+    montarPainel('legenda-temas', renderLegendaTipos(categoriasNoGrafico));
+    montarPainel('painel-tipos-etiqueta', renderSeletorTiposEtiqueta());
+    montarPainel('painel-ocultos-temas', renderSeletorOcultos('temas', baseTemas.labels));
 
+    // ── Pessoas mais dedicadas (por pessoa ou por grupo) ──
+    const modoPessoas = getModoGraficoPessoas();
+    const chaveOcultosPessoas = 'pessoas-' + modoPessoas;
+    const basePessoas = agregarPorPessoa({ modo: modoPessoas, grupoIds: getGruposFiltroPessoas() });
     const [minPessoas, maxPessoas] = lerIntervalo('pessoas');
-    const porPessoa = filtrarPorIntervalo(contarPorPessoa(), minPessoas, maxPessoas);
+    let porPessoa = topN(filtrarOcultos(basePessoas, getOcultosGrafico(chaveOcultosPessoas)), 12);
+    porPessoa = filtrarPorIntervalo(porPessoa, minPessoas, maxPessoas);
     criarBarChart('grafico-pessoas', porPessoa.labels, porPessoa.data, '#e11d48');
+    montarPainel('painel-modo-pessoas', renderSeletorModoPessoas());
+    montarPainel(
+        'painel-grupo-pessoas',
+        modoPessoas === 'pessoa'
+            ? renderSeletorGrupoFiltroPessoas()
+            : '<p class="text-[11px] text-gray-400 dark:text-slate-500 px-1">Filtro de grupo só se aplica no modo "Por pessoa".</p>',
+    );
+    montarPainel(
+        'painel-ocultos-pessoas',
+        renderSeletorOcultos(chaveOcultosPessoas, basePessoas.labels),
+    );
 }
 
 window.addEventListener('db:saved', () => {

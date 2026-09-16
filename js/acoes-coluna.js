@@ -19,6 +19,13 @@ export const DEFINICAO_ACOES = [
     { key: 'baixar', label: 'Baixar' },
     { key: 'editar', label: 'Editar' },
     { key: 'excluir', label: 'Excluir' },
+    // Só existe na aba Criação (Moldes) — "Promover a Poema" quando o
+    // Molde ainda não foi promovido, ou o link pro Poema já promovido
+    // (ver celulaAcoesMolde, render-listas.js). Entra na definição
+    // geral (mesmo esquema de chave/label de todo o resto) mas fica de
+    // fora de ACOES_APLICAVEIS das outras abas, então nunca aparece
+    // como checkbox fora de Moldes.
+    { key: 'promover', label: 'Promover a Poema' },
 ];
 
 export const FORMATOS_BAIXAR = [
@@ -31,6 +38,18 @@ export const FORMATOS_BAIXAR = [
 const CHAVES_ACOES = DEFINICAO_ACOES.map((a) => a.key);
 const CHAVES_FORMATO = FORMATOS_BAIXAR.map((f) => f.key);
 const FORMATO_PADRAO = 'md';
+
+// Quais botões cada aba realmente tem — Poemas/Prosas/Sonoridade/
+// Morfofuncionalidade usam os 4 clássicos (Ver/Baixar/Editar/Excluir,
+// com formato de Baixar configurável); Moldes não tem "Ver" (sem modal
+// de visualização somente-leitura) nem "Baixar" (sem exportação) —
+// só Editar/Promover/Excluir, sem a seção de formato. Sem entrada
+// listada aqui cai no padrão dos 4 clássicos (retrocompatível com
+// toda aba que já usava este painel antes de 'promover' existir).
+const ACOES_APLICAVEIS = {
+    moldes: ['editar', 'promover', 'excluir'],
+};
+const ACOES_APLICAVEIS_PADRAO = ['ver', 'baixar', 'editar', 'excluir'];
 
 // Lê o estado salvo ({ ativas, formato }) e sempre devolve algo
 // íntegro: por padrão (primeiro acesso, ou dado salvo corrompido/
@@ -118,24 +137,38 @@ export function resetarAcoesColuna(tabela) {
 export function renderSeletorAcoes(tabela) {
     const { ativas, formato } = lerEstado(tabela);
     const setAtivas = new Set(ativas);
+    const aplicaveis = new Set(ACOES_APLICAVEIS[tabela] || ACOES_APLICAVEIS_PADRAO);
 
-    const botoes = DEFINICAO_ACOES.map(
-        (a) => `
+    const botoes = DEFINICAO_ACOES.filter((a) => aplicaveis.has(a.key))
+        .map(
+            (a) => `
         <label class="flex items-center gap-2 py-0.5 px-1 text-xs cursor-pointer whitespace-nowrap">
             <input type="checkbox" ${setAtivas.has(a.key) ? 'checked' : ''}
                 onchange="toggleAcaoColuna('${tabela}', '${a.key}', this.checked)">
             ${a.label}
         </label>`,
-    ).join('');
+        )
+        .join('');
 
-    const formatos = FORMATOS_BAIXAR.map(
-        (f) => `
+    // Formato do Baixar só faz sentido pra abas que têm o botão Baixar
+    // (Poemas/Prosas/Sonoridade/Morfofuncionalidade) — Moldes não tem
+    // exportação nenhuma ainda, então a seção inteira some pra ela.
+    const formatos = aplicaveis.has('baixar')
+        ? `
+            <div>
+                <p class="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500 mb-1">
+                    Formato do Baixar
+                </p>
+                <div class="flex flex-wrap gap-x-4">${FORMATOS_BAIXAR.map(
+                    (f) => `
         <label class="flex items-center gap-2 py-0.5 px-1 text-xs cursor-pointer whitespace-nowrap">
             <input type="radio" name="formato-baixar-${tabela}" ${formato === f.key ? 'checked' : ''}
                 onchange="setFormatoBaixarColuna('${tabela}', '${f.key}')">
             ${f.label}
         </label>`,
-    ).join('');
+                ).join('')}</div>
+            </div>`
+        : '';
 
     return `
         <div class="flex flex-wrap items-start gap-x-8 gap-y-2">
@@ -145,14 +178,9 @@ export function renderSeletorAcoes(tabela) {
                 </p>
                 <div class="flex flex-wrap gap-x-4">${botoes}</div>
             </div>
-            <div>
-                <p class="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500 mb-1">
-                    Formato do Baixar
-                </p>
-                <div class="flex flex-wrap gap-x-4">${formatos}</div>
-            </div>
+            ${formatos}
             <button type="button" onclick="resetarAcoesColuna('${tabela}')"
-                title="Volta pros 4 botões e formato .md, descartando a personalização"
+                title="Volta pro padrão de fábrica, descartando a personalização"
                 class="text-[10px] font-semibold text-gray-500 dark:text-slate-400 hover:underline self-start mt-4">
                 Restaurar padrão
             </button>

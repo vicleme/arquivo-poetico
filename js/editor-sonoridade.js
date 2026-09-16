@@ -69,6 +69,7 @@ import {
     RIQUEZAS_RIMA,
     DISTANCIA_VIZINHO_MAXIMA,
     TIPOS_ECO_SONORO,
+    PES_METRICOS,
     parseListaIntervalos,
     limparElementosHtmlLinha,
 } from './utils.js';
@@ -89,6 +90,14 @@ let rimasAtuais = [];
 let ecosAtuais = [];
 let containerEl = null;
 let modoTonico = false;
+// Pé Métrico selecionado na Meta Estrutural do modal (fora do estado
+// salvo em rimasAtuais/ecosAtuais — não pertence à escansão em si, só
+// entra aqui pra alimentar celulasDivergentesPeMetrico ao desenhar a
+// grade). Atualizado ao vivo por atualizarPeMetricoSonoridade(), mesmo
+// padrão de atualizarAlvoGradeMolde() em editor-molde.js — não exige
+// reabrir o modal quando o Victor troca o Pé Métrico no meio da
+// escansão.
+let peMetricoAtual = '';
 let modoRima = false;
 let modoEco = false;
 // Par de rima em construção: { ladoA: { linhaIdx, silabas: [...] },
@@ -178,7 +187,13 @@ export function construirLinhasIniciais(textoPoema, linhasIgnoradasStr = '') {
             return;
         }
         numero += 1;
-        resultado.push({ tipo: 'verso', numero, texto: semMarcacao });
+        // Qualquer barra já presente no texto original do poema (marcação
+        // gráfica, ex. "pós-p/a/r/t/i/d/a") é escapada aqui, na entrada —
+        // sem isso o verso nasceria "pré-dividido" pela pontuação do
+        // próprio poema, em vez de virar célula única como o resto desta
+        // função documenta. Ver dividirSilabas() logo abaixo pro outro
+        // lado do mesmo escape (`\/` não divide, só `/` divide).
+        resultado.push({ tipo: 'verso', numero, texto: semMarcacao.replace(/\//g, '\\/') });
     });
     return resultado;
 }
@@ -186,6 +201,14 @@ export function construirLinhasIniciais(textoPoema, linhasIgnoradasStr = '') {
 // Divide um verso em sílabas pela barra `/` digitada pelo usuário — sem
 // barra nenhuma, o verso inteiro vira uma "sílaba" só (célula única), até
 // o usuário começar a dividir.
+//
+// Barra escapada `\/` NÃO divide — é barra de conteúdo do poema (recurso
+// gráfico, ex. "pós-p/a/r/t/i/d/a"), preservada como caractere normal
+// dentro da sílaba. construirLinhasIniciais() já escapa automaticamente
+// toda barra que vem do texto original do poema; a partir daí, qualquer
+// `/` sem escape que aparecer no campo é divisão real (digitada pelo
+// usuário na própria grade, ou colada de novo sem querer). Pra incluir
+// à mão uma barra literal numa sílaba editada depois, digite `\/`.
 //
 // Hífen ortográfico (ênclise/mesóclise, palavras compostas — ex.:
 // "dize-me", "guarda-chuva") não tem peso métrico, igual espaço: o
@@ -200,7 +223,9 @@ export function construirLinhasIniciais(textoPoema, linhasIgnoradasStr = '') {
 // (exportar-sonoridade.js), que precisam da mesma divisão silábica pra
 // não divergir do que a grade de edição mostra.
 export function dividirSilabas(texto) {
-    return (texto || '').split('/').map((s) => s.replace(/-/g, '').trim());
+    return (texto || '')
+        .split(/(?<!\\)\//)
+        .map((s) => s.replace(/\\\//g, '/').replace(/-/g, '').trim());
 }
 
 // Exportada separada de maxSilabas() (que lê o estado do módulo) pra dar
@@ -304,8 +329,154 @@ const PALETA_RIMA = ['rose', 'emerald', 'cyan', 'fuchsia', 'lime', 'teal', 'oran
 // somente-leitura e os exportadores precisam da mesma cor por letra de
 // esquema que a grade de edição usa, pra não divergir visualmente.
 export function corDaLetra(letra) {
-    const indice = letra.charCodeAt(0) - 65; // 'A' -> 0
+    // Inverso de letraEsperadaDeIndice (bijective base-26): decodifica a
+    // letra inteira, não só o 1º caractere — 'A' -> 0, 'Z' -> 25,
+    // 'AA' -> 26, 'AB' -> 27... Ler só charCodeAt(0) (versão antiga)
+    // faria 'A' e 'AA' caírem na mesma cor, o que reintroduziria a
+    // confusão entre ciclos que letraEsperadaDeIndice foi criada pra
+    // evitar.
+    let n = 0;
+    for (const c of letra) {
+        n = n * 26 + (c.charCodeAt(0) - 65 + 1);
+    }
+    const indice = n - 1;
     return PALETA_RIMA[((indice % PALETA_RIMA.length) + PALETA_RIMA.length) % PALETA_RIMA.length];
+}
+
+// ─── Molde — letra de rima ESPERADA (derivada do esquema, sem pares
+// confirmados) ───────────────────────────────────────────────────────
+// Contraparte de calcularLetrasRima acima, só que pro sentido inverso do
+// Molde: lá a letra vem de pares que o Victor clicou (o texto já existe,
+// a letra é constatação); aqui não existe nenhum par ainda — a letra é
+// só o rótulo de posição que o esquema declarado (esquemaRimasPresenca +
+// esquemaRimasPadrao) preveria pra cada verso, recalculada ao vivo, nunca
+// salva (mesmo espírito não-salvo de tamanhoVerso/peMetrico no Molde —
+// ver manutencao/criacao-molde.md, Bloco 2). Mora aqui, não em utils.js,
+// pelo mesmo motivo de calcularLetrasRima/corDaLetra: reaproveita a
+// mesma paleta/leitura visual de letra, então fica junto.
+//
+// Cada padrão vira um "template" de posições relativas (0-based) dentro
+// de UM ciclo — ex. Alternada/Cruzada (ABAB) = [0,1,0,1], 2 letras
+// distintas por ciclo. Posições que aparecem só 1 vez dentro do ciclo
+// são "soltas" (não têm com quem rimar dentro do próprio padrão, ex. o
+// 1º e 3º verso da Quadra ABCB) — ficam SEM letra, mesmo espírito
+// não-punitivo do resto do sistema: melhor não mostrar nada do que
+// inventar uma expectativa que o próprio nome do padrão não sustenta.
+const TEMPLATES_RIMA_ESPERADA = {
+    'Emparelhada (AABB)': [0, 0, 1, 1],
+    'Alternada / Cruzada (ABAB)': [0, 1, 0, 1],
+    'Oposta / Interpolada (ABBA)': [0, 1, 1, 0],
+    'Sextilha Aberta (ABCBDB)': [0, 1, 2, 1, 3, 1],
+    'Décima Espinela (ABBAACCDDC)': [0, 1, 1, 0, 0, 2, 2, 3, 3, 2],
+    'Limerick (AABBA)': [0, 0, 1, 1, 0],
+    'Quadra / Rima Simples (ABCB)': [0, 1, 2, 1],
+};
+
+// Índice 0-based -> letra, estilo colunas de planilha (bijective base-26):
+// A, B, ..., Z, AA, AB, ..., AZ, BA, ..., ZZ, AAA, ... Ao contrário de
+// calcularLetrasRima (que assume <=26 grupos rimados como cenário
+// realista de um poema), aqui a letra é DECISÃO explícita de nunca
+// reiniciar em A (ver item 6, criacao-molde.md) — um wrap silencioso
+// pra A depois de Z contradiria essa decisão pra um poema longo o
+// bastante (26+ ciclos). Não é base-26 comum porque não há dígito
+// "zero": depois de Z (25) o próximo é AA (26), não A0 — por isso o
+// "-1"/"+1" abaixo, igual à conversão de coluna do Excel/Sheets.
+function letraEsperadaDeIndice(i) {
+    let n = i + 1;
+    let letra = '';
+    while (n > 0) {
+        const resto = (n - 1) % 26;
+        letra = String.fromCharCode(65 + resto) + letra;
+        n = Math.floor((n - 1) / 26);
+    }
+    return letra;
+}
+
+// Decisão do Victor (conversa de planejamento): cada quebra de estrofe
+// força um ciclo novo do padrão, com letras SEMPRE avançando (nunca
+// reiniciando em A) — mesmo se o ciclo em curso não tiver terminado.
+// Motivo: a letra aqui não promete que dois versos vão soar parecido
+// (como calcularLetrasRima faria a partir de pares reais confirmados) —
+// é só o rótulo de "quais versos, dentro do MESMO bloco, esperam a
+// mesma sonoridade entre si". Reiniciar em A a cada estrofe sugeriria
+// que a 2ª estrofe deveria soar igual à 1ª, o que não é verdade pra
+// nenhum desses padrões — avançar deixa isso explícito. Sem quebra
+// nenhuma marcada ainda, o padrão também se repete sozinho a cada N
+// versos (N = tamanho do template) — decisão confirmada pelo Victor.
+export function calcularLetraRimaEsperada(linhas, esquemaRimasPresenca, esquemaRimasPadrao) {
+    const resultado = new Map();
+    if (esquemaRimasPresenca !== 'Rimado') return resultado;
+
+    if (esquemaRimasPadrao === 'Monorrima Absoluta (AAAA)') {
+        linhas.forEach((linha, idx) => {
+            if (linha.tipo === 'verso') resultado.set(idx, 'A');
+        });
+        return resultado;
+    }
+
+    // "AAAA BBBB CCCC" — um bloco = uma estrofe (não um N fixo, já que o
+    // próprio nome do padrão não define tamanho de bloco); só quebra de
+    // estrofe avança a letra, nunca uma contagem de versos.
+    if (esquemaRimasPadrao === 'Monorrima por Blocos / Continuada (AAAA BBBB CCCC)') {
+        let bloco = 0;
+        linhas.forEach((linha, idx) => {
+            if (linha.tipo === 'vazia') {
+                bloco += 1;
+                return;
+            }
+            resultado.set(idx, letraEsperadaDeIndice(bloco));
+        });
+        return resultado;
+    }
+
+    // Terza Rima (ABA BCB CDC...) — a rima do meio de um terceto vira a
+    // rima externa do próximo (o "encadeamento" que dá nome ao padrão),
+    // por isso tem regra própria: avança 1 letra por terceto (não pela
+    // contagem de letras distintas do ciclo, que quebraria a cadeia), e
+    // ignora quebra de estrofe (o encadeamento é o ponto do padrão —
+    // continua mesmo se o Victor separar os tercetos visualmente).
+    if (esquemaRimasPadrao === 'Encadeada / Terza Rima (ABA BCB)') {
+        let numeroVerso = 0;
+        let baseLetra = 0;
+        linhas.forEach((linha, idx) => {
+            if (linha.tipo !== 'verso') return;
+            const posNoTerceto = numeroVerso % 3;
+            if (posNoTerceto === 0 && numeroVerso > 0) baseLetra += 1;
+            const indiceLetra = posNoTerceto === 1 ? baseLetra + 1 : baseLetra;
+            resultado.set(idx, letraEsperadaDeIndice(indiceLetra));
+            numeroVerso += 1;
+        });
+        return resultado;
+    }
+
+    const template = TEMPLATES_RIMA_ESPERADA[esquemaRimasPadrao];
+    // Sem template fixo (Mista/Completa, Não Aplicável, ou nenhum Padrão
+    // ainda escolhido) — não dá pra derivar nada, mapa fica vazio.
+    if (!template) return resultado;
+
+    const contagemPorPosicao = new Map();
+    template.forEach((i) => contagemPorPosicao.set(i, (contagemPorPosicao.get(i) || 0) + 1));
+    const letrasDistintas = Math.max(...template) + 1;
+
+    let posNoCiclo = 0;
+    let baseLetra = 0;
+    linhas.forEach((linha, idx) => {
+        if (linha.tipo === 'vazia') {
+            if (posNoCiclo > 0) baseLetra += letrasDistintas;
+            posNoCiclo = 0;
+            return;
+        }
+        const relativo = template[posNoCiclo];
+        if (contagemPorPosicao.get(relativo) > 1) {
+            resultado.set(idx, letraEsperadaDeIndice(baseLetra + relativo));
+        }
+        posNoCiclo += 1;
+        if (posNoCiclo >= template.length) {
+            baseLetra += letrasDistintas;
+            posNoCiclo = 0;
+        }
+    });
+    return resultado;
 }
 
 // Mapa "linhaIdx:silabaIdx" -> letra do esquema, só pras sílabas que de
@@ -342,6 +513,53 @@ export function celulasComEco(ecos) {
     ecos.forEach((eco) => {
         eco.a.silabas.forEach((s) => mapa.set(`${eco.a.linha}:${s}`, true));
         eco.b.silabas.forEach((s) => mapa.set(`${eco.b.linha}:${s}`, true));
+    });
+    return mapa;
+}
+
+// ─── Pé Métrico — divergência da tônica esperada (Bloco 2 sub-passo 2
+// da feature descrita em manutencao/criacao-molde.md) ────────────────
+// Gera as posições (1-based, mesma convenção de PES_METRICOS/utils.js)
+// que a fórmula de um pé contínuo ocupa dentro de um verso de `total`
+// sílabas reais — a fórmula se repete até onde o verso alcança, sem
+// depender de nenhum Tamanho do Verso fixo.
+function gerarPosicoesContinuas(posicaoInicial, intervalo, total) {
+    const posicoes = [];
+    for (let p = posicaoInicial; p <= total; p += intervalo) posicoes.push(p);
+    return posicoes;
+}
+
+// Mapa "linhaIdx:silabaIdx" -> true pras sílabas onde o Pé Métrico
+// selecionado esperava tônica e o verso não tem uma marcada ali — mesmo
+// formato de celulasRimadas/celulasComEco acima, pra reconstruirColunas()
+// consumir do mesmo jeito. Só sinaliza FALTA de tônica esperada; sobrar
+// tônica numa posição fora do padrão nunca gera aviso (mesmo espírito
+// não-punitivo de calcularDivergenciaSilabas — nenhum destaque impede
+// salvar ou digitar). Pé contínuo usa o total de sílabas REAIS de cada
+// verso pra repetir a fórmula até onde o verso já alcança (um verso
+// ainda curto, no meio da escrita, não é cobrado por uma posição que
+// ele ainda nem tem); pé fixo usa só as posições obrigatórias que já
+// cabem nesse total, pelo mesmo motivo. `linha.tonicas` ausente conta
+// como nenhuma tônica marcada ainda — todo o padrão diverge nesse caso.
+// Pura (recebe `linhas` e `peMetrico`, não lê estado do módulo) pelo
+// mesmo motivo de calcularMaxSilabas/calcularDivergenciaSilabas: testável
+// sem montar DOM.
+export function celulasDivergentesPeMetrico(linhas, peMetrico) {
+    const mapa = new Map();
+    const pe = PES_METRICOS.find((p) => p.rotulo === peMetrico);
+    if (!pe) return mapa;
+    linhas.forEach((linha, idx) => {
+        if (linha.tipo !== 'verso') return;
+        const total = dividirSilabas(linha.texto).filter((s) => s !== '').length;
+        const tonicas = linha.tonicas || [];
+        const esperadas =
+            pe.tipo === 'continuo'
+                ? gerarPosicoesContinuas(pe.posicaoInicial, pe.intervalo, total)
+                : pe.posicoesObrigatorias.filter((p) => p <= total);
+        esperadas.forEach((p1based) => {
+            const i = p1based - 1;
+            if (!tonicas.includes(i)) mapa.set(`${idx}:${i}`, true);
+        });
     });
     return mapa;
 }
@@ -738,8 +956,16 @@ function restaurarCursor(el, offset) {
     sel.addRange(range);
 }
 
+// Realça só as barras que realmente dividem sílaba (laranja); `\/` fica
+// esmaecida — é conteúdo protegido, não divisão — pra deixar visível de
+// cara qual barra é qual dentro do texto editável. Mesmo escape lido por
+// dividirSilabas() acima.
 function realceHtml(texto) {
-    return escapeHtml(texto).replace(/\//g, '<span class="text-orange-500 font-bold">/</span>');
+    return escapeHtml(texto).replace(/\\\/|\//g, (m) =>
+        m === '\\/'
+            ? '<span class="text-gray-400 dark:text-slate-600" title="Barra gráfica do poema — não divide sílaba">\\/</span>'
+            : '<span class="text-orange-500 font-bold">/</span>',
+    );
 }
 
 function realcarBarras(el) {
@@ -922,6 +1148,7 @@ function reconstruirColunas() {
     const letras = calcularLetrasRima(rimasAtuais);
     const rimadas = celulasRimadas(rimasAtuais, letras);
     const ecoadas = mostrarEcosAtivo() ? celulasComEco(ecosAtuais) : new Map();
+    const divergentesPe = celulasDivergentesPeMetrico(linhasAtuais, peMetricoAtual);
 
     const colgroup = containerEl.querySelector('#son-grade-colgroup');
     if (colgroup) {
@@ -1002,11 +1229,22 @@ function reconstruirColunas() {
                 classes +=
                     ' outline outline-2 outline-dashed outline-gray-400 dark:outline-gray-500 rounded';
             }
+            // Tônica esperada pelo Pé Métrico, ainda não marcada — border
+            // (não outline, que o eco acima já usa; as duas propriedades
+            // convivem sem conflito na mesma célula) tracejado âmbar, aviso
+            // não-bloqueante de celulasDivergentesPeMetrico. Só aparece
+            // quando não há tônica ali (a própria função já exclui
+            // posições marcadas do mapa).
+            const divergePe = ehReal && divergentesPe.get(`${idx}:${i}`);
+            if (divergePe) {
+                classes += ' border-2 border-dashed border-amber-400 dark:border-amber-600 rounded';
+            }
             td.className = classes;
             td.textContent = silabas[i] || '';
             if (ehReal) {
                 td.dataset.linhaIdx = String(idx);
                 td.dataset.silabaIdx = String(i);
+                if (divergePe) td.title = 'Pé Métrico esperava tônica aqui';
                 if (ecoadas.get(`${idx}:${i}`)) {
                     const tiposAqui = ecosAtuais
                         .filter(
@@ -1819,11 +2057,12 @@ function renderGrade() {
 // poema) pra uma escansão nova/sem grade ainda, ou de
 // es.escansaoLinhas já salvo pra uma edição. `rimas` idem, a partir de
 // es.rimas (ou [] pra escansão nova).
-export function inicializarGradeSonoridade(container, linhas, rimas, ecos) {
+export function inicializarGradeSonoridade(container, linhas, rimas, ecos, peMetrico = '') {
     containerEl = container;
     linhasAtuais = Array.isArray(linhas) ? linhas : [];
     rimasAtuais = Array.isArray(rimas) ? rimas : [];
     ecosAtuais = Array.isArray(ecos) ? ecos : [];
+    peMetricoAtual = peMetrico || '';
     // Modo Sílaba Tônica/Modo Rima/Modo Eco são da sessão do modal, não
     // da escansão salva — sempre começam desligados, tanto abrindo uma
     // escansão nova quanto reabrindo/trocando de poema numa já existente.
@@ -1839,6 +2078,18 @@ export function inicializarGradeSonoridade(container, linhas, rimas, ecos) {
     abertoParesRima = true;
     abertoEcosSonoros = true;
     renderGrade();
+}
+
+// Chamada pelo listener `change` do select de Pé Métrico (forms.js) —
+// só reconstrói as colunas de sílaba pra recalcular
+// celulasDivergentesPeMetrico com o novo valor, mesmo padrão de
+// atualizarAlvoGradeMolde() em editor-molde.js. Não perde nem
+// modoTonico/seleção de rima em curso nem o cursor de quem estiver
+// digitando (reconstruirColunas nunca toca o contenteditable da coluna
+// de texto — ver comentário logo acima dela).
+export function atualizarPeMetricoSonoridade(peMetrico) {
+    peMetricoAtual = peMetrico || '';
+    reconstruirColunas();
 }
 
 // Lidos por forms.js na hora de salvar, pra gravar em db.escansoes.
