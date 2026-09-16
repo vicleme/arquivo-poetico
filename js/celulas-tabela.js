@@ -497,6 +497,10 @@ const COLUNA_CAMPO_BUSCA = {
         reconhecimentos: '_buscaReconhecimentos',
         autoavaliacao: 'autoavaliacao',
         epocaRetratada: '_buscaEpoca',
+        // ID do Sistema (ver comentário em CAMPOS_ATRIBUTO, utils.js) —
+        // não é campo decorado por decorarCamposBusca, aponta direto
+        // pro id cru do item.
+        idSistema: 'id',
     },
     prosas: {
         titulo: 'titulo',
@@ -530,6 +534,7 @@ const COLUNA_CAMPO_BUSCA = {
         ecos: '_buscaEcos',
         referenciasExternas: '_buscaReferenciasExternas',
         epocaRetratada: '_buscaEpoca',
+        idSistema: 'id',
     },
 };
 

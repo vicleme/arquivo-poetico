@@ -1796,6 +1796,12 @@ const CAMPOS_ATRIBUTO = {
     referencias: '_buscaReferenciasExternas',
     reconhecimento: '_buscaReconhecimentos',
     reconhecimentos: '_buscaReconhecimentos',
+    // ID do Sistema (coluna 'idSistema' em colunas.js, valor cru p.id) —
+    // prefixo só de consulta direta, sem entrar em camposGerais (mesmo
+    // tratamento de idioma/autoavaliacao/etc. abaixo): é identificador
+    // técnico, não conteúdo, então só faz sentido buscar de propósito
+    // (id:1084), nunca por acaso numa busca livre.
+    id: 'id',
 };
 
 // Lista, pra uso da UI (legenda de ajuda, atalho de clique no cabeçalho
@@ -1845,6 +1851,7 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaEcos: 'eco',
     _buscaReferenciasExternas: 'referencia',
     _buscaReconhecimentos: 'reconhecimento',
+    id: 'id',
 };
 
 // Interpreta uma consulta de busca no estilo Google e devolve os grupos de
