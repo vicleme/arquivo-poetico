@@ -1,0 +1,63 @@
+{
+    "id": "machado-de-assis",
+    "titulo": "Machado de Assis (seleção)",
+    "descricao": "Três poemas (Ocidentais e Relíquias de Casa Velha) e três contos (Papéis Avulsos e Várias Histórias).",
+    "autor": {
+        "nome": "Machado de Assis",
+        "nacionalidade": "Brasileira",
+        "nascimento": {
+            "dia": 21,
+            "mes": 6,
+            "ano": 1839
+        },
+        "obito": {
+            "dia": 29,
+            "mes": 9,
+            "ano": 1908
+        },
+        "sexo": "Masculino"
+    },
+    "fonte": "Wikisource",
+    "edicao": "",
+    "link": "",
+    "ortografia": "",
+    "conferido": false,
+    "textos": {
+        "Círculo Vicioso": {
+            "tipo": "poema",
+            "edicao": "Publicado em Ocidentais",
+            "grafia": "atual"
+        },
+        "A Carolina": {
+            "tipo": "poema",
+            "edicao": "Relíquias de Casa Velha. Rio de Janeiro: H. Garnier, Livreiro-Editor, 1906. página iii.",
+            "grafia": "etimológica"
+        },
+        "Uma Criatura": {
+            "tipo": "poema",
+            "edicao": "Publicado em Ocidentais",
+            "grafia": "atual"
+        },
+        "Um Apólogo": {
+            "tipo": "prosa",
+            "edicao": "Várias Histórias. Rio de Janeiro: Laemmert & C., Editores, 1896. páginas 253-257.",
+            "grafia": "atual",
+            "dataPublicacao": {
+                "ano": 1885
+            }
+        },
+        "A Cartomante": {
+            "tipo": "prosa",
+            "edicao": "Várias Histórias. Rio de Janeiro: Laemmert & C., Editores, 1896. páginas 9-29.",
+            "grafia": "etimológica",
+            "dataPublicacao": {
+                "ano": 1884
+            }
+        },
+        "O Espelho": {
+            "tipo": "prosa",
+            "edicao": "Papéis Avulsos. Rio de Janeiro: Lombaerts & C., 1882. páginas 241-257.",
+            "grafia": "atual"
+        }
+    }
+}

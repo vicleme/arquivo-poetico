@@ -7,7 +7,7 @@
     tabindex="-1"
 >
     <div
-        class="bg-white dark:bg-slate-900 rounded-lg w-full max-w-md shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        class="bg-white dark:bg-slate-900 rounded-lg w-full max-w-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
     >
         <div
             class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0"
@@ -55,7 +55,7 @@
             </div>
         </div>
         <div class="overflow-y-auto flex-1 px-8 py-6">
-            <form id="form-autor" class="grid grid-cols-1 gap-4">
+            <form id="form-autor" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="hidden" id="au-edit-id" />
                 <div>
                     <label class="form-label">Nome</label>
@@ -65,7 +65,415 @@
                     <label class="form-label">ISNI</label>
                     <input type="text" id="au-isni" placeholder="Ex: 0000 0000 0000 0000" />
                 </div>
+                <div class="md:col-span-2">
+                    <label class="form-label">Heterônimos e Pseudônimos</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Outros nomes sob os quais este Autor publicou — Heterônimo (identidade
+                        literária com voz própria, ex.: Fernando Pessoa / Álvaro de Campos) ou
+                        Pseudônimo (só um nome diferente de assinatura). Marque o tipo em cada um;
+                        ficam disponíveis pra escolher na Assinatura da Autoria de Poemas e Prosas
+                        assim que este Autor for selecionado ali.
+                    </p>
+                    <div class="flex gap-2 mb-2">
+                        <input
+                            type="text"
+                            id="au-nome-literario-input"
+                            class="text-sm flex-1"
+                            placeholder="Ex: Álvaro de Campos"
+                        />
+                        <button
+                            type="button"
+                            onclick="adicionarNomeLiterarioAutor()"
+                            class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                        >
+                            +
+                        </button>
+                    </div>
+                    <div
+                        id="au-nomes-literarios-container"
+                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                    ></div>
+                    <input type="hidden" id="au-nomes-literarios" />
+                </div>
                 <div>
+                    <label class="form-label">Nacionalidade</label>
+                    <input
+                        type="text"
+                        id="au-nacionalidade"
+                        list="sugestoes-nacionalidades"
+                        placeholder="Ex: português, luso-brasileiro..."
+                    />
+                    <datalist id="sugestoes-nacionalidades"></datalist>
+                </div>
+                <div class="md:pt-6">
+                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" id="au-sou-eu" />
+                        Este autor sou eu
+                    </label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                        Ao adicionar este autor a um texto com a Fonte vazia, a Fonte é preenchida
+                        com "Obra própria".
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 gap-4 md:col-span-2">
+                    <div>
+                        <label class="form-label">Nascimento</label>
+                        <div class="grid grid-cols-3 gap-1">
+                            <input
+                                type="number"
+                                id="au-nasc-dia"
+                                placeholder="Dia"
+                                min="1"
+                                max="31"
+                                title="Dia"
+                            />
+                            <input
+                                type="number"
+                                id="au-nasc-mes"
+                                placeholder="Mês"
+                                min="1"
+                                max="12"
+                                title="Mês"
+                            />
+                            <input type="number" id="au-nasc-ano" placeholder="Ano" title="Ano" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">Óbito</label>
+                        <div class="grid grid-cols-3 gap-1">
+                            <input
+                                type="number"
+                                id="au-obito-dia"
+                                placeholder="Dia"
+                                min="1"
+                                max="31"
+                                title="Dia"
+                            />
+                            <input
+                                type="number"
+                                id="au-obito-mes"
+                                placeholder="Mês"
+                                min="1"
+                                max="12"
+                                title="Mês"
+                            />
+                            <input type="number" id="au-obito-ano" placeholder="Ano" title="Ano" />
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 col-span-2 -mt-2">
+                        Preencha só o que souber — datas antigas costumam ser aproximadas.
+                    </p>
+                    <p
+                        id="au-dominio-publico"
+                        class="text-[10px] text-gray-400 dark:text-slate-500 col-span-2 -mt-2 hidden"
+                    ></p>
+                    <p
+                        id="au-idade-signo"
+                        class="text-[10px] text-gray-400 dark:text-slate-500 col-span-2 -mt-2 hidden"
+                    ></p>
+                </div>
+                <details
+                    class="campo-grupo md:col-span-2"
+                    data-grupo-autor="identidade"
+                    style="margin: 0"
+                >
+                    <summary>
+                        Identidade
+                        <span class="campo-grupo-dica"
+                            >(sexo, cor/raça, gênero, orientação, cis/trans, religião)</span
+                        >
+                    </summary>
+                    <div class="campo-grupo-corpo">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="form-label">Sexo</label>
+                                <select id="au-sexo">
+                                    <option value="">Não especificado</option>
+                                    <option value="Feminino">Feminino</option>
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Intersexo">Intersexo</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Cor/Raça</label>
+                                <select id="au-cor-raca">
+                                    <option value="">Não especificado</option>
+                                    <option value="Branca">Branca</option>
+                                    <option value="Preta">Preta</option>
+                                    <option value="Parda">Parda</option>
+                                    <option value="Amarela">Amarela</option>
+                                    <option value="Indígena">Indígena</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Gênero</label>
+                                <input
+                                    type="text"
+                                    id="au-genero"
+                                    list="sugestoes-genero-autor"
+                                    placeholder="Ex: Mulher, Não-binário..."
+                                />
+                                <datalist id="sugestoes-genero-autor"></datalist>
+                            </div>
+                            <div>
+                                <label class="form-label">Orientação sexual</label>
+                                <input
+                                    type="text"
+                                    id="au-orientacao-sexual"
+                                    list="sugestoes-orientacao-autor"
+                                    placeholder="Ex: Heterossexual, Bissexual..."
+                                />
+                                <datalist id="sugestoes-orientacao-autor"></datalist>
+                            </div>
+                            <div>
+                                <label class="form-label">Identidade cis/trans</label>
+                                <select id="au-identidade-cis-trans">
+                                    <option value="">Não documentado</option>
+                                    <option value="Cisgênero">Cisgênero</option>
+                                    <option value="Transgênero">Transgênero</option>
+                                    <option value="Não se aplica">Não se aplica</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Religião</label>
+                                <input
+                                    type="text"
+                                    id="au-religiao"
+                                    list="sugestoes-religiao-autor"
+                                    placeholder="Ex: Catolicismo, Espiritismo..."
+                                />
+                                <datalist id="sugestoes-religiao-autor"></datalist>
+                            </div>
+                            <p
+                                class="text-[10px] text-gray-400 dark:text-slate-500 col-span-full -mt-2"
+                            >
+                                Preencha só o que for de conhecimento documentado — nenhum destes é
+                                obrigatório. "Identidade cis/trans" é sobre o que foi apurado na
+                                pesquisa, não sobre como o Autor se descreve no dia a dia (raramente
+                                inclui "trans" no Gênero acima).
+                            </p>
+                        </div>
+                    </div>
+                </details>
+                <details
+                    class="campo-grupo md:col-span-2"
+                    data-grupo-autor="saude"
+                    style="margin: 0"
+                >
+                    <summary>
+                        Saúde, neurodivergência e deficiência
+                        <span class="campo-grupo-dica"
+                            >(neurodivergência, condições clínicas, deficiências)</span
+                        >
+                    </summary>
+                    <div class="campo-grupo-corpo">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            <div>
+                                <label class="form-label">Neurodivergência</label>
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                                    Tags livres (ex.: TDAH, Autismo, Dislexia) — preencha só o que
+                                    for de conhecimento documentado.
+                                </p>
+                                <div class="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="au-neurodivergencia-input"
+                                        class="text-sm flex-1"
+                                        placeholder="Ex: TDAH"
+                                    />
+                                    <button
+                                        type="button"
+                                        onclick="adicionarNeurodivergenciaAutor()"
+                                        class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <div
+                                    id="au-neurodivergencias-container"
+                                    class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                                ></div>
+                                <input type="hidden" id="au-neurodivergencias" />
+                            </div>
+                            <div>
+                                <label class="form-label">Condições clínicas</label>
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                                    Tags livres, cada uma tipificada entre dimensão Física e Mental
+                                    — separado de Neurodivergência acima, que não é tratada como
+                                    condição clínica.
+                                </p>
+                                <div class="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="au-condicao-clinica-input"
+                                        class="text-sm flex-1"
+                                        placeholder="Ex: Diabetes tipo 1"
+                                    />
+                                    <button
+                                        type="button"
+                                        onclick="adicionarCondicaoClinicaAutor()"
+                                        class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <div
+                                    id="au-condicoes-clinicas-container"
+                                    class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                                ></div>
+                                <input type="hidden" id="au-condicoes-clinicas" />
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="form-label">Deficiências</label>
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                                    Escreva a deficiência específica (ex.: Cegueira, Surdez parcial)
+                                    e escolha no chip a categoria: Física, Auditiva, Visual,
+                                    Intelectual, Mental/psicossocial ou Múltipla (mais de uma ao
+                                    mesmo tempo). Separado de Condições clínicas acima.
+                                </p>
+                                <div class="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="au-deficiencia-input"
+                                        class="text-sm flex-1"
+                                        placeholder="Ex: Cegueira"
+                                    />
+                                    <button
+                                        type="button"
+                                        onclick="adicionarDeficienciaAutor()"
+                                        class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <div
+                                    id="au-deficiencias-container"
+                                    class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                                ></div>
+                                <input type="hidden" id="au-deficiencias" />
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <details
+                    class="campo-grupo md:col-span-2"
+                    data-grupo-autor="formacao"
+                    style="margin: 0"
+                >
+                    <summary>
+                        Formação e trabalho
+                        <span class="campo-grupo-dica"
+                            >(classe social, escolaridade, ocupações)</span
+                        >
+                    </summary>
+                    <div class="campo-grupo-corpo">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            <div>
+                                <label class="form-label">Classe social</label>
+                                <select id="au-classe-social">
+                                    <option value="">Não especificado</option>
+                                    <option value="Escravizado/liberto">Escravizado/liberto</option>
+                                    <option value="Livre pobre">Livre pobre</option>
+                                    <option value="Artesão/classe média urbana">
+                                        Artesão/classe média urbana
+                                    </option>
+                                    <option value="Elite/proprietário de terras">
+                                        Elite/proprietário de terras
+                                    </option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Ocupações</label>
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                                    Além de escrever, com o que mais este Autor trabalhava/trabalha
+                                    — pra mapear quem vivia (ou vive) de escrita e quem não.
+                                </p>
+                                <div class="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="au-ocupacao-input"
+                                        class="text-sm flex-1"
+                                        placeholder="Ex: Jornalista"
+                                    />
+                                    <button
+                                        type="button"
+                                        onclick="adicionarOcupacaoAutor()"
+                                        class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <div
+                                    id="au-ocupacoes-container"
+                                    class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                                ></div>
+                                <input type="hidden" id="au-ocupacoes" />
+                            </div>
+                            <div
+                                class="border-t pt-4 border-gray-100 dark:border-slate-700 md:col-span-2"
+                            >
+                                <label class="form-label">Escolaridade</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                    <div>
+                                        <label class="form-label text-[11px]">Grau acadêmico</label>
+                                        <select id="au-grau-academico">
+                                            <option value="">Não especificado</option>
+                                            <option value="Sem escolarização formal">
+                                                Sem escolarização formal
+                                            </option>
+                                            <option value="Autodidata/Educação particular">
+                                                Autodidata/Educação particular
+                                            </option>
+                                            <option value="Ensino Fundamental">
+                                                Ensino Fundamental
+                                            </option>
+                                            <option value="Ensino Médio">Ensino Médio</option>
+                                            <option value="Ensino Superior incompleto">
+                                                Ensino Superior incompleto
+                                            </option>
+                                            <option value="Ensino Superior completo">
+                                                Ensino Superior completo
+                                            </option>
+                                            <option value="Pós-graduação/Mestrado">
+                                                Pós-graduação/Mestrado
+                                            </option>
+                                            <option value="Doutorado">Doutorado</option>
+                                            <option value="Pós-doutorado">Pós-doutorado</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label text-[11px]"
+                                            >Instituições frequentadas</label
+                                        >
+                                        <div class="flex gap-2 mb-2">
+                                            <input
+                                                type="text"
+                                                id="au-instituicao-input"
+                                                list="sugestoes-instituicoes-autor"
+                                                class="text-sm flex-1"
+                                                placeholder="Ex: Universidade de Coimbra"
+                                            />
+                                            <datalist id="sugestoes-instituicoes-autor"></datalist>
+                                            <button
+                                                type="button"
+                                                onclick="adicionarInstituicaoAutor()"
+                                                class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                        <div
+                                            id="au-instituicoes-container"
+                                            class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                                        ></div>
+                                        <input type="hidden" id="au-instituicoes" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <div class="md:col-span-2">
                     <label class="form-label">Sobre</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
                         Nota livre sobre este autor — opcional, não aparece na exportação.

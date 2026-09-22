@@ -1,0 +1,495 @@
+{
+  "export_format": "biblioteca",
+  "pacote": {
+    "id": "fernando-pessoa",
+    "titulo": "Fernando Pessoa (seleção)",
+    "descricao": "Seis poemas: dois do ortônimo, um de Caeiro, dois de Campos e um de Reis.",
+    "fonte": "Wikisource",
+    "edicao": "",
+    "link": "",
+    "ortografia": "",
+    "conferido": false
+  },
+  "autores": [
+    {
+      "id": 1,
+      "sobre": "",
+      "nome": "Fernando Pessoa",
+      "nacionalidade": "Portuguesa",
+      "nascimento": {
+        "dia": 13,
+        "mes": 6,
+        "ano": 1888
+      },
+      "obito": {
+        "dia": 30,
+        "mes": 11,
+        "ano": 1935
+      },
+      "sexo": "Masculino",
+      "nomesLiterarios": [
+        {
+          "nome": "Alberto Caeiro",
+          "tipo": "Heterônimo"
+        },
+        {
+          "nome": "Álvaro de Campos",
+          "tipo": "Heterônimo"
+        },
+        {
+          "nome": "Ricardo Reis",
+          "tipo": "Heterônimo"
+        }
+      ]
+    }
+  ],
+  "itens": [
+    {
+      "id": 1,
+      "tipo": "poema",
+      "titulo": "Autopsicografia",
+      "texto": "O poeta é um fingidor.\nFinge tão completamente\nQue chega a fingir que é dor\nA dor que deveras sente.\n\nE os que lêem o que escreve,\nNa dor lida sentem bem,\nNão as duas que ele teve,\nMas só a que eles não têm.\n\nE assim nas calhas de roda\nGira, a entreter a razão,\nEsse comboio de corda\nQue se chama coração.\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "pt-BR",
+      "dataEscrita": null,
+      "dataPublicacao": null,
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Fernando Pessoa"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "",
+        "link": "",
+        "conferido": false,
+        "grafia": "atual"
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 2,
+      "tipo": "poema",
+      "titulo": "Mar Português",
+      "texto": "O' mar salgado, quanto do teu sal\nSão lagrimas de Portugal!\nPor te cruzarmos, quantas mães choraram,\nQuantos filhos em vão resaram!\nQuantas noivas ficaram por casar\nPara que fosses nosso, ó mar!\n\nValeu a pena? Tudo vale a pena\nSe a alma não é pequena.\nQuem quer passar além do Bojador\nTem que passar além da dor.\nDeus ao mar o perigo e o abysmo deu,\nMas nelle é que espelhou o céu.\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "pt-BR",
+      "dataEscrita": null,
+      "dataPublicacao": {
+        "ano": 1934
+      },
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Fernando Pessoa"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "Mensagem, 1934",
+        "link": "",
+        "conferido": false,
+        "grafia": "etimológica"
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 3,
+      "tipo": "poema",
+      "titulo": "Eu nunca guardei rebanhos",
+      "texto": "Eu nunca guardei rebanhos,\nMinha alma é como um pastor,\nConhece o vento e o sol\nE anda pela mão das Estações\nA seguir e a olhar.\nToda a paz da Natureza sem gente\nVem sentar-se a meu lado.\nMas eu fico triste como um pôr de sol\nPara a nossa imaginação,\nQuando esfria no fundo da planície\nE se sente a noite entrada\nComo uma borboleta pela janela.\n\nMas a minha tristeza é sossego\nPorque é natural e justa\nE é o que deve estar na alma\nQuando já pensa que existe\nE as mãos colhem flores sem ela dar por isso.\n\nComo um ruído de chocalhos\nPara além da curva da estrada,\nOs meus pensamentos são contentes.\nSó tenho pena de saber que eles são contentes,\nPorque, se o não soubesse,\nEm vez de serem contentes e tristes,\nSeriam alegres e contentes.\n\nPensar incomoda como andar à chuva\nQuando o vento cresce e parece que chove mais.\n\nNão tenho ambições nem desejos\nSer poeta não é uma ambição minha\nÉ a minha maneira de estar sozinho.\n\nE se desejo às vezes\nPor imaginar, ser cordeirinho\n(Ou ser o rebanho todo\nPara andar espalhado por toda a encosta\nA ser muita cousa feliz ao mesmo tempo),\n\nÉ só porque sinto o que escrevo ao pôr do sol,\nOu quando uma nuvem passa a mão por cima da luz\nE corre um silêncio pela erva fora.\n\nQuando me sento a escrever versos\nOu, passeando pelos caminhos ou pelos atalhos,\nEscrevo versos num papel que está no meu pensamento,\nSinto um cajado nas mãos\nE vejo um recorte de mim\nNo cimo dum outeiro,\nOlhando para o meu rebanho e vendo as minhas idéias,\nOu olhando para as minhas idéias e vendo o meu rebanho,\nE sorrindo vagamente como quem não compreende o que se diz\nE quer fingir que compreende.\n\nSaúdo todos os que me lerem,\nTirando-lhes o chapéu largo\nQuando me vêem à minha porta\nMal a diligência levanta no cimo do outeiro.\nSaúdo-os e desejo-lhes sol,\nE chuva, quando a chuva é precisa,\nE que as suas casas tenham\nAo pé duma janela aberta\nUma cadeira predileta\nOnde se sentem, lendo os meus versos.\nE ao lerem os meus versos pensem\nQue sou qualquer cousa natural —\nPor exemplo, a árvore antiga\nÀ sombra da qual quando crianças\nSe sentavam com um baque, cansados de brincar,\nE limpavam o suor da testa quente\nCom a manga do bibe riscado.\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "pt-BR",
+      "dataEscrita": null,
+      "dataPublicacao": null,
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Fernando Pessoa",
+          "assinatura": "Heterônimo",
+          "nomeLiterario": "Alberto Caeiro"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "",
+        "link": "",
+        "conferido": false,
+        "grafia": "atual"
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 4,
+      "tipo": "poema",
+      "titulo": "Tabacaria",
+      "texto": "Não sou nada.\nNunca serei nada.\nNão posso querer ser nada.\nÀ parte isso, tenho em mim todos os sonhos do mundo.\n\nJanelas do meu quarto,\nDo meu quarto de um dos milhões do mundo que ninguém sabe quem é\n(E se soubessem quem é, o que saberiam?),\nDais para o mistério de uma rua cruzada constantemente por gente,\nPara uma rua inacessível a todos os pensamentos,\nReal, impossivelmente real, certa, desconhecidamente certa,\nCom o mistério das coisas por baixo das pedras e dos seres,\nCom a morte a pôr humidade nas paredes e cabelos brancos nos homens,\nCom o Destino a conduzir a carroça de tudo pela estrada de nada.\n\nEstou hoje vencido, como se soubesse a verdade.\nEstou hoje lúcido, como se estivesse para morrer,\nE não tivesse mais irmandade com as coisas\nSenão uma despedida, tornando-se esta casa e este lado da rua\nA fileira de carruagens de um comboio, e uma partida apitada\nDe dentro da minha cabeça,\nE uma sacudidela dos meus nervos e um ranger de ossos na ida.\n\nEstou hoje perplexo como quem pensou e achou e esqueceu.\nEstou hoje dividido entre a lealdade que devo\nÀ Tabacaria do outro lado da rua, como coisa real por fora,\nE à sensação de que tudo é sonho, como coisa real por dentro.\n\nFalhei em tudo.\nComo não fiz propósito nenhum, talvez tudo fosse nada.\nA aprendizagem que me deram,\nDesci dela pela janela das traseiras da casa,\nFui até ao campo com grandes propósitos.\nMas lá encontrei só ervas e árvores,\nE quando havia gente era igual à outra.\nSaio da janela, sento-me numa cadeira. Em que hei-de pensar?\n\nQue sei eu do que serei, eu que não sei o que sou?\nSer o que penso? Mas penso ser tanta coisa!\nE há tantos que pensam ser a mesma coisa que não pode haver tantos!\nGénio? Neste momento\nCem mil cérebros se concebem em sonho génios como eu,\nE a história não marcará, quem sabe?, nem um,\nNem haverá senão estrume de tantas conquistas futuras.\nNão, não creio em mim.\nEm todos os manicómios há doidos malucos com tantas certezas!\nEu, que não tenho nenhuma certeza, sou mais certo ou menos certo?\nNão, nem em mim...\nEm quantas mansardas e não-mansardas do mundo\nNão estão nesta hora génios-para-si-mesmos sonhando?\nQuantas aspirações altas e nobres e lúcidas -\nSim, verdadeiramente altas e nobres e lúcidas -,\nE quem sabe se realizáveis,\nNunca verão a luz do sol real nem acharão ouvidos de gente?\nO mundo é para quem nasce para o conquistar\nE não para quem sonha que pode conquistá-lo, ainda que tenha razão.\nTenho sonhado mais que o que Napoleão fez.\nTenho apertado ao peito hipotético mais humanidades do que Cristo,\nTenho feito filosofias em segredo que nenhum Kant escreveu.\nMas sou, e talvez serei sempre, o da mansarda,\nAinda que não more nela;\nSerei sempre o que não nasceu para isso;\nSerei sempre só o que tinha qualidades;\nSerei sempre o que esperou que lhe abrissem a porta ao pé de uma parede sem porta\nE cantou a cantiga do Infinito numa capoeira,\nE ouviu a voz de Deus num poço tapado.\nCrer em mim? Não, nem em nada.\nDerrame-me a Natureza sobre a cabeça ardente\nO seu sol, a sua chuva, o vento que me acha o cabelo,\nE o resto que venha se vier, ou tiver que vir, ou não venha.\nEscravos cardíacos das estrelas,\nConquistámos todo o mundo antes de nos levantar da cama;\nMas acordámos e ele é opaco,\nLevantámo-nos e ele é alheio,\nSaímos de casa e ele é a terra inteira,\nMais o sistema solar e a Via Láctea e o Indefinido.\n\n(Come chocolates, pequena;\nCome chocolates!\nOlha que não há mais metafísica no mundo senão chocolates.\nOlha que as religiões todas não ensinam mais que a confeitaria.\nCome, pequena suja, come!\nPudesse eu comer chocolates com a mesma verdade com que comes!\nMas eu penso e, ao tirar o papel de prata, que é de folha de estanho,\nDeito tudo para o chão, como tenho deitado a vida.)\n\nMas ao menos fica da amargura do que nunca serei\nA caligrafia rápida destes versos,\nPórtico partido para o Impossível.\nMas ao menos consagro a mim mesmo um desprezo sem lágrimas,\nNobre ao menos no gesto largo com que atiro\nA roupa suja que sou, sem rol, pra o decurso das coisas,\nE fico em casa sem camisa.\n\n(Tu, que consolas, que não existes e por isso consolas,\nOu deusa grega, concebida como estátua que fosse viva,\nOu patrícia romana, impossivelmente nobre e nefasta,\nOu princesa de trovadores, gentilíssima e colorida,\nOu marquesa do século dezoito, decotada e longínqua,\nOu cocote célebre do tempo dos nossos pais,\nOu não sei quê moderno - não concebo bem o quê -,\nTudo isso, seja o que for, que sejas, se pode inspirar que inspire!\nMeu coração é um balde despejado.\nComo os que invocam espíritos invocam espíritos invoco\nA mim mesmo e não encontro nada.\nChego à janela e vejo a rua com uma nitidez absoluta.\nVejo as lojas, vejo os passeios, vejo os carros que passam,\nVejo os entes vivos vestidos que se cruzam,\nVejo os cães que também existem,\nE tudo isto me pesa como uma condenação ao degredo,\nE tudo isto é estrangeiro, como tudo.)\n\nVivi, estudei, amei, e até cri,\nE hoje não há mendigo que eu não inveje só por não ser eu.\nOlho a cada um os andrajos e as chagas e a mentira,\nE penso: talvez nunca vivesses nem estudasses nem amasses nem cresses\n(Porque é possível fazer a realidade de tudo isso sem fazer nada disso);\nTalvez tenhas existido apenas, como um lagarto a quem cortam o rabo\nE que é rabo para aquém do lagarto remexidamente.\n\nFiz de mim o que não soube,\nE o que podia fazer de mim não o fiz.\nO dominó que vesti era errado.\nConheceram-me logo por quem não era e não desmenti, e perdi-me.\nQuando quis tirar a máscara,\nEstava pegada à cara.\nQuando a tirei e me vi ao espelho,\nJá tinha envelhecido.\nEstava bêbado, já não sabia vestir o dominó que não tinha tirado.\nDeitei fora a máscara e dormi no vestiário\nComo um cão tolerado pela gerência\nPor ser inofensivo\nE vou escrever esta história para provar que sou sublime.\n\nEssência musical dos meus versos inúteis,\nQuem me dera encontrar-te como coisa que eu fizesse,\nE não ficasse sempre defronte da Tabacaria de defronte,\nCalcando aos pés a consciência de estar existindo,\nComo um tapete em que um bêbado tropeça\nOu um capacho que os ciganos roubaram e não valia nada.\n\nMas o dono da Tabacaria chegou à porta e ficou à porta.\nOlho-o com o desconforto da cabeça mal voltada\nE com o desconforto da alma mal-entendendo.\nEle morrerá e eu morrerei.\nEle deixará a tabuleta, e eu deixarei versos.\nA certa altura morrerá a tabuleta também, e os versos também.\nDepois de certa altura morrerá a rua onde esteve a tabuleta,\nE a língua em que foram escritos os versos.\nMorrerá depois o planeta girante em que tudo isto se deu.\nEm outros satélites de outros sistemas qualquer coisa como gente\nContinuará fazendo coisas como versos e vivendo por baixo de coisas como tabuletas,\nSempre uma coisa defronte da outra,\nSempre uma coisa tão inútil como a outra,\nSempre o impossível tão estúpido como o real,\nSempre o mistério do fundo tão certo como o sono de mistério da superfície,\nSempre isto ou sempre outra coisa ou nem uma coisa nem outra.\n\nMas um homem entrou na Tabacaria (para comprar tabaco?),\nE a realidade plausível cai de repente em cima de mim.\nSemiergo-me enérgico, convencido, humano,\nE vou tencionar escrever estes versos em que digo o contrário.\n\nAcendo um cigarro ao pensar em escrevê-los\nE saboreio no cigarro a libertação de todos os pensamentos.\nSigo o fumo como uma rota própria,\nE gozo, num momento sensitivo e competente,\nA libertação de todas as especulações\nE a consciência de que a metafísica é uma consequência de estar mal disposto.\n\nDepois deito-me para trás na cadeira\nE continuo fumando.\nEnquanto o Destino mo conceder, continuarei fumando.\n\n(Se eu casasse com a filha da minha lavadeira\nTalvez fosse feliz.)\nVisto isto, levanto-me da cadeira. Vou à janela.\n\nO homem saiu da Tabacaria (metendo troco na algibeira das calças?).\nAh, conheço-o: é o Esteves sem metafísica.\n(O dono da Tabacaria chegou à porta.)\nComo por um instinto divino o Esteves voltou-se e viu-me.\nAcenou-me adeus gritei-lhe Adeus ó Esteves!, e o universo\nReconstruiu-se-me sem ideal nem esperança, e o dono da Tabacaria sorriu.\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "pt-BR",
+      "dataEscrita": {
+        "dia": 15,
+        "mes": 1,
+        "ano": 1928,
+        "exata": true
+      },
+      "dataPublicacao": null,
+      "ano": 1928,
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Fernando Pessoa",
+          "assinatura": "Heterônimo",
+          "nomeLiterario": "Álvaro de Campos"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "",
+        "link": "",
+        "conferido": false,
+        "grafia": "atual"
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 5,
+      "tipo": "poema",
+      "titulo": "Poema em Linha Reta",
+      "texto": "Nunca conheci quem tivesse levado porrada.\nTodos os meus conhecidos têm sido campeões em tudo.\n\nE eu, tantas vezes reles, tantas vezes porco, tantas vezes vil,\nEu tantas vezes irrespondivelmente parasita,\nIndesculpavelmente sujo,\nEu, que tantas vezes não tenho tido paciência para tomar banho,\nEu, que tantas vezes tenho sido ridículo, absurdo,\nQue tenho enrolado os pés publicamente nos tapetes das etiquetas,\nQue tenho sido grotesco, mesquinho, submisso e arrogante,\nQue tenho sofrido enxovalhos e calado,\nQue quando não tenho calado, tenho sido mais ridículo ainda;\nEu, que tenho sido cómico às criadas de hotel,\nEu, que tenho sentido o piscar de olhos dos moços de fretes,\nEu, que tenho feito vergonhas financeiras, pedido emprestado sem pagar,\nEu, que, quando a hora do soco surgiu, me tenho agachado,\nPara fora da possibilidade do soco;\nEu, que tenho sofrido a angústia das pequenas coisas ridículas,\nEu verifico que não tenho par nisto tudo neste mundo.\n\nToda a gente que eu conheço e que fala comigo\nNunca teve um acto ridículo, nunca sofreu enxovalho,\nNunca foi senão princípe - todos eles princípes - na vida...\n\nQuem me dera ouvir de alguém a voz humana\nQue confessasse não um pecado, mas uma infâmia;\nQue contasse, não uma violência, mas uma cobardia!\nNão, são todos o Ideal, se os oiço e me falam.\nQuem há neste largo mundo que me confesse que uma vez foi vil?\nÓ princípes, meus irmãos,\n\nArre, estou farto de semideuses!\nOnde é que há gente no mundo?\n\nEntão sou só eu que é vil e erróneo nesta terra?\n\nPoderão as mulheres não os terem amado,\nPodem ter sido traídos - mas ridículos nunca!\nE eu, que tenho sido ridículo sem ter sido traído,\nComo posso eu falar com os meus superiores sem titubear?\nEu, que tenho sido vil, literalmente vil,\nVil no sentido mesquinho e infame da vileza.\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "pt-BR",
+      "dataEscrita": null,
+      "dataPublicacao": null,
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Fernando Pessoa",
+          "assinatura": "Heterônimo",
+          "nomeLiterario": "Álvaro de Campos"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "",
+        "link": "",
+        "conferido": false,
+        "grafia": "atual"
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 6,
+      "tipo": "poema",
+      "titulo": "Vem sentar-te comigo, Lídia, à beira do rio",
+      "texto": "Vem sentar-te comigo, Lídia, à beira do rio.\nSossegadamente fitemos o seu curso e aprendamos\nQue a vida passa, e não estamos de mãos enlaçadas.\n(Enlacemos as mãos).\n\nDepois pensemos, crianças adultas, que a vida\nPassa e não fica, nada deixa e nunca regressa,\nVai para um mar muito longe, para ao pé do Fado,\nMais longe que os deuses.\n\nDesenlacemos as mãos, porque não vale a pena cansarmo-nos.\nQuer gozemos, quer não gozemos, passamos como o rio.\nMais vale saber passar silenciosamente\nE sem desassossegos grandes.\n\nSem amores, nem ódios, nem paixões que levantam a voz,\nNem invejas que dão movimentos demais aos olhos,\nNem cuidados, porque se os tivesse o rio sempre correria,\nE sempre iria ter ao mar.\n\nAmemo-nos tranquilamente, pensando que podíamos,\nSe quiséssemos, trocar beijos e abraços e carícias,\nMas que mais vale estarmos sentados ao pé um do outro\nOuvindo correr o rio e vendo-o.\n\nColhamos flores, pega tu nelas e deixa-as\nNo colo, e que o seu perfume suavize o momento -\nEste momento em que sossegadamente não cremos em nada,\nPagãos inocentes da decadência.\n\nAo menos, se for sombra antes, lembrar-te-ás de mim depois\nSem que a minha lembrança te arda ou te fira ou te mova,\nPorque nunca enlaçamos as mãos, nem nos beijamos\nNem fomos mais do que crianças.\n\nE se antes do que eu levares o óbolo ao barqueiro sombrio,\nEu nada terei que sofrer ao lembrar-me de ti.\nSer-me-ás suave à memória lembrando-te assim - à beira-rio,\nPagã triste e com flores no regaço.\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "pt-BR",
+      "dataEscrita": null,
+      "dataPublicacao": null,
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Fernando Pessoa",
+          "assinatura": "Heterônimo",
+          "nomeLiterario": "Ricardo Reis"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "",
+        "link": "",
+        "conferido": false,
+        "grafia": "atual"
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    }
+  ]
+}

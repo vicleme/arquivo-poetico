@@ -39,6 +39,9 @@ import {
     corDaLetra,
     dividirSilabas,
     trechoLado,
+    calcularContagemMetrica,
+    extrairAlvo,
+    calcularDivergenciaSilabas,
 } from './editor-sonoridade.js';
 
 // ─── Nome de arquivo ────────────────────────────────────────────────
@@ -101,9 +104,15 @@ function camposClassificacao(es) {
 // tônica) + a letra de rima (se houver) — usada só pelo .md (texto
 // linear "1. sí / la (A)", ** negrito ** na tônica): .pdf e .docx
 // desenham a Grade Silábica como TABELA de verdade (ver
-// gradeParaTabela, abaixo), não em texto corrido.
-function versosParaSilabas(linhas, rimas) {
+// gradeParaTabela, abaixo), não em texto corrido. `tamanhoVerso` é
+// opcional (mesmo espírito de gradeParaTabela, abaixo) — alimenta a
+// contagem métrica ("Cont.") de cada verso, no mesmo formato
+// "contagem/alvo" (ou só "contagem" sem alvo fixo) que a grade de
+// edição/leitura já mostra.
+function versosParaSilabas(linhas, rimas, tamanhoVerso) {
     const letras = calcularLetrasRima(rimas);
+    const alvo = extrairAlvo(tamanhoVerso);
+    const divergentesAlvo = new Set(calcularDivergenciaSilabas(linhas, tamanhoVerso));
     return linhas
         .filter((l) => l.tipo === 'verso')
         .map((linha) => {
@@ -112,7 +121,15 @@ function versosParaSilabas(linhas, rimas) {
             const tonicas = Array.isArray(linha.tonicas) ? linha.tonicas : [];
             const unidades = silabas.map((texto, i) => ({ texto, tonica: tonicas.includes(i) }));
             const letra = letras.get(idx);
-            return { numero: linha.numero, unidades, letra: letra || null };
+            const contagem = calcularContagemMetrica(linha.texto);
+            return {
+                numero: linha.numero,
+                unidades,
+                letra: letra || null,
+                contagem,
+                alvo,
+                divergeAlvo: alvo !== null && divergentesAlvo.has(linha.numero),
+            };
         });
 }
 
@@ -160,23 +177,31 @@ const DOCX_COR_ECO_HEX = '9CA3AF';
 // markdown puro não tem tabela alinhada por coluna que sobreviva a
 // qualquer visualizador).
 //
-// Devolve `n` (nº de colunas de sílaba, igual calcularMaxSilabas) e uma
-// entrada por linha: `{ tipo: 'vazia' }` (separador entre estrofes, como
-// na tela) ou `{ tipo: 'verso', numero, celulas: [{texto, tonica,
-// letraRima}], letra }`, uma célula por posição de sílaba (preenchida
-// mesmo quando o verso é mais curto que o maior verso do poema — célula
-// vazia, sem tônica/rima).
+// Devolve `n` (nº de colunas de sílaba, igual calcularMaxSilabas), `alvo`
+// (nº-alvo de sílabas extraído de `tamanhoVerso`, ou null sem alvo fixo —
+// ver extrairAlvo) e uma entrada por linha: `{ tipo: 'vazia' }`
+// (separador entre estrofes, como na tela) ou `{ tipo: 'verso', numero,
+// celulas: [{texto, tonica, letraRima}], letra, contagem, divergeAlvo }`,
+// uma célula por posição de sílaba (preenchida mesmo quando o verso é
+// mais curto que o maior verso do poema — célula vazia, sem tônica/
+// rima). `contagem`/`divergeAlvo` alimentam a coluna "Cont." (mesma
+// complementaridade Alvo/divergência da grade de edição/leitura — ver
+// reconstruirColunas/renderGradeLeituraHtml em editor-sonoridade.js).
 // `ecos` é opcional (chamadas antigas/testes que só passam linhas/rimas
 // continuam funcionando — vira array vazio). A marcação de eco em si só
 // entra na tabela se mostrarEcosAtivo() estiver ligado — mesma
 // preferência persistida que já controla a tela (ver editor-sonoridade.js);
 // isso é o que faz o toggle "Mostrar Ecos Sonoros" valer também na hora
-// de imprimir/exportar, não só na grade em tela.
-export function gradeParaTabela(linhas, rimas, ecos = []) {
+// de imprimir/exportar, não só na grade em tela. `tamanhoVerso` também é
+// opcional (chamadas antigas/testes que não passam continuam
+// funcionando, só sem divergência marcada — alvo null).
+export function gradeParaTabela(linhas, rimas, ecos = [], tamanhoVerso) {
     const n = calcularMaxSilabas(linhas);
     const letras = calcularLetrasRima(rimas);
     const rimadas = celulasRimadas(rimas, letras);
     const ecoadas = mostrarEcosAtivo() ? celulasComEco(ecos) : new Map();
+    const alvo = extrairAlvo(tamanhoVerso);
+    const divergentesAlvo = new Set(calcularDivergenciaSilabas(linhas, tamanhoVerso));
 
     const linhasTabela = linhas.map((linha, idx) => {
         if (linha.tipo !== 'verso') return { tipo: 'vazia' };
@@ -192,10 +217,18 @@ export function gradeParaTabela(linhas, rimas, ecos = []) {
                 eco: ehReal ? Boolean(ecoadas.get(`${idx}:${i}`)) : false,
             });
         }
-        return { tipo: 'verso', numero: linha.numero, celulas, letra: letras.get(idx) || null };
+        const contagem = calcularContagemMetrica(linha.texto);
+        return {
+            tipo: 'verso',
+            numero: linha.numero,
+            celulas,
+            letra: letras.get(idx) || null,
+            contagem,
+            divergeAlvo: alvo !== null && divergentesAlvo.has(linha.numero),
+        };
     });
 
-    return { n, linhas: linhasTabela };
+    return { n, alvo, linhas: linhasTabela };
 }
 
 // Mesmo espírito de paresParaTexto, mas pra Ecos Sonoros — sem letra de
@@ -303,14 +336,16 @@ function blocoCabecalhoMarkdown(es, poema) {
 function blocoGradeMarkdown(es, _poema) {
     const linhas = Array.isArray(es.escansaoLinhas) ? es.escansaoLinhas : [];
     const rimas = Array.isArray(es.rimas) ? es.rimas : [];
-    const versos = versosParaSilabas(linhas, rimas);
+    const versos = versosParaSilabas(linhas, rimas, es.tamanhoVerso);
     if (!versos.length) return '';
 
     let md = `### Grade Silábica\n\n`;
-    md += `_Sílaba tônica em **negrito**; sílabas separadas por " / "; letra ao final indica o esquema de rima._\n\n`;
+    md += `_Sílaba tônica em **negrito**; sílabas separadas por " / "; contagem entre colchetes (contagem/alvo, quando há alvo fixo); letra ao final indica o esquema de rima._\n\n`;
     versos.forEach((v) => {
         const texto = v.unidades.map((u) => (u.tonica ? `**${u.texto}**` : u.texto)).join(' / ');
-        md += `${v.numero}. ${texto}${v.letra ? ` (${v.letra})` : ''}\n`;
+        const contagemTexto = v.alvo !== null ? `${v.contagem}/${v.alvo}` : `${v.contagem}`;
+        const contagemMarcada = v.divergeAlvo ? `**${contagemTexto}**` : contagemTexto;
+        md += `${v.numero}. [${contagemMarcada}] ${texto}${v.letra ? ` (${v.letra})` : ''}\n`;
     });
     md += `\n`;
     return md;
@@ -387,16 +422,20 @@ function obterConstrutorJsPdf() {
     return window.jspdf?.jsPDF || null;
 }
 
-// Largura fixa das colunas Nº/Rima e largura mínima aceitável pra uma
-// coluna de sílaba — abaixo disso a grade fica ilegível (letras
+// Largura fixa das colunas Nº/Cont./Rima e largura mínima aceitável pra
+// uma coluna de sílaba — abaixo disso a grade fica ilegível (letras
 // espremidas), e é esse limiar que decide se a página da Grade Silábica
 // vira paisagem (ver decidirOrientacaoGradePdf, logo abaixo).
 const PDF_LARGURA_COL_NUMERO = 26;
+const PDF_LARGURA_COL_CONTAGEM = 34; // cabe "12/10" sem espremer
 const PDF_LARGURA_COL_RIMA = 30;
 const PDF_MIN_COL_SILABA = 18;
 const PDF_ALTURA_LINHA_GRADE = 16;
 const PDF_COR_BORDA_PADRAO = { r: 209, g: 213, b: 219 }; // gray-300, grade "neutra"
 const PDF_COR_RESERVADO = { r: 156, g: 163, b: 175 }; // gray-400, texto de apoio (nº, régua)
+// amber-600 — mesma cor de divergência de Alvo que a tela usa
+// (text-amber-600, ver reconstruirColunas/renderGradeLeituraHtml).
+const PDF_COR_DIVERGE_ALVO = { r: 217, g: 119, b: 6 };
 
 // Decide se a Grade Silábica precisa de página paisagem: compara a
 // largura de coluna de sílaba que sobraria em retrato (dadas as duas
@@ -410,9 +449,10 @@ const PDF_COR_RESERVADO = { r: 156, g: 163, b: 175 }; // gray-400, texto de apoi
 // que desenham a mesma Grade Silábica em PDF (ver exportar-pdf.js, seção
 // de Sonoridade do Download Abrangente) sem duplicar o limiar.
 export function decidirOrientacaoGradePdf(n, larguraUtilRetrato, larguraUtilPaisagem) {
-    const colRetrato = (larguraUtilRetrato - PDF_LARGURA_COL_NUMERO - PDF_LARGURA_COL_RIMA) / n;
+    const larguraReservada = PDF_LARGURA_COL_NUMERO + PDF_LARGURA_COL_CONTAGEM + PDF_LARGURA_COL_RIMA;
+    const colRetrato = (larguraUtilRetrato - larguraReservada) / n;
     if (colRetrato >= PDF_MIN_COL_SILABA) return 'portrait';
-    const colPaisagem = (larguraUtilPaisagem - PDF_LARGURA_COL_NUMERO - PDF_LARGURA_COL_RIMA) / n;
+    const colPaisagem = (larguraUtilPaisagem - larguraReservada) / n;
     return colPaisagem > colRetrato ? 'landscape' : 'portrait';
 }
 
@@ -482,7 +522,8 @@ export function desenharGradeSilabicaPdf(doc, tabela, ctx) {
     const { margem, largura, obterY, definirY, quebrarPaginaSeNecessario } = ctx;
     const colSilaba = Math.max(
         PDF_MIN_COL_SILABA,
-        (largura - PDF_LARGURA_COL_NUMERO - PDF_LARGURA_COL_RIMA) / tabela.n,
+        (largura - PDF_LARGURA_COL_NUMERO - PDF_LARGURA_COL_CONTAGEM - PDF_LARGURA_COL_RIMA) /
+            tabela.n,
     );
 
     function cabecalho() {
@@ -501,6 +542,16 @@ export function desenharGradeSilabicaPdf(doc, tabela, ctx) {
             });
             x += colSilaba;
         }
+        desenharCelulaGradePdf(
+            doc,
+            x,
+            y,
+            PDF_LARGURA_COL_CONTAGEM,
+            PDF_ALTURA_LINHA_GRADE,
+            'Cont.',
+            { tamanho: 8, cor: PDF_COR_RESERVADO },
+        );
+        x += PDF_LARGURA_COL_CONTAGEM;
         desenharCelulaGradePdf(doc, x, y, PDF_LARGURA_COL_RIMA, PDF_ALTURA_LINHA_GRADE, 'Rima', {
             tamanho: 8,
             cor: PDF_COR_RESERVADO,
@@ -541,6 +592,22 @@ export function desenharGradeSilabicaPdf(doc, tabela, ctx) {
             });
             x += colSilaba;
         });
+        const contagemTexto =
+            tabela.alvo != null ? `${linha.contagem}/${tabela.alvo}` : String(linha.contagem);
+        desenharCelulaGradePdf(
+            doc,
+            x,
+            y,
+            PDF_LARGURA_COL_CONTAGEM,
+            PDF_ALTURA_LINHA_GRADE,
+            contagemTexto,
+            {
+                tamanho: 8,
+                negrito: linha.divergeAlvo,
+                cor: linha.divergeAlvo ? PDF_COR_DIVERGE_ALVO : PDF_COR_RESERVADO,
+            },
+        );
+        x += PDF_LARGURA_COL_CONTAGEM;
         const corLetra = linha.letra ? hexParaRgb(CORES_RIMA_HEX[corDaLetra(linha.letra)]) : null;
         desenharCelulaGradePdf(doc, x, y, PDF_LARGURA_COL_RIMA, PDF_ALTURA_LINHA_GRADE, linha.letra || '', {
             tamanho: 9,
@@ -689,7 +756,7 @@ export function gerarPdfEscansao(es, poema) {
     const linhas = Array.isArray(es.escansaoLinhas) ? es.escansaoLinhas : [];
     const rimas = Array.isArray(es.rimas) ? es.rimas : [];
     const ecos = Array.isArray(es.ecos) ? es.ecos : [];
-    const tabelaGrade = gradeParaTabela(linhas, rimas, ecos);
+    const tabelaGrade = gradeParaTabela(linhas, rimas, ecos, es.tamanhoVerso);
     const temVersos = tabelaGrade.linhas.some((l) => l.tipo === 'verso');
     let usouPaisagem = false;
     if (temVersos) {
@@ -774,8 +841,13 @@ const ESTILOS_PADRAO_DOCUMENTO_SONORIDADE = {
 const DOCX_PAGINA_A4_RETRATO = { width: 11906, height: 16838 };
 const DOCX_MARGEM_TWIPS = 1440; // 1 polegada, default da lib
 const DOCX_LARGURA_COL_NUMERO = 500;
+const DOCX_LARGURA_COL_CONTAGEM = 620; // cabe "12/10" sem espremer
 const DOCX_LARGURA_COL_RIMA = 600;
 const DOCX_MIN_COL_SILABA = 360; // ~0,25", abaixo disso a coluna fica ilegível
+// amber-600 — mesma cor de divergência de Alvo que a tela usa
+// (text-amber-600, ver reconstruirColunas/renderGradeLeituraHtml).
+const DOCX_COR_DIVERGE_ALVO_HEX = 'D97706';
+const DOCX_COR_CONTAGEM_HEX = '9CA3AF'; // gray-400, mesma cor neutra da tela
 
 // Decide se o documento inteiro nasce em paisagem — diferente do .pdf
 // (que só vira a página da grade e volta pro retrato depois), aqui é o
@@ -783,11 +855,13 @@ const DOCX_MIN_COL_SILABA = 360; // ~0,25", abaixo disso a coluna fica ilegível
 // pares), então não vale a complexidade de duas seções com orientações
 // diferentes só pra isto.
 function decidirOrientacaoGradeDocx(n) {
+    const larguraReservada =
+        DOCX_LARGURA_COL_NUMERO + DOCX_LARGURA_COL_CONTAGEM + DOCX_LARGURA_COL_RIMA;
     const larguraRetrato = DOCX_PAGINA_A4_RETRATO.width - DOCX_MARGEM_TWIPS * 2;
-    const colRetrato = (larguraRetrato - DOCX_LARGURA_COL_NUMERO - DOCX_LARGURA_COL_RIMA) / n;
+    const colRetrato = (larguraRetrato - larguraReservada) / n;
     if (colRetrato >= DOCX_MIN_COL_SILABA) return 'portrait';
     const larguraPaisagem = DOCX_PAGINA_A4_RETRATO.height - DOCX_MARGEM_TWIPS * 2;
-    const colPaisagem = (larguraPaisagem - DOCX_LARGURA_COL_NUMERO - DOCX_LARGURA_COL_RIMA) / n;
+    const colPaisagem = (larguraPaisagem - larguraReservada) / n;
     return colPaisagem > colRetrato ? 'landscape' : 'portrait';
 }
 
@@ -811,7 +885,8 @@ function construirTabelaGradeDocx(docx, tabela, larguraConteudo) {
     } = docx;
     const colSilaba = Math.max(
         DOCX_MIN_COL_SILABA,
-        (larguraConteudo - DOCX_LARGURA_COL_NUMERO - DOCX_LARGURA_COL_RIMA) / tabela.n,
+        (larguraConteudo - DOCX_LARGURA_COL_NUMERO - DOCX_LARGURA_COL_CONTAGEM - DOCX_LARGURA_COL_RIMA) /
+            tabela.n,
     );
 
     const SEM_BORDA = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
@@ -867,6 +942,7 @@ function construirTabelaGradeDocx(docx, tabela, larguraConteudo) {
             ...Array.from({ length: tabela.n }, (_, i) =>
                 celula(String(i + 1), { largura: colSilaba }),
             ),
+            celula('Cont.', { largura: DOCX_LARGURA_COL_CONTAGEM }),
             celula('Rima', { largura: DOCX_LARGURA_COL_RIMA }),
         ],
     });
@@ -876,7 +952,7 @@ function construirTabelaGradeDocx(docx, tabela, larguraConteudo) {
             return new TableRow({
                 children: [
                     new TableCell({
-                        columnSpan: tabela.n + 2,
+                        columnSpan: tabela.n + 3,
                         borders: {
                             top: SEM_BORDA,
                             bottom: SEM_BORDA,
@@ -904,10 +980,17 @@ function construirTabelaGradeDocx(docx, tabela, larguraConteudo) {
                 bordas,
             });
         });
+        const contagemTexto =
+            tabela.alvo != null ? `${linha.contagem}/${tabela.alvo}` : String(linha.contagem);
         return new TableRow({
             children: [
                 celula(String(linha.numero), { largura: DOCX_LARGURA_COL_NUMERO }),
                 ...celulasSilaba,
+                celula(contagemTexto, {
+                    largura: DOCX_LARGURA_COL_CONTAGEM,
+                    negrito: linha.divergeAlvo,
+                    corHex: linha.divergeAlvo ? DOCX_COR_DIVERGE_ALVO_HEX : DOCX_COR_CONTAGEM_HEX,
+                }),
                 celula(linha.letra || '', {
                     largura: DOCX_LARGURA_COL_RIMA,
                     negrito: true,
@@ -955,7 +1038,7 @@ export function gerarDocxEscansao(es, poema) {
     const linhas = Array.isArray(es.escansaoLinhas) ? es.escansaoLinhas : [];
     const rimas = Array.isArray(es.rimas) ? es.rimas : [];
     const ecos = Array.isArray(es.ecos) ? es.ecos : [];
-    const tabelaGrade = gradeParaTabela(linhas, rimas, ecos);
+    const tabelaGrade = gradeParaTabela(linhas, rimas, ecos, es.tamanhoVerso);
     const temVersos = tabelaGrade.linhas.some((l) => l.tipo === 'verso');
     const orientacao = temVersos ? decidirOrientacaoGradeDocx(tabelaGrade.n) : 'portrait';
     const emPaisagem = orientacao === 'landscape';

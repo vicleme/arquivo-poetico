@@ -39,6 +39,7 @@ import {
     renderCoracoesHtml,
     formatarAutoclassificacaoTexto,
     autoclassificacaoValida,
+    linhasFonteTexto,
 } from './utils.js';
 
 // tipo/id do item atualmente aberto no modal — os botões de Baixar do
@@ -192,6 +193,9 @@ export function renderVisualizacaoHtml(item) {
 
     html += blocoTextoHtml('Notas', item.notas);
     html += linhaMetaHtml('Autoria', textoAutoria(item), true);
+    linhasFonteTexto(item, db.autores).forEach(({ rotulo, valor }) => {
+        html += linhaMetaHtml(rotulo, valor);
+    });
     html += blocoTextoHtml('Descrição Visual', item.descricaoVisual);
     html += blocoTextoHtml('Contexto Histórico/Pessoal', item.contextoHistorico);
     html += blocoTextoHtml('Ocultação', item.ocultacao);

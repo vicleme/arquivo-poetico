@@ -1,0 +1,30 @@
+{
+    "id": "camoes",
+    "titulo": "Camões (seleção)",
+    "descricao": "Cinco sonetos e um vilancete de Camões, na edição de 1843.",
+    "autor": {
+        "nome": "Luís Vaz de Camões",
+        "nacionalidade": "Portuguesa",
+        "obito": {
+            "ano": 1580
+        },
+        "sexo": "Masculino"
+    },
+    "fonte": "Wikisource",
+    "edicao": "Obras completas de Luis de Camões. Lisboa: Livraria Europea de Baudry, 1843. v. 2",
+    "link": "",
+    "ortografia": "quinhentista",
+    "conferido": false,
+    "textos": {
+        "Alma minha gentil, que te partiste": {
+            "edicao": "Lisboa: Livraria Europea de Baudry, 1843. v. 2, página 10."
+        },
+        "Mudam-se os tempos, mudam-se as vontades": {
+            "edicao": "Lisboa: Livraria Europea de Baudry, 1843. v. 2, página 29."
+        },
+        "Verdes são os campos": {
+            "edicao": "",
+            "grafia": "quinhentista"
+        }
+    }
+}

@@ -1,0 +1,177 @@
+{
+  "export_format": "biblioteca",
+  "pacote": {
+    "id": "augusto-dos-anjos",
+    "titulo": "Augusto dos Anjos — sonetos (piloto)",
+    "descricao": "Dois sonetos pra demonstrar Sonoridade, Estatísticas e Conexões sem usar o acervo pessoal.",
+    "fonte": "Escritas.org",
+    "edicao": "Eu (1912)",
+    "link": "",
+    "ortografia": "",
+    "conferido": true
+  },
+  "autores": [
+    {
+      "id": 1,
+      "sobre": "",
+      "nome": "Augusto dos Anjos",
+      "nacionalidade": "Brasileira",
+      "nascimento": {
+        "dia": 20,
+        "mes": 4,
+        "ano": 1884
+      },
+      "obito": {
+        "dia": 12,
+        "mes": 11,
+        "ano": 1914
+      }
+    }
+  ],
+  "itens": [
+    {
+      "id": 1,
+      "tipo": "poema",
+      "titulo": "Versos Íntimos",
+      "texto": "Vês?! Ninguém assistiu ao formidável\nEnterro de tua última quimera.\nSomente a Ingratidão – esta pantera –\nFoi tua companheira inseparável!\n\nAcostuma-te à lama que te espera!\nO Homem, que, nesta terra miserável,\nMora, entre feras, sente inevitável\nNecessidade de também ser fera.\n\nToma um fósforo. Acende teu cigarro!\nO beijo, amigo, é a véspera do escarro,\nA mão que afaga é a mesma que apedreja.\n\nSe alguém causa inda pena a tua chaga,\nApedreja essa mão vil que te afaga,\nEscarra nessa boca que te beija!\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "pt-BR",
+      "dataEscrita": null,
+      "dataPublicacao": null,
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Augusto dos Anjos"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Escritas.org",
+        "edicao": "Eu (1912)",
+        "link": "https://www.escritas.org/pt/t/12236/versos-intimos",
+        "conferido": true,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 2,
+      "tipo": "poema",
+      "titulo": "Psicologia de um Vencido",
+      "texto": "Eu, filho do carbono e do amoníaco,\nMonstro de escuridão e rutilância,\nSofro, desde a epigênese da infância,\nA influência má dos signos do zodíaco.\n\nProfundissimamente hipocondríaco,\nEste ambiente me causa repugnância...\nSobe-me à boca uma ânsia análoga à ânsia\nQue se escapa da boca de um cardíaco.\n\nJá o verme — este operário das ruínas —\nQue o sangue podre das carnificinas\nCome, e à vida em geral declara guerra,\n\nAnda a espreitar meus olhos para roê-los,\nE há de deixar-me apenas os cabelos,\nNa frialdade inorgânica da terra!\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "pt-BR",
+      "dataEscrita": null,
+      "dataPublicacao": null,
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Augusto dos Anjos"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Escritas.org",
+        "edicao": "Eu (1912)",
+        "link": "https://www.escritas.org/pt/t/12233/psicologia-de-um-vencido",
+        "conferido": true,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    }
+  ]
+}

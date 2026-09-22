@@ -1,0 +1,507 @@
+# O Homem que Sabia Javanês
+
+EM UMA confeitaria, certa vez, ao meu amigo Castro, contava eu as partidas que havia pregado às convicções e às respeitabilidades, para poder viver.
+
+Houve mesmo, uma dada ocasião, quando estive em Manaus, em que fui obrigado a esconder a minha qualidade de bacharel, para mais confiança obter dos clientes, que afluíam ao meu escritório de feiticeiro e adivinho. Contava eu isso.
+
+O meu amigo ouvia-me calado, embevecido, gostando daquele meu Gil Blas vivido, até que, em uma pausa da conversa, ao esgotarmos os copos, observou a esmo:
+
+— Tens levado uma vida bem engraçada, Castelo!
+
+— Só assim se pode viver... Isto de uma ocupação única: sair de casa a certas horas, voltar a outras, aborrece, não achas? Não sei como me tenho agüentado lá, no consulado!
+
+— Cansa-se; mas, não é disso que me admiro. O que me admira, é que tenhas corrido tantas aventuras aqui, neste Brasil imbecil e burocrático.
+
+— Qual! Aqui mesmo, meu caro Castro, se podem arranjar belas páginas de vida. Imagina tu que eu já fui professor de javanês!
+
+— Quando? Aqui, depois que voltaste do consulado?
+
+— Não; antes. E, por sinal, fui nomeado cônsul por isso.
+
+— Conta lá como foi. Bebes mais cerveja?
+
+— Bebo.
+
+Mandamos buscar mais outra garrafa, enchemos os copos, e continuei:
+
+— Eu tinha chegado havia pouco ao Rio estava literalmente na miséria. Vivia fugido de casa de pensão em casa de pensão, sem saber onde e como ganhar dinheiro, quando li no Jornal do Comércio o anuncio seguinte:
+
+"Precisa-se de um professor de língua javanesa. Cartas, etc." Ora, disse cá comigo, está ali uma colocação que não terá muitos concorrentes; se eu capiscasse quatro palavras, ia apresentar-me. Saí do café e andei pelas ruas, sempre a imaginar-me professor de javanês, ganhando dinheiro, andando de bonde e sem encontros desagradáveis com os "cadáveres". Insensivelmente dirigi-me à Biblioteca Nacional. Não sabia bem que livro iria pedir; mas, entrei, entreguei o chapéu ao porteiro, recebi a senha e subi. Na escada, acudiu-me pedir a Grande Encyclopédie, letra J, a fim de consultar o artigo relativo a Java e a língua javanesa. Dito e feito. Fiquei sabendo, ao fim de alguns minutos, que Java era uma grande ilha do arquipélago de Sonda, colônia holandesa, e o javanês, língua aglutinante do grupo maleo-polinésico, possuía uma literatura digna de nota e escrita em caracteres derivados do velho alfabeto hindu.
+
+A Encyclopédie dava-me indicação de trabalhos sobre a tal língua malaia e não tive dúvidas em consultar um deles. Copiei o alfabeto, a sua pronunciação figurada e saí. Andei pelas ruas, perambulando e mastigando letras. Na minha cabeça dançavam hieróglifos; de quando em quando consultava as minhas notas; entrava nos jardins e escrevia estes calungas na areia para guardá-los bem na memória e habituar a mão a escrevê-los.
+
+À noite, quando pude entrar em casa sem ser visto, para evitar indiscretas perguntas do encarregado, ainda continuei no quarto a engolir o meu "a-b-c" malaio, e, com tanto afinco levei o propósito que, de manhã, o sabia perfeitamente.
+
+Convenci-me que aquela era a língua mais fácil do mundo e saí; mas não tão cedo que não me encontrasse com o encarregado dos aluguéis dos cômodos:
+
+— Senhor Castelo, quando salda a sua conta?
+
+Respondi-lhe então eu, com a mais encantadora esperança:
+
+— Breve... Espere um pouco... Tenha paciência... Vou ser nomeado professor de javanês, e...
+
+Por aí o homem interrompeu-me:
+
+— Que diabo vem a ser isso, Senhor Castelo?
+
+Gostei da diversão e ataquei o patriotismo do homem:
+
+— É uma língua que se fala lá pelas bandas do Timor. Sabe onde é?
+
+Oh! alma ingênua! O homem esqueceu-se da minha dívida e disse-me com aquele falar forte dos portugueses:
+
+— Eu cá por mim, não sei bem; mas ouvi dizer que são umas terras que temos lá para os lados de Macau. E o senhor sabe isso, Senhor Castelo?
+
+Animado com esta saída feliz que me deu o javanês, voltei a procurar o anúncio. Lá estava ele. Resolvi animosamente propor-me ao professorado do idioma oceânico. Redigi a resposta, passei pelo Jornal e lá deixei a carta. Em seguida, voltei à biblioteca e continuei os meus estudos de javanês. Não fiz grandes progressos nesse dia, não sei se por julgar o alfabeto javanês o único saber necessário a um professor de língua malaia ou se por ter me empenhado mais na bibliografia e história literária do idioma que ia ensinar.
+
+Ao cabo de dois dias, recebia eu uma carta para ir falar ao doutor Manuel Feliciano Soares Albernaz, Barão de Jacuecanga, à Rua Conde de Bonfim, não me recordo bem que numero. E preciso não te esqueceres que entrementes continuei estudando o meu malaio, isto é, o tal javanês. Além do alfabeto, fiquei sabendo o nome de alguns autores, também perguntar e responder "como está o senhor?" - e duas ou três regras de gramática, lastrado todo esse saber com vinte palavras do léxico.
+
+Não imaginas as grandes dificuldades com que lutei, para arranjar os quatrocentos réis da viagem! É mais fácil - podes ficar certo - aprender o javanês... Fui a pé. Cheguei suadíssimo; e, com maternal carinho, as anosas mangueiras, que se perfilavam em alameda diante da casa do titular, me receberam, me acolheram e me reconfortaram. Em toda a minha vida, foi o único momento em que cheguei a sentir a simpatia da natureza...
+
+Era uma casa enorme que parecia estar deserta; estava mal tratada, mas não sei porque me veio pensar que nesse mau tratamento havia mais desleixo e cansaço de viver que mesmo pobreza. Devia haver anos que não era pintada. As paredes descascavam e os beirais do telhado, daquelas telhas vidradas de outros tempos, estavam desguarnecidos aqui e ali, como dentaduras decadentes ou mal cuidadas.
+
+Olhei um pouco o jardim e vi a pujança vingativa com que a tiririca e o carrapicho tinham expulsado os tinhorões e as begônias. Os crótons continuavam, porém, a viver com a sua folhagem de cores mortiças. Bati. Custaram-me a abrir. Veio, por fim, um antigo preto africano, cujas barbas e cabelo de algodão davam à sua fisionomia uma aguda impressão de velhice, doçura e sofrimento.
+
+Na sala, havia uma galeria de retratos: arrogantes senhores de barba em colar se perfilavam enquadrados em imensas molduras douradas, e doces perfis de senhoras, em bandós, com grandes leques, pareciam querer subir aos ares, enfunadas pelos redondos vestidos à balão; mas, daquelas velhas coisas, sobre as quais a poeira punha mais antiguidade e respeito, a que gostei mais de ver foi um belo jarrão de porcelana da China ou da Índia, como se diz. Aquela pureza da louça, a sua fragilidade, a ingenuidade do desenho e aquele seu fosco brilho de luar, diziam-me a mim que aquele objeto tinha sido feito por mãos de criança, a sonhar, para encanto dos olhos fatigados dos velhos desiludidos...
+
+Esperei um instante o dono da casa. Tardou um pouco. Um tanto trôpego, com o lenço de alcobaça na mão, tomando veneravelmente o simonte de antanho, foi cheio de respeito que o vi chegar. Tive vontade de ir-me embora. Mesmo se não fosse ele o discípulo, era sempre um crime mistificar aquele ancião, cuja velhice trazia à tona do meu pensamento alguma coisa de augusto, de sagrado. Hesitei, mas fiquei.
+
+— Eu sou, avancei, o professor de javanês, que o senhor disse precisar.
+
+— Sente-se, respondeu-me o velho. O senhor é daqui, do Rio?
+
+— Não, sou de Canavieiras.
+
+— Como? fez ele. Fale um pouco alto, que sou surdo, - Sou de Canavieiras, na Bahia, insisti eu. - Onde fez os seus estudos?
+
+— Em São Salvador.
+
+— Em onde aprendeu o javanês? indagou ele, com aquela teimosia peculiar aos velhos.
+
+Não contava com essa pergunta, mas imediatamente arquitetei uma mentira. Contei-lhe que meu pai era javanês. Tripulante de um navio mercante, viera ter à Bahia, estabelecera-se nas proximidades de Canavieiras como pescador, casara, prosperara e fora com ele que aprendi javanês.
+
+— E ele acreditou? E o físico? perguntou meu amigo, que até então me ouvira calado.
+
+— Não sou, objetei, lá muito diferente de um javanês. Estes meus cabelos corridos, duros e grossos e a minha pele basané podem dar-me muito bem o aspecto de um mestiço de malaio...Tu sabes bem que, entre nós, há de tudo: índios, malaios, taitianos, malgaches, guanches, até godos. É uma comparsaria de raças e tipos de fazer inveja ao mundo inteiro.
+
+— Bem, fez o meu amigo, continua.
+
+— O velho, emendei eu, ouviu-me atentamente, considerou demoradamente o meu físico, pareceu que me julgava de fato filho de malaio e perguntou-me com doçura:
+
+— Então está disposto a ensinar-me javanês?
+
+— A resposta saiu-me sem querer: - Pois não.
+
+— O senhor há de ficar admirado, aduziu o Barão de Jacuecanga, que eu, nesta idade, ainda queira aprender qualquer coisa, mas...
+
+— Não tenho que admirar. Têm-se visto exemplos e exemplos muito fecundos...? .
+
+— O que eu quero, meu caro senhor....
+
+— Castelo, adiantei eu.
+
+— O que eu quero, meu caro Senhor Castelo, é cumprir um juramento de família. Não sei se o senhor sabe que eu sou neto do Conselheiro Albernaz, aquele que acompanhou Pedro I, quando abdicou. Voltando de Londres, trouxe para aqui um livro em língua esquisita, a que tinha grande estimação. Fora um hindu ou siamês que lho dera, em Londres, em agradecimento a não sei que serviço prestado por meu avô. Ao morrer meu avô, chamou meu pai e lhe disse: "Filho, tenho este livro aqui, escrito em javanês. Disse-me quem mo deu que ele evita desgraças e traz felicidades para quem o tem. Eu não sei nada ao certo. Em todo o caso, guarda-o; mas, se queres que o fado que me deitou o sábio oriental se cumpra, faze com que teu filho o entenda, para que sempre a nossa raça seja feliz." Meu pai, continuou o velho barão, não acreditou muito na história; contudo, guardou o livro. Às portas da morte, ele mo deu e disse-me o que prometera ao pai. Em começo, pouco caso fiz da história do livro. Deitei-o a um canto e fabriquei minha vida. Cheguei até a esquecer-me dele; mas, de uns tempos a esta parte, tenho passado por tanto desgosto, tantas desgraças têm caído sobre a minha velhice que me lembrei do talismã da família. Tenho que o ler, que o compreender, se não quero que os meus últimos dias anunciem o desastre da minha posteridade; e, para entendê-lo, é claro, que preciso entender o javanês. Eis aí.
+
+Calou-se e notei que os olhos do velho se tinham orvalhado. Enxugou discretamente os olhos e perguntou-me se queria ver o tal livro. Respondi-lhe que sim. Chamou o criado, deu-lhe as instruções e explicou-me que perdera todos os filhos, sobrinhos, só lhe restando uma filha casada, cuja prole, porém, estava reduzida a um filho, débil de corpo e de saúde frágil e oscilante.
+
+Veio o livro. Era um velho calhamaço, um in-quarto antigo, encadernado em couro, impresso em grandes letras, em um papel amarelado e grosso. Faltava a folha do rosto e por isso não se podia ler a data da impressão. Tinha ainda umas páginas de prefácio, escritas em inglês, onde li que se tratava das histórias do príncipe Kulanga, escritor javanês de muito mérito.
+
+Logo informei disso o velho barão que, não percebendo que eu tinha chegado aí pelo inglês, ficou tendo em alta consideração o meu saber malaio. Estive ainda folheando o cartapácio, à laia de quem sabe magistralmente aquela espécie de vasconço, até que afinal contratamos as condições de preço e de hora, comprometendo-me a fazer com que ele lesse o tal alfarrábio antes de um ano.
+
+Dentro em pouco, dava a minha primeira lição, mas o velho não foi tão diligente quanto eu. Não conseguia aprender a distinguir e a escrever nem sequer quatro letras. Enfim, com metade do alfabeto levamos um mês e o Senhor Barão de Jacuecanga não ficou lá muito senhor da matéria: aprendia e desaprendia.
+
+A filha e o genro (penso que até aí nada sabiam da história do livro) vieram a ter notícias do estudo do velho; não se incomodaram. Acharam graça e julgaram a coisa boa para distraí-lo.
+
+Mas com o que tu vais ficar assombrado, meu caro Castro, é com a admiração que o genro ficou tendo pelo professor de javanês. Que coisa Única! Ele não se cansava de repetir: "É um assombro! Tão moço! Se eu soubesse isso, ah! onde estava!"
+
+O marido de Dona Maria da Glória (assim se chamava a filha do barão), era desembargador, homem relacionado e poderoso; mas não se pejava em mostrar diante de todo o mundo a sua admiração pelo meu javanês. Por outro lado, o barão estava contentíssimo. Ao fim de dois meses, desistira da aprendizagem e pedira-me que lhe traduzisse, um dia sim outro não, um trecho do livro encantado. Bastava entendê-lo, disse-me ele; nada se opunha que outrem o traduzisse e ele ouvisse. Assim evitava a fadiga do estudo e cumpria o encargo.
+
+Sabes bem que até hoje nada sei de javanês, mas compus umas histórias bem tolas e impingi-as ao velhote como sendo do crônicon. Como ele ouvia aquelas bobagens!...
+
+Ficava extático, como se estivesse a ouvir palavras de um anjo. E eu crescia aos seus olhos!
+
+Fez-me morar em sua casa, enchia-me de presentes, aumentava-me o ordenado. Passava, enfim, uma vida regalada.
+
+Contribuiu muito para isso o fato de vir ele a receber uma herança de um seu parente esquecido que vivia em Portugal. O bom velho atribuiu a cousa ao meu javanês; e eu estive quase a crê-lo também.
+
+Fui perdendo os remorsos; mas, em todo o caso, sempre tive medo que me aparecesse pela frente alguém que soubesse o tal patuá malaio. E esse meu temor foi grande, quando o doce barão me mandou com uma carta ao Visconde de Caruru, para que me fizesse entrar na diplomacia. Fiz-lhe todas as objeções: a minha fealdade, a falta de elegância, o meu aspecto tagalo. - "Qual! retrucava ele. Vá, menino; você sabe javanês!" Fui. Mandou-me o visconde para a Secretaria dos Estrangeiros com diversas recomendações. Foi um sucesso.
+
+O diretor chamou os chefes de secção: "Vejam só, um homem que sabe javanês - que portento!"
+
+Os chefes de secção levaram-me aos oficiais e amanuenses e houve um destes que me olhou mais com ódio do que com inveja ou admiração. E todos diziam: "Então sabe javanês? É difícil? Não há quem o saiba aqui!"
+
+O tal amanuense, que me olhou com ódio, acudiu então: "É verdade, mas eu sei canaque. O senhor sabe?" Disse-lhe que não e fui à presença do ministro.
+
+A alta autoridade levantou-se, pôs as mãos às cadeiras, concertou o pince-nez no nariz e perguntou: "Então, sabe javanês?" Respondi-lhe que sim; e, à sua pergunta onde o tinha aprendido, contei-lhe a história do tal pai javanês. "Bem, disse-me o ministro, o senhor não deve ir para a diplomacia; o seu físico não se presta... O bom seria um consulado na Ásia ou Oceania. Por ora, não há vaga, mas vou fazer uma reforma e o senhor entrará. De hoje em diante, porém, fica adido ao meu ministério e quero que, para o ano, parta para Bâle, onde vai representar o Brasil no Congresso de Lingüística. Estude, leia o Hovelacque, o Max Müller, e outros!"
+
+Imagina tu que eu até aí nada sabia de javanês, mas estava empregado e iria representar o Brasil em um congresso de sábios.
+
+O velho barão veio a morrer, passou o livro ao genro para que o fizesse chegar ao neto, quando tivesse a idade conveniente e fez-me uma deixa no testamento.
+
+Pus-me com afã no estudo das línguas maleo-polinésicas; mas não havia meio!
+
+Bem jantado, bem vestido, bem dormido, não tinha energia necessária para fazer entrar na cachola aquelas coisas esquisitas. Comprei livros, assinei revistas: Revue Anthropologique et Linguistique, Proceedings of the English-Oceanic Association, Archivo Glottologico Italiano, o diabo, mas nada! E a minha fama crescia. Na rua, os informados apontavam-me, dizendo aos outros: "Lá vai o sujeito que sabe javanês." Nas livrarias, os gramáticos consultavam-me sobre a colocação dos pronomes no tal jargão das ilhas de Sonda. Recebia cartas dos eruditos do interior, os jornais citavam o meu saber e recusei aceitar uma turma de alunos sequiosos de entenderem o tal javanês. A convite da redação, escrevi, no Jornal do Comércio um artigo de quatro colunas sobre a literatura javanesa antiga e moderna...
+
+— Como, se tu nada sabias? interrompeu-me o atento Castro.
+
+— Muito simplesmente: primeiramente, descrevi a ilha de Java, com o auxílio de dicionários e umas poucas de geografias, e depois citei a mais não poder.
+
+— E nunca duvidaram? perguntou-me ainda o meu amigo.
+
+— Nunca. Isto é, uma vez quase fico perdido. A polícia prendeu um sujeito, um marujo, um tipo bronzeado que só falava uma língua esquisita. Chamaram diversos intérpretes, ninguém o entendia. Fui também chamado, com todos os respeitos que a minha sabedoria merecia, naturalmente. Demorei-me em ir, mas fui afinal. O homem já estava solto, graças à intervenção do cônsul holandês, a quem ele se fez compreender com meia dúzia de palavras holandesas. E o tal marujo era javanês - uf!
+
+Chegou, enfim, a época do congresso, e lá fui para a Europa. Que delícia! Assisti à inauguração e às sessões preparatórias. Inscreveram-me na secção do tupi-guarani e eu abalei para Paris. Antes, porém, fiz publicar no Mensageiro de Bâle o meu retrato, notas biográficas e bibliográficas. Quando voltei, o presidente pediu-me desculpas por me ter dado aquela secção; não conhecia os meus trabalhos e julgara que, por ser eu americano brasileiro, me estava naturalmente indicada a secção do tupi- guarani. Aceitei as explicações e até hoje ainda não pude escrever as minhas obras sobre o javanês, para lhe mandar, conforme prometi.
+
+Acabado o congresso, fiz publicar extratos do artigo do Mensageiro de Bâle, em Berlim, em Turim e Paris, onde os leitores de minhas obras me ofereceram um banquete, presidido pelo Senador Gorot. Custou-me toda essa brincadeira, inclusive o banquete que me foi oferecido, cerca de dez mil francos, quase toda a herança do crédulo e bom Barão de Jacuecanga.
+
+Não perdi meu tempo nem meu dinheiro. Passei a ser uma glória nacional e, ao saltar no cais Pharoux, recebi uma ovação de todas as classes sociais e o presidente da república, dias depois, convidava-me para almoçar em sua companhia.
+
+Dentro de seis meses fui despachado cônsul em Havana, onde estive seis anos e para onde voltarei, a fim de aperfeiçoar os meus estudos das línguas da Malaia, Melanésia e Polinésia.
+
+— É fantástico, observou Castro, agarrando o copo de cerveja.
+
+— Olha: se não fosse estar contente, sabes que ia ser?
+
+— Que?
+
+— Bacteriologista eminente. Vamos?
+
+— Vamos.
+
+# A Nova Califórnia
+
+Ninguém sabia donde viera aquele homem. O agente do Correio pudera apenas informar que acudia ao nome de Raimundo Flamel, pois assim era subscrita a correspondência que recebia. E era grande. Quase diariamente, o carteiro lá ia a um dos extremos da cidade, onde morava o desconhecido, sopesando um maço alentado de cartas vindas do mundo inteiro, grossas revistas em línguas arrevesadas, livros, pacotes...
+
+Quando Fabrício, o pedreiro, voltou de um serviço em casa do novo habitante, todos na venda perguntaram-lhe que trabalho lhe tinha sido determinado.
+
+— Vou fazer um forno, disse o preto, na sala de jantar.
+
+Imaginem o espanto da pequena cidade de Tubiacanga, ao saber de tão extravagante construção: um forno na sala de jantar! E, pelos dias seguintes, Fabrício pôde contar que vira balões de vidro, facas sem corte, copos como os da farmácia — um rol de coisas esquisitas a se mostrarem pelas mesas e prateleiras como utensílios de uma bateria de cozinha em que o próprio diabo cozinhasse.
+
+O alarme se fez na vila. Para uns, os mais adiantados, era um fabricante de moeda falsa; para outros, os crentes e simples, um tipo que tinha parte com o tinhoso.
+
+Chico da Tirana, o carreiro, quando passava em frente da casa do homem misterioso, ao lado do carro a chiar, e olhava a chaminé da sala de jantar a fumegar, não deixava de persignar-se e rezar um “credo” em voz baixa; e, não fora a intervenção do farmacêutico, o subdelegado teria ido dar um cerco à casa daquele indivíduo suspeito, que inquietava a imaginação de toda uma população.
+
+Tomando em consideração as informações de Fabrício, o boticário Bastos concluíra que o desconhecido devia ser um sábio, um grande químico, refugiado ali para mais sossegadamente levar avante os seus trabalhos científicos.
+
+Homem formado e respeitado na cidade, vereador, médico também, porque o doutor Jerônimo não gostava de receitar e se fizera sócio da farmácia para mais em paz viver, a opinião de Bastos levou tranquilidade a todas as consciências e fez com que a população cercasse de uma silenciosa admiração à pessoa do grande químico, que viera habitar a cidade.
+
+De tarde, se o viam a passear pela margem do Tubiacanga, sentando-se aqui e ali, olhando perdidamente as águas claras do riacho, cismando diante da penetrante melancolia do crespúsculo, todos se descobriam e não era raro que às “boas noites” acrescentassem “doutor”. E tocava muito o coração daquela gente a profunda simpatia com que ele tratava as crianças, a maneira pela qual as contemplava, parecendo apiedar-se de que elas tivessem nascido para sofrer e morrer.
+
+Na verdade, era de ver-se, sob a doçura suave da tarde, a bondade de Messias com que ele afagava aquelas crianças pretas, tão lisas de pele e tão tristes de modos, mergulhadas no seu cativeiro moral, e também as brancas, de pele baça, gretada e áspera, vivendo amparadas na necessária caquexia dos trópicos.
+
+Por vezes, vinha-lhe vontade de pensar qual a razão de ter Bernardin de Saint-Pierre gasto toda a sua ternura com Paulo e Virgínia e esquecer-se dos escravos que os cercavam...
+
+Em poucos dias a admiração pelo sábio era quase geral, e não o era unicamente porque havia alguém que não tinha em grande conta os méritos do novo habitante.
+
+Capitão Pelino, mestre-escola e redator da Gazeta de Tubiacanga, órgão local e filiado ao partido situacionista, embirrava com o sábio. “Vocês hão de ver, dizia ele, quem é esse tipo... Um caloteiro, um aventureiro ou talvez um ladrão fugido do Rio.”
+
+A sua opinião em nada se baseava, ou antes, baseava-se no seu oculto despeito vendo na terra um rival para a fama de sábio de que gozava. Não que Pelino fosse químico, longe disso; mas era sábio, era gramático. Ninguém escrevia em Tubiacanga que não levasse bordoada do capitão Pelino, e mesmo quando se falava em algum homem notável lá no Rio, ele não deixava de dizer: “Não há dúvida! O homem tem talento, mas escreve: ‘um outro’, ‘de resto’...”. E contraía os lábios como se tivesse engolido alguma coisa amarga.
+
+Toda a vila de Tubiacanga acostumou-se a respeitar o solene Pelino, que corrigia e emendava as maiores glórias nacionais. Um sábio...
+
+Ao entardecer, depois de ler um pouco o Sotero, o Cândido de Figueiredo ou o Castro Lopes, e de ter passado mais uma vez a tintura nos cabelos, o velho mestre-escola saía vagarosamente de casa, muito abotoado no seu paletó de brim mineiro, e encaminhava-se para a botica do Bastos a dar dois dedos de prosa. Conversar é um modo de dizer, porque era Pelino avaro de palavras, limitando-se tão somente a ouvir. Quando, porém, dos lábios de alguém escapava a menor incorreção de linguagem, intervinha e emendava. “Eu asseguro, dizia o agente do Correio, que...” Por aí, o mestre-escola intervinha com mansuetude evangélica: “Não diga ‘asseguro’, senhor Bernardes; em português é garanto”.
+
+E a conversa continuava depois da emenda, para ser de novo interrompida por uma outra. Por essas e outras, houve muitos palestradores que se afastaram, mas Pelino, indiferente, seguro dos seus deveres, continuava o seu apostolado de vernaculismo. A chegada do sábio veio distraí-lo um pouco da sua missão. Todo o seu esforço voltava-se agora para combater aquele rival, que surgia tão inopinadamente.
+
+Foram vãs as suas palavras e a sua eloquência: não só Raimundo Flamel pagava em dia as suas contas, como era generoso — pai da pobreza — e o farmacêutico vira numa revista de específicos seu nome citado como químico de valor.
+
+II
+Havia já anos que o químico vivia em Tubiacanga, quando, uma bela manhã, Bastos o viu entrar pela botica adentro. O prazer do farmacêutico foi imenso. O sábio não se dignara até aí visitar fosse quem fosse e, certo dia, quando o sacristão Orestes ousou penetrar em sua casa, pedindo-lhe uma esmola para a futura festa de Nossa Senhora da Conceição, foi com visível enfado que ele o recebeu e atendeu.
+
+Vendo-o, Bastos saiu de detrás do balcão, correu a recebê-lo com a mais perfeita demonstração de quem sabia com quem tratava e foi quase em uma exclamação que disse:
+
+— Doutor, seja bem-vindo.
+
+O sábio pareceu não se surpreender nem com a demonstração de respeito do farmacêutico, nem com o tratamento universitário. Docemente, olhou um instante a armação cheia de medicamentos e respondeu:
+
+— Desejava falar-lhe em particular, senhor Bastos.
+
+O espanto do farmacêutico foi grande. Em que poderia ele ser útil ao homem, cujo nome corria mundo e de quem os jornais falavam com tão acendrado respeito? Se ria dinheiro? Talvez... Um atraso no pagamento das rendas, quem sabe? E foi conduzindo o químico para o interior da casa, sob o olhar espantado do aprendiz que, por um momento, deixou a “mão” descansar no gral, onde macerava uma tisana qualquer.
+
+Por fim, achou ao fundo, bem no fundo, o quartinho que lhe servia para exames médicos mais detidos ou para as pequenas operações, porque Bastos também operava. Sentaram-se e Flamel não tardou a expor:
+
+— Como o senhor deve saber, dedico-me à química, tenho mesmo um nome respeitado no mundo sábio...
+
+— Sei perfeitamente, doutor, mesmo tenho disso informado, aqui, aos meus amigos.
+
+— Obrigado. Pois bem: fiz uma grande descoberta, extraordinária...
+
+Envergonhado com o seu entusiasmo, o sábio fez uma pausa e depois continuou:
+
+— Uma descoberta... Mas não me convém, por ora, comunicar ao mundo sábio, compreende?
+
+— Perfeitamente.
+
+— Por isso precisava de três pessoas conceituadas que fossem testemunhas de uma experiência dela e me dessem um atestado em forma, para resguardar a prioridade da minha invenção... O senhor sabe: há acontecimentos imprevistos e...
+
+— Certamente! Não há dúvida!
+
+— Imagine o senhor que se trata de fazer ouro...
+
+— Como? O quê? fez Bastos, arregalando os olhos.
+
+— Sim! Ouro! disse, com firmeza, Flamel.
+
+— Como?
+
+— O senhor saberá — disse o químico secamente. A questão do momento são as pessoas que devem assistir à experiência, não acha?
+
+— Com certeza, é preciso que os seus direitos fiquem resguardados, porquanto...
+
+— Uma delas, interrompeu o sábio, é o senhor; as outras duas, o senhor Bastos fará o favor de indicar-me.
+
+O boticário esteve um instante a pensar, passando em revista os seus conhecimentos e, ao fim de uns três minutos, perguntou:
+
+— O coronel Bentes lhe serve? Conhece?
+
+— Não. O senhor sabe que não me dou com ninguém aqui.
+
+— Posso garantir-lhe que é homem sério, rico e muito discreto.
+
+— É religioso? Faço-lhe esta pergunta, acrescentou Flamel logo, porque temos que lidar com ossos de defunto e só estes servem...
+
+— Qual! É quase ateu...
+
+— Bem! Aceito. E o outro?
+
+Bastos voltou a pensar e dessa vez demorou-se um pouco mais consultando a sua memória... Por fim, falou:
+
+— Será o tenente Carvalhais, o coletor, conhece?
+
+— Como já lhe disse...
+
+— É verdade. É homem de confiança, sério, mas...
+
+— Que é que tem?
+
+— É maçom.
+
+— Melhor.
+
+— E quando é?
+
+— Domingo. Domingo, os três irão lá em casa assistir à experiência e espero que não me recusarão as suas firmas para autenticar a minha descoberta.
+
+— Está tratado.
+
+Domingo, conforme prometeram, as três pessoas respeitáveis de Tubiacanga foram à casa de Flamel, e, dias depois, misteriosamente, ele desaparecia sem deixar vestígios ou explicação para o seu desaparecimento.
+
+III
+Tubiacanga era uma pequena cidade de três ou quatro mil habitantes, muito pacífica, em cuja estação, de onde em onde, os expressos davam a honra de parar. Há cinco anos não se registrava nela um furto ou roubo. As portas e janelas só eram usadas... porque o Rio as usava.
+
+O único crime notado em seu pobre cadastro fora um assassinato por ocasião das eleições municipais; mas, atendendo que o assassino era do partido do governo, e a vítima da oposição, o acontecimento em nada alterou os hábitos da cidade, continuando ela a exportar o seu café e a mirar as suas casas baixas e acanhadas nas escassas águas do pequeno rio que a batizara.
+
+Mas, qual não foi a surpresa dos seus habitantes quando se veio a verificar nela um dos mais repugnantes crimes de que se tem memória! Não se tratava de um esquartejamento ou parricídio; não era o assassinato de uma família inteira ou um assalto à coletoria; era coisa pior, sacrílega aos olhos de todas as religiões e consciências: violavam-se as sepulturas do “Sossego”, do seu cemitério, do seu campo-santo.
+
+Em começo, o coveiro julgou que fossem cães, mas, revistando bem o muro, não encontrou senão pequenos buracos. Fechou-os; foi inútil. No dia seguinte, um jazigo perpétuo arrombado e os ossos saqueados; no outro, um carneiro e uma sepultura rasa. Era gente ou demônio. O coveiro não quis mais continuar as pesquisas por sua conta, foi ao subdelegado e a notícia espalhou-se pela cidade.
+
+A indignação na cidade tomou todas as feições e todas as vontades. A religião da morte precede todas e certamente será a última a morrer nas consciências. Contra a profanação, clamaram os seis presbiterianos do lugar — os bíblias, como lhes chama o povo; clamava o agrimensor Nicolau, antigo cadete, e positivista do rito Teixeira Mendes; clamava o major Camanho, presidente da loja Nova Esperança; clamavam o turco Miguel Abudala, negociante de armarinho, e o cético Belmiro, antigo estudante, que vivia ao deus-dará, bebericando parati nas tavernas. A própria filha do engenheiro residente da estrada de ferro, que vivia desdenhando aquele lugarejo, sem notar sequer os suspiros dos apaixonados locais, sempre esperando que o expresso trouxesse um príncipe a desposá-la —, a linda e desdenhosa Cora não pôde deixar de compartilhar da indignação e do horror que tal ato provocara em todos do lugarejo. Que tinha ela com o túmulo de antigos escravos e humildes roceiros? Em que podia interessar aos seus lindos olhos pardos o destino de tão humildes ossos? Porventura o furto deles perturbaria o seu sonho de fazer radiar a beleza de sua boca, dos seus olhos e do seu busto nas calçadas do Rio?
+
+Decerto, não; mas era a Morte, a Morte implacável e onipotente, de que ela também se sentia escrava, e que não deixaria um dia de levar a sua linda caveirinha para a paz eterna do cemitério. Aí Cora queria os seus ossos sossegados, quietos e comodamente descansando num caixão bem feito e num túmulo seguro, depois de ter sido a sua carne encanto e prazer dos vermes...
+
+O mais indignado, porém, era Pelino. O professor deitara artigo de fundo, imprecando, bramindo, gritando: “Na história do crime, dizia ele, já bastante rica de fatos repugnantes, como sejam: o esquartejamento de Maria de Macedo, o estrangulamento dos irmãos Fuoco, não se registra um que o seja tanto como o saque às sepulturas do ‘Sossego’”.
+
+E a vila vivia em sobressalto. Nas faces não se lia mais paz; os negócios estavam paralisados; os namoros suspensos. Dias e dias por sobre as casas pairavam nuvens negras e, à noite, todos ouviam ruídos, gemidos, barulhos sobrenaturais... Parecia que os mortos pediam vingança...
+
+O saque, porém, continuava. Toda noite eram duas, três sepulturas abertas e esvaziadas de seu fúnebre conteúdo. Toda a população resolveu ir em massa guardar os ossos dos seus maiores. Foram cedo, mas, em breve, cedendo à fadiga e ao sono, retirou-se um, depois outro e, pela madrugada, já não havia nenhum vigilante. Ainda nesse dia o coveiro verificou que duas sepulturas tinham sido abertas e os ossos levados para destino misterioso.
+
+Organizaram então uma guarda. Dez homens decididos juraram perante o subdelegado vigiar durante a noite a mansão dos mortos.
+
+Nada houve de anormal na primeira noite, na segunda e na terceira; mas, na quarta, quando os vigias já se dispunham a cochilar, um deles julgou lobrigar um vulto esgueirando-se por entre a quadra dos carneiros. Correram e conseguiram apanhar dois dos vampiros. A raiva e a indignação, até aí sopitadas no ânimo deles, não se contiveram mais e deram tanta bordoada nos macabros ladrões, que os deixaram estendidos como mortos.
+
+A notícia correu logo de casa em casa e, quando, de manhã, se tratou de estabelecer a identidade dos dois malfeitores, foi diante da população inteira que foram neles reconhecidos o coletor Carvalhais e o coronel Bentes, rico fazendeiro e presidente da Câmara. Este último ainda vivia e, a perguntas repetidas que lhe fizeram, pôde dizer que juntava os ossos para fazer ouro e o companheiro que fugira era o farmacêutico.
+
+Houve espanto e houve esperanças. Como fazer ouro com ossos? Seria possível? Mas aquele homem rico, respeitado, como desceria ao papel de ladrão de mortos se a coisa não fosse verdade!
+
+Se fosse possível fazer, se daqueles míseros despojos fúnebres se pudesse fazer alguns contos de réis, como não seria bom para todos eles!
+
+O carteiro, cujo velho sonho era a formatura do filho, viu logo ali meios de consegui-la. Castrioto, o escrivão do juiz de paz, que no ano passado conseguiu comprar uma casa, mas ainda não a pudera cercar, pensou no muro, que lhe devia proteger a horta e a criação. Pelos olhos do sitiante Marques, que andava desde anos atrapalhado para arranjar um pasto, pensou logo no prado verde do Costa, onde os seus bois engordariam e ganhariam forças...
+
+Às necessidades de cada um, aqueles ossos que eram ouro viriam atender, satisfazer e felicitá-los; e aqueles dois ou três milhares de pessoas, homens, crianças, mulheres, moços e velhos, como se fossem uma só pessoa, correram à casa do farmacêutico.
+
+A desinteligência não tardou a surgir; os mortos eram poucos e não bastavam para satisfazer a fome dos vivos. Houve facadas, tiros, cachações. Pelino esfaqueou o turco por causa de um fêmur e mesmo entre as famílias questões surgiram. Unicamente, o carteiro e o filho não brigaram. Andaram juntos e de acordo e houve uma vez que o pequeno, uma esperta criança de onze anos, até aconselhou ao pai: “Papai vamos aonde está mamãe; ela era tão gorda...”.
+
+De manhã, o cemitério tinha mais mortos do que aqueles que recebera em trinta anos de existência. Uma única pessoa lá não estivera, não matara nem profanara sepulturas: fora o bêbedo Belmiro.
+
+Entrando numa venda, meio aberta, e nela não encontrando ninguém, enchera uma garrafa de parati e se deixara ficar a beber sentado à margem do Tubiacanga, vendo escorrer mansamente as suas águas sobre o áspero leito de granito — ambos, ele e o rio, indiferentes ao que já viram, mesmo à fuga do farmacêutico, com o seu Potosi e o seu segredo, sob o dossel eterno das estrelas.
+
+(10 - 11 - 910).
+
+# O Moleque
+
+A Arnaldo Damasceno Vieira
+
+Reclus, na sua Geographia Universal, tratando do Brasil, notava a necessidade de conservarmos os nomes tupys dos logares de uma terra. Têm elles, diz o grande geographo, a vantagem de possuir quasi todos um sentido claro, muito claro, nas suas palavras, exprimindo algum facto da natureza, a côr das aguas correntes, a altura, a forma ou o aspecto dos rochedos, a vegetação ou a aridez da região. No Rio de Janeiro, ha de facto nomes tupys tão eloquentes, para traduzir a forma ou o encanto dos logares que ficamos pasmos, quando lhes sabemos a significação, com o poder poetico, com a força de emoção superior de que eram capazes os primitivos cannibaes habitantes desta região, diante dos aspectos da natureza tão bella e singular que é a que cerca e limita a nossa cidade. Bastam os nomes da bahia. Como não traduz bem a sua seducção, o seu recato, a sua fascinação, o nome: Guanabara — seio do mar? E se o mar abriu aqui um seio foi para nelle esconder as suas aguas — Niteroy — agua escondida.
+
+Esses nomes tupys, nos accidentes naturais das cercanias da cidade, são os documentos mais antigos que ella possui das vidas que aqui floresceram e morreram. Edificada em um terreno que é o mais antigo do globo, nos depósitos sedimentares das velhas regiões, até hoje não se encontram vestigios quaisquer da vida prehistórica. A terra é velha, mas as vidas que viveram nella, não deixaram, ao que parece, nenhum traço directo ou indirecto de sua passagem. Os mais antigos testemunhos das existências anteriores ás nossas, que por aqui passaram, são esses nomes em linguagem dos indios que habitavam estes logares; e são assim bem recentes, relativamente.
+
+Ha, parece, na fatalidade destas terras, uma necessidade de não conservar impressões das sucessivas camadas de vida que ellas deviam ter presenciado o desenvolvimento e o desapparecimento. Estes nomes tupaicos mesmo tendem a desapparecer e todos sabem que, quando uma turma de trabalhadores, em excavações de qualquer natureza, encontra uma igaçaba, logo se apressam em partil-a, em destruil-a como cousa demoniaca ou indigna de ficar entre os de hoje. A pobre talha mortuaria dos tamoyos é sacrificada impiedosamente.
+
+Frageis eram os artefactos dos indios e todas as suas outras obras; frageis são tambem as nossas de hoje, tanto assim que os mais antigos monumentos do Rio são de seculo e meio; e a cidade vae já para o caminho dos quatrocentos annos.
+
+O nosso granito vetusto, tão velho quanto á terra, sobre o qual repousa a cidade, capricha em querer o fragir, o pouco duradouro. A sua grandeza e a sua antiguidade não admittem rivaes.
+
+Ainda hoje esse espirito do logar domina a construcção dos nossos edifícios publicos e particulares, que estão a rachar e a desabar, a todo o instante. E’ como se a terra não deseje que fiquem nella, outras creações, outras vidas, senão as florestas que ellas gera, e os animaes que nestas vivem.
+
+Ella as faz brotar, apezar de tudo, para sustentar e ostentar um instante, vidas que devem desapparecer sem deixar vestigios. Extranho capricho…
+
+Quer ser um recolhimento, um logar de repouso, de parada, para o turbilhão que arrasta a creação a constantes mudanças nos seres vivos; mas só isto, continuando ella firme, inabalavel, gerando e recebendo vidas; mas, de tal modo que as novas que viérem, não possam saber quaes foram as que lhes antecederam.
+
+Desde que as suas rochas surgiram, quantas formas de vida ella já viu? Innumeras, milhares; mas de nenhuma quiz guardar uma lembrança, uma reliquia, para que a Vida não acreditasse que podia rivalizar com a sua eternidade.
+
+Mesmo os nomes indios, como já foi observado, se apagam, vão se apagando, para dar logar a nomes banaes de figurões ainda mais banaes, de fórma que essa pequena antiguidade de quatro seculos desapparecerá em breve, as novas denominações talvez não durem tanto.
+
+Nenhum testemunho, dentro em pouco, haverá das almas que elles representam, dessas consciencias tamoyas que tentaram, com taes appelidos macular a virgindade da incalculavel duração da terra. Sapopemba, é já um general qualquer, e tantos outros logares do Rio de Janeiro, vão perdendo insensivelmente os seus nomes tupys.
+
+Inhaùma é ainda dos poucos logares da cidade que conserva o seu primitivo nome caboclo, zombando dos esforços dos nossos edis para apagal-o.
+
+E’ um subúrbio de gente pobre, e o bonde que lá leva, atravessa umas ruas de largura desigual, que, não se sabe, porque, ora são muito estreitas, ora muito largas, bordadas de casas e casitas sem que nellas se depare um jardinsinho mais tratado ou se lobrigue, aos fundos, uma horta mais viçosa. Ha, porém, robustas e velhas mangueiras que protestam contra aquelle abandono da terra. Fogem para lá, sobretudo para seus morros e escuros arredores, aquelles que ainda querem cultivar a Divindade como seus avós. Nas suas redondezas, é o logar das macumbas, das praticas de feitiçaria com que a theologia da policia implica, pois não póde admittir nas nossas almas depositos de crenças ⟨an⟩cestraes. O espiritismo se mistura a elles e a sua difusão é pasmosa. A egreja catholica unicamente não satisfaz ⟨o⟩ nosso povo humilde. E’ quasi abstracta para elle, theor⟨ica.⟩ Da divindade, não dá, apezar das imagens, de agua be⟨nta⟩ e outros objetos do seu culto, nenhum signal p⟨al⟩pavel, tangivel de que ella está presente. O padre, para ⟨o⟩ grosso do povo, não se comunica no mal com ella; mas ⟨o⟩ medium, o feiticeiro, o macumbeiro, se não a recebem nos seus transes, recebem, entretanto, almas e espiritos que, por já não serem mais da Terra, estão mais perto de Deus ⟨e⟩ participam um pouco da sua eterna e immensa sabedoria.
+
+Os mediuns que curam, merecem mais respeito a veneração que os mais famosos medicos da moda. Os seus milagres são contados de bocca em bocca, e a gente de todas as condições e matizes de raça a elles recorre nos seus desesperos de perder a saude e ir ao encontro da Morte. O curioso — o que era preciso estudar mais de vagar — é o amalgama de tantas crenças desencontradas a que preside a egreja catholica com os seus santos e beatos. A feitiçaria⟨,⟩ o espiritismo, a cartomancia e a agiologia catholica se baralham naquellas praticas, de modo que faz parecer que de tal baralhamento de sentimentos religiosos possa vir nascer uma grande religião, como nasceram de semelhantes misturas as maiores religiões historicas.
+
+Na confusão do seu pensamento religioso, nas necessidades presentes de sua pobresa, nos seus embates moraes e dos familiares, cada uma dessas crenças attende a uma solicitação de cada uma daquellas almas, e a cada instante de suas necessidades.
+
+A gravidade de pensamento que todo esse espectaculo provoca e as lembranças historicas que acodem, fazem perguntar se a terra que não tem querido guardar na sua grandeza traços das vidas e das almas que por ellas têm passado, ainda desta vez não consentirá que fiquem vestigios, pegadas, impressões das actuaes que, nella, hoje soffrem e mergulham, a seu modo, no Mysterio que nos cerca, para esquecel-as soturnamente; e pensa-se isto sob a luz do sol, alegre, clara, forte e alta, que recorta no céo azul as montanhas que se alongam para tocal-o, tal como se vê nesse logar de Inhaùma, antiga aldeia de indios, a serra dos Orgãos, solemne, soberba…
+
+Numa das ruas desse humilde arrabalde, antes trilho que mesmo rua, em que as aguas cavaram sulcos caprichosos, todo elle bordado de maricás que, quando floriam, tôcavam-se de flocos brancos, morava em um barracão D. Felismina.
+
+O barracão é uma especie architectonica muito curiosa e muito especial áquellas paragens da cidade. Não é a nossa conhecida choupana de sapê e de paredes a sopapos. E’ menos e é mais. E’ menos, porque em geral, é menor, com muito menos accommodações; é mais, porque a cobertura é mais civilisada; é de zinco ou de telhas. Ha duas especies. Em uma, as paredes são feitas de taboas; ás vezes, verdadeiramente taboas; em outras, de pedaços de caixões. A especie, mais aparentada com o nosso rancho roceiro, possue as paredes como este: são de taipa. Estes ultimos são mais baixos e a vegetação das bordas das ruas e caminhos os dissimula, aos olhos dos transeuntes; mas aquelles têm mais porte e não se envergonham de ser vistos. Ha alguns com dous aposentos; mas quasi sempre, tanto os de uma como de outra especie, só possue um. A cozinha é feita fóra, sob um telheiro tosco, um puxado no telhado da edificação, para aproveitar o abrigo de uma das paredes da barraca; e tudo cercado do mais desolador abandono. Se o morador cria gallinhas, ellas vivem soltas, dormem nas arvores, misturam-se com as dos visinhos e, por isso, provocam rixas violentas entre as mulheres e maridos, quando disputam a posse dos ovos.
+
+Por vezes, no fundo, na frente ou aos lados delles, ha uma arvore de mais vulto: um cajueiro, um mamoeiro, uma pitangueira, uma jaqueira, uma laranjeira; mas nenhum sinal de amanho do terreno, de tentativa de cultura, a não ser um canteirozinho com uns pés de mangericão ou alecrim. Isto ás vezes; e, ás vezes também, uma touceira de bananeira.
+
+A guaxima cresce, e o capim, e a vassourinha, e o carrapicho e outros arbustos sylvestres e tenazes.
+
+O barracão de D. Felismina era de um só aposento, mas o da visinha, D. Emerenciana, tinha dous. Eram ambos da primeira especie. D. Emerenciana era casada com o Sr. Romualdo, servente ou cousa que o valha em uma dependencia da grande officina do Trajano. Era preta como D. Felismina e honesta como ella. Defronte ficava a residencia da Antonia, uma rapariga branca, com dous filhos pequenos, sempre sujos e rôtos. A sua residencia era mais modesta: as paredes do seu barracão eram de taipa.
+
+A visinhança, ao mesmo tempo que falava della, tinha-lhe piedade:
+
+— Coitada! Uma desgraçada! Uma perdida!
+
+Era bem nova ella, mas fanada pelo soffrimento e pela miseria. Com os seus vinte e poucos annos de edade, de boas feições, mesmo delicadas, a sua historia devia ser a triste historia de todas essas raparigas por ahi…
+
+Mal comendo, ella e os filhos; mal tendo com que se cobrir, todas as manhãs, quando sahia a comprar um pouco de café e assucar, na venda do Antunes, e, na padaria do Camargo, um pão — que lhe teria custado quem sabe! que profunda provação no seu pudor de mulher, para ganhal-o — não se esquecia nunca de colher pelo caminho uns boas-noites, umas flôres de melão de S. Caetano, de pinhão, de quaresma, de manacás, de maricás — o que encontrasse — para enfeitar-se ou trazel-as nas mãos, em ramilhete.
+
+Todos da rua dos Maricás — era este o nome daquelle trilho de Inhaúma — conheciam-lhe a vida, mas como a piedade e compaixão proprias á ternura do coração do povo humilde pela desgraça, tratavam-na como outra fosse ella e a socorriam nas suas horas de maiores afflições. Só o Antunes, o da venda, com o seu empedernido coração de futuro grande burguez, é que dizia, se lhe perguntavam quem era:
+
+— Uma vagabunda.
+
+D. Felismina gozava de toda a consideração nas cercanias e até de credito, tanto no Antunes, como no Camargo da padaria. Além de lavar para fóra, tinha uma pequena pensão que lhe deixara o marido, guarda-freios da Central, morto em um desastre. Era uma preta de meia edade, mas já sem attractivo algum. Tudo nella era dependurado e todas as suas carnes flacidas. Lavava todo o dia e todo dia vivia preoccupada com o seu humilde mister. Ninguem lhe sabia uma falta, um desgarro qualquer e todos a respeitavam pela sua honra e virtude. Era das pessoas mais estimadas da ruella e todos depositavam na humilde creoula a maior confiança. Só a Bahiana tinha-a mais. Esta, porém, era «rica». Morava em uma das poucas casas de tijolo da rua dos Espinhos, casa que era della. Vendedora de angú, em outros tempos, conseguira juntar alguma cousa e adquirira aquella casita, a mais bem tratada da rua. Tinha “homem” em quanto lhe servia; e, quando elle vinha aborrecel-a mandava-o embora, mesmo a cabo de vassoura. Muito energica e animosa, possuia uma piedade contida que se revelou perfeitamente numa aventura curiosa de sua vida. Uma manhã, havia cinco ou seis annos, sahindo com o seu taboleiro de angú, encontrou em uma calçada um embrulho um tanto grande. Arriou o taboleiro e foi ver o que era. Era uma creança, branca — uma menina. Deu os passos necessarios e criava a criança, que, nas immediações, era conhecida por “bahianinha”. E, ao ir ás compras na venda, o caixeiro lhe dizia por brincadeira:
+
+— Baianinha, tua mãe é negra.
+
+A pequena arrufava-se e respondia com indignação:
+
+— Negra é tu, seu burro!
+
+A Baiana, porém, era rica, estava mais distante. D. Felismina, porém, ficava mais próximo da vida de toda aquella gente da rua. Os seus conselhos eram ouvidos e procurados, e os seus remedios eram acceitos como se partissem da prescripção de um doutor. Ninguem como ella sabia dar um chá conveniente, nem aconselhar em casos de dissidias domesticas. Detestava a feitiçaria, os bruxedos, os macumbeiros, com as suas orgias e barulhadas; mas, inclinava-se para o espiritismo, frequentando as sessões do seu Frederico, um antigo collega do seu marido, mas branco, que morava adiante, um pouco acima. Além da medicina de chás e tizanas, ella aconselhava áquella gente os medicamentos homœopathicos. A belladona, o aconito, a brionia, o sulfur, eram os seus remedios preferidos e quasi sempre os tinha em casa, para o seu uso e dos outros.
+
+Certa vez salvou um dos filhos da Antonia de uma convulsão e esta lhe ficou tão grata que chegou a prometter que se emendaria.
+
+D. Felismina morava com o seu filho José, o Zéca, um pretinho de pelle de velludo, macia de acariciar o olhar, com a carapinha sempre aparada pelos cuidados da mão de sua mãe, e tambem com as roupas sempre limpas, graças tambem aos cuidados della.
+
+Tinha todos os traços de sua raça, os bons e os máos; e muita doçura e tristeza vaga nos pequenos olhos que quasi ficavam no mesmo plano da testa estreita.
+
+Era-lhe este seu filho, o seu braço direito, o seu unico esteio, o arrimo de sua vida com os seus nove ou dez annos de idade. Doce, resignado, e obediente, não havia ordem de sua mãe que elle não cumprisse religiosamente. De manhã, o seu encargo era levar e trazer a roupa dos freguezes; e elle carregava os taboleiros de roupa e trazia as trouxas; sem o menor desvio de caminho. Se ia á casa do seu Carvalho, ia até lá, entregava ou recebia a roupa e voltava sem fazer a menor traquinada, a menor escapada de criança por aquellas ruas que são mais estradas que ruas mesmo. Almoçava e a mãe quasi sempre precisava:
+
+— Zéca, vai á venda e traz dous tostões de sabão «regador».
+
+Na venda, entre todo aquelle pessoal tão especial e curioso das vendas suburbanas: carroceiros, verdureiros, carvoeiros, de passagens; habitués do paraty, como os ha na cidade de chopps; conversadores da visinhança, gente sem ter que fazer que não se sabe como vive, mas que vive honestamente; um ou outro degradado da sua condição anterior ou nascimento — entre toda essa gente, Zéca era mais imperioso e gritava:
+
+— Caixeiro, mi serve já. Dous tostões de sabão “regador”.
+
+Se o caixeiro estava attendendo á D. Anninha, mulher do servente dos Telegraphos, Fortes, e não vinha attendel-o logo, Zéca insistia, fingindo-se irritado:
+
+— Mi despache, caixeiro! Dous tostões de sabão “regador”.
+
+Seu Eduardo, o caixeiro, que era bom e habituado a supportar a insolencia dos pequenos que vão ás compras, fazia docemente:
+
+— Espere, menino. Você não vê que estou servindo, aqui, a D. Anninhas!
+
+A mãe tinha vontade de pôl-o no collegio; ella sentia a necessidade disso todas as vezes que era obrigada a sommar os róes. Não sabendo lêr, escrever e contar, tinha que pedir a seu Frederico, aquelle branco que fôra colega do seu marido. Mas, pondo-o no collegio, quem havia de levar-lhe e trazer-lhe a roupa? Quem havia de fazer-lhe as compras?
+
+A’ tarde, Zéca descansava, brincava com as crianças do lugar um pouco; mas, ao anoitecer, já estava perto da mãe que remendava a roupa dos freguezes, á luz do lampião de kerozene, cuja fumaça ennegrecia o zinco do tecto do barracão.
+
+Se bem fosse com a mãe todos os mezes receber a modica pensão que o pai deixara, na Caixa dos Guarda-Freios, o seu sonho não era viver no centro da cidade, nas suas ruas brilhantes, cheias de bondes, automoveis, carroças e gente. Zeca desprezava aquillo tudo. O seu sonho era o Engenho de Dentro e o seu cinema. Ter dinheiro, para ir sempre a elle, vêr-lhe instantemente as fitas que os grandes cartazes anunciavam e o tympano a soar continuamente insistia no convite de vêl-as. Quando sua mãe permittia, aos domingos, com outra criança ajuizada da vizinhança, ia até á estação, até lá, defronte do fascinante cinema. Encostava-se, então, á grade da estrada de ferro e ficava a olhar, no alto, minutos a fio, aquelles grandes paineis, cheios de grandes figuras, deslumbrantes na sua cercadura de lampadas electricas, como se tudo aquillo fosse uma promessa de felicidade. Como attingiria aquillo? O céo talvez não fosse mais belo… Em cima dos seus tamancos domingueiros, com o terno de casimira que a caridade do Coronel Castro lhe dera, e a tesoura de sua mãe adaptara a seu corpo, elle, fascinado, não pensava senão naquelle cinema brilhante de luzes e apinhado de povo. Nem o apito dos trens o distrahia e só a passagem dos bondes electricos aborrecia-o um pouco, por lhe tirar a vista do divertimento. Não tinha inveja dos que entravam; o que elle queria, era entrar também.
+
+Como havia de ser uma fita? As moças se moviam sob luzes? Como faziam-n’as grandes, parecidas? Como appareciam os homens tal e qual? As arvores e as ruas? E sem fallar, como é que tudo aquillo fallava?
+
+Podia ter dinheiro para ir, pois, em geral, sempre os freguezes de sua mãe lhe davam um nickel ou outro; mas, mal os apanhava, levava-os á mãe que sempre andava necessitada delles, para a compra do trincal, do polvilho, do sabão e mesmo para a comida que comiam. Distrahil-os com o cinema seria feio e ingratidão, para com a sua mãe. Um dia havia de ir ao Cinema, sem sacrifical-a, sem enganal-a, como máo filho. Elle não o era como o Carlos que até furtava os do proprio pae…
+
+Zéca, por seu procedimento, pela sua dedicação á mãe, era muito estimado de todos e todos lhe davam gratificações, gorjetas, balas, fructas, quando ia entregar ou buscar a roupa.
+
+Muitos se interessavam com a mãe, para pôl-o em um recolhimento, em um Asylo; ella, porém, embora quizesse vêl-o sabendo lêr, sempre objectava, e com razão, a necessidade que tinha dos seus serviços, pois era este seu unico filho o braço direito della, seu unico auxílio, o seu unico homem.
+
+Uma vez quasi cedeu. O seu Castro, o Coronel, empregado aposentado da Alfandega, conhecido em Inhaùma pelo seu genio bemfazejo e seu infortúnio com os filhos e filhas, viera-lhe até á sua propria casa, até áquelle barracão, naquella modesta rua, bordada de um lado e outro de sébes de maricás e de pinhão, e expoz-lhe a que vinha. D. Felismina respondeu-lhe com lagrimas nos olhos:
+
+— Não posso, seu Coronel; não posso… Como hei de viver sem elle? E’ elle quem me ajuda… Sei bem que é preciso aprender, saber, mas…
+
+— Você vae lá para casa, Felismina; e não precisa estar se matando.
+
+Titubeou a rapariga e o velho funccionario comprehendeu, pois desde ha muito já tinha comprehendido, na gente de côr, especialmente nas negras, esse amor, esse apego á casa própria, á sua choupana, ao seu rancho, ao seu barracão — uma espécie de protesto de posse contra a dependencia da escravidão que soffreram durante seculos. Apezar da recusa, o Coronel Castro, em quem a edade e as desgraças domesticas, tinham mais enchido de bondade o seu coração naturalmente bom, nunca deixou de interessar-se pela criança que o penalisava excessivamente. A sua meiguice, a sua resignação, aquelle arduo trabalho diario para a sua edade eram motivos para que o velho e tristonho aposentado sempre a olhasse com a mais extremada sympathia. Quando o pretinho ia á sua casa levar-lhe a sua ou a roupa das filhas, dava-lhe sempre qualquer cousa, puxava-lhe a lingua, perguntava-lhe pelas suas necessidades.
+
+Certo dia, em começo do anno, o pequeno Zéca chegou-lhe em casa com a physionomia um tanto transtornada. Parecia ter chorado e muito. O Coronel, homem para quem, como disse um sábio, não havia nada insignificante e desprezivel que pudesse causar dôr ou prazer á mais humilde criatura, que não merecesse a attenção do philosopho — o Coronel interrogou-o sobre o motivo de sua magua.
+
+— Foi tua mãe?
+
+— Não, seu Coronel.
+
+— Que foi, então, Zéca?
+
+O pequeno não quiz dizer e não cessava de olhar o chão, de encaral-o, de craval-o, de caval-o, de enterrar toda a sua vida nelle. Zéca estava na varanda de uma velha casa de fazenda, como ainda as ha muitas por lá, varanda em parapeito e columnas, no classico estylo dessas velhas habitações; o Coronel nella tambem estava lendo os jornaes, na cadeira de balanço, e só deixára a leitura, quando avistou o pequeno que subia a ladeira com o taboleiro de roupa á cabeça.
+
+A attitude do pequeno, a sua recusa em confessar o motivo do seu chôro e o seu todo de desalento fizeram que o velho funccionario, já por ternura natural, já por bondosa curiosidade, procurasse a causa da dôr que feria tão profundamente aquella criança tão pobre, tão humilde, tão desgraçada, quasi miseravel.
+
+— Dize, Zéca. Dize que eu te darei uma vestimenta de diabinho no Carnaval que está ahi.
+
+O pretinho levantou a cabeça e olhou com um grande e brusco olhar de agradecimento, de commovido agradecimento áquelle velho de tão bellos cabellos brancos.
+
+Confessou; e Castro nada disse a ninguem da humilde e ingenua confissão do pretinho Zéca.
+
+Approximou-se o Carnaval; e, quando foi sabbado, vespera delle, D. Felismina retirou mais cedo dos arames a roupa branca que estivera a seccar.
+
+Atarefada com esse serviço, ella não viu que o seu filho entrara-lhe pelo barracão a dentro, sobraçando um embrulho guizalhante e um outro, com rasgões no papel, por onde sahiam recurvados chifres e uma formidável lingua vermelha. Era uma horrível mascara de diabo.
+
+D. Felismina veio para o interior do barracão; e poz-se a arrumar a roupa secca ou côrada. Zéca, distrahido, no outro extremo do aposento, não a viu entrar e, julgando-a lá fóra, desembrulhou os apetrechos carnavalescos. Sobre a humilde e tosca mesa de pinho estendeu uma rubra vestimenta de ganga rala e uma mascara apavorante de olhos esbugalhados, lingua retorcida e chifres agressivos, appareceu tão amedrontadora que se o proprio diabo a visse teria medo.
+
+A mãe, ao barulho dos guizos, virou-se, e, vendo aquilo, ficou subitamente cheia de más suspeitas:
+
+— Zéca, que é isso?
+
+Uma visão dolorosa lhe chegou aos olhos, da casa de Detenção, das suas grades, dos seus muros altos… Ah! meu Deus! Antes uma boa morte!… E repetiu ainda mais severamente:
+
+— Que é isso, Zéca? Onde você arranjou isso?
+
+— Não… mamãe… não…
+
+— Você roubou, meu filho?… Zéca, meu filho! Pobre, sim; mas ladrão, não! Ah! meu Deus!… Onde você arranjou isso, Zéca?
+
+A pobre mulher quase chorava e o pequeno, transido de medo e com a commoção diante da dôr da mãe, balbuciava, titubeava e as palavras não lhe vinham. Afinal, disse:
+
+— Mas… mamãe… não foi assim…
+
+— Como foi? Diz!
+
+— Foi seu Castro quem me deu. Eu não pedi…
+
+D. Felismina socegou e o pequeno tambem. Passados instantes, ella perguntou com outra voz:
+
+— Mas para que, você quer isso? Antes tivesse dado a você umas camisas… Para que essas bobagens? Isso é para gente rica, que póde. Enfim…
+
+— Mas, mamãe, eu aceitei, porque precisava.
+
+— Disto! ninguem precisa disto! Precisa-se de roupa e comida… Isto são tolices!
+
+— Eu precisava, sim senhora.
+
+— Como, você precisava?
+
+— Não lhe contei que ha mezes, diversas vezes, quando passava, para ir á casa de D. Ludovina, diante do portão do capitão Albuquerque, os meninos g⟨ri⟩tavam oh! moleque! — oh! moleque! — oh! negro! — oh! gibi! Não lhe contei?
+
+— Contou-me; e dahi?
+
+— Por isso quando o Coronel me prometteu a phantasia, eu acceitei.
+
+— Que tem uma cousa com a outra?
+
+— Queria amanhã passar por lá e metter medo aos meninos que me vaiaram.

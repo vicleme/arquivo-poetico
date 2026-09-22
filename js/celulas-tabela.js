@@ -32,8 +32,10 @@ import {
     agruparParesGrupoPessoa,
     classesCorGrupo,
     paresAutoria,
+    nomeAutoriaExibido,
     SINALIZACOES_CATEGORIAS,
     renderCoracoesHtml,
+    OPCOES_GRAFIA,
 } from './utils.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
 import { renderCheckboxDownloadAbrangenteAcoes } from './download-abrangente.js';
@@ -226,11 +228,54 @@ export function badgesAutoria(item) {
     const pares = paresAutoria(item, db.autores);
     if (!pares.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
     return pares
-        .map(
-            ({ autor, papel }) =>
-                `<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(autor.nome)} <span class="opacity-70">(${escapeHtml(papel)})</span></span>`,
-        )
+        .map(({ autor, papel, assinatura, nomeLiterario }) => {
+            const nome = nomeAutoriaExibido({ autor, assinatura, nomeLiterario });
+            // Heterônimo/Pseudônimo em uso: badge mostra o nome literário,
+            // `title` guarda o Autor real por trás dele (passar o mouse
+            // revela quem é).
+            const titulo = assinatura !== 'Ortônimo' && nomeLiterario ? ` title="${escapeHtml(autor.nome)}"` : '';
+            return `<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block"${titulo}>${escapeHtml(nome)} <span class="opacity-70">(${escapeHtml(papel)})</span></span>`;
+        })
         .join('');
+}
+
+// Coluna "Fonte" (grupo Fonte do modal, `item.fonteTexto.origem/edicao/
+// link` — ver linhasFonteTexto em utils.js): mostra o nome da fonte
+// (origem), virando link clicável (mesmo padrão de Intertextualidade/
+// Referências acima) quando `link` estiver preenchido; Edição, se
+// houver, aparece entre parênteses em opacidade reduzida (mesmo
+// espírito de badgesAutoria). Sem origem preenchida (texto próprio sem
+// nada digitado no grupo Fonte), célula vazia — mesmo estado "—" do
+// resto das colunas de texto livre.
+export function celulaFonte(item) {
+    const origem = (item.fonteTexto?.origem || '').trim();
+    if (!origem) return '<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>';
+    const link = (item.fonteTexto?.link || '').trim();
+    const edicao = (item.fonteTexto?.edicao || '').trim();
+    const nome = link
+        ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(origem)}</a>`
+        : escapeHtml(origem);
+    const complemento = edicao ? ` <span class="opacity-70">(${escapeHtml(edicao)})</span>` : '';
+    return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${nome}${complemento}</td>`;
+}
+
+// Coluna "Grafia" (mesmo grupo Fonte, `item.fonteTexto.grafia` —
+// GRAFIA_ATUAL/GRAFIA_ETIMOLOGICA/GRAFIA_QUINHENTISTA em utils.js):
+// vazio = nunca definido, mostrado como "—" igual ao resto das colunas.
+// "Atual (padrão)" escolhido de propósito tem valor próprio
+// (GRAFIA_ATUAL) e aparece como "Atual" na célula — diferente de "—",
+// de propósito: a tabela também distingue "nunca mexi nisso" de
+// "confirmei que é a grafia atual". Rótulo curto na célula (só a parte
+// antes do parêntese explicativo de OPCOES_GRAFIA) com o rótulo
+// completo no title, pra não estourar a largura da coluna com o
+// exemplo/explicação que o select do modal mostra.
+export function celulaGrafia(item) {
+    const grafia = (item.fonteTexto?.grafia || '').trim();
+    if (!grafia) return '<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>';
+    const opcao = OPCOES_GRAFIA.find((o) => o.valor === grafia);
+    const curto = opcao ? opcao.rotulo.split(' (')[0] : grafia;
+    const title = opcao ? ` title="${escapeHtml(opcao.rotulo)}"` : '';
+    return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400"${title}>${escapeHtml(curto)}</td>`;
 }
 
 // Coluna de Envios: um badge por envio, "pessoa · data" no chip (com
@@ -497,6 +542,8 @@ const COLUNA_CAMPO_BUSCA = {
         reconhecimentos: '_buscaReconhecimentos',
         autoavaliacao: 'autoavaliacao',
         epocaRetratada: '_buscaEpoca',
+        fonte: '_buscaFonte',
+        grafia: '_buscaGrafia',
         // ID do Sistema (ver comentário em CAMPOS_ATRIBUTO, utils.js) —
         // não é campo decorado por decorarCamposBusca, aponta direto
         // pro id cru do item.
@@ -534,6 +581,8 @@ const COLUNA_CAMPO_BUSCA = {
         ecos: '_buscaEcos',
         referenciasExternas: '_buscaReferenciasExternas',
         epocaRetratada: '_buscaEpoca',
+        fonte: '_buscaFonte',
+        grafia: '_buscaGrafia',
         idSistema: 'id',
     },
 };

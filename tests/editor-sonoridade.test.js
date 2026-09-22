@@ -7,6 +7,19 @@ const {
     construirLinhasIniciais,
     dividirSilabas,
     calcularMaxSilabas,
+    calcularContagemMetrica,
+    calcularDivergenciaSilabas,
+    extrairAlvo,
+    atualizarTamanhoVersoSonoridade,
+    digrafoDivididoNoTexto,
+    indicesDigrafoDivididoNoTexto,
+    removerBarraDivisoria,
+    deslocarBarraDigrafo,
+    celulasComDigrafoDividido,
+    contarDigrafosDivididos,
+    mesclarDigrafoDividido,
+    mesclarTodosDigrafosDivididos,
+    calcularVersosComDigrafoDividido,
     calcularLetrasRima,
     calcularPosicaoPar,
     calcularDistanciaPar,
@@ -28,8 +41,14 @@ const {
     mostrarEcosAtivo,
     definirMostrarEcos,
 } = await import('../js/editor-sonoridade.js');
-const { ACENTUACOES_RIMA, TONALIDADES_RIMA, RIQUEZAS_RIMA, TIPOS_ECO, TIPOS_ECO_SONORO } =
-    await import('../js/utils.js');
+const {
+    ACENTUACOES_RIMA,
+    TONALIDADES_RIMA,
+    RIQUEZAS_RIMA,
+    TIPOS_ECO,
+    TIPOS_ECO_SONORO,
+    classificarTonicidade,
+} = await import('../js/utils.js');
 
 describe('construirLinhasIniciais', () => {
     it('numera só os versos, pulando linhas vazias/quebras de estrofe', () => {
@@ -131,6 +150,391 @@ describe('calcularMaxSilabas', () => {
     it('sem nenhum verso (só linhas vazias ou array vazio), o mínimo é 1', () => {
         assert.equal(calcularMaxSilabas([{ tipo: 'vazia' }]), 1);
         assert.equal(calcularMaxSilabas([]), 1);
+    });
+});
+
+describe('classificarTonicidade', () => {
+    it('oxítona com acento gráfico', () => {
+        assert.equal(classificarTonicidade('sofá'), 'oxitona');
+        assert.equal(classificarTonicidade('café'), 'oxitona');
+        assert.equal(classificarTonicidade('também'), 'oxitona');
+        assert.equal(classificarTonicidade('chapéu'), 'oxitona'); // tônica é ditongo "éu"
+    });
+
+    it('oxítona sem acento (terminações padrão)', () => {
+        assert.equal(classificarTonicidade('animal'), 'oxitona');
+        assert.equal(classificarTonicidade('cantar'), 'oxitona');
+        assert.equal(classificarTonicidade('jasmim'), 'oxitona');
+        assert.equal(classificarTonicidade('javali'), 'oxitona');
+        assert.equal(classificarTonicidade('urubu'), 'oxitona');
+        assert.equal(classificarTonicidade('comum'), 'oxitona');
+        assert.equal(classificarTonicidade('irmã'), 'oxitona');
+        assert.equal(classificarTonicidade('chimarrão'), 'oxitona');
+    });
+
+    it('paroxítona com acento gráfico', () => {
+        assert.equal(classificarTonicidade('fácil'), 'paroxitona');
+        assert.equal(classificarTonicidade('hífen'), 'paroxitona');
+        assert.equal(classificarTonicidade('mártir'), 'paroxitona');
+        assert.equal(classificarTonicidade('tórax'), 'paroxitona');
+        assert.equal(classificarTonicidade('álbum'), 'paroxitona');
+        assert.equal(classificarTonicidade('tênis'), 'paroxitona');
+        assert.equal(classificarTonicidade('vírus'), 'paroxitona');
+        // ã/õ final não é o acento — o acento de verdade decide, mesmo
+        // a palavra terminando em ã/ão (ver comentário da função).
+        assert.equal(classificarTonicidade('órfã'), 'paroxitona');
+        assert.equal(classificarTonicidade('órgão'), 'paroxitona');
+    });
+
+    it('paroxítona sem acento (terminações padrão)', () => {
+        assert.equal(classificarTonicidade('casa'), 'paroxitona');
+        assert.equal(classificarTonicidade('gente'), 'paroxitona');
+        assert.equal(classificarTonicidade('livro'), 'paroxitona');
+        assert.equal(classificarTonicidade('jovem'), 'paroxitona');
+    });
+
+    it('proparoxítona (sempre acentuada)', () => {
+        assert.equal(classificarTonicidade('século'), 'proparoxitona');
+        assert.equal(classificarTonicidade('público'), 'proparoxitona');
+        assert.equal(classificarTonicidade('árvore'), 'proparoxitona');
+        assert.equal(classificarTonicidade('sábado'), 'proparoxitona');
+        assert.equal(classificarTonicidade('história'), 'paroxitona'); // controle: só 1 depois
+    });
+
+    it('monossílabo é tratado como tônico (limitação documentada de clítico átono)', () => {
+        assert.equal(classificarTonicidade('sol'), 'oxitona');
+        assert.equal(classificarTonicidade('não'), 'oxitona');
+        assert.equal(classificarTonicidade('que'), 'oxitona');
+    });
+
+    it('string vazia/nula devolve null', () => {
+        assert.equal(classificarTonicidade(''), null);
+        assert.equal(classificarTonicidade(null), null);
+        assert.equal(classificarTonicidade(undefined), null);
+    });
+});
+
+describe('calcularContagemMetrica', () => {
+    it('verso terminado em oxítona: contagem métrica = contagem gramatical', () => {
+        // "Quan/do o/ sol/ se/ pôs" — 5 sílabas gramaticais, "pôs" é
+        // monossílabo (oxítona aqui) — nada a descartar.
+        assert.equal(calcularContagemMetrica('Quan/do o/ sol/ se/ pôs'), 5);
+    });
+
+    it('verso terminado em paroxítona: descarta 1 sílaba átona final', () => {
+        // "Bri/sa/ le/ve/ so/bre a/ ca/sa" — 8 sílabas gramaticais,
+        // "casa" é paroxítona — métrica corta a última ("sa"), fica 7.
+        assert.equal(calcularContagemMetrica('Bri/sa/ le/ve/ so/bre a/ ca/sa'), 7);
+    });
+
+    it('verso terminado em proparoxítona: descarta 2 sílabas átonas finais', () => {
+        // "Bri/lha o/ sol/ pú/bli/co" — 6 sílabas gramaticais, "público"
+        // é proparoxítona — métrica corta as 2 últimas ("bli","co"), fica 4.
+        assert.equal(calcularContagemMetrica('Bri/lha o/ sol/ pú/bli/co'), 4);
+    });
+
+    it('nunca desce abaixo de 1, mesmo num verso monossilábico curto', () => {
+        assert.equal(calcularContagemMetrica('Sol'), 1);
+    });
+
+    it('sem nenhum verso real (texto vazio), devolve 0', () => {
+        assert.equal(calcularContagemMetrica(''), 0);
+    });
+});
+
+describe('calcularDivergenciaSilabas — contagem métrica (corte na última tônica)', () => {
+    it('verso paroxítono com 1 sílaba gramatical "sobrando" NÃO diverge do alvo métrico', () => {
+        // "Bri/sa/ le/ve/ so/bre a/ ca/sa" tem 8 sílabas gramaticais, mas
+        // 7 métricas (casa é paroxítona) — contra um alvo de 7 (ex.
+        // "Redondilha Maior (7)"), não deveria mais disparar falso
+        // positivo (antes da correção, comparava 8 contra 7 e divergia).
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'Bri/sa/ le/ve/ so/bre a/ ca/sa' }];
+        assert.deepEqual(calcularDivergenciaSilabas(linhas, 'Redondilha Maior (7)'), []);
+    });
+
+    it('verso proparoxítono com 2 sílabas gramaticais "sobrando" NÃO diverge do alvo métrico', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'Bri/lha o/ sol/ pú/bli/co' }];
+        assert.deepEqual(calcularDivergenciaSilabas(linhas, 'Redondilha Menor (4)'), []);
+    });
+
+    it('ainda diverge quando a contagem métrica de verdade não bate', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'Bri/sa/ le/ve/ so/bre a/ ca/sa' }];
+        // 7 sílabas métricas contra um alvo de 5 — diverge de verdade.
+        assert.deepEqual(calcularDivergenciaSilabas(linhas, 'Redondilha Menor (5)'), [1]);
+    });
+});
+
+describe('extrairAlvo', () => {
+    it('extrai o número entre parênteses do rótulo de Tamanho do Verso', () => {
+        assert.equal(extrairAlvo('Decassílabo (10)'), 10);
+        assert.equal(extrairAlvo('Redondilha Maior (7)'), 7);
+    });
+
+    it('devolve null pra rótulo sem número fixo ou vazio', () => {
+        assert.equal(extrairAlvo('Bárbaro'), null);
+        assert.equal(extrairAlvo(''), null);
+        assert.equal(extrairAlvo(undefined), null);
+    });
+});
+
+describe('digrafoDivididoNoTexto', () => {
+    it('detecta barra real dividindo "rr"', () => {
+        assert.equal(digrafoDivididoNoTexto('car/ro'), true);
+    });
+
+    it('detecta barra real dividindo "ss"', () => {
+        assert.equal(digrafoDivididoNoTexto('pas/sar'), true);
+    });
+
+    it('não acusa divisão gramatical normal em outras posições da mesma palavra', () => {
+        assert.equal(digrafoDivididoNoTexto('car-ro'), false);
+        assert.equal(digrafoDivididoNoTexto('ca/rro'), false);
+    });
+
+    it('não acusa barra escapada (\\/) entre as letras do dígrafo', () => {
+        assert.equal(digrafoDivididoNoTexto('car\\/ro'), false);
+    });
+
+    it('não acusa "r" ou "s" isolados de palavras diferentes ao redor da barra', () => {
+        assert.equal(digrafoDivididoNoTexto('flor/ sol'), false);
+        assert.equal(digrafoDivididoNoTexto('mas/ tarde'), false);
+    });
+
+    it('texto sem barra nenhuma não acusa nada', () => {
+        assert.equal(digrafoDivididoNoTexto('carro'), false);
+    });
+});
+
+describe('calcularVersosComDigrafoDividido', () => {
+    it('devolve os números das linhas de verso com dígrafo dividido, ignorando as demais', () => {
+        const linhas = [
+            { tipo: 'verso', numero: 1, texto: 'Car/ro veloz' },
+            { tipo: 'vazia' },
+            { tipo: 'verso', numero: 2, texto: 'Um verso normal' },
+            { tipo: 'verso', numero: 3, texto: 'Pas/sa o tempo' },
+        ];
+        assert.deepEqual(calcularVersosComDigrafoDividido(linhas), [1, 3]);
+    });
+
+    it('array vazio ou sem dígrafo dividido devolve array vazio', () => {
+        assert.deepEqual(calcularVersosComDigrafoDividido([]), []);
+        assert.deepEqual(
+            calcularVersosComDigrafoDividido([
+                { tipo: 'verso', numero: 1, texto: 'Sol sobre o mar' },
+            ]),
+            [],
+        );
+    });
+});
+
+describe('indicesDigrafoDivididoNoTexto', () => {
+    it('devolve o índice (0-based, só contando barras reais) de cada ocorrência', () => {
+        assert.deepEqual(indicesDigrafoDivididoNoTexto('car/ro'), [0]);
+        // "Quan/do car/ro" — 1ª barra (índice 0) é divisão normal, a 2ª
+        // (índice 1) é que divide o dígrafo.
+        assert.deepEqual(indicesDigrafoDivididoNoTexto('Quan/do car/ro'), [1]);
+    });
+
+    it('mais de uma ocorrência no mesmo verso — devolve todos os índices', () => {
+        assert.deepEqual(indicesDigrafoDivididoNoTexto('car/ro pas/sa'), [0, 1]);
+    });
+
+    it('sem ocorrência nenhuma devolve array vazio', () => {
+        assert.deepEqual(indicesDigrafoDivididoNoTexto('Quan/do o/ sol'), []);
+    });
+});
+
+describe('removerBarraDivisoria', () => {
+    it('remove só a barra do índice pedido, preservando as outras', () => {
+        assert.equal(removerBarraDivisoria('car/ro pas/sa', 0), 'carro pas/sa');
+        assert.equal(removerBarraDivisoria('car/ro pas/sa', 1), 'car/ro passa');
+    });
+
+    it('não conta barra escapada (\\/) como candidata a ser removida', () => {
+        // índice 0 deve ser a barra REAL (a 2ª barra do texto), não a
+        // escapada (que fica intocada como conteúdo literal).
+        assert.equal(removerBarraDivisoria('p\\/ar/te', 0), 'p\\/arte');
+    });
+
+    it('índice fora do alcance devolve o texto sem alteração', () => {
+        assert.equal(removerBarraDivisoria('car/ro', 5), 'car/ro');
+    });
+});
+
+describe('deslocarBarraDigrafo', () => {
+    it('desloca a barra pra antes da letra repetida, sem fundir as duas sílabas inteiras', () => {
+        // "car/ro" -> "ca/rro": o "r" que fechava "car" avança pra
+        // antes do "r" que abria "ro" — não vira "carro" (1 sílaba).
+        assert.equal(deslocarBarraDigrafo('car/ro', 0), 'ca/rro');
+    });
+
+    it('caso do relato original: "Sor/ri/so" -> "So/rri/so", não "Sorri/so"', () => {
+        assert.equal(deslocarBarraDigrafo('Sor/ri/so', 0), 'So/rri/so');
+    });
+
+    it('mexe só na barra do índice pedido, preservando as outras divisões do verso', () => {
+        assert.equal(deslocarBarraDigrafo('Quan/do car/ro', 1), 'Quan/do ca/rro');
+    });
+
+    it('não conta barra escapada (\\/) como candidata', () => {
+        // índice 0 deve ser a barra REAL ("ar/ro"), não a escapada
+        // (que fica intocada como conteúdo literal).
+        assert.equal(deslocarBarraDigrafo('p\\/ar/ro', 0), 'p\\/a/rro');
+    });
+
+    it('índice fora do alcance devolve o texto sem alteração', () => {
+        assert.equal(deslocarBarraDigrafo('car/ro', 5), 'car/ro');
+    });
+
+    it('preserva o total de sílabas (não reduz de N para N-1)', () => {
+        const antes = dividirSilabas('car/ro').length;
+        const depois = dividirSilabas(deslocarBarraDigrafo('car/ro', 0)).length;
+        assert.equal(depois, antes);
+    });
+});
+
+describe('celulasComDigrafoDividido', () => {
+    it('marca as duas células vizinhas da barra (antes e depois) com o mesmo índice de barra', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'car/ro' }];
+        const mapa = celulasComDigrafoDividido(linhas);
+        assert.equal(mapa.get('0:0'), 0);
+        assert.equal(mapa.get('0:1'), 0);
+        assert.equal(mapa.size, 2);
+    });
+
+    it('sem dígrafo dividido, devolve mapa vazio', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'Quan/do o/ sol' }];
+        assert.equal(celulasComDigrafoDividido(linhas).size, 0);
+    });
+});
+
+describe('contarDigrafosDivididos', () => {
+    it('conta ocorrências (não linhas) no poema inteiro', () => {
+        const linhas = [
+            { tipo: 'verso', numero: 1, texto: 'car/ro pas/sa' },
+            { tipo: 'vazia' },
+            { tipo: 'verso', numero: 2, texto: 'car/ro' },
+        ];
+        assert.equal(contarDigrafosDivididos(linhas), 3);
+    });
+
+    it('sem nenhuma ocorrência, devolve 0', () => {
+        assert.equal(contarDigrafosDivididos([{ tipo: 'verso', numero: 1, texto: 'Sol' }]), 0);
+    });
+});
+
+describe('Correção assistida de dígrafo dividido — DOM real (happy-dom)', () => {
+    let container;
+
+    function clicar(el) {
+        el.dispatchEvent(new window.Event('click', { bubbles: true }));
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '<div id="son-grade-container"></div>';
+        container = document.getElementById('son-grade-container');
+    });
+
+    it('destaca (borda + cursor) e torna clicável a célula de um dígrafo dividido', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'car/ro' }];
+        inicializarGradeSonoridade(container, linhas);
+
+        const celulas = [...container.querySelectorAll('td.son-cel-silaba')];
+        assert.deepEqual(
+            celulas.map((td) => td.textContent.trim()),
+            ['car', 'ro'],
+        );
+        assert.ok(celulas[0].className.includes('border-rose-500'));
+        assert.ok(celulas[1].className.includes('border-rose-500'));
+        assert.equal(celulas[0].dataset.digrafoBarra, '0');
+        assert.equal(celulas[1].dataset.digrafoBarra, '0');
+    });
+
+    it('verso sem dígrafo dividido não ganha destaque nenhum', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'Quan/do o/ sol' }];
+        inicializarGradeSonoridade(container, linhas);
+
+        const celulas = [...container.querySelectorAll('td.son-cel-silaba')];
+        celulas.forEach((td) => {
+            assert.equal(td.className.includes('border-rose-500'), false);
+            assert.equal(td.dataset.digrafoBarra, undefined);
+        });
+    });
+
+    it('clicar na célula destacada desloca a barra do dígrafo pra antes da letra repetida, preservando as outras divisões do verso', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'Quan/do car/ro' }];
+        inicializarGradeSonoridade(container, linhas);
+
+        const celulaDigrafo = container.querySelector('td[data-digrafo-barra]');
+        assert.ok(celulaDigrafo, 'deveria existir uma célula marcada como dígrafo dividido');
+        clicar(celulaDigrafo);
+
+        // a barra do dígrafo ("car/ro") se desloca pra antes do "rr"
+        // ("ca/rro") em vez de sumir e fundir as duas sílabas inteiras
+        // — a divisão normal ("Quan/do") continua intacta.
+        assert.equal(obterLinhasSonoridade()[0].texto, 'Quan/do ca/rro');
+        // o campo editável (coluna de texto) também precisa refletir a
+        // correção, não só as células de sílaba abaixo dele.
+        assert.equal(
+            container.querySelector('.son-linha-texto[data-idx="0"]').textContent,
+            'Quan/do ca/rro',
+        );
+        assert.equal(container.querySelector('td[data-digrafo-barra]'), null);
+    });
+
+    it('clique em célula de dígrafo tem prioridade mesmo com o Modo Sílaba Tônica ligado', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'car/ro' }];
+        inicializarGradeSonoridade(container, linhas);
+        clicar(container.querySelector('#son-btn-modo-tonico'));
+
+        const celulaDigrafo = container.querySelector('td[data-digrafo-barra]');
+        clicar(celulaDigrafo);
+
+        assert.equal(obterLinhasSonoridade()[0].texto, 'ca/rro');
+        // não deveria ter marcado tônica na célula em vez de corrigir
+        // (garantirTonicas já inicializa `tonicas: []` em qualquer
+        // render — o que importa aqui é continuar vazio, não virar [0]).
+        assert.deepEqual(obterLinhasSonoridade()[0].tonicas, []);
+    });
+
+    it('mostra o aviso em lote com a contagem certa e some quando não há mais ocorrência', () => {
+        const linhas = [
+            { tipo: 'verso', numero: 1, texto: 'car/ro' },
+            { tipo: 'verso', numero: 2, texto: 'pas/sa' },
+        ];
+        inicializarGradeSonoridade(container, linhas);
+
+        const aviso = container.querySelector('#son-aviso-digrafos');
+        assert.match(aviso.textContent, /2 dígrafos divididos/);
+
+        clicar(container.querySelector('#son-btn-corrigir-digrafos'));
+
+        assert.equal(obterLinhasSonoridade()[0].texto, 'ca/rro');
+        assert.equal(obterLinhasSonoridade()[1].texto, 'pa/ssa');
+        assert.equal(container.querySelector('#son-aviso-digrafos').textContent.trim(), '');
+    });
+
+    it('mesclarDigrafoDividido preserva o total de sílabas (só desloca a barra, não funde) e mantém tonicas intactas', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'car/ro' }];
+        inicializarGradeSonoridade(container, linhas);
+        obterLinhasSonoridade()[0].tonicas = [0, 1];
+
+        mesclarDigrafoDividido(0, 0);
+
+        // "car/ro" (2 sílabas) -> "ca/rro" (ainda 2 sílabas) — a barra
+        // se desloca, não desaparece, então nenhuma tônica marcada
+        // precisa ser truncada.
+        assert.deepEqual(obterLinhasSonoridade()[0].tonicas, [0, 1]);
+    });
+
+    it('mesclarTodosDigrafosDivididos corrige múltiplas ocorrências na mesma linha', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'car/ro pas/sa' }];
+        inicializarGradeSonoridade(container, linhas);
+
+        mesclarTodosDigrafosDivididos();
+
+        assert.equal(obterLinhasSonoridade()[0].texto, 'ca/rro pa/ssa');
+        assert.equal(contarDigrafosDivididos(obterLinhasSonoridade()), 0);
     });
 });
 
@@ -617,12 +1021,15 @@ describe('inicializarGradeSonoridade — DOM real (happy-dom)', () => {
         inicializarGradeSonoridade(container, linhas);
 
         const ths = [...container.querySelectorAll('#son-grade-header-row th')];
-        // 2 colunas fixas (Nº, Verso) + 5 colunas de régua (1..5) + 1 coluna de Rima
-        assert.equal(ths.length, 8);
+        // 2 colunas fixas (Nº, Verso) + 5 colunas de régua (1..5) + 1 coluna
+        // de Cont. + 1 coluna de Rima
+        assert.equal(ths.length, 9);
         assert.deepEqual(
             ths.slice(2, 7).map((th) => th.textContent.trim()),
             ['1', '2', '3', '4', '5'],
         );
+        assert.equal(ths[7].textContent.trim(), 'Cont.');
+        assert.equal(ths[8].textContent.trim(), 'Rima');
     });
 
     it('preenche as células de sílaba a partir da divisão por barra de cada verso', () => {
@@ -646,12 +1053,63 @@ describe('inicializarGradeSonoridade — DOM real (happy-dom)', () => {
         assert.equal(obterLinhasSonoridade()[0].texto, 'Um/ ver/so');
 
         const ths = [...container.querySelectorAll('#son-grade-header-row th')];
-        assert.equal(ths.length, 6); // Nº + Verso + 3 colunas de régua + Rima
+        assert.equal(ths.length, 7); // Nº + Verso + 3 colunas de régua + Cont. + Rima
 
         const linhaDoisCelulas = [
             ...container.querySelectorAll('#son-grade-body tr[data-idx="1"] td.son-cel-silaba'),
         ].map((td) => td.textContent.trim());
         assert.deepEqual(linhaDoisCelulas, ['Outro verso', '', '']);
+    });
+
+    it('coluna "Cont." mostra a contagem métrica sozinha quando não há Tamanho do Verso selecionado', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'Quan/do o/ sol/ se/ pôs' }];
+        inicializarGradeSonoridade(container, linhas);
+
+        const celula = container.querySelector(
+            '#son-grade-body tr[data-idx="0"] td.son-cel-contagem',
+        );
+        assert.equal(celula.textContent.trim(), '5');
+        assert.equal(container.querySelector('#son-grade-rotulo-alvo').textContent.trim(), '');
+    });
+
+    it('coluna "Cont." mostra contagem/alvo e destaca em âmbar o verso divergente', () => {
+        const linhas = [
+            { tipo: 'verso', numero: 1, texto: 'Bri/sa/ le/ve/ so/bre a/ ca/sa' }, // 7 métricas
+            { tipo: 'verso', numero: 2, texto: 'A/lém' }, // 2 métricas
+        ];
+        inicializarGradeSonoridade(container, linhas, [], [], '', 'Redondilha Maior (7)');
+
+        const celulas = [...container.querySelectorAll('#son-grade-body td.son-cel-contagem')].map(
+            (td) => td.textContent.trim(),
+        );
+        assert.deepEqual(celulas, ['7/7', '2/7']);
+
+        const celulaDivergente = container.querySelector(
+            '#son-grade-body tr[data-idx="1"] td.son-cel-contagem',
+        );
+        assert.match(celulaDivergente.className, /text-amber-600/);
+        const celulaOk = container.querySelector(
+            '#son-grade-body tr[data-idx="0"] td.son-cel-contagem',
+        );
+        assert.doesNotMatch(celulaOk.className, /text-amber-600/);
+
+        assert.equal(
+            container.querySelector('#son-grade-rotulo-alvo').textContent.trim(),
+            'Alvo: 7 sílabas por verso',
+        );
+    });
+
+    it('atualizarTamanhoVersoSonoridade recalcula a coluna "Cont." sem reabrir o modal', () => {
+        const linhas = [{ tipo: 'verso', numero: 1, texto: 'A/lém' }]; // 2 métricas
+        inicializarGradeSonoridade(container, linhas);
+
+        atualizarTamanhoVersoSonoridade('Redondilha Menor (5)');
+
+        const celula = container.querySelector(
+            '#son-grade-body tr[data-idx="0"] td.son-cel-contagem',
+        );
+        assert.equal(celula.textContent.trim(), '2/5');
+        assert.match(celula.className, /text-amber-600/);
     });
 
     it('apaga o hífen ortográfico das células de sílaba (ênclise/composta), em qualquer posição', () => {

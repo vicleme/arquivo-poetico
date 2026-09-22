@@ -1,0 +1,32 @@
+{
+    "id": "augusto-dos-anjos",
+    "titulo": "Augusto dos Anjos — sonetos (piloto)",
+    "descricao": "Dois sonetos pra demonstrar Sonoridade, Estatísticas e Conexões sem usar o acervo pessoal.",
+    "autor": {
+        "nome": "Augusto dos Anjos",
+        "nacionalidade": "Brasileira",
+        "nascimento": {
+            "dia": 20,
+            "mes": 4,
+            "ano": 1884
+        },
+        "obito": {
+            "dia": 12,
+            "mes": 11,
+            "ano": 1914
+        }
+    },
+    "fonte": "Escritas.org",
+    "edicao": "Eu (1912)",
+    "link": "",
+    "ortografia": "",
+    "conferido": true,
+    "textos": {
+        "Versos Íntimos": {
+            "link": "https://www.escritas.org/pt/t/12236/versos-intimos"
+        },
+        "Psicologia de um Vencido": {
+            "link": "https://www.escritas.org/pt/t/12233/psicologia-de-um-vencido"
+        }
+    }
+}

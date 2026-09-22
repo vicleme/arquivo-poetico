@@ -48,7 +48,7 @@ const PES_METRICOS_ROTULOS = PES_METRICOS.map((p) => p.rotulo);
 // Campo do payload → { chave em `valores`, lista fechada } — usado tanto
 // pra validar quanto, depois, pra popular os selects (mesma ordem dos 7
 // campos de classificação do modal).
-const CAMPOS_CLASSIFICACAO = [
+export const CAMPOS_CLASSIFICACAO = [
     { chave: 'formaPoema', label: 'Forma do Poema', opcoes: FORMAS_POEMA },
     {
         chave: 'regularidadeMetrica',
@@ -117,7 +117,10 @@ function resolverPoema(dados, poemas, poemaSelecionadoId) {
 }
 
 // ─── Campos de classificação (7 selects fechados) ────────────────────
-function validarClassificacao(dados) {
+// Exportada (junto de ladoValido, mais abaixo) pra molde-json.js reaproveitar
+// a mesma taxonomia/validação — Molde e Escansão descrevem os mesmos eixos
+// (ver criacao-molde.md, decisão 3).
+export function validarClassificacao(dados) {
     const valores = {};
     const camposInvalidos = [];
     CAMPOS_CLASSIFICACAO.forEach(({ chave, label, opcoes }) => {
@@ -195,7 +198,7 @@ function validarLinhas(dados, poema) {
 }
 
 // ─── Pares de rima ─────────────────────────────────────────────────
-function ladoValido(lado, linhas) {
+export function ladoValido(lado, linhas) {
     if (!lado || typeof lado !== 'object') return null;
     const linha = Number(lado.linha);
     if (!Number.isInteger(linha) || linha < 0 || linha >= linhas.length) return null;

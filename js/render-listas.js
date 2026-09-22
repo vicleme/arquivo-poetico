@@ -46,6 +46,7 @@ import {
     estaPublicado,
     PAPEIS_PESSOA,
     corpoEntradaHipertextualidade,
+    OPCOES_GRAFIA,
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
 import { getColunasAtivas, DEFINICAO_COLUNAS, renderSeletorColunas } from './colunas.js';
@@ -79,12 +80,21 @@ import {
     badgesEnvios,
     badgesReconhecimentos,
     badgeEpocaRetratada,
+    celulaFonte,
+    celulaGrafia,
 } from './celulas-tabela.js';
 // selecao-massa.js importa `selecaoPoemas`/`selecaoProsas`/
 // `getListaVisivelPoemas`/`getListaVisivelProsas`/`renderPoemas`/
 // `renderProsas` daqui — import circular proposital, ver nota no topo
 // de selecao-massa.js.
 import { atualizarBarraSelecao } from './selecao-massa.js';
+import {
+    selecaoAutores,
+    getFiltroAutores,
+    getListaVisivelAutores,
+    podarSelecaoAutores,
+    atualizarBarraSelecaoAutores,
+} from './autores-acoes.js';
 
 // Sempre que uma coluna é ligada/desligada (ver colunas.js) a tabela
 // correspondente precisa recalcular cabeçalho + linhas.
@@ -873,7 +883,7 @@ function decorarCamposBusca(item, extraLivros = '') {
         // entram na busca geral e no prefixo "autor:" (ver
         // CAMPOS_ATRIBUTO em utils.js), mesmo padrão de _buscaPessoas.
         _buscaAutoria: paresAutoria(item, db.autores)
-            .map(({ autor, papel }) => `${autor.nome} ${papel || ''}`)
+            .map(({ autor, papel, nomeLiterario }) => `${autor.nome} ${nomeLiterario || ''} ${papel || ''}`)
             .join(' '),
         // epocaRetratada guarda só epocaId (nome mora no cadastro central
         // db.epocas — ver migrarEpocas em db.js); nome e recorte entram na
@@ -908,6 +918,30 @@ function decorarCamposBusca(item, extraLivros = '') {
                       (r) => `${r.premio || ''} ${r.posicao || ''} ${r.ano || ''} ${r.texto || ''}`,
                   )
                   .join(' ')
+            : '',
+        // Fonte do texto (grupo Fonte do modal — celulaFonte em
+        // celulas-tabela.js mostra só origem+edição na tabela, mas a
+        // busca por "fonte:" cobre os três campos de texto livre do
+        // grupo, incluindo o link, mesmo padrão de _buscaEnvios/
+        // _buscaAnotacoes acima).
+        _buscaFonte: item.fonteTexto
+            ? [item.fonteTexto.origem, item.fonteTexto.edicao, item.fonteTexto.link]
+                  .filter(Boolean)
+                  .join(' ')
+            : '',
+        // Grafia (mesmo grupo Fonte, campo fechado — OPCOES_GRAFIA em
+        // utils.js): busca pelo rótulo completo (não só o valor cru do
+        // enum), pra "grafia:etimológica"/"grafia:quinhentista"/
+        // "grafia:atual" acharem sem precisar saber a constante interna
+        // — mesma lógica de resolução usada em celulaGrafia. Com
+        // GRAFIA_ATUAL sendo um valor não-vazio (não mais ''), esse
+        // `item.fonteTexto?.grafia ?` já distingue sozinho "Atual"
+        // escolhido de propósito (bate em "grafia:atual") de "nunca
+        // definido" (fica de fora — string vazia não bate em nenhum
+        // prefixo de busca).
+        _buscaGrafia: item.fonteTexto?.grafia
+            ? OPCOES_GRAFIA.find((o) => o.valor === item.fonteTexto.grafia)?.rotulo ||
+              item.fonteTexto.grafia
             : '',
     };
 }
@@ -1328,6 +1362,8 @@ const COMPARADORES_ORDENACAO = {
     contextoHistorico: compararPorTexto((p) => p.contextoHistorico),
     autoavaliacao: compararPorTexto((p) => p.autoavaliacao),
     autoclassificacao: compararPorNumero((p) => p.autoclassificacao),
+    fonte: compararPorTexto((p) => p.fonteTexto?.origem),
+    grafia: compararPorTexto((p) => p.fonteTexto?.grafia),
     etiquetas: compararPorTexto((p) => sinalizacoesCombinadas(p)),
     notas: compararPorTexto((p) => p.notas),
     ocultacao: compararPorTexto((p) => p.ocultacao),
@@ -1762,6 +1798,8 @@ export function renderPoemas() {
             `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${p.dataPublicacao ? formatarDataParcial(p.dataPublicacao) : '—'}</td>`,
         pessoas: (p) => `<td class="p-4">${badgesPessoas(p.pessoas)}</td>`,
         grupos: (p) => `<td class="p-4">${badgesGrupos(p)}</td>`,
+        fonte: (p) => celulaFonte(p),
+        grafia: (p) => celulaGrafia(p),
         autoria: (p) => `<td class="p-4">${badgesAutoria(p)}</td>`,
         envios: (p) => `<td class="p-4">${badgesEnvios(p)}</td>`,
         reconhecimentos: (p) => `<td class="p-4">${badgesReconhecimentos(p)}</td>`,
@@ -2093,6 +2131,8 @@ export function renderProsas() {
             `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${pr.dataPublicacao ? formatarDataParcial(pr.dataPublicacao) : '—'}</td>`,
         pessoas: (pr) => `<td class="p-4">${badgesPessoas(pr.pessoas)}</td>`,
         grupos: (pr) => `<td class="p-4">${badgesGrupos(pr)}</td>`,
+        fonte: (pr) => celulaFonte(pr),
+        grafia: (pr) => celulaGrafia(pr),
         autoria: (pr) => `<td class="p-4">${badgesAutoria(pr)}</td>`,
         envios: (pr) => `<td class="p-4">${badgesEnvios(pr)}</td>`,
         reconhecimentos: (pr) => `<td class="p-4">${badgesReconhecimentos(pr)}</td>`,
@@ -2420,34 +2460,61 @@ export function renderGrupos() {
 // Cadastro central (ver migrarAutoria em db.js), à parte de Pessoas —
 // mesmo espírito de renderPessoas acima, mas sem grupos (Autor não tem
 // taxonomia própria) e mostrando "sobre" em vez de badges.
+//
+// Busca por campo, seleção (checkbox por card) e exportação: estado e
+// ações em autores-acoes.js; aqui só o desenho. A lista é sempre a de
+// getListaVisivelAutores() (já filtrada pela busca).
 
 export function renderAutores() {
     const container = document.getElementById('lista-autores');
     if (!container) return;
 
-    const ordenados = [...db.autores].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    podarSelecaoAutores();
+    const visiveis = getListaVisivelAutores();
+    const filtrando = getFiltroAutores().trim() !== '';
 
-    if (ordenados.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum autor cadastrado ainda.</div>`;
+    // Contagem "N de M" só aparece com a busca ligada; o checkbox de
+    // "selecionar todos" reflete se tudo o que está visível já está marcado.
+    const contagem = document.getElementById('contagem-autores');
+    if (contagem) {
+        contagem.textContent = filtrando ? `${visiveis.length} de ${db.autores.length} autores` : '';
+    }
+    const todos = document.getElementById('toggle-todos-autores');
+    if (todos) {
+        todos.checked = visiveis.length > 0 && visiveis.every((a) => selecaoAutores.has(a.id));
+        todos.disabled = visiveis.length === 0;
+    }
+    atualizarBarraSelecaoAutores();
+
+    if (visiveis.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
+            filtrando ? 'Nenhum autor encontrado.' : 'Nenhum autor cadastrado ainda.'
+        }</div>`;
         return;
     }
 
-    container.innerHTML = ordenados
+    container.innerHTML = visiveis
         .map((a) => {
             const { poemasIds, prosasIds } = calcularImpactoExclusaoAutor(db, a.id);
             const totalTextos = poemasIds.length + prosasIds.length;
+            const nascObito =
+                a.nascimento || a.obito
+                    ? `${a.nascimento ? formatarDataParcial(a.nascimento) : '?'} – ${a.obito ? formatarDataParcial(a.obito) : ''}`
+                    : '';
             return `
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center gap-3">
+            <input type="checkbox" data-action="toggle-autor" data-id="${a.id}" ${
+                selecaoAutores.has(a.id) ? 'checked' : ''
+            } aria-label="Selecionar ${escapeHtml(a.nome)}" class="w-4 h-4 flex-shrink-0 mb-0" />
             <div class="flex-1 min-w-0">
-                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(a.nome)}</h4>
-                ${
-                    a.isni
-                        ? `<p class="text-[10px] font-mono text-gray-400 dark:text-slate-500 mt-0.5">ISNI: ${escapeHtml(a.isni)}</p>`
+                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(a.nome)}${
+                    a.souEu
+                        ? ' <span class="text-[10px] font-normal text-indigo-500 dark:text-indigo-400">(você)</span>'
                         : ''
-                }
+                }</h4>
                 ${
-                    a.sobre
-                        ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1 line-clamp-2">${escapeHtml(a.sobre)}</p>`
+                    a.nacionalidade || nascObito
+                        ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">${[escapeHtml(a.nacionalidade || ''), escapeHtml(nascObito)].filter(Boolean).join(' · ')}</p>`
                         : ''
                 }
                 <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
@@ -2455,6 +2522,7 @@ export function renderAutores() {
                 </p>
             </div>
             <div class="flex gap-3 flex-shrink-0">
+                <button data-action="ver-autor" data-id="${a.id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>
                 <button data-action="editar-autor" data-id="${a.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
                 <button data-action="excluir-item" data-tipo="autores" data-id="${a.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
             </div>
@@ -2686,8 +2754,8 @@ export function renderSonoridade() {
 // Bloco 1 (dados + tabela + meta): tabela própria, ainda mais simples
 // que a de Sonoridade de propósito — colunas fixas (sem
 // DEFINICAO_COLUNAS/colunas de contagem, que Molde não tem por ora) e
-// Ações fixas (Editar/Excluir só, sem Ver/Baixar — Molde ainda não tem
-// visualização somente-leitura nem exportação própria). Busca é só por
+// Ações configuráveis (Baixar .json/Editar/Promover/Excluir, sem Ver —
+// Molde ainda não tem visualização somente-leitura). Busca é só por
 // título.
 let filtroMoldes = '';
 let paginaMoldes = 1;
@@ -2733,12 +2801,17 @@ const ICONE_PROMOVER = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColo
 // de selo estático (a tabela sempre tem espaço pra ação, o modal só
 // mostra selo quando não há mais nada a fazer ali).
 // Botões conforme o painel "⚙️ Ações ▾" (isAcaoAtiva/DEFINICAO_ACOES,
-// acoes-coluna.js) — Moldes só tem Editar/Promover/Excluir (sem
-// Ver/Baixar, ver ACOES_APLICAVEIS lá). "Promover" cobre os dois
+// acoes-coluna.js) — Moldes tem Baixar (.json)/Editar/Promover/Excluir
+// (sem Ver, ver ACOES_APLICAVEIS lá). "Promover" cobre os dois
 // estados: botão de promover (ainda não promovido) ou link pro Poema
 // já promovido — comportamento inalterado, só passou a ser opcional.
 function celulaAcoesMolde(id, status, poemaId) {
     const botoes = [];
+    if (isAcaoAtiva('moldes', 'baixar')) {
+        botoes.push(
+            `<button data-action="baixar-molde" data-id="${id}" title="Baixar JSON" aria-label="Baixar JSON" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_BAIXAR}</button>`,
+        );
+    }
     if (isAcaoAtiva('moldes', 'editar')) {
         botoes.push(
             `<button data-action="editar-molde" data-id="${id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 p-1.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800">${ICONE_EDITAR}</button>`,

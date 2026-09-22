@@ -440,6 +440,26 @@ npm run format:check   # prettier --check .
   separate from the main app's `localStorage`) and are reapplied
   automatically on future uploads.
 - **JSON import/export** for a full backup of the collection (text data).
+- **Additive Import** ("Importação" tab, inside the "Dados" menu): adds a
+  Poem/Prose (or a batch of several) from a separate .json file to the
+  current collection, without erasing anything — unlike the backup above,
+  which replaces each collection entirely. Accepts the same flat format the
+  Export already produces. Four phases: (1) read-only validation that
+  classifies every reference to a central registry (People, Groups,
+  Authors, Eras, Books) by name — no candidate auto-creates, one exact
+  candidate auto-matches (switchable), more than one candidate or only an
+  approximate match requires a manual decision, and a title matching an
+  existing item also becomes a manual decision (duplicate vs. new item);
+  (2) preview with one selector per pending reference, the "Apply" button
+  only enables once nothing is pending; (3) a forced safety snapshot
+  (ignoring the normal 6h throttle) before any write — aborts if it fails;
+  (4) in-memory id remapping and atomic write (a single push + save at the
+  end). A matched or created Book only links into `livrosIds` — it never
+  auto-positions inside Parts/Sections. The Poem's Sonoridade and Estrutura
+  Textual (Sound/Textual Structure — only present if the file came from
+  "comprehensive download") come along automatically, no decision required —
+  they aren't a reference, just records hanging off the Poem's id, remapped
+  along with it in Phase 4.
 - **Configurable columns** (Poems/Prose): choose which columns show and in
   what order, saved per table in the browser; ID/Title and Actions are
   fixed. Poem table headers are clickable to sort (by structure, date,

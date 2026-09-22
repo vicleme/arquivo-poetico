@@ -1241,6 +1241,56 @@
                     </details>
 
                     <details class="campo-grupo">
+                        <summary>Fonte</summary>
+                        <div class="campo-grupo-corpo">
+                            <label class="form-label">Fonte</label>
+                            <input
+                                type="text"
+                                id="pr-fonte-origem"
+                                list="sugestoes-fonte-origem-prosa"
+                                placeholder="Ex.: Obra própria, Wikisource"
+                            />
+                            <datalist id="sugestoes-fonte-origem-prosa"></datalist>
+
+                            <label class="form-label">Edição</label>
+                            <input
+                                type="text"
+                                id="pr-fonte-edicao"
+                                list="sugestoes-fonte-edicao-prosa"
+                                placeholder="Ex.: Eu e Outras Poesias, 1920"
+                            />
+                            <datalist id="sugestoes-fonte-edicao-prosa"></datalist>
+
+                            <label class="form-label">Link</label>
+                            <input type="url" id="pr-fonte-link" placeholder="https://..." />
+
+                            <label class="form-label"
+                                >Grafia
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(pra Sonoridade avisar em vez de errar a contagem)</span
+                                ></label
+                            >
+                            <select id="pr-fonte-grafia">
+                                <option value="">Não definida</option>
+                                <option value="atual">Atual (padrão)</option>
+                                <option value="etimológica">
+                                    Etimológica (ph, th, y, dobradas)
+                                </option>
+                                <option value="quinhentista">Quinhentista (séc. XVI)</option>
+                            </select>
+
+                            <label
+                                class="flex items-center gap-2 text-sm mt-2 cursor-pointer"
+                                title="Marque depois de comparar o texto com a edição de origem."
+                            >
+                                <input type="checkbox" id="pr-fonte-conferido" />
+                                Texto conferido com a edição de origem
+                            </label>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
                         <summary>Status e Pendências</summary>
                         <div class="campo-grupo-corpo">
                             <div>

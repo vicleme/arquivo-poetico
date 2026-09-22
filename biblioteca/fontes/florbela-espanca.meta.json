@@ -1,0 +1,42 @@
+{
+    "id": "florbela-espanca",
+    "titulo": "Florbela Espanca (seleção)",
+    "descricao": "Cinco sonetos de Livro de Mágoas, Livro de Sóror Saudade e Charneca em Flor.",
+    "autor": {
+        "nome": "Florbela Espanca",
+        "nacionalidade": "Portuguesa",
+        "nascimento": {
+            "dia": 8,
+            "mes": 12,
+            "ano": 1894
+        },
+        "obito": {
+            "dia": 8,
+            "mes": 12,
+            "ano": 1930
+        },
+        "sexo": "Feminino"
+    },
+    "fonte": "Wikisource",
+    "edicao": "",
+    "link": "",
+    "ortografia": "atualizada",
+    "conferido": false,
+    "textos": {
+        "Charneca em Flor": {
+            "edicao": "Charneca em Flor. 2 ed. Coimbra: Livraria A. Gonçalves, 1931. página 7."
+        },
+        "Fanatismo": {
+            "edicao": "Publicado em Livro de Sóror Saudade"
+        },
+        "Ser Poeta": {
+            "edicao": "Charneca em Flor. 2 ed. Coimbra: Livraria A. Gonçalves, 1931. página 27."
+        },
+        "Eu": {
+            "edicao": "Publicado em Livro de Mágoas"
+        },
+        "Amar!": {
+            "edicao": "Charneca em Flor. 2 ed. Coimbra: Livraria A. Gonçalves, 1931. página 30."
+        }
+    }
+}

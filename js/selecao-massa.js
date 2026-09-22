@@ -2,7 +2,7 @@
 // selecao-massa.js — Seleção múltipla e ações em massa de Poemas e
 // Prosas na listagem: checkboxes (com shift-click pra intervalo),
 // barra de ações, edição em massa (Pessoas/Sinalizações/Gênero/
-// Datas), exclusão em massa e exportação da seleção.
+// Datas/Preencher campo), exclusão em massa e exportação da seleção.
 //
 // Todas as ações que existem nas duas tabelas são uma função só,
 // parametrizada por `tabela` ('poemas'|'prosas') — ver CONFIG_SELECAO
@@ -29,7 +29,20 @@
 // ============================================================
 
 import { db, save, deleteItemsEmMassa, obterOuCriarPessoaPorNome } from './db.js';
-import { abrirModalConfirmacao, SINALIZACOES_CATEGORIAS } from './utils.js';
+import {
+    abrirModalConfirmacao,
+    escapeHtml,
+    mostrarAviso,
+    SINALIZACOES_CATEGORIAS,
+} from './utils.js';
+import {
+    CAMPOS_PREENCHIVEIS,
+    obterCampoPreenchivel,
+    planejarPreenchimento,
+    planejarLimpeza,
+    aplicarPreenchimento,
+    aplicarLimpeza,
+} from './campos-preenchiveis.js';
 import {
     selecaoPoemas,
     selecaoProsas,
@@ -40,6 +53,7 @@ import {
 } from './render-listas.js';
 import {
     exportarSelecaoJson,
+    exportarSelecaoCsv,
     exportarSelecaoMarkdown,
     exportarSelecaoPdf,
     exportarSelecaoDocx,
@@ -168,7 +182,8 @@ export function atualizarBarraSelecao(tabela) {
     if (!barra) return;
     if (c.selecao.size > 0) {
         barra.classList.remove('hidden');
-        if (contador) contador.innerText = `${c.selecao.size} ${rotuloSelecao(tabela, c.selecao.size)}`;
+        if (contador)
+            contador.innerText = `${c.selecao.size} ${rotuloSelecao(tabela, c.selecao.size)}`;
     } else {
         barra.classList.add('hidden');
     }
@@ -292,7 +307,8 @@ export function aplicarSinalEmMassa(tabela) {
     const c = cfg(tabela);
     const input = document.getElementById(`bulk-sinal-input${c.sufixoDom}`);
     const campo =
-        document.getElementById(`bulk-sinal-categoria${c.sufixoDom}`)?.value || 'sinalizacoesEstilo';
+        document.getElementById(`bulk-sinal-categoria${c.sufixoDom}`)?.value ||
+        'sinalizacoesEstilo';
     const tag = (input?.value || '').trim();
     if (!tag || c.selecao.size === 0) return;
 
@@ -320,7 +336,8 @@ export function removerSinalEmMassa(tabela) {
     const c = cfg(tabela);
     const input = document.getElementById(`bulk-sinal-input${c.sufixoDom}`);
     const campo =
-        document.getElementById(`bulk-sinal-categoria${c.sufixoDom}`)?.value || 'sinalizacoesEstilo';
+        document.getElementById(`bulk-sinal-categoria${c.sufixoDom}`)?.value ||
+        'sinalizacoesEstilo';
     const tag = (input?.value || '').trim();
     if (!tag || c.selecao.size === 0) return;
 
@@ -373,6 +390,10 @@ export function excluirSelecao(tabela) {
 export function exportarSelecaoAtualJson(tabela) {
     const c = cfg(tabela);
     exportarSelecaoJson(c.singular, [...c.selecao]);
+}
+export function exportarSelecaoAtualCsv(tabela) {
+    const c = cfg(tabela);
+    exportarSelecaoCsv(c.singular, [...c.selecao]);
 }
 export function exportarSelecaoAtualMarkdown(tabela) {
     const c = cfg(tabela);
@@ -467,6 +488,214 @@ export function limparDataEmMassa(tabela) {
                 item[campo] = null;
                 if (campo === 'dataEscrita') item.ano = '';
             });
+            c.selecao.clear();
+            save();
+        },
+    });
+}
+
+// ─── Preencher campo em massa ─────────────────────────
+// Painel único no lugar de um botão por campo: a lista de campos que
+// ele sabe preencher vive em campos-preenchiveis.js (lógica pura, sem
+// DOM) e o painel é montado aqui a partir dela — um campo novo é uma
+// entrada lá, sem HTML novo em Poemas nem em Prosas. O <div> vazio do
+// painel fica no index.html (id painel-preencher-massa[-prosa]).
+const idsPreencher = (c) => ({
+    painel: `painel-preencher-massa${c.sufixoDom}`,
+    campo: `bulk-campo${c.sufixoDom}`,
+    valorArea: `bulk-campo-valor-area${c.sufixoDom}`,
+    valor: `bulk-campo-valor${c.sufixoDom}`,
+    sugestoes: `bulk-campo-sugestoes${c.sufixoDom}`,
+    sobrescreverWrap: `bulk-campo-sobrescrever-wrap${c.sufixoDom}`,
+    sobrescrever: `bulk-campo-sobrescrever${c.sufixoDom}`,
+});
+
+function campoPreencherSelecionado(tabela) {
+    const ids = idsPreencher(cfg(tabela));
+    return obterCampoPreenchivel(document.getElementById(ids.campo)?.value);
+}
+
+// Sugestões saem de Poemas+Prosas juntos (mesmo critério do datalist de
+// Fonte no editor), pra o painel de Prosas também sugerir o que já foi
+// usado nos poemas.
+function opcoesSugestoes(campo) {
+    if (!campo.sugestoes) return '';
+    return campo
+        .sugestoes([...db.poemas, ...db.prosas])
+        .map((v) => `<option value="${escapeHtml(v)}"></option>`)
+        .join('');
+}
+
+// Refaz só a área do valor (e o "sobrescrever") pro campo escolhido.
+function montarValorPreencher(tabela) {
+    const c = cfg(tabela);
+    const ids = idsPreencher(c);
+    const campo = campoPreencherSelecionado(tabela);
+    const area = document.getElementById(ids.valorArea);
+    if (!area || !campo) return;
+
+    const rotulo = `<label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">Valor</label>`;
+    if (campo.tipo === 'booleano') {
+        area.innerHTML = `${rotulo}<select id="${ids.valor}" class="text-xs p-2">
+            <option value="sim">Sim</option>
+            <option value="nao">Não</option>
+        </select>`;
+    } else if (campo.tipo === 'opcoes') {
+        area.innerHTML = `${rotulo}<select id="${ids.valor}" class="text-xs p-2">
+            ${campo.opcoes.map((o) => `<option value="${escapeHtml(o.valor)}">${escapeHtml(o.rotulo)}</option>`).join('')}
+        </select>`;
+    } else {
+        area.innerHTML = `${rotulo}<input type="text" id="${ids.valor}"
+            ${campo.sugestoes ? `list="${ids.sugestoes}"` : ''}
+            placeholder="${escapeHtml(campo.placeholder || '')}"
+            class="text-xs p-2 min-w-[220px] mb-0"
+            onkeydown="aoEnterAplicar(event, () => aplicarPreenchimentoEmMassa('${tabela}'))" />
+            ${campo.sugestoes ? `<datalist id="${ids.sugestoes}">${opcoesSugestoes(campo)}</datalist>` : ''}`;
+    }
+    // Booleano sempre define o valor em todos os selecionados, então
+    // "sobrescrever" só faz sentido pra campo de texto.
+    document
+        .getElementById(ids.sobrescreverWrap)
+        ?.classList.toggle('hidden', campo.tipo === 'booleano');
+}
+
+// Chamado ao abrir o painel: monta o esqueleto na primeira vez e, nas
+// seguintes, só atualiza as sugestões (o que a pessoa digitou fica).
+export function prepararPainelPreencherMassa(tabela) {
+    const c = cfg(tabela);
+    const ids = idsPreencher(c);
+    const painel = document.getElementById(ids.painel);
+    if (!painel) return;
+
+    if (!document.getElementById(ids.campo)) {
+        const rotulo = (t) =>
+            `<label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">${t}</label>`;
+        painel.innerHTML = `
+            <div>
+                ${rotulo('Campo')}
+                <select id="${ids.campo}" class="text-xs p-2"
+                    onchange="trocarCampoPreencherMassa('${tabela}')">
+                    ${CAMPOS_PREENCHIVEIS.map((f) => `<option value="${escapeHtml(f.chave)}">${escapeHtml(f.rotulo)}</option>`).join('')}
+                </select>
+            </div>
+            <div id="${ids.valorArea}"></div>
+            <label id="${ids.sobrescreverWrap}" class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-300 pb-2">
+                <input type="checkbox" id="${ids.sobrescrever}" style="width: auto; margin: 0" />
+                Sobrescrever o que já está preenchido
+            </label>
+            <button type="button" onclick="aplicarPreenchimentoEmMassa('${tabela}')"
+                class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap">
+                Preencher
+            </button>
+            <button type="button" onclick="limparCampoEmMassa('${tabela}')"
+                class="bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap">
+                Limpar campo
+            </button>`;
+        montarValorPreencher(tabela);
+        return;
+    }
+    const campo = campoPreencherSelecionado(tabela);
+    const datalist = document.getElementById(ids.sugestoes);
+    if (campo && datalist) datalist.innerHTML = opcoesSugestoes(campo);
+}
+
+export function trocarCampoPreencherMassa(tabela) {
+    montarValorPreencher(tabela);
+}
+
+function lerValorPreencher(tabela, campo) {
+    const ids = idsPreencher(cfg(tabela));
+    const v = document.getElementById(ids.valor)?.value ?? '';
+    return campo.tipo === 'booleano' ? v === 'sim' : v.trim();
+}
+
+function itensSelecionados(tabela) {
+    const c = cfg(tabela);
+    return db[tabela].filter((item) => c.selecao.has(item.id));
+}
+
+function plural(n, singular, pluralForma) {
+    return n === 1 ? singular : pluralForma;
+}
+
+export function aplicarPreenchimentoEmMassa(tabela) {
+    const c = cfg(tabela);
+    if (c.selecao.size === 0) return;
+    const campo = campoPreencherSelecionado(tabela);
+    if (!campo) return;
+    const valor = lerValorPreencher(tabela, campo);
+    if (campo.tipo === 'texto' && !valor) {
+        return mostrarAviso(`Digite o valor de "${campo.rotulo}" (ou use "Limpar campo").`);
+    }
+    const ids = idsPreencher(c);
+    const sobrescrever = !!document.getElementById(ids.sobrescrever)?.checked;
+    const itens = itensSelecionados(tabela);
+    const { alterar, jaPreenchidos, jaIguais } = planejarPreenchimento(itens, campo, valor, {
+        sobrescrever,
+    });
+
+    if (alterar.length === 0) {
+        const motivos = [];
+        if (jaPreenchidos)
+            motivos.push(`${jaPreenchidos} já ${plural(jaPreenchidos, 'tem', 'têm')} valor`);
+        if (jaIguais) motivos.push(`${jaIguais} já ${plural(jaIguais, 'está', 'estão')} assim`);
+        return mostrarAviso(
+            `Nada a alterar em "${campo.rotulo}"${motivos.length ? ` (${motivos.join(', ')})` : ''}.`,
+            'info',
+        );
+    }
+
+    const n = alterar.length;
+    const oQue =
+        campo.tipo === 'booleano'
+            ? `${valor ? 'marcar' : 'desmarcar'} "${campo.rotulo}"`
+            : `definir "${valor}" em "${campo.rotulo}"`;
+    const mantidos = [];
+    if (jaPreenchidos) {
+        mantidos.push(
+            `${jaPreenchidos} ${plural(jaPreenchidos, 'já tinha valor e será mantido', 'já tinham valor e serão mantidos')}`,
+        );
+    }
+    if (jaIguais) {
+        mantidos.push(`${jaIguais} ${plural(jaIguais, 'já estava assim', 'já estavam assim')}`);
+    }
+    abrirModalConfirmacao({
+        titulo: `Preencher ${campo.rotulo.toLowerCase()}`,
+        rotulo: 'Ação em massa',
+        mensagem: `Isso vai ${oQue} em ${n} ${c.singular}${n !== 1 ? 's' : ''}.${mantidos.length ? ` Pulados: ${mantidos.join('; ')}.` : ''}`,
+        textoConfirmar: 'Aplicar',
+        corConfirmar: '#2563eb',
+        // Sobrescrever é destrutivo: só foca o Confirmar quando a ação
+        // é aditiva (mesmo critério de aplicarDataEmMassa).
+        focarConfirmar: !sobrescrever || campo.tipo === 'booleano',
+        onConfirmar: () => {
+            aplicarPreenchimento(alterar, campo, valor);
+            c.selecao.clear();
+            save();
+        },
+    });
+}
+
+export function limparCampoEmMassa(tabela) {
+    const c = cfg(tabela);
+    if (c.selecao.size === 0) return;
+    const campo = campoPreencherSelecionado(tabela);
+    if (!campo) return;
+    const { alterar, jaVazios } = planejarLimpeza(itensSelecionados(tabela), campo);
+
+    if (alterar.length === 0) {
+        return mostrarAviso(`Nada a limpar: "${campo.rotulo}" já está vazio na seleção.`, 'info');
+    }
+
+    const n = alterar.length;
+    abrirModalConfirmacao({
+        titulo: `Limpar ${campo.rotulo.toLowerCase()}`,
+        rotulo: 'Ação em massa',
+        mensagem: `Isso vai apagar "${campo.rotulo}" de ${n} ${c.singular}${n !== 1 ? 's' : ''}.${jaVazios ? ` ${jaVazios} ${plural(jaVazios, 'já estava vazio', 'já estavam vazios')}.` : ''}`,
+        textoConfirmar: 'Limpar',
+        corConfirmar: '#dc2626',
+        onConfirmar: () => {
+            aplicarLimpeza(alterar, campo);
             c.selecao.clear();
             save();
         },

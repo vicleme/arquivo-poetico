@@ -23,6 +23,11 @@ import {
 } from './editor.js';
 import {
     extrairFasesUnicas,
+    extrairNacionalidadesUnicas,
+    extrairGenerosAutorUnicos,
+    extrairOrientacoesUnicas,
+    extrairReligioesUnicas,
+    extrairInstituicoesUnicas,
     extrairNomesLojasUnicos,
     escapeHtml,
     RELACOES_ELO,
@@ -33,6 +38,7 @@ import { toggleModal, garantirModal } from './modais.js';
 import { renderEstatisticas } from './estatisticas.js';
 import { renderConexoes } from './render-conexoes.js';
 import { renderExportacoesFrequentes } from './exportar-frequentes.js';
+import { renderBiblioteca } from './ui-biblioteca.js';
 
 // Reexportados pra quem já importava toggleModal a partir de ui.js
 // (forms.js, coletaneas.js, main.js) não precisar trocar o caminho.
@@ -50,7 +56,9 @@ export function openTab(tabName) {
 // ─── Navegação agrupada: dropdowns no desktop + menu hambúrguer (mobile) ─
 // As abas, organizadas nos grupos combinados com Victor: Estrutura
 // do acervo, Conteúdo, Análise, Criação (aba Moldes — rascunho
-// estruturado, ver forms.js/render-listas.js) e Exportação. Única
+// estruturado, ver forms.js/render-listas.js) e Dados (Importação +
+// Exportação Geral + Exportações Frequentes — grupo antes chamado só
+// "Exportação"). Única
 // fonte de verdade tanto pro painel mobile quanto pro destaque do
 // grupo ativo na
 // nav desktop — a nav desktop em si (os dropdowns, que abrem no hover
@@ -88,8 +96,12 @@ export const GRUPOS_NAV = [
             { id: 'conexoes', rotulo: 'Conexões' },
             { id: 'sonoridade', rotulo: 'Sonoridade' },
             { id: 'morfofuncionalidade', rotulo: 'Morfofuncionalidade' },
-            { id: 'estatisticas', rotulo: 'Estatísticas' },
         ],
+    },
+    {
+        id: 'estatisticas',
+        rotulo: 'Estatísticas',
+        abas: [{ id: 'estatisticas', rotulo: 'Análise Exploratória' }],
     },
     {
         id: 'criacao',
@@ -97,9 +109,11 @@ export const GRUPOS_NAV = [
         abas: [{ id: 'moldes', rotulo: 'Moldes' }],
     },
     {
-        id: 'exportacao',
-        rotulo: 'Exportação',
+        id: 'dados',
+        rotulo: 'Dados',
         abas: [
+            { id: 'biblioteca', rotulo: 'Biblioteca' },
+            { id: 'importacao-aditiva', rotulo: 'Importação' },
             { id: 'exportar-filtrado', rotulo: 'Exportação Geral' },
             { id: 'exportacoes-frequentes', rotulo: 'Exportações Frequentes' },
         ],
@@ -133,6 +147,7 @@ export function abrirAba(tabName) {
     if (tabName === 'conexoes') renderConexoes();
     if (tabName === 'estatisticas') renderEstatisticas();
     if (tabName === 'exportacoes-frequentes') renderExportacoesFrequentes();
+    if (tabName === 'biblioteca') renderBiblioteca();
     atualizarRotuloAbaAtual(tabName);
     atualizarGrupoAtivoNavDesktop(tabName);
     fecharDropdownNavDesktop(tabName);
@@ -433,6 +448,48 @@ export function renderDropdowns() {
     if (datalistFases) {
         datalistFases.innerHTML = extrairFasesUnicas(db.livros)
             .map((fase) => `<option value="${escapeHtml(fase)}">`)
+            .join('');
+    }
+
+    // 0.05. Sugestões de "Nacionalidade" já usadas em outros Autores
+    // (mesmo padrão da Fase de Vida acima)
+    const datalistNacionalidades = document.getElementById('sugestoes-nacionalidades');
+    if (datalistNacionalidades) {
+        datalistNacionalidades.innerHTML = extrairNacionalidadesUnicas(db.autores)
+            .map((nac) => `<option value="${escapeHtml(nac)}">`)
+            .join('');
+    }
+
+    // 0.06. Sugestões de "Gênero" e "Orientação sexual" do Autor — semente
+    // fixa (GENEROS_SUGERIDOS/ORIENTACOES_SUGERIDAS) + o que já foi
+    // digitado no acervo (mesmo padrão da Nacionalidade acima).
+    const datalistGenero = document.getElementById('sugestoes-genero-autor');
+    if (datalistGenero) {
+        datalistGenero.innerHTML = extrairGenerosAutorUnicos(db.autores)
+            .map((g) => `<option value="${escapeHtml(g)}">`)
+            .join('');
+    }
+    const datalistOrientacao = document.getElementById('sugestoes-orientacao-autor');
+    if (datalistOrientacao) {
+        datalistOrientacao.innerHTML = extrairOrientacoesUnicas(db.autores)
+            .map((o) => `<option value="${escapeHtml(o)}">`)
+            .join('');
+    }
+
+    // 0.07. Sugestões de "Religião" e "Instituições frequentadas" do
+    // Autor — mesmo padrão acima: Religião soma semente fixa + o que já
+    // existe no acervo; Instituições só vem do acervo (nome de instituição não tem teto
+    // fechado, ver extrairInstituicoesUnicas em utils.js).
+    const datalistReligiao = document.getElementById('sugestoes-religiao-autor');
+    if (datalistReligiao) {
+        datalistReligiao.innerHTML = extrairReligioesUnicas(db.autores)
+            .map((r) => `<option value="${escapeHtml(r)}">`)
+            .join('');
+    }
+    const datalistInstituicoes = document.getElementById('sugestoes-instituicoes-autor');
+    if (datalistInstituicoes) {
+        datalistInstituicoes.innerHTML = extrairInstituicoesUnicas(db.autores)
+            .map((i) => `<option value="${escapeHtml(i)}">`)
             .join('');
     }
 
@@ -758,6 +815,39 @@ export async function prepararNovo(tipo) {
         // transitório da lista de Lojas (onde comprar), já que ela vive
         // fora do form.reset() nativo.
         import('./editor.js').then(({ resetLojas }) => resetLojas());
+    }
+
+    if (tipo === 'autor') {
+        // Mesmo motivo do bloco 'livro' acima: os chips de Nomes
+        // Literários, Ocupações, Neurodivergências, Condições Clínicas,
+        // Deficiências e Instituições Frequentadas vivem em estado próprio (closure de
+        // criarGrupoDeTags/criarGrupoDeTagsComTipo), fora do form.reset()
+        // nativo. Sexo/Cor-Raça/Gênero/Orientação/Religião/Classe
+        // social/Grau acadêmico são inputs/selects nativos comuns — o
+        // form.reset() já cuida deles. Os grupos colapsáveis
+        // (<details>) não são resetados pelo form.reset(): fecha todos
+        // à mão pra Autor novo começar limpo, sem herdar o estado do
+        // Autor aberto por último.
+        document.querySelectorAll('#modal-autor details[data-grupo-autor]').forEach((d) => {
+            d.open = false;
+        });
+        import('./editor.js').then(
+            ({
+                resetNomesLiterariosAutor,
+                resetOcupacoesAutor,
+                resetNeurodivergenciasAutor,
+                resetCondicoesClinicasAutor,
+                resetDeficienciasAutor,
+                resetInstituicoesAutor,
+            }) => {
+                resetNomesLiterariosAutor();
+                resetOcupacoesAutor();
+                resetNeurodivergenciasAutor();
+                resetCondicoesClinicasAutor();
+                resetDeficienciasAutor();
+                resetInstituicoesAutor();
+            },
+        );
     }
 
     if (tipo === 'grupo') {

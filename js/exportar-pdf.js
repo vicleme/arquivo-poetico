@@ -799,7 +799,12 @@ export function gerarPdfExportacao(itens) {
                 : [];
             const rimasGrade = Array.isArray(item.sonoridade.rimas) ? item.sonoridade.rimas : [];
             const ecosGrade = Array.isArray(item.sonoridade.ecos) ? item.sonoridade.ecos : [];
-            const tabelaGrade = gradeParaTabela(linhasGrade, rimasGrade, ecosGrade);
+            const tabelaGrade = gradeParaTabela(
+                linhasGrade,
+                rimasGrade,
+                ecosGrade,
+                item.sonoridade.tamanhoVerso,
+            );
             if (tabelaGrade.linhas.some((l) => l.tipo === 'verso')) {
                 // Mesma decisão de paisagem que o download avulso de
                 // Escansão já faz (gerarPdfEscansao, exportar-sonoridade.js)

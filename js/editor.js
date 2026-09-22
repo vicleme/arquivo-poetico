@@ -22,6 +22,7 @@ import {
     extrairHipotextosUnicos,
     corpoEntradaHipertextualidade,
     extrairIdiomasUnicos,
+    extrairFontesUnicas,
     extrairMeiosEnviosUnicos,
     extrairPremiosUnicos,
     escapeHtml,
@@ -35,6 +36,11 @@ import {
     agruparParesGrupoPessoa,
     classesCorGrupo,
     AUTORIA_PAPEIS,
+    ASSINATURAS_AUTORIA,
+    TIPOS_NOME_LITERARIO,
+    DIMENSOES_CONDICAO_CLINICA,
+    TIPOS_DEFICIENCIA,
+    FONTE_OBRA_PROPRIA,
     lerDataParcial,
     preencherDataParcial,
     formatarDataParcial,
@@ -482,6 +488,204 @@ const grupoGeneroProsa = criarGrupoDeTags({
     nomeFuncaoEditar: 'editarGeneroProsa',
 });
 
+// Ocupações do Autor (modal-autor.html) — lista livre (quem trabalhava/
+// trabalha com o quê além de escrever), mesma fábrica genérica de
+// grupoGeneroProsa acima. Sem "tipo" por chip (diferente de Nomes
+// Literários, ver criarGrupoDeNomesLiterariosAutor abaixo) — cada
+// ocupação é só um texto solto, mesmo espírito de Gênero (Prosa).
+const grupoOcupacoesAutor = criarGrupoDeTags({
+    inputId: 'au-ocupacao-input',
+    containerId: 'au-ocupacoes-container',
+    hiddenInputId: 'au-ocupacoes',
+    corClasse: 'bg-teal-600',
+    nomeFuncaoRemover: 'removerOcupacaoAutor',
+    nomeFuncaoEditar: 'editarOcupacaoAutor',
+});
+
+// Fábrica genérica de "tags com tipo" — cada chip carrega um nome (ou
+// descrição) junto de um tipo escolhido numa lista fechada pequena
+// (ex.: TIPOS_NOME_LITERARIO, DIMENSOES_CONDICAO_CLINICA). Generalizada
+// a partir da versão original, que só servia a Nomes Literários do
+// Autor — a mesma forma (chip + <select> de tipo embutido) se aplica
+// a Condições Clínicas (Física/Mental). Variante de criarGrupoDeTags
+// (usada em Gênero): aqui cada chip carrega um tipo junto do nome,
+// então não dá pra serializar como string simples separada por vírgula
+// — o hidden input guarda JSON, lido por forms.js no submit.
+function criarGrupoDeTagsComTipo({
+    inputId,
+    containerId,
+    hiddenInputId,
+    corClasse,
+    nomeFuncaoRemover,
+    nomeFuncaoEditar,
+    nomeFuncaoAlterarTipo,
+    tipos,
+}) {
+    let itens = []; // [{ nome, tipo }]
+
+    function adicionar(valor = null) {
+        const input = document.getElementById(inputId);
+        const nome = (valor ?? input?.value ?? '').trim();
+        if (input) input.value = '';
+        if (!nome || itens.some((i) => i.nome === nome)) return;
+        itens.push({ nome, tipo: tipos[0] });
+        renderizar();
+    }
+
+    function remover(nome) {
+        itens = itens.filter((i) => i.nome !== nome);
+        renderizar();
+    }
+
+    function alterarTipo(nome, tipo) {
+        const item = itens.find((i) => i.nome === nome);
+        if (!item || !tipos.includes(tipo)) return;
+        item.tipo = tipo;
+        renderizar();
+    }
+
+    // Mesmo espírito de editar() em criarGrupoDeTags: tira o item da
+    // lista e devolve o nome pro input, pronto pra corrigir. O tipo se
+    // perde nessa volta (reaparece com o tipo padrão ao readicionar)
+    // — custo aceito pela simplicidade, mesmo padrão do resto da
+    // fábrica.
+    function editar(nome) {
+        const input = document.getElementById(inputId);
+        remover(nome);
+        if (input) {
+            input.value = nome;
+            input.focus();
+        }
+    }
+
+    function renderizar() {
+        const container = document.getElementById(containerId);
+        const inputOculto = document.getElementById(hiddenInputId);
+        if (!container) return;
+
+        const opcoesTipo = (i) =>
+            tipos.map((t) => `<option value="${t}" ${i.tipo === t ? 'selected' : ''}>${t}</option>`).join('');
+
+        container.innerHTML = itens
+            .map(
+                (i) => `
+            <span class="${corClasse} text-white text-[10px] pl-2 pr-1 py-1 rounded-full inline-flex items-center gap-1">
+                ${escapeHtml(i.nome)}
+                <select data-nome="${escapeHtml(i.nome)}"
+                    onchange="${nomeFuncaoAlterarTipo}(this.dataset.nome, this.value)"
+                    class="text-[9px] bg-white/20 rounded px-1 py-0 border-0 text-white select-chip-autoria">
+                    ${opcoesTipo(i)}
+                </select>
+                <button type="button" data-nome="${escapeHtml(i.nome)}" onclick="${nomeFuncaoEditar}(this.dataset.nome)" class="hover:text-blue-200 ml-1" title="Editar">✎</button>
+                <button type="button" data-nome="${escapeHtml(i.nome)}" onclick="${nomeFuncaoRemover}(this.dataset.nome)" class="hover:text-red-200 font-bold ml-1" title="Remover">×</button>
+            </span>`,
+            )
+            .join('');
+
+        if (inputOculto) inputOculto.value = JSON.stringify(itens);
+    }
+
+    function reset() {
+        itens = [];
+        renderizar();
+    }
+
+    // Aceita o array já no formato {nome, tipo} e, por defesa, string
+    // legada "a, b, c" (sem tipo) — cada nome legado ganha o tipo
+    // padrão (tipos[0]). Ver decisoes.md.
+    function carregar(valor) {
+        if (Array.isArray(valor)) {
+            itens = valor.map((i) =>
+                typeof i === 'string'
+                    ? { nome: i, tipo: tipos[0] }
+                    : { nome: i.nome, tipo: tipos.includes(i.tipo) ? i.tipo : tipos[0] },
+            );
+        } else {
+            itens = (valor || '')
+                .split(',')
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .map((nome) => ({ nome, tipo: tipos[0] }));
+        }
+        renderizar();
+    }
+
+    return { adicionar, remover, editar, alterarTipo, renderizar, reset, carregar };
+}
+
+// Nomes Literários do Autor (modal-autor.html) — cadastro central de
+// Heterônimos/Pseudônimos daquele Autor, cada um com seu tipo (ver
+// TIPOS_NOME_LITERARIO em utils.js). Alimenta o seletor de
+// "Assinatura"/nome literário do chip de Autoria (ver
+// criarGrupoDeAutoria abaixo): ao marcar a Assinatura como Heterônimo
+// ou Pseudônimo pra este Autor num Poema/Prosa, só os nomes
+// cadastrados aqui com o tipo correspondente aparecem pra escolher.
+const grupoNomesLiterariosAutor = criarGrupoDeTagsComTipo({
+    inputId: 'au-nome-literario-input',
+    containerId: 'au-nomes-literarios-container',
+    hiddenInputId: 'au-nomes-literarios',
+    corClasse: 'bg-indigo-600',
+    nomeFuncaoRemover: 'removerNomeLiterarioAutor',
+    nomeFuncaoEditar: 'editarNomeLiterarioAutor',
+    nomeFuncaoAlterarTipo: 'alterarTipoNomeLiterarioAutor',
+    tipos: TIPOS_NOME_LITERARIO,
+});
+
+// Condições Clínicas do Autor (modal-autor.html) — tags tipificadas
+// entre dimensão Física e Mental (DIMENSOES_CONDICAO_CLINICA em
+// utils.js), mesma fábrica de Nomes Literários acima. À parte de
+// Neurodivergências (grupoNeurodivergenciasAutor abaixo) — ver
+// comentário de DIMENSOES_CONDICAO_CLINICA em utils.js pra distinção.
+const grupoCondicoesClinicasAutor = criarGrupoDeTagsComTipo({
+    inputId: 'au-condicao-clinica-input',
+    containerId: 'au-condicoes-clinicas-container',
+    hiddenInputId: 'au-condicoes-clinicas',
+    corClasse: 'bg-rose-600',
+    nomeFuncaoRemover: 'removerCondicaoClinicaAutor',
+    nomeFuncaoEditar: 'editarCondicaoClinicaAutor',
+    nomeFuncaoAlterarTipo: 'alterarTipoCondicaoClinicaAutor',
+    tipos: DIMENSOES_CONDICAO_CLINICA,
+});
+
+// Deficiências do Autor — tags tipificadas (Física/Auditiva/Visual/
+// Intelectual/Mental-psicossocial/Múltipla, TIPOS_DEFICIENCIA em
+// utils.js), mesma fábrica de Condições Clínicas acima. O texto da tag
+// é a deficiência específica; o tipo é a categoria ampla.
+const grupoDeficienciasAutor = criarGrupoDeTagsComTipo({
+    inputId: 'au-deficiencia-input',
+    containerId: 'au-deficiencias-container',
+    hiddenInputId: 'au-deficiencias',
+    corClasse: 'bg-amber-600',
+    nomeFuncaoRemover: 'removerDeficienciaAutor',
+    nomeFuncaoEditar: 'editarDeficienciaAutor',
+    nomeFuncaoAlterarTipo: 'alterarTipoDeficienciaAutor',
+    tipos: TIPOS_DEFICIENCIA,
+});
+
+// Neurodivergências do Autor — lista simples de tags, sem tipo, mesma
+// fábrica de Ocupações do Autor (grupoOcupacoesAutor acima).
+const grupoNeurodivergenciasAutor = criarGrupoDeTags({
+    inputId: 'au-neurodivergencia-input',
+    containerId: 'au-neurodivergencias-container',
+    hiddenInputId: 'au-neurodivergencias',
+    corClasse: 'bg-fuchsia-600',
+    nomeFuncaoRemover: 'removerNeurodivergenciaAutor',
+    nomeFuncaoEditar: 'editarNeurodivergenciaAutor',
+});
+
+// Instituições Frequentadas do Autor (grupo Escolaridade) — lista de
+// tags, mesma fábrica de Ocupações/Neurodivergências acima; sugestão
+// (datalist) vem do que já foi cadastrado no acervo, ver
+// extrairInstituicoesUnicas em utils.js/renderDropdowns em ui.js.
+const grupoInstituicoesAutor = criarGrupoDeTags({
+    inputId: 'au-instituicao-input',
+    containerId: 'au-instituicoes-container',
+    hiddenInputId: 'au-instituicoes',
+    corClasse: 'bg-cyan-600',
+    nomeFuncaoRemover: 'removerInstituicaoAutor',
+    nomeFuncaoEditar: 'editarInstituicaoAutor',
+});
+
 // ─── Fábrica de grupo de Pessoas (chip + papel) ────────────────
 // Variante de criarGrupoDeTags: guarda um array de objeto
 // { pessoaId, papeis } em vez de string simples — pessoaId referencia
@@ -827,6 +1031,7 @@ function criarGrupoDeAutoria({
     corClasse,
     nomeFuncaoRemover,
     nomeFuncaoAlterarPapel,
+    fonteOrigemId,
 }) {
     let itens = [];
 
@@ -834,9 +1039,27 @@ function criarGrupoDeAutoria({
         return db.autores.find((a) => a.id == autorId)?.nome || '(autor removido)';
     }
 
+    // Autor marcado "Este autor sou eu" (db.autores[].souEu) preenche a
+    // Fonte do texto com "Obra própria" — mas só se a Fonte ainda estiver
+    // vazia, então nunca sobrescreve o que a pessoa já digitou. Roda só
+    // aqui (adição manual de um chip), nunca em carregar(): reabrir um
+    // texto existente não pode mexer na Fonte dele.
+    function preencherFonteSeSouEu(autorId) {
+        if (!fonteOrigemId) return;
+        if (!db.autores.find((a) => a.id == autorId)?.souEu) return;
+        const el = document.getElementById(fonteOrigemId);
+        if (el && !el.value.trim()) el.value = FONTE_OBRA_PROPRIA;
+    }
+
     function adicionarPorId(autorId) {
         if (!itens.some((i) => i.autorId == autorId)) {
-            itens.push({ autorId, papel: AUTORIA_PAPEIS[0] });
+            itens.push({
+                autorId,
+                papel: AUTORIA_PAPEIS[0],
+                assinatura: ASSINATURAS_AUTORIA[0],
+                nomeLiterario: '',
+            });
+            preencherFonteSeSouEu(autorId);
             renderizar();
         }
     }
@@ -878,6 +1101,38 @@ function criarGrupoDeAutoria({
         renderizar();
     }
 
+    // Assinatura sob a qual ESTE texto foi publicado por este Autor:
+    // Ortônimo (nome próprio, padrão), Heterônimo ou Pseudônimo — ver
+    // ASSINATURAS_AUTORIA em utils.js. Trocar pra Ortônimo (ou pra um
+    // tipo diferente do nome já escolhido) limpa nomeLiterario — o nome
+    // certo pro tipo novo se escolhe de novo em alterarNomeLiterario.
+    function alterarAssinatura(autorId, assinatura) {
+        const item = itens.find((i) => i.autorId == autorId);
+        if (!item || !ASSINATURAS_AUTORIA.includes(assinatura)) return;
+        item.assinatura = assinatura;
+        item.nomeLiterario = '';
+        renderizar();
+    }
+
+    // Nome literário (Heterônimo/Pseudônimo, conforme a Assinatura do
+    // item) sob o qual ESTE texto foi publicado, dentre os cadastrados
+    // pro Autor com o tipo correspondente (db.autores[].nomesLiterarios
+    // — ver modal-autor.html/grupoNomesLiterariosAutor). O vínculo
+    // (autorId) não muda — só troca o nome exibido/exportado pra este
+    // texto (ver nomeAutoriaExibido em utils.js). Nome fora da lista
+    // atual do Autor pro tipo escolhido (ex.: removido do cadastro, ou
+    // cadastrado com outro tipo, depois de escolhido aqui) é ignorado,
+    // mesmo critério defensivo do resto do arquivo.
+    function alterarNomeLiterario(autorId, nomeLiterario) {
+        const item = itens.find((i) => i.autorId == autorId);
+        if (!item) return;
+        const nomesDoTipo = (db.autores.find((a) => a.id == autorId)?.nomesLiterarios || []).filter(
+            (n) => n.tipo === item.assinatura,
+        );
+        item.nomeLiterario = nomesDoTipo.some((n) => n.nome === nomeLiterario) ? nomeLiterario : '';
+        renderizar();
+    }
+
     function renderizar() {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -888,17 +1143,62 @@ function criarGrupoDeAutoria({
                     `<option value="${escapeHtml(p)}" ${i.papel === p ? 'selected' : ''}>${escapeHtml(p)}</option>`,
             ).join('');
 
+        const opcoesAssinatura = (i) =>
+            ASSINATURAS_AUTORIA.map(
+                (a) => `<option value="${a}" ${i.assinatura === a ? 'selected' : ''}>${a}</option>`,
+            ).join('');
+
+        const opcoesNomeLiterario = (i, nomesDoTipo) =>
+            `<option value="">(escolher)</option>` +
+            nomesDoTipo
+                .map(
+                    (n) =>
+                        `<option value="${escapeHtml(n.nome)}" ${i.nomeLiterario === n.nome ? 'selected' : ''}>${escapeHtml(n.nome)}</option>`,
+                )
+                .join('');
+
         container.innerHTML = itens
             .map((i) => {
                 const nome = nomeDe(i.autorId);
+                if (!ASSINATURAS_AUTORIA.includes(i.assinatura)) i.assinatura = ASSINATURAS_AUTORIA[0];
+                const nomesLiterariosDoAutor = db.autores.find((a) => a.id == i.autorId)?.nomesLiterarios || [];
+                const nomesDoTipo = nomesLiterariosDoAutor.filter((n) => n.tipo === i.assinatura);
+                // Nome literário escolhido antes, mas removido do cadastro
+                // do Autor (ou recadastrado com outro tipo) depois — volta
+                // a vazio (mesmo critério defensivo de alterarNomeLiterario
+                // acima).
+                if (i.nomeLiterario && !nomesDoTipo.some((n) => n.nome === i.nomeLiterario)) i.nomeLiterario = '';
+                // Seletor de nome literário só aparece quando a Assinatura
+                // não é Ortônimo — nome próprio não precisa de nome
+                // alternativo nenhum. Sem nome cadastrado pro tipo, mostra
+                // um aviso curto em vez de um select vazio (mesmo espírito
+                // do antigo "só aparece com Pseudônimos cadastrados").
+                const seletorNomeLiterario =
+                    i.assinatura === 'Ortônimo'
+                        ? ''
+                        : nomesDoTipo.length
+                          ? `<select data-id="${escapeHtml(String(i.autorId))}"
+                        onchange="alterarNomeLiterarioAutoria('${tabela}', this.dataset.id, this.value)"
+                        title="Nome literário usado neste texto"
+                        class="text-[9px] bg-white/20 rounded px-1 py-0 border-0 text-white select-chip-autoria">
+                        ${opcoesNomeLiterario(i, nomesDoTipo)}
+                    </select>`
+                          : `<span class="text-[9px] italic opacity-70 px-1" title="Cadastre em Editar Autor">sem ${i.assinatura.toLowerCase()} cadastrado</span>`;
                 return `
             <span class="relative ${corClasse} text-white text-[10px] pl-2 pr-1 py-1 rounded-full inline-flex items-center gap-1">
                 ${escapeHtml(nome)}
                 <select data-id="${escapeHtml(String(i.autorId))}"
                     onchange="${nomeFuncaoAlterarPapel}('${tabela}', this.dataset.id, this.value)"
-                    class="text-[9px] bg-white/20 rounded px-1 py-0 border-0 text-white [&>option]:text-black">
+                    class="text-[9px] bg-white/20 rounded px-1 py-0 border-0 text-white select-chip-autoria">
                     ${opcoesPapel(i)}
                 </select>
+                <select data-id="${escapeHtml(String(i.autorId))}"
+                    onchange="alterarAssinaturaAutoria('${tabela}', this.dataset.id, this.value)"
+                    title="Assinatura usada neste texto"
+                    class="text-[9px] bg-white/20 rounded px-1 py-0 border-0 text-white select-chip-autoria">
+                    ${opcoesAssinatura(i)}
+                </select>
+                ${seletorNomeLiterario}
                 <button type="button" data-id="${escapeHtml(String(i.autorId))}" onclick="${nomeFuncaoRemover}('${tabela}', this.dataset.id)" class="hover:text-red-200 font-bold ml-1">×</button>
             </span>`;
             })
@@ -916,11 +1216,12 @@ function criarGrupoDeAutoria({
     // automático do formulário, não digitação).
     function carregar(autoria) {
         itens = (Array.isArray(autoria) ? autoria : []).map((a) => {
-            if (a.autorId !== undefined)
-                return { autorId: a.autorId, papel: a.papel || AUTORIA_PAPEIS[0] };
+            const autorId = a.autorId !== undefined ? a.autorId : obterOuCriarAutorPorNome(a.nome).id;
             return {
-                autorId: obterOuCriarAutorPorNome(a.nome).id,
+                autorId,
                 papel: a.papel || AUTORIA_PAPEIS[0],
+                assinatura: ASSINATURAS_AUTORIA.includes(a.assinatura) ? a.assinatura : ASSINATURAS_AUTORIA[0],
+                nomeLiterario: a.nomeLiterario || '',
             };
         });
         renderizar();
@@ -930,7 +1231,17 @@ function criarGrupoDeAutoria({
         return itens;
     }
 
-    return { adicionar, remover, alterarPapel, renderizar, reset, carregar, obterItens };
+    return {
+        adicionar,
+        remover,
+        alterarPapel,
+        alterarAssinatura,
+        alterarNomeLiterario,
+        renderizar,
+        reset,
+        carregar,
+        obterItens,
+    };
 }
 
 const grupoPessoasPoema = criarGrupoDePessoas({
@@ -986,6 +1297,7 @@ const grupoAutoriaPoema = criarGrupoDeAutoria({
     corClasse: 'bg-indigo-600',
     nomeFuncaoRemover: 'removerAutoria',
     nomeFuncaoAlterarPapel: 'alterarPapelAutoria',
+    fonteOrigemId: 'p-fonte-origem',
 });
 const grupoAutoriaProsa = criarGrupoDeAutoria({
     tabela: 'prosas',
@@ -994,6 +1306,7 @@ const grupoAutoriaProsa = criarGrupoDeAutoria({
     corClasse: 'bg-indigo-600',
     nomeFuncaoRemover: 'removerAutoria',
     nomeFuncaoAlterarPapel: 'alterarPapelAutoria',
+    fonteOrigemId: 'pr-fonte-origem',
 });
 function grupoAutoria(tabela) {
     if (tabela === 'poemas') return grupoAutoriaPoema;
@@ -2628,6 +2941,7 @@ export function atualizarDatalist() {
     atualizarDatalistHipertextualidade('poemas');
     atualizarDatalistEpoca();
     atualizarDatalistIdioma();
+    atualizarDatalistFonte();
     atualizarDatalistEnvios();
     atualizarDatalistReconhecimentos();
 }
@@ -2663,6 +2977,27 @@ export function atualizarDatalistIdioma() {
         if (datalist) {
             datalist.innerHTML = valores.map((v) => `<option value="${escapeHtml(v)}">`).join('');
         }
+    });
+}
+
+// Fonte do texto (origem/edição) — Poemas + Prosas juntos, um
+// `<datalist>` por modal e por campo (mesmo padrão de
+// atualizarDatalistIdioma acima).
+export function atualizarDatalistFonte() {
+    const todos = [...db.poemas, ...(db.prosas || [])];
+    [
+        ['origem', ['sugestoes-fonte-origem', 'sugestoes-fonte-origem-prosa']],
+        ['edicao', ['sugestoes-fonte-edicao', 'sugestoes-fonte-edicao-prosa']],
+    ].forEach(([campo, ids]) => {
+        const valores = extrairFontesUnicas(todos, campo);
+        ids.forEach((id) => {
+            const datalist = document.getElementById(id);
+            if (datalist) {
+                datalist.innerHTML = valores
+                    .map((v) => `<option value="${escapeHtml(v)}">`)
+                    .join('');
+            }
+        });
     });
 }
 
@@ -3090,6 +3425,12 @@ export function removerAutoria(tabela, autorId) {
 export function alterarPapelAutoria(tabela, autorId, papel) {
     grupoAutoria(tabela).alterarPapel(autorId, papel);
 }
+export function alterarAssinaturaAutoria(tabela, autorId, assinatura) {
+    grupoAutoria(tabela).alterarAssinatura(autorId, assinatura);
+}
+export function alterarNomeLiterarioAutoria(tabela, autorId, nomeLiterario) {
+    grupoAutoria(tabela).alterarNomeLiterario(autorId, nomeLiterario);
+}
 export function renderizarAutoria(tabela) {
     grupoAutoria(tabela).renderizar();
 }
@@ -3189,6 +3530,139 @@ export function resetGeneroProsa() {
 }
 export function carregarGeneroProsa(generoStr) {
     grupoGeneroProsa.carregar(generoStr);
+}
+
+// ─── Ocupações do Autor ────────────────────────────────────────
+
+export function adicionarOcupacaoAutor(valor = null) {
+    grupoOcupacoesAutor.adicionar(valor);
+}
+export function removerOcupacaoAutor(ocupacao) {
+    grupoOcupacoesAutor.remover(ocupacao);
+}
+export function editarOcupacaoAutor(ocupacao) {
+    grupoOcupacoesAutor.editar(ocupacao);
+}
+export function renderizarOcupacoesAutor() {
+    grupoOcupacoesAutor.renderizar();
+}
+export function resetOcupacoesAutor() {
+    grupoOcupacoesAutor.reset();
+}
+export function carregarOcupacoesAutor(ocupacoesStr) {
+    grupoOcupacoesAutor.carregar(ocupacoesStr);
+}
+
+export function adicionarNomeLiterarioAutor(valor = null) {
+    grupoNomesLiterariosAutor.adicionar(valor);
+}
+export function removerNomeLiterarioAutor(nome) {
+    grupoNomesLiterariosAutor.remover(nome);
+}
+export function editarNomeLiterarioAutor(nome) {
+    grupoNomesLiterariosAutor.editar(nome);
+}
+export function alterarTipoNomeLiterarioAutor(nome, tipo) {
+    grupoNomesLiterariosAutor.alterarTipo(nome, tipo);
+}
+export function renderizarNomesLiterariosAutor() {
+    grupoNomesLiterariosAutor.renderizar();
+}
+export function resetNomesLiterariosAutor() {
+    grupoNomesLiterariosAutor.reset();
+}
+export function carregarNomesLiterariosAutor(nomesLiterarios) {
+    grupoNomesLiterariosAutor.carregar(nomesLiterarios);
+}
+
+// ─── Condições Clínicas do Autor ───────────────────────────────
+
+export function adicionarCondicaoClinicaAutor(valor = null) {
+    grupoCondicoesClinicasAutor.adicionar(valor);
+}
+export function removerCondicaoClinicaAutor(nome) {
+    grupoCondicoesClinicasAutor.remover(nome);
+}
+export function editarCondicaoClinicaAutor(nome) {
+    grupoCondicoesClinicasAutor.editar(nome);
+}
+export function alterarTipoCondicaoClinicaAutor(nome, tipo) {
+    grupoCondicoesClinicasAutor.alterarTipo(nome, tipo);
+}
+export function renderizarCondicoesClinicasAutor() {
+    grupoCondicoesClinicasAutor.renderizar();
+}
+export function resetCondicoesClinicasAutor() {
+    grupoCondicoesClinicasAutor.reset();
+}
+export function carregarCondicoesClinicasAutor(condicoesClinicas) {
+    grupoCondicoesClinicasAutor.carregar(condicoesClinicas);
+}
+
+// ─── Deficiências do Autor ─────────────────────────────────────
+
+export function adicionarDeficienciaAutor(valor = null) {
+    grupoDeficienciasAutor.adicionar(valor);
+}
+export function removerDeficienciaAutor(nome) {
+    grupoDeficienciasAutor.remover(nome);
+}
+export function editarDeficienciaAutor(nome) {
+    grupoDeficienciasAutor.editar(nome);
+}
+export function alterarTipoDeficienciaAutor(nome, tipo) {
+    grupoDeficienciasAutor.alterarTipo(nome, tipo);
+}
+export function renderizarDeficienciasAutor() {
+    grupoDeficienciasAutor.renderizar();
+}
+export function resetDeficienciasAutor() {
+    grupoDeficienciasAutor.reset();
+}
+export function carregarDeficienciasAutor(deficiencias) {
+    grupoDeficienciasAutor.carregar(deficiencias);
+}
+
+// ─── Neurodivergências do Autor ────────────────────────────────
+
+export function adicionarNeurodivergenciaAutor(valor = null) {
+    grupoNeurodivergenciasAutor.adicionar(valor);
+}
+export function removerNeurodivergenciaAutor(item) {
+    grupoNeurodivergenciasAutor.remover(item);
+}
+export function editarNeurodivergenciaAutor(item) {
+    grupoNeurodivergenciasAutor.editar(item);
+}
+export function renderizarNeurodivergenciasAutor() {
+    grupoNeurodivergenciasAutor.renderizar();
+}
+export function resetNeurodivergenciasAutor() {
+    grupoNeurodivergenciasAutor.reset();
+}
+export function carregarNeurodivergenciasAutor(valorStr) {
+    grupoNeurodivergenciasAutor.carregar(valorStr);
+}
+
+// ─── Instituições Frequentadas do Autor ────────────────────────
+
+export function adicionarInstituicaoAutor(valor = null) {
+    grupoInstituicoesAutor.adicionar(valor);
+}
+export function removerInstituicaoAutor(item) {
+    grupoInstituicoesAutor.remover(item);
+}
+export function editarInstituicaoAutor(item) {
+    grupoInstituicoesAutor.editar(item);
+}
+export function renderizarInstituicoesAutor() {
+    grupoInstituicoesAutor.renderizar();
+}
+export function resetInstituicoesAutor() {
+    grupoInstituicoesAutor.reset();
+}
+export function carregarInstituicoesAutor(valorStr) {
+    grupoInstituicoesAutor.carregar(valorStr);
 }
 
 export function initEditor() {

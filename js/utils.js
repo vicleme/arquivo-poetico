@@ -1093,6 +1093,357 @@ export function extrairNomesLojasUnicos(livros) {
     return Array.from(nomes).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
+// Recebe o array db.autores e retorna todas as Nacionalidades já
+// usadas, sem repetição e ordenadas — mesmo padrão de
+// extrairFasesUnicas/extrairNomesLojasUnicos acima, texto livre com
+// sugestão em vez de lista fechada (uma lista fechada de países não dá
+// conta de "luso-brasileiro", "português", etc.).
+export function extrairNacionalidadesUnicas(autores) {
+    const nacionalidades = new Set();
+    (autores || []).forEach((a) => {
+        if (a.nacionalidade && a.nacionalidade.trim()) nacionalidades.add(a.nacionalidade.trim());
+    });
+    return Array.from(nacionalidades).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// ─── Dados demográficos do Autor ────────────────────────────────
+// SEXO: característica física/biológica — lista FECHADA, porque as
+// categorias reais são poucas e estáveis (diferente de Gênero, ver
+// abaixo). Intersexo entra aqui, não em Gênero: é uma variação das
+// características sexuais do corpo, não uma identidade. Sem opção
+// "Não informado" própria — o `<select>` já nasce com opção vazia
+// ("Não especificado", ver modal-autor.html), mesmo padrão de campo
+// nunca preenchido usado no resto do projeto (ex. Grafia, `utils.js`).
+export const SEXOS_AUTOR = ['Feminino', 'Masculino', 'Intersexo'];
+
+// GÊNERO: identidade autodeclarada — de propósito texto livre com
+// sugestão (mesmo raciocínio de IDIOMAS_SUGERIDOS acima: a lista real
+// de identidades de gênero não tem teto fechado, e fechar decepa
+// qualquer identidade fora das poucas previstas). GENEROS_SUGERIDOS é
+// só a semente do datalist (ver extrairGenerosAutorUnicos abaixo, que
+// soma isso ao que já foi digitado no acervo).
+export const GENEROS_SUGERIDOS = ['Mulher', 'Homem', 'Não-binário', 'Agênero', 'Genderfluid'];
+
+// IDENTIDADE CIS/TRANS: campo PRÓPRIO, separado do Gênero acima —
+// revisão de uma decisão anterior (ver decisões.md). A ideia original
+// era não ter esse campo e confiar em quem cadastra escrever "Mulher
+// trans"/"Homem trans" direto no Gênero, mas o Victor notou o
+// problema: a maioria das pessoas trans se descreve simplesmente como
+// "mulher"/"homem" no dia a dia — documentar que alguém é trans quase
+// sempre vem de uma pesquisa biográfica à parte (biografia, entrevista,
+// estudo acadêmico), não de como a pessoa mesma se rotula. Um campo à
+// parte captura essa informação pesquisada sem depender de ninguém
+// lembrar de qualificar o Gênero.
+// Lista fechada pequena de propósito — "Não se aplica" cobre o caso de
+// quem cataloga julgar que a chave cis/trans não encaixa bem (ex.:
+// pessoa intersexo, ou não-binária que rejeita esse enquadramento
+// binário). Sem "Não informado"/"Não documentado" própria — vazio já é
+// esse estado, mesmo padrão de SEXOS_AUTOR/CORES_RACA_AUTOR.
+// Importante: vazio NÃO bloqueia a classificação de
+// 'cis-heteronormativo' em grupoSexualGenero (abaixo) — só
+// "Transgênero"/"Não se aplica" force pra 'queer'. Cis é o padrão
+// não-marcado, raramente documentado explicitamente; só a exceção
+// (pessoa trans) costuma estar registrada. Exigir "Cisgênero" escrito
+// pra cada Autor jogaria a maioria do acervo em "Não informado" só por
+// ninguém ter escrito o óbvio.
+export const IDENTIDADES_CIS_TRANS = ['Cisgênero', 'Transgênero', 'Não se aplica'];
+
+// ORIENTAÇÃO SEXUAL: mesmo espírito de Gênero — texto livre com
+// sugestão, não lista fechada. Gay/Lésbica ficam como sugestões
+// separadas (não um "Homossexual" genérico) — respeitam o termo que a
+// própria pessoa costuma usar pra se descrever.
+export const ORIENTACOES_SUGERIDAS = ['Heterossexual', 'Gay', 'Lésbica', 'Bissexual', 'Pansexual', 'Assexual'];
+
+// COR/RAÇA: lista fechada nos moldes do IBGE (Branca/Preta/Parda/
+// Amarela/Indígena). Sem "Não informado" própria, mesmo motivo de
+// SEXOS_AUTOR acima — o `<select>` já nasce com opção vazia.
+export const CORES_RACA_AUTOR = ['Branca', 'Preta', 'Parda', 'Amarela', 'Indígena'];
+
+// extrairGenerosAutorUnicos/extrairOrientacoesUnicas: mesmo padrão de
+// extrairIdiomasUnicos (utils.js) — semente (GENEROS_SUGERIDOS/
+// ORIENTACOES_SUGERIDAS) somada ao que já foi digitado no acervo,
+// nunca lista fechada. Nome "...AutorUnicos" (não só "extrairGenerosUnicos")
+// de propósito: já existe extrairGenerosUnicos(prosas) mais abaixo,
+// pro Gênero LITERÁRIO da Prosa (Cartas, Ensaios...) — campo homônimo,
+// conceito totalmente diferente (gênero de PESSOA aqui).
+export function extrairGenerosAutorUnicos(autores) {
+    const generos = new Set(GENEROS_SUGERIDOS);
+    (autores || []).forEach((a) => {
+        if (a.genero && a.genero.trim()) generos.add(a.genero.trim());
+    });
+    return Array.from(generos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+export function extrairOrientacoesUnicas(autores) {
+    const orientacoes = new Set(ORIENTACOES_SUGERIDAS);
+    (autores || []).forEach((a) => {
+        if (a.orientacaoSexual && a.orientacaoSexual.trim()) orientacoes.add(a.orientacaoSexual.trim());
+    });
+    return Array.from(orientacoes).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// RELIGIÃO: mesmo espírito de Gênero/Orientação sexual — texto livre
+// com sugestão, não lista fechada (a filiação/tradição religiosa real
+// não cabe num teto fixo, e sincretismo é comum — ex. "Católico e
+// espírita").
+export const RELIGIOES_SUGERIDAS = [
+    'Catolicismo',
+    'Protestantismo/Evangelismo',
+    'Espiritismo',
+    'Candomblé/Umbanda',
+    'Ateísmo/Agnosticismo',
+    'Judaísmo',
+    'Islamismo',
+];
+
+export function extrairReligioesUnicas(autores) {
+    const religioes = new Set(RELIGIOES_SUGERIDAS);
+    (autores || []).forEach((a) => {
+        if (a.religiao && a.religiao.trim()) religioes.add(a.religiao.trim());
+    });
+    return Array.from(religioes).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// CONDIÇÕES CLÍNICAS: lista de tags, cada uma tipificada entre
+// dimensão Física e Mental — mesmo padrão de TIPOS_NOME_LITERARIO
+// (par pequeno e fechado, ver criarGrupoDeTagsComTipo em editor.js).
+// Neurodivergência fica como campo à parte (NEURODIVERGENCIAS, mais
+// abaixo) mesmo sendo, tecnicamente, uma condição — a distinção que
+// Vi pediu foi entre o que é neurodivergência (variação neurológica,
+// não em si uma "condição" no sentido clínico/patológico) e o que é
+// condição clínica de fato (diagnóstico médico, físico ou mental).
+export const DIMENSOES_CONDICAO_CLINICA = ['Física', 'Mental'];
+
+// DEFICIÊNCIAS: tags tipificadas, mesmo padrão de Condições Clínicas
+// (criarGrupoDeTagsComTipo em editor.js) — cada tag é a deficiência
+// ESPECÍFICA (ex.: "Cegueira", "Surdez parcial", "Paralisia do braço
+// esquerdo"), e o tipo escolhido junto dela a enquadra numa categoria
+// ampla, seguindo a classificação usual de deficiência: Física,
+// Auditiva, Visual, Intelectual, Mental/psicossocial e Múltipla (mais
+// de uma dimensão ao mesmo tempo). Campo à parte de Condições Clínicas
+// e de Neurodivergência — deficiência tem enquadramento próprio
+// (barreira/acessibilidade), não é sinônimo de diagnóstico. Tipo padrão
+// ao adicionar é o primeiro da lista (Física); o usuário troca no chip.
+export const TIPOS_DEFICIENCIA = [
+    'Física',
+    'Auditiva',
+    'Visual',
+    'Intelectual',
+    'Mental/psicossocial',
+    'Múltipla',
+];
+
+// NEURODIVERGÊNCIA: lista simples de tags, sem tipo — mesmo padrão de
+// Ocupações do Autor (texto livre, sem semente fixa: os termos que a
+// pessoa/pesquisa usa variam demais pra valer a pena pré-popular).
+// ESCOLARIDADE: Grau acadêmico é lista FECHADA (GRAUS_ACADEMICOS_AUTOR
+// abaixo), mesmo espírito de CORES_RACA_AUTOR/CLASSES_SOCIAIS_AUTOR —
+// níveis padronizados permitem agrupar e comparar Autores nas
+// Estatísticas. "Autodidata/Educação particular" cobre quem se formou
+// fora da escola (preceptores, tutores, leitura por conta própria) —
+// comum entre autores históricos — e "Sem escolarização formal" fica
+// pra quem não teve nenhum dos dois (ou não há como saber). Sem
+// "Não informado" própria: o campo vazio já é esse estado.
+// Instituições Frequentadas é uma LISTA (mesmo padrão de tags de
+// Ocupações), não um valor único — alguém pode ter passado por mais de
+// uma instituição — com sugestão vinda do que já foi cadastrado no
+// acervo (ver extrairInstituicoesUnicas abaixo), não uma semente fixa
+// (nomes de instituição não têm teto fechado, mesmo raciocínio de
+// Nacionalidade).
+export const GRAUS_ACADEMICOS_AUTOR = [
+    'Sem escolarização formal',
+    'Autodidata/Educação particular',
+    'Ensino Fundamental',
+    'Ensino Médio',
+    'Ensino Superior incompleto',
+    'Ensino Superior completo',
+    'Pós-graduação/Mestrado',
+    'Doutorado',
+    'Pós-doutorado',
+];
+
+// Instituições Frequentadas é salva como string separada por vírgula
+// (mesmo formato de Ocupações do Autor, ver grupoOcupacoesAutor em
+// editor.js) — por isso o split aqui, diferente de Condições Clínicas
+// (que já chega como array de objetos).
+export function extrairInstituicoesUnicas(autores) {
+    const instituicoes = new Set();
+    (autores || []).forEach((a) => {
+        (a.instituicoes || '')
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .forEach((i) => instituicoes.add(i));
+    });
+    return Array.from(instituicoes).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// CLASSE SOCIAL: lista FECHADA, mesmo espírito de CORES_RACA_AUTOR —
+// categorias historicamente amplas o bastante pra cobrir do Brasil
+// colonial/imperial (daí "Escravizado/liberto") até hoje, sem um teto
+// que precise ser reaberto a cada autor novo. Sem "Não informado"
+// própria (mesmo padrão dos outros `<select>` de Autor) — vazio já é
+// esse estado.
+export const CLASSES_SOCIAIS_AUTOR = [
+    'Escravizado/liberto',
+    'Livre pobre',
+    'Artesão/classe média urbana',
+    'Elite/proprietário de terras',
+];
+
+// Grupos colapsáveis do modal de Autor (modal-autor.html, `<details
+// data-grupo-autor="...">`): quais têm ALGO preenchido no Autor dado —
+// usado por editarAutor (forms.js) pra abrir sozinhos só os grupos que
+// já têm dados, e deixar fechados os vazios. Função pura, sem DOM.
+// Aceita `condicoesClinicas` tanto como array quanto como string legada.
+export function autorGruposComDados(autor) {
+    const a = autor || {};
+    const tem = (v) => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.trim() !== '' : !!v);
+    return {
+        identidade: [a.sexo, a.corRaca, a.genero, a.orientacaoSexual, a.identidadeCisTrans, a.religiao].some(tem),
+        saude: [a.neurodivergencias, a.condicoesClinicas, a.deficiencias].some(tem),
+        formacao: [a.classeSocial, a.grauAcademico, a.instituicoes, a.ocupacoes].some(tem),
+    };
+}
+
+// SIGNOS_ZODIACO: 12 signos com a data de início de cada um (dia/mês em
+// que o sol entra no signo) — datas fixas do zodíaco tropical ocidental
+// (as mesmas usadas popularmente no Brasil), suficiente pro uso
+// informal deste campo.
+const SIGNOS_ZODIACO = [
+    { nome: 'Capricórnio', inicio: [1, 1] },
+    { nome: 'Aquário', inicio: [1, 20] },
+    { nome: 'Peixes', inicio: [2, 19] },
+    { nome: 'Áries', inicio: [3, 21] },
+    { nome: 'Touro', inicio: [4, 20] },
+    { nome: 'Gêmeos', inicio: [5, 21] },
+    { nome: 'Câncer', inicio: [6, 21] },
+    { nome: 'Leão', inicio: [7, 23] },
+    { nome: 'Virgem', inicio: [8, 23] },
+    { nome: 'Libra', inicio: [9, 23] },
+    { nome: 'Escorpião', inicio: [10, 23] },
+    { nome: 'Sagitário', inicio: [11, 22] },
+    { nome: 'Capricórnio', inicio: [12, 22] },
+];
+
+// Signo do zodíaco a partir da data de Nascimento (data parcial —
+// { dia, mes, ano }, ver lerDataParcial acima). SEMPRE precisa de
+// dia E mês — diferente de Idade (abaixo), não dá pra aproximar um
+// signo só com o ano: sem os dois, devolve null (mostra "—" na
+// visualização). Campo puramente DERIVADO, nunca gravado — mesmo
+// espírito de calcularAnoDominioPublico/situacaoDominioPublico acima:
+// corrigir o Nascimento no cadastro corrige a leitura em todo lugar.
+export function signoDoZodiaco(nascimento) {
+    const { dia, mes } = nascimento || {};
+    if (!dia || !mes) return null;
+    // Percorre de trás pra frente (Sagitário → Capricórnio-início-de-
+    // janeiro) achando o primeiro início de signo <= a data — o array
+    // já está em ordem cronológica dentro do ano, com Capricórnio
+    // repetido nas duas pontas (1º de jan. e 22 de dez.) de propósito,
+    // pra cobrir o signo que atravessa a virada do ano sem tratamento
+    // especial.
+    for (let i = SIGNOS_ZODIACO.length - 1; i >= 0; i--) {
+        const [m, d] = SIGNOS_ZODIACO[i].inicio;
+        if (mes > m || (mes === m && dia >= d)) return SIGNOS_ZODIACO[i].nome;
+    }
+    return SIGNOS_ZODIACO[0].nome; // inalcançável na prática (Capricórnio de 1º de jan. já cobre)
+}
+
+// Idade do Autor a partir de Nascimento/Óbito (datas parciais). Conta
+// até hoje se o Autor não tem Óbito cadastrado, ou até o Óbito se
+// tiver (idade para de contar na morte, não continua envelhecendo) —
+// mesmo espírito de referência de calcularAnoDominioPublico acima, só
+// que aqui a referência muda: hoje pra quem está vivo, óbito pra quem
+// já faleceu.
+//
+// Precisão: com dia+mês+ano completos dos dois lados, a idade é exata
+// (considera se o aniversário do ano já passou). Faltando dia ou mês
+// de qualquer um dos dois lados (comum em registros antigos — às
+// vezes só o ano é conhecido), a idade vira APROXIMADA: só a diferença
+// de anos-calendário, sem ajustar por aniversário ainda não completado
+// no ano. `aproximada: true` sinaliza isso pra quem for exibir (ex.:
+// "≈ 42 anos" em vez de "42 anos") — decisão do Victor: melhor mostrar
+// aproximado do que nada, mas sinalizado como tal.
+export function idadeAutor(autor, hoje = new Date()) {
+    const nasc = autor?.nascimento;
+    if (!nasc || !nasc.ano) return null; // sem ano de nascimento, nem aproximado dá
+
+    const obito = autor?.obito;
+    const referenciaEhObito = !!(obito && obito.ano);
+    const refAno = referenciaEhObito ? obito.ano : hoje.getFullYear();
+    const refMes = referenciaEhObito ? obito.mes : hoje.getMonth() + 1;
+    const refDia = referenciaEhObito ? obito.dia : hoje.getDate();
+
+    const temDataCompleta = nasc.dia && nasc.mes && ((referenciaEhObito && obito.dia && obito.mes) || !referenciaEhObito);
+
+    let anos = refAno - nasc.ano;
+    if (temDataCompleta) {
+        // Ajusta se o "aniversário" ainda não chegou na data de
+        // referência daquele ano (ex.: nasceu em dezembro, óbito/hoje
+        // em março do mesmo ano-diferença — ainda não fez aniversário).
+        if (refMes < nasc.mes || (refMes === nasc.mes && refDia < nasc.dia)) anos--;
+    }
+
+    if (anos < 0) return null; // dado inconsistente (ex. só os anos, invertidos) — não exibe
+    return { anos, aproximada: !temDataCompleta };
+}
+
+// "Grupo sexual e de gênero" — classificação AGREGADA (Cis-
+// heteronormativo / Queer / Não informado), pensada pras Estatísticas,
+// não um campo próprio: é sempre DERIVADA de Sexo + Gênero + Orientação
+// sexual + Identidade cis/trans, igual Idade/Signo/Domínio público
+// acima — corrigir qualquer um dos quatro campos do Autor corrige a
+// leitura aqui automaticamente, sem precisar manter um quinto campo em
+// sincronia manual.
+//
+// Regra (decisão do Victor: se Sexo, Gênero ou Orientação estiver
+// vazio, cai em 'nao-informado' — nunca presume que dado ausente é
+// maioria/cis-hétero, o que enviesaria as Estatísticas a favor da
+// norma por pura falta de preenchimento):
+// - Orientação diferente de "Heterossexual" → 'queer' (qualquer
+//   orientação não-hétero já está fora da heteronormatividade, por
+//   definição).
+// - Sexo "Intersexo" → 'queer' (corpo intersexo já está fora do
+//   binário cis-hétero-normativo por definição, independente de
+//   Gênero/Orientação).
+// - Identidade cis/trans "Transgênero" ou "Não se aplica" → 'queer'.
+//   Identidade "Cisgênero" ou vazia (não documentada) NÃO força nada
+//   sozinha — cai pra regra de Gênero/Sexo abaixo. Vazio não é tratado
+//   como "Cisgênero confirmado": é só ausência de uma exceção
+//   documentada (ver IDENTIDADES_CIS_TRANS acima pro raciocínio
+//   completo — cis é o padrão não-marcado, raramente escrito à toa).
+// - Gênero contendo "trans" (ex. "Mulher trans") → 'queer' — rede de
+//   segurança pra quando a Identidade cis/trans ainda não foi
+//   preenchida mas o texto livre do Gênero já entrega a informação.
+// - Gênero que não é exatamente "mulher" nem "homem" (não-binário,
+//   agênero, genderfluid, outro) → 'queer'.
+// - Sobrou só o caso Sexo Feminino/Gênero "mulher" (ou Masculino/
+//   "homem") com Orientação Heterossexual e Identidade cis/trans não
+//   forçando 'queer' → 'cis-heteronormativo'.
+export function grupoSexualGenero(autor) {
+    const sexo = (autor?.sexo || '').trim();
+    const genero = (autor?.genero || '').trim().toLowerCase();
+    const orientacao = (autor?.orientacaoSexual || '').trim();
+    const identidadeCisTrans = (autor?.identidadeCisTrans || '').trim();
+
+    if (!sexo || !genero || !orientacao) return 'nao-informado';
+
+    if (orientacao.toLowerCase() !== 'heterossexual') return 'queer';
+    if (sexo === 'Intersexo') return 'queer';
+    if (identidadeCisTrans === 'Transgênero' || identidadeCisTrans === 'Não se aplica') return 'queer';
+    if (genero.includes('trans')) return 'queer';
+
+    const generoBateComSexo =
+        (sexo === 'Feminino' && genero === 'mulher') || (sexo === 'Masculino' && genero === 'homem');
+    return generoBateComSexo ? 'cis-heteronormativo' : 'queer';
+}
+
+export const ROTULOS_GRUPO_SEXUAL_GENERO = {
+    'cis-heteronormativo': 'Cis-heteronormativo',
+    queer: 'Queer',
+    'nao-informado': 'Não informado',
+};
+
 // ─── Datas parciais (Escrita / Primeira Publicação) ────────────
 // Flexíveis: cada campo (dia/mes/ano/hora/minuto) é opcional e
 // independente — dá pra saber só o ano, só o mês e ano, etc.
@@ -1151,6 +1502,73 @@ export function formatarDataParcial(dataObj) {
 // Extrai o ano (número) de uma data parcial, se houver.
 export function anoDeDataParcial(dataObj) {
     return dataObj && dataObj.ano ? dataObj.ano : null;
+}
+
+// Ano a partir do qual uma obra entra em domínio público no Brasil: 70
+// anos após a morte do autor, contados a partir de 1º de janeiro do
+// ano seguinte ao falecimento (Lei 9.610/98, art. 41) — então autor
+// falecido em Y protege até 31/12/(Y+70), e o domínio público começa
+// em (Y+71). Puramente informativo (ver renderAutores em
+// render-listas.js e au-dominio-publico em forms.js): não bloqueia
+// nada, e não considera prazos de outros países nem proteção própria
+// de edição/tradução/notas críticas (ver observação sobre isso na
+// conversa de referência da Importação de Domínio Público).
+export function calcularAnoDominioPublico(obito) {
+    const ano = anoDeDataParcial(obito);
+    return ano ? ano + 71 : null;
+}
+
+// Situação de domínio público de um Autor (Lei 9.610/98, art. 41 —
+// mesma conta de calcularAnoDominioPublico). Sempre DERIVADA do óbito
+// do cadastro de Autor, nunca gravada no texto: corrigir o óbito no
+// cadastro corrige a leitura em todo lugar. Informativa — não cobre
+// proteção própria de edição/tradução/notas críticas.
+export function situacaoDominioPublico(autor, anoAtual = new Date().getFullYear()) {
+    const desde = calcularAnoDominioPublico(autor?.obito);
+    if (desde == null) return { estado: 'sem-obito', desde: null };
+    return { estado: desde <= anoAtual ? 'livre' : 'protegido', desde };
+}
+
+export function rotuloDominioPublico(sit) {
+    if (sit.estado === 'livre') return `domínio público desde ${sit.desde}`;
+    if (sit.estado === 'protegido') return `ainda protegido até ${sit.desde - 1}`;
+    return 'ano de óbito não informado';
+}
+
+// Grupo "Fonte" de um Poema/Prosa (`item.fonteTexto`:
+// { origem, edicao, link, conferido, grafia }) + a situação de domínio
+// público de cada Autor vinculado que tenha óbito cadastrado. Devolve
+// pares { rotulo, valor } prontos pra visualização e exportação — lista
+// vazia quando não há nada a mostrar (texto próprio sem Fonte preenchida:
+// o Autor "próprio" não tem óbito, então não gera linha).
+export function linhasFonteTexto(item, autoresCadastro = [], anoAtual = new Date().getFullYear()) {
+    const linhas = [];
+    const f = item?.fonteTexto;
+    if (f) {
+        if ((f.origem || '').trim()) linhas.push({ rotulo: 'Fonte', valor: f.origem.trim() });
+        if ((f.edicao || '').trim()) linhas.push({ rotulo: 'Edição', valor: f.edicao.trim() });
+        if ((f.link || '').trim()) linhas.push({ rotulo: 'Link da fonte', valor: f.link.trim() });
+        // Vazio = nunca definido, não mostra linha. Qualquer valor real
+        // (inclusive GRAFIA_ATUAL, "Atual" escolhido de propósito) mostra
+        // o rótulo de OPCOES_GRAFIA, não o valor cru do enum.
+        if ((f.grafia || '').trim()) {
+            const opcaoGrafia = OPCOES_GRAFIA.find((o) => o.valor === f.grafia);
+            linhas.push({ rotulo: 'Grafia', valor: opcaoGrafia ? opcaoGrafia.rotulo : f.grafia.trim() });
+        }
+        // Obra própria não tem "edição de origem" pra conferir.
+        if (!ehObraPropria(f)) {
+            linhas.push({ rotulo: 'Texto conferido', valor: f.conferido ? 'sim' : 'não' });
+        }
+    }
+    paresAutoria(item, autoresCadastro).forEach(({ autor }) => {
+        const sit = situacaoDominioPublico(autor, anoAtual);
+        if (sit.estado === 'sem-obito') return;
+        linhas.push({
+            rotulo: 'Domínio público',
+            valor: `${autor.nome} — ${rotuloDominioPublico(sit)} (estimativa informativa)`,
+        });
+    });
+    return linhas;
 }
 
 // Reduz uma data parcial a um instante (timestamp), preenchendo os
@@ -1720,7 +2138,7 @@ function contemPalavraInteira(texto, termo) {
 
 // Compara um valor de campo já normalizado com um termo já normalizado,
 // respeitando o interruptor de palavra inteira.
-function valorBateTermo(valorNormalizado, termoNormalizado, palavraInteira) {
+export function valorBateTermo(valorNormalizado, termoNormalizado, palavraInteira) {
     return palavraInteira
         ? contemPalavraInteira(valorNormalizado, termoNormalizado)
         : valorNormalizado.includes(termoNormalizado);
@@ -1796,6 +2214,11 @@ const CAMPOS_ATRIBUTO = {
     referencias: '_buscaReferenciasExternas',
     reconhecimento: '_buscaReconhecimentos',
     reconhecimentos: '_buscaReconhecimentos',
+    // Grupo Fonte do texto (item.fonteTexto — ver decorarCamposBusca em
+    // render-listas.js): fonte junta origem/edição/link; grafia busca
+    // pelo rótulo da tradição ortográfica (Etimológica/Quinhentista).
+    fonte: '_buscaFonte',
+    grafia: '_buscaGrafia',
     // ID do Sistema (coluna 'idSistema' em colunas.js, valor cru p.id) —
     // prefixo só de consulta direta, sem entrar em camposGerais (mesmo
     // tratamento de idioma/autoavaliacao/etc. abaixo): é identificador
@@ -1851,6 +2274,8 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaEcos: 'eco',
     _buscaReferenciasExternas: 'referencia',
     _buscaReconhecimentos: 'reconhecimento',
+    _buscaFonte: 'fonte',
+    _buscaGrafia: 'grafia',
     id: 'id',
 };
 
@@ -1887,7 +2312,13 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
 //      secao:"Fragmentos do Fim"   → só quem está dentro dessa seção
 //      sensivel:*                  → só quem tem Conteúdo Sensível preenchido
 //      -sensivel:*                 → só quem NÃO tem Conteúdo Sensível preenchido
-function parseConsultaBusca(query) {
+//
+// `mapaCampos` é a tabela "nome do prefixo → chave do item" usada pra
+// reconhecer `campo:`; o padrão é CAMPOS_ATRIBUTO (Poemas/Prosas). A aba
+// Autores passa a sua própria (ver busca-autores.js), pra os dois não se
+// misturarem: um prefixo que não existe no mapa recebido vira termo
+// solto, como sempre foi.
+export function parseConsultaBusca(query, mapaCampos = CAMPOS_ATRIBUTO) {
     // Cada match é, opcionalmente, um prefixo "campo:" seguido de uma
     // frase entre aspas ou uma palavra solta, com "-" opcional na frente
     // pra excluir — assim "frase exata" e "campo:"frase exata"" mantêm
@@ -1912,8 +2343,8 @@ function parseConsultaBusca(query) {
 
         let campo = null;
         const casouCampo = resto.match(/^([a-zA-Zà-úÀ-Ú]+):([\s\S]*)$/);
-        if (casouCampo && CAMPOS_ATRIBUTO[normalizarBusca(casouCampo[1])]) {
-            campo = CAMPOS_ATRIBUTO[normalizarBusca(casouCampo[1])];
+        if (casouCampo && mapaCampos[normalizarBusca(casouCampo[1])]) {
+            campo = mapaCampos[normalizarBusca(casouCampo[1])];
             resto = casouCampo[2];
         }
 
@@ -2290,6 +2721,26 @@ export function iniciaisPapeisPessoa(papeis) {
 // migrarAutoria/obterOuCriarAutorPorNome em db.js).
 export const AUTORIA_PAPEIS = ['Autor', 'Coautor'];
 
+// Assinatura sob a qual o texto foi publicado, por vínculo de Autoria
+// (item.autoria[].assinatura) — Ortônimo (nome próprio do Autor,
+// padrão), Heterônimo (identidade literária com voz/biografia próprias
+// por trás, ex.: Fernando Pessoa → Álvaro de Campos/Ricardo Reis/
+// Alberto Caeiro) ou Pseudônimo (só um nome diferente de assinatura,
+// sem identidade própria por trás — a distinção é do Victor, não
+// universal na crítica literária, mas separa os dois casos que a spec
+// original conflava). Só Heterônimo/Pseudônimo carregam
+// item.autoria[].nomeLiterario (ver criarGrupoDeAutoria em editor.js);
+// trocar pra Ortônimo limpa esse campo. Ver TIPOS_NOME_LITERARIO pro
+// cadastro central de nomes por Autor que alimenta o seletor.
+export const ASSINATURAS_AUTORIA = ['Ortônimo', 'Heterônimo', 'Pseudônimo'];
+
+// Tipos aceitos no cadastro central de nomes literários do Autor
+// (db.autores[].nomesLiterarios[].tipo — ver modal-autor.html/
+// criarGrupoDeNomesLiterariosAutor em editor.js). Mesmo vocabulário de
+// ASSINATURAS_AUTORIA, sem 'Ortônimo': o nome próprio já é o campo
+// `nome` do Autor, não entra nesse cadastro à parte.
+export const TIPOS_NOME_LITERARIO = ['Heterônimo', 'Pseudônimo'];
+
 // Pares (Autor, papel) de um item (poema/prosa) — resolve
 // item.autoria → cada vínculo { autorId, papel } → o Autor
 // correspondente no cadastro central, mesmo padrão de paresGrupoPessoa
@@ -2306,9 +2757,31 @@ export function paresAutoria(item, autoresCadastro = []) {
     const pares = [];
     item.autoria.forEach((v) => {
         const autor = porId.get(v.autorId);
-        if (autor) pares.push({ autor, papel: v.papel });
+        if (autor)
+            pares.push({
+                autor,
+                papel: v.papel,
+                assinatura: ASSINATURAS_AUTORIA.includes(v.assinatura) ? v.assinatura : ASSINATURAS_AUTORIA[0],
+                nomeLiterario: v.nomeLiterario || '',
+            });
     });
     return pares;
+}
+
+// Nome a exibir pra um par de Autoria: o nome literário escolhido pra
+// ESTE texto quando a Assinatura é Heterônimo/Pseudônimo
+// (item.autoria[].nomeLiterario — precisa estar em
+// db.autores[].nomesLiterarios daquele Autor, com o tipo batendo com a
+// Assinatura, pra ser oferecido no select — ver criarGrupoDeAutoria em
+// editor.js), ou o nome do próprio Autor em qualquer outro caso
+// (Assinatura Ortônimo, ou nome vazio/inválido). O vínculo continua
+// sendo com o Autor (autorId) — a Assinatura só troca o nome mostrado/
+// exportado, nunca o autorId, então Domínio público, "sou eu" e
+// estatísticas por Autor continuam resolvendo pelo cadastro central
+// normalmente (um único Autor concentra as estatísticas de todos os
+// heterônimos/pseudônimos dele).
+export function nomeAutoriaExibido({ autor, assinatura, nomeLiterario }) {
+    return (assinatura && assinatura !== 'Ortônimo' && nomeLiterario) || autor.nome;
 }
 
 // IDIOMA: campo simples em Poema/Prosa (item 9 do plano de schema),
@@ -2337,6 +2810,126 @@ export function extrairIdiomasUnicos(itens) {
         if (item.idioma) idiomas.add(item.idioma);
     });
     return Array.from(idiomas).sort();
+}
+
+// ─── Fonte do texto ────────────────────────────────────────────
+// Valor de `fonteTexto.origem` pra texto do próprio acervo (obra
+// própria). Preenchê-lo é o que faz o campo "Fonte" contar como
+// preenchido na coluna "Campos Preenchidos" (ver verificacoesDeCampos
+// em exportar-md.js) sem distorcer a proporção dos poemas do autor.
+export const FONTE_OBRA_PROPRIA = 'Obra própria';
+
+// Semente do datalist de Fonte, pra não começar vazio (mesmo padrão de
+// IDIOMAS_SUGERIDOS). Só nomes de fontes públicas conhecidas — o que a
+// pessoa digitar depois entra por extrairFontesUnicas.
+const FONTES_SUGERIDAS = [
+    FONTE_OBRA_PROPRIA,
+    'Wikisource',
+    'Portal Domínio Público',
+    'Projeto Gutenberg',
+    'Biblioteca Nacional Digital',
+];
+
+export function ehObraPropria(fonteTexto) {
+    return (fonteTexto?.origem || '').trim().toLowerCase() === FONTE_OBRA_PROPRIA.toLowerCase();
+}
+
+// `fonteTexto.grafia`: enum curto sobre a ortografia do texto
+// transcrito. Três estados, não dois: `''` (nunca definido — campo
+// nunca tocado), `GRAFIA_ATUAL` (marcado explicitamente como atual) ou
+// uma tradição de grafia antiga nomeada. A distinção entre os dois
+// primeiros importa pra `lerFonteTexto`/`campos-preenchiveis.js`
+// saberem se o grupo Fonte inteiro deve virar `null` (nada preenchido,
+// nem Grafia) ou ser mantido (usuário abriu o select e confirmou
+// "Atual (padrão)" de propósito, mesmo sem mexer em mais nada) — ver
+// discussão registrada em `manutencao/decisoes.md`. Existe pra um
+// consumidor real: a Sonoridade divide sílabas por regras atuais, e em
+// grafia antiga ("crystalinas", "thuribulos", ou o português
+// quinhentista de Camões) a contagem e a tônica saem erradas em
+// silêncio. Com o dado gravado, a Sonoridade pode avisar em vez de
+// mostrar um número errado (ver ehGrafiaAntiga/
+// atualizarAvisoGrafiaSonoridade em forms.js — o aviso dispara só pras
+// tradições antigas, não pra "Atual" nem pro vazio). Não conta em
+// "Campos Preenchidos" (verificacoesDeCampos, exportar-md.js) nem tem
+// coluna ou Estatísticas própria, como o resto do grupo Fonte.
+//
+// Duas tradições antigas nomeadas por ora — as que já apareceram no
+// plano de pacotes da Biblioteca (`contexto-sessao-arquivo-poetico.md`):
+//   - `etimológica`: grafia com "ph"/"th"/"y"/consoantes dobradas fora de
+//     rr/ss, abandonada no Brasil em 1943 (Formulário Ortográfico) e em
+//     Portugal em 1911 — cobre Cruz e Sousa (1893/1905), Augusto dos
+//     Anjos (1912) e qualquer edição anterior a essas datas. "Anterior à
+//     reforma" (nome antigo deste valor) presumia uma reforma só; há
+//     pelo menos 4 (1911 PT, 1943 BR, 1971 BR, 1990 Acordo Ortográfico),
+//     e só a de 1911/1943 muda que letras contam como vogal/dígrafo —
+//     as demais mexem em acento/trema/hífen, sem efeito na contagem
+//     silábica que motivou este campo.
+//   - `quinhentista`: português do século XVI (Camões) — mais distante
+//     da grafia atual que a etimológica, e com problema adicional que a
+//     Sonoridade também não trata (sinalefa), sem valor próprio ainda
+//     por falta de caso concreto que peça a distinção.
+// Novas tradições (ex.: uma variante portuguesa pré-1911 distinta da
+// brasileira pré-1943, se algum pacote precisar diferenciar) entram como
+// uma nova constante + uma entrada em OPCOES_GRAFIA, sem tocar no resto.
+export const GRAFIA_ATUAL = 'atual';
+export const GRAFIA_ETIMOLOGICA = 'etimológica';
+export const GRAFIA_QUINHENTISTA = 'quinhentista';
+
+export const OPCOES_GRAFIA = [
+    { valor: '', rotulo: 'Não definida' },
+    { valor: GRAFIA_ATUAL, rotulo: 'Atual (padrão)' },
+    {
+        valor: GRAFIA_ETIMOLOGICA,
+        rotulo: 'Etimológica (ph, th, y, dobradas — ex.: Cruz e Sousa, Augusto dos Anjos)',
+    },
+    { valor: GRAFIA_QUINHENTISTA, rotulo: 'Quinhentista (português do séc. XVI — ex.: Camões)' },
+];
+
+// `''` (Não definida) é o valor de fábrica do select — indistinguível
+// de "usuário nunca abriu esse campo" a nível de DOM. Por isso não é
+// tratado como "grafia preenchida" em lerFonteTexto/
+// campos-preenchiveis.js: só "Atual (padrão)" (GRAFIA_ATUAL) pra cima
+// conta como decisão de verdade.
+//
+// "Antiga" aqui é "nem vazio nem Atual" (não lista GRAFIA_ETIMOLOGICA/
+// GRAFIA_QUINHENTISTA por nome) de propósito: o aviso da Sonoridade que
+// consome isto (atualizarAvisoGrafiaSonoridade, forms.js) deve disparar
+// pra qualquer tradição nova que vier a existir sem precisar editar
+// esta função.
+export function ehGrafiaAntiga(grafia) {
+    return !!grafia && grafia !== GRAFIA_ATUAL;
+}
+
+// Padrões que indicam cada tradição em texto livre — cobre o que já era
+// digitado em `pacote.ortografia` antes deste campo existir ("original",
+// "original da edição", "antiga") sem exigir reescrever os pacotes já
+// feitos. Qualquer outra coisa não-vazia (ex.: "atual", "atualizada")
+// vira GRAFIA_ATUAL — o texto existe e diz algo, então conta como
+// decisão explícita, não como campo nunca tocado. Só a ausência
+// completa de texto (`valor` vazio/undefined) preserva o `''` de "não
+// definida". Heurística sobre um campo descritivo, não uma leitura
+// garantida — pacotes novos podem escrever direto o valor do enum.
+const PADRAO_GRAFIA_QUINHENTISTA = /quinhentista|s[ée]culo\s*x?vi\b|camoniana/i;
+const PADRAO_GRAFIA_ETIMOLOGICA = /etimol[oó]gica|anterior|original|antiga|pr[eé]-?reforma/i;
+
+export function normalizarGrafia(valor) {
+    const t = String(valor || '').trim();
+    if (!t) return '';
+    if (PADRAO_GRAFIA_QUINHENTISTA.test(t)) return GRAFIA_QUINHENTISTA;
+    if (PADRAO_GRAFIA_ETIMOLOGICA.test(t)) return GRAFIA_ETIMOLOGICA;
+    return GRAFIA_ATUAL;
+}
+
+// Sugestões já usadas em Poemas+Prosas juntos (mesmo motivo de
+// extrairIdiomasUnicos). `campo` é 'origem' (com semente) ou 'edicao'
+// (só o que já foi digitado — não há edição "conhecida" pra sugerir).
+export function extrairFontesUnicas(itens, campo) {
+    const valores = new Set(campo === 'origem' ? FONTES_SUGERIDAS : []);
+    (itens || []).forEach((item) => {
+        const v = (item?.fonteTexto?.[campo] || '').trim();
+        if (v) valores.add(v);
+    });
+    return Array.from(valores).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
 // ─── Envios e Reações ──────────────────────────────────────────
@@ -3294,6 +3887,105 @@ export function avisoMonorrimaAtipica(formaPoema, esquemaRimasPadrao) {
     return 'Atenção: a monorrima absoluta é atípica para este formato estrutural.';
 }
 
+// ─── Tonicidade da última palavra — base da contagem MÉTRICA (Bloco 3,
+// ver manutencao/decisoes.md "Contagem métrica...") ──────────────────
+// A grade de Sonoridade continua marcando TODAS as sílabas gramaticais
+// de um verso (dividirSilabas, editor-sonoridade.js) — isso não muda.
+// O que muda é só a CONTAGEM usada pra comparar contra `tamanhoVerso`:
+// em português, a métrica de um verso vai até a última sílaba TÔNICA,
+// inclusive — sílabas átonas depois dela existem gramaticalmente, mas
+// não contam. `classificarTonicidade` resolve isso pra UMA palavra
+// (a última do verso, sempre — ver limitação de monossílabo átono
+// abaixo), sem depender de como o usuário dividiu a grade: usa as
+// regras de acentuação do português, não a divisão manual.
+//
+// Ordem de decisão (a mesma ordem que a regra gramatical ensina):
+// 1. Acento gráfico marcado — a posição do acento decide tudo, direto.
+//    Proparoxítona é SEMPRE acentuada (não existe proparoxítona sem
+//    acento em português), então "tem acento" cobre também esse caso —
+//    não é só oxítona/paroxítona marcada.
+// 2. Sem acento — só sobra oxítona ou paroxítona (proparoxítona already
+//    eliminada acima) — decide pela TERMINAÇÃO, regra espelhada da
+//    própria regra de acentuação gráfica: terminações que, quando
+//    oxítonas, EXIGEM acento (a/as/e/es/o/os/em/ens — ex. "sofá",
+//    "também") são paroxítonas por padrão quando aparecem sem acento
+//    (ex. "casa", "gente", "livro", "jovem"); terminações que, quando
+//    PAROXÍTONAS, exigem acento (l/n/r/x/ps/um/uns/i/is/u/us/ã/ão/ãe/
+//    ões e ditongos orais — ex. "fácil", "hífen", "mártir", "tórax",
+//    "álbum", "tênis", "vírus", "órfã", "órgão") são oxítonas por
+//    padrão sem acento (ex. "animal", "jasmim", "cantar", "urubu",
+//    "javali", "algum", "irmã", "chimarrão").
+// 3. Terminação não coberta por nenhuma das duas listas (raro) — assume
+//    paroxítona, por ser o padrão mais comum da língua.
+//
+// Limitações documentadas (mesmo espírito da exclusão de sinalefa —
+// ver decisoes.md): (a) não distingue monossílabo TÔNICO de ÁTONO —
+// clíticos átonos no fim do verso (ex. "...e que", "...de", artigo/
+// preposição/conjunção sem carga própria) são tratados como tônicos
+// igual qualquer outro monossílabo, então um verso terminado nesse
+// tipo de palavra pode ter a contagem métrica ligeiramente inflada;
+// resolver isso exigiria classificação gramatical (classe de palavra),
+// fora do escopo determinístico por acentuação que esta função cobre;
+// (b) a contagem de núcleos vocálicos depois do acento gráfico (usada
+// no passo 1) agrupa vogais consecutivas como um núcleo só — trata
+// ditongo e hiato do mesmo jeito, então uma palavra com hiato real na
+// cauda (raro nessa posição) pode classificar errado. Sinalefa (fusão
+// de vogais ENTRE palavras) fica de fora por completo, não só aqui —
+// não implementada em lugar nenhum da contagem métrica.
+// Terminações que, quando a palavra É oxítona, EXIGEM acento gráfico
+// (a/as/e/es/o/os/em/ens) — por isso, sem acento, o padrão é paroxítona.
+const TERMINACOES_PAROXITONA_PADRAO = /(a|e|o)s?$|(em|ens)$/;
+// Terminações que, quando a palavra é PAROXÍTONA, exigem acento gráfico
+// (l/n/r/x/ps/um(s)/i(s)/u(s)/ã(s)/ão(s)/ãe(s)/ões/ditongo -ai/-au/-eu)
+// — por isso, sem acento, o padrão é oxítona.
+const TERMINACOES_OXITONA_PADRAO =
+    /(ãe|ães|ão|ãos|ões|ã|ãs|um|uns|im|ins|om|ons|ps|[lnrx]|is|i|us|u|ai|au|eu)$/;
+const VOGAIS_TONICAS = 'áàâéêíóôú';
+const VOGAIS = 'aeiouáàâãéêíóôõú';
+
+function contarNucleosVogais(trecho) {
+    const grupos = trecho.toLowerCase().match(new RegExp(`[${VOGAIS}]+`, 'g'));
+    return grupos ? grupos.length : 0;
+}
+
+// Exportada separada (recebe a palavra já isolada, não o verso inteiro)
+// pelo mesmo motivo de calcularMaxSilabas/PES_METRICOS: testável direto,
+// sem precisar montar um verso completo pra cada caso de acentuação.
+export function classificarTonicidade(palavra) {
+    const p = (palavra || '').trim().toLowerCase();
+    if (!p) return null;
+    // Monossílabo — sempre tônico aqui (ver limitação (a) acima sobre
+    // clíticos átonos, documentada e fora de escopo).
+    if (contarNucleosVogais(p) <= 1) return 'oxitona';
+    // Só busca acento agudo/circunflexo (á à â é ê í ó ô ú) — NUNCA ã/õ
+    // sozinho aqui: ã/õ sem nenhum outro acento no resto da palavra não
+    // é "acento marcando tônica", é só a nasalização de uma terminação
+    // -ã/-ão/-õe que já cai certinho na regra de terminação (passo
+    // seguinte) — tratar ã/õ como acento aqui faria uma palavra como
+    // "órfã" (acento de verdade em "ó", tônica na 1ª sílaba) errar pra
+    // oxítona só por causa do ã final, que não carrega o acento real.
+    for (let i = p.length - 1; i >= 0; i--) {
+        if (!VOGAIS_TONICAS.includes(p[i])) continue;
+        // A sílaba tônica pode ser um ditongo (ex. "éu" em "chapéu") —
+        // a vogal seguinte que ainda faz parte do mesmo núcleo não
+        // conta como "sílaba depois", por isso estende antes de cortar.
+        let fimNucleo = i;
+        while (fimNucleo + 1 < p.length && VOGAIS.includes(p[fimNucleo + 1])) fimNucleo++;
+        const nucleosDepois = contarNucleosVogais(p.slice(fimNucleo + 1));
+        if (nucleosDepois === 0) return 'oxitona';
+        if (nucleosDepois === 1) return 'paroxitona';
+        return 'proparoxitona';
+    }
+    if (TERMINACOES_OXITONA_PADRAO.test(p)) return 'oxitona';
+    if (TERMINACOES_PAROXITONA_PADRAO.test(p)) return 'paroxitona';
+    return 'paroxitona';
+}
+
+// Quantas sílabas GRAMATICAIS depois da tônica a métrica descarta —
+// 0 pra oxítona (a própria tônica é a última), 1 pra paroxítona, 2 pra
+// proparoxítona. Base de calcularContagemMetrica (editor-sonoridade.js).
+export const SILABAS_APOS_TONICA = { oxitona: 0, paroxitona: 1, proparoxitona: 2 };
+
 // ─── Pé Métrico — catálogo + trava bidirecional com Tamanho do Verso ──
 // Campo novo (motivado pelo Molde, Bloco 2 sub-passo 2 — ver
 // manutencao/criacao-molde.md — e replicado também em Sonoridade por
@@ -3414,4 +4106,24 @@ export function calcularOpcoesPeMetrico(tamanhoVerso) {
 export function calcularTamanhoVersoForcadoPorPe(peMetrico) {
     const pe = PES_METRICOS.find((p) => p.rotulo === peMetrico);
     return pe && pe.tipo === 'fixo' ? pe.tamanhoVersoExigido : null;
+}
+
+function limparTexto(texto) {
+    if (!texto) return '';
+    return texto
+        .replace(/<[^>]+>/g, ' ') // remove tags HTML (divs/spans de formatação do editor)
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&[a-z]+;/g, ' ');
+}
+
+// Palavras de um texto, minúsculas. Vive aqui (e não em estatisticas.js, que
+// mexe em `window` ao ser importado) pra Estatísticas e o .csv
+// (exportar-csv.js) contarem palavras pela mesma regra.
+export function tokenizar(texto) {
+    return (
+        limparTexto(texto)
+            .toLowerCase()
+            .normalize('NFC')
+            .match(/[a-zà-úçãõâêîôû]+/g) || []
+    );
 }

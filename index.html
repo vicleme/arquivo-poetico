@@ -193,7 +193,7 @@
         <datalist id="sugestoes-pessoas-bulk-prosa"></datalist>
         <datalist id="sugestoes-genero-bulk-prosa"></datalist>
 
-        <main class="max-w-6xl mx-auto px-4">
+        <main class="max-w-6xl mx-auto px-4 relative">
             <!-- Mobile (abaixo de md): botão hambúrguer + painel dropdown
              agrupado, montado em JS a partir de GRUPOS_NAV (ui.js) — mesma
              lista de abas da nav desktop abaixo, só numa lente diferente.
@@ -375,12 +375,29 @@
                             >
                                 Morfofuncionalidade
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative nav-dropdown-wrap">
+                    <button
+                        type="button"
+                        id="grupo-estatisticas-btn"
+                        class="grupo-nav-btn pb-2 font-medium whitespace-nowrap inline-flex items-center gap-1 hover:text-blue-700 dark:hover:text-blue-300"
+                    >
+                        Estatísticas
+                        <span class="text-[9px] opacity-60">▾</span>
+                    </button>
+                    <div class="nav-dropdown absolute left-0 top-full pt-1 z-20 min-w-[190px]">
+                        <div
+                            class="flex flex-col gap-0.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1"
+                        >
                             <button
                                 id="btn-estatisticas"
                                 onclick="abrirAba('estatisticas')"
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
-                                Estatísticas
+                                Análise Exploratória
                             </button>
                         </div>
                     </div>
@@ -413,16 +430,30 @@
                 <div class="relative nav-dropdown-wrap">
                     <button
                         type="button"
-                        id="grupo-exportacao-btn"
+                        id="grupo-dados-btn"
                         class="grupo-nav-btn pb-2 font-medium whitespace-nowrap inline-flex items-center gap-1 hover:text-blue-700 dark:hover:text-blue-300"
                     >
-                        Exportação
+                        Dados
                         <span class="text-[9px] opacity-60">▾</span>
                     </button>
                     <div class="nav-dropdown absolute left-0 top-full pt-1 z-20 min-w-[190px]">
                         <div
                             class="flex flex-col gap-0.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1"
                         >
+                            <button
+                                id="btn-biblioteca"
+                                onclick="abrirAba('biblioteca')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Biblioteca
+                            </button>
+                            <button
+                                id="btn-importacao-aditiva"
+                                onclick="abrirAba('importacao-aditiva')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Importação
+                            </button>
                             <button
                                 id="btn-exportar-filtrado"
                                 onclick="abrirAba('exportar-filtrado')"
@@ -612,6 +643,174 @@
                         Novo Autor
                     </button>
                 </div>
+                <div class="flex items-center gap-1 mb-2">
+                    <input
+                        type="search"
+                        id="busca-autores"
+                        oninput="setFiltroAutores(this.value)"
+                        placeholder="Buscar autor: nome, nacionalidade, ocupação... (campo:valor, -termo exclui, 'ou' alterna)"
+                        class="flex-1 mb-0"
+                    />
+                    <button
+                        type="button"
+                        onclick="togglePainel('ajuda-busca-autores', this)"
+                        class="shrink-0 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-600"
+                        aria-label="Como funciona a busca"
+                    >
+                        ?
+                    </button>
+                </div>
+
+                <div
+                    class="flex flex-wrap gap-x-4 gap-y-1 mb-4 items-center text-xs text-gray-600 dark:text-slate-400"
+                >
+                    <label class="flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            class="w-3.5 h-3.5"
+                            onchange="setOpcaoBuscaAutores('caseSensitive', this)"
+                        />
+                        Diferenciar maiúsculas/minúsculas
+                    </label>
+                    <label class="flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            class="w-3.5 h-3.5"
+                            onchange="setOpcaoBuscaAutores('matchDiacritics', this)"
+                        />
+                        Diferenciar diacríticos
+                    </label>
+                    <label class="flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            class="w-3.5 h-3.5"
+                            onchange="setOpcaoBuscaAutores('palavraInteira', this)"
+                        />
+                        Só palavra inteira
+                    </label>
+                    <label class="flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            id="toggle-todos-autores"
+                            data-action="toggle-todos-autores"
+                            class="w-3.5 h-3.5"
+                        />
+                        Selecionar todos os que a busca mostra
+                    </label>
+                    <span
+                        id="contagem-autores"
+                        class="text-[11px] font-mono text-gray-400 dark:text-slate-500"
+                    ></span>
+                </div>
+
+                <div
+                    id="ajuda-busca-autores"
+                    class="hidden mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-lg space-y-3"
+                >
+                    <div>
+                        <p class="font-bold mb-1">Sintaxe</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>
+                                Espaço = E lógico; <code>ou</code> = alternativa
+                                (<code>portuguesa ou brasileira</code>); aspas = frase exata;
+                                <code>-termo</code> exclui. Acento e maiúsculas não importam (a menos
+                                que as opções acima estejam marcadas).
+                            </li>
+                            <li>
+                                Sem prefixo, a busca olha nome, nomes literários, nacionalidade,
+                                religião, ocupações, instituições e "sobre". Orientação sexual,
+                                condições clínicas, deficiências e neurodivergências
+                                <strong>só aparecem buscando pelo prefixo</strong> (de propósito,
+                                pra não surgirem por acaso).
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Restringir a um campo</p>
+                        <p class="mb-1">Prefixe o termo com <code>campo:</code>:</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>
+                                <code>nome:</code> <code>literario:</code> <code>heteronimo:</code>
+                                <code>pseudonimo:</code> <code>isni:</code> <code>id:</code>
+                            </li>
+                            <li>
+                                <code>nacionalidade:</code> <code>nascimento:</code>
+                                <code>obito:</code> (ex.: <code>obito:1922</code>)
+                                <code>dominio:</code> (<code>livre</code> ou <code>protegido</code>)
+                            </li>
+                            <li>
+                                <code>sexo:</code> <code>raca:</code> <code>genero:</code>
+                                <code>orientacao:</code> <code>identidade:</code>
+                                <code>religiao:</code>
+                            </li>
+                            <li>
+                                <code>neurodivergencia:</code> <code>condicao:</code>
+                                <code>deficiencia:</code> (aceitam também o tipo, ex.:
+                                <code>condicao:mental</code>)
+                            </li>
+                            <li>
+                                <code>classe:</code> <code>grau:</code> <code>instituicao:</code>
+                                <code>ocupacao:</code> <code>sobre:</code>
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Presença de campo</p>
+                        <p>
+                            <code>campo:*</code> acha quem tem o campo preenchido;
+                            <code>-campo:*</code>, quem está com ele vazio. Ex.:
+                            <code>obito:*</code>, <code>-nacionalidade:*</code>,
+                            <code>voce:*</code> (o autor marcado "sou eu").
+                        </p>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Exemplos</p>
+                        <p>
+                            <code>nacionalidade:portuguesa ocupacao:diplomata</code>,
+                            <code>heteronimo:*</code>, <code>dominio:livre nacionalidade:portuguesa</code>
+                        </p>
+                    </div>
+                </div>
+
+                <div
+                    id="barra-acoes-autores"
+                    class="hidden mb-4 p-3 bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900 rounded-lg flex flex-wrap items-center gap-3 text-xs"
+                >
+                    <span
+                        id="contador-selecao-autores"
+                        class="font-bold text-indigo-800 dark:text-indigo-200"
+                    ></span>
+                    <button
+                        type="button"
+                        onclick="exportarSelecaoAutoresJson()"
+                        class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                    >
+                        Baixar .json
+                    </button>
+                    <button
+                        type="button"
+                        onclick="exportarSelecaoAutoresCsv()"
+                        class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                        title='Uma linha por autor, uma coluna por campo (listas separadas por " | ")'
+                    >
+                        Baixar .csv
+                    </button>
+                    <button
+                        type="button"
+                        onclick="exportarSelecaoAutoresMarkdown()"
+                        class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                    >
+                        Baixar .md
+                    </button>
+                    <button
+                        type="button"
+                        onclick="limparSelecaoAutores()"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Limpar seleção
+                    </button>
+                </div>
+
                 <div id="lista-autores" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </section>
 
@@ -1113,10 +1312,6 @@
                         >
                             🧱 Colunas ▾
                         </button>
-                        <div
-                            id="painel-colunas-poemas"
-                            class="hidden mt-2 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-4"
-                        ></div>
                     </div>
                     <div>
                         <button
@@ -1132,6 +1327,18 @@
                         ></div>
                     </div>
                 </div>
+
+                <!-- Painel de colunas: fica no fluxo normal (não mais
+                     `absolute`/overlay) de propósito — empurra a tabela
+                     pra baixo em vez de cobrir ela, pra dar pra ver as
+                     mudanças em tempo real. Largura = 100% do container
+                     (`main`, max-w-6xl), então nunca gera rolagem
+                     horizontal, ao contrário da versão antiga baseada
+                     em vw. Ver colunas.js pro nº de colunas do grid. -->
+                <div
+                    id="painel-colunas-poemas"
+                    class="hidden mb-4 max-h-[55vh] overflow-y-auto bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow"
+                ></div>
 
                 <div class="overflow-auto max-h-[75vh] bg-white dark:bg-slate-900 rounded shadow">
                     <table class="w-full text-left border-collapse">
@@ -1227,6 +1434,16 @@
                     >
                         📅 Datas ▾
                     </button>
+                    <button
+                        type="button"
+                        onclick="
+                            prepararPainelPreencherMassa('poemas');
+                            togglePainel('painel-preencher-massa', this);
+                        "
+                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                    >
+                        ✏️ Preencher campo ▾
+                    </button>
                     <label
                         class="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 whitespace-nowrap px-1"
                         title="Inclui a Sonoridade e a Progressão Morfofuncional dos poemas selecionados, quando cadastradas (.md/.json por enquanto)"
@@ -1244,6 +1461,13 @@
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⬇ JSON
+                    </button>
+                    <button
+                        onclick="exportarSelecaoAtualCsv('poemas')"
+                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        title='Uma linha por texto, uma coluna por campo (listas separadas por " | "), pronto pra virar dataset'
+                    >
+                        ⬇ CSV
                     </button>
                     <button
                         onclick="exportarSelecaoAtualMarkdown('poemas')"
@@ -1275,6 +1499,11 @@
                     >
                         Cancelar seleção
                     </button>
+
+                    <div
+                        id="painel-preencher-massa"
+                        class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
+                    ></div>
 
                     <div
                         id="painel-datas-massa-poemas"
@@ -1773,10 +2002,6 @@
                         >
                             🧱 Colunas ▾
                         </button>
-                        <div
-                            id="painel-colunas-prosas"
-                            class="hidden mt-2 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-4"
-                        ></div>
                     </div>
                     <div>
                         <button
@@ -1792,6 +2017,13 @@
                         ></div>
                     </div>
                 </div>
+
+                <!-- Ver comentário equivalente na aba Poemas: fluxo
+                     normal, empurra a tabela em vez de cobrir. -->
+                <div
+                    id="painel-colunas-prosas"
+                    class="hidden mb-4 max-h-[55vh] overflow-y-auto bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow"
+                ></div>
 
                 <div class="overflow-auto max-h-[75vh] bg-white dark:bg-slate-900 rounded shadow">
                     <table class="w-full text-left border-collapse">
@@ -1908,10 +2140,27 @@
                         📅 Datas ▾
                     </button>
                     <button
+                        type="button"
+                        onclick="
+                            prepararPainelPreencherMassa('prosas');
+                            togglePainel('painel-preencher-massa-prosa', this);
+                        "
+                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                    >
+                        ✏️ Preencher campo ▾
+                    </button>
+                    <button
                         onclick="exportarSelecaoAtualJson('prosas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⬇ JSON
+                    </button>
+                    <button
+                        onclick="exportarSelecaoAtualCsv('prosas')"
+                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        title='Uma linha por texto, uma coluna por campo (listas separadas por " | "), pronto pra virar dataset'
+                    >
+                        ⬇ CSV
                     </button>
                     <button
                         onclick="exportarSelecaoAtualMarkdown('prosas')"
@@ -1943,6 +2192,11 @@
                     >
                         Cancelar seleção
                     </button>
+
+                    <div
+                        id="painel-preencher-massa-prosa"
+                        class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
+                    ></div>
 
                     <div
                         id="painel-datas-massa-prosas"
@@ -2234,12 +2488,28 @@
             <section id="moldes" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-semibold">Moldes</h2>
-                    <button
-                        onclick="prepararNovoMolde()"
-                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
-                    >
-                        Adicionar Molde
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <label
+                            for="molde-importar-json"
+                            title="Soma um Molde (arquivo .json baixado de outra cópia do acervo) a este acervo, com id novo"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 px-4 py-2 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            Importar JSON
+                        </label>
+                        <input
+                            type="file"
+                            id="molde-importar-json"
+                            accept="application/json,.json"
+                            class="hidden"
+                            onchange="importarMoldeDeArquivo(event)"
+                        />
+                        <button
+                            onclick="prepararNovoMolde()"
+                            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                        >
+                            Adicionar Molde
+                        </button>
+                    </div>
                 </div>
                 <p class="text-xs text-gray-400 dark:text-slate-500 mb-4 max-w-2xl">
                     Um Molde é uma meta estrutural (forma, métrica, rimas) declarada antes de
@@ -2372,6 +2642,245 @@
                     </table>
                 </div>
                 <div id="paginacao-estrutura-textual"></div>
+            </section>
+
+            <section id="biblioteca" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Biblioteca</h2>
+                </div>
+                <p class="text-xs text-gray-400 dark:text-slate-500 mb-4">
+                    Pacotes de obras em domínio público que acompanham o app, prontos pra somar ao
+                    acervo pela Importação. Cada pacote mostra fonte, edição e a situação de domínio
+                    público de cada autor. É uma ajuda informativa — não substitui orientação
+                    jurídica, e edições, traduções e notas críticas podem ter proteção própria.
+                </p>
+
+                <div id="biblioteca-lista" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5"></div>
+
+                <div
+                    id="biblioteca-detalhe"
+                    class="hidden bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-4"
+                ></div>
+
+                <details
+                    id="biblioteca-importar-texto"
+                    class="mt-5 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5"
+                >
+                    <summary class="cursor-pointer text-sm font-semibold">
+                        Importar de texto
+                        <span class="font-normal text-xs text-gray-400 dark:text-slate-500">
+                            — traga os textos de um autor a partir de um .txt ou .md
+                        </span>
+                    </summary>
+
+                    <div class="mt-4 grid grid-cols-1 gap-x-4 md:grid-cols-2">
+                        <div class="md:col-span-2">
+                            <p class="text-xs text-gray-400 dark:text-slate-500 mb-3">
+                                Cada texto começa com uma linha “# Título”; o que vem depois, até o
+                                próximo título, é o corpo (linhas em branco entre estrofes são
+                                mantidas). Nada entra no acervo daqui: o resultado abre a
+                                Importação, onde você confere Autor e duplicatas antes de aplicar.
+                            </p>
+                            <label class="form-label">Arquivo (.txt ou .md)</label>
+                            <input
+                                type="file"
+                                id="bt-arquivo"
+                                accept=".txt,.md,text/plain,text/markdown"
+                                onchange="lerArquivoTextoBiblioteca(event)"
+                                class="block text-sm text-gray-600 dark:text-slate-300"
+                            />
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="form-label">Texto</label>
+                            <textarea
+                                id="bt-texto"
+                                rows="10"
+                                oninput="atualizarPreviaTextoBiblioteca()"
+                                placeholder="# Versos Íntimos&#10;Vês! Ninguém assistiu ao formidável&#10;..."
+                                class="font-mono text-sm"
+                            ></textarea>
+                        </div>
+
+                        <div>
+                            <label class="form-label"
+                                >Título (só se colar um texto sem “# Título”)</label
+                            >
+                            <input
+                                type="text"
+                                id="bt-titulo"
+                                oninput="atualizarPreviaTextoBiblioteca()"
+                                placeholder="Ex.: Versos Íntimos"
+                            />
+                        </div>
+                        <div>
+                            <label class="form-label">Tipo</label>
+                            <select id="bt-tipo" onchange="atualizarPreviaTextoBiblioteca()">
+                                <option value="poema" selected>Poema</option>
+                                <option value="prosa">Prosa</option>
+                            </select>
+                            <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                                Vale para todos os textos deste envio.
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="form-label">Autor</label>
+                            <input
+                                type="text"
+                                id="bt-autor"
+                                list="bt-autores-existentes"
+                                oninput="atualizarPreviaTextoBiblioteca()"
+                                placeholder="Ex.: Augusto dos Anjos"
+                            />
+                            <datalist id="bt-autores-existentes"></datalist>
+                        </div>
+                        <div>
+                            <label class="form-label">Nacionalidade</label>
+                            <input
+                                type="text"
+                                id="bt-nacionalidade"
+                                list="sugestoes-nacionalidades"
+                                placeholder="Ex.: brasileira"
+                            />
+                        </div>
+                        <div>
+                            <label class="form-label">Nascimento (ano)</label>
+                            <input type="number" id="bt-nasc-ano" placeholder="Ex.: 1884" />
+                        </div>
+                        <div>
+                            <label class="form-label">Óbito (ano)</label>
+                            <input
+                                type="number"
+                                id="bt-obito-ano"
+                                oninput="atualizarPreviaTextoBiblioteca()"
+                                placeholder="Ex.: 1914"
+                            />
+                        </div>
+
+                        <div>
+                            <label class="form-label">Fonte</label>
+                            <input
+                                type="text"
+                                id="bt-fonte"
+                                list="sugestoes-fonte-origem"
+                                placeholder="Ex.: Wikisource"
+                            />
+                        </div>
+                        <div>
+                            <label class="form-label">Edição</label>
+                            <input
+                                type="text"
+                                id="bt-edicao"
+                                list="sugestoes-fonte-edicao"
+                                placeholder="Ex.: Eu, 1912"
+                            />
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="form-label">Link</label>
+                            <input type="url" id="bt-link" placeholder="https://..." />
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="form-label">Ortografia</label>
+                            <input
+                                type="text"
+                                id="bt-ortografia"
+                                list="sugestoes-ortografia"
+                                placeholder="Opcional. Ex.: atualizada, original da edição"
+                                oninput="atualizarPreviaTextoBiblioteca()"
+                            />
+                            <datalist id="sugestoes-ortografia">
+                                <option value="Atualizada"></option>
+                                <option value="Original da edição"></option>
+                                <option value="Etimológica (ph, th, y, dobradas)"></option>
+                                <option value="Quinhentista (séc. XVI)"></option>
+                            </datalist>
+                        </div>
+
+                        <div class="md:col-span-2 mb-4 mt-2">
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="checkbox" id="bt-conferido" />
+                                Conferi este texto com a edição indicada
+                            </label>
+                            <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                                É uma declaração sua: o app não consegue verificar a fonte. Deixe
+                                desmarcado se ainda não comparou.
+                            </p>
+                        </div>
+
+                        <div id="bt-previa" class="md:col-span-2 space-y-2 mb-4"></div>
+
+                        <div class="md:col-span-2 flex gap-2 items-center">
+                            <button
+                                type="button"
+                                onclick="enviarTextoParaImportacao()"
+                                class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                            >
+                                Enviar para a Importação
+                            </button>
+                            <button
+                                type="button"
+                                onclick="limparFormTextoBiblioteca()"
+                                class="text-xs text-gray-500 dark:text-slate-400 underline whitespace-nowrap"
+                            >
+                                Limpar
+                            </button>
+                        </div>
+                    </div>
+                </details>
+            </section>
+
+            <section id="importacao-aditiva" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Importação</h2>
+                </div>
+                <p class="text-xs text-gray-400 dark:text-slate-500 mb-4">
+                    Soma um Poema/Prosa (ou um recorte com vários) de um arquivo .json separado ao
+                    acervo atual, sem mexer no resto — mesmo formato flat que a Exportação já
+                    produz. Diferente do "Importar JSON" do cabeçalho, que restaura um backup
+                    inteiro substituindo tudo.
+                </p>
+
+                <div
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-4"
+                >
+                    <div>
+                        <label class="form-label">Arquivo (.json)</label>
+                        <input
+                            type="file"
+                            id="importacao-aditiva-arquivo"
+                            accept=".json,application/json"
+                            onchange="processarArquivoImportacaoAditiva(event)"
+                            class="block text-sm text-gray-600 dark:text-slate-300"
+                        />
+                    </div>
+
+                    <div id="importacao-aditiva-preview">
+                        <p class="text-xs text-gray-400 dark:text-slate-500">
+                            Escolha um arquivo .json exportado (um item ou um recorte com vários)
+                            pra ver o que vai ser somado ao acervo.
+                        </p>
+                    </div>
+
+                    <div id="importacao-aditiva-acoes" class="flex gap-2 hidden">
+                        <button
+                            type="button"
+                            id="btn-aplicar-importacao-aditiva"
+                            onclick="aplicarImportacaoAditivaClick()"
+                            class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+                            disabled
+                        >
+                            Aplicar
+                        </button>
+                        <button
+                            type="button"
+                            onclick="cancelarImportacaoAditiva()"
+                            class="text-xs text-gray-500 dark:text-slate-400 underline whitespace-nowrap"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
             </section>
 
             <section id="exportar-filtrado" class="tab-content">
@@ -2839,7 +3348,8 @@
 
             <section id="estatisticas" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-semibold">Estatísticas</h2>
+                    <h2 class="text-xl font-semibold">Análise Exploratória</h2>
+                    <div id="est-terceiros"></div>
                 </div>
 
                 <div id="est-resumo" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"></div>

@@ -67,13 +67,24 @@ async function apagar(id) {
 // Tira um snapshot se o último tiver mais de INTERVALO_MIN_MS,
 // e descarta os mais antigos além de MAX_SNAPSHOTS. Roda em segundo
 // plano — nunca bloqueia nem interrompe o save() principal.
-export async function tirarSnapshotSeNecessario(db) {
+//
+// `forcar` (Fase 3 da Importação Aditiva, ver importar-aditivo.js)
+// ignora o throttle de INTERVALO_MIN_MS — usado antes de aplicar uma
+// importação, pra garantir uma rede de segurança fresca mesmo que um
+// snapshot recente já exista. Retorna `true`/`false` indicando se o
+// snapshot foi gravado com sucesso (ou não era necessário); chamadas
+// não forçadas (save() normal) continuam ignorando esse retorno.
+export async function tirarSnapshotSeNecessario(db, forcar = false) {
     try {
         const existentes = (await listarTudo()).sort((a, b) => a.id.localeCompare(b.id));
         const ultimo = existentes[existentes.length - 1];
 
-        if (ultimo && Date.now() - new Date(ultimo.dataISO).getTime() < INTERVALO_MIN_MS) {
-            return; // ainda dentro do intervalo mínimo, não faz nada
+        if (
+            !forcar &&
+            ultimo &&
+            Date.now() - new Date(ultimo.dataISO).getTime() < INTERVALO_MIN_MS
+        ) {
+            return true; // ainda dentro do intervalo mínimo, não precisava — não é falha
         }
 
         const agora = new Date();
@@ -101,11 +112,13 @@ export async function tirarSnapshotSeNecessario(db) {
         }
 
         window.dispatchEvent(new CustomEvent('snapshot:criado'));
+        return true;
     } catch (err) {
         // Snapshot automático é best-effort — se o IndexedDB estiver
         // indisponível (modo privado etc.), não deve travar o app nem
         // incomodar com um alert. Só loga.
         console.warn('[autobackup.js] Não foi possível gravar o snapshot automático:', err);
+        return false;
     }
 }
 

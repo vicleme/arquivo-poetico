@@ -145,6 +145,21 @@ Three similar-looking fields, detailed in `pessoas-papeis-for-ai.md`:
   the text — its presence (non-empty) is what lights up the visual
   indicator (🟠) in the table, same spirit as `conteudoSensivel` below.
 
+## Text source
+
+- **`fonteTexto`**: object `{ origem, edicao, link, conferido, grafia }`
+  (or `null`) — where the text came from when it is not the author's own
+  work (third-party edition, transcription). `conferido` is a boolean:
+  the text was checked against the source edition. `grafia` is `''`
+  (current spelling, default), `'etimológica'` (etymological spelling —
+  ph/th/y, doubled consonants — e.g. Cruz e Sousa, Augusto dos Anjos) or
+  `'quinhentista'` (16th-century Portuguese — e.g. Camões) — it lets the
+  Sonoridade (scansion) tool warn instead of silently miscounting
+  syllables/stress on old-spelling text; it does not
+  count toward "Fields Filled" and has no column or Statistics entry.
+  Public-domain status is **not** a field: it is derived from the death
+  year of the Author linked in `autoria`.
+
 ## Sensitive content and trigger vocabulary
 
 - **`conteudoSensivel`** ("sensitive content"): a free paragraph

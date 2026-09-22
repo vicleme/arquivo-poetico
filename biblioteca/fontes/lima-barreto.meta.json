@@ -1,0 +1,44 @@
+{
+    "id": "lima-barreto",
+    "titulo": "Lima Barreto (seleção)",
+    "descricao": "Três contos: O Homem que Sabia Javanês, A Nova Califórnia e O Moleque.",
+    "autor": {
+        "nome": "Lima Barreto",
+        "nacionalidade": "Brasileira",
+        "nascimento": {
+            "dia": 13,
+            "mes": 5,
+            "ano": 1881
+        },
+        "obito": {
+            "dia": 1,
+            "mes": 11,
+            "ano": 1922
+        },
+        "sexo": "Masculino"
+    },
+    "fonte": "Wikisource",
+    "edicao": "",
+    "link": "",
+    "ortografia": "",
+    "conferido": false,
+    "tipo": "prosa",
+    "textos": {
+        "O Homem que Sabia Javanês": {
+            "grafia": "atual",
+            "edicao": "Publicado na Gazeta da Tarde (Rio de Janeiro, 28 de abril de 1911); republicado em O homem que sabia javanês e outros contos",
+            "dataPublicacao": {
+                "dia": 28,
+                "mes": 4,
+                "ano": 1911
+            }
+        },
+        "A Nova Califórnia": {
+            "grafia": "atual"
+        },
+        "O Moleque": {
+            "grafia": "etimológica",
+            "edicao": "Histórias e Sonhos. Rio de Janeiro: Livraria Editora de Gianlorenzo Schettino, 1920. páginas 13-26 (com as 12 correções de errata da Wikisource aplicadas)"
+        }
+    }
+}

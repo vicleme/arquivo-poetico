@@ -34,6 +34,7 @@ import {
     selecionarTodasColunas,
     desmarcarTodasColunas,
     resetarColunas,
+    filtrarColunas,
 } from './colunas.js';
 import {
     adicionarColunaContagem,
@@ -50,6 +51,7 @@ import {
 } from './acoes-coluna.js';
 import { exportarItem } from './exportar.js';
 import { abrirVisualizacao, baixarDoModalVisualizacao } from './visualizar.js';
+import { abrirVisualizacaoAutor, editarAutorDoVisualizador } from './visualizar-autor.js';
 import {
     toggleDownloadAbrangente,
     sincronizarCheckboxesComEstadoSalvo,
@@ -117,12 +119,23 @@ import {
     setPaginaMoldes,
 } from './render-listas.js';
 import {
+    setFiltroAutores,
+    setOpcaoBuscaAutores,
+    toggleSelecaoAutor,
+    toggleSelecaoTodosAutores,
+    limparSelecaoAutores,
+    exportarSelecaoAutoresJson,
+    exportarSelecaoAutoresCsv,
+    exportarSelecaoAutoresMarkdown,
+} from './autores-acoes.js';
+import {
     toggleSelecao,
     toggleSelecaoTodos,
     selecionarPagina,
     limparSelecao,
     excluirSelecao,
     exportarSelecaoAtualJson,
+    exportarSelecaoAtualCsv,
     exportarSelecaoAtualMarkdown,
     exportarSelecaoAtualPdf,
     exportarSelecaoAtualDocx,
@@ -133,6 +146,10 @@ import {
     atualizarListaSinalBulk,
     aplicarDataEmMassa,
     limparDataEmMassa,
+    prepararPainelPreencherMassa,
+    trocarCampoPreencherMassa,
+    aplicarPreenchimentoEmMassa,
+    limparCampoEmMassa,
     aplicarGeneroEmMassaProsa,
     removerGeneroEmMassaProsa,
 } from './selecao-massa.js';
@@ -170,10 +187,29 @@ import {
     salvarFormularioTemplate,
     adicionarCriterioFormulario,
 } from './exportar-frequentes.js';
+import { baixarMoldePorId, importarMoldeDeArquivo } from './ui-molde-json.js';
+import {
+    processarArquivoImportacaoAditiva,
+    definirDecisaoReferenciaAditiva,
+    aplicarImportacaoAditivaClick,
+    cancelarImportacaoAditiva,
+} from './ui-importar-aditivo.js';
+import {
+    selecionarPacoteBiblioteca,
+    fecharDetalhePacoteBiblioteca,
+    usarPacoteBiblioteca as confirmarUsoPacoteBiblioteca,
+} from './ui-biblioteca.js';
+import {
+    lerArquivoTextoBiblioteca,
+    atualizarPreviaTextoBiblioteca,
+    enviarTextoParaImportacao as confirmarEnvioTextoBiblioteca,
+    limparFormTextoBiblioteca,
+} from './ui-biblioteca-texto.js';
 import {
     renderEstatisticas,
     toggleTipoEtiqueta,
     definirModoGraficoPessoas,
+    definirModoTerceiros,
     toggleGrupoFiltroPessoas,
     toggleOcultoItem,
     restaurarOcultosGrafico,
@@ -219,6 +255,8 @@ import {
     adicionarAutoria,
     removerAutoria,
     alterarPapelAutoria,
+    alterarAssinaturaAutoria,
+    alterarNomeLiterarioAutoria,
     adicionarEnvio,
     editarEnvio,
     cancelarEdicaoEnvio,
@@ -232,6 +270,27 @@ import {
     adicionarGeneroProsa,
     removerGeneroProsa,
     editarGeneroProsa,
+    adicionarNomeLiterarioAutor,
+    removerNomeLiterarioAutor,
+    editarNomeLiterarioAutor,
+    alterarTipoNomeLiterarioAutor,
+    adicionarOcupacaoAutor,
+    removerOcupacaoAutor,
+    editarOcupacaoAutor,
+    adicionarCondicaoClinicaAutor,
+    removerCondicaoClinicaAutor,
+    editarCondicaoClinicaAutor,
+    alterarTipoCondicaoClinicaAutor,
+    adicionarDeficienciaAutor,
+    removerDeficienciaAutor,
+    editarDeficienciaAutor,
+    alterarTipoDeficienciaAutor,
+    adicionarNeurodivergenciaAutor,
+    removerNeurodivergenciaAutor,
+    editarNeurodivergenciaAutor,
+    adicionarInstituicaoAutor,
+    removerInstituicaoAutor,
+    editarInstituicaoAutor,
     adicionarIntertexto,
     removerIntertexto,
     editarIntertexto,
@@ -303,6 +362,7 @@ import {
     editarMolde,
     prepararNovoMolde,
     promoverMolde,
+    baixarMoldeAoVivo,
     initFormEstruturaTextual,
     editarEstruturaTextual,
     prepararNovaEstruturaTextual,
@@ -408,6 +468,8 @@ registrarModal('modal-visualizar', 'modal-visualizar.html', () => {});
 // Mesmo espírito acima, agora pra Sonoridade (ver visualizar-sonoridade.js)
 // — extensão desta sessão, antes só Poemas/Prosas tinham essa visualização.
 registrarModal('modal-visualizar-sonoridade', 'modal-visualizar-sonoridade.html', () => {});
+// Idem, pro Autor (ver visualizar-autor.js) — botão "Ver" do card em Autores.
+registrarModal('modal-visualizar-autor', 'modal-visualizar-autor.html', () => {});
 // Idem, agora pra Morfofuncionalidade (ver visualizar-estrutura-textual.js).
 registrarModal(
     'modal-visualizar-estrutura-textual',
@@ -436,10 +498,12 @@ const ACOES_LISTA = {
     'editar-pessoa': (el) => editarPessoa(Number(el.dataset.id)),
     'editar-grupo': (el) => editarGrupo(Number(el.dataset.id)),
     'editar-autor': (el) => editarAutor(Number(el.dataset.id)),
+    'ver-autor': (el) => abrirVisualizacaoAutor(Number(el.dataset.id)),
     'editar-epoca': (el) => editarEpoca(Number(el.dataset.id)),
     'editar-sonoridade': (el) => editarSonoridade(Number(el.dataset.id)),
     'editar-molde': (el) => editarMolde(Number(el.dataset.id)),
     'promover-molde': (el) => promoverMolde(Number(el.dataset.id)),
+    'baixar-molde': (el) => baixarMoldePorId(Number(el.dataset.id)),
     'editar-estrutura-textual': (el) => editarEstruturaTextual(Number(el.dataset.id)),
     // "Ver" ganhou visualização somente-leitura própria nesta sessão
     // (antes abria o mesmo modal de edição — ver visualizar-sonoridade.js
@@ -471,6 +535,8 @@ const ACOES_LISTA = {
         toggleSelecao('poemas', el.checked, Number(el.dataset.id), e?.shiftKey),
     'toggle-prosa': (el, e) =>
         toggleSelecao('prosas', el.checked, Number(el.dataset.id), e?.shiftKey),
+    'toggle-autor': (el) => toggleSelecaoAutor(Number(el.dataset.id), el.checked),
+    'toggle-todos-autores': (el) => toggleSelecaoTodosAutores(el.checked),
     'toggle-todos-poemas': (el) => toggleSelecaoTodos('poemas', el.checked),
     'toggle-todos-prosas': (el) => toggleSelecaoTodos('prosas', el.checked),
     'selecionar-pagina-poemas': (el) =>
@@ -689,7 +755,24 @@ window.toggleModal = toggleModal;
 window.prepararNovo = prepararNovo;
 window.prepararNovaSonoridade = prepararNovaSonoridade;
 window.prepararNovoMolde = prepararNovoMolde;
+window.importarMoldeDeArquivo = importarMoldeDeArquivo;
+window.baixarMoldeAoVivo = baixarMoldeAoVivo;
 window.importarSonoridadeDeArquivo = importarSonoridadeDeArquivo;
+window.processarArquivoImportacaoAditiva = processarArquivoImportacaoAditiva;
+window.definirDecisaoReferenciaAditiva = definirDecisaoReferenciaAditiva;
+window.aplicarImportacaoAditivaClick = aplicarImportacaoAditivaClick;
+window.cancelarImportacaoAditiva = cancelarImportacaoAditiva;
+window.selecionarPacoteBiblioteca = selecionarPacoteBiblioteca;
+window.fecharDetalhePacoteBiblioteca = fecharDetalhePacoteBiblioteca;
+window.usarPacoteBiblioteca = function () {
+    if (confirmarUsoPacoteBiblioteca()) abrirAba('importacao-aditiva');
+};
+window.lerArquivoTextoBiblioteca = lerArquivoTextoBiblioteca;
+window.atualizarPreviaTextoBiblioteca = atualizarPreviaTextoBiblioteca;
+window.enviarTextoParaImportacao = function () {
+    if (confirmarEnvioTextoBiblioteca()) abrirAba('importacao-aditiva');
+};
+window.limparFormTextoBiblioteca = limparFormTextoBiblioteca;
 window.sugerirSequencia = sugerirSequencia;
 window.filtrarDestinoPoema = filtrarDestinoPoema;
 window.filtrarDestinoProsa = filtrarDestinoProsa;
@@ -733,6 +816,8 @@ window.removerGrupoDireto = removerGrupoDireto;
 window.adicionarAutoria = adicionarAutoria;
 window.removerAutoria = removerAutoria;
 window.alterarPapelAutoria = alterarPapelAutoria;
+window.alterarAssinaturaAutoria = alterarAssinaturaAutoria;
+window.alterarNomeLiterarioAutoria = alterarNomeLiterarioAutoria;
 window.definirAutoclassificacao = definirAutoclassificacao;
 window.limparAutoclassificacao = limparAutoclassificacao;
 window.adicionarEnvio = adicionarEnvio;
@@ -746,6 +831,27 @@ window.removerReconhecimento = removerReconhecimento;
 window.adicionarGeneroProsa = adicionarGeneroProsa;
 window.removerGeneroProsa = removerGeneroProsa;
 window.editarGeneroProsa = editarGeneroProsa;
+window.adicionarNomeLiterarioAutor = adicionarNomeLiterarioAutor;
+window.adicionarOcupacaoAutor = adicionarOcupacaoAutor;
+window.removerOcupacaoAutor = removerOcupacaoAutor;
+window.editarOcupacaoAutor = editarOcupacaoAutor;
+window.removerNomeLiterarioAutor = removerNomeLiterarioAutor;
+window.editarNomeLiterarioAutor = editarNomeLiterarioAutor;
+window.alterarTipoNomeLiterarioAutor = alterarTipoNomeLiterarioAutor;
+window.adicionarCondicaoClinicaAutor = adicionarCondicaoClinicaAutor;
+window.removerCondicaoClinicaAutor = removerCondicaoClinicaAutor;
+window.editarCondicaoClinicaAutor = editarCondicaoClinicaAutor;
+window.alterarTipoCondicaoClinicaAutor = alterarTipoCondicaoClinicaAutor;
+window.adicionarDeficienciaAutor = adicionarDeficienciaAutor;
+window.removerDeficienciaAutor = removerDeficienciaAutor;
+window.editarDeficienciaAutor = editarDeficienciaAutor;
+window.alterarTipoDeficienciaAutor = alterarTipoDeficienciaAutor;
+window.adicionarNeurodivergenciaAutor = adicionarNeurodivergenciaAutor;
+window.removerNeurodivergenciaAutor = removerNeurodivergenciaAutor;
+window.editarNeurodivergenciaAutor = editarNeurodivergenciaAutor;
+window.adicionarInstituicaoAutor = adicionarInstituicaoAutor;
+window.removerInstituicaoAutor = removerInstituicaoAutor;
+window.editarInstituicaoAutor = editarInstituicaoAutor;
 window.adicionarIntertexto = adicionarIntertexto;
 window.removerIntertexto = removerIntertexto;
 window.editarIntertexto = editarIntertexto;
@@ -788,6 +894,12 @@ window.wrapText = wrapText;
 // sem isso a digitação rápida engasga conforme o acervo cresce.
 window.setFiltroPoemas = debounce(setFiltroPoemas, 200);
 window.setFiltroSonoridade = debounce(setFiltroSonoridade, 200);
+window.setFiltroAutores = debounce(setFiltroAutores, 200);
+window.setOpcaoBuscaAutores = (chave, chk) => setOpcaoBuscaAutores(chave, chk.checked);
+window.limparSelecaoAutores = limparSelecaoAutores;
+window.exportarSelecaoAutoresJson = exportarSelecaoAutoresJson;
+window.exportarSelecaoAutoresCsv = exportarSelecaoAutoresCsv;
+window.exportarSelecaoAutoresMarkdown = exportarSelecaoAutoresMarkdown;
 window.setFiltroMoldes = debounce(setFiltroMoldes, 200);
 window.setFiltroEstruturaTextual = debounce(setFiltroEstruturaTextual, 200);
 window.prepararNovaEstruturaTextual = prepararNovaEstruturaTextual;
@@ -866,6 +978,7 @@ window.moverColuna = moverColuna;
 window.selecionarTodasColunas = selecionarTodasColunas;
 window.desmarcarTodasColunas = desmarcarTodasColunas;
 window.resetarColunas = resetarColunas;
+window.filtrarColunas = filtrarColunas;
 window.adicionarColunaContagem = adicionarColunaContagem;
 window.removerColunaContagem = removerColunaContagem;
 window.definirCampoColunaContagem = definirCampoColunaContagem;
@@ -876,6 +989,7 @@ window.setFormatoBaixarColuna = setFormatoBaixarColuna;
 window.resetarAcoesColuna = resetarAcoesColuna;
 window.toggleDownloadAbrangente = toggleDownloadAbrangente;
 window.baixarDoModalVisualizacao = baixarDoModalVisualizacao;
+window.editarAutorDoVisualizador = editarAutorDoVisualizador;
 window.baixarDoModalVisualizacaoSonoridade = baixarDoModalVisualizacaoSonoridade;
 window.baixarDoModalVisualizacaoEstruturaTextual = baixarDoModalVisualizacaoEstruturaTextual;
 window.setTema = setTema;
@@ -900,6 +1014,7 @@ window.toggleSelecaoTodos = toggleSelecaoTodos;
 window.limparSelecao = limparSelecao;
 window.excluirSelecao = excluirSelecao;
 window.exportarSelecaoAtualJson = exportarSelecaoAtualJson;
+window.exportarSelecaoAtualCsv = exportarSelecaoAtualCsv;
 window.exportarSelecaoAtualMarkdown = exportarSelecaoAtualMarkdown;
 window.exportarSelecaoAtualPdf = exportarSelecaoAtualPdf;
 window.exportarSelecaoAtualDocx = exportarSelecaoAtualDocx;
@@ -911,6 +1026,10 @@ window.removerSinalEmMassa = removerSinalEmMassa;
 window.atualizarListaSinalBulk = atualizarListaSinalBulk;
 window.aplicarDataEmMassa = aplicarDataEmMassa;
 window.limparDataEmMassa = limparDataEmMassa;
+window.prepararPainelPreencherMassa = prepararPainelPreencherMassa;
+window.trocarCampoPreencherMassa = trocarCampoPreencherMassa;
+window.aplicarPreenchimentoEmMassa = aplicarPreenchimentoEmMassa;
+window.limparCampoEmMassa = limparCampoEmMassa;
 window.aplicarGeneroEmMassaProsa = aplicarGeneroEmMassaProsa;
 window.removerGeneroEmMassaProsa = removerGeneroEmMassaProsa;
 window.setLivroEstrutura = setLivroEstrutura;
@@ -928,6 +1047,7 @@ window.executarExportacaoSeletivaDocx = executarExportacaoSeletivaDocx;
 window.renderEstatisticas = renderEstatisticas;
 window.toggleTipoEtiqueta = toggleTipoEtiqueta;
 window.definirModoGraficoPessoas = definirModoGraficoPessoas;
+window.definirModoTerceiros = definirModoTerceiros;
 window.toggleGrupoFiltroPessoas = toggleGrupoFiltroPessoas;
 window.toggleOcultoItem = toggleOcultoItem;
 window.restaurarOcultosGrafico = restaurarOcultosGrafico;

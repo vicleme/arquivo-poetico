@@ -24,6 +24,8 @@ import {
     paresGrupoPessoa,
     agruparParesGrupoPessoa,
     paresAutoria,
+    nomeAutoriaExibido,
+    linhasFonteTexto,
     corpoParaLinhasRicas,
     formatarAutoclassificacaoTexto,
 } from './utils.js';
@@ -273,6 +275,9 @@ function verificacoesDeCampos(item) {
         !!(item.justificativaMigracao || '').trim(),
         !!(item.pendencia || '').trim(),
         !!(item.descarte || '').trim(),
+        // Fonte conta como UM campo (origem ou edição preenchida) — pra
+        // texto próprio, preencher "Obra própria" é o que o liga.
+        !!((item.fonteTexto?.origem || '').trim() || (item.fonteTexto?.edicao || '').trim()),
     ];
 }
 
@@ -336,11 +341,31 @@ export function textoGrupos(item) {
 // paresAutoria em utils.js). Papel aqui é sempre único e sempre
 // preenchido (migração garante isso), então sempre mostra "Nome
 // (Papel)" por extenso — diferente de textoPessoas, que só parentiza
-// quando há papéis marcados.
+// quando há papéis marcados. Quando a Assinatura é Heterônimo/
+// Pseudônimo, o parêntese ganha uma segunda cláusula "heterônimo de
+// Nome do Autor"/"pseudônimo de Nome do Autor" (minúsculo, já que não
+// é o rótulo fechado de Papel) — só nesse caso, já que Ortônimo não
+// carrega nomeLiterario e nomeAutoriaExibido já cai pro nome do
+// próprio Autor. Autor sem nome literário registrado não existe nesse
+// fluxo (a Assinatura só é Heterônimo/Pseudônimo se houver um Autor
+// vinculado — ver nomesLiterarios em db.autores), então não há caso de
+// nota "órfã" a omitir. Usada tanto pela exportação (linhaMeta abaixo)
+// quanto pelo modal de Visualização (ver js/visualizar.js); a coluna
+// "Autoria" da tabela não passa por aqui (ver badgesAutoria em
+// celulas-tabela.js, que continua só com o nome exibido, sem a nota).
 export function textoAutoria(item) {
     const pares = paresAutoria(item, db.autores);
     if (!pares.length) return null;
-    return pares.map(({ autor, papel }) => `${autor.nome} (${papel})`).join(', ');
+    return pares
+        .map(({ autor, papel, assinatura, nomeLiterario }) => {
+            const nome = nomeAutoriaExibido({ autor, assinatura, nomeLiterario });
+            const nota =
+                assinatura && assinatura !== 'Ortônimo' && nomeLiterario
+                    ? `, ${assinatura.toLowerCase()} de ${autor.nome}`
+                    : '';
+            return `${nome} (${papel}${nota})`;
+        })
+        .join(', ');
 }
 
 // `indice` é opcional — omitido (ou falsy), o cabeçalho sai sem
@@ -405,6 +430,9 @@ function itemParaMarkdownDepoisDoTexto(item) {
     let md = '';
     md += blocoTexto('Notas', item.notas);
     md += linhaMeta('Autoria', textoAutoria(item));
+    linhasFonteTexto(item, db.autores).forEach(({ rotulo, valor }) => {
+        md += linhaMeta(rotulo, valor);
+    });
     md += blocoTexto('Descrição Visual', item.descricaoVisual);
     md += blocoTexto('Contexto Histórico/Pessoal', item.contextoHistorico);
     md += blocoTexto('Ocultação', item.ocultacao);

@@ -438,6 +438,25 @@ npm run format:check   # prettier --check .
   separado do `localStorage` do app principal) e são reaplicadas
   automaticamente em uploads futuros.
 - **Import/export de JSON** para backup completo do acervo (dados textuais).
+- **Importação Aditiva** (aba "Importação", dentro do menu "Dados"): soma um
+  Poema/Prosa (ou um recorte com vários) de um arquivo .json separado ao
+  acervo atual, sem apagar nada — diferente do backup acima, que substitui
+  cada coleção por completo. Aceita o mesmo formato flat que a Exportação já
+  produz. Em quatro fases: (1) validação só-leitura que classifica cada
+  referência a um cadastro central (Pessoas, Grupos, Autores, Épocas,
+  Livros) por nome — sem candidato cria automático, um candidato exato casa
+  automático (trocável), mais de um candidato ou só aproximado exige decisão
+  manual, e título igual a um item já existente também vira decisão manual
+  (duplicata vs. item novo); (2) preview com um seletor por referência
+  pendente, botão "Aplicar" só habilita sem nenhuma pendência; (3) snapshot
+  de segurança forçado (ignora o throttle normal de 6h) antes de qualquer
+  escrita — se falhar, aborta; (4) remapeamento de ids em memória e escrita
+  atômica (um único push + save no final). Livro casado ou criado só linka
+  em `livrosIds` — nunca posiciona automaticamente em Partes/Seções.
+  Sonoridade e Estrutura Textual do Poema (só presentes se o arquivo veio do
+  "download abrangente") acompanham automaticamente, sem exigir decisão —
+  não são referência, só registros dependurados no id do Poema, remapeados
+  junto na Fase 4.
 - **Colunas configuráveis** (Poemas/Prosas): escolha quais colunas aparecem
   e em que ordem, salvo por tabela no navegador; ID/Título e Ações são
   fixas. Cabeçalhos de Poemas são clicáveis para ordenar (por estrutura,

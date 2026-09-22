@@ -40,6 +40,10 @@ import {
     abrirModalConfirmacao,
     criarRastreadorDeAlteracoes,
     violaOrdemDeDatas,
+    calcularAnoDominioPublico,
+    idadeAutor,
+    autorGruposComDados,
+    signoDoZodiaco,
     obterSugestaoEpocaPorId,
     nomeEpoca,
     CORES_GRUPO,
@@ -59,6 +63,7 @@ import {
     avisoMonorrimaAtipica,
     calcularOpcoesPeMetrico,
     calcularTamanhoVersoForcadoPorPe,
+    ehGrafiaAntiga,
 } from './utils.js';
 
 // Rastreadores de alterações não salvas dos formulários de texto longo
@@ -98,6 +103,18 @@ import {
     resetReconhecimentos,
     resetGeneroProsa,
     carregarGeneroProsa,
+    carregarNomesLiterariosAutor,
+    adicionarNomeLiterarioAutor,
+    carregarOcupacoesAutor,
+    adicionarOcupacaoAutor,
+    carregarCondicoesClinicasAutor,
+    adicionarCondicaoClinicaAutor,
+    carregarDeficienciasAutor,
+    adicionarDeficienciaAutor,
+    carregarNeurodivergenciasAutor,
+    adicionarNeurodivergenciaAutor,
+    carregarInstituicoesAutor,
+    adicionarInstituicaoAutor,
     atualizarDatalistProsa,
     obterIntertextualidade,
     carregarIntertextualidade,
@@ -132,10 +149,12 @@ import {
     construirLinhasIniciais,
     inicializarGradeSonoridade,
     atualizarPeMetricoSonoridade,
+    atualizarTamanhoVersoSonoridade,
     obterLinhasSonoridade,
     obterRimasSonoridade,
     obterEcosSonoridade,
     calcularDivergenciaSilabas,
+    calcularVersosComDigrafoDividido,
 } from './editor-sonoridade.js';
 import {
     inicializarGradeMolde,
@@ -149,6 +168,7 @@ import {
     definirCallbackAbrirPoema,
 } from './editor-molde.js';
 import { validarJsonSonoridade } from './importar-sonoridade.js';
+import { baixarMolde } from './ui-molde-json.js';
 
 // Lê o par Livro/Seção de texto livre dos campos de Migração (Cortado
 // de / Lançado em) — compartilhado por Poema e Prosa (item 4), por isso
@@ -490,10 +510,34 @@ export function initFormAutor() {
         e.preventDefault();
         const id = document.getElementById('au-edit-id').value;
 
+        const nascimento = lerDataParcial('au-nasc');
+        const obito = lerDataParcial('au-obito');
+        if (violaOrdemDeDatas(nascimento, obito)) {
+            return mostrarAviso('O Óbito não pode ser anterior ao Nascimento.');
+        }
+
         const dados = {
             id: id ? parseInt(id) : gerarId(),
             nome: document.getElementById('au-nome').value.trim(),
             isni: document.getElementById('au-isni').value.trim(),
+            nomesLiterarios: JSON.parse(document.getElementById('au-nomes-literarios').value || '[]'),
+            souEu: !!document.getElementById('au-sou-eu')?.checked,
+            nacionalidade: document.getElementById('au-nacionalidade').value.trim(),
+            sexo: document.getElementById('au-sexo').value,
+            corRaca: document.getElementById('au-cor-raca').value,
+            genero: document.getElementById('au-genero').value.trim(),
+            orientacaoSexual: document.getElementById('au-orientacao-sexual').value.trim(),
+            identidadeCisTrans: document.getElementById('au-identidade-cis-trans').value,
+            religiao: document.getElementById('au-religiao').value.trim(),
+            classeSocial: document.getElementById('au-classe-social').value,
+            neurodivergencias: document.getElementById('au-neurodivergencias').value.trim(),
+            condicoesClinicas: JSON.parse(document.getElementById('au-condicoes-clinicas').value || '[]'),
+            deficiencias: JSON.parse(document.getElementById('au-deficiencias').value || '[]'),
+            grauAcademico: document.getElementById('au-grau-academico').value.trim(),
+            instituicoes: document.getElementById('au-instituicoes').value.trim(),
+            ocupacoes: document.getElementById('au-ocupacoes').value.trim(),
+            nascimento,
+            obito,
             sobre: document.getElementById('au-sobre').value.trim(),
         };
 
@@ -503,6 +547,92 @@ export function initFormAutor() {
         save();
         toggleModal('modal-autor');
     };
+
+    // Recalcula "domínio público desde" ao vivo conforme o Óbito é
+    // editado (mesmo espírito informativo do card em renderAutores, ver
+    // render-listas.js) — não bloqueia nada, só atualiza o texto de apoio.
+    ['au-obito-dia', 'au-obito-mes', 'au-obito-ano'].forEach((id) => {
+        document.getElementById(id)?.addEventListener('input', atualizarDominioPublicoAutorForm);
+    });
+
+    // Idade/Signo do zodíaco: idem, mas reagem tanto ao Nascimento
+    // (os dois dependem dele) quanto ao Óbito (só a Idade — signo é
+    // fixo, não muda com a morte).
+    ['au-nasc-dia', 'au-nasc-mes', 'au-nasc-ano', 'au-obito-dia', 'au-obito-mes', 'au-obito-ano'].forEach(
+        (id) => {
+            document.getElementById(id)?.addEventListener('input', atualizarIdadeSignoAutorForm);
+        },
+    );
+
+    // Enter no input de Nome Literário — mesmo padrão do campo de
+    // Gênero (Prosa, ver initEditorProsa em editor.js).
+    document.getElementById('au-nome-literario-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarNomeLiterarioAutor();
+        }
+    });
+
+    // Enter no input de Ocupações — mesmo padrão acima.
+    document.getElementById('au-ocupacao-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarOcupacaoAutor();
+        }
+    });
+
+    // Enter nos inputs de Neurodivergência, Condições Clínicas,
+    // Deficiências e Instituições Frequentadas — mesmo padrão acima.
+    [
+        ['au-neurodivergencia-input', adicionarNeurodivergenciaAutor],
+        ['au-condicao-clinica-input', adicionarCondicaoClinicaAutor],
+        ['au-deficiencia-input', adicionarDeficienciaAutor],
+        ['au-instituicao-input', adicionarInstituicaoAutor],
+    ].forEach(([inputId, adicionar]) => {
+        document.getElementById(inputId)?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                adicionar();
+            }
+        });
+    });
+}
+
+function atualizarDominioPublicoAutorForm() {
+    const el = document.getElementById('au-dominio-publico');
+    if (!el) return;
+    const ano = calcularAnoDominioPublico(lerDataParcial('au-obito'));
+    if (ano) {
+        el.textContent = `Domínio público desde ${ano} (estimativa informativa, não substitui orientação jurídica).`;
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
+}
+
+// Idade/Signo — prévia ao vivo, mesmo espírito de
+// atualizarDominioPublicoAutorForm acima. Os dois são só leitura (não
+// existe input pra eles): quem quiser corrigi-los, corrige o
+// Nascimento/Óbito, que é a fonte real do dado (ver idadeAutor/
+// signoDoZodiaco em utils.js).
+function atualizarIdadeSignoAutorForm() {
+    const el = document.getElementById('au-idade-signo');
+    if (!el) return;
+    const nascimento = lerDataParcial('au-nasc');
+    const obito = lerDataParcial('au-obito');
+    const idade = idadeAutor({ nascimento, obito });
+    const signo = signoDoZodiaco(nascimento);
+
+    const partes = [];
+    if (idade) partes.push(`${idade.aproximada ? '≈ ' : ''}${idade.anos} anos${obito?.ano ? ' (à época do óbito)' : ''}`);
+    if (signo) partes.push(signo);
+
+    if (partes.length) {
+        el.textContent = partes.join(' · ');
+        el.classList.remove('hidden');
+    } else {
+        el.classList.add('hidden');
+    }
 }
 
 export async function editarAutor(id) {
@@ -512,7 +642,45 @@ export async function editarAutor(id) {
     document.getElementById('au-edit-id').value = a.id;
     document.getElementById('au-nome').value = a.nome;
     document.getElementById('au-isni').value = a.isni || '';
+    carregarNomesLiterariosAutor(a.nomesLiterarios || []);
+    const souEuEl = document.getElementById('au-sou-eu');
+    if (souEuEl) souEuEl.checked = !!a.souEu;
+    document.getElementById('au-nacionalidade').value = a.nacionalidade || '';
+    document.getElementById('au-sexo').value = a.sexo || '';
+    document.getElementById('au-cor-raca').value = a.corRaca || '';
+    document.getElementById('au-genero').value = a.genero || '';
+    document.getElementById('au-orientacao-sexual').value = a.orientacaoSexual || '';
+    document.getElementById('au-identidade-cis-trans').value = a.identidadeCisTrans || '';
+    document.getElementById('au-religiao').value = a.religiao || '';
+    document.getElementById('au-classe-social').value = a.classeSocial || '';
+    carregarNeurodivergenciasAutor(a.neurodivergencias || '');
+    carregarCondicoesClinicasAutor(a.condicoesClinicas || []);
+    carregarDeficienciasAutor(a.deficiencias || []);
+    // Grau acadêmico é select fechado; valor fora da lista (dado da época
+    // em que o campo era texto livre) ganha uma opção provisória em vez
+    // de sumir silenciosamente no próximo salvamento.
+    const grauEl = document.getElementById('au-grau-academico');
+    grauEl.querySelector('option[data-legado]')?.remove();
+    if (a.grauAcademico && !Array.from(grauEl.options).some((o) => o.value === a.grauAcademico)) {
+        const legado = document.createElement('option');
+        legado.value = a.grauAcademico;
+        legado.textContent = `${a.grauAcademico} (fora da lista)`;
+        legado.dataset.legado = 'true';
+        grauEl.appendChild(legado);
+    }
+    grauEl.value = a.grauAcademico || '';
+    carregarInstituicoesAutor(a.instituicoes || '');
+    carregarOcupacoesAutor(a.ocupacoes || '');
+    preencherDataParcial('au-nasc', a.nascimento);
+    preencherDataParcial('au-obito', a.obito);
     document.getElementById('au-sobre').value = a.sobre || '';
+    // Grupos colapsáveis: abre só os que já têm algo preenchido.
+    const gruposComDados = autorGruposComDados(a);
+    document.querySelectorAll('#modal-autor details[data-grupo-autor]').forEach((d) => {
+        d.open = !!gruposComDados[d.dataset.grupoAutor];
+    });
+    atualizarDominioPublicoAutorForm();
+    atualizarIdadeSignoAutorForm();
     document.getElementById('modal-autor-titulo').innerText = 'Editar Autor';
     toggleModal('modal-autor');
 }
@@ -788,6 +956,24 @@ function atualizarAvisoPoemaSonoridade() {
     }
 }
 
+// Mesmo padrão de atualizarAvisoPoemaSonoridade, pra fonteTexto.grafia
+// (ver utils.js): a grade abaixo divide sílabas por regras atuais, então
+// qualquer grafia antiga marcada (etimológica, quinhentista...) faz a
+// contagem/tônica saírem erradas em silêncio. Não bloqueia nem corrige
+// nada — só avisa, como o resto dos avisos da Sonoridade. Dispara pra
+// QUALQUER valor não vazio E diferente de GRAFIA_ATUAL (não só um valor
+// específico — ver ehGrafiaAntiga em utils.js), pra novas tradições de
+// grafia que ainda venham a existir também acionarem o aviso sem
+// precisar tocar aqui. "Atual" marcado de propósito e "nunca definido"
+// (vazio) NÃO acionam — nenhum dos dois é grafia antiga.
+function atualizarAvisoGrafiaSonoridade() {
+    const sel = document.getElementById('son-poema-id');
+    const aviso = document.getElementById('son-grafia-aviso');
+    if (!sel || !aviso) return;
+    const poema = sel.value ? db.poemas.find((p) => p.id === parseInt(sel.value)) : null;
+    aviso.classList.toggle('hidden', !ehGrafiaAntiga(poema?.fonteTexto?.grafia));
+}
+
 // Carrega a grade do editor visual (js/editor-sonoridade.js) a partir do
 // estado atual do <select> de poema + do id em edição:
 // - sem poema escolhido → grade vazia;
@@ -811,13 +997,14 @@ function carregarGradeSonoridade() {
     const poemaId = parseInt(document.getElementById('son-poema-id')?.value);
     const linhasIgnoradas = document.getElementById('son-linhas-ignoradas')?.value || '';
     const peMetrico = document.getElementById('son-pe-metrico')?.value || '';
+    const tamanhoVerso = document.getElementById('son-tamanho-verso')?.value || '';
     if (!poemaId) {
-        inicializarGradeSonoridade(container, [], [], [], peMetrico);
+        inicializarGradeSonoridade(container, [], [], [], peMetrico, tamanhoVerso);
         return;
     }
     const poema = db.poemas.find((p) => p.id === poemaId);
     if (!poema) {
-        inicializarGradeSonoridade(container, [], [], [], peMetrico);
+        inicializarGradeSonoridade(container, [], [], [], peMetrico, tamanhoVerso);
         return;
     }
     const idEmEdicao = document.getElementById('son-edit-id')?.value;
@@ -830,7 +1017,7 @@ function carregarGradeSonoridade() {
     const rimas =
         es && String(es.poemaId) === String(poemaId) && mesmoRecorte ? es.rimas || [] : [];
     const ecos = es && String(es.poemaId) === String(poemaId) && mesmoRecorte ? es.ecos || [] : [];
-    inicializarGradeSonoridade(container, linhas, rimas, ecos, peMetrico);
+    inicializarGradeSonoridade(container, linhas, rimas, ecos, peMetrico, tamanhoVerso);
 }
 
 // Repopula os 7 selects (poema + 6 campos de classificação) do zero —
@@ -879,6 +1066,7 @@ function popularCamposSonoridade(valores = {}) {
     // valores.* ainda não estariam no DOM pra aplicarCascataSonoridade ler.
     aplicarCascataSonoridade();
     atualizarAvisoPoemaSonoridade();
+    atualizarAvisoGrafiaSonoridade();
     carregarGradeSonoridade();
 }
 
@@ -954,6 +1142,7 @@ export function importarSonoridadeDeArquivo(event) {
         const selPoema = document.getElementById('son-poema-id');
         if (selPoema) selPoema.value = poema.id;
         atualizarAvisoPoemaSonoridade();
+        atualizarAvisoGrafiaSonoridade();
 
         aplicarClassificacaoSonoridade(valores);
         const campoLinhasIgnoradas = document.getElementById('son-linhas-ignoradas');
@@ -962,7 +1151,8 @@ export function importarSonoridadeDeArquivo(event) {
         const container = document.getElementById('son-grade-container');
         if (container) {
             const peMetrico = document.getElementById('son-pe-metrico')?.value || '';
-            inicializarGradeSonoridade(container, linhas, rimas, ecos, peMetrico);
+            const tamanhoVerso = document.getElementById('son-tamanho-verso')?.value || '';
+            inicializarGradeSonoridade(container, linhas, rimas, ecos, peMetrico, tamanhoVerso);
         }
 
         if (avisos.length) avisos.forEach((msg) => mostrarAviso(msg));
@@ -995,6 +1185,7 @@ export function initFormSonoridade() {
     if (selPoema) {
         selPoema.onchange = () => {
             atualizarAvisoPoemaSonoridade();
+            atualizarAvisoGrafiaSonoridade();
             carregarGradeSonoridade();
         };
     }
@@ -1052,6 +1243,10 @@ export function initFormSonoridade() {
         // resolvido pelo popularSelectOpcoes acima, não e.target.value
         // (que é o Tamanho, não o Pé).
         atualizarPeMetricoSonoridade(document.getElementById('son-pe-metrico')?.value);
+        // Recalcula a célula "Cont." e o rótulo "Alvo" da grade contra o
+        // novo Tamanho — mesma complementaridade que editor-molde.js já
+        // tinha (atualizarAlvoGradeMolde), trazida agora pra Sonoridade.
+        atualizarTamanhoVersoSonoridade(e.target.value);
     });
 
     // Metade "Pé manda no Tamanho": um Pé Métrico fixo (Heroico, Sáfico,
@@ -1071,6 +1266,12 @@ export function initFormSonoridade() {
         // Modo Tônica/Rima em curso nem o cursor de quem estiver
         // digitando um verso.
         atualizarPeMetricoSonoridade(e.target.value);
+        // Um Pé fixo pode ter forçado o Tamanho do Verso (selTamanho.value
+        // acima) sem disparar o listener `change` de son-tamanho-verso —
+        // relê o valor já resolvido do próprio select pra manter a célula
+        // "Cont."/rótulo "Alvo" em sincronia com o Tamanho realmente
+        // selecionado agora.
+        atualizarTamanhoVersoSonoridade(document.getElementById('son-tamanho-verso')?.value);
     });
 
     const form = document.getElementById('form-sonoridade');
@@ -1110,7 +1311,9 @@ export function initFormSonoridade() {
         // Regra adicional 3 (avisos não-bloqueantes) — não impedem o
         // salvamento, só avisam depois pra revisão. Monorrima atípica
         // primeiro (mais específico); divergência de sílabas só faz
-        // sentido em poema Isométrico (ver calcularDivergenciaSilabas).
+        // sentido em poema Isométrico (ver calcularDivergenciaSilabas);
+        // dígrafo dividido (-rr-/-ss-) vale pra qualquer poema, não só
+        // Isométrico — é erro de escansão, independe de regularidade.
         const avisoMonorrima = avisoMonorrimaAtipica(dados.formaPoema, dados.esquemaRimasPadrao);
         if (avisoMonorrima) mostrarAviso(avisoMonorrima);
         if (dados.regularidadeMetrica === 'Isométrico') {
@@ -1125,6 +1328,14 @@ export function initFormSonoridade() {
                     } com ${dados.tamanhoVerso} — confira a escansão.`,
                 );
             }
+        }
+        const versosComDigrafo = calcularVersosComDigrafoDividido(dados.escansaoLinhas);
+        if (versosComDigrafo.length) {
+            mostrarAviso(
+                `Verso${versosComDigrafo.length > 1 ? 's' : ''} ${versosComDigrafo.join(', ')} ${
+                    versosComDigrafo.length > 1 ? 'dividem' : 'divide'
+                } um dígrafo (rr/ss) entre sílabas — confira a escansão.`,
+            );
         }
 
         const anterior = db.escansoes.find((x) => x.id == idAlvo);
@@ -1201,6 +1412,18 @@ function coletarEstadoAtualMolde() {
         moldeLinhas: obterLinhasMolde(),
         paresRima: obterParesRimaMolde(),
     };
+}
+
+// Botão "Baixar JSON" de DENTRO do modal de Molde — exporta o estado AO
+// VIVO do editor (mesmo espírito de promoverMoldeAoVivo abaixo: o que está
+// na tela, não só o que foi salvo da última vez). `status` vem do que já
+// está salvo (o form nunca o edita); Molde novo ainda sem salvar sai como
+// 'em andamento'. O botão da TABELA exporta direto de db.moldes (ver
+// baixarMoldePorId, ui-molde-json.js).
+export function baixarMoldeAoVivo() {
+    const id = document.getElementById('molde-edit-id')?.value;
+    const anterior = id ? db.moldes.find((x) => x.id == id) : null;
+    baixarMolde({ ...coletarEstadoAtualMolde(), status: anterior?.status ?? 'em andamento' });
 }
 
 // Abre modal-poema pré-preenchido (Título/Texto vindos do Molde) — o
@@ -2327,6 +2550,35 @@ export function aplicarSugestaoEpoca() {
     }
 }
 
+// ─── Fonte do texto (Poema/Prosa) ────────────────────────────
+// `fonteTexto`: { origem, edicao, link, conferido, grafia } — de onde
+// veio o texto (edição de terceiros, transcrição) + a ortografia em que
+// foi transcrito. `grafia` é '' só quando o campo nunca foi definido —
+// "Atual (padrão)" escolhido de propósito grava GRAFIA_ATUAL, um valor
+// próprio, não '' (ver OPCOES_GRAFIA/GRAFIA_ATUAL em utils.js). Isso é
+// o que permite ao `if` abaixo distinguir "nunca mexi em Fonte" (grafia
+// também vazia, objeto vira null) de "só confirmei Atual e não preenchi
+// mais nada" (grafia não-vazia, objeto é mantido). `prefixo` é 'p'
+// (Poema) ou 'pr' (Prosa).
+function lerFonteTexto(prefixo) {
+    const origem = document.getElementById(`${prefixo}-fonte-origem`).value.trim();
+    const edicao = document.getElementById(`${prefixo}-fonte-edicao`).value.trim();
+    const link = document.getElementById(`${prefixo}-fonte-link`).value.trim();
+    const conferido = document.getElementById(`${prefixo}-fonte-conferido`).checked;
+    const grafia = document.getElementById(`${prefixo}-fonte-grafia`)?.value || '';
+    if (!origem && !edicao && !link && !conferido && !grafia) return null;
+    return { origem, edicao, link, conferido, grafia };
+}
+
+function preencherFonteTexto(prefixo, fonte) {
+    document.getElementById(`${prefixo}-fonte-origem`).value = fonte?.origem || '';
+    document.getElementById(`${prefixo}-fonte-edicao`).value = fonte?.edicao || '';
+    document.getElementById(`${prefixo}-fonte-link`).value = fonte?.link || '';
+    document.getElementById(`${prefixo}-fonte-conferido`).checked = !!fonte?.conferido;
+    const selGrafia = document.getElementById(`${prefixo}-fonte-grafia`);
+    if (selGrafia) selGrafia.value = fonte?.grafia || '';
+}
+
 export function initFormPoema() {
     const form = document.getElementById('form-poema');
     if (!form) return;
@@ -2443,6 +2695,7 @@ export function initFormPoema() {
             justificativaMigracao: document.getElementById('p-migracao-justificativa').value,
             descarte: document.getElementById('p-descarte').value,
             pendencia: document.getElementById('p-pendencia').value,
+            fonteTexto: lerFonteTexto('p'),
         };
 
         // Aviso não-bloqueante: os campos de Migração e Descarte só fazem
@@ -2584,6 +2837,7 @@ export async function editarPoema(id) {
     document.getElementById('p-lancado-livro').value = p.lancadoEm?.livro || '';
     document.getElementById('p-lancado-secao').value = p.lancadoEm?.secao || '';
     document.getElementById('p-migracao-justificativa').value = p.justificativaMigracao || '';
+    preencherFonteTexto('p', p.fonteTexto);
     // .value= direto não dispara 'input' — reaplica o filtro de Seção
     // manualmente pros 4 campos que acabaram de ser preenchidos.
     atualizarFiltroSecoesMigracao();
@@ -2758,6 +3012,7 @@ export function initFormProsa() {
             justificativaMigracao: document.getElementById('pr-migracao-justificativa').value,
             descarte: document.getElementById('pr-descarte').value,
             pendencia: document.getElementById('pr-pendencia').value,
+            fonteTexto: lerFonteTexto('pr'),
         };
 
         // Avisos não-bloqueantes — mesmo critério de initFormPoema.
@@ -2886,6 +3141,7 @@ export async function editarProsa(id) {
     document.getElementById('pr-lancado-livro').value = pr.lancadoEm?.livro || '';
     document.getElementById('pr-lancado-secao').value = pr.lancadoEm?.secao || '';
     document.getElementById('pr-migracao-justificativa').value = pr.justificativaMigracao || '';
+    preencherFonteTexto('pr', pr.fonteTexto);
     // .value= direto não dispara 'input' — reaplica o filtro de Seção
     // manualmente pros 4 campos que acabaram de ser preenchidos (mesmo
     // motivo de atualizarFiltroSecoesMigracao em editarPoema).

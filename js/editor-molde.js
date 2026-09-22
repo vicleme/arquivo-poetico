@@ -48,6 +48,8 @@
 import { escapeHtml, gerarId, mostrarAvisoComAcao } from './utils.js';
 import {
     dividirSilabas,
+    calcularContagemMetrica,
+    extrairAlvo,
     calcularDivergenciaSilabas,
     calcularMaxSilabas,
     celulasDivergentesPeMetrico,
@@ -477,13 +479,9 @@ function realcarBarras(el) {
 // `alvo` = número entre parênteses do rótulo de Tamanho do Verso (ex.
 // "Decassílabo (10)" → 10), ou null se o rótulo não tiver um número
 // fixo (Bárbaro, Múltiplos Metros, Variável, ou nenhum tamanho
-// escolhido ainda) — mesma extração que calcularDivergenciaSilabas já
-// faz internamente, refeita aqui só pra exibir o número no rótulo da
-// coluna, já que aquela função devolve só a lista de linhas divergentes.
-function extrairAlvo(tamanhoVerso) {
-    const match = /\((\d+)\)/.exec(tamanhoVerso || '');
-    return match ? parseInt(match[1], 10) : null;
-}
+// escolhido ainda) — movida pra editor-sonoridade.js (importada acima),
+// que agora também precisa dela pra sua própria célula de contagem ao
+// vivo, e de onde calcularDivergenciaSilabas já a reaproveita.
 
 // Atualiza só as células de contagem (não mexe no contenteditable, pra
 // não perder foco/cursor de quem estiver digitando) — chamada tanto a
@@ -510,7 +508,7 @@ function atualizarColunaAlvo() {
         );
         if (!td || linha.tipo !== 'verso') return;
         numeroVerso += 1;
-        const contagem = dividirSilabas(linha.texto).filter((s) => s !== '').length;
+        const contagem = calcularContagemMetrica(linha.texto);
         const diverge = alvo !== null && divergentes.has(numeroVerso);
         td.textContent = alvo !== null ? `${contagem}/${alvo}` : `${contagem}`;
         td.className = `molde-cel-contagem px-2 py-1.5 text-center text-[11px] font-mono border-b border-gray-100 dark:border-slate-800 align-top ${

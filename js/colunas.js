@@ -3,11 +3,21 @@
 // nas tabelas de Poemas e Prosas. Cada tabela guarda sua própria
 // escolha no localStorage; colunas não listadas aqui (ID/Título
 // e Ações) são fixas e sempre aparecem, sempre nas pontas.
-// Importado por: render-listas.js, main.js (expõe toggleColuna
-// e moverColuna)
+// Importado por: render-listas.js, main.js (expõe toggleColuna,
+// moverColuna e filtrarColunas)
 // ============================================================
 
+import { escapeHtml } from './utils.js';
+
 const LS_PREFIX = 'arquivoPoetico_colunas_';
+
+// Texto de busca do seletor de colunas (ver renderSeletorColunas/
+// filtrarColunas abaixo), por tabela — só em memória (não precisa
+// sobreviver a um F5, diferente da ordem/ativas salvas no
+// localStorage), pra reaparecer preenchido depois de ligar/desligar
+// uma coluna via checkbox (o que reconstrói o HTML do painel inteiro,
+// ver atualizarPainelColunas em celulas-tabela.js).
+const filtrosColunas = {};
 
 // Ordem de definição = ordem padrão de exibição (usada só até o
 // usuário reordenar manualmente pelo seletor — a partir daí quem
@@ -127,6 +137,17 @@ export const DEFINICAO_COLUNAS = {
         { key: 'etiquetas', label: 'Etiquetas', default: false, sortType: 'alfabetico' },
         { key: 'pessoas', label: 'Pessoas', default: true, sortType: 'alfabetico' },
         { key: 'grupos', label: 'Grupos', default: false, sortType: 'alfabetico' },
+        // "Fonte" — último grupo do modal antes de "Status e Pendências"
+        // (ver modal-poema.html). 'fonte' mostra o nome da fonte (origem),
+        // virando link clicável quando o link estiver preenchido (ver
+        // celulaFonte em celulas-tabela.js); 'grafia' é a grafia marcada —
+        // atual (GRAFIA_ATUAL) ou uma tradição antiga (GRAFIA_ETIMOLOGICA/
+        // GRAFIA_QUINHENTISTA, utils.js) — vazio = nunca definida, não
+        // "atual". Mesmo critério de "default:
+        // false" das colunas menos consultadas no dia a dia — grupo Fonte
+        // não entra em Campos Preenchidos nem Estatísticas (ver schema.md).
+        { key: 'fonte', label: 'Fonte', default: false, sortType: 'alfabetico' },
+        { key: 'grafia', label: 'Grafia', default: false, sortType: 'alfabetico' },
         // "Status e Pendências".
         { key: 'status', label: 'Status', default: true, sortType: 'status' },
         { key: 'cortadoDe', label: 'Cortado de', default: false, sortType: 'alfabetico' },
@@ -259,6 +280,9 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'alfabetico',
         },
+        // "Fonte" — ver comentário equivalente em poemas[] acima.
+        { key: 'fonte', label: 'Fonte', default: false, sortType: 'alfabetico' },
+        { key: 'grafia', label: 'Grafia', default: false, sortType: 'alfabetico' },
         // "Status e Pendências".
         { key: 'status', label: 'Status', default: true, sortType: 'status' },
         { key: 'cortadoDe', label: 'Cortado de', default: false, sortType: 'alfabetico' },
@@ -493,7 +517,15 @@ export function moverColuna(tabela, key, direcao) {
 
 // Monta o HTML do painel de checkboxes + setinhas de reordenar (usado
 // dentro do popover "Colunas ▾"). A ordem de exibição das linhas do
-// próprio seletor já reflete a ordem escolhida.
+// próprio seletor já reflete a ordem escolhida. Tabelas com muitas
+// colunas (Poemas/Prosas, hoje ~39/38 — as outras têm no máximo 9)
+// ganham um campo de busca acima da lista: filtra pelo rótulo, sem
+// precisar rolar pra achar a que quer ligar. `filtrarColunas` (mais
+// abaixo) faz o filtro ao vivo, sem reconstruir o HTML — mas o filtro
+// já sai aplicado aqui também (linha escondida com `display:none` de
+// cara), porque ligar/desligar uma coluna reconstrói o painel inteiro
+// (ver atualizarPainelColunas) e o texto buscado precisa continuar
+// filtrando depois disso, não só até o próximo clique.
 export function renderSeletorColunas(tabela) {
     const def = DEFINICAO_COLUNAS[tabela];
     if (!def) return '';
@@ -501,31 +533,59 @@ export function renderSeletorColunas(tabela) {
     const rotulos = Object.fromEntries(def.map((c) => [c.key, c.label]));
     const { ordem, ativas } = lerEstado(tabela);
     const setAtivas = new Set(ativas);
+    const filtro = (filtrosColunas[tabela] || '').trim().toLowerCase();
 
-    const acoesEmMassa = `
-        <div class="flex gap-3 mb-1 pb-1.5 border-b border-gray-200 dark:border-slate-600">
-            <button type="button" onclick="selecionarTodasColunas('${tabela}')"
-                class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-                Marcar todas
-            </button>
-            <button type="button" onclick="desmarcarTodasColunas('${tabela}')"
-                class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-                Desmarcar todas
-            </button>
-            <button type="button" onclick="resetarColunas('${tabela}')"
-                title="Volta pras colunas e pra ordem padrão, descartando a personalização"
-                class="text-[10px] font-semibold text-gray-500 dark:text-slate-400 hover:underline ml-auto">
-                Restaurar padrão
-            </button>
+    const busca =
+        def.length > 10
+            ? `
+        <input type="text" value="${escapeHtml(filtrosColunas[tabela] || '')}"
+            oninput="filtrarColunas('${tabela}', this.value)"
+            placeholder="Buscar coluna…" aria-label="Buscar coluna"
+            class="w-full text-[11px] border border-gray-200 dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-slate-200 px-2 py-1.5 mb-1.5 placeholder:text-gray-400 dark:placeholder:text-slate-500">`
+            : '';
+
+    // Cabeçalho fixo no topo do painel (busca + ações em massa) — fica
+    // visível mesmo com a lista rolando por baixo, já que o painel
+    // inteiro tem altura limitada (max-h-[55vh] em painel-colunas-*
+    // no index.html).
+    const cabecalho = `
+        <div class="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 px-3 pt-3 pb-2 border-b border-gray-200 dark:border-slate-600">
+            ${busca}
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="selecionarTodasColunas('${tabela}')"
+                    class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                    Marcar todas
+                </button>
+                <button type="button" onclick="desmarcarTodasColunas('${tabela}')"
+                    class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                    Desmarcar todas
+                </button>
+                <button type="button" onclick="resetarColunas('${tabela}')"
+                    title="Volta pras colunas e pra ordem padrão, descartando a personalização"
+                    class="text-[10px] font-semibold text-gray-500 dark:text-slate-400 hover:underline ml-auto">
+                    Restaurar padrão
+                </button>
+            </div>
         </div>`;
 
-    return (
-        acoesEmMassa +
-        ordem
-            .map(
-                (key, i) => `
-        <div class="flex items-center gap-1 text-xs py-1 px-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 whitespace-nowrap">
-            <div class="flex flex-col leading-none mr-1">
+    const nenhumaEncontrada =
+        !!filtro && ordem.every((key) => !rotulos[key].toLowerCase().includes(filtro));
+
+    // `sm:grid` (não `columns-2`/CSS multi-column) de propósito: colunas
+    // CSS ("magazine columns") dentro de um ancestral com altura
+    // limitada + rolagem (max-h-[55vh] overflow-y-auto no painel, ver
+    // index.html) calculam mal o balanceamento de altura em alguns
+    // navegadores — sobra uma coluna baixa com espaço vazio embaixo
+    // enquanto a outra some/estica sem previsibilidade (foi o que o
+    // Victor viu no desktop). Grid não sofre desse problema: distribui
+    // item a item, linha a linha, sem tentar "adivinhar" altura.
+    const linhasArray = ordem.map((key, i) => {
+        const rotuloBusca = rotulos[key].toLowerCase();
+        const escondida = filtro && !rotuloBusca.includes(filtro);
+        return `
+        <div data-rotulo="${escapeHtml(rotuloBusca)}" ${escondida ? 'style="display:none"' : ''}
+            class="flex items-start gap-1 text-xs py-1 px-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700">
+            <div class="flex flex-col leading-none mr-1 pt-0.5">
                 <button type="button" onclick="moverColuna('${tabela}', '${key}', 'up')" ${i === 0 ? 'disabled' : ''}
                     class="text-[9px] text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-20 disabled:hover:text-gray-400"
                     title="Mover para cima">▲</button>
@@ -538,8 +598,59 @@ export function renderSeletorColunas(tabela) {
                     onchange="toggleColuna('${tabela}', '${key}', this.checked)">
                 ${rotulos[key]}
             </label>
-        </div>`,
-            )
-            .join('')
+        </div>`;
+    });
+    const linhas = linhasArray.join('');
+
+    const semResultado = `
+        <div id="sem-resultado-colunas-${tabela}" ${nenhumaEncontrada ? '' : 'style="display:none"'}
+            class="text-[11px] text-gray-400 dark:text-slate-500 py-1 px-1">
+            Nenhuma coluna encontrada.
+        </div>`;
+
+    // Lista em grid a partir de telas pequenas/médias em diante — com
+    // ~39 colunas (Poemas/Prosas), uma coluna só ficava enorme e
+    // obrigava a rolar bastante (pedido original do Victor). Painéis
+    // com poucas colunas (def.length <= 10) continuam numa lista só.
+    //
+    // O painel deixou de ser um overlay largo (até 1600px, baseado em
+    // vw) e virou um bloco no fluxo normal da página, com no máximo a
+    // largura do `main` (max-w-6xl, ~1152px) — trade-off deliberado
+    // pra empurrar a tabela em vez de cobrir ela (Victor queria ver a
+    // tabela mudando em tempo real). Por isso o teto aqui é 4 colunas
+    // (xl), não mais 5/6: acima disso, com a largura real disponível,
+    // cada coluna ficaria estreita demais pro rótulo + checkbox.
+    const classeLista =
+        def.length > 10 ? 'sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 sm:gap-x-4' : '';
+
+    return (
+        cabecalho +
+        `<div class="px-3 pt-2 pb-3">
+            <div id="lista-colunas-${tabela}" class="${classeLista}">${linhas}</div>
+            ${semResultado}
+        </div>`
     );
+}
+
+// Filtro ao vivo do seletor de colunas (campo de busca em
+// renderSeletorColunas acima): esconde/mostra cada linha pelo rótulo,
+// sem reconstruir o painel — digitar não perde o scroll nem pisca a
+// lista. Guarda o texto em `filtrosColunas` só pra sobreviver ao
+// próximo re-render do painel (ligar/desligar uma coluna via
+// checkbox), não pra persistir entre sessões.
+export function filtrarColunas(tabela, valor) {
+    filtrosColunas[tabela] = valor;
+    const termo = valor.trim().toLowerCase();
+    const lista = document.getElementById(`lista-colunas-${tabela}`);
+    if (!lista) return;
+
+    let algumaVisivel = false;
+    lista.querySelectorAll('[data-rotulo]').forEach((linha) => {
+        const bate = !termo || linha.dataset.rotulo.includes(termo);
+        linha.style.display = bate ? '' : 'none';
+        if (bate) algumaVisivel = true;
+    });
+
+    const semResultado = document.getElementById(`sem-resultado-colunas-${tabela}`);
+    if (semResultado) semResultado.style.display = algumaVisivel || !termo ? 'none' : '';
 }

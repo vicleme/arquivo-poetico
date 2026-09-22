@@ -17,6 +17,13 @@ import {
     filtrarOcultos,
     getTiposEtiquetaSelecionados,
     toggleTipoEtiqueta,
+    separacaoTerceirosAtiva,
+    ehTextoDeTerceiros,
+    contarTerceiros,
+    getIncluirTerceiros,
+    definirIncluirTerceiros,
+    getModoTerceiros,
+    definirModoTerceiros,
     getModoGraficoPessoas,
     definirModoGraficoPessoas,
     getGruposFiltroPessoas,
@@ -37,6 +44,7 @@ function resetarDb() {
     db.itensColetanea = [];
     db.pessoas = [];
     db.grupos = [];
+    db.autores = [];
     localStorage.clear(); // zera tipos/modo/grupo-filtro/ocultos salvos por um teste anterior
 }
 
@@ -609,5 +617,99 @@ describe('filtrarPorIntervalo (recorte de min/max usado nos gráficos)', () => {
 
     it('intervalo que não bate em nada retorna listas vazias', () => {
         assert.deepEqual(filtrarPorIntervalo(base, 100, 200), { labels: [], data: [] });
+    });
+});
+
+// ─── Textos de terceiros ────────────────────────────────────────
+
+describe('textos de terceiros nas Estatísticas', () => {
+    beforeEach(() => {
+        resetarDb();
+        db.autores = [
+            { id: 1, nome: 'Victor Leme', souEu: true },
+            { id: 2, nome: 'Augusto dos Anjos' },
+        ];
+    });
+
+    const meu = (extra = {}) => ({ ano: 2020, texto: 'um dois', autoria: [{ autorId: 1, papel: 'Autor' }], ...extra });
+    const alheio = (extra = {}) => ({ ano: 1912, texto: 'um dois três', autoria: [{ autorId: 2, papel: 'Autor' }], ...extra });
+
+    it('separação fica inativa se nenhum Autor está marcado souEu', () => {
+        db.autores = [{ id: 2, nome: 'Augusto dos Anjos' }];
+        db.poemas = [alheio()];
+        assert.equal(separacaoTerceirosAtiva(), false);
+        assert.equal(ehTextoDeTerceiros(db.poemas[0]), false);
+        assert.equal(resumoGeral().totalPoemas, 1);
+    });
+
+    it('texto só com Autor não-souEu é de terceiros', () => {
+        assert.equal(ehTextoDeTerceiros(alheio()), true);
+    });
+
+    it('texto sem autoria, com autoria vazia ou só com autor excluído conta como seu', () => {
+        assert.equal(ehTextoDeTerceiros({ texto: 'x' }), false);
+        assert.equal(ehTextoDeTerceiros({ autoria: [] }), false);
+        assert.equal(ehTextoDeTerceiros({ autoria: [{ autorId: 99, papel: 'Autor' }] }), false);
+    });
+
+    it('coautoria com você (ou tradução sua) conta como sua', () => {
+        const misto = { autoria: [{ autorId: 2, papel: 'Autor' }, { autorId: 1, papel: 'Coautor' }] };
+        assert.equal(ehTextoDeTerceiros(misto), false);
+    });
+
+    it('por padrão, resumo e agregações ignoram textos de terceiros', () => {
+        db.poemas = [meu(), alheio()];
+        db.prosas = [alheio()];
+        const r = resumoGeral();
+        assert.equal(r.totalPoemas, 1);
+        assert.equal(r.totalProsas, 0);
+        assert.deepEqual(contarTerceiros(), { total: 2, excluidos: 2 });
+        assert.equal(r.totalPalavras, 2);
+        assert.deepEqual(contarPorAno(), { labels: ['2020'], data: [1] });
+        assert.deepEqual(palavrasMaisFrequentes('', 5), [['dois', 1]]);
+    });
+
+    it('incluir terceiros volta a contar tudo e persiste a escolha', () => {
+        db.poemas = [meu(), alheio()];
+        assert.equal(getIncluirTerceiros(), false);
+        definirIncluirTerceiros(true);
+        assert.equal(getIncluirTerceiros(), true);
+        const r = resumoGeral();
+        assert.equal(r.totalPoemas, 2);
+        assert.deepEqual(contarTerceiros(), { total: 1, excluidos: 0 });
+        assert.deepEqual(contarPorAno().labels, ['1912', '2020']);
+        definirIncluirTerceiros(false);
+        assert.equal(resumoGeral().totalPoemas, 1);
+    });
+
+    it('modo "somente" conta só os de terceiros e persiste a escolha', () => {
+        db.poemas = [meu(), alheio()];
+        assert.equal(getModoTerceiros(), 'excluir');
+        definirModoTerceiros('somente');
+        assert.equal(getModoTerceiros(), 'somente');
+        const r = resumoGeral();
+        assert.equal(r.totalPoemas, 1);
+        assert.deepEqual(contarTerceiros(), { total: 1, excluidos: 1 });
+        assert.deepEqual(contarPorAno(), { labels: ['1912'], data: [1] });
+        definirModoTerceiros('excluir');
+        assert.equal(resumoGeral().totalPoemas, 1);
+    });
+
+    it('coletânea não conta itens que apontam pra texto de terceiros', () => {
+        db.poemas = [
+            { id: 10, ...meu() },
+            { id: 11, ...alheio() },
+        ];
+        db.livros = [{ id: 5, tipo: 'Coletânea', titulo: 'Col', siglaOficial: 'COL' }];
+        db.partes = [{ id: 7, livroId: 5 }];
+        db.itensColetanea = [
+            { id: 1, parteId: 7, refTipo: 'poema', refId: 10 },
+            { id: 2, parteId: 7, refTipo: 'poema', refId: 11 },
+            { id: 3, parteId: 7, textoOverride: 'texto solto' },
+        ];
+        const idx = (r) => r.data[r.labels.indexOf('COL')];
+        assert.equal(idx(contarPorLivro()), 2);
+        definirIncluirTerceiros(true);
+        assert.equal(idx(contarPorLivro()), 3);
     });
 });

@@ -134,6 +134,20 @@ Três campos parecidos, detalhados em `pessoas-papeis-for-ai.md`:
   texto — presença de texto (não vazio) é o que liga o indicador visual
   (🟠) na tabela, mesmo espírito de `conteudoSensivel` (ver abaixo).
 
+## Fonte do texto
+
+- **`fonteTexto`**: objeto `{ origem, edicao, link, conferido, grafia }`
+  (ou `null`) — de onde veio o texto quando não é obra própria (edição de
+  terceiros, transcrição). `conferido` é booleano: o texto foi comparado
+  com a edição de origem. `grafia` é `''` (atual, padrão), `'etimológica'`
+  (ph/th/y/dobradas — ex.: Cruz e Sousa, Augusto dos Anjos) ou
+  `'quinhentista'` (português do séc. XVI — ex.: Camões) — existe pra a
+  Sonoridade avisar em vez de errar a contagem/tônica em texto de grafia
+  antiga; não conta em
+  "Campos Preenchidos" e não tem coluna nem Estatísticas. A situação de
+  domínio público **não** é um campo: é derivada do ano de óbito do Autor
+  vinculado em `autoria`.
+
 ## Conteúdo sensível e vocabulário de alerta
 
 - **`conteudoSensivel`**: parágrafo livre descrevendo conteúdo sensível do

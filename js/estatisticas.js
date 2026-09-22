@@ -9,6 +9,8 @@ import {
     anoDeDataParcial,
     SINALIZACOES_CATEGORIAS,
     paresGrupoPessoa,
+    paresAutoria,
+    tokenizar,
 } from './utils.js';
 
 const STOPWORDS = new Set([
@@ -278,23 +280,6 @@ const STOPWORDS = new Set([
     //'hoje','ontem'
 ]);
 
-function limparTexto(texto) {
-    if (!texto) return '';
-    return texto
-        .replace(/<[^>]+>/g, ' ') // remove tags HTML (divs/spans de formatação do editor)
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&[a-z]+;/g, ' ');
-}
-
-function tokenizar(texto) {
-    return (
-        limparTexto(texto)
-            .toLowerCase()
-            .normalize('NFC')
-            .match(/[a-zà-úçãõâêîôû]+/g) || []
-    );
-}
-
 function listaDeCampo(valor) {
     if (!valor) return [];
     return valor
@@ -487,6 +472,80 @@ function topN({ labels, data, categorias }, n) {
         : { labels: labels.slice(0, n), data: data.slice(0, n) };
 }
 
+// ─── Textos de terceiros (Biblioteca) ───────────────────────────
+// Um texto é "de terceiros" quando tem ao menos um Autor vinculado e
+// nenhum deles está marcado `souEu`. Coautoria e tradução sua contam como
+// suas; texto sem autoria (ou só com autor excluído do cadastro) também.
+// A separação só existe se algum Autor do acervo está marcado `souEu` —
+// sem isso não há como saber o que é "seu", e a aba não deve mostrar
+// zeros pra quem só carregou um pacote (demonstração, estudioso).
+// Só as Estatísticas usam a regra: backups e exportações não mudam.
+
+export function separacaoTerceirosAtiva() {
+    return (db.autores || []).some((a) => a.souEu);
+}
+
+export function ehTextoDeTerceiros(texto) {
+    if (!separacaoTerceirosAtiva()) return false;
+    const pares = paresAutoria(texto, db.autores || []);
+    return pares.length > 0 && !pares.some(({ autor }) => autor.souEu);
+}
+
+// Modo de exibição em relação a textos de terceiros:
+// 'excluir'  — só os seus (padrão)
+// 'incluir'  — seus + terceiros, misturados
+// 'somente'  — só os de terceiros
+export function getModoTerceiros() {
+    const valor = lerJSON('modoTerceiros', null);
+    if (valor === 'excluir' || valor === 'incluir' || valor === 'somente') return valor;
+    // migração do formato antigo (checkbox booleano "incluirTerceiros")
+    return lerJSON('incluirTerceiros', false) === true ? 'incluir' : 'excluir';
+}
+
+export function definirModoTerceiros(modo) {
+    salvarJSON('modoTerceiros', modo);
+    renderEstatisticas();
+}
+
+// Mantidos por compatibilidade (código/testes que ainda tratam isso como
+// um booleano): "incluir" == true, "excluir"/"somente" == false.
+export function getIncluirTerceiros() {
+    return getModoTerceiros() === 'incluir';
+}
+
+export function definirIncluirTerceiros(incluir) {
+    definirModoTerceiros(incluir ? 'incluir' : 'excluir');
+}
+
+// Quantos textos de terceiros existem, e quantos textos ficam fora das
+// contagens agora — de terceiros nos modos 'excluir', próprios no modo
+// 'somente', nenhum no modo 'incluir'.
+export function contarTerceiros() {
+    const todos = [...db.poemas, ...db.prosas];
+    const total = todos.filter(ehTextoDeTerceiros).length;
+    const modo = getModoTerceiros();
+    const excluidos =
+        modo === 'incluir' ? 0 : modo === 'somente' ? todos.length - total : total;
+    return { total, excluidos };
+}
+
+// Texto entra nas contagens? depende do modo atual.
+function textoConta(texto) {
+    const modo = getModoTerceiros();
+    if (modo === 'incluir') return true;
+    const terceiro = ehTextoDeTerceiros(texto);
+    return modo === 'somente' ? terceiro : !terceiro;
+}
+
+// Item de coletânea conta se não aponta pra um texto de terceiros excluído.
+// textoOverride e referência não resolvida contam sempre (sem autoria a
+// checar).
+function itemColetaneaConta(item) {
+    if (!item.refId || !item.refTipo || item.textoOverride) return true;
+    const alvo = (db[item.refTipo + 's'] || []).find((x) => x.id == item.refId);
+    return alvo ? textoConta(alvo) : true;
+}
+
 // ─── Resolução de Livro (pra agrupar Por Livro / Por Ano) ──────
 
 function livroIdDoItem(item) {
@@ -507,8 +566,16 @@ function livroIdDoItem(item) {
     return null;
 }
 
+function poemasContados() {
+    return db.poemas.filter(textoConta);
+}
+
+function prosasContadas() {
+    return db.prosas.filter(textoConta);
+}
+
 function todosOsTextos() {
-    return [...db.poemas, ...db.prosas];
+    return [...poemasContados(), ...prosasContadas()];
 }
 
 // ─── Agregações ─────────────────────────────────────────────
@@ -539,7 +606,7 @@ export function contarPorLivro() {
     });
     (db.coletaneas || []).forEach((c) => {
         const qtd = (db.itensColetanea || []).filter(
-            (i) => String(i.coletaneaId) === String(c.id),
+            (i) => String(i.coletaneaId) === String(c.id) && itemColetaneaConta(i),
         ).length;
         if (qtd > 0) contagem[`${c.titulo}`] = qtd;
     });
@@ -551,8 +618,8 @@ export function contarPorLivro() {
         .filter((l) => l.tipo === 'Coletânea')
         .forEach((col) => {
             const partesIds = db.partes.filter((p) => p.livroId == col.id).map((p) => String(p.id));
-            const qtd = (db.itensColetanea || []).filter((i) =>
-                partesIds.includes(String(i.parteId)),
+            const qtd = (db.itensColetanea || []).filter(
+                (i) => partesIds.includes(String(i.parteId)) && itemColetaneaConta(i),
             ).length;
             if (qtd > 0) {
                 const sigla = col.siglaOficial || col.siglaPessoal || col.titulo;
@@ -655,7 +722,8 @@ export function palavrasMaisFrequentes(livroId = '', top = 40) {
             const refs = (db.itensColetanea || []).filter(
                 (i) =>
                     partesIds.includes(String(i.parteId)) &&
-                    (i.textoOverride || (i.refId && i.refTipo)),
+                    (i.textoOverride || (i.refId && i.refTipo)) &&
+                    itemColetaneaConta(i),
             );
             textos = refs
                 .map((i) => {
@@ -696,8 +764,8 @@ export function resumoGeral() {
     const livroComMais = porLivro.labels.length ? porLivro.labels[0] : '—';
 
     return {
-        totalPoemas: db.poemas.length,
-        totalProsas: db.prosas.length,
+        totalPoemas: poemasContados().length,
+        totalProsas: prosasContadas().length,
         totalPalavras,
         mediaPalavras: textos.length ? Math.round(totalPalavras / textos.length) : 0,
         anoMaisProdutivo,
@@ -786,6 +854,42 @@ function criarBarChart(canvasId, labels, data, cor) {
     });
 }
 
+// Controle "Incluir textos de terceiros": só aparece se a separação está
+// ativa E há ao menos um texto de terceiros no acervo — fora disso seria
+// ruído.
+function renderControleTerceiros() {
+    const el = document.getElementById('est-terceiros');
+    if (!el) return;
+    const { total, excluidos } = contarTerceiros();
+    if (!total) {
+        el.innerHTML = '';
+        return;
+    }
+    const modo = getModoTerceiros();
+    const notas = {
+        excluir: `${excluidos} de terceiros fora das contagens`,
+        incluir: `${total} de terceiros incluídos nas contagens`,
+        somente: `${excluidos} próprios fora das contagens`,
+    };
+    const opcao = (valor, rotulo) => `
+        <button type="button" onclick="definirModoTerceiros('${valor}')"
+            class="px-2 py-0.5 rounded text-[11px] font-semibold ${
+                modo === valor
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'
+            }">${rotulo}</button>`;
+    el.innerHTML = `
+        <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300">
+            <span>Textos de terceiros:</span>
+            <div class="flex gap-1">
+                ${opcao('excluir', 'Excluir')}
+                ${opcao('incluir', 'Incluir')}
+                ${opcao('somente', 'Somente')}
+            </div>
+            <span class="text-gray-400 dark:text-slate-500">(${notas[modo]})</span>
+        </div>`;
+}
+
 function renderResumo() {
     const container = document.getElementById('est-resumo');
     if (!container) return;
@@ -799,6 +903,8 @@ function renderResumo() {
         ['Ano mais produtivo', r.anoMaisProdutivo],
         ['Livro com mais textos', r.livroComMais],
     ];
+
+    renderControleTerceiros();
 
     container.innerHTML = cartoes
         .map(

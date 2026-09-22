@@ -399,6 +399,28 @@ html.dark textarea::placeholder {
     color: #64748b;
 }
 
+/* Selects-chip de Autoria/Nomes Literários (Papel Autor/Coautor, Assinatura,
+   nome literário — ver criarGrupoDeAutoria/criarGrupoDeNomesLiterariosAutor
+   em editor.js). O próprio <select> é sempre text-white (pra contrastar com
+   o fundo colorido do chip), mas o popup nativo das <option> não deveria
+   herdar esse branco: no popup claro do modo claro ficaria texto branco em
+   fundo branco. Antes isso era corrigido com a variante arbitrária da
+   Tailwind ([&>option]:text-black dark:[&>option]:text-white direto na
+   classe), mas depende da ordem em que a Tailwind Play CDN gera e injeta
+   as regras em runtime pras 4 ocorrências desse padrão — não é garantida, e
+   voltou a falhar (print do Victor: "Coautor" quase invisível, texto perto
+   da cor do fundo do próprio popup). Regra fixa aqui, sem Tailwind: mais
+   específica que o utilitário que ela substitui, então não depende de qual
+   variante o CDN injetou primeiro. */
+.select-chip-autoria option {
+    color: #000;
+    background-color: #fff;
+}
+html.dark .select-chip-autoria option {
+    color: #e2e8f0;
+    background-color: #1e293b;
+}
+
 html.dark .table-container {
     background: #1e293b;
     border-color: #334155;

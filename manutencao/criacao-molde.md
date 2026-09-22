@@ -410,11 +410,59 @@ Molde; o bullet original parecia presumir que o Molde em si pudesse
 vazar pras listagens de Poemas, o que nunca chegou a ser verdade dado
 como o Bloco 1 desenhou a aba Criação (separada, tabela própria).
 
+## Exportar/importar Molde em JSON (✅ implementado)
+
+Separado de propósito da Importação Aditiva de Poema/Prosa (aba Dados →
+Importação): Molde não referencia nenhum cadastro central
+(Pessoas/Grupos/Autores/Épocas/Livros), então não há resolução de
+referência nem relatório em fases — um arquivo = um Molde, somado ao
+acervo com id novo. Lógica pura em `js/molde-json.js`; DOM (arquivo,
+download, toasts) em `js/ui-molde-json.js`.
+
+- **Baixar:** botão "Baixar" na coluna Ações da tabela de Moldes
+  (exporta o registro salvo) e ícone de download na barra do modal
+  (exporta o estado AO VIVO do editor, mesmo espírito de
+  `promoverMoldeAoVivo`). Sempre `.json`, por isso a seção "Formato do
+  Baixar" não aparece no painel Ações de Moldes
+  (`TABELAS_SEM_FORMATO_BAIXAR`, `acoes-coluna.js`). Arquivo:
+  `molde-<titulo-slug>.json`.
+- **Formato:** `{ tipo: 'molde', versao: 1, titulo, <9 campos de
+  classificação>, moldeLinhas, paresRima, status }`. Sem `id` (não
+  significa nada em outro acervo), sem `poemaId`, e os pares de rima
+  perdem o `id` interno. `tipo` deixa recusar arquivo errado (export de
+  Poema/Escansão); `versao` diferente de 1 é recusada.
+- **Importar:** botão "Importar JSON" no cabeçalho da aba Moldes.
+  Validação reaproveita a taxonomia da Sonoridade
+  (`CAMPOS_CLASSIFICACAO`/`validarClassificacao`/`ladoValido`,
+  exportadas de `importar-sonoridade.js`): campo fora da lista fecha em
+  branco com aviso, tônica fora do range e par de rima apontando pra
+  verso/sílaba inexistente são descartados com aviso, `numero` dos
+  versos é recalculado. Nada disso bloqueia o resto do arquivo.
+- **Id novo sempre** (`gerarId`), nunca o de origem. Snapshot forçado
+  antes de escrever (`tirarSnapshotSeNecessario(db, true)`); se falhar,
+  nada é importado.
+- **`poemaId`/`status` (decisão do Victor, opção (a)):** todo Molde
+  importado entra `'em andamento'` com `poemaId` nulo, mesmo que no
+  arquivo estivesse `'promovido'` — o Poema apontado não existe (ou é
+  outro item) no acervo de destino, e link quebrado é pior que perder o
+  rótulo. Quando o arquivo dizia `'promovido'` sai um aviso. Descartadas:
+  (b) linkar por `poemaId` a um Poema importado no mesmo lote (amarra
+  duas features independentes; os ids de Poema mudam na Importação
+  Aditiva) e (c) perguntar (não há candidato nenhum pra escolher).
+  Consequência conhecida: o botão "Promover a Poema" reaparece num
+  Molde que já foi promovido na origem.
+- **Duplicata de título:** mesmo critério da Importação Aditiva (exato,
+  sem diferenciar maiúscula/minúscula, com trim); título vazio nunca
+  conta. Por padrão NÃO importa — o toast oferece "Importar mesmo
+  assim" (nunca decide sozinho, nunca sobrescreve) e diz se o conteúdo é
+  igual (provável reimportação do mesmo arquivo) ou diferente.
+
 ## Em aberto (não decidido ainda)
 
-- Visualização somente-leitura e exportação (Ver/Baixar) do Molde —
-  Sonoridade só ganhou isso numa leva posterior ao Bloco 1 dela; Molde
-  deve seguir o mesmo caminho, sem pressa de resolver agora.
+- Visualização somente-leitura (Ver) do Molde — Sonoridade só ganhou
+  isso numa leva posterior ao Bloco 1 dela; Molde deve seguir o mesmo
+  caminho, sem pressa de resolver agora. (Baixar/importar em JSON já
+  existem — ver "Exportar/importar Molde em JSON" abaixo.)
 - Colunas de contagem / painel de configuração de Ações na tabela de
   Moldes — mesma simplificação inicial que Sonoridade teve, mesmo
   precedente de "anotar e deixar adiado por ora" já usado lá.

@@ -315,7 +315,7 @@ function renderLinhaColunaContagem(tabela, c) {
 // Sonoridade — ver as duas funções de render abaixo.
 function renderBlocoColunasContagem(titulo, idAjuda, textoBotao, onclickAdicionar, linhasHtml) {
     return `
-        <div class="mt-2 pt-2 border-t border-gray-200 dark:border-slate-600">
+        <div class="px-3 pb-3 pt-2 border-t border-gray-200 dark:border-slate-600">
             <div class="flex items-center gap-1 mb-1">
                 <p class="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">
                     ${titulo}

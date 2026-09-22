@@ -167,6 +167,94 @@ describe('gerarMarkdownExportacao — Autoria (Nome (Papel), via cadastro centra
         };
         assert.equal(contarCamposPreenchidos(semAutoria), contarCamposPreenchidos(comAutoria));
     });
+
+    it('acrescenta "heterônimo de Nome" ao parêntese quando a Assinatura é Heterônimo', () => {
+        db.autores = [{ id: 1, nome: 'Fernando Pessoa', sobre: '' }];
+        db.poemas = [
+            {
+                id: 1,
+                titulo: 'Tabacaria',
+                texto: 'x',
+                autoria: [
+                    {
+                        autorId: 1,
+                        papel: 'Autor',
+                        assinatura: 'Heterônimo',
+                        nomeLiterario: 'Álvaro de Campos',
+                    },
+                ],
+            },
+        ];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(
+            md,
+            /\*\*Autoria:\*\* Álvaro de Campos \(Autor, heterônimo de Fernando Pessoa\)/,
+        );
+    });
+
+    it('acrescenta "pseudônimo de Nome" ao parêntese quando a Assinatura é Pseudônimo', () => {
+        db.autores = [{ id: 1, nome: 'Victor Leme', sobre: '' }];
+        db.poemas = [
+            {
+                id: 1,
+                titulo: 'Solo',
+                texto: 'x',
+                autoria: [
+                    {
+                        autorId: 1,
+                        papel: 'Autor',
+                        assinatura: 'Pseudônimo',
+                        nomeLiterario: 'V. L.',
+                    },
+                ],
+            },
+        ];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(md, /\*\*Autoria:\*\* V\. L\. \(Autor, pseudônimo de Victor Leme\)/);
+    });
+
+    it('não acrescenta nota quando a Assinatura é Ortônimo (comportamento antigo, inalterado)', () => {
+        db.autores = [{ id: 1, nome: 'Victor Leme', sobre: '' }];
+        db.poemas = [
+            {
+                id: 1,
+                titulo: 'Solo',
+                texto: 'x',
+                autoria: [{ autorId: 1, papel: 'Autor', assinatura: 'Ortônimo' }],
+            },
+        ];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(md, /\*\*Autoria:\*\* Victor Leme \(Autor\)/);
+        assert.doesNotMatch(md, /Ortônimo/);
+    });
+
+    it('em coautoria mista, a nota aparece só no vínculo com heterônimo/pseudônimo', () => {
+        db.autores = [
+            { id: 1, nome: 'Fernando Pessoa', sobre: '' },
+            { id: 2, nome: 'Dalton', sobre: '' },
+        ];
+        db.poemas = [
+            {
+                id: 1,
+                titulo: 'Dupla',
+                texto: 'x',
+                autoria: [
+                    {
+                        autorId: 1,
+                        papel: 'Autor',
+                        assinatura: 'Heterônimo',
+                        nomeLiterario: 'Álvaro de Campos',
+                    },
+                    { autorId: 2, papel: 'Coautor' },
+                ],
+            },
+        ];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(
+            md,
+            /\*\*Autoria:\*\* Álvaro de Campos \(Autor, heterônimo de Fernando Pessoa\), Dalton \(Coautor\)/,
+        );
+    });
 });
 
 describe('gerarMarkdownExportacao — Envios e Reações (item 7, lista pessoa+data+meio+reação)', () => {

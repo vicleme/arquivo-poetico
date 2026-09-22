@@ -72,6 +72,8 @@ import {
     PES_METRICOS,
     parseListaIntervalos,
     limparElementosHtmlLinha,
+    classificarTonicidade,
+    SILABAS_APOS_TONICA,
 } from './utils.js';
 import { db } from './db.js';
 
@@ -98,6 +100,14 @@ let modoTonico = false;
 // reabrir o modal quando o Victor troca o Pé Métrico no meio da
 // escansão.
 let peMetricoAtual = '';
+// Mesmo padrão de peMetricoAtual acima, agora pro Tamanho do Verso: fora
+// do estado salvo em linhasAtuais (não é campo da escansão em si), só
+// entra aqui pra alimentar extrairAlvo/calcularDivergenciaSilabas ao
+// desenhar a coluna "Cont." (ver reconstruirColunas). Atualizado ao vivo
+// por atualizarTamanhoVersoSonoridade() — mesma complementaridade que
+// editor-molde.js já tinha (atualizarAlvoGradeMolde/tamanhoVersoAtual),
+// trazida agora pra Sonoridade.
+let tamanhoVersoAtual = '';
 let modoRima = false;
 let modoEco = false;
 // Par de rima em construção: { ladoA: { linhaIdx, silabas: [...] },
@@ -228,6 +238,30 @@ export function dividirSilabas(texto) {
         .map((s) => s.replace(/\\\//g, '/').replace(/-/g, '').trim());
 }
 
+// ─── Contagem MÉTRICA (corte na última sílaba tônica) ────────────────
+// Contraparte de dividirSilabas() acima: NÃO muda a divisão gramatical
+// (o array continua com todas as sílabas, inclusive átonas finais —
+// ver comentário de dividirSilabas) — só conta até a última sílaba
+// TÔNICA do verso, inclusive, que é o número que vale pra métrica em
+// português. classificarTonicidade (utils.js) resolve isso pela última
+// palavra do verso, via regras de acentuação — não pela divisão manual
+// da grade (ver limitações documentadas lá). Exportada com `texto`
+// como parâmetro, mesmo motivo de calcularMaxSilabas/
+// calcularDivergenciaSilabas: testável sem montar DOM.
+export function calcularContagemMetrica(texto) {
+    const silabas = dividirSilabas(texto).filter((s) => s !== '');
+    if (!silabas.length) return 0;
+    // As barras de divisão são só marcação da grade — pra achar a
+    // ÚLTIMA PALAVRA de verdade do verso, primeiro remonta o texto sem
+    // elas (barra real, não a escapada `\/`, que é conteúdo literal).
+    const textoSemBarras = (texto || '').replace(/(?<!\\)\//g, '');
+    const match = /[A-Za-zÀ-ÖØ-öø-ÿ]+$/.exec(textoSemBarras.trim());
+    const ultimaPalavra = match ? match[0] : '';
+    const tonicidade = classificarTonicidade(ultimaPalavra);
+    const aposTonica = tonicidade ? SILABAS_APOS_TONICA[tonicidade] : 0;
+    return Math.max(1, silabas.length - aposTonica);
+}
+
 // Exportada separada de maxSilabas() (que lê o estado do módulo) pra dar
 // pra testar com um array de linhas qualquer, sem precisar montar DOM.
 export function calcularMaxSilabas(linhas) {
@@ -241,25 +275,214 @@ function maxSilabas() {
     return calcularMaxSilabas(linhasAtuais);
 }
 
+// Extrai o número-alvo de sílabas do rótulo de Tamanho do Verso (ex.:
+// "Decassílabo (10)" → 10), ou null pra rótulo sem número fixo
+// (Bárbaro, Múltiplos Metros, Variável, ou nenhum tamanho escolhido
+// ainda). Movida de editor-molde.js (onde era função interna,
+// não-exportada) pra cá e exportada, porque calcularDivergenciaSilabas
+// logo abaixo fazia a MESMA extração duplicada inline em vez de chamar
+// esta função — as duas vivem no mesmo módulo agora, sem motivo pra
+// repetir a regex. editor-molde.js importa esta função em vez de
+// definir a própria.
+export function extrairAlvo(tamanhoVerso) {
+    const match = /\((\d+)\)/.exec(tamanhoVerso || '');
+    return match ? parseInt(match[1], 10) : null;
+}
+
 // Regra adicional 3 do Bloco 3 (Aba_Sonoridade.md, seção 5) — segunda
 // metade, "divergência de sílabas": só faz sentido quando o poema é
 // Isométrico (regularidadeMetrica), caso em que TODO verso deveria ter
-// o mesmo número de sílabas reais — daí compara contra um único valor
-// esperado (o número entre parênteses do rótulo de tamanhoVerso, ex.
-// "Decassílabo (10)" → 10) em vez de against um intervalo. Retorna a
-// lista de números de linha (1-based, o mesmo `numero` salvo em cada
-// linha) que divergem, ou array vazio se não há divergência/o rótulo
-// não tem número fixo (Bárbaro, Múltiplos Metros, Variável). Pura
-// (recebe `linhas`, não lê o estado do módulo) pelo mesmo motivo de
-// calcularMaxSilabas/calcularPosicaoPar: testável sem montar DOM.
+// o mesmo número de sílabas MÉTRICAS — daí compara contra um único
+// valor esperado (extrairAlvo, acima) em vez de against um intervalo.
+// Usa calcularContagemMetrica (corte na última tônica), não a contagem
+// gramatical bruta — sem isso, versos terminados em palavra paroxítona/
+// proparoxítona disparavam falso positivo aqui, com 1-2 sílabas
+// "sobrando" que gramaticalmente existem mas não contam pra métrica.
+// Retorna a lista de números de linha (1-based, o mesmo `numero` salvo
+// em cada linha) que divergem, ou array vazio se não há divergência/o
+// rótulo não tem número fixo. Pura (recebe `linhas`, não lê o estado do
+// módulo) pelo mesmo motivo de calcularMaxSilabas/calcularPosicaoPar:
+// testável sem montar DOM.
 export function calcularDivergenciaSilabas(linhas, tamanhoVerso) {
-    const match = /\((\d+)\)/.exec(tamanhoVerso || '');
-    if (!match) return [];
-    const esperado = parseInt(match[1], 10);
+    const esperado = extrairAlvo(tamanhoVerso);
+    if (esperado === null) return [];
     return linhas
         .filter((l) => l.tipo === 'verso')
-        .filter((l) => dividirSilabas(l.texto).filter((s) => s !== '').length !== esperado)
+        .filter((l) => calcularContagemMetrica(l.texto) !== esperado)
         .map((l) => l.numero);
+}
+
+// ─── Aviso não-bloqueante + correção assistida: dígrafo dividido ─────
+// (-rr-/-ss-). Na convenção métrica de escansão, "rr" e "ss" não se
+// separam em sílabas diferentes (diferente da separação gramatical de
+// escola, que SEPARA — "car-ro", não "ca-rro"). Nada impede o usuário
+// de colocar uma barra `/` bem no meio de um desses dígrafos ao dividir
+// a grade. Correção de curso (pedido do Victor depois de usar a
+// primeira versão só-aviso-ao-salvar: contraintuitivo ter que decorar/
+// anotar quais versos corrigir depois) — revoga a decisão original de
+// "nunca autocorrige" (ver manutencao/decisoes.md): agora a célula
+// errada é destacada AO VIVO na própria grade (reconstruirColunas,
+// mesmo padrão de celulasDivergentesPeMetrico) e um clique nela (ou no
+// botão "Corrigir todos") mescla a divisão de volta automaticamente.
+// O aviso ao salvar (calcularVersosComDigrafoDividido, forms.js)
+// continua existindo — pega o que passar batido sem ter sido corrigido
+// na grade.
+//
+// indicesDigrafoDivididoNoTexto: olha o TEXTO original (antes de
+// dividirSilabas), procurando toda barra REAL (não escapada por `\/`,
+// ver dividirSilabas acima) com a mesma letra "r" ou "s" dos dois lados
+// — adjacência direta já garante que estão dentro da mesma palavra (um
+// limite de palavra real teria espaço ou pontuação entre as letras,
+// nunca a letra repetida colada). Devolve os ÍNDICES (0-based, contando
+// só barras reais) de cada ocorrência — não só se existe ou não — pra
+// dar pra apontar exatamente qual barra remover na hora de mesclar.
+export function indicesDigrafoDivididoNoTexto(texto) {
+    const t = texto || '';
+    const indices = [];
+    let indiceBarra = -1;
+    for (let i = 0; i < t.length; i++) {
+        if (t[i] !== '/' || t[i - 1] === '\\') continue;
+        indiceBarra++;
+        const antes = t[i - 1]?.toLowerCase();
+        const depois = t[i + 1]?.toLowerCase();
+        if (antes && antes === depois && (antes === 'r' || antes === 's')) {
+            indices.push(indiceBarra);
+        }
+    }
+    return indices;
+}
+
+// Exportada separada de indicesDigrafoDivididoNoTexto pelo mesmo motivo
+// de sempre: testável direto, sem montar DOM. Mantida (não só o array)
+// porque é a forma mais simples de usar num `.filter()`.
+export function digrafoDivididoNoTexto(texto) {
+    return indicesDigrafoDivididoNoTexto(texto).length > 0;
+}
+
+// Contraparte de calcularDivergenciaSilabas em formato (lista de
+// `linha.numero`), pro mesmo consumo em forms.js (aviso não-bloqueante
+// ao salvar) — ver salvarSonoridade.
+export function calcularVersosComDigrafoDividido(linhas) {
+    return linhas
+        .filter((l) => l.tipo === 'verso')
+        .filter((l) => digrafoDivididoNoTexto(l.texto))
+        .map((l) => l.numero);
+}
+
+// Remove a N-ésima barra REAL (0-based) do texto, deixando escapadas
+// (`\/`) e o resto do texto intocados.
+export function removerBarraDivisoria(texto, indiceBarra) {
+    const t = texto || '';
+    let contador = -1;
+    for (let i = 0; i < t.length; i++) {
+        if (t[i] !== '/' || t[i - 1] === '\\') continue;
+        contador++;
+        if (contador === indiceBarra) return t.slice(0, i) + t.slice(i + 1);
+    }
+    return t;
+}
+
+// Corrige um dígrafo dividido DESLOCANDO a barra pra ANTES da letra
+// repetida, em vez de apagá-la (o que fundiria as duas sílabas
+// inteiras numa só — ERRADO, era o bug: "Sor/ri/so" virava "Sorri/so").
+// Só a letra do dígrafo que está na sílaba anterior avança pra sílaba
+// seguinte; é essa letra (repetida do outro lado da barra) que forma
+// o dígrafo, não a sílaba inteira. Ex.: "Sor/ri/so" -> "So/rri/so".
+// Usada por mesclarDigrafoSemRender no lugar de removerBarraDivisoria.
+export function deslocarBarraDigrafo(texto, indiceBarra) {
+    const t = texto || '';
+    let contador = -1;
+    for (let i = 0; i < t.length; i++) {
+        if (t[i] !== '/' || t[i - 1] === '\\') continue;
+        contador++;
+        if (contador === indiceBarra) {
+            // t[i-1] é a letra do dígrafo do lado da sílaba anterior —
+            // move ela pra depois da barra, deixando a barra uma
+            // posição antes de onde estava.
+            return t.slice(0, i - 1) + '/' + t[i - 1] + t.slice(i + 1);
+        }
+    }
+    return t;
+}
+
+// Mapa `${linhaIdx}:${silabaIdx}` → índice da barra (o mesmo consumido
+// por deslocarBarraDigrafo) pras DUAS células vizinhas de cada
+// dígrafo dividido (a de antes e a de depois da barra) — mesmo formato
+// de celulasDivergentesPeMetrico/celulasComEco, consumido por
+// reconstruirColunas pra destacar e tornar clicável.
+export function celulasComDigrafoDividido(linhas) {
+    const mapa = new Map();
+    linhas.forEach((linha, idx) => {
+        if (linha.tipo !== 'verso') return;
+        indicesDigrafoDivididoNoTexto(linha.texto).forEach((barraIdx) => {
+            mapa.set(`${idx}:${barraIdx}`, barraIdx);
+            mapa.set(`${idx}:${barraIdx + 1}`, barraIdx);
+        });
+    });
+    return mapa;
+}
+
+// Total de ocorrências (não de linhas — uma linha pode ter mais de uma)
+// no poema inteiro, pro aviso em lote na barra de ferramentas.
+export function contarDigrafosDivididos(linhas) {
+    return linhas
+        .filter((l) => l.tipo === 'verso')
+        .reduce((soma, l) => soma + indicesDigrafoDivididoNoTexto(l.texto).length, 0);
+}
+
+// Mutação pura (sem tocar DOM) — reaproveitada tanto por
+// mesclarDigrafoDividido (uma ocorrência, clique na célula) quanto por
+// mesclarTodosDigrafosDivididos (todas de uma vez, botão da barra).
+// Mesmo tratamento de tonicas que onInputTexto já dá a uma edição
+// manual de texto que encolhe o verso (trunca em vez de remapear —
+// consistente com o resto do editor, não é limitação nova só daqui).
+function mesclarDigrafoSemRender(linha, indiceBarra) {
+    linha.texto = deslocarBarraDigrafo(linha.texto, indiceBarra);
+    if (Array.isArray(linha.tonicas)) {
+        const totalSilabas = dividirSilabas(linha.texto).length;
+        linha.tonicas = linha.tonicas.filter((i) => i < totalSilabas);
+    }
+}
+
+// Sincroniza de volta o <div contenteditable> daquela linha (que
+// reconstruirColunas() nunca toca, ver comentário dela) — sem isso, o
+// texto exibido no campo editável ficaria com a barra antiga enquanto
+// as células de sílaba já mostrariam a versão mesclada.
+function sincronizarCampoTexto(linhaIdx, texto) {
+    const el = containerEl?.querySelector(`.son-linha-texto[data-idx="${linhaIdx}"]`);
+    if (!el) return;
+    el.textContent = texto;
+    realcarBarras(el);
+}
+
+// Mescla UMA ocorrência (clique na célula destacada em rosa) — ver
+// onCliqueCelula, ramo de prioridade no topo.
+export function mesclarDigrafoDividido(linhaIdx, indiceBarra) {
+    const linha = linhasAtuais[linhaIdx];
+    if (!linha) return;
+    mesclarDigrafoSemRender(linha, indiceBarra);
+    sincronizarCampoTexto(linhaIdx, linha.texto);
+    reconstruirColunas();
+    renderizarListaRimas();
+}
+
+// Mescla TODAS as ocorrências do poema inteiro de uma vez (botão
+// "Corrigir todos" no aviso em lote). Reprocessa índices a cada
+// remoção — remover uma barra desloca os índices das barras seguintes
+// da mesma linha, então reler é mais simples e mais seguro do que
+// tentar calcular o deslocamento na mão.
+export function mesclarTodosDigrafosDivididos() {
+    linhasAtuais.forEach((linha, idx) => {
+        if (linha.tipo !== 'verso') return;
+        let indices = indicesDigrafoDivididoNoTexto(linha.texto);
+        while (indices.length) {
+            mesclarDigrafoSemRender(linha, indices[0]);
+            indices = indicesDigrafoDivididoNoTexto(linha.texto);
+        }
+        sincronizarCampoTexto(idx, linha.texto);
+    });
+    reconstruirColunas();
+    renderizarListaRimas();
 }
 
 // `linha.tonicas` só existe depois do primeiro clique numa sílaba —
@@ -1106,6 +1329,7 @@ function renderBarraFerramentas() {
                 <input type="checkbox" id="son-toggle-mostrar-ecos" ${mostrarEcos ? 'checked' : ''} />
                 Mostrar Ecos Sonoros
             </label>
+            <p id="son-grade-rotulo-alvo" class="text-[10px] text-gray-400 dark:text-slate-500 w-full sm:w-auto"></p>
             <p class="text-[10px] text-gray-400 dark:text-slate-500 w-full sm:w-auto">${legenda}</p>
         </div>`;
 }
@@ -1149,13 +1373,41 @@ function reconstruirColunas() {
     const rimadas = celulasRimadas(rimasAtuais, letras);
     const ecoadas = mostrarEcosAtivo() ? celulasComEco(ecosAtuais) : new Map();
     const divergentesPe = celulasDivergentesPeMetrico(linhasAtuais, peMetricoAtual);
+    const digrafos = celulasComDigrafoDividido(linhasAtuais);
+    // Alvo/divergência da coluna "Cont." — mesma complementaridade que
+    // editor-molde.js já tinha (atualizarColunaAlvo/tamanhoVersoAtual),
+    // trazida agora pra Sonoridade. linhasAtuais já carrega `numero`
+    // sempre atualizado (ao contrário do Molde, onde a numeração muda
+    // ao adicionar/remover linha e precisa de numerarLinhas antes de
+    // chamar calcularDivergenciaSilabas), então passa direto.
+    const alvo = extrairAlvo(tamanhoVersoAtual);
+    const divergentesAlvo = new Set(calcularDivergenciaSilabas(linhasAtuais, tamanhoVersoAtual));
+
+    const rotuloAlvo = containerEl.querySelector('#son-grade-rotulo-alvo');
+    if (rotuloAlvo) {
+        rotuloAlvo.textContent = alvo
+            ? `Alvo: ${alvo} sílaba${alvo === 1 ? '' : 's'} por verso`
+            : '';
+    }
+
+    const totalDigrafos = contarDigrafosDivididos(linhasAtuais);
+    const avisoDigrafosEl = containerEl.querySelector('#son-aviso-digrafos');
+    if (avisoDigrafosEl) {
+        avisoDigrafosEl.innerHTML =
+            totalDigrafos > 0
+                ? `<div class="mb-2 flex items-center gap-2 flex-wrap text-[11px] bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded px-2 py-1.5">
+                    <span>${totalDigrafos} dígrafo${totalDigrafos > 1 ? 's' : ''} dividido${totalDigrafos > 1 ? 's' : ''} (rr/ss) na escansão — clique numa célula em vermelho pra mesclar, ou corrija tud${totalDigrafos > 1 ? 'as' : 'o'} de uma vez.</span>
+                    <button type="button" id="son-btn-corrigir-digrafos" class="ml-auto shrink-0 font-bold underline">Corrigir tod${totalDigrafos > 1 ? 'os' : 'o'}</button>
+                </div>`
+                : '';
+    }
 
     const colgroup = containerEl.querySelector('#son-grade-colgroup');
     if (colgroup) {
         colgroup.innerHTML =
             '<col style="width:36px"><col style="width:230px">' +
             '<col style="width:42px">'.repeat(n) +
-            '<col style="width:40px">';
+            '<col style="width:50px"><col style="width:40px">';
     }
 
     const headerRow = containerEl.querySelector('#son-grade-header-row');
@@ -1164,15 +1416,16 @@ function reconstruirColunas() {
             <th class="px-2 py-2 text-[10px] font-bold text-gray-500 dark:text-slate-400 text-right border-b border-gray-200 dark:border-slate-700">Nº</th>
             <th class="px-2 py-2 text-[10px] font-bold text-gray-500 dark:text-slate-400 text-left border-b border-gray-200 dark:border-slate-700">Verso — separe sílabas com /</th>
             ${renderReguaHeader(n)}
+            <th class="px-1 py-2 text-center text-[10px] font-bold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-700">Cont.</th>
             <th class="px-1 py-2 text-center text-[10px] font-bold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-700">Rima</th>`;
     }
 
     linhasAtuais.forEach((linha, idx) => {
         const tr = containerEl.querySelector(`#son-grade-body tr[data-idx="${idx}"]`);
         if (!tr) return;
-        tr.querySelectorAll('td.son-cel-silaba, td.son-cel-rima-letra').forEach((td) =>
-            td.remove(),
-        );
+        tr.querySelectorAll(
+            'td.son-cel-silaba, td.son-cel-contagem, td.son-cel-rima-letra',
+        ).forEach((td) => td.remove());
         const silabas = linha.tipo === 'verso' ? dividirSilabas(linha.texto) : [];
         // Células montadas via createElement/appendChild, não via
         // innerHTML/insertAdjacentHTML: strings HTML com <td> soltos fora de
@@ -1236,7 +1489,16 @@ function reconstruirColunas() {
             // quando não há tônica ali (a própria função já exclui
             // posições marcadas do mapa).
             const divergePe = ehReal && divergentesPe.get(`${idx}:${i}`);
-            if (divergePe) {
+            const barraDigrafo = ehReal ? digrafos.get(`${idx}:${i}`) : undefined;
+            if (barraDigrafo !== undefined) {
+                // Dígrafo dividido — sempre tem prioridade visual sobre o
+                // tracejado âmbar de Pé Métrico (ambos usam border-2
+                // border-dashed; não dá pra mostrar os dois ao mesmo
+                // tempo na mesma borda) porque é um erro de escansão
+                // concreto e corrigível com um clique, não uma sugestão.
+                classes +=
+                    ' border-2 border-dashed border-rose-500 dark:border-rose-500 rounded cursor-pointer';
+            } else if (divergePe) {
                 classes += ' border-2 border-dashed border-amber-400 dark:border-amber-600 rounded';
             }
             td.className = classes;
@@ -1244,7 +1506,12 @@ function reconstruirColunas() {
             if (ehReal) {
                 td.dataset.linhaIdx = String(idx);
                 td.dataset.silabaIdx = String(i);
-                if (divergePe) td.title = 'Pé Métrico esperava tônica aqui';
+                if (barraDigrafo !== undefined) {
+                    td.dataset.digrafoBarra = String(barraDigrafo);
+                    td.title = 'Dígrafo dividido (rr/ss) — clique para mesclar';
+                } else if (divergePe) {
+                    td.title = 'Pé Métrico esperava tônica aqui';
+                }
                 if (ecoadas.get(`${idx}:${i}`)) {
                     const tiposAqui = ecosAtuais
                         .filter(
@@ -1259,6 +1526,20 @@ function reconstruirColunas() {
             }
             tr.appendChild(td);
         }
+        const tdContagem = document.createElement('td');
+        const contagem = linha.tipo === 'verso' ? calcularContagemMetrica(linha.texto) : null;
+        const divergeAlvo =
+            linha.tipo === 'verso' && alvo !== null && divergentesAlvo.has(linha.numero);
+        let classesContagem =
+            'son-cel-contagem px-1 py-1.5 text-center text-[11px] font-mono border-b border-gray-100 dark:border-slate-800 align-top';
+        classesContagem += divergeAlvo
+            ? ' text-amber-600 dark:text-amber-400 font-bold'
+            : ' text-gray-400 dark:text-slate-500';
+        tdContagem.className = classesContagem;
+        tdContagem.textContent =
+            contagem === null ? '' : alvo !== null ? `${contagem}/${alvo}` : `${contagem}`;
+        if (divergeAlvo) tdContagem.title = `Tamanho do Verso esperava ${alvo} sílabas aqui`;
+        tr.appendChild(tdContagem);
         const tdRima = document.createElement('td');
         const letraDaLinha = linha.tipo === 'verso' ? letras.get(idx) : undefined;
         let classesRima =
@@ -1298,7 +1579,18 @@ function onInputTexto(e) {
 // os toggles em renderGrade), então só um dos ifs roda por clique.
 function onCliqueCelula(e) {
     const td = e.target.closest('td.son-cel-silaba');
-    if (!td || td.dataset.linhaIdx === undefined) return;
+    if (!td) return;
+    // Prioridade sobre qualquer modo ativo (Tônica/Rima/Eco) — um
+    // dígrafo dividido é um erro de escansão concreto; faz mais sentido
+    // corrigi-lo na hora do que exigir sair do modo atual primeiro.
+    if (td.dataset.digrafoBarra !== undefined) {
+        mesclarDigrafoDividido(
+            parseInt(td.dataset.linhaIdx, 10),
+            parseInt(td.dataset.digrafoBarra, 10),
+        );
+        return;
+    }
+    if (td.dataset.linhaIdx === undefined) return;
     const linhaIdx = parseInt(td.dataset.linhaIdx, 10);
     const silabaIdx = parseInt(td.dataset.silabaIdx, 10);
 
@@ -1787,7 +2079,7 @@ function renderResumoPares(rimas, linhas) {
     return `<div class="mb-2 flex flex-col gap-0.5">${linhaProximidade}${linhasEixos}</div>`;
 }
 
-export function renderGradeLeituraHtml(linhas, rimas, ecos) {
+export function renderGradeLeituraHtml(linhas, rimas, ecos, tamanhoVerso) {
     const linhasSeguras = Array.isArray(linhas) ? linhas : [];
     const rimasSeguras = Array.isArray(rimas) ? rimas : [];
     const ecosSeguros = Array.isArray(ecos) ? ecos : [];
@@ -1800,11 +2092,20 @@ export function renderGradeLeituraHtml(linhas, rimas, ecos) {
     const rimadas = celulasRimadas(rimasSeguras, letras);
     const mostrarEcos = mostrarEcosAtivo();
     const ecoadas = mostrarEcos ? celulasComEco(ecosSeguros) : new Map();
+    // Coluna "Cont." (contagem métrica de sílabas) — mesma complementaridade
+    // Alvo/divergência que a grade de edição (reconstruirColunas, acima) já
+    // tem, trazida agora também pra leitura somente-visualização (modal de
+    // Visualizar + exportações), que até aqui só mostrava a régua/tônica/
+    // rima sem esse número. `tamanhoVerso` é opcional — chamadas antigas/
+    // testes que não passam o 4º argumento continuam funcionando, só sem
+    // divergência marcada (alvo null).
+    const alvo = extrairAlvo(tamanhoVerso);
+    const divergentesAlvo = new Set(calcularDivergenciaSilabas(linhasSeguras, tamanhoVerso));
 
     const linhasHtml = linhasSeguras
         .map((linha, idx) => {
             if (linha.tipo !== 'verso') {
-                return `<tr><td colspan="${n + 2}" class="h-3"></td></tr>`;
+                return `<tr><td colspan="${n + 3}" class="h-3"></td></tr>`;
             }
             const silabas = dividirSilabas(linha.texto);
             const tonicas = Array.isArray(linha.tonicas) ? linha.tonicas : [];
@@ -1826,6 +2127,15 @@ export function renderGradeLeituraHtml(linhas, rimas, ecos) {
                 }
                 celulas += `<td class="${classes}">${escapeHtml(silabas[i] || '')}</td>`;
             }
+            const contagem = calcularContagemMetrica(linha.texto);
+            const divergeAlvo = alvo !== null && divergentesAlvo.has(linha.numero);
+            const celulaContagem = `<td class="px-1 py-1.5 text-center text-[11px] font-mono border-b border-gray-100 dark:border-slate-800 ${
+                divergeAlvo
+                    ? 'text-amber-600 dark:text-amber-400 font-bold'
+                    : 'text-gray-400 dark:text-slate-500'
+            }"${divergeAlvo ? ` title="Tamanho do Verso esperava ${alvo} sílabas aqui"` : ''}>${
+                alvo !== null ? `${contagem}/${alvo}` : `${contagem}`
+            }</td>`;
             const letraDaLinha = letras.get(idx);
             const corLinha = letraDaLinha ? corDaLetra(letraDaLinha) : null;
             const celulaRima = `<td class="px-1 py-1.5 text-center text-xs font-bold border-b border-gray-100 dark:border-slate-800 ${
@@ -1836,6 +2146,7 @@ export function renderGradeLeituraHtml(linhas, rimas, ecos) {
             return `<tr>
                 <td class="px-2 py-1.5 text-[10px] font-mono text-gray-400 dark:text-slate-500 text-right border-b border-gray-100 dark:border-slate-800">${linha.numero}</td>
                 ${celulas}
+                ${celulaContagem}
                 ${celulaRima}
             </tr>`;
         })
@@ -1885,12 +2196,14 @@ export function renderGradeLeituraHtml(linhas, rimas, ecos) {
                 <colgroup>
                     <col style="width:36px" />
                     ${'<col style="width:32px" />'.repeat(n)}
+                    <col style="width:44px" />
                     <col style="width:40px" />
                 </colgroup>
                 <thead class="bg-gray-50 dark:bg-slate-800">
                     <tr>
                         <th class="px-2 py-2 text-[10px] font-bold text-gray-500 dark:text-slate-400 text-right border-b border-gray-200 dark:border-slate-700">Nº</th>
                         ${renderReguaHeader(n)}
+                        <th class="px-1 py-2 text-center text-[10px] font-bold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-700">Cont.</th>
                         <th class="px-1 py-2 text-center text-[10px] font-bold text-gray-500 dark:text-slate-400 border-b border-gray-200 dark:border-slate-700">Rima</th>
                     </tr>
                 </thead>
@@ -1946,6 +2259,7 @@ function renderGrade() {
             <summary>Grade Silábica</summary>
             <div class="campo-grupo-corpo">
                 ${renderBarraFerramentas()}
+                <div id="son-aviso-digrafos"></div>
                 <div class="overflow-x-auto border border-gray-200 dark:border-slate-700 rounded">
                     <table class="border-collapse w-full" style="table-layout:fixed;">
                         <colgroup id="son-grade-colgroup"></colgroup>
@@ -2005,6 +2319,9 @@ function renderGrade() {
         abertoEcosSonoros = e.target.open;
     });
     containerEl.querySelector('#son-grade-body')?.addEventListener('click', onCliqueCelula);
+    containerEl.querySelector('#son-aviso-digrafos')?.addEventListener('click', (e) => {
+        if (e.target.closest('#son-btn-corrigir-digrafos')) mesclarTodosDigrafosDivididos();
+    });
     containerEl.querySelector('#son-btn-modo-tonico')?.addEventListener('click', () => {
         modoTonico = !modoTonico;
         // Os 3 modos são mutuamente exclusivos — ligar um desliga os
@@ -2057,12 +2374,20 @@ function renderGrade() {
 // poema) pra uma escansão nova/sem grade ainda, ou de
 // es.escansaoLinhas já salvo pra uma edição. `rimas` idem, a partir de
 // es.rimas (ou [] pra escansão nova).
-export function inicializarGradeSonoridade(container, linhas, rimas, ecos, peMetrico = '') {
+export function inicializarGradeSonoridade(
+    container,
+    linhas,
+    rimas,
+    ecos,
+    peMetrico = '',
+    tamanhoVerso = '',
+) {
     containerEl = container;
     linhasAtuais = Array.isArray(linhas) ? linhas : [];
     rimasAtuais = Array.isArray(rimas) ? rimas : [];
     ecosAtuais = Array.isArray(ecos) ? ecos : [];
     peMetricoAtual = peMetrico || '';
+    tamanhoVersoAtual = tamanhoVerso || '';
     // Modo Sílaba Tônica/Modo Rima/Modo Eco são da sessão do modal, não
     // da escansão salva — sempre começam desligados, tanto abrindo uma
     // escansão nova quanto reabrindo/trocando de poema numa já existente.
@@ -2089,6 +2414,17 @@ export function inicializarGradeSonoridade(container, linhas, rimas, ecos, peMet
 // de texto — ver comentário logo acima dela).
 export function atualizarPeMetricoSonoridade(peMetrico) {
     peMetricoAtual = peMetrico || '';
+    reconstruirColunas();
+}
+
+// Chamada pelo listener `change` do select de Tamanho do Verso
+// (forms.js) — mesmo padrão de atualizarPeMetricoSonoridade logo acima
+// e de atualizarAlvoGradeMolde() em editor-molde.js: só reconstrói as
+// colunas (célula "Cont." + rótulo "Alvo") pra recalcular contra o novo
+// valor, sem perder modoTonico/seleção de rima em curso nem o cursor de
+// quem estiver digitando.
+export function atualizarTamanhoVersoSonoridade(tamanhoVerso) {
+    tamanhoVersoAtual = tamanhoVerso || '';
     reconstruirColunas();
 }
 

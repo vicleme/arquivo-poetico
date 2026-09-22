@@ -42,13 +42,17 @@ const FORMATO_PADRAO = 'md';
 // Quais botões cada aba realmente tem — Poemas/Prosas/Sonoridade/
 // Morfofuncionalidade usam os 4 clássicos (Ver/Baixar/Editar/Excluir,
 // com formato de Baixar configurável); Moldes não tem "Ver" (sem modal
-// de visualização somente-leitura) nem "Baixar" (sem exportação) —
-// só Editar/Promover/Excluir, sem a seção de formato. Sem entrada
-// listada aqui cai no padrão dos 4 clássicos (retrocompatível com
-// toda aba que já usava este painel antes de 'promover' existir).
+// de visualização somente-leitura), mas tem "Baixar" — sempre .json
+// (formato único, ver molde-json.js), por isso entra em
+// TABELAS_SEM_FORMATO_BAIXAR abaixo (sem a seção de formato). Sem
+// entrada listada aqui cai no padrão dos 4 clássicos (retrocompatível
+// com toda aba que já usava este painel antes de 'promover' existir).
 const ACOES_APLICAVEIS = {
-    moldes: ['editar', 'promover', 'excluir'],
+    moldes: ['baixar', 'editar', 'promover', 'excluir'],
 };
+// Abas cujo Baixar tem um único formato fixo — o seletor "Formato do
+// Baixar" não faz sentido nelas.
+const TABELAS_SEM_FORMATO_BAIXAR = ['moldes'];
 const ACOES_APLICAVEIS_PADRAO = ['ver', 'baixar', 'editar', 'excluir'];
 
 // Lê o estado salvo ({ ativas, formato }) e sempre devolve algo
@@ -151,10 +155,12 @@ export function renderSeletorAcoes(tabela) {
         .join('');
 
     // Formato do Baixar só faz sentido pra abas que têm o botão Baixar
-    // (Poemas/Prosas/Sonoridade/Morfofuncionalidade) — Moldes não tem
-    // exportação nenhuma ainda, então a seção inteira some pra ela.
-    const formatos = aplicaveis.has('baixar')
-        ? `
+    // COM escolha de formato (Poemas/Prosas/Sonoridade/
+    // Morfofuncionalidade) — Moldes só baixa .json, então a seção
+    // inteira some pra ela.
+    const formatos =
+        aplicaveis.has('baixar') && !TABELAS_SEM_FORMATO_BAIXAR.includes(tabela)
+            ? `
             <div>
                 <p class="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500 mb-1">
                     Formato do Baixar
@@ -168,7 +174,7 @@ export function renderSeletorAcoes(tabela) {
         </label>`,
                 ).join('')}</div>
             </div>`
-        : '';
+            : '';
 
     return `
         <div class="flex flex-wrap items-start gap-x-8 gap-y-2">

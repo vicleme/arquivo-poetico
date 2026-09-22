@@ -1,0 +1,42 @@
+{
+    "id": "cruz-e-sousa",
+    "titulo": "Cruz e Sousa (seleção)",
+    "descricao": "Sete sonetos de Broquéis (1893) e Últimos Sonetos (1905).",
+    "autor": {
+        "nome": "Cruz e Sousa",
+        "nacionalidade": "Brasileira",
+        "nascimento": {
+            "dia": 24,
+            "mes": 11,
+            "ano": 1861
+        },
+        "obito": {
+            "dia": 19,
+            "mes": 3,
+            "ano": 1898
+        }
+    },
+    "fonte": "Wikisource",
+    "edicao": "Broquéis. Rio de Janeiro: Magalhães & Cia Editores, 1893",
+    "link": "",
+    "ortografia": "original",
+    "conferido": true,
+    "textos": {
+        "Antífona": { "link": "" },
+        "Siderações": { "link": "" },
+        "Cárcere das Almas": {
+            "edicao": "Últimos Sonetos. Paris: Imprimerie de L. Maretheux, 1905",
+            "link": ""
+        },
+        "Acrobata da Dor": {
+            "edicao": "Últimos Sonetos. Paris: Imprimerie de L. Maretheux, 1905",
+            "link": ""
+        },
+        "Vida Obscura": {
+            "edicao": "Últimos Sonetos. Paris: Imprimerie de L. Maretheux, 1905",
+            "link": ""
+        },
+        "Caveira": { "link": "" },
+        "Dilacerações": { "link": "" }
+    }
+}

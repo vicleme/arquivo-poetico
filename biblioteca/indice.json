@@ -1,0 +1,76 @@
+{
+  "pacotes": [
+    {
+      "id": "augusto-dos-anjos",
+      "arquivo": "augusto-dos-anjos",
+      "titulo": "Augusto dos Anjos — sonetos (piloto)",
+      "autor": "Augusto dos Anjos",
+      "descricao": "Dois sonetos pra demonstrar Sonoridade, Estatísticas e Conexões sem usar o acervo pessoal.",
+      "quantidade": 2,
+      "conferido": true
+    },
+    {
+      "id": "camoes",
+      "arquivo": "camoes",
+      "titulo": "Camões (seleção)",
+      "autor": "Luís Vaz de Camões",
+      "descricao": "Cinco sonetos e um vilancete de Camões, na edição de 1843.",
+      "quantidade": 6,
+      "conferido": false
+    },
+    {
+      "id": "cruz-e-sousa",
+      "arquivo": "cruz-e-sousa",
+      "titulo": "Cruz e Sousa (seleção)",
+      "autor": "Cruz e Sousa",
+      "descricao": "Sete sonetos de Broquéis (1893) e Últimos Sonetos (1905).",
+      "quantidade": 7,
+      "conferido": true
+    },
+    {
+      "id": "fernando-pessoa",
+      "arquivo": "fernando-pessoa",
+      "titulo": "Fernando Pessoa (seleção)",
+      "autor": "Fernando Pessoa",
+      "descricao": "Seis poemas: dois do ortônimo, um de Caeiro, dois de Campos e um de Reis.",
+      "quantidade": 6,
+      "conferido": false
+    },
+    {
+      "id": "florbela-espanca",
+      "arquivo": "florbela-espanca",
+      "titulo": "Florbela Espanca (seleção)",
+      "autor": "Florbela Espanca",
+      "descricao": "Cinco sonetos de Livro de Mágoas, Livro de Sóror Saudade e Charneca em Flor.",
+      "quantidade": 5,
+      "conferido": false
+    },
+    {
+      "id": "lima-barreto",
+      "arquivo": "lima-barreto",
+      "titulo": "Lima Barreto (seleção)",
+      "autor": "Lima Barreto",
+      "descricao": "Três contos: O Homem que Sabia Javanês, A Nova Califórnia e O Moleque.",
+      "quantidade": 3,
+      "conferido": false
+    },
+    {
+      "id": "machado-de-assis",
+      "arquivo": "machado-de-assis",
+      "titulo": "Machado de Assis (seleção)",
+      "autor": "Machado de Assis",
+      "descricao": "Três poemas (Ocidentais e Relíquias de Casa Velha) e três contos (Papéis Avulsos e Várias Histórias).",
+      "quantidade": 6,
+      "conferido": false
+    },
+    {
+      "id": "maria-firmina-dos-reis",
+      "arquivo": "maria-firmina-dos-reis",
+      "titulo": "Maria Firmina dos Reis (seleção)",
+      "autor": "Maria Firmina dos Reis",
+      "descricao": "Um capítulo de Úrsula (1859) e um poema de Cantos à Beira-Mar.",
+      "quantidade": 2,
+      "conferido": false
+    }
+  ]
+}

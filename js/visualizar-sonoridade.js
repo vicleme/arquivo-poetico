@@ -58,7 +58,7 @@ export function renderVisualizacaoSonoridadeHtml(es) {
     html += linhaMetaHtml('Tom', es.tom);
     html += `
         <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-2">Grade Silábica</h4>
-        ${renderGradeLeituraHtml(es.escansaoLinhas, es.rimas, es.ecos)}`;
+        ${renderGradeLeituraHtml(es.escansaoLinhas, es.rimas, es.ecos, es.tamanhoVerso)}`;
     return html;
 }
 

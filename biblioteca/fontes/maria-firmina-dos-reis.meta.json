@@ -1,0 +1,36 @@
+{
+    "id": "maria-firmina-dos-reis",
+    "titulo": "Maria Firmina dos Reis (seleção)",
+    "descricao": "Um capítulo de Úrsula (1859) e um poema de Cantos à Beira-Mar.",
+    "autor": {
+        "nome": "Maria Firmina dos Reis",
+        "nacionalidade": "Brasileira",
+        "nascimento": {
+            "ano": 1822
+        },
+        "obito": {
+            "dia": 11,
+            "mes": 11,
+            "ano": 1917
+        },
+        "sexo": "Feminino"
+    },
+    "fonte": "Wikisource",
+    "edicao": "",
+    "link": "",
+    "ortografia": "atualizada",
+    "conferido": false,
+    "textos": {
+        "A Preta Susana": {
+            "tipo": "prosa",
+            "edicao": "Úrsula. São Luís: Typographia do Progresso, 1859. páginas 88-95.",
+            "dataPublicacao": {
+                "ano": 1859
+            }
+        },
+        "O Meu Desejo": {
+            "tipo": "poema",
+            "edicao": "Publicado em Cantos à Beira-Mar"
+        }
+    }
+}

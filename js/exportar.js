@@ -24,6 +24,7 @@ import {
 import { baixarMarkdown } from './exportar-md.js';
 import { baixarPdf } from './exportar-pdf.js';
 import { baixarDocx } from './exportar-docx.js';
+import { gerarCsvTextos, baixarCsv } from './exportar-csv.js';
 import { enriquecerItensComExtras } from './download-abrangente.js';
 
 // Exportada pra ser reaproveitada por exportar-frequentes.js (critérios
@@ -272,6 +273,16 @@ function resolverContexto(item) {
 // de exportação e os 6 "fixos" da aba Exportações Frequentes) — mesmo
 // formato de registro (item + tipo + contexto resolvido) usado em toda
 // exportação seletiva/flat/seleção daqui.
+//
+// Além de tipo/contexto, denormaliza o *nome* de cada referência a um
+// cadastro central (Pessoas/Grupos/Autores/Épocas/Livros) — os campos
+// originais (pessoaId, autorId, epocaId, livrosIds) guardam só o id
+// dentro do acervo de origem, que não significa nada num acervo de
+// destino diferente. É esse nome junto do id que permite a Importação
+// Aditiva (importar-aditivo.js) casar cada referência por nome quando
+// o id não bate em nada, em vez de simplesmente perder o vínculo ou
+// duplicar a entidade. Só adiciona campos (nunca remove/renomeia os
+// existentes), então não muda nada pra quem já consome este formato.
 export function montarRegistro(tipo, item) {
     // Spread garante que todos os campos do item chegam ao JSON
     // (notas, conceitos, livrosIds, etc.) sem precisar listá-los
@@ -280,6 +291,31 @@ export function montarRegistro(tipo, item) {
         ...item,
         tipo,
         contexto: resolverContexto(item),
+        pessoas: (item.pessoas || []).map((p) => ({
+            ...p,
+            nome: db.pessoas.find((x) => x.id == p.pessoaId)?.nome || '',
+        })),
+        autoria: (item.autoria || []).map((a) => ({
+            ...a,
+            nome: db.autores.find((x) => x.id == a.autorId)?.nome || '',
+        })),
+        gruposDiretosResolvidos: (item.gruposDiretos || [])
+            .map((id) => db.grupos.find((g) => g.id == id))
+            .filter(Boolean)
+            .map((g) => ({ id: g.id, nome: g.nome })),
+        livrosResolvidos: (item.livrosIds || [])
+            .map((id) => db.livros.find((l) => l.id == id))
+            .filter(Boolean)
+            .map((l) => ({ id: l.id, titulo: l.titulo })),
+        ...(item.epocaRetratada
+            ? {
+                  epocaRetratada: {
+                      ...item.epocaRetratada,
+                      nomeEpoca:
+                          db.epocas.find((e) => e.id == item.epocaRetratada.epocaId)?.nome || '',
+                  },
+              }
+            : {}),
     };
 }
 
@@ -422,6 +458,24 @@ export function exportarSelecaoJson(tipo, ids) {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }, 100);
+}
+
+// .csv (formato largo, ver exportar-csv.js). Monta os registros direto de
+// `montarRegistro`, SEM `enriquecerItensComExtras`: o "📦 Abrangente"
+// (Sonoridade/Morfofuncionalidade) só existe em .md/.json por enquanto,
+// e um .csv de uma linha por texto não tem onde pôr esses blocos.
+export function exportarSelecaoCsv(tipo, ids) {
+    const idsSet = new Set(ids);
+    const colecao = tipo === 'prosa' ? db.prosas : db.poemas;
+    const registros = colecao
+        .filter((item) => idsSet.has(item.id))
+        .map((item) => montarRegistro(tipo, item));
+    if (registros.length === 0) {
+        mostrarAviso('Nenhum item selecionado.');
+        return;
+    }
+
+    baixarCsv(gerarCsvTextos(tipo, registros, db), `selecao_${tipo}s_${Date.now()}.csv`);
 }
 
 export function exportarSelecaoMarkdown(tipo, ids) {

@@ -1,0 +1,77 @@
+{
+    "id": "fernando-pessoa",
+    "titulo": "Fernando Pessoa (seleção)",
+    "descricao": "Seis poemas: dois do ortônimo, um de Caeiro, dois de Campos e um de Reis.",
+    "autor": {
+        "nome": "Fernando Pessoa",
+        "nacionalidade": "Portuguesa",
+        "nascimento": {
+            "dia": 13,
+            "mes": 6,
+            "ano": 1888
+        },
+        "obito": {
+            "dia": 30,
+            "mes": 11,
+            "ano": 1935
+        },
+        "sexo": "Masculino",
+        "nomesLiterarios": [
+            {
+                "nome": "Alberto Caeiro",
+                "tipo": "Heterônimo"
+            },
+            {
+                "nome": "Álvaro de Campos",
+                "tipo": "Heterônimo"
+            },
+            {
+                "nome": "Ricardo Reis",
+                "tipo": "Heterônimo"
+            }
+        ]
+    },
+    "fonte": "Wikisource",
+    "edicao": "",
+    "link": "",
+    "ortografia": "",
+    "conferido": false,
+    "textos": {
+        "Autopsicografia": {
+            "grafia": "atual"
+        },
+        "Mar Português": {
+            "edicao": "Mensagem, 1934",
+            "grafia": "etimológica",
+            "dataPublicacao": {
+                "ano": 1934
+            }
+        },
+        "Eu nunca guardei rebanhos": {
+            "grafia": "atual",
+            "assinatura": "Heterônimo",
+            "nomeLiterario": "Alberto Caeiro"
+        },
+        "Tabacaria": {
+            "grafia": "atual",
+            "assinatura": "Heterônimo",
+            "nomeLiterario": "Álvaro de Campos",
+            "dataEscrita": {
+                "dia": 15,
+                "mes": 1,
+                "ano": 1928,
+                "exata": true
+            }
+        },
+        "Poema em Linha Reta": {
+            "grafia": "atual",
+            "assinatura": "Heterônimo",
+            "nomeLiterario": "Álvaro de Campos"
+        },
+        "Vem sentar-te comigo, Lídia, à beira do rio": {
+            "grafia": "atual",
+            "assinatura": "Heterônimo",
+            "nomeLiterario": "Ricardo Reis"
+        }
+    }
+}

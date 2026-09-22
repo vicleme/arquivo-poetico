@@ -24,7 +24,9 @@ import {
     nomesGrupos,
     paresGrupoPessoa,
     paresAutoria,
+    nomeAutoriaExibido,
     AUTORIA_PAPEIS,
+    ASSINATURAS_AUTORIA,
     CORES_GRUPO,
     CORES_GRUPO_PADRAO,
     classesCorGrupo,
@@ -63,6 +65,24 @@ import {
     renderCoracoesHtml,
     parseListaIntervalos,
     limparElementosHtmlLinha,
+    SEXOS_AUTOR,
+    GENEROS_SUGERIDOS,
+    ORIENTACOES_SUGERIDAS,
+    CORES_RACA_AUTOR,
+    IDENTIDADES_CIS_TRANS,
+    extrairGenerosAutorUnicos,
+    extrairOrientacoesUnicas,
+    RELIGIOES_SUGERIDAS,
+    extrairReligioesUnicas,
+    DIMENSOES_CONDICAO_CLINICA,
+    TIPOS_DEFICIENCIA,
+    GRAUS_ACADEMICOS_AUTOR,
+    extrairInstituicoesUnicas,
+    CLASSES_SOCIAIS_AUTOR,
+    autorGruposComDados,
+    signoDoZodiaco,
+    idadeAutor,
+    grupoSexualGenero,
 } from '../js/utils.js';
 
 describe('parseListaIntervalos', () => {
@@ -812,6 +832,63 @@ describe('paresAutoria (Autor/Coautor, resolução via cadastro central)', () =>
         assert.deepEqual(paresAutoria({}), []);
         assert.deepEqual(paresAutoria({ autoria: 'Victor Leme' }), []);
     });
+
+    it('ASSINATURAS_AUTORIA tem exatamente Ortônimo, Heterônimo e Pseudônimo', () => {
+        assert.deepEqual(ASSINATURAS_AUTORIA, ['Ortônimo', 'Heterônimo', 'Pseudônimo']);
+    });
+
+    it('resolve assinatura e nomeLiterario do vínculo (Ortônimo/"" quando ausentes)', () => {
+        const item = {
+            autoria: [
+                { autorId: 1, papel: 'Autor', assinatura: 'Heterônimo', nomeLiterario: 'Álvaro de Campos' },
+                { autorId: 2, papel: 'Coautor' },
+            ],
+        };
+        const pares = paresAutoria(item, autoresCadastro);
+        assert.deepEqual(
+            pares.map((p) => [p.assinatura, p.nomeLiterario]),
+            [
+                ['Heterônimo', 'Álvaro de Campos'],
+                ['Ortônimo', ''],
+            ],
+        );
+    });
+
+    it('assinatura fora de ASSINATURAS_AUTORIA (dado inválido) cai pra Ortônimo', () => {
+        const item = { autoria: [{ autorId: 1, papel: 'Autor', assinatura: 'Apelido' }] };
+        const pares = paresAutoria(item, autoresCadastro);
+        assert.equal(pares[0].assinatura, 'Ortônimo');
+    });
+});
+
+describe('nomeAutoriaExibido (nome literário > nome do Autor)', () => {
+    const autor = { id: 1, nome: 'Fernando Pessoa' };
+
+    it('usa o nome literário quando a Assinatura é Heterônimo', () => {
+        assert.equal(
+            nomeAutoriaExibido({ autor, assinatura: 'Heterônimo', nomeLiterario: 'Álvaro de Campos' }),
+            'Álvaro de Campos',
+        );
+    });
+
+    it('usa o nome literário quando a Assinatura é Pseudônimo', () => {
+        assert.equal(
+            nomeAutoriaExibido({ autor, assinatura: 'Pseudônimo', nomeLiterario: 'F. Pessoa Jr.' }),
+            'F. Pessoa Jr.',
+        );
+    });
+
+    it('cai pro nome do Autor quando a Assinatura é Ortônimo, mesmo com nomeLiterario preenchido', () => {
+        assert.equal(
+            nomeAutoriaExibido({ autor, assinatura: 'Ortônimo', nomeLiterario: 'Álvaro de Campos' }),
+            'Fernando Pessoa',
+        );
+    });
+
+    it('cai pro nome do Autor sem nome literário', () => {
+        assert.equal(nomeAutoriaExibido({ autor, assinatura: 'Heterônimo', nomeLiterario: '' }), 'Fernando Pessoa');
+        assert.equal(nomeAutoriaExibido({ autor }), 'Fernando Pessoa');
+    });
 });
 
 describe('CORES_GRUPO / classesCorGrupo (paleta curada de cor por Grupo)', () => {
@@ -1160,6 +1237,49 @@ describe('filtrarTextos (busca com sintaxe estilo Google)', () => {
         assert.deepEqual(
             filtrarTextos(comReconhecimentos, 'reconhecimento:2020').map((i) => i.id),
             [70],
+        );
+    });
+
+    it('prefixo fonte: restringe a busca ao campo Fonte (origem + edição + link)', () => {
+        const comFonte = [
+            { id: 80, titulo: 'A', _buscaFonte: 'Cruz e Sousa Broquéis, 1893 ' },
+            { id: 81, titulo: 'B', _buscaFonte: 'Augusto dos Anjos Eu, 1912 https://exemplo.org' },
+            { id: 82, titulo: 'C', _buscaFonte: '' },
+        ];
+        assert.deepEqual(
+            filtrarTextos(comFonte, 'fonte:broquéis').map((i) => i.id),
+            [80],
+        );
+        assert.deepEqual(
+            filtrarTextos(comFonte, 'fonte:exemplo.org').map((i) => i.id),
+            [81],
+        );
+        assert.deepEqual(
+            filtrarTextos(comFonte, 'fonte:1893').map((i) => i.id),
+            [80],
+        );
+    });
+
+    it('prefixo grafia: restringe a busca ao rótulo da tradição ortográfica (não ao valor cru do enum), e "atual" só bate no que foi marcado de propósito', () => {
+        const comGrafia = [
+            { id: 90, titulo: 'A', _buscaGrafia: 'Etimológica (ph, th, y, dobradas — ex.: Cruz e Sousa, Augusto dos Anjos)' },
+            { id: 91, titulo: 'B', _buscaGrafia: 'Quinhentista (português do séc. XVI — ex.: Camões)' },
+            { id: 92, titulo: 'C', _buscaGrafia: '' },
+            { id: 93, titulo: 'D', _buscaGrafia: 'Atual (padrão)' },
+        ];
+        assert.deepEqual(
+            filtrarTextos(comGrafia, 'grafia:etimológica').map((i) => i.id),
+            [90],
+        );
+        assert.deepEqual(
+            filtrarTextos(comGrafia, 'grafia:quinhentista').map((i) => i.id),
+            [91],
+        );
+        // Não pega o item 92 (grafia nunca definida, _buscaGrafia vazio) —
+        // só o 93, que tem "Atual" marcada de propósito.
+        assert.deepEqual(
+            filtrarTextos(comGrafia, 'grafia:atual').map((i) => i.id),
+            [93],
         );
     });
 
@@ -1949,5 +2069,282 @@ describe('renderCoracoesHtml', () => {
         const preenchidos = html.match(/width:(\d+)%/g) || [];
         assert.equal(preenchidos.length, 5);
         assert.ok(preenchidos.every((p) => p === 'width:0%'));
+    });
+});
+
+describe('Dados demográficos do Autor (Sexo/Gênero/Orientação/Cor-Raça/Ocupações)', () => {
+    it('listas fechadas não têm "Não informado" — vazio já é o estado de não especificado', () => {
+        assert.ok(!SEXOS_AUTOR.includes('Não informado'));
+        assert.ok(!CORES_RACA_AUTOR.includes('Não informado'));
+        assert.deepEqual(SEXOS_AUTOR, ['Feminino', 'Masculino', 'Intersexo']);
+        assert.deepEqual(CORES_RACA_AUTOR, ['Branca', 'Preta', 'Parda', 'Amarela', 'Indígena']);
+    });
+
+    it('extrairGenerosAutorUnicos soma a semente (GENEROS_SUGERIDOS) ao que já foi digitado', () => {
+        const autores = [{ genero: 'Bigênero' }, { genero: 'Mulher' }, { genero: '' }, {}];
+        const resultado = extrairGenerosAutorUnicos(autores);
+        GENEROS_SUGERIDOS.forEach((g) => assert.ok(resultado.includes(g)));
+        assert.ok(resultado.includes('Bigênero'));
+        // Mulher já está na semente — não deve duplicar.
+        assert.equal(resultado.filter((g) => g === 'Mulher').length, 1);
+    });
+
+    it('extrairOrientacoesUnicas soma a semente (ORIENTACOES_SUGERIDAS) ao que já foi digitado', () => {
+        const autores = [{ orientacaoSexual: 'Demissexual' }, { orientacaoSexual: '' }];
+        const resultado = extrairOrientacoesUnicas(autores);
+        ORIENTACOES_SUGERIDAS.forEach((o) => assert.ok(resultado.includes(o)));
+        assert.ok(resultado.includes('Demissexual'));
+    });
+});
+
+describe('Dados sociais do Autor (Religião/Classe social/Condições clínicas/Escolaridade)', () => {
+    it('CLASSES_SOCIAIS_AUTOR é lista fechada, do menos ao mais abastado, sem "Não informado"', () => {
+        assert.deepEqual(CLASSES_SOCIAIS_AUTOR, [
+            'Escravizado/liberto',
+            'Livre pobre',
+            'Artesão/classe média urbana',
+            'Elite/proprietário de terras',
+        ]);
+    });
+
+    it('TIPOS_DEFICIENCIA: 6 categorias, Física primeiro (é o tipo padrão ao adicionar)', () => {
+        assert.deepEqual(TIPOS_DEFICIENCIA, [
+            'Física',
+            'Auditiva',
+            'Visual',
+            'Intelectual',
+            'Mental/psicossocial',
+            'Múltipla',
+        ]);
+    });
+
+    it('DIMENSOES_CONDICAO_CLINICA tem só Física e Mental (Física é o padrão)', () => {
+        assert.deepEqual(DIMENSOES_CONDICAO_CLINICA, ['Física', 'Mental']);
+    });
+
+    it('extrairReligioesUnicas soma a semente ao acervo, sem duplicar nem incluir vazios', () => {
+        const autores = [{ religiao: 'Budismo' }, { religiao: 'Catolicismo' }, { religiao: '  ' }, {}];
+        const resultado = extrairReligioesUnicas(autores);
+        RELIGIOES_SUGERIDAS.forEach((r) => assert.ok(resultado.includes(r)));
+        assert.ok(resultado.includes('Budismo'));
+        assert.equal(resultado.filter((r) => r === 'Catolicismo').length, 1);
+        assert.ok(!resultado.includes(''));
+    });
+
+    it('GRAUS_ACADEMICOS_AUTOR é lista fechada, do menor ao maior nível, sem "Não informado"', () => {
+        assert.deepEqual(GRAUS_ACADEMICOS_AUTOR, [
+            'Sem escolarização formal',
+            'Autodidata/Educação particular',
+            'Ensino Fundamental',
+            'Ensino Médio',
+            'Ensino Superior incompleto',
+            'Ensino Superior completo',
+            'Pós-graduação/Mestrado',
+            'Doutorado',
+            'Pós-doutorado',
+        ]);
+    });
+
+    it('extrairInstituicoesUnicas separa por vírgula, deduplica e ordena; sem semente fixa', () => {
+        const autores = [{ instituicoes: 'USP, Colégio Pedro II' }, { instituicoes: 'USP' }, { instituicoes: '' }, {}];
+        assert.deepEqual(extrairInstituicoesUnicas(autores), ['Colégio Pedro II', 'USP']);
+        assert.deepEqual(extrairInstituicoesUnicas([]), []);
+        assert.deepEqual(extrairInstituicoesUnicas(undefined), []);
+    });
+});
+
+describe('autorGruposComDados (grupos colapsáveis do modal de Autor)', () => {
+    it('Autor vazio ou nulo: nenhum grupo tem dados', () => {
+        const vazio = { identidade: false, saude: false, formacao: false };
+        assert.deepEqual(autorGruposComDados({ id: 1, nome: 'A' }), vazio);
+        assert.deepEqual(autorGruposComDados(null), vazio);
+        assert.deepEqual(autorGruposComDados({ sexo: '', condicoesClinicas: [], ocupacoes: '   ' }), vazio);
+    });
+
+    it('cada campo marca só o seu grupo', () => {
+        assert.deepEqual(autorGruposComDados({ religiao: 'Espiritismo' }), {
+            identidade: true,
+            saude: false,
+            formacao: false,
+        });
+        assert.deepEqual(autorGruposComDados({ neurodivergencias: 'TDAH' }), {
+            identidade: false,
+            saude: true,
+            formacao: false,
+        });
+        assert.equal(autorGruposComDados({ deficiencias: [{ nome: 'Cegueira', tipo: 'Visual' }] }).saude, true);
+        assert.deepEqual(autorGruposComDados({ instituicoes: 'USP' }), {
+            identidade: false,
+            saude: false,
+            formacao: true,
+        });
+    });
+
+    it('Condições clínicas conta como array (novo) e como string (legado)', () => {
+        assert.equal(autorGruposComDados({ condicoesClinicas: [{ nome: 'Asma', tipo: 'Física' }] }).saude, true);
+        assert.equal(autorGruposComDados({ condicoesClinicas: 'Asma' }).saude, true);
+    });
+
+    it('Nacionalidade, datas e nomes literários não pertencem a nenhum grupo (ficam sempre visíveis)', () => {
+        const r = autorGruposComDados({ nacionalidade: 'portuguesa', nascimento: { ano: 1888 }, nomesLiterarios: [{ nome: 'X', tipo: 'Pseudônimo' }] });
+        assert.deepEqual(r, { identidade: false, saude: false, formacao: false });
+    });
+});
+
+describe('signoDoZodiaco', () => {
+    it('calcula o signo a partir de dia+mês', () => {
+        assert.equal(signoDoZodiaco({ dia: 21, mes: 3 }), 'Áries');
+        assert.equal(signoDoZodiaco({ dia: 20, mes: 3 }), 'Peixes'); // véspera da virada
+        assert.equal(signoDoZodiaco({ dia: 22, mes: 12 }), 'Capricórnio');
+        assert.equal(signoDoZodiaco({ dia: 1, mes: 1 }), 'Capricórnio'); // atravessa o ano
+        assert.equal(signoDoZodiaco({ dia: 19, mes: 1 }), 'Capricórnio');
+        assert.equal(signoDoZodiaco({ dia: 20, mes: 1 }), 'Aquário');
+    });
+
+    it('sem dia ou sem mês, devolve null (sem aproximação possível pro signo)', () => {
+        assert.equal(signoDoZodiaco({ mes: 3, ano: 1990 }), null);
+        assert.equal(signoDoZodiaco({ dia: 21, ano: 1990 }), null);
+        assert.equal(signoDoZodiaco(null), null);
+        assert.equal(signoDoZodiaco(undefined), null);
+    });
+});
+
+describe('idadeAutor', () => {
+    const hoje = new Date(2026, 8, 23); // 23 de setembro de 2026
+
+    it('data completa, vivo (sem Óbito) — idade exata, considerando se o aniversário já passou', () => {
+        assert.deepEqual(idadeAutor({ nascimento: { dia: 22, mes: 9, ano: 1990 } }, hoje), {
+            anos: 36,
+            aproximada: false,
+        });
+        assert.deepEqual(idadeAutor({ nascimento: { dia: 24, mes: 9, ano: 1990 } }, hoje), {
+            anos: 35,
+            aproximada: false,
+        });
+    });
+
+    it('falecido — para de contar no Óbito, não continua até hoje', () => {
+        // Augusto dos Anjos: nasceu 20/04/1884, morreu 12/11/1914 — 30 anos.
+        const idade = idadeAutor({
+            nascimento: { dia: 20, mes: 4, ano: 1884 },
+            obito: { dia: 12, mes: 11, ano: 1914 },
+        });
+        assert.deepEqual(idade, { anos: 30, aproximada: false });
+    });
+
+    it('faltando dia/mês de qualquer um dos lados, aproxima só por ano-calendário e sinaliza aproximada:true', () => {
+        assert.deepEqual(idadeAutor({ nascimento: { ano: 1990 } }, hoje), { anos: 36, aproximada: true });
+        assert.deepEqual(
+            idadeAutor({ nascimento: { dia: 1, mes: 1, ano: 1990 }, obito: { ano: 2020 } }),
+            { anos: 30, aproximada: true },
+        );
+    });
+
+    it('sem ano de nascimento, não dá pra calcular nem aproximado', () => {
+        assert.equal(idadeAutor({ nascimento: { dia: 1, mes: 1 } }), null);
+        assert.equal(idadeAutor({}), null);
+        assert.equal(idadeAutor(null), null);
+    });
+});
+
+describe('grupoSexualGenero (derivado — Cis-heteronormativo / Queer / Não informado)', () => {
+    it('Sexo e Gênero alinhados ao padrão + Orientação heterossexual → cis-heteronormativo', () => {
+        assert.equal(
+            grupoSexualGenero({ sexo: 'Feminino', genero: 'Mulher', orientacaoSexual: 'Heterossexual' }),
+            'cis-heteronormativo',
+        );
+        assert.equal(
+            grupoSexualGenero({ sexo: 'Masculino', genero: 'Homem', orientacaoSexual: 'Heterossexual' }),
+            'cis-heteronormativo',
+        );
+    });
+
+    it('qualquer Orientação não-heterossexual → queer, mesmo com Sexo/Gênero alinhados', () => {
+        assert.equal(
+            grupoSexualGenero({ sexo: 'Feminino', genero: 'Mulher', orientacaoSexual: 'Bissexual' }),
+            'queer',
+        );
+    });
+
+    it('Sexo Intersexo → queer, independente de Gênero/Orientação', () => {
+        assert.equal(
+            grupoSexualGenero({ sexo: 'Intersexo', genero: 'Mulher', orientacaoSexual: 'Heterossexual' }),
+            'queer',
+        );
+    });
+
+    it('Gênero contendo "trans" → queer', () => {
+        assert.equal(
+            grupoSexualGenero({ sexo: 'Masculino', genero: 'Homem trans', orientacaoSexual: 'Heterossexual' }),
+            'queer',
+        );
+    });
+
+    it('Gênero fora de mulher/homem (não-binário, agênero...) → queer', () => {
+        assert.equal(
+            grupoSexualGenero({ sexo: 'Feminino', genero: 'Não-binário', orientacaoSexual: 'Assexual' }),
+            'queer',
+        );
+    });
+
+    it('faltando Sexo, Gênero ou Orientação → não-informado (nunca presume maioria por dado ausente)', () => {
+        assert.equal(grupoSexualGenero({}), 'nao-informado');
+        assert.equal(
+            grupoSexualGenero({ sexo: 'Feminino', genero: 'Mulher', orientacaoSexual: '' }),
+            'nao-informado',
+        );
+        assert.equal(
+            grupoSexualGenero({ sexo: '', genero: 'Mulher', orientacaoSexual: 'Heterossexual' }),
+            'nao-informado',
+        );
+    });
+
+    it('IDENTIDADES_CIS_TRANS é a lista fechada esperada (Cisgênero/Transgênero/Não se aplica, sem "Não informado" — vazio já é esse estado)', () => {
+        assert.deepEqual(IDENTIDADES_CIS_TRANS, ['Cisgênero', 'Transgênero', 'Não se aplica']);
+    });
+
+    it('Identidade cis/trans "Transgênero" → queer, mesmo com Gênero simplesmente "Mulher"/"Homem" (sem qualificador)', () => {
+        assert.equal(
+            grupoSexualGenero({
+                sexo: 'Feminino',
+                genero: 'Mulher',
+                orientacaoSexual: 'Heterossexual',
+                identidadeCisTrans: 'Transgênero',
+            }),
+            'queer',
+        );
+    });
+
+    it('Identidade cis/trans "Não se aplica" → queer', () => {
+        assert.equal(
+            grupoSexualGenero({
+                sexo: 'Feminino',
+                genero: 'Mulher',
+                orientacaoSexual: 'Heterossexual',
+                identidadeCisTrans: 'Não se aplica',
+            }),
+            'queer',
+        );
+    });
+
+    it('Identidade cis/trans "Cisgênero" ou vazia (não documentada) não força nada — segue a regra de Gênero/Sexo normalmente', () => {
+        assert.equal(
+            grupoSexualGenero({
+                sexo: 'Feminino',
+                genero: 'Mulher',
+                orientacaoSexual: 'Heterossexual',
+                identidadeCisTrans: 'Cisgênero',
+            }),
+            'cis-heteronormativo',
+        );
+        assert.equal(
+            grupoSexualGenero({
+                sexo: 'Feminino',
+                genero: 'Mulher',
+                orientacaoSexual: 'Heterossexual',
+                identidadeCisTrans: '',
+            }),
+            'cis-heteronormativo',
+        );
     });
 });

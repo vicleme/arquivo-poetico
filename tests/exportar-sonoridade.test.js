@@ -94,11 +94,11 @@ describe('escansaoParaMarkdown', () => {
         assert.match(md, /\*\*Esquema de Rimas:\*\* Com rima · ABAB/);
     });
 
-    it('Grade Silábica: sílaba tônica em negrito, letra de rima entre parênteses', () => {
+    it('Grade Silábica: sílaba tônica em negrito, contagem entre colchetes, letra de rima entre parênteses', () => {
         const md = escansaoParaMarkdown(esCompleta(), poema);
         assert.match(md, /### Grade Silábica/);
-        assert.match(md, /1\. Um \/ \*\*Dois\*\* \(A\)/);
-        assert.match(md, /2\. Tres \/ Quatro \(A\)/);
+        assert.match(md, /1\. \[2\] Um \/ \*\*Dois\*\* \(A\)/);
+        assert.match(md, /2\. \[1\] Tres \/ Quatro \(A\)/);
     });
 
     it('Pares de Rima: letra, versos, trechos, posição/proximidade e classificação', () => {
