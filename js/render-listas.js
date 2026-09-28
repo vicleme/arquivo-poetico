@@ -15,24 +15,38 @@ import {
     calcularImpactoExclusaoGrupo,
     calcularImpactoExclusaoAutor,
     calcularImpactoExclusaoEpoca,
+    calcularImpactoExclusaoPeriodoHistorico,
+    calcularImpactoExclusaoMovimentoEscola,
+    NIVEL_MAXIMO_GRUPO,
 } from './db.js';
 import {
     getElementHierarchy,
     getPosicaoElemento,
     filtrarTextos,
     filtrarPorConteudo,
+    normalizarBusca,
     parseConsultaNumero,
     opcoesBuscaPadrao,
     formatarDataParcial,
     formatarIntervaloEpocaRetratada,
+    formatarIntervaloPeriodoHistorico,
+    formatarIntervaloMovimentoEscola,
+    anoEquivalenteMovimento,
     nomeEpoca,
+    nomePeriodoHistorico,
+    nomesMovimentosEscolas,
+    situacaoDominioPublico,
+    rotuloDominioPublico,
     ROTULOS_RECORTE_EPOCA,
     escapeHtml,
     sanitizarTextoRico,
+    mostrarAviso,
+    mostrarAvisoComAcao,
     itemBateFiltroData,
     filtroDataVazio,
     itemFaltaDataParaFiltro,
     parseFiltroDataRapido,
+    filtrarPeriodosPorData,
     itemBateFiltroEpoca,
     itemFaltaEpocaParaFiltro,
     sinalizacoesCombinadas,
@@ -47,6 +61,8 @@ import {
     PAPEIS_PESSOA,
     corpoEntradaHipertextualidade,
     OPCOES_GRAFIA,
+    simboloGeneroPessoa,
+    formaOcultaAdjetivoPorGenero,
 } from './utils.js';
 import { preencherCapas } from './render-lightbox.js';
 import { getColunasAtivas, DEFINICAO_COLUNAS, renderSeletorColunas } from './colunas.js';
@@ -88,6 +104,10 @@ import {
 // `renderProsas` daqui — import circular proposital, ver nota no topo
 // de selecao-massa.js.
 import { atualizarBarraSelecao } from './selecao-massa.js';
+// Circular com autores-acoes.js, mesmo padrão (seguro) já documentado
+// no header de lá: usado só dentro de verAutoresMovimentoEscola abaixo,
+// nunca no topo do módulo.
+import { setFiltroAutores } from './autores-acoes.js';
 import {
     selecaoAutores,
     getFiltroAutores,
@@ -95,6 +115,20 @@ import {
     podarSelecaoAutores,
     atualizarBarraSelecaoAutores,
 } from './autores-acoes.js';
+// pessoas-acoes.js importa `renderPessoas` daqui — mesmo import
+// circular proposital de autores-acoes.js (ver nota junto do import
+// dele, acima).
+import {
+    selecaoPessoas,
+    getFiltroAutorPessoas,
+    getFiltroGrupoPessoas,
+    getFiltroNomePessoas,
+    getListaVisivelPessoas,
+    podarSelecaoPessoas,
+    atualizarBarraSelecaoPessoas,
+    getVisibilidadePessoas,
+    getQtdOcultasPessoas,
+} from './pessoas-acoes.js';
 
 // Sempre que uma coluna é ligada/desligada (ver colunas.js) a tabela
 // correspondente precisa recalcular cabeçalho + linhas.
@@ -128,6 +162,40 @@ export const ICONE_EXCLUIR = `<svg viewBox="0 0 20 20" fill="none" stroke="curre
 // "mesclar" em apps de versionamento (git merge), usado no botão de
 // Mesclar de Pessoas/Épocas (ver renderPessoas/renderEpocas abaixo).
 const ICONE_MESCLAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M4 3v5a4 4 0 0 0 4 4h0"/><path d="M16 3v5a4 4 0 0 1-4 4h0"/><path d="M10 12v5"/><path d="M7.5 14.5l2.5 2.5 2.5-2.5"/></svg>`;
+// Placa de proibido/permitido — botão "Ocultar"/"Reexibir" dos cards de
+// Pessoa e Grupo (ver renderPessoas/cartaoGrupo abaixo e
+// migrarPessoasOculto/migrarGruposOculto em db.js). Ícone à parte do olho
+// (ICONE_VER, mais abaixo) de propósito: o olho é usado em toda a
+// aplicação só pra "Ver"/abrir modal (Autor, Sonoridade, Estrutura
+// Textual, Movimento/Escola e o próprio "Ver" do Grupo), então reservar
+// essa mesma forma pro toggle Ocultar/Reexibir confundiria as duas ações
+// bem ali no card de Grupo, que tem os dois lado a lado. Círculo
+// barrado/com check ecoa o 🚫 que a aba Estatísticas já usa pro conceito
+// de "ocultar" (index.html, botões "🚫 Ocultar" dos painéis de Ano/Livro/
+// Etiquetas/Pessoas), só que como par de estado (barrado = oculto,
+// clique reexibe; com check = visível, clique oculta) em vez de emoji solto.
+const ICONE_PROIBIDO = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><circle cx="10" cy="10" r="7.25"/><path d="M4.9 4.9l10.2 10.2"/></svg>`;
+const ICONE_PERMITIDO = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><circle cx="10" cy="10" r="7.25"/><path d="M6.7 10.2l2.2 2.2 4.3-4.6"/></svg>`;
+
+// Botão "Novo subgrupo" no card de um Grupo (ver cartaoGrupo abaixo) —
+// some no último nível permitido (NIVEL_MAXIMO_GRUPO, ver db.js), que já
+// é o mais fundo e não pode ter filho.
+const ICONE_NOVO_SUBGRUPO = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M10 5v10"/><path d="M5 10h10"/></svg>`;
+
+// Três linhas — botão "Ver textos" do card de Pessoa (ver renderPessoas/
+// verTextosPessoa abaixo). Ícone à parte de ICONE_VER (usado em outras
+// telas pra abrir modal) de propósito: "Ver textos" não abre um modal de
+// edição, abre a lista de poemas/prosas vinculados a essa Pessoa —
+// reaproveitar o mesmo olho sugeriria a ação errada.
+const ICONE_LISTA_TEXTOS = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M4 5.5h12"/><path d="M4 10h8"/><path d="M4 14.5h10"/></svg>`;
+
+// Duas cabeças — botão "Ver autores" do card de Movimento/Escola (ver
+// renderMovimentosEscolas/verAutoresMovimentoEscola abaixo). Só
+// Movimento/Escola tem esse botão: é o único dos três cadastros de
+// período com vínculo direto a Autor (ver
+// calcularImpactoExclusaoMovimentoEscola em db.js) — Época e Período
+// Histórico só vinculam Poema/Prosa, então só ganham "Ver textos".
+const ICONE_PESSOAS = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><circle cx="7" cy="6.5" r="2.25"/><path d="M2.5 16c0-2.6 2-4.5 4.5-4.5s4.5 1.9 4.5 4.5"/><circle cx="14.5" cy="7.5" r="1.9"/><path d="M12.7 11.7c1.9.2 3.3 1.9 3.3 4"/></svg>`;
 
 let filtroPoemas = '';
 let filtroProsas = '';
@@ -201,6 +269,45 @@ let filtroLivroPartes = '';
 let filtroLivroSecoes = '';
 let filtroParteSecoes = '';
 let filtroLivroElementos = '';
+// Filtro por Autor da aba Grupos — como grupo já pertence a um único
+// Autor (g.autorId, obrigatório), aqui basta recortar quais cabeçalhos
+// de Autor aparecem, sem precisar de N:N como o filtro equivalente de
+// Pessoas (getFiltroAutorPessoas em pessoas-acoes.js). Vive aqui, perto
+// de renderGrupos, e não em pessoas-acoes.js: não precisa de seleção
+// nem ação em massa, só o filtro. Pedido do Victor, 27/09/2026.
+let filtroAutorGrupos = '';
+// Busca por nome na aba Grupos (sem diferenciar caixa/acento). Como Grupo
+// é uma árvore, um grupo que bate na busca aparece junto com seus
+// ancestrais (senão sobraria um subgrupo solto, sem o pai que dá contexto)
+// e sem os descendentes que não batem; recolher/expandir é ignorado
+// enquanto houver busca, pra um resultado nunca ficar escondido atrás de
+// um pai recolhido. Ver idsGruposPorBusca/renderGrupos.
+let filtroNomeGrupos = '';
+// Set de ids visíveis pela busca atual (batidas + ancestrais) ou null sem
+// busca — recalculado a cada renderGrupos, lido por cartoesDaFamilia.
+let _idsBuscaGrupos = null;
+// "Ocultar" (ver migrarGruposOculto em db.js) — mesmo espírito de
+// visibilidadePessoas em pessoas-acoes.js (três estados: 'ativos'
+// esconde os ocultos, 'todos' mostra tudo junto, 'ocultos' mostra só os
+// ocultos), mas com uma diferença: aqui é em cascata — ocultar um Grupo
+// esconde toda a família abaixo dele também (ver cartoesDaFamilia
+// abaixo), já que "Ex-namorados" oculto some com os subgrupos dele
+// junto — não dá pra reexibir só um neto sem o resto da árvore
+// reaparecer. Por isso o modo 'ocultos' não usa cartoesDaFamilia: lista
+// os grupos com `oculto: true` de fato (não a descendência que some
+// junto por herança) de forma achatada, fora da árvore — é uma tela de
+// gerenciar/recuperar, não a visão hierárquica normal (ver renderGrupos
+// abaixo). Pedido do Victor, 27/09/2026.
+let visibilidadeGrupos = 'ativos';
+
+export function getVisibilidadeGrupos() {
+    return visibilidadeGrupos;
+}
+
+export function setVisibilidadeGrupos(valor) {
+    visibilidadeGrupos = ['ativos', 'todos', 'ocultos'].includes(valor) ? valor : 'ativos';
+    renderGrupos();
+}
 
 // ─── Paginação (Poemas e Prosas) ────────────────────────────────
 // "Itens por página" é uma preferência única, compartilhada entre as
@@ -257,6 +364,36 @@ export function setFiltroLivroElementos(valor) {
     renderElementos();
 }
 
+export function setFiltroAutorGrupos(valor) {
+    filtroAutorGrupos = valor || '';
+    renderGrupos();
+}
+
+export function setFiltroNomeGrupos(valor) {
+    filtroNomeGrupos = valor || '';
+    renderGrupos();
+}
+
+// Ids dos grupos cujo nome contém `termo` + todos os seus ancestrais
+// (paiId acima), ou null se a busca está vazia. `vistos` evita laço se um
+// dado corrompido tiver paiId circular.
+function idsGruposPorBusca(termo) {
+    const alvo = normalizarBusca((termo || '').trim());
+    if (!alvo) return null;
+    const ids = new Set();
+    db.grupos.forEach((g) => {
+        if (!normalizarBusca(g.nome).includes(alvo)) return;
+        const vistos = new Set();
+        let atual = g;
+        while (atual && !vistos.has(atual.id)) {
+            vistos.add(atual.id);
+            ids.add(atual.id);
+            atual = atual.paiId == null ? null : db.grupos.find((x) => x.id == atual.paiId);
+        }
+    });
+    return ids;
+}
+
 function popularFiltroLivro(selectId) {
     const sel = document.getElementById(selectId);
     if (!sel) return;
@@ -268,6 +405,81 @@ function popularFiltroLivro(selectId) {
         db.livros
             .filter((l) => l.tipo !== 'Coletânea')
             .map((l) => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`)
+            .join('');
+    if (Array.from(sel.options).some((o) => o.value === valorAtual)) sel.value = valorAtual;
+}
+
+// Select genérico de Autor — usado no filtro de Pessoas/Grupos
+// (`placeholder` = "-- Todos os autores --") e no seletor "Vincular ao
+// autor" da barra de ação em massa de Pessoas (`placeholder` =
+// "Escolher autor…", sem opção "Todos", já que ali precisa de um autor
+// de verdade escolhido pra aplicar). Mesmo espírito de
+// popularFiltroLivro acima, mas Autor não tem uma lista já filtrada
+// por tipo, então não precisa do .filter() daquela.
+function popularSelectAutores(selectId, placeholder) {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    if (!db.autores.length) {
+        sel.innerHTML = '<option value="">Nenhum autor cadastrado ainda</option>';
+        sel.disabled = true;
+        return;
+    }
+    sel.disabled = false;
+    const valorAtual = sel.value;
+    sel.innerHTML =
+        `<option value="">${placeholder}</option>` +
+        [...db.autores]
+            .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+            .map((a) => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`)
+            .join('');
+    if (Array.from(sel.options).some((o) => o.value === valorAtual)) sel.value = valorAtual;
+}
+
+// Select "Adicionar ao grupo" da barra de ação em massa de Pessoas (e,
+// desde o filtro por Grupo em Pessoas, também o próprio filtro) — mesma
+// árvore Autor → família de grupos (nível 1 + descendência indentada)
+// de `ps-grupos-container` (checkboxes do Modal de Pessoa, ver
+// renderDropdowns em ui.js), só que como <option> dentro de <optgroup>
+// por Autor, já que aqui só cabe escolher um grupo por vez.
+// `placeholder` default mantém o texto de ação em massa; o filtro passa
+// o seu próprio ("-- Todos os grupos --", mesmo padrão do filtro por
+// Autor em popularSelectAutores).
+function popularSelectGrupos(selectId, placeholder = 'Escolher grupo…') {
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+    if (!db.grupos.length) {
+        sel.innerHTML = '<option value="">Nenhum grupo cadastrado ainda</option>';
+        sel.disabled = true;
+        return;
+    }
+    sel.disabled = false;
+    const valorAtual = sel.value;
+    const opcaoGrupo = (g, nivel) =>
+        `<option value="${g.id}">${'— '.repeat(nivel - 1)}${escapeHtml(g.nome)}</option>`;
+    const familiaOpcoes = (g, gruposDoAutor, nivel) => {
+        const filhos = gruposDoAutor
+            .filter((sub) => sub.paiId == g.id)
+            .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        return (
+            opcaoGrupo(g, nivel) +
+            filhos.map((f) => familiaOpcoes(f, gruposDoAutor, nivel + 1)).join('')
+        );
+    };
+    const autoresComGrupo = [...new Set(db.grupos.map((g) => g.autorId))]
+        .map((id) => db.autores.find((a) => a.id == id))
+        .filter(Boolean)
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    sel.innerHTML =
+        `<option value="">${placeholder}</option>` +
+        autoresComGrupo
+            .map((autor) => {
+                const gruposDoAutor = db.grupos.filter((g) => g.autorId == autor.id);
+                const nivel1 = gruposDoAutor
+                    .filter((g) => g.paiId == null)
+                    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+                const opcoes = nivel1.map((g) => familiaOpcoes(g, gruposDoAutor, 1)).join('');
+                return `<optgroup label="${escapeHtml(autor.nome)}">${opcoes}</optgroup>`;
+            })
             .join('');
     if (Array.from(sel.options).some((o) => o.value === valorAtual)) sel.value = valorAtual;
 }
@@ -488,10 +700,128 @@ export function setFiltroPessoaProsas(valor) {
     renderProsas();
 }
 
+// Botão "Ver textos" do card de Pessoa (pedido do Victor, 27/09/2026,
+// depois de descartar a ideia de um modal — ver conversa: autores e
+// grupos já aparecem em badge no próprio card, o gap real era só não
+// ter como chegar aos textos). Leva pra aba Poemas ou Prosas já
+// filtrada por esta Pessoa, reaproveitando o filtro dedicado
+// Pessoa+Papel que a própria aba já tem (filtroPessoaPoemas/
+// filtroPessoaProsas — ver filtrarPorPessoaEPapel acima), não o
+// prefixo `pessoa:` da busca por texto que as Estatísticas usam
+// (navegarParaLista, estatisticas-tela-comum.js): aqui já existe um
+// filtro por ID, mais preciso que casar por nome. Zera o filtro de
+// Papel junto, senão um papel deixado marcado numa visita anterior
+// esconderia textos desta pessoa sem nenhum aviso. Vai pra Poemas por
+// padrão; só abre em Prosas se a pessoa não aparecer em nenhum poema
+// mas aparecer em alguma prosa.
+export function verTextosPessoa(id) {
+    const { poemasIds, prosasIds } = calcularImpactoExclusaoPessoa(db, id);
+    const destino = poemasIds.length === 0 && prosasIds.length > 0 ? 'prosas' : 'poemas';
+    window.abrirAba?.(destino);
+    if (destino === 'prosas') {
+        setFiltroPapelProsas('');
+        setFiltroPessoaProsas(id);
+    } else {
+        setFiltroPapelPoemas('');
+        setFiltroPessoaPoemas(id);
+    }
+    // Os dois setFiltro* acima já dispararam o re-render da lista (com o
+    // filtro certo já aplicado); só falta sincronizar os <select>
+    // visíveis, que no meio desse render leram o valor antigo direto do
+    // próprio DOM (ver popularSelectPessoaFiltro/popularSelectPapelFiltro
+    // acima) em vez do id que acabamos de passar.
+    const selPessoa = document.getElementById(`filtro-pessoa-${destino}`);
+    if (selPessoa) selPessoa.value = id;
+    const selPapel = document.getElementById(`filtro-papel-${destino}`);
+    if (selPapel) selPapel.value = '';
+}
+
 export function setFiltroPapelProsas(valor) {
     filtroPapelProsas = valor;
     paginaProsas = 1;
     renderProsas();
+}
+
+// Botões "Ver textos" de Época/Período Histórico/Movimento/Escola
+// (pedido do Victor, 27/09/2026, na sequência do de Pessoa acima —
+// mesma ideia, mas sem o filtro dedicado por ID que Pessoa tem
+// (filtroPessoaPoemas/filtroPessoaProsas): essas três entidades só têm
+// vínculo com Poema/Prosa via campo solto (epocaRetratada.epocaId,
+// periodoHistoricoId, movimentosEscolasIds — ver db.js), sem UI de
+// filtro por ID equivalente nas abas Poemas/Prosas. Em vez de criar
+// esse filtro do zero pras três, reaproveita o mesmo mecanismo que a
+// aba Estatísticas já usa pra drill-down (navegarParaLista,
+// estatisticas-tela-comum.js): a Caixa A de busca já entende os
+// prefixos `epoca:`, `periodohistorico:` e `movimento:`/`escola:` (ver
+// CAMPOS_ATRIBUTO em utils.js), então basta jogar `prefixo:"Nome"` na
+// mesma caixa. Nome entre aspas de propósito — sem aspas, um nome com
+// mais de uma palavra vira vários termos soltos (ver
+// parseConsultaBusca) e a busca deixa de ser exata. Vai pra Poemas por
+// padrão; só abre em Prosas se o item não aparecer em nenhum poema mas
+// aparecer em alguma prosa (mesmo critério de verTextosPessoa acima).
+function abrirListaFiltrada(prefixo, nome, poemasIds, prosasIds) {
+    const destino = poemasIds.length === 0 && prosasIds.length > 0 ? 'prosas' : 'poemas';
+    window.abrirAba?.(destino);
+    const consulta = `${prefixo}:"${nome}"`;
+    if (destino === 'prosas') {
+        setFiltroProsas(consulta);
+    } else {
+        setFiltroPoemas(consulta);
+    }
+    // Mesma sincronização de DOM de verTextosPessoa acima: o setFiltro*
+    // já re-renderizou a lista com o filtro certo, só falta refletir o
+    // valor na caixa de busca visível (ela lê o próprio DOM, não este
+    // estado, então re-render sozinho não atualiza o que está digitado).
+    const caixaBusca = document.getElementById(`busca-${destino}`);
+    if (caixaBusca) caixaBusca.value = consulta;
+}
+
+export function verTextosEpoca(id) {
+    const ep = db.epocas.find((e) => e.id == id);
+    if (!ep) return;
+    const { poemasIds, prosasIds } = calcularImpactoExclusaoEpoca(db, id);
+    abrirListaFiltrada('epoca', ep.nome, poemasIds, prosasIds);
+}
+
+export function verTextosPeriodoHistorico(id) {
+    const ph = db.periodosHistoricos.find((p) => p.id == id);
+    if (!ph) return;
+    const { poemasIds, prosasIds } = calcularImpactoExclusaoPeriodoHistorico(db, id);
+    abrirListaFiltrada('periodohistorico', ph.nome, poemasIds, prosasIds);
+}
+
+export function verTextosMovimentoEscola(id) {
+    const m = db.movimentosEscolas.find((x) => x.id == id);
+    if (!m) return;
+    const { poemasIds, prosasIds } = calcularImpactoExclusaoMovimentoEscola(db, id);
+    abrirListaFiltrada('movimento', m.nome, poemasIds, prosasIds);
+}
+
+// "Ver autores" do card de Movimento/Escola (único dos três com vínculo
+// direto a Autor — ver calcularImpactoExclusaoMovimentoEscola em
+// db.js): mesmo mecanismo de abrirListaFiltrada acima, mas pra aba
+// Autores, que tem sua própria caixa de busca por prefixo com o mesmo
+// `movimento:` (ver CAMPOS_ATRIBUTO_AUTOR em busca-autores.js).
+export function verAutoresMovimentoEscola(id) {
+    const m = db.movimentosEscolas.find((x) => x.id == id);
+    if (!m) return;
+    window.abrirAba?.('autores');
+    const consulta = `movimento:"${m.nome}"`;
+    setFiltroAutores(consulta);
+    const caixaBusca = document.getElementById('busca-autores');
+    if (caixaBusca) caixaBusca.value = consulta;
+}
+
+// "Ver textos" do card de Autor (pedido do Victor, 28/09/2026): mesmo
+// mecanismo de abrirListaFiltrada acima, com o prefixo `autor:` da
+// busca (nome + nome literário + papel, ver _buscaAutoria). Casa por
+// texto, não por id — dois autores com nomes que contêm um ao outro
+// podem se misturar no resultado.
+export function verTextosAutor(id) {
+    const a = db.autores.find((x) => x.id == id);
+    if (!a) return;
+    const { poemasIds, prosasIds } = calcularImpactoExclusaoAutor(db, id);
+    abrirListaFiltrada('autor', a.nome, poemasIds, prosasIds);
 }
 
 // Chamado ao clicar no cabeçalho de uma coluna ordenável da tabela de
@@ -883,7 +1213,10 @@ function decorarCamposBusca(item, extraLivros = '') {
         // entram na busca geral e no prefixo "autor:" (ver
         // CAMPOS_ATRIBUTO em utils.js), mesmo padrão de _buscaPessoas.
         _buscaAutoria: paresAutoria(item, db.autores)
-            .map(({ autor, papel, nomeLiterario }) => `${autor.nome} ${nomeLiterario || ''} ${papel || ''}`)
+            .map(
+                ({ autor, papel, nomeLiterario }) =>
+                    `${autor.nome} ${nomeLiterario || ''} ${papel || ''}`,
+            )
             .join(' '),
         // epocaRetratada guarda só epocaId (nome mora no cadastro central
         // db.epocas — ver migrarEpocas em db.js); nome e recorte entram na
@@ -897,6 +1230,24 @@ function decorarCamposBusca(item, extraLivros = '') {
                   .filter(Boolean)
                   .join(' ')
             : '',
+        // periodoHistoricoId guarda só o id (nome mora no cadastro central
+        // db.periodosHistoricos — ver migrarPeriodosHistoricos em db.js);
+        // nome entra na busca geral e no prefixo "periodohistorico:" (ver
+        // CAMPOS_ATRIBUTO em utils.js), mesmo padrão de _buscaEpoca acima —
+        // sem recorte de data, porque Período Histórico não tem esse campo.
+        _buscaPeriodoHistorico: nomePeriodoHistorico(
+            item.periodoHistoricoId,
+            db.periodosHistoricos,
+        ),
+        // movimentosEscolasIds guarda só os ids (nomes moram no cadastro
+        // central db.movimentosEscolas — ver migrarMovimentosEscolasIds em
+        // db.js); nomes entram na busca geral e no prefixo "movimento:"
+        // (ver CAMPOS_ATRIBUTO em utils.js), mesmo padrão de
+        // _buscaPeriodoHistorico acima, só que é N:N (join com espaço).
+        _buscaMovimentosEscolas: nomesMovimentosEscolas(
+            item.movimentosEscolasIds,
+            db.movimentosEscolas,
+        ).join(' '),
         // envios é array {pessoa, data, meio, reacao, notas} — pessoa/meio
         // são texto livre (não vínculo por id), entram na busca geral e
         // no prefixo "envio:" junto de reação/notas (ver CAMPOS_ATRIBUTO
@@ -1818,6 +2169,23 @@ export function renderPoemas() {
             const na = epoca?.na;
             return `<td class="p-4 text-xs ${na ? 'text-gray-300 dark:text-slate-600 italic' : 'text-gray-400 dark:text-slate-500'}">${badgeEpocaRetratada(epoca)}<span class="font-mono">${formatarIntervaloEpocaRetratada(epoca)}</span></td>`;
         },
+        periodoHistoricoId: (p) => {
+            const nome = nomePeriodoHistorico(p.periodoHistoricoId, db.periodosHistoricos);
+            return `<td class="p-4 text-xs ${nome ? 'text-gray-500 dark:text-slate-400' : 'text-gray-300 dark:text-slate-600'}">${nome ? escapeHtml(nome) : '—'}</td>`;
+        },
+        movimentosEscolas: (p) => {
+            const nomes = nomesMovimentosEscolas(p.movimentosEscolasIds, db.movimentosEscolas);
+            return `<td class="p-4">${
+                nomes.length
+                    ? nomes
+                          .map(
+                              (n) =>
+                                  `<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(n)}</span>`,
+                          )
+                          .join('')
+                    : '<span class="text-gray-300 dark:text-slate-600">—</span>'
+            }</td>`;
+        },
         intertextualidade: (p) => {
             const lista = Array.isArray(p.intertextualidade) ? p.intertextualidade : [];
             if (!lista.length)
@@ -2149,6 +2517,23 @@ export function renderProsas() {
             const na = epoca?.na;
             return `<td class="p-4 text-xs ${na ? 'text-gray-300 dark:text-slate-600 italic' : 'text-gray-400 dark:text-slate-500'}">${badgeEpocaRetratada(epoca)}<span class="font-mono">${formatarIntervaloEpocaRetratada(epoca)}</span></td>`;
         },
+        periodoHistoricoId: (pr) => {
+            const nome = nomePeriodoHistorico(pr.periodoHistoricoId, db.periodosHistoricos);
+            return `<td class="p-4 text-xs ${nome ? 'text-gray-500 dark:text-slate-400' : 'text-gray-300 dark:text-slate-600'}">${nome ? escapeHtml(nome) : '—'}</td>`;
+        },
+        movimentosEscolas: (pr) => {
+            const nomes = nomesMovimentosEscolas(pr.movimentosEscolasIds, db.movimentosEscolas);
+            return `<td class="p-4">${
+                nomes.length
+                    ? nomes
+                          .map(
+                              (n) =>
+                                  `<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(n)}</span>`,
+                          )
+                          .join('')
+                    : '<span class="text-gray-300 dark:text-slate-600">—</span>'
+            }</td>`;
+        },
         contextoHistorico: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.contextoHistorico)}</td>`,
         elos: (pr) =>
@@ -2364,19 +2749,67 @@ export function renderElementos() {
 // Cadastro central (ver migrarPessoasParaCadastro em db.js). Ordenada
 // alfabeticamente — diferente de Livros/Partes, não tem uma "ordem
 // editorial" própria pra Pessoa, então não há botões de mover.
+//
+// Filtro por Autor, seleção (checkbox por card) e atribuição em massa
+// de Grupo/Autor: estado e ações em pessoas-acoes.js, mesma divisão de
+// responsabilidade de Poemas/Prosas (selecao-massa.js) e Autores
+// (autores-acoes.js) — aqui só o desenho. A lista é sempre a de
+// getListaVisivelPessoas() (já filtrada pelo Autor escolhido). Pedido
+// do Victor, 27/09/2026.
 
 export function renderPessoas() {
     const container = document.getElementById('lista-pessoas');
     if (!container) return;
 
-    const ordenadas = [...db.pessoas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    popularSelectAutores('filtro-autor-pessoas', '-- Todos os autores --');
+    popularSelectGrupos('filtro-grupo-pessoas', '-- Todos os grupos --');
+    popularSelectAutores('pessoas-massa-autor', 'Escolher autor…');
+    popularSelectGrupos('pessoas-massa-grupo');
+    podarSelecaoPessoas();
 
-    if (ordenadas.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhuma pessoa cadastrada ainda.</div>`;
+    const visiveis = getListaVisivelPessoas();
+    const filtrandoAutor = getFiltroAutorPessoas() !== '';
+    const filtrandoGrupo = getFiltroGrupoPessoas() !== '';
+    const filtrandoNome = getFiltroNomePessoas().trim() !== '';
+    const filtrando = filtrandoAutor || filtrandoGrupo || filtrandoNome;
+    const visibilidade = getVisibilidadePessoas();
+
+    // Contagem "N de M" só aparece com algum filtro (Autor e/ou Grupo)
+    // ligado; "N ocultas" só aparece no modo padrão ('ativas'), como um
+    // convite pra trocar de modo — nos outros dois modos elas já estão
+    // à vista (misturadas em 'todas', sozinhas em 'ocultas'), então o
+    // aviso ficaria redundante. O checkbox de "selecionar todos"
+    // reflete se tudo o que está visível já está marcado — mesmo
+    // padrão de renderAutores.
+    const contagem = document.getElementById('contagem-pessoas');
+    if (contagem) {
+        const partes = [];
+        if (filtrando) partes.push(`${visiveis.length} de ${db.pessoas.length} pessoas`);
+        const qtdOcultas = getQtdOcultasPessoas();
+        if (qtdOcultas > 0 && visibilidade === 'ativas') {
+            partes.push(`${qtdOcultas} oculta${qtdOcultas !== 1 ? 's' : ''}`);
+        }
+        contagem.textContent = partes.join(' · ');
+    }
+    const todos = document.getElementById('toggle-todos-pessoas');
+    if (todos) {
+        todos.checked = visiveis.length > 0 && visiveis.every((p) => selecaoPessoas.has(p.id));
+        todos.disabled = visiveis.length === 0;
+    }
+    atualizarBarraSelecaoPessoas();
+
+    if (visiveis.length === 0) {
+        const mensagem =
+            visibilidade === 'ocultas'
+                ? `Nenhuma pessoa oculta${filtrando ? ' para esse filtro' : ''}.`
+                : filtrando
+                  ? 'Nenhuma pessoa encontrada para esse filtro.'
+                  : 'Nenhuma pessoa cadastrada ainda.';
+        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">${mensagem}</div>`;
         return;
     }
 
-    container.innerHTML = ordenadas
+    container.innerHTML = visiveis
         .map((p) => {
             // Objetos de Grupo (não só nome, ver nomesGrupos em utils.js)
             // pra cada badge poder usar a cor própria daquele grupo —
@@ -2384,12 +2817,41 @@ export function renderPessoas() {
             const grupos = (p.grupoIds || [])
                 .map((id) => db.grupos.find((g) => g.id === id))
                 .filter(Boolean);
+            // Autores a quem esta Pessoa está associada (N:N, opcional —
+            // ver migrarPessoasAutorIds em db.js). Badge à parte dos
+            // Grupos (cor neutra, sem CORES_GRUPO: Autor não é Grupo),
+            // só pra dar uma noção de vínculo direto na lista sem
+            // precisar abrir o modal de edição.
+            const autoresDaPessoa = (p.autorIds || [])
+                .map((id) => db.autores?.find((a) => a.id === id))
+                .filter(Boolean);
             const { poemasIds, prosasIds } = calcularImpactoExclusaoPessoa(db, p.id);
             const totalTextos = poemasIds.length + prosasIds.length;
+            // Opacidade + badge "(oculta)" só fazem sentido no modo
+            // 'todas' (ativas e ocultas misturadas na mesma lista) — no
+            // modo 'ocultas' toda linha já é oculta, então o destaque
+            // seria redundante.
+            const destacarOculta = p.oculto && visibilidade === 'todas';
+            // Símbolo ♀/♂ a partir do campo livre de Gênero — só
+            // aparece quando reconhecido (mesma regra de
+            // simboloGeneroPessoa em utils.js: nada de glifo genérico
+            // pra quem não é binário ou não tem Gênero cadastrado).
+            const simboloGenero = simboloGeneroPessoa(p.genero);
             return `
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex items-center gap-3${destacarOculta ? ' opacity-60' : ''}">
+            <input type="checkbox" data-action="toggle-pessoa" data-id="${p.id}" ${
+                selecaoPessoas.has(p.id) ? 'checked' : ''
+            } aria-label="Selecionar ${escapeHtml(p.nome)}" class="w-4 h-4 flex-shrink-0 mb-0" />
             <div class="flex-1 min-w-0">
-                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(p.nome)}</h4>
+                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(p.nome)}${
+                    simboloGenero
+                        ? ` <span class="text-gray-400 dark:text-slate-500 font-normal" title="${escapeHtml(p.genero)}">${simboloGenero}</span>`
+                        : ''
+                }${
+                    destacarOculta
+                        ? ` <span class="text-[9px] font-normal uppercase tracking-wide text-gray-400 dark:text-slate-500">(${formaOcultaAdjetivoPorGenero(p.genero)})</span>`
+                        : ''
+                }</h4>
                 <div class="flex flex-wrap gap-1 mt-1">
                     ${
                         grupos.length
@@ -2401,14 +2863,26 @@ export function renderPessoas() {
                                   .join('')
                             : `<span class="text-[10px] text-gray-300 dark:text-slate-600 italic">sem grupo</span>`
                     }
+                    ${autoresDaPessoa
+                        .map(
+                            (a) =>
+                                `<span class="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded">${escapeHtml(a.nome)}</span>`,
+                        )
+                        .join('')}
                 </div>
                 <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
                     aparece em ${totalTextos} texto${totalTextos !== 1 ? 's' : ''}
                 </p>
             </div>
             <div class="flex gap-3 flex-shrink-0">
+                ${
+                    totalTextos > 0
+                        ? `<button data-action="ver-textos-pessoa" data-id="${p.id}" title="Ver textos" aria-label="Ver textos" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_LISTA_TEXTOS}</button>`
+                        : ''
+                }
                 <button data-action="editar-pessoa" data-id="${p.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
                 <button data-action="mesclar-item" data-tipo="pessoas" data-id="${p.id}" title="Mesclar com outra pessoa" aria-label="Mesclar" class="inline-flex items-center justify-center p-1.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">${ICONE_MESCLAR}</button>
+                <button data-action="toggle-ocultar-pessoa" data-id="${p.id}" title="${p.oculto ? 'Reexibir' : 'Ocultar'}" aria-label="${p.oculto ? 'Reexibir' : 'Ocultar'}" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800">${p.oculto ? ICONE_PERMITIDO : ICONE_PROIBIDO}</button>
                 <button data-action="excluir-item" data-tipo="pessoas" data-id="${p.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
             </div>
         </div>`;
@@ -2421,39 +2895,283 @@ export function renderPessoas() {
 // verdade, não tag livre) — cria/edita/renomeia formalmente, sem
 // hardcode no código-fonte. Mostra quantas pessoas pertencem a cada
 // grupo, pra dar uma noção de impacto antes de excluir.
+//
+// Desde 27/09/2026, Grupo pertence a um Autor e pode ter até
+// NIVEL_MAXIMO_GRUPO níveis (2 até essa data, destravado pro 3º no mesmo
+// dia por um caso de uso real que não cabia em 2 — "Ex-namorados" >
+// "Pedro" > subgrupos do universo de Pedro —, e direto pro 5º ainda no
+// mesmo dia, decisão explícita do Victor de já deixar gordura em vez de
+// destravar de novo no próximo caso; ver obterGrupoPaiValido em db.js e
+// decisoes.md). A lista reflete
+// isso agrupando por Autor (cabeçalho de seção) e, dentro de cada Autor,
+// por "família" (um grupo de nível 1 e toda a sua descendência) — cada
+// família inteira vai num único bloco empilhado verticalmente (em vez de
+// os cards caindo soltos num grid de colunas), pra pai e filhos sempre
+// ficarem visualmente juntos e na ordem certa, não lado a lado
+// desalinhados (era assim antes; ver conversa de 27/09/2026 sobre o
+// print mostrando "Pedro" e seus subgrupos espalhados pelas duas
+// colunas do grid).
+//
+// Recolher/expandir (sessão seguinte, mesmo dia): grupos com filho
+// ganham um botão de recolher no próprio card — mesmo raciocínio de
+// _detailsColapsados em render-estrutura.js (Set de ids fechados
+// manualmente, sobrevive a re-render pra não reabrir tudo de novo a
+// cada ação), mas sem usar <details>/<summary> nativos: os botões de
+// ação do card (editar/mesclar/excluir/novo subgrupo) já são
+// data-action delegados, e colocá-los dentro de um <summary> faria
+// clicar neles também disparar o toggle nativo (mesmo problema que
+// botoesMover em render-estrutura.js resolve com stopPropagation em
+// cada botão — aqui, com vários botões por card, replicar isso em
+// cada um seria mais frágil do que só ter mais um data-action).
+const _gruposColapsados = new Set();
+
+export function toggleColapsoGrupo(id) {
+    if (_gruposColapsados.has(id)) _gruposColapsados.delete(id);
+    else _gruposColapsados.add(id);
+    renderGrupos();
+}
+
+// Botão "Ocultar"/"Reexibir" de um card de Grupo — ver
+// visibilidadeGrupos acima pra semântica de cascata (esconde a
+// família inteira abaixo dele, quando ligado). Ocultar oferece
+// "Desfazer" (mesmo padrão de toggleOcultarPessoa em pessoas-acoes.js):
+// reverte só o `oculto` deste grupo, buscando pelo id de novo — a
+// cascata na família recalcula sozinha no próximo render.
+export function toggleOcultarGrupo(id) {
+    const g = db.grupos.find((x) => x.id === id);
+    if (!g) return;
+    g.oculto = !g.oculto;
+    save();
+    if (g.oculto) {
+        mostrarAvisoComAcao(`"${g.nome}" ocultado.`, 'Desfazer', () => {
+            const alvo = db.grupos.find((x) => x.id === id);
+            if (!alvo) return;
+            alvo.oculto = false;
+            save();
+        });
+    } else {
+        mostrarAviso(`"${g.nome}" reexibido.`, 'sucesso');
+    }
+}
+
+// Quantos nomes de pessoas aparecem soltos no próprio card do Grupo
+// antes de fechar em "entre outras" (ver cartaoGrupo abaixo) — pedido
+// do Victor pra não encher essa visão superficial do card com uma
+// lista longa; o total de verdade já está na contagem logo acima.
+const LIMITE_PESSOAS_NO_CARD_GRUPO = 5;
+
+function cartaoGrupo(g, { nivel = 1, comColapso = true } = {}) {
+    const { pessoasIds, subgruposIds } = calcularImpactoExclusaoGrupo(db, g.id);
+    const contagem = [
+        `${pessoasIds.length} pessoa${pessoasIds.length !== 1 ? 's' : ''}`,
+        subgruposIds.length
+            ? `${subgruposIds.length} subgrupo${subgruposIds.length !== 1 ? 's' : ''}`
+            : null,
+    ]
+        .filter(Boolean)
+        .join(' · ');
+    // Prévia dos nomes das pessoas do grupo, alfabética, truncada em
+    // LIMITE_PESSOAS_NO_CARD_GRUPO — a lista completa (sem corte) fica no
+    // botão "Ver" (ver abrirVisualizacaoGrupo em visualizar-grupo.js).
+    const pessoasNomes = pessoasIds
+        .map((id) => db.pessoas.find((p) => p.id == id)?.nome)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const previewPessoas = pessoasNomes.length
+        ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1 truncate">${pessoasNomes
+              .slice(0, LIMITE_PESSOAS_NO_CARD_GRUPO)
+              .map(escapeHtml)
+              .join(', ')}${
+              pessoasNomes.length > LIMITE_PESSOAS_NO_CARD_GRUPO ? ', entre outras' : ''
+          }</p>`
+        : '';
+    // Indentação cresce 1.5rem por nível abaixo do 1º (valor arbitrário do
+    // Tailwind, já que a escala padrão não tem passo constante além de
+    // ml-6/ml-12 — precisa continuar linear pra caber em NIVEL_MAXIMO_GRUPO
+    // níveis sem virar um degrau maluco no fim).
+    const indentacao = nivel > 1 ? ` ml-[${(nivel - 1) * 1.5}rem]` : '';
+    // Botão "Novo subgrupo" some no último nível permitido: já é o mais
+    // fundo (obterGrupoPaiValido recusaria o filho na hora de salvar).
+    const botaoNovoSubgrupo =
+        nivel < NIVEL_MAXIMO_GRUPO
+            ? `<button data-action="novo-subgrupo" data-id="${g.id}" title="Novo subgrupo dentro de &quot;${escapeHtml(g.nome)}&quot;" aria-label="Novo subgrupo" class="inline-flex items-center justify-center p-1.5 rounded text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40">${ICONE_NOVO_SUBGRUPO}</button>`
+            : '';
+    // Botão de recolher/expandir só aparece em quem tem filho — nada pra
+    // esconder numa folha (grupo sem subgrupo) — e só faz sentido na
+    // árvore normal: na listagem achatada de "só ocultos" (ver
+    // renderGrupos abaixo) os filhos nunca são desenhados aqui, então o
+    // botão ficaria sem efeito.
+    const colapsado = _gruposColapsados.has(g.id);
+    const botaoColapso =
+        comColapso && subgruposIds.length
+            ? `<button data-action="toggle-grupo-colapso" data-id="${g.id}" title="${colapsado ? 'Expandir' : 'Recolher'} subgrupos" aria-label="${colapsado ? 'Expandir' : 'Recolher'} subgrupos" class="inline-flex items-center justify-center p-1.5 rounded text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-600 dark:hover:text-slate-300">${colapsado ? '▸' : '▾'}</button>`
+            : '';
+    return `
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center${indentacao}${nivel > 1 ? ' border-l-4 border-l-gray-300 dark:border-l-slate-600' : ''}${g.oculto ? ' opacity-60' : ''}">
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
+                    ${nivel > 1 ? '<span class="text-gray-400 dark:text-slate-500" aria-hidden="true">↳</span>' : ''}
+                    <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${pontoCorGrupo(g.cor)}" title="Cor do grupo" aria-hidden="true"></span>
+                    ${escapeHtml(g.nome)}
+                    ${g.oculto ? '<span class="text-[9px] font-normal uppercase tracking-wide text-gray-400 dark:text-slate-500">(oculto)</span>' : ''}
+                </h4>
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">${contagem}</p>
+                ${previewPessoas}
+            </div>
+            <div class="flex gap-3 flex-shrink-0">
+                ${botaoNovoSubgrupo}
+                <button data-action="ver-grupo" data-id="${g.id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>
+                <button data-action="editar-grupo" data-id="${g.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
+                <button data-action="mesclar-item" data-tipo="grupos" data-id="${g.id}" title="Mesclar com outro grupo do mesmo Autor" aria-label="Mesclar" class="inline-flex items-center justify-center p-1.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">${ICONE_MESCLAR}</button>
+                <button data-action="toggle-ocultar-grupo" data-id="${g.id}" title="${g.oculto ? 'Reexibir' : 'Ocultar (esconde os subgrupos junto)'}" aria-label="${g.oculto ? 'Reexibir' : 'Ocultar'}" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800">${g.oculto ? ICONE_PERMITIDO : ICONE_PROIBIDO}</button>
+                <button data-action="excluir-item" data-tipo="grupos" data-id="${g.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+                ${botaoColapso}
+            </div>
+        </div>`;
+}
+
+// Monta recursivamente um grupo e toda a sua descendência (até
+// NIVEL_MAXIMO_GRUPO), cada nível ordenado alfabeticamente dentro do pai
+// — usada por
+// renderGrupos abaixo pra montar o bloco de uma família inteira de uma
+// vez. Se o grupo estiver na lista dos recolhidos manualmente
+// (_gruposColapsados), a descendência nem entra no HTML — reaparece do
+// jeito que estava (com os netos abertos/fechados como estavam) quando
+// o usuário expandir de novo, já que o Set guarda por id, não some com
+// o toggle.
+function cartoesDaFamilia(g, gruposDoAutor, nivel) {
+    // Oculto e modo 'ativos' (padrão): nem o próprio nem a descendência
+    // entram no HTML — cascata proposital (ver visibilidadeGrupos
+    // acima), checada aqui primeiro pra não gastar trabalho descendo
+    // numa árvore que não vai aparecer. Usada só nos modos 'ativos' e
+    // 'todos' — o modo 'ocultos' tem seu próprio caminho achatado em
+    // renderGrupos, que nem chama esta função.
+    if (g.oculto && visibilidadeGrupos !== 'todos') return '';
+    // Com busca por nome: só entra quem bate ou é ancestral de quem bate,
+    // e o recolhimento manual não esconde resultado.
+    if (_idsBuscaGrupos && !_idsBuscaGrupos.has(g.id)) return '';
+    if (!_idsBuscaGrupos && _gruposColapsados.has(g.id)) return cartaoGrupo(g, { nivel });
+    const filhos = gruposDoAutor
+        .filter((sub) => sub.paiId == g.id)
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    return (
+        cartaoGrupo(g, { nivel }) +
+        filhos.map((f) => cartoesDaFamilia(f, gruposDoAutor, nivel + 1)).join('')
+    );
+}
 
 export function renderGrupos() {
     const container = document.getElementById('lista-grupos');
     if (!container) return;
 
-    const ordenados = [...db.grupos].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    popularSelectAutores('filtro-autor-grupos', '-- Todos os autores --');
+    _idsBuscaGrupos = idsGruposPorBusca(filtroNomeGrupos);
 
-    if (ordenados.length === 0) {
+    if (db.grupos.length === 0) {
         container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum grupo cadastrado ainda.</div>`;
         return;
     }
 
-    container.innerHTML = ordenados
-        .map((g) => {
-            const { pessoasIds } = calcularImpactoExclusaoGrupo(db, g.id);
+    const gruposNoRecorte = filtroAutorGrupos
+        ? db.grupos.filter((g) => String(g.autorId) === String(filtroAutorGrupos))
+        : db.grupos;
+    const qtdOcultos = gruposNoRecorte.filter((g) => g.oculto).length;
+
+    // "N ocultos" só aparece no modo padrão ('ativos'), como convite pra
+    // trocar de modo — nos outros dois modos eles já estão à vista
+    // (mesmo raciocínio de renderPessoas). Conta o grupo em si, não a
+    // descendência que ele carrega junto (contaria disparado pra "1
+    // grupo oculto" com 3 subgrupos escondidos junto).
+    const contagemEl = document.getElementById('contagem-grupos');
+    if (contagemEl) {
+        contagemEl.textContent =
+            qtdOcultos > 0 && visibilidadeGrupos === 'ativos'
+                ? `${qtdOcultos} oculto${qtdOcultos !== 1 ? 's' : ''}`
+                : '';
+    }
+
+    let autoresComGrupo = [...new Set(db.grupos.map((g) => g.autorId))]
+        .map((id) => db.autores.find((a) => a.id == id))
+        .filter(Boolean)
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    if (filtroAutorGrupos) {
+        autoresComGrupo = autoresComGrupo.filter(
+            (autor) => String(autor.id) === String(filtroAutorGrupos),
+        );
+        if (!autoresComGrupo.length) {
+            container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Esse autor ainda não tem grupo cadastrado.</div>`;
+            return;
+        }
+    }
+
+    // Modo 'ocultos': listagem achatada, fora da árvore (ver
+    // visibilidadeGrupos acima pro porquê — cascata visual não implica
+    // `oculto: true` na descendência, então não dá pra reaproveitar
+    // cartoesDaFamilia aqui). Cada card vem com `comColapso: false`, já
+    // que os filhos nunca são desenhados nesta lista.
+    if (visibilidadeGrupos === 'ocultos') {
+        const blocosOcultos = autoresComGrupo
+            .map((autor) => {
+                const ocultosDoAutor = db.grupos
+                    .filter(
+                        (g) =>
+                            g.autorId == autor.id &&
+                            g.oculto &&
+                            (!_idsBuscaGrupos ||
+                                normalizarBusca(g.nome).includes(
+                                    normalizarBusca(filtroNomeGrupos.trim()),
+                                )),
+                    )
+                    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+                if (!ocultosDoAutor.length) return '';
+                const cards = ocultosDoAutor
+                    .map((g) => cartaoGrupo(g, { nivel: 1, comColapso: false }))
+                    .join('');
+                return `
+        <h3 class="text-sm font-semibold text-gray-500 dark:text-slate-400 mt-4 first:mt-0 uppercase tracking-wide">${escapeHtml(autor.nome)}</h3>
+        <div class="flex flex-col gap-3">${cards}</div>`;
+            })
+            .join('');
+        container.innerHTML =
+            blocosOcultos ||
+            `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum grupo oculto${filtroAutorGrupos || _idsBuscaGrupos ? ' para esse filtro' : ''}.</div>`;
+        return;
+    }
+
+    const blocos = autoresComGrupo
+        .map((autor) => {
+            const gruposDoAutor = db.grupos.filter((g) => g.autorId == autor.id);
+            const nivel1 = gruposDoAutor
+                .filter((g) => g.paiId == null)
+                .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+            // Cada família (nível 1 + toda a descendência) vira um único
+            // bloco vertical (flex-col), pra pai e filhos nunca se
+            // separarem visualmente, nem quando o container tiver mais
+            // de uma coluna. Família cuja raiz está oculta (e modo
+            // 'ativos') vem vazia de cartoesDaFamilia — filtrada aqui
+            // antes de embrulhar em <div>, senão sobra um bloco vazio
+            // no meio da lista.
+            const familias = nivel1
+                .map((g) => cartoesDaFamilia(g, gruposDoAutor, 1))
+                .filter(Boolean)
+                .map((html) => `<div class="flex flex-col gap-3">${html}</div>`)
+                .join('');
+            // Autor sem nenhuma família visível (todas ocultas): nem o
+            // cabeçalho do Autor aparece — não faz sentido um título sem
+            // nada embaixo.
+            if (!familias) return '';
             return `
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
-            <div class="flex-1 min-w-0">
-                <h4 class="font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
-                    <span class="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${pontoCorGrupo(g.cor)}" title="Cor do grupo" aria-hidden="true"></span>
-                    ${escapeHtml(g.nome)}
-                </h4>
-                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
-                    ${pessoasIds.length} pessoa${pessoasIds.length !== 1 ? 's' : ''}
-                </p>
-            </div>
-            <div class="flex gap-3 flex-shrink-0">
-                <button data-action="editar-grupo" data-id="${g.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
-                <button data-action="excluir-item" data-tipo="grupos" data-id="${g.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
-            </div>
-        </div>`;
+        <h3 class="text-sm font-semibold text-gray-500 dark:text-slate-400 mt-4 first:mt-0 uppercase tracking-wide">${escapeHtml(autor.nome)}</h3>
+        <div class="flex flex-col gap-3">${familias}</div>`;
         })
         .join('');
+
+    container.innerHTML =
+        blocos ||
+        (_idsBuscaGrupos
+            ? `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum grupo encontrado para essa busca.</div>`
+            : '') ||
+        `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Todos os grupos estão ocultos. Escolha "Ocultos: mostrar junto" ou "só eles" pra vê-los.</div>`;
 }
 
 // ─── Autores ─────────────────────────────────────────────────
@@ -2464,6 +3182,56 @@ export function renderGrupos() {
 // Busca por campo, seleção (checkbox por card) e exportação: estado e
 // ações em autores-acoes.js; aqui só o desenho. A lista é sempre a de
 // getListaVisivelAutores() (já filtrada pela busca).
+
+// Resumo dos nomes literários do Autor pro card (pedido do Victor,
+// 28/09/2026): agrupa por tipo (Heterônimo/Pseudônimo), mostra no máximo
+// `max` nomes no total e sinaliza o resto com "+N" — Pessoa sozinho tem
+// vários heterônimos e a linha não pode crescer sem limite. Aceita
+// também o formato legado (strings soltas, sem tipo). Devolve '' se não
+// houver nenhum nome.
+export function resumoNomesLiterarios(nomesLiterarios, max = 3) {
+    const itens = (Array.isArray(nomesLiterarios) ? nomesLiterarios : [])
+        .map((i) =>
+            typeof i === 'string'
+                ? { nome: i.trim(), tipo: '' }
+                : { nome: (i?.nome || '').trim(), tipo: i?.tipo || '' },
+        )
+        .filter((i) => i.nome);
+    if (!itens.length) return '';
+    const grupos = [
+        { tipo: 'Heterônimo', singular: 'Heterônimo', plural: 'Heterônimos' },
+        { tipo: 'Pseudônimo', singular: 'Pseudônimo', plural: 'Pseudônimos' },
+        { tipo: '', singular: 'Nome literário', plural: 'Nomes literários' },
+    ];
+    let restantes = max;
+    let omitidos = 0;
+    const partes = [];
+    grupos.forEach((g) => {
+        // Tipo desconhecido cai em "Nome literário", junto dos sem tipo.
+        const doGrupo = itens.filter((i) =>
+            g.tipo ? i.tipo === g.tipo : !['Heterônimo', 'Pseudônimo'].includes(i.tipo),
+        );
+        if (!doGrupo.length) return;
+        const mostrados = doGrupo.slice(0, Math.max(restantes, 0));
+        restantes -= mostrados.length;
+        omitidos += doGrupo.length - mostrados.length;
+        if (mostrados.length) {
+            partes.push(
+                `${doGrupo.length === 1 ? g.singular : g.plural}: ${mostrados.map((i) => i.nome).join(', ')}`,
+            );
+        }
+    });
+    return partes.join(' · ') + (omitidos ? ` +${omitidos}` : '');
+}
+
+// "12 poemas e 3 prosas" — só as partes que existem; nenhum dos dois
+// → "0 textos" (mesmo texto que o card já dava antes da separação).
+export function resumoContagemTextosAutor(totalPoemas, totalProsas) {
+    const partes = [];
+    if (totalPoemas) partes.push(`${totalPoemas} poema${totalPoemas !== 1 ? 's' : ''}`);
+    if (totalProsas) partes.push(`${totalProsas} prosa${totalProsas !== 1 ? 's' : ''}`);
+    return partes.length ? partes.join(' e ') : '0 textos';
+}
 
 export function renderAutores() {
     const container = document.getElementById('lista-autores');
@@ -2477,7 +3245,9 @@ export function renderAutores() {
     // "selecionar todos" reflete se tudo o que está visível já está marcado.
     const contagem = document.getElementById('contagem-autores');
     if (contagem) {
-        contagem.textContent = filtrando ? `${visiveis.length} de ${db.autores.length} autores` : '';
+        contagem.textContent = filtrando
+            ? `${visiveis.length} de ${db.autores.length} autores`
+            : '';
     }
     const todos = document.getElementById('toggle-todos-autores');
     if (todos) {
@@ -2501,6 +3271,22 @@ export function renderAutores() {
                 a.nascimento || a.obito
                     ? `${a.nascimento ? formatarDataParcial(a.nascimento) : '?'} – ${a.obito ? formatarDataParcial(a.obito) : ''}`
                     : '';
+            // Movimentos/Escolas (pedido do Victor, 28/09/2026): nomes
+            // resolvidos pelo cadastro central, ids órfãos filtrados
+            // (mesmo helper da busca de Autores e das tabelas).
+            const nomesLit = resumoNomesLiterarios(a.nomesLiterarios);
+            // Domínio público (informativo, derivado do óbito — ver
+            // situacaoDominioPublico em utils.js). Sem óbito, sem selo.
+            const sitDP = situacaoDominioPublico(a);
+            const seloDP =
+                sitDP.estado === 'sem-obito'
+                    ? ''
+                    : `<span class="${
+                          sitDP.estado === 'livre'
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-red-600 dark:text-red-400'
+                      }">${escapeHtml(rotuloDominioPublico(sitDP))}</span>`;
+            const movimentos = nomesMovimentosEscolas(a.movimentosEscolasIds, db.movimentosEscolas);
             return `
         <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center gap-3">
             <input type="checkbox" data-action="toggle-autor" data-id="${a.id}" ${
@@ -2513,15 +3299,30 @@ export function renderAutores() {
                         : ''
                 }</h4>
                 ${
-                    a.nacionalidade || nascObito
-                        ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">${[escapeHtml(a.nacionalidade || ''), escapeHtml(nascObito)].filter(Boolean).join(' · ')}</p>`
+                    a.nacionalidade || nascObito || seloDP
+                        ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">${[escapeHtml(a.nacionalidade || ''), escapeHtml(nascObito), seloDP].filter(Boolean).join(' · ')}</p>`
+                        : ''
+                }
+                ${
+                    nomesLit
+                        ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">${escapeHtml(nomesLit)}</p>`
+                        : ''
+                }
+                ${
+                    movimentos.length
+                        ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">${movimentos.map(escapeHtml).join(' · ')}</p>`
                         : ''
                 }
                 <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
-                    aparece em ${totalTextos} texto${totalTextos !== 1 ? 's' : ''}
+                    aparece em ${resumoContagemTextosAutor(poemasIds.length, prosasIds.length)}
                 </p>
             </div>
             <div class="flex gap-3 flex-shrink-0">
+                ${
+                    totalTextos > 0
+                        ? `<button data-action="ver-textos-autor" data-id="${a.id}" title="Ver textos" aria-label="Ver textos" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_LISTA_TEXTOS}</button>`
+                        : ''
+                }
                 <button data-action="ver-autor" data-id="${a.id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>
                 <button data-action="editar-autor" data-id="${a.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
                 <button data-action="excluir-item" data-tipo="autores" data-id="${a.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
@@ -2541,6 +3342,11 @@ export function renderAutores() {
 // (colunas.js) e o próprio evento 'colunas:alteradas'. Busca é só por
 // título do poema vinculado — sem os operadores de prefixo (`campo:`)
 // que Poemas/Prosas têm.
+// Olho — "Ver"/abrir modal em toda a aplicação (Autor, Sonoridade,
+// Estrutura Textual, Movimento/Escola e também Grupo, ver cartaoGrupo
+// acima); Ocultar/Reexibir de Pessoa e Grupo usa outra forma de propósito
+// (ICONE_PROIBIDO/ICONE_PERMITIDO, mais acima), pra não repetir o olho no
+// mesmo card do Grupo.
 const ICONE_VER = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M1.5 10S4.5 4 10 4s8.5 6 8.5 6-3 6-8.5 6-8.5-6-8.5-6Z"/><circle cx="10" cy="10" r="2.25"/></svg>`;
 const ICONE_BAIXAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M10 3v9.5"/><path d="M6 9l4 4 4-4"/><path d="M3.5 15.5h13"/></svg>`;
 
@@ -3148,26 +3954,26 @@ export function renderEstruturaTextual() {
 // mesmo gap). Botão "Mesclar" (ver renderPessoas acima e Mesclar
 // (Pessoa/Época) em forms.js) — mesma lacuna de duplicata por rename
 // existe pra Época.
+//
+// Desde 27/09/2026, Época (Período Biográfico) também pertence a um
+// Autor (ver migrarEpocasAutorId em db.js), então a lista passou a
+// agrupar por Autor (cabeçalho de seção), mesmo padrão de renderGrupos
+// acima — mas sem os dois níveis de renderGrupos (Época nunca teve
+// `paiId`; ninguém pediu subgrupo pra Período Biográfico), então cada
+// seção de Autor é uma lista achatada, ordenada por nome.
 
-export function renderEpocas() {
-    const container = document.getElementById('lista-epocas');
-    if (!container) return;
-
-    const ordenadas = [...db.epocas].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-
-    if (ordenadas.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhuma época cadastrada ainda.</div>`;
-        return;
-    }
-
-    container.innerHTML = ordenadas
-        .map((ep) => {
-            const { poemasIds, prosasIds } = calcularImpactoExclusaoEpoca(db, ep.id);
-            const total = poemasIds.length + prosasIds.length;
-            return `
+function cartaoEpoca(ep) {
+    const { poemasIds, prosasIds } = calcularImpactoExclusaoEpoca(db, ep.id);
+    const total = poemasIds.length + prosasIds.length;
+    return `
         <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
             <div class="flex-1 min-w-0">
                 <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(ep.nome)}</h4>
+                ${
+                    formatarIntervaloPeriodoHistorico(ep) !== '—'
+                        ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">${formatarIntervaloPeriodoHistorico(ep)}</p>`
+                        : ''
+                }
                 ${
                     ep.contextoRelacao
                         ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1 line-clamp-2">${escapeHtml(ep.contextoRelacao)}</p>`
@@ -3178,9 +3984,348 @@ export function renderEpocas() {
                 </p>
             </div>
             <div class="flex gap-3 flex-shrink-0">
+                <button data-action="ver-textos-epoca" data-id="${ep.id}" title="Ver textos" aria-label="Ver textos" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_LISTA_TEXTOS}</button>
                 <button data-action="editar-epoca" data-id="${ep.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
-                <button data-action="mesclar-item" data-tipo="epocas" data-id="${ep.id}" title="Mesclar com outra época" aria-label="Mesclar" class="inline-flex items-center justify-center p-1.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">${ICONE_MESCLAR}</button>
+                <button data-action="mesclar-item" data-tipo="epocas" data-id="${ep.id}" title="Mesclar com outra época do mesmo Autor" aria-label="Mesclar" class="inline-flex items-center justify-center p-1.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">${ICONE_MESCLAR}</button>
                 <button data-action="excluir-item" data-tipo="epocas" data-id="${ep.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+            </div>
+        </div>`;
+}
+
+// ─── Filtros dos cadastros de período (Biográfico, Histórico, Movimento/Escola) ─
+// Estado em memória (zera ao recarregar, como os filtros de Pessoas/Grupos).
+// `de`/`ate` guardam o texto digitado (aceita "2020", "03/2020",
+// "15/03/2020" — ver parseFiltroDataRapido); texto inválido vale como
+// campo vazio, sem mensagem. `modo` = 'todos' | 'com-data' | 'sem-data'
+// (ver filtrarPeriodosPorData em utils.js). `autor` só existe em Biográfico.
+const filtrosPeriodo = {
+    epocas: { nome: '', autor: '', de: '', ate: '', modo: 'todos' },
+    periodosHistoricos: { nome: '', de: '', ate: '', modo: 'todos' },
+    movimentosEscolas: { nome: '', de: '', ate: '', modo: 'todos' },
+};
+
+const RENDER_POR_ABA_PERIODO = {
+    epocas: () => renderEpocas(),
+    periodosHistoricos: () => renderPeriodosHistoricos(),
+    movimentosEscolas: () => renderMovimentosEscolas(),
+};
+
+// Lê os controles da aba e re-renderiza só a lista dela.
+export function setFiltroPeriodo(aba) {
+    const f = filtrosPeriodo[aba];
+    if (!f) return;
+    const lerValor = (sufixo) => document.getElementById(`fp-${aba}-${sufixo}`)?.value ?? '';
+    f.nome = lerValor('nome').trim();
+    f.de = lerValor('de').trim();
+    f.ate = lerValor('ate').trim();
+    f.modo = lerValor('modo') || 'todos';
+    if (aba === 'epocas') f.autor = lerValor('autor');
+    RENDER_POR_ABA_PERIODO[aba]();
+}
+
+// Monta os controles uma única vez por aba (o container fica vazio no
+// index.html). Re-renderizar a lista não recria os inputs, então o que
+// foi digitado não se perde.
+function garantirControlesFiltroPeriodo(aba) {
+    const container = document.getElementById(`filtros-periodo-${aba}`);
+    if (!container) return;
+    if (!container.dataset.montado) {
+        const campoTexto = (sufixo, rotulo) => `
+            <label class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-400">
+                ${rotulo}
+                <input type="text" id="fp-${aba}-${sufixo}" oninput="setFiltroPeriodo('${aba}')"
+                    placeholder="aaaa ou mm/aaaa" title="Ano, mês/ano ou dia/mês/ano"
+                    autocomplete="off" style="width: 8.5rem; margin-bottom: 0" />
+            </label>`;
+        // Busca por nome: substring, sem diferenciar caixa nem acento (mesmo
+        // critério padrão da busca de Poemas/Prosas — ver normalizarBusca).
+        const campoNome = `
+            <input type="text" id="fp-${aba}-nome" oninput="setFiltroPeriodo('${aba}')"
+                placeholder="Buscar por nome" title="Buscar pelo nome (ignora maiúsculas e acentos)"
+                autocomplete="off" style="width: 12rem; margin-bottom: 0" />`;
+        const seletorAutor =
+            aba === 'epocas'
+                ? `<select id="fp-epocas-autor" onchange="setFiltroPeriodo('epocas')"
+                        style="width: auto; margin-bottom: 0"></select>`
+                : '';
+        container.className = 'flex flex-wrap items-center gap-x-4 gap-y-2 mb-4';
+        container.innerHTML = `
+            ${campoNome}
+            ${seletorAutor}
+            ${campoTexto('de', 'De')}
+            ${campoTexto('ate', 'Até')}
+            <select id="fp-${aba}-modo" onchange="setFiltroPeriodo('${aba}')"
+                title="Como tratar os itens sem data" style="width: auto; margin-bottom: 0">
+                <option value="todos">Com e sem data</option>
+                <option value="com-data">Só com data</option>
+                <option value="sem-data">Só sem data</option>
+            </select>`;
+        container.dataset.montado = '1';
+    }
+    // Em "Só sem data" o intervalo não tem o que filtrar: desabilita em vez
+    // de aceitar um valor que seria ignorado.
+    const somenteSemData = filtrosPeriodo[aba].modo === 'sem-data';
+    ['de', 'ate'].forEach((sufixo) => {
+        const el = document.getElementById(`fp-${aba}-${sufixo}`);
+        if (el) el.disabled = somenteSemData;
+    });
+    if (aba === 'epocas') popularSelectAutores('fp-epocas-autor', '-- Todos os autores --');
+}
+
+function aplicarFiltroPeriodo(aba, itens, opcoes = {}) {
+    const f = filtrosPeriodo[aba];
+    const de = f.de ? parseFiltroDataRapido(f.de) : null;
+    const ate = f.ate ? parseFiltroDataRapido(f.ate) : null;
+    const termoNome = normalizarBusca(f.nome);
+    const porNome = termoNome
+        ? itens.filter((it) => normalizarBusca(it.nome).includes(termoNome))
+        : itens;
+    return filtrarPeriodosPorData(porNome, {
+        intervalo: { de: de?.de || {}, ate: ate?.ate || {} },
+        modoData: f.modo,
+        ...opcoes,
+    });
+}
+
+function filtroPeriodoAtivo(aba) {
+    const f = filtrosPeriodo[aba];
+    return !!(f.nome || f.de || f.ate || f.modo !== 'todos' || f.autor);
+}
+
+// Ordenação escolhível pela pessoa, mesmo padrão de
+// ordenacaoMovimentosEscolas abaixo (ver comentário lá pro histórico da
+// decisão) — desde 27/09/2026 Época e Período Histórico também ganharam
+// a opção, além de Movimento/Escola. Época/Período Histórico não têm
+// década/século (só dia/mês/ano — ver DADOS_SEED_MOVIMENTOS_ESCOLAS em
+// db.js), então `anoEquivalenteMovimento` aqui só está sendo reaproveitado
+// pelo que ele já faz de qualquer forma com uma data comum: ler `d.ano`.
+// Estado em memória, não persiste — reseta ao recarregar a página, como
+// ordenacaoMovimentosEscolas.
+// Padrão cronológica desde 28/09/2026 (pedido do Victor) nas três abas
+// (Época, Período Histórico, Movimento/Escola); o <select> de cada aba no
+// index.html abre com essa opção marcada.
+export let ordenacaoEpocas = 'cronologica'; // 'alfabetica' | 'cronologica'
+
+export function definirOrdenacaoEpocas(modo) {
+    ordenacaoEpocas = modo === 'cronologica' ? 'cronologica' : 'alfabetica';
+    renderEpocas();
+}
+
+// Mesma lógica de compararMovimentosEscolas (ver abaixo): cronológica usa
+// `inicio`, cai pro `fim` só se `inicio` estiver todo vazio; sem nenhuma
+// das duas datas vai pro final; empate no mesmo ano desempata por nome.
+function compararEpocas(a, b) {
+    if (ordenacaoEpocas !== 'cronologica') return a.nome.localeCompare(b.nome, 'pt-BR');
+    const anoA = anoEquivalenteMovimento(a.inicio) ?? anoEquivalenteMovimento(a.fim);
+    const anoB = anoEquivalenteMovimento(b.inicio) ?? anoEquivalenteMovimento(b.fim);
+    if (anoA == null && anoB == null) return a.nome.localeCompare(b.nome, 'pt-BR');
+    if (anoA == null) return 1;
+    if (anoB == null) return -1;
+    if (anoA !== anoB) return anoA - anoB;
+    return a.nome.localeCompare(b.nome, 'pt-BR');
+}
+
+export function renderEpocas() {
+    const container = document.getElementById('lista-epocas');
+    if (!container) return;
+
+    garantirControlesFiltroPeriodo('epocas');
+
+    if (db.epocas.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhuma época cadastrada ainda.</div>`;
+        return;
+    }
+
+    const porAutor = filtrosPeriodo.epocas.autor
+        ? db.epocas.filter((ep) => String(ep.autorId) === String(filtrosPeriodo.epocas.autor))
+        : db.epocas;
+    const epocasFiltradas = aplicarFiltroPeriodo('epocas', porAutor);
+
+    if (epocasFiltradas.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum período biográfico encontrado com esse filtro.</div>`;
+        return;
+    }
+
+    // Cabeçalhos por autor saem da lista JÁ filtrada, senão sobraria
+    // cabeçalho de autor sem nenhum cartão embaixo. O agrupamento por
+    // autor continua sempre alfabético (não há "cronológico" pra um
+    // conjunto de nomes de pessoa) — só a ordem DENTRO de cada autor
+    // respeita ordenacaoEpocas.
+    const autoresComEpoca = [...new Set(epocasFiltradas.map((ep) => ep.autorId))]
+        .map((id) => db.autores.find((a) => a.id == id))
+        .filter(Boolean)
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    container.innerHTML = autoresComEpoca
+        .map((autor) => {
+            const cartoes = epocasFiltradas
+                .filter((ep) => ep.autorId == autor.id)
+                .sort(compararEpocas)
+                .map((ep) => cartaoEpoca(ep))
+                .join('');
+            return `
+        <h3 class="col-span-full text-sm font-semibold text-gray-500 dark:text-slate-400 mt-4 first:mt-0 uppercase tracking-wide">${escapeHtml(autor.nome)}</h3>
+        ${cartoes}`;
+        })
+        .join('');
+}
+
+// ─── Períodos Históricos ─────────────────────────────────────────
+// Cadastro central (ver comentário em calcularImpactoExclusaoPeriodoHistorico
+// em db.js) — mesmo espírito de renderEpocas acima, mais simples (sem
+// contextoRelacao) e vínculo direto via `periodoHistoricoId` (campo
+// solto no Poema/Prosa, não sub-objeto).
+
+// Mesmo padrão de ordenacaoEpocas acima (ver comentário lá).
+export let ordenacaoPeriodosHistoricos = 'cronologica'; // 'alfabetica' | 'cronologica'
+
+export function definirOrdenacaoPeriodosHistoricos(modo) {
+    ordenacaoPeriodosHistoricos = modo === 'cronologica' ? 'cronologica' : 'alfabetica';
+    renderPeriodosHistoricos();
+}
+
+function compararPeriodosHistoricos(a, b) {
+    if (ordenacaoPeriodosHistoricos !== 'cronologica') return a.nome.localeCompare(b.nome, 'pt-BR');
+    const anoA = anoEquivalenteMovimento(a.inicio) ?? anoEquivalenteMovimento(a.fim);
+    const anoB = anoEquivalenteMovimento(b.inicio) ?? anoEquivalenteMovimento(b.fim);
+    if (anoA == null && anoB == null) return a.nome.localeCompare(b.nome, 'pt-BR');
+    if (anoA == null) return 1;
+    if (anoB == null) return -1;
+    if (anoA !== anoB) return anoA - anoB;
+    return a.nome.localeCompare(b.nome, 'pt-BR');
+}
+
+export function renderPeriodosHistoricos() {
+    const container = document.getElementById('lista-periodos-historicos');
+    if (!container) return;
+
+    garantirControlesFiltroPeriodo('periodosHistoricos');
+
+    const ordenados = aplicarFiltroPeriodo('periodosHistoricos', [...db.periodosHistoricos]).sort(
+        compararPeriodosHistoricos,
+    );
+
+    if (ordenados.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">${filtroPeriodoAtivo('periodosHistoricos') ? 'Nenhum período histórico encontrado com esse filtro.' : 'Nenhum período histórico cadastrado ainda.'}</div>`;
+        return;
+    }
+
+    container.innerHTML = ordenados
+        .map((ph) => {
+            const { poemasIds, prosasIds } = calcularImpactoExclusaoPeriodoHistorico(db, ph.id);
+            const total = poemasIds.length + prosasIds.length;
+            const intervalo = formatarIntervaloPeriodoHistorico(ph);
+            return `
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(ph.nome)}</h4>
+                ${
+                    intervalo !== '—' || ph.regiao
+                        ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">${[
+                              intervalo !== '—' ? intervalo : null,
+                              ph.regiao || null,
+                          ]
+                              .filter(Boolean)
+                              .map(escapeHtml)
+                              .join(' · ')}</p>`
+                        : ''
+                }
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
+                    aparece em ${total} texto${total !== 1 ? 's' : ''}
+                </p>
+            </div>
+            <div class="flex gap-3 flex-shrink-0">
+                <button data-action="ver-textos-periodo-historico" data-id="${ph.id}" title="Ver textos" aria-label="Ver textos" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_LISTA_TEXTOS}</button>
+                <button data-action="editar-periodo-historico" data-id="${ph.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
+                <button data-action="mesclar-item" data-tipo="periodosHistoricos" data-id="${ph.id}" title="Mesclar com outro período histórico" aria-label="Mesclar" class="inline-flex items-center justify-center p-1.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">${ICONE_MESCLAR}</button>
+                <button data-action="excluir-item" data-tipo="periodosHistoricos" data-id="${ph.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+            </div>
+        </div>`;
+        })
+        .join('');
+}
+
+// ─── Movimento/Escola ────────────────────────────────────────────
+// Mesmo espírito de renderPeriodosHistoricos acima, mas o impacto de
+// exclusão cobre TRÊS coleções (Autor, Poema, Prosa — relação N:N dos
+// dois lados, ver calcularImpactoExclusaoMovimentoEscola em db.js), e
+// o card mostra Tipo (Artístico/Literário) além do intervalo de datas.
+//
+// Foi a primeira lista de cadastro central a ganhar ordenação
+// escolhível pela pessoa (Época e Período Histórico ganharam a mesma
+// opção depois — ver ordenacaoEpocas/ordenacaoPeriodosHistoricos
+// acima): com 20+ itens pré-cadastrados cobrindo do Trovadorismo ao
+// Pós-Modernismo, ver a evolução em ordem cronológica é útil e a
+// alfabética embaralha isso. Estado em memória, não persiste — mesmo
+// padrão de ordenacaoPoemas/ordenacaoProsas acima, reseta ao recarregar
+// a página.
+export let ordenacaoMovimentosEscolas = 'cronologica'; // 'alfabetica' | 'cronologica'
+
+export function definirOrdenacaoMovimentosEscolas(modo) {
+    ordenacaoMovimentosEscolas = modo === 'cronologica' ? 'cronologica' : 'alfabetica';
+    renderMovimentosEscolas();
+}
+
+// Cronológica usa `inicio` do movimento, caindo pro `fim` só se o
+// início estiver todo vazio (ex.: um item cadastrado só com data de
+// fim/extinção); sem nenhuma das duas datas, vai pro final da lista,
+// independente da posição alfabética. Empate no mesmo ano/época
+// desempata por nome, pra ordem ficar estável entre re-renders.
+function compararMovimentosEscolas(a, b) {
+    if (ordenacaoMovimentosEscolas !== 'cronologica') return a.nome.localeCompare(b.nome, 'pt-BR');
+    const anoA = anoEquivalenteMovimento(a.inicio) ?? anoEquivalenteMovimento(a.fim);
+    const anoB = anoEquivalenteMovimento(b.inicio) ?? anoEquivalenteMovimento(b.fim);
+    if (anoA == null && anoB == null) return a.nome.localeCompare(b.nome, 'pt-BR');
+    if (anoA == null) return 1;
+    if (anoB == null) return -1;
+    if (anoA !== anoB) return anoA - anoB;
+    return a.nome.localeCompare(b.nome, 'pt-BR');
+}
+
+export function renderMovimentosEscolas() {
+    const container = document.getElementById('lista-movimentos-escolas');
+    if (!container) return;
+
+    garantirControlesFiltroPeriodo('movimentosEscolas');
+
+    const ordenados = aplicarFiltroPeriodo('movimentosEscolas', [...db.movimentosEscolas], {
+        movimento: true,
+    }).sort(compararMovimentosEscolas);
+
+    if (ordenados.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">${filtroPeriodoAtivo('movimentosEscolas') ? 'Nenhum movimento/escola encontrado com esse filtro.' : 'Nenhum movimento/escola cadastrado ainda.'}</div>`;
+        return;
+    }
+
+    container.innerHTML = ordenados
+        .map((m) => {
+            const { autoresIds, poemasIds, prosasIds } = calcularImpactoExclusaoMovimentoEscola(
+                db,
+                m.id,
+            );
+            const total = autoresIds.length + poemasIds.length + prosasIds.length;
+            const intervalo = formatarIntervaloMovimentoEscola(m);
+            return `
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(m.nome)}</h4>
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
+                    ${[intervalo !== '—' ? intervalo : null, m.tipo || null, m.regiaoOrigem || null]
+                        .filter(Boolean)
+                        .map(escapeHtml)
+                        .join(' · ')}
+                </p>
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
+                    ${autoresIds.length} autor${autoresIds.length !== 1 ? 'es' : ''}, ${total - autoresIds.length} texto${total - autoresIds.length !== 1 ? 's' : ''}
+                </p>
+            </div>
+            <div class="flex gap-3 flex-shrink-0">
+                <button data-action="ver-movimento-escola" data-id="${m.id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>
+                <button data-action="ver-autores-movimento-escola" data-id="${m.id}" title="Ver autores" aria-label="Ver autores" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_PESSOAS}</button>
+                <button data-action="ver-textos-movimento-escola" data-id="${m.id}" title="Ver textos" aria-label="Ver textos" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_LISTA_TEXTOS}</button>
+                <button data-action="editar-movimento-escola" data-id="${m.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
+                <button data-action="mesclar-item" data-tipo="movimentosEscolas" data-id="${m.id}" title="Mesclar com outro movimento/escola" aria-label="Mesclar" class="inline-flex items-center justify-center p-1.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">${ICONE_MESCLAR}</button>
+                <button data-action="excluir-item" data-tipo="movimentosEscolas" data-id="${m.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
             </div>
         </div>`;
         })

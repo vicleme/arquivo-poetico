@@ -164,7 +164,13 @@ describe('Colunas dinâmicas (Unidades/Eventos) em Morfofuncionalidade', () => {
                     posicao: { estrofes: [], versos: 'todos' },
                 },
             ],
-            eventos: [{ id: 'e1', progressaoDialetica: 'Volta', posicao: { estrofes: [], versos: 'todos' } }],
+            eventos: [
+                {
+                    id: 'e1',
+                    progressaoDialetica: 'Volta',
+                    posicao: { estrofes: [], versos: 'todos' },
+                },
+            ],
         });
 
         toggleColuna('estrutura-textual', 'eventos', false);

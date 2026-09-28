@@ -63,6 +63,16 @@
                 </h1>
                 <div class="flex flex-col items-end gap-1">
                     <div class="flex items-center gap-2 flex-wrap justify-end">
+                        <button
+                            type="button"
+                            id="btn-modo-aprendizado"
+                            onclick="abrirCentralAjuda()"
+                            title="Central de Ajuda: apresentação, como fazer e perguntas frequentes"
+                            aria-label="Abrir a Central de Ajuda"
+                            class="w-9 h-9 flex items-center justify-center rounded-full border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition text-sm font-bold"
+                        >
+                            ?
+                        </button>
                         <div class="relative">
                             <button
                                 id="btn-tema"
@@ -94,6 +104,7 @@
                             class="flex items-stretch rounded-md overflow-hidden border border-green-600 dark:border-green-500"
                         >
                             <button
+                                id="btn-baixar-json"
                                 onclick="
                                     exportarJSON(
                                         document.getElementById('chk-incluir-capas').checked,
@@ -165,7 +176,6 @@
         <datalist id="sugestoes-sinais"></datalist>
         <datalist id="sugestoes-pessoas"></datalist>
         <datalist id="sugestoes-autores"></datalist>
-        <datalist id="sugestoes-grupos"></datalist>
         <datalist id="sugestoes-sinais-tradicao"></datalist>
         <datalist id="sugestoes-sinais-tradicao-bulk"></datalist>
         <datalist id="sugestoes-sinais-tradicao-bulk-prosa"></datalist>
@@ -265,6 +275,37 @@
                                 Seções
                             </button>
                             <button
+                                id="btn-autores"
+                                onclick="abrirAba('autores')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Autores
+                            </button>
+                            <button
+                                id="btn-estrutura"
+                                onclick="abrirAba('estrutura')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Estrutura
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative nav-dropdown-wrap">
+                    <button
+                        type="button"
+                        id="grupo-cadastros-btn"
+                        class="grupo-nav-btn pb-2 font-medium whitespace-nowrap inline-flex items-center gap-1 hover:text-blue-700 dark:hover:text-blue-300"
+                    >
+                        Cadastros
+                        <span class="text-[9px] opacity-60">▾</span>
+                    </button>
+                    <div class="nav-dropdown absolute left-0 top-full pt-1 z-20 min-w-[190px]">
+                        <div
+                            class="flex flex-col gap-0.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1"
+                        >
+                            <button
                                 id="btn-pessoas"
                                 onclick="abrirAba('pessoas')"
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
@@ -279,18 +320,25 @@
                                 Grupos
                             </button>
                             <button
-                                id="btn-autores"
-                                onclick="abrirAba('autores')"
-                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
-                            >
-                                Autores
-                            </button>
-                            <button
                                 id="btn-epocas"
                                 onclick="abrirAba('epocas')"
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
-                                Épocas
+                                Período Biográfico
+                            </button>
+                            <button
+                                id="btn-periodos-historicos"
+                                onclick="abrirAba('periodos-historicos')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Período Histórico
+                            </button>
+                            <button
+                                id="btn-movimentos-escolas"
+                                onclick="abrirAba('movimentos-escolas')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Movimento/Escola
                             </button>
                         </div>
                     </div>
@@ -348,13 +396,6 @@
                             class="flex flex-col gap-0.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1"
                         >
                             <button
-                                id="btn-estrutura"
-                                onclick="abrirAba('estrutura')"
-                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
-                            >
-                                Estrutura
-                            </button>
-                            <button
                                 id="btn-conexoes"
                                 onclick="abrirAba('conexoes')"
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
@@ -397,7 +438,28 @@
                                 onclick="abrirAba('estatisticas')"
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
-                                Análise Exploratória
+                                Visão geral
+                            </button>
+                            <button
+                                id="btn-estatisticas-producao"
+                                onclick="abrirAba('estatisticas-producao')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Produção
+                            </button>
+                            <button
+                                id="btn-estatisticas-temas-pessoas"
+                                onclick="abrirAba('estatisticas-temas-pessoas')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Temas e pessoas
+                            </button>
+                            <button
+                                id="btn-estatisticas-linguagem"
+                                onclick="abrirAba('estatisticas-linguagem')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Linguagem
                             </button>
                         </div>
                     </div>
@@ -617,6 +679,153 @@
                         Nova Pessoa
                     </button>
                 </div>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
+                    <input
+                        type="text"
+                        id="busca-nome-pessoas"
+                        oninput="setFiltroNomePessoas(this.value)"
+                        placeholder="Buscar por nome"
+                        title="Buscar pelo nome (ignora maiúsculas e acentos)"
+                        autocomplete="off"
+                        style="width: 12rem; margin-bottom: 0"
+                    />
+                    <select
+                        id="filtro-autor-pessoas"
+                        onchange="setFiltroAutorPessoas(this.value)"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="">-- Todos os autores --</option>
+                    </select>
+                    <select
+                        id="filtro-grupo-pessoas"
+                        onchange="setFiltroGrupoPessoas(this.value)"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="">-- Todos os grupos --</option>
+                    </select>
+                    <label
+                        class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-400"
+                    >
+                        <input
+                            type="checkbox"
+                            id="toggle-todos-pessoas"
+                            data-action="toggle-todos-pessoas"
+                            class="w-3.5 h-3.5"
+                        />
+                        Selecionar todas as que aparecem
+                    </label>
+                    <select
+                        id="visibilidade-pessoas"
+                        onchange="setVisibilidadePessoas(this.value)"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="ativas">Ocultas: não mostrar</option>
+                        <option value="todas">Ocultas: mostrar junto</option>
+                        <option value="ocultas">Ocultas: mostrar só elas</option>
+                    </select>
+                    <span
+                        id="contagem-pessoas"
+                        class="text-[11px] font-mono text-gray-400 dark:text-slate-500"
+                    ></span>
+                </div>
+
+                <div
+                    id="barra-acoes-pessoas"
+                    class="hidden mb-4 p-3 bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900 rounded-lg flex flex-wrap items-end gap-4 text-xs"
+                >
+                    <span
+                        id="contador-selecao-pessoas"
+                        class="font-bold text-indigo-800 dark:text-indigo-200"
+                    ></span>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Adicionar ao grupo</label
+                        >
+                        <div class="flex gap-1">
+                            <select
+                                id="pessoas-massa-grupo"
+                                style="width: auto; margin-bottom: 0"
+                            ></select>
+                            <button
+                                type="button"
+                                onclick="aplicarGrupoEmMassaPessoas()"
+                                class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                                Aplicar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Vincular ao autor</label
+                        >
+                        <div class="flex gap-1">
+                            <select
+                                id="pessoas-massa-autor"
+                                style="width: auto; margin-bottom: 0"
+                            ></select>
+                            <button
+                                type="button"
+                                onclick="aplicarAutorEmMassaPessoas()"
+                                class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                                Aplicar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Definir gênero</label
+                        >
+                        <div class="flex gap-1">
+                            <input
+                                type="text"
+                                id="pessoas-massa-genero"
+                                list="sugestoes-genero-pessoas-massa"
+                                placeholder="Ex: Mulher, Homem..."
+                                style="width: 9rem; margin-bottom: 0"
+                            />
+                            <datalist id="sugestoes-genero-pessoas-massa"></datalist>
+                            <button
+                                type="button"
+                                onclick="aplicarGeneroEmMassaPessoas()"
+                                class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                                Aplicar
+                            </button>
+                            <button
+                                type="button"
+                                onclick="limparGeneroEmMassaPessoas()"
+                                title="Apagar o Gênero das pessoas selecionadas"
+                                class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                            >
+                                Limpar
+                            </button>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onclick="ocultarSelecaoPessoas()"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Ocultar selecionadas
+                    </button>
+                    <button
+                        type="button"
+                        onclick="reexibirSelecaoPessoas()"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Reexibir selecionadas
+                    </button>
+                    <button
+                        type="button"
+                        onclick="limparSelecaoPessoas()"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Limpar seleção
+                    </button>
+                </div>
+
                 <div id="lista-pessoas" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </section>
 
@@ -630,7 +839,38 @@
                         Novo Grupo
                     </button>
                 </div>
-                <div id="lista-grupos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
+                    <input
+                        type="text"
+                        id="busca-nome-grupos"
+                        oninput="setFiltroNomeGrupos(this.value)"
+                        placeholder="Buscar por nome"
+                        title="Buscar pelo nome (ignora maiúsculas e acentos)"
+                        autocomplete="off"
+                        style="width: 12rem; margin-bottom: 0"
+                    />
+                    <select
+                        id="filtro-autor-grupos"
+                        onchange="setFiltroAutorGrupos(this.value)"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="">-- Todos os autores --</option>
+                    </select>
+                    <select
+                        id="visibilidade-grupos"
+                        onchange="setVisibilidadeGrupos(this.value)"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="ativos">Ocultos: não mostrar</option>
+                        <option value="todos">Ocultos: mostrar junto</option>
+                        <option value="ocultos">Ocultos: mostrar só eles</option>
+                    </select>
+                    <span
+                        id="contagem-grupos"
+                        class="text-[11px] font-mono text-gray-400 dark:text-slate-500"
+                    ></span>
+                </div>
+                <div id="lista-grupos" class="grid grid-cols-1 gap-4"></div>
             </section>
 
             <section id="autores" class="tab-content">
@@ -711,10 +951,11 @@
                         <p class="font-bold mb-1">Sintaxe</p>
                         <ul class="list-disc pl-4 space-y-1">
                             <li>
-                                Espaço = E lógico; <code>ou</code> = alternativa
-                                (<code>portuguesa ou brasileira</code>); aspas = frase exata;
-                                <code>-termo</code> exclui. Acento e maiúsculas não importam (a menos
-                                que as opções acima estejam marcadas).
+                                Espaço = E lógico; <code>ou</code> = alternativa (<code
+                                    >portuguesa ou brasileira</code
+                                >); aspas = frase exata; <code>-termo</code> exclui. Acento e
+                                maiúsculas não importam (a menos que as opções acima estejam
+                                marcadas).
                             </li>
                             <li>
                                 Sem prefixo, a busca olha nome, nomes literários, nacionalidade,
@@ -767,7 +1008,8 @@
                         <p class="font-bold mb-1">Exemplos</p>
                         <p>
                             <code>nacionalidade:portuguesa ocupacao:diplomata</code>,
-                            <code>heteronimo:*</code>, <code>dominio:livre nacionalidade:portuguesa</code>
+                            <code>heteronimo:*</code>,
+                            <code>dominio:livre nacionalidade:portuguesa</code>
                         </p>
                     </div>
                 </div>
@@ -816,21 +1058,87 @@
 
             <section id="epocas" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-semibold">Épocas</h2>
-                    <button
-                        onclick="prepararNovo('epoca')"
-                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
-                    >
-                        Nova Época
-                    </button>
+                    <h2 class="text-xl font-semibold">Período Biográfico</h2>
+                    <div class="flex items-center gap-3">
+                        <select
+                            id="ordenacao-epocas"
+                            onchange="definirOrdenacaoEpocas(this.value)"
+                            style="width: auto; margin-bottom: 0"
+                        >
+                            <option value="alfabetica">Ordem alfabética</option>
+                            <option value="cronologica" selected>Ordem cronológica</option>
+                        </select>
+                        <button
+                            onclick="prepararNovo('epoca')"
+                            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                        >
+                            Novo Período Biográfico
+                        </button>
+                    </div>
                 </div>
+                <div id="filtros-periodo-epocas"></div>
                 <div id="lista-epocas" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </section>
+
+            <section id="periodos-historicos" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Período Histórico</h2>
+                    <div class="flex items-center gap-3">
+                        <select
+                            id="ordenacao-periodos-historicos"
+                            onchange="definirOrdenacaoPeriodosHistoricos(this.value)"
+                            style="width: auto; margin-bottom: 0"
+                        >
+                            <option value="alfabetica">Ordem alfabética</option>
+                            <option value="cronologica" selected>Ordem cronológica</option>
+                        </select>
+                        <button
+                            onclick="prepararNovo('periodo-historico')"
+                            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                        >
+                            Novo Período Histórico
+                        </button>
+                    </div>
+                </div>
+                <div id="filtros-periodo-periodosHistoricos"></div>
+                <div
+                    id="lista-periodos-historicos"
+                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                ></div>
+            </section>
+
+            <section id="movimentos-escolas" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Movimento/Escola</h2>
+                    <div class="flex items-center gap-3">
+                        <select
+                            id="ordenacao-movimentos-escolas"
+                            onchange="definirOrdenacaoMovimentosEscolas(this.value)"
+                            style="width: auto; margin-bottom: 0"
+                        >
+                            <option value="alfabetica">Ordem alfabética</option>
+                            <option value="cronologica" selected>Ordem cronológica</option>
+                        </select>
+                        <button
+                            onclick="prepararNovo('movimento-escola')"
+                            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                        >
+                            Novo Movimento/Escola
+                        </button>
+                    </div>
+                </div>
+                <div id="filtros-periodo-movimentosEscolas"></div>
+                <div
+                    id="lista-movimentos-escolas"
+                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                ></div>
             </section>
 
             <section id="poemas" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-semibold">Conteúdo Literário</h2>
                     <button
+                        id="btn-novo-poema"
                         onclick="prepararNovo('poema')"
                         class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
                     >
@@ -1083,7 +1391,7 @@
                                 <input
                                     type="number"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                     class="w-20 mb-0"
@@ -1114,7 +1422,7 @@
                                 <input
                                     type="number"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                     class="w-20 mb-0"
@@ -1160,7 +1468,7 @@
                                 <input
                                     type="number"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                     class="w-20 mb-0"
@@ -1195,7 +1503,7 @@
                                 <input
                                     type="number"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                     class="w-20 mb-0"
@@ -1243,7 +1551,7 @@
                                 <input
                                     type="number"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                     class="w-20 mb-0"
@@ -1278,7 +1586,7 @@
                                 <input
                                     type="number"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                     class="w-20 mb-0"
@@ -1444,6 +1752,16 @@
                     >
                         ✏️ Preencher campo ▾
                     </button>
+                    <button
+                        type="button"
+                        onclick="
+                            prepararPainelPeriodosMassa('poemas');
+                            togglePainel('painel-periodos-massa', this);
+                        "
+                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                    >
+                        🏷️ Períodos e movimentos ▾
+                    </button>
                     <label
                         class="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 whitespace-nowrap px-1"
                         title="Inclui a Sonoridade e a Progressão Morfofuncional dos poemas selecionados, quando cadastradas (.md/.json por enquanto)"
@@ -1506,6 +1824,11 @@
                     ></div>
 
                     <div
+                        id="painel-periodos-massa"
+                        class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
+                    ></div>
+
+                    <div
                         id="painel-datas-massa-poemas"
                         class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
                     >
@@ -1559,7 +1882,7 @@
                             <input
                                 type="number"
                                 id="bulk-data-ano"
-                                min="1900"
+                                min="1"
                                 max="2100"
                                 class="w-20 text-xs p-2"
                                 onkeydown="
@@ -1860,7 +2183,7 @@
                                 <input
                                     type="number"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                     class="w-20 mb-0"
@@ -1891,7 +2214,7 @@
                                 <input
                                     type="number"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                     class="w-20 mb-0"
@@ -1937,7 +2260,7 @@
                                 <input
                                     type="number"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                     class="w-20 mb-0"
@@ -1972,7 +2295,7 @@
                                 <input
                                     type="number"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                     class="w-20 mb-0"
@@ -2150,6 +2473,16 @@
                         ✏️ Preencher campo ▾
                     </button>
                     <button
+                        type="button"
+                        onclick="
+                            prepararPainelPeriodosMassa('prosas');
+                            togglePainel('painel-periodos-massa-prosa', this);
+                        "
+                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                    >
+                        🏷️ Períodos e movimentos ▾
+                    </button>
+                    <button
                         onclick="exportarSelecaoAtualJson('prosas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
@@ -2195,6 +2528,11 @@
 
                     <div
                         id="painel-preencher-massa-prosa"
+                        class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
+                    ></div>
+
+                    <div
+                        id="painel-periodos-massa-prosa"
                         class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
                     ></div>
 
@@ -2252,7 +2590,7 @@
                             <input
                                 type="number"
                                 id="bulk-data-prosa-ano"
-                                min="1900"
+                                min="1"
                                 max="2100"
                                 class="w-20 text-xs p-2"
                                 onkeydown="
@@ -2648,12 +2986,17 @@
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-semibold">Biblioteca</h2>
                 </div>
-                <p class="text-xs text-gray-400 dark:text-slate-500 mb-4">
+                <p id="biblioteca-intro" class="text-xs text-gray-400 dark:text-slate-500 mb-4">
                     Pacotes de obras em domínio público que acompanham o app, prontos pra somar ao
                     acervo pela Importação. Cada pacote mostra fonte, edição e a situação de domínio
                     público de cada autor. É uma ajuda informativa — não substitui orientação
                     jurídica, e edições, traduções e notas críticas podem ter proteção própria.
                 </p>
+
+                <div
+                    id="biblioteca-barra-selecao"
+                    class="flex flex-wrap items-center gap-3 mb-3"
+                ></div>
 
                 <div id="biblioteca-lista" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5"></div>
 
@@ -2972,7 +3315,7 @@
                                     type="number"
                                     id="exp-data-de-ano"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                 />
                             </div>
@@ -2998,7 +3341,7 @@
                                     type="number"
                                     id="exp-data-ate-ano"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                 />
                             </div>
@@ -3347,50 +3690,53 @@
             </section>
 
             <section id="estatisticas" class="tab-content">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-semibold">Análise Exploratória</h2>
-                    <div id="est-terceiros"></div>
+                <div class="flex justify-between items-center mb-5 gap-3 flex-wrap">
+                    <div>
+                        <h2 class="text-xl font-semibold">Visão geral</h2>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                            Um resumo do acervo, com os mesmos filtros usados nas demais abas.
+                        </p>
+                    </div>
                 </div>
+                <div class="est-filtros-compartilhados mb-6"></div>
+                <div id="est-resumo" class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6"></div>
+                <div
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                >
+                    <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300 mb-2">
+                        Como navegar
+                    </h3>
+                    <div id="est-completude-resumo"></div>
+                </div>
+            </section>
 
-                <div id="est-resumo" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"></div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <section id="estatisticas-producao" class="tab-content">
+                <div class="mb-5">
+                    <h2 class="text-xl font-semibold">Produção</h2>
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        Quando e em que livros os textos aparecem.
+                    </p>
+                </div>
+                <div class="est-filtros-compartilhados mb-6"></div>
+                <div
+                    id="est-drilldown-ajuda"
+                    class="text-xs text-gray-500 dark:text-slate-400 mb-4"
+                ></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div
                         class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
                     >
-                        <div class="flex justify-between items-center mb-1 gap-2 flex-wrap">
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
                             <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
                                 Textos por Ano
                             </h3>
-                            <div
-                                class="flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500"
+                            <button
+                                type="button"
+                                onclick="togglePainel('painel-ocultos-ano', this)"
+                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
                             >
-                                <span>de</span>
-                                <input
-                                    type="number"
-                                    id="est-min-ano"
-                                    min="0"
-                                    placeholder="mín"
-                                    oninput="renderEstatisticas()"
-                                    style="width: 52px; padding: 2px 4px; margin: 0"
-                                />
-                                <span>até</span>
-                                <input
-                                    type="number"
-                                    id="est-max-ano"
-                                    min="0"
-                                    placeholder="máx"
-                                    oninput="renderEstatisticas()"
-                                    style="width: 52px; padding: 2px 4px; margin: 0"
-                                />
-                                <button
-                                    type="button"
-                                    onclick="togglePainel('painel-ocultos-ano', this)"
-                                    class="ml-1 font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                    🚫 Ocultar ▾
-                                </button>
-                            </div>
+                                🚫 Ocultar ▾
+                            </button>
                         </div>
                         <div
                             id="painel-ocultos-ano"
@@ -3401,39 +3747,17 @@
                     <div
                         class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
                     >
-                        <div class="flex justify-between items-center mb-1 gap-2 flex-wrap">
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
                             <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
                                 Textos por Livro / Coletânea
                             </h3>
-                            <div
-                                class="flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500"
+                            <button
+                                type="button"
+                                onclick="togglePainel('painel-ocultos-livro', this)"
+                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
                             >
-                                <span>de</span>
-                                <input
-                                    type="number"
-                                    id="est-min-livro"
-                                    min="0"
-                                    placeholder="mín"
-                                    oninput="renderEstatisticas()"
-                                    style="width: 52px; padding: 2px 4px; margin: 0"
-                                />
-                                <span>até</span>
-                                <input
-                                    type="number"
-                                    id="est-max-livro"
-                                    min="0"
-                                    placeholder="máx"
-                                    oninput="renderEstatisticas()"
-                                    style="width: 52px; padding: 2px 4px; margin: 0"
-                                />
-                                <button
-                                    type="button"
-                                    onclick="togglePainel('painel-ocultos-livro', this)"
-                                    class="ml-1 font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                    🚫 Ocultar ▾
-                                </button>
-                            </div>
+                                🚫 Ocultar ▾
+                            </button>
                         </div>
                         <div
                             id="painel-ocultos-livro"
@@ -3441,116 +3765,116 @@
                         ></div>
                         <canvas id="grafico-livro" height="220"></canvas>
                     </div>
+                </div>
+                <div class="mt-8">
+                    <div class="mb-4">
+                        <h3 class="text-base font-semibold">Ritmo e sazonalidade</h3>
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                            Onde, dentro do ano, sua produção costuma se concentrar.
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div
+                            class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                        >
+                            <h4 class="text-sm font-bold text-gray-600 dark:text-slate-300 mb-3">
+                                Textos por mês de escrita
+                            </h4>
+                            <canvas id="grafico-sazonalidade-mes" height="220"></canvas>
+                        </div>
+                        <div
+                            class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                        >
+                            <h4 class="text-sm font-bold text-gray-600 dark:text-slate-300 mb-3">
+                                Distribuição por trimestre
+                            </h4>
+                            <canvas id="grafico-sazonalidade-trimestre" height="220"></canvas>
+                            <p class="text-[11px] text-gray-400 dark:text-slate-500 mt-2">
+                                A comparação considera apenas textos com mês de escrita conhecido.
+                            </p>
+                        </div>
+                    </div>
+                    <div
+                        class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mt-6"
+                    >
+                        <h4 class="text-sm font-bold text-gray-600 dark:text-slate-300 mb-3">
+                            Sazonalidade por ano
+                        </h4>
+                        <div id="tabela-sazonalidade-ano"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="estatisticas-temas-pessoas" class="tab-content">
+                <div class="mb-5">
+                    <h2 class="text-xl font-semibold">Temas e pessoas</h2>
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        Sobre o que e sobre quem os textos tratam — e como essas ocorrências se
+                        distribuem no tempo.
+                    </p>
+                </div>
+                <div class="est-filtros-compartilhados mb-6"></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div
                         class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
                     >
-                        <div class="flex justify-between items-center mb-1 gap-2 flex-wrap">
-                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
-                                Etiquetas mais frequentes
-                            </h3>
-                            <div
-                                class="flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500"
-                            >
-                                <button
-                                    type="button"
-                                    onclick="togglePainel('painel-tipos-etiqueta', this)"
-                                    class="font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                    🏷️ Tipos ▾
-                                </button>
-                                <span>de</span>
-                                <input
-                                    type="number"
-                                    id="est-min-temas"
-                                    min="0"
-                                    placeholder="mín"
-                                    oninput="renderEstatisticas()"
-                                    style="width: 52px; padding: 2px 4px; margin: 0"
-                                />
-                                <span>até</span>
-                                <input
-                                    type="number"
-                                    id="est-max-temas"
-                                    min="0"
-                                    placeholder="máx"
-                                    oninput="renderEstatisticas()"
-                                    style="width: 52px; padding: 2px 4px; margin: 0"
-                                />
-                                <button
-                                    type="button"
-                                    onclick="togglePainel('painel-ocultos-temas', this)"
-                                    class="ml-1 font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                    🚫 Ocultar ▾
-                                </button>
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Temas mais frequentes
+                                </h3>
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Número de textos que possuem cada tema.
+                                </p>
                             </div>
+                            <button
+                                type="button"
+                                onclick="togglePainel('painel-ocultos-temas', this)"
+                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                            >
+                                🚫 Ocultar ▾
+                            </button>
                         </div>
-                        <div
-                            id="painel-tipos-etiqueta"
-                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3"
-                        ></div>
                         <div
                             id="painel-ocultos-temas"
                             class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
                         ></div>
                         <canvas id="grafico-temas" height="220"></canvas>
-                        <div
-                            id="legenda-temas"
-                            class="mt-2 text-[11px] text-gray-500 dark:text-slate-400"
-                        ></div>
                     </div>
+
                     <div
                         class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
                     >
-                        <div class="flex justify-between items-center mb-1 gap-2 flex-wrap">
-                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
-                                Pessoas mais dedicadas
-                            </h3>
-                            <div
-                                class="flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500"
-                            >
-                                <span
-                                    id="painel-modo-pessoas"
-                                    class="flex items-center gap-1"
-                                ></span>
-                                <button
-                                    type="button"
-                                    onclick="togglePainel('painel-grupo-pessoas', this)"
-                                    class="ml-1 font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                    👥 Grupos ▾
-                                </button>
-                                <span>de</span>
-                                <input
-                                    type="number"
-                                    id="est-min-pessoas"
-                                    min="0"
-                                    placeholder="mín"
-                                    oninput="renderEstatisticas()"
-                                    style="width: 52px; padding: 2px 4px; margin: 0"
-                                />
-                                <span>até</span>
-                                <input
-                                    type="number"
-                                    id="est-max-pessoas"
-                                    min="0"
-                                    placeholder="máx"
-                                    oninput="renderEstatisticas()"
-                                    style="width: 52px; padding: 2px 4px; margin: 0"
-                                />
-                                <button
-                                    type="button"
-                                    onclick="togglePainel('painel-ocultos-pessoas', this)"
-                                    class="ml-1 font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                                >
-                                    🚫 Ocultar ▾
-                                </button>
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Pessoas mais mencionadas
+                                </h3>
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Número de textos em que cada pessoa está registrada.
+                                </p>
                             </div>
+                            <div id="painel-modo-pessoas" class="flex gap-1"></div>
                         </div>
+                        <button
+                            type="button"
+                            onclick="togglePainel('painel-grupo-pessoas', this)"
+                            class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px] mb-2"
+                        >
+                            👥 Grupos ▾
+                        </button>
                         <div
                             id="painel-grupo-pessoas"
                             class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
                         ></div>
+                        <button
+                            type="button"
+                            onclick="togglePainel('painel-ocultos-pessoas', this)"
+                            class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px] mb-2"
+                        >
+                            🚫 Ocultar ▾
+                        </button>
                         <div
                             id="painel-ocultos-pessoas"
                             class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
@@ -3560,19 +3884,170 @@
                 </div>
 
                 <div
-                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mt-6"
                 >
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
-                            Palavras mais frequentes
-                        </h3>
+                    <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Gênero das pessoas retratadas
+                            </h3>
+                            <p class="text-[10px] text-gray-400 mt-1">
+                                Número de vezes que pessoas de cada Gênero (campo livre do cadastro
+                                de Pessoa) aparecem em textos — use o filtro de Autor acima para ver
+                                o recorte de um autor específico.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onclick="togglePainel('painel-ocultos-generos-pessoa', this)"
+                            class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                        >
+                            🚫 Ocultar ▾
+                        </button>
+                    </div>
+                    <div
+                        id="painel-ocultos-generos-pessoa"
+                        class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
+                    ></div>
+                    <canvas id="grafico-generos-pessoa" height="220"></canvas>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div
+                        class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="flex justify-between items-center mb-3 gap-3 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Tema ao longo do tempo
+                                </h3>
+                                <p
+                                    id="est-tema-temporal-legenda"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                >
+                                    Selecione um ou mais temas abaixo para comparar a presença deles
+                                    por ano.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onclick="togglePainel('painel-temporal-temas', this)"
+                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                            >
+                                🏷️ Selecionar temas ▾
+                            </button>
+                        </div>
+                        <div
+                            id="painel-temporal-temas"
+                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg max-h-48 overflow-y-auto"
+                        ></div>
+                        <canvas id="grafico-tema-tempo" height="220"></canvas>
+                    </div>
+
+                    <div
+                        class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="flex justify-between items-center mb-3 gap-3 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Pessoa ao longo do tempo
+                                </h3>
+                                <p
+                                    id="est-pessoa-temporal-legenda"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                >
+                                    Selecione uma ou mais pessoas abaixo e, se quiser, restrinja a
+                                    análise aos grupos selecionados.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onclick="togglePainel('painel-temporal-pessoas', this)"
+                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                            >
+                                🙋 Selecionar pessoas ▾
+                            </button>
+                        </div>
+                        <div
+                            id="painel-temporal-pessoas"
+                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg max-h-48 overflow-y-auto"
+                        ></div>
+                        <button
+                            type="button"
+                            onclick="togglePainel('painel-grupo-pessoa-tempo', this)"
+                            class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px] mb-2"
+                        >
+                            👥 Filtrar por grupo ▾
+                        </button>
+                        <div
+                            id="painel-grupo-pessoa-tempo"
+                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
+                        ></div>
+                        <canvas id="grafico-pessoa-tempo" height="220"></canvas>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mt-6"
+                >
+                    <div class="flex justify-between items-center mb-3 gap-3 flex-wrap">
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Relações
+                            </h3>
+                            <p class="text-[10px] text-gray-400 mt-1">
+                                Cruze temas com pessoas ou com grupos.
+                            </p>
+                        </div>
                         <select
-                            id="est-livro-palavras"
+                            id="est-coocorrencia-modo"
                             onchange="renderEstatisticas()"
                             style="width: auto; margin: 0"
                         >
-                            <option value="">-- Todo o acervo --</option>
+                            <option value="pessoas">Temas × pessoas</option>
+                            <option value="grupos">Temas × grupos</option>
                         </select>
+                    </div>
+                    <div id="painel-colunas-coocorrencia"></div>
+                    <div id="tabela-coocorrencia"></div>
+                </div>
+            </section>
+
+            <section id="estatisticas-linguagem" class="tab-content">
+                <div class="mb-5">
+                    <h2 class="text-xl font-semibold">Linguagem</h2>
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        Palavras mais frequentes, por todo o acervo ou por obra selecionada.
+                    </p>
+                </div>
+                <div class="est-filtros-compartilhados mb-6"></div>
+                <div
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                >
+                    <div class="flex justify-between items-end mb-3 gap-3 flex-wrap">
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Palavras mais frequentes
+                            </h3>
+                            <p
+                                id="est-contexto-linguagem"
+                                class="text-[11px] text-gray-400 dark:text-slate-500 mt-1"
+                            ></p>
+                        </div>
+                        <div>
+                            <label
+                                for="est-livro-palavras"
+                                class="block text-[10px] uppercase font-bold text-gray-400 dark:text-slate-500 mb-1"
+                                >Obra analisada</label
+                            >
+                            <select
+                                id="est-livro-palavras"
+                                onchange="renderEstatisticas()"
+                                style="width: auto; margin: 0"
+                            >
+                                <option value="">-- Todo o acervo --</option>
+                            </select>
+                        </div>
                     </div>
                     <div
                         id="lista-palavras"

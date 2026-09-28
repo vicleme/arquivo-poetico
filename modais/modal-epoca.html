@@ -58,6 +58,10 @@
             <form id="form-epoca" class="grid grid-cols-1 gap-4">
                 <input type="hidden" id="ep-edit-id" />
                 <div>
+                    <label class="form-label">Autor</label>
+                    <select id="ep-autor" required></select>
+                </div>
+                <div>
                     <label class="form-label">Nome do período</label>
                     <input
                         type="text"
@@ -69,9 +73,78 @@
                 <div>
                     <label class="form-label">Contexto do relacionamento</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
-                        Quem/o quê está envolvido nessa época — opcional, ex.: "Parceiro A e Parceiro B".
+                        Quem/o quê está envolvido nessa época — opcional, ex.: "Parceiro A e
+                        Parceiro B".
                     </p>
                     <input type="text" id="ep-contexto" placeholder="Ex: Parceiro A e Parceiro B" />
+                </div>
+                <div>
+                    <label class="form-label">Data</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Datas oficiais deste período — opcional, servem à gestão do cadastro (filtro
+                        e exibição). Não alimentam nem dependem das datas de Época Retratada de cada
+                        texto. Só o ano já basta.
+                    </p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <span class="text-[10px] text-gray-400 dark:text-slate-500">De</span>
+                            <div class="grid grid-cols-3 gap-1">
+                                <input
+                                    type="number"
+                                    id="ep-ini-dia"
+                                    placeholder="Dia"
+                                    min="1"
+                                    max="31"
+                                    title="Dia"
+                                />
+                                <input
+                                    type="number"
+                                    id="ep-ini-mes"
+                                    placeholder="Mês"
+                                    min="1"
+                                    max="12"
+                                    title="Mês"
+                                />
+                                <input
+                                    type="number"
+                                    id="ep-ini-ano"
+                                    placeholder="Ano"
+                                    min="1"
+                                    max="2100"
+                                    title="Ano"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-gray-400 dark:text-slate-500">Até</span>
+                            <div class="grid grid-cols-3 gap-1">
+                                <input
+                                    type="number"
+                                    id="ep-fim-dia"
+                                    placeholder="Dia"
+                                    min="1"
+                                    max="31"
+                                    title="Dia"
+                                />
+                                <input
+                                    type="number"
+                                    id="ep-fim-mes"
+                                    placeholder="Mês"
+                                    min="1"
+                                    max="12"
+                                    title="Mês"
+                                />
+                                <input
+                                    type="number"
+                                    id="ep-fim-ano"
+                                    placeholder="Ano"
+                                    min="1"
+                                    max="2100"
+                                    title="Ano"
+                                />
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div>
                     <label class="form-label">Notas</label>

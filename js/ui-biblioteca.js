@@ -19,6 +19,7 @@ import {
     rotuloDominioPublico as rotuloDominioPublicoBase,
 } from './utils.js';
 import { carregarPayloadImportacaoAditiva } from './ui-importar-aditivo.js';
+import { mesclarPacotesBiblioteca } from './pacote-texto.js';
 import {
     prepararFormTextoBiblioteca,
     atualizarPreviaTextoBiblioteca,
@@ -30,6 +31,8 @@ const PADRAO_SEGURO = /^[a-z0-9][a-z0-9-]*(\.json)?$/;
 let _indice = null; // { pacotes: [...] } — cache da sessão
 let _pacoteAtual = null; // payload completo do pacote aberto no detalhe
 let _idAtual = null;
+let _selecionados = new Set(); // ids marcados pra importação em lote
+const _cachePacotes = new Map(); // id → payload já buscado, reaproveitado entre detalhe e lote
 
 function idSeguro(valor) {
     return typeof valor === 'string' && PADRAO_SEGURO.test(valor);
@@ -57,23 +60,67 @@ function classeDominioPublico(sit) {
 
 function renderCartao(p) {
     const ativo = p.id === _idAtual;
-    return `<button
-        type="button"
-        onclick="selecionarPacoteBiblioteca('${escapeHtml(p.id)}')"
-        class="text-left border rounded-xl p-4 bg-white dark:bg-slate-900 hover:border-blue-400 ${
+    const marcado = _selecionados.has(p.id);
+    return `<div
+        class="flex gap-2 items-start border rounded-xl p-4 bg-white dark:bg-slate-900 hover:border-blue-400 ${
             ativo ? 'border-blue-500 dark:border-blue-400' : 'border-gray-200 dark:border-slate-700'
         }"
     >
-        <div class="font-semibold text-sm">${escapeHtml(p.titulo)}</div>
-        <div class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-            ${escapeHtml(p.autor || '')} · ${Number(p.quantidade) || 0} texto(s)
-        </div>
-        ${
-            p.descricao
-                ? `<p class="text-xs text-gray-400 dark:text-slate-500 mt-2">${escapeHtml(p.descricao)}</p>`
-                : ''
-        }
-    </button>`;
+        <input
+            type="checkbox"
+            class="mt-1 shrink-0"
+            aria-label="Selecionar ${escapeHtml(p.titulo)} pra importação em lote"
+            onclick="event.stopPropagation(); alternarSelecaoPacoteBiblioteca('${escapeHtml(p.id)}')"
+            ${marcado ? 'checked' : ''}
+        />
+        <button type="button" onclick="selecionarPacoteBiblioteca('${escapeHtml(p.id)}')" class="text-left flex-1 min-w-0">
+            <div class="font-semibold text-sm">${escapeHtml(p.titulo)}</div>
+            <div class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                ${escapeHtml(p.autor || '')} · ${Number(p.quantidade) || 0} texto(s)
+            </div>
+            ${
+                p.descricao
+                    ? `<p class="text-xs text-gray-400 dark:text-slate-500 mt-2">${escapeHtml(p.descricao)}</p>`
+                    : ''
+            }
+        </button>
+    </div>`;
+}
+
+function pacotesDisponiveis() {
+    return (_indice?.pacotes || []).filter((p) => idSeguro(p?.id) && idSeguro(p?.arquivo));
+}
+
+function renderBarraSelecao() {
+    const barra = document.getElementById('biblioteca-barra-selecao');
+    if (!barra) return;
+
+    const pacotes = pacotesDisponiveis();
+    if (!pacotes.length) {
+        barra.innerHTML = '';
+        return;
+    }
+
+    const todosMarcados = pacotes.length > 0 && pacotes.every((p) => _selecionados.has(p.id));
+    const n = _selecionados.size;
+
+    barra.innerHTML = `
+        <label class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400">
+            <input type="checkbox" onclick="alternarSelecionarTodosBiblioteca()" ${todosMarcados ? 'checked' : ''} />
+            Selecionar todos
+        </label>
+        <button type="button" onclick="importarSelecionadosBiblioteca()" ${n ? '' : 'disabled'}
+            class="text-xs font-bold px-3 py-1.5 rounded whitespace-nowrap ${
+                n
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-not-allowed'
+            }">
+            Importar selecionados${n ? ` (${n})` : ''}
+        </button>
+        <button type="button" onclick="importarTodosBiblioteca()"
+            class="text-xs font-bold px-3 py-1.5 rounded whitespace-nowrap border border-gray-300 dark:border-slate-600">
+            Importar todos (${pacotes.length})
+        </button>`;
 }
 
 export async function renderBiblioteca() {
@@ -98,10 +145,85 @@ export async function renderBiblioteca() {
         }
     }
 
-    const pacotes = (_indice.pacotes || []).filter((p) => idSeguro(p?.id) && idSeguro(p?.arquivo));
+    const pacotes = pacotesDisponiveis();
+    // Pacotes que somem do índice não ficam marcados pra sempre.
+    for (const id of [..._selecionados]) {
+        if (!pacotes.some((p) => p.id === id)) _selecionados.delete(id);
+    }
     lista.innerHTML = pacotes.length
         ? pacotes.map(renderCartao).join('')
         : `<p class="text-xs text-gray-400 dark:text-slate-500">Nenhum pacote disponível ainda.</p>`;
+    renderBarraSelecao();
+}
+
+export function alternarSelecaoPacoteBiblioteca(id) {
+    if (_selecionados.has(id)) _selecionados.delete(id);
+    else _selecionados.add(id);
+    renderBiblioteca();
+}
+
+export function alternarSelecionarTodosBiblioteca() {
+    const pacotes = pacotesDisponiveis();
+    const todosMarcados = pacotes.length > 0 && pacotes.every((p) => _selecionados.has(p.id));
+    if (todosMarcados) _selecionados.clear();
+    else pacotes.forEach((p) => _selecionados.add(p.id));
+    renderBiblioteca();
+}
+
+// Busca (com cache) o payload completo de cada pacote do índice cujo id
+// esteja em `ids`. Devolve só os que carregaram — quem chama decide o
+// que fazer se `ids.length` e o resultado não baterem.
+async function buscarPacotesPorId(ids) {
+    const entradas = ids
+        .map((id) => (_indice?.pacotes || []).find((p) => p.id === id))
+        .filter((p) => p && idSeguro(p.arquivo));
+
+    const payloads = [];
+    for (const entrada of entradas) {
+        if (_cachePacotes.has(entrada.id)) {
+            payloads.push(_cachePacotes.get(entrada.id));
+            continue;
+        }
+        try {
+            const payload = await buscarJson(`${entrada.arquivo}.json`);
+            _cachePacotes.set(entrada.id, payload);
+            payloads.push(payload);
+        } catch {
+            // pacote individual falhou — segue com os demais, avisa no final.
+        }
+    }
+    return { payloads, esperados: entradas.length };
+}
+
+// Fluxo comum de "importar todos"/"importar selecionados": busca os
+// pacotes, mescla (ids de Autor remapeados pra não colidir entre
+// pacotes) e entrega o lote pra Importação Aditiva.
+async function importarLoteBiblioteca(ids) {
+    if (!ids.length) return false;
+    const { payloads, esperados } = await buscarPacotesPorId(ids);
+    if (!payloads.length) {
+        mostrarAviso('Não foi possível carregar os pacotes selecionados.');
+        return false;
+    }
+    if (payloads.length < esperados) {
+        mostrarAviso(
+            `${esperados - payloads.length} pacote(s) não carregaram e ficaram de fora do lote.`,
+        );
+    }
+    const mesclado = mesclarPacotesBiblioteca(payloads);
+    if (!carregarPayloadImportacaoAditiva(mesclado)) {
+        mostrarAviso('Nenhum dos pacotes carregados tem Poema/Prosa pra importar.');
+        return false;
+    }
+    return true;
+}
+
+export async function importarSelecionadosBiblioteca() {
+    return importarLoteBiblioteca([..._selecionados]);
+}
+
+export async function importarTodosBiblioteca() {
+    return importarLoteBiblioteca(pacotesDisponiveis().map((p) => p.id));
 }
 
 function renderDetalhe() {
@@ -207,7 +329,12 @@ export async function selecionarPacoteBiblioteca(id) {
 
     try {
         // `arquivo` no índice vem sem extensão (montarIndice em scripts/montar-pacote.js).
-        _pacoteAtual = await buscarJson(`${entrada.arquivo}.json`);
+        if (_cachePacotes.has(id)) {
+            _pacoteAtual = _cachePacotes.get(id);
+        } else {
+            _pacoteAtual = await buscarJson(`${entrada.arquivo}.json`);
+            _cachePacotes.set(id, _pacoteAtual);
+        }
     } catch {
         _pacoteAtual = null;
         _idAtual = null;

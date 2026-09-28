@@ -120,7 +120,10 @@ describe('executarExportacaoSeletivaPdf (aba Exportação — Baixar .pdf seleti
         executarExportacaoSeletivaPdf();
 
         assert.equal(instancias, 0);
-        assert.match(document.getElementById('exp-resultado').textContent, /Nenhum item encontrado/);
+        assert.match(
+            document.getElementById('exp-resultado').textContent,
+            /Nenhum item encontrado/,
+        );
     });
 
     it('chama save() com um nome de arquivo previsível ("exportacao_seletiva_...")', () => {

@@ -17,16 +17,16 @@ Este é um projeto pessoal, mas segue uma convenção fixa pra mensagens de comm
 
 **Tipos usados neste projeto:**
 
-| Tipo       | Use para                                                          |
-| ---------- | ------------------------------------------------------------------ |
-| `feat`     | um campo, tela ou capacidade nova pro usuário                     |
-| `fix`      | correção de bug                                                    |
-| `refactor` | reestruturação interna sem mudança de comportamento                |
+| Tipo       | Use para                                                             |
+| ---------- | -------------------------------------------------------------------- |
+| `feat`     | um campo, tela ou capacidade nova pro usuário                        |
+| `fix`      | correção de bug                                                      |
+| `refactor` | reestruturação interna sem mudança de comportamento                  |
 | `docs`     | mudanças em `README*.md`, `manutencao/*.md` ou comentários no código |
-| `test`     | adicionar/ajustar testes, sem mudar código de produção             |
-| `style`    | formatação, espaçamento, correções de Prettier/ESLint              |
-| `chore`    | ferramentas, dependências, config, scripts de build                |
-| `perf`     | melhorias de performance                                           |
+| `test`     | adicionar/ajustar testes, sem mudar código de produção               |
+| `style`    | formatação, espaçamento, correções de Prettier/ESLint                |
+| `chore`    | ferramentas, dependências, config, scripts de build                  |
+| `perf`     | melhorias de performance                                             |
 
 **Breaking changes** (mudanças de schema/formato de dado que exigem migração): adicionar `!` depois do tipo/escopo, ex. `feat(pessoas)!: add sixth PAPEIS_PESSOA value`, e explicar a migração no corpo ou num rodapé `BREAKING CHANGE:`.
 

@@ -5,6 +5,7 @@ import {
     separarTextos,
     temTextoAntesDoPrimeiroTitulo,
     montarPayloadDeTexto,
+    montarPacote,
 } from '../js/pacote-texto.js';
 import { classificarImportacaoAditiva, aplicarImportacaoAditiva } from '../js/importar-aditivo.js';
 import * as script from '../scripts/montar-pacote.js';
@@ -236,5 +237,26 @@ describe('montarPayloadDeTexto: tipo (Poema ou Prosa)', () => {
 
         const comoPoema = classificarImportacaoAditiva(montarPayloadDeTexto(CAMPOS), db);
         assert.equal(comoPoema.resumo.ambiguos, 1);
+    });
+});
+
+describe('montarPacote: idioma', () => {
+    const md = '# Um\n\ntexto\n\n# Dois\n\ntexto\n';
+    const meta = { id: 'x', autor: { nome: 'X' } };
+
+    it('sem idioma no meta, tudo continua pt-BR', () => {
+        const p = montarPacote(md, meta);
+        assert.deepEqual(
+            p.itens.map((i) => i.idioma),
+            ['pt-BR', 'pt-BR'],
+        );
+    });
+
+    it('meta.idioma vale pro pacote todo e textos[título].idioma sobrescreve', () => {
+        const p = montarPacote(md, { ...meta, idioma: 'fr', textos: { Dois: { idioma: 'en' } } });
+        assert.deepEqual(
+            p.itens.map((i) => i.idioma),
+            ['fr', 'en'],
+        );
     });
 });

@@ -150,8 +150,8 @@
                         >
                     </h1>
                     <p class="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
-                        Busca um trecho em Poemas e/ou Prosas, mostra as ocorrências antes/depois
-                        e só aplica no que você confirmar.
+                        Busca um trecho em Poemas e/ou Prosas, mostra as ocorrências antes/depois e
+                        só aplica no que você confirmar.
                     </p>
                 </div>
                 <div class="flex items-center gap-3">
@@ -192,7 +192,8 @@
 
                 <div class="grid sm:grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label class="form-label text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
+                        <label
+                            class="form-label text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
                             >Buscar por</label
                         >
                         <input
@@ -203,7 +204,8 @@
                         />
                     </div>
                     <div>
-                        <label class="form-label text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
+                        <label
+                            class="form-label text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
                             >Substituir por
                             <span class="font-normal normal-case text-gray-400"
                                 >(deixe vazio pra remover o trecho)</span
@@ -226,7 +228,8 @@
                 </div>
 
                 <div class="mb-5">
-                    <label class="form-label text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2 block"
+                    <label
+                        class="form-label text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2 block"
                         >Escopo</label
                     >
                     <div class="flex flex-wrap gap-4 text-sm">
@@ -246,7 +249,8 @@
                 <div class="grid sm:grid-cols-2 gap-6 mb-5">
                     <div id="grupo-campos-poema">
                         <div class="flex items-center justify-between mb-2">
-                            <label class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
+                            <label
+                                class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
                                 >Campos em Poemas</label
                             >
                             <div class="text-[10px] flex gap-2">
@@ -273,7 +277,8 @@
                     </div>
                     <div id="grupo-campos-prosa">
                         <div class="flex items-center justify-between mb-2">
-                            <label class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
+                            <label
+                                class="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide"
                                 >Campos em Prosas</label
                             >
                             <div class="text-[10px] flex gap-2">
@@ -318,10 +323,16 @@
             <section id="sec-resultados" class="card p-6 mb-6 hidden">
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
                     <h2 class="font-semibold text-lg">2. Ocorrências encontradas</h2>
-                    <div id="resumo-resultados" class="text-sm text-gray-500 dark:text-slate-400"></div>
+                    <div
+                        id="resumo-resultados"
+                        class="text-sm text-gray-500 dark:text-slate-400"
+                    ></div>
                 </div>
 
-                <div id="sem-resultados" class="hidden text-sm text-gray-500 dark:text-slate-400 py-6 text-center">
+                <div
+                    id="sem-resultados"
+                    class="hidden text-sm text-gray-500 dark:text-slate-400 py-6 text-center"
+                >
                     Nenhuma ocorrência encontrada com esses critérios.
                 </div>
 
@@ -346,7 +357,9 @@
                     <div class="overflow-x-auto -mx-2">
                         <table class="w-full text-sm" id="tabela-resultados">
                             <thead>
-                                <tr class="text-left text-[10px] uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                                <tr
+                                    class="text-left text-[10px] uppercase tracking-wide text-gray-400 dark:text-slate-500"
+                                >
                                     <th class="px-2 py-2 w-8"></th>
                                     <th class="px-2 py-2">Item</th>
                                     <th class="px-2 py-2">Campo</th>
@@ -359,7 +372,9 @@
                         </table>
                     </div>
 
-                    <div class="flex items-center gap-3 mt-5 pt-4 border-t border-gray-200 dark:border-slate-700">
+                    <div
+                        class="flex items-center gap-3 mt-5 pt-4 border-t border-gray-200 dark:border-slate-700"
+                    >
                         <button
                             onclick="aplicarSelecionadas()"
                             class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-md font-semibold text-sm"
@@ -409,7 +424,11 @@
             // a ordenação e o tratamento de erro de quota que já existem lá.
             let db = null;
             let salvarDb = null;
-            let escapeHtml = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+            let escapeHtml = (s) =>
+                String(s ?? '').replace(
+                    /[&<>"]/g,
+                    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+                );
             let mostrarAviso = (msg) => alert(msg);
             let getUltimoBackup = () => null;
 
@@ -562,10 +581,14 @@
                     const ini = Math.max(0, pos - CONTEXTO_CHARS);
                     const fim = Math.min(texto.length, pos + termoLen + CONTEXTO_CHARS);
                     const prefixo = (ini > 0 ? '…' : '') + escapeHtml(texto.slice(ini, pos));
-                    const sufixo = escapeHtml(texto.slice(pos + termoLen, fim)) + (fim < texto.length ? '…' : '');
+                    const sufixo =
+                        escapeHtml(texto.slice(pos + termoLen, fim)) +
+                        (fim < texto.length ? '…' : '');
                     const trechoOriginal = escapeHtml(texto.slice(pos, pos + termoLen));
 
-                    partesAntes.push(`${prefixo}<mark class="diff-old">${trechoOriginal}</mark>${sufixo}`);
+                    partesAntes.push(
+                        `${prefixo}<mark class="diff-old">${trechoOriginal}</mark>${sufixo}`,
+                    );
 
                     const trechoNovo = novoTermo
                         ? `<mark class="diff-new">${escapeHtml(novoTermo)}</mark>`
@@ -573,10 +596,19 @@
                     partesDepois.push(`${prefixo}${trechoNovo}${sufixo}`);
                 });
                 const resto = posicoes.length - mostrar.length;
-                const nota = resto > 0 ? ` <span class="text-gray-400">(+${resto} ocorrência${resto > 1 ? 's' : ''})</span>` : '';
+                const nota =
+                    resto > 0
+                        ? ` <span class="text-gray-400">(+${resto} ocorrência${resto > 1 ? 's' : ''})</span>`
+                        : '';
                 return {
-                    antes: partesAntes.join(' <span class="text-gray-300 dark:text-slate-600">/</span> ') + nota,
-                    depois: partesDepois.join(' <span class="text-gray-300 dark:text-slate-600">/</span> ') + nota,
+                    antes:
+                        partesAntes.join(
+                            ' <span class="text-gray-300 dark:text-slate-600">/</span> ',
+                        ) + nota,
+                    depois:
+                        partesDepois.join(
+                            ' <span class="text-gray-300 dark:text-slate-600">/</span> ',
+                        ) + nota,
                 };
             }
 
@@ -596,19 +628,32 @@
                     return;
                 }
 
-                const camposPoemaSelecionados = escopo === 'prosas'
-                    ? []
-                    : Array.from(document.querySelectorAll('#grupo-campos-poema .chk-campo:checked')).map((c) => c.value);
-                const camposProsaSelecionados = escopo === 'poemas'
-                    ? []
-                    : Array.from(document.querySelectorAll('#grupo-campos-prosa .chk-campo:checked')).map((c) => c.value);
+                const camposPoemaSelecionados =
+                    escopo === 'prosas'
+                        ? []
+                        : Array.from(
+                              document.querySelectorAll('#grupo-campos-poema .chk-campo:checked'),
+                          ).map((c) => c.value);
+                const camposProsaSelecionados =
+                    escopo === 'poemas'
+                        ? []
+                        : Array.from(
+                              document.querySelectorAll('#grupo-campos-prosa .chk-campo:checked'),
+                          ).map((c) => c.value);
 
                 if (camposPoemaSelecionados.length === 0 && camposProsaSelecionados.length === 0) {
                     mostrarAviso('Selecione pelo menos um campo para buscar.');
                     return;
                 }
 
-                ultimaBusca = { termo, novoTermo, caseSensitive, escopo, camposPoemaSelecionados, camposProsaSelecionados };
+                ultimaBusca = {
+                    termo,
+                    novoTermo,
+                    caseSensitive,
+                    escopo,
+                    camposPoemaSelecionados,
+                    camposProsaSelecionados,
+                };
 
                 const resultados = [];
                 const varrer = (colecao, tipo, campos, labelPorKey) => {
@@ -618,7 +663,12 @@
                             if (typeof valor !== 'string' || !valor) return;
                             const posicoes = encontrarPosicoes(valor, termo, caseSensitive);
                             if (posicoes.length === 0) return;
-                            const { antes, depois } = gerarSnippets(valor, posicoes, termo.length, novoTermo);
+                            const { antes, depois } = gerarSnippets(
+                                valor,
+                                posicoes,
+                                termo.length,
+                                novoTermo,
+                            );
                             resultados.push({
                                 chave: `${tipo}:${item.id}:${campoKey}`,
                                 tipo,
@@ -637,8 +687,10 @@
                 const labelPoema = Object.fromEntries(CAMPOS_POEMA.map((c) => [c.key, c.label]));
                 const labelProsa = Object.fromEntries(CAMPOS_PROSA.map((c) => [c.key, c.label]));
 
-                if (camposPoemaSelecionados.length) varrer(db.poemas, 'poema', camposPoemaSelecionados, labelPoema);
-                if (camposProsaSelecionados.length) varrer(db.prosas, 'prosa', camposProsaSelecionados, labelProsa);
+                if (camposPoemaSelecionados.length)
+                    varrer(db.poemas, 'poema', camposPoemaSelecionados, labelPoema);
+                if (camposProsaSelecionados.length)
+                    varrer(db.prosas, 'prosa', camposProsaSelecionados, labelProsa);
 
                 resultadosAtuais = resultados;
                 renderizarResultados();
@@ -698,7 +750,9 @@
             window.aplicarSelecionadas = async function () {
                 await pronto;
                 const chavesSelecionadas = new Set(
-                    Array.from(document.querySelectorAll('.chk-linha:checked')).map((c) => c.dataset.chave),
+                    Array.from(document.querySelectorAll('.chk-linha:checked')).map(
+                        (c) => c.dataset.chave,
+                    ),
                 );
                 if (chavesSelecionadas.size === 0) {
                     mostrarAviso('Marque ao menos uma linha para aplicar.');
@@ -718,14 +772,20 @@
                     const colecao = r.tipo === 'poema' ? db.poemas : db.prosas;
                     const item = colecao.find((x) => x.id == r.id);
                     if (!item || typeof item[r.campoKey] !== 'string') return;
-                    item[r.campoKey] = substituirLiteral(item[r.campoKey], termo, novoTermo, caseSensitive);
+                    item[r.campoKey] = substituirLiteral(
+                        item[r.campoKey],
+                        termo,
+                        novoTermo,
+                        caseSensitive,
+                    );
                     ocorrenciasAplicadas += r.count;
                 });
 
                 salvarDb();
 
                 const status = document.getElementById('status-aplicacao');
-                status.className = 'text-sm rounded-lg px-4 py-3 mb-6 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900';
+                status.className =
+                    'text-sm rounded-lg px-4 py-3 mb-6 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900';
                 status.textContent = `✓ ${ocorrenciasAplicadas} ocorrência${ocorrenciasAplicadas > 1 ? 's' : ''} substituída${ocorrenciasAplicadas > 1 ? 's' : ''} em ${linhas.length} campo${linhas.length > 1 ? 's' : ''}. Se o app principal estiver aberto em outra aba, atualize-o pra ver os dados novos.`;
                 status.classList.remove('hidden');
 

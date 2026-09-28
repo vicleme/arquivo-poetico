@@ -80,111 +80,125 @@
                         </div>
                     </div>
 
-                    <div
-                        class="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-3"
-                    >
-                        <div>
-                            <div class="flex items-center justify-between">
-                                <label class="form-label mb-2">Data de Escrita</label>
-                                <label
-                                    class="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400 cursor-pointer mb-2 whitespace-nowrap"
-                                    title="Marque quando tiver certeza de que foi exatamente nessa data. Deixe desmarcado quando for uma estimativa (ex.: metadado de arquivo, ou data reconstruída pelo contexto)."
-                                >
-                                    <input type="checkbox" id="pr-data-esc-exata" />
-                                    Data exata
-                                </label>
+                    <details class="campo-grupo">
+                        <summary>
+                            Datas
+                            <span class="campo-grupo-dica"
+                                >(data de escrita, data de primeira publicação)</span
+                            >
+                        </summary>
+                        <div class="campo-grupo-corpo">
+                            <div
+                                class="grid grid-cols-1 md:grid-cols-2 gap-3 divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-700"
+                            >
+                                <div>
+                                    <div class="flex items-center justify-between">
+                                        <label class="form-label mb-2">Data de Escrita</label>
+                                        <label
+                                            class="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-400 cursor-pointer mb-2 whitespace-nowrap"
+                                            title="Marque quando tiver certeza de que foi exatamente nessa data. Deixe desmarcado quando for uma estimativa (ex.: metadado de arquivo, ou data reconstruída pelo contexto)."
+                                        >
+                                            <input type="checkbox" id="pr-data-esc-exata" />
+                                            Data exata
+                                        </label>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-1">
+                                        <input
+                                            type="number"
+                                            id="pr-data-esc-dia"
+                                            placeholder="Dia"
+                                            min="1"
+                                            max="31"
+                                            title="Dia"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="pr-data-esc-mes"
+                                            placeholder="Mês"
+                                            min="1"
+                                            max="12"
+                                            title="Mês"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="pr-data-esc-ano"
+                                            placeholder="Ano"
+                                            min="1"
+                                            max="2100"
+                                            title="Ano"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="pr-data-esc-hora"
+                                            placeholder="Hora"
+                                            min="0"
+                                            max="23"
+                                            title="Hora"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="pr-data-esc-minuto"
+                                            placeholder="Min"
+                                            min="0"
+                                            max="59"
+                                            title="Minuto"
+                                        />
+                                    </div>
+                                </div>
+                                <div class="pt-3 md:pt-0 md:pl-3">
+                                    <label class="form-label mb-2"
+                                        >Data de Primeira Publicação</label
+                                    >
+                                    <div class="grid grid-cols-3 gap-1">
+                                        <input
+                                            type="number"
+                                            id="pr-data-pub-dia"
+                                            placeholder="Dia"
+                                            min="1"
+                                            max="31"
+                                            title="Dia"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="pr-data-pub-mes"
+                                            placeholder="Mês"
+                                            min="1"
+                                            max="12"
+                                            title="Mês"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="pr-data-pub-ano"
+                                            placeholder="Ano"
+                                            min="1"
+                                            max="2100"
+                                            title="Ano"
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                            <div class="grid grid-cols-3 gap-1">
-                                <input
-                                    type="number"
-                                    id="pr-data-esc-dia"
-                                    placeholder="Dia"
-                                    min="1"
-                                    max="31"
-                                    title="Dia"
-                                />
-                                <input
-                                    type="number"
-                                    id="pr-data-esc-mes"
-                                    placeholder="Mês"
-                                    min="1"
-                                    max="12"
-                                    title="Mês"
-                                />
-                                <input
-                                    type="number"
-                                    id="pr-data-esc-ano"
-                                    placeholder="Ano"
-                                    min="1900"
-                                    max="2100"
-                                    title="Ano"
-                                />
-                                <input
-                                    type="number"
-                                    id="pr-data-esc-hora"
-                                    placeholder="Hora"
-                                    min="0"
-                                    max="23"
-                                    title="Hora"
-                                />
-                                <input
-                                    type="number"
-                                    id="pr-data-esc-minuto"
-                                    placeholder="Min"
-                                    min="0"
-                                    max="59"
-                                    title="Minuto"
-                                />
-                            </div>
+                            <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-3">
+                                Preencha só o que souber. O ano de publicação é sugerido
+                                automaticamente se o Destino pertencer a um livro já publicado.
+                            </p>
                         </div>
-                        <div>
-                            <label class="form-label mb-2">Data de Primeira Publicação</label>
-                            <div class="grid grid-cols-3 gap-1">
-                                <input
-                                    type="number"
-                                    id="pr-data-pub-dia"
-                                    placeholder="Dia"
-                                    min="1"
-                                    max="31"
-                                    title="Dia"
-                                />
-                                <input
-                                    type="number"
-                                    id="pr-data-pub-mes"
-                                    placeholder="Mês"
-                                    min="1"
-                                    max="12"
-                                    title="Mês"
-                                />
-                                <input
-                                    type="number"
-                                    id="pr-data-pub-ano"
-                                    placeholder="Ano"
-                                    min="1900"
-                                    max="2100"
-                                    title="Ano"
-                                />
-                            </div>
-                        </div>
-                        <p class="text-[10px] text-gray-400 dark:text-slate-500 md:col-span-2">
-                            Preencha só o que souber. O ano de publicação é sugerido automaticamente
-                            se o Destino pertencer a um livro já publicado.
-                        </p>
-                    </div>
+                    </details>
 
                     <details class="campo-grupo">
                         <summary>
-                            Época retratada e contexto
-                            <span class="campo-grupo-dica">(época retratada, contexto)</span>
+                            Época e Contexto
+                            <span class="campo-grupo-dica"
+                                >(época retratada, período histórico, contexto)</span
+                            >
                         </summary>
                         <div class="campo-grupo-corpo">
                             <div class="flex items-center justify-between mt-3">
                                 <label class="form-label mb-2"
-                                    >Época Retratada
+                                    >Período Biográfico Retratado
                                     <span
                                         class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                                        >(a que época a prosa se refere — não quando foi
-                                        escrita)</span
+                                        >(a que período da sua vida a prosa se refere — não quando
+                                        foi escrita)</span
                                     ></label
                                 >
                                 <label
@@ -239,7 +253,7 @@
                                             type="number"
                                             id="pr-epoca-ini-ano"
                                             placeholder="Ano"
-                                            min="1900"
+                                            min="1"
                                             max="2100"
                                             title="Ano"
                                         />
@@ -270,7 +284,7 @@
                                             type="number"
                                             id="pr-epoca-fim-ano"
                                             placeholder="Ano"
-                                            min="1900"
+                                            min="1"
                                             max="2100"
                                             title="Ano"
                                         />
@@ -292,11 +306,58 @@
                                 A prosa retrata o evento em si, ou o efeito dele depois?
                             </p>
 
-                            <label class="form-label mt-3">Contexto Histórico/Pessoal</label>
+                            <label class="form-label mt-3"
+                                >Período Histórico Retratado
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(o momento histórico, não pessoal, que a prosa retrata —
+                                    coexiste com a Época Retratada acima)</span
+                                ></label
+                            >
+                            <input
+                                type="text"
+                                id="pr-periodo-historico-nome"
+                                list="sugestoes-periodo-historico-nome-prosa"
+                                class="text-sm"
+                                placeholder="Nome do período histórico (opcional) — ex.: Ditadura Militar, Pandemia de Covid-19..."
+                            />
+                            <datalist id="sugestoes-periodo-historico-nome-prosa"></datalist>
+
+                            <label class="form-label mt-3"
+                                >Movimento/Escola
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(0 a N — um texto pode não se encaixar bem em nenhum, ou caber
+                                    em mais de um)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-movimento-escola-input"
+                                    list="sugestoes-movimentos-escolas-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome do movimento/escola..."
+                                />
+                                <datalist id="sugestoes-movimentos-escolas-prosa"></datalist>
+                                <button
+                                    type="button"
+                                    onclick="adicionarMovimentoEscolaDireto('prosas')"
+                                    class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="pr-movimentos-escolas-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+
+                            <label class="form-label mt-3">Inspiração</label>
                             <textarea
                                 id="pr-contexto"
                                 class="text-sm h-20"
-                                placeholder="O que inspirou o texto — acontecimentos, eventos, vida pessoal..."
+                                placeholder="O que inspirou o texto — um gatilho pontual, uma circunstância específica..."
                             ></textarea>
                         </div>
                     </details>
@@ -594,13 +655,15 @@
                                     específica dele)</span
                                 ></label
                             >
-                            <div class="flex gap-2 mb-2">
+                            <div class="relative flex gap-2 mb-2">
                                 <input
                                     type="text"
                                     id="pr-grupo-direto-input"
-                                    list="sugestoes-grupos-prosa"
                                     class="text-sm flex-1"
                                     placeholder="Nome do grupo..."
+                                    autocomplete="off"
+                                    oninput="abrirSugestoesGrupoDireto('prosas')"
+                                    onfocus="abrirSugestoesGrupoDireto('prosas')"
                                 />
                                 <button
                                     type="button"
@@ -609,12 +672,15 @@
                                 >
                                     +
                                 </button>
+                                <div
+                                    id="pr-grupo-direto-sugestoes"
+                                    class="hidden absolute z-10 top-full left-0 right-9 mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded shadow-lg py-1 max-h-52 overflow-y-auto"
+                                ></div>
                             </div>
                             <div
                                 id="pr-grupos-diretos-container"
                                 class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
                             ></div>
-                            <datalist id="sugestoes-grupos-prosa"></datalist>
 
                             <label class="form-label"
                                 >Envios
@@ -662,7 +728,7 @@
                                     type="number"
                                     id="pr-envio-ano"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                 />
@@ -731,7 +797,7 @@
                                     id="pr-reconhecimento-ano"
                                     class="text-sm w-24"
                                     placeholder="Ano"
-                                    min="1900"
+                                    min="1"
                                     max="2100"
                                     title="Ano"
                                 />

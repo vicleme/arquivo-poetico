@@ -1,17 +1,22 @@
 import './helpers/localstorage-shim.js';
 import './helpers/dom-shim.js';
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { db } from '../js/db.js';
 import {
     contarPorAno,
+    contarPorMesEscrita,
+    distribuicaoPorTrimestre,
+    sazonalidadePorAno,
     contarPorLivro,
     contarPorTema,
     contarPorPessoa,
     agregarPorPessoa,
+    agregarPessoaPorAno,
     palavrasMaisFrequentes,
+    resumoLinguagem,
     resumoGeral,
     filtrarPorIntervalo,
     filtrarOcultos,
@@ -31,6 +36,16 @@ import {
     getOcultosGrafico,
     toggleOcultoItem,
     restaurarOcultosGrafico,
+    getFiltrosCompartilhados,
+    definirFiltrosCompartilhados,
+    limparFiltrosCompartilhados,
+    contarTextosFiltrados,
+    getModoColunasCoocorrencia,
+    definirModoColunasCoocorrencia,
+    getTemasColunasSelecionados,
+    toggleTemaColunaCoocorrencia,
+    selecionarTodosTemasColunas,
+    limparTemasColunas,
 } from '../js/estatisticas.js';
 
 function resetarDb() {
@@ -76,6 +91,57 @@ describe('contarPorAno', () => {
     it('ano como string numérica é convertido corretamente', () => {
         db.poemas = [{ ano: '2020' }, { ano: '2020' }];
         assert.deepEqual(contarPorAno(), { labels: ['2020'], data: [2] });
+    });
+});
+
+// ─── sazonalidade da escrita ───────────────────────────────────
+
+describe('sazonalidade da escrita', () => {
+    beforeEach(resetarDb);
+
+    it('conta textos por mês usando dataEscrita.mes', () => {
+        db.poemas = [
+            { dataEscrita: { ano: 2024, mes: 1 } },
+            { dataEscrita: { ano: 2024, mes: 1 } },
+            { dataEscrita: { ano: 2024, mes: 7 } },
+            { dataEscrita: { ano: 2024, mes: 12 } },
+            { dataEscrita: { ano: 2024 } },
+        ];
+        assert.deepEqual(contarPorMesEscrita().data, [2, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+    });
+
+    it('ignora mês ausente ou inválido', () => {
+        db.poemas = [
+            { dataEscrita: { ano: 2024, mes: 0 } },
+            { dataEscrita: { ano: 2024, mes: 13 } },
+            { dataEscrita: { ano: 2024 } },
+            { dataEscrita: { ano: 2024, mes: 2 } },
+        ];
+        assert.deepEqual(contarPorMesEscrita().data, [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    });
+
+    it('agrega por ano e trimestre', () => {
+        db.poemas = [
+            { dataEscrita: { ano: 2024, mes: 1 } },
+            { dataEscrita: { ano: 2024, mes: 2 } },
+            { dataEscrita: { ano: 2024, mes: 7 } },
+            { dataEscrita: { ano: 2024, mes: 12 } },
+        ];
+        assert.deepEqual(sazonalidadePorAno(), [
+            {
+                ano: 2024,
+                total: 4,
+                meses: [1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+                trimestres: [2, 0, 1, 1],
+                percentuais: [50, 0, 25, 25],
+            },
+        ]);
+        assert.deepEqual(distribuicaoPorTrimestre(), {
+            labels: ['1º trimestre', '2º trimestre', '3º trimestre', '4º trimestre'],
+            data: [2, 0, 1, 1],
+            percentuais: [50, 0, 25, 25],
+            total: 4,
+        });
     });
 });
 
@@ -313,6 +379,42 @@ describe('contarPorPessoa', () => {
             data: [1],
         });
     });
+
+    it('modo "grupo": subgrupo repica a contagem pro grupo pai (só nas Estatísticas)', () => {
+        db.grupos = [
+            { id: 10, nome: 'Família', paiId: null },
+            { id: 11, nome: 'Filhos', paiId: 10 },
+        ];
+        db.pessoas = [{ id: 1, nome: 'Dalton', grupoIds: [11] }];
+        db.poemas = [{ pessoas: [{ pessoaId: 1, papeis: [] }] }];
+        assert.deepEqual(contarPorPessoa(12, { modo: 'grupo' }), {
+            labels: ['Filhos', 'Família'],
+            data: [1, 1],
+        });
+    });
+
+    it('modo "pessoa" com `grupoIds` do grupo pai: inclui quem só está marcado no subgrupo', () => {
+        db.grupos = [
+            { id: 10, nome: 'Família', paiId: null },
+            { id: 11, nome: 'Filhos', paiId: 10 },
+        ];
+        db.pessoas = [
+            { id: 1, nome: 'Dalton', grupoIds: [11] },
+            { id: 2, nome: 'Dani', grupoIds: [20] },
+        ];
+        db.poemas = [
+            {
+                pessoas: [
+                    { pessoaId: 1, papeis: [] },
+                    { pessoaId: 2, papeis: [] },
+                ],
+            },
+        ];
+        assert.deepEqual(contarPorPessoa(12, { modo: 'pessoa', grupoIds: [10] }), {
+            labels: ['Dalton'],
+            data: [1],
+        });
+    });
 });
 
 describe('getModoGraficoPessoas / definirModoGraficoPessoas (preferência persistida)', () => {
@@ -408,6 +510,60 @@ describe('agregarPorPessoa (lista completa, sem corte de Top N)', () => {
         }));
         db.poemas = db.pessoas.map((p) => ({ pessoas: [{ pessoaId: p.id, papeis: [] }] }));
         assert.equal(agregarPorPessoa().labels.length, 15);
+    });
+});
+
+describe('agregarPessoaPorAno com filtro de grupo', () => {
+    beforeEach(resetarDb);
+
+    it('restringe a série temporal às pessoas pertencentes aos grupos selecionados', () => {
+        db.grupos = [
+            { id: 10, nome: 'Família' },
+            { id: 20, nome: 'Trabalho' },
+        ];
+        db.pessoas = [
+            { id: 1, nome: 'Dalton', grupoIds: [10] },
+            { id: 2, nome: 'Dani', grupoIds: [20] },
+        ];
+        db.poemas = [
+            { ano: 2020, pessoas: [{ pessoaId: 1, papeis: [] }] },
+            { ano: 2020, pessoas: [{ pessoaId: 2, papeis: [] }] },
+            { ano: 2021, pessoas: [{ pessoaId: 1, papeis: [] }] },
+        ];
+
+        assert.deepEqual(agregarPessoaPorAno('', [10]), { labels: ['2020', '2021'], data: [1, 1] });
+        assert.deepEqual(agregarPessoaPorAno('Dalton', [20]), { labels: [], data: [] });
+        assert.deepEqual(agregarPessoaPorAno('Dalton', [10]), {
+            labels: ['2020', '2021'],
+            data: [1, 1],
+        });
+    });
+
+    it('quando pessoa e grupo são selecionados, ambos precisam corresponder à mesma pessoa', () => {
+        db.grupos = [
+            { id: 10, nome: 'Família' },
+            { id: 20, nome: 'Trabalho' },
+        ];
+        db.pessoas = [
+            { id: 1, nome: 'Dalton', grupoIds: [10] },
+            { id: 2, nome: 'Dani', grupoIds: [20] },
+        ];
+        db.poemas = [
+            {
+                ano: 2020,
+                pessoas: [
+                    { pessoaId: 1, papeis: [] },
+                    { pessoaId: 2, papeis: [] },
+                ],
+            },
+            { ano: 2021, pessoas: [{ pessoaId: 1, papeis: [] }] },
+        ];
+
+        assert.deepEqual(agregarPessoaPorAno('Dalton', [20]), { labels: [], data: [] });
+        assert.deepEqual(agregarPessoaPorAno('Dalton', [10]), {
+            labels: ['2020', '2021'],
+            data: [1, 1],
+        });
     });
 });
 
@@ -530,6 +686,36 @@ describe('palavrasMaisFrequentes', () => {
 
 // ─── resumoGeral ─────────────────────────────────────────────────
 
+describe('resumoLinguagem', () => {
+    beforeEach(resetarDb);
+
+    it('conta textos e palavras no contexto atual', () => {
+        db.poemas = [
+            { id: 1, texto: 'Casa azul e mar', paiTipo: 'livro', paiId: 10 },
+            { id: 2, texto: 'Noite longa e clara', paiTipo: 'livro', paiId: 20 },
+        ];
+        db.livros = [
+            { id: 10, titulo: 'Livro A', tipo: 'Livro' },
+            { id: 20, titulo: 'Livro B', tipo: 'Livro' },
+        ];
+
+        assert.deepEqual(resumoLinguagem(), { textos: 2, palavras: 8 });
+        assert.deepEqual(resumoLinguagem(10), { textos: 1, palavras: 4 });
+        assert.deepEqual(resumoLinguagem(20), { textos: 1, palavras: 4 });
+    });
+
+    it('respeita os filtros compartilhados também quando uma obra é selecionada', () => {
+        db.poemas = [
+            { id: 1, texto: 'Casa azul', ano: 2020, paiTipo: 'livro', paiId: 10 },
+            { id: 2, texto: 'Noite clara', ano: 2024, paiTipo: 'livro', paiId: 10 },
+        ];
+        db.livros = [{ id: 10, titulo: 'Livro A', tipo: 'Livro' }];
+
+        definirFiltrosCompartilhados({ anoDe: '2024', anoAte: '2024' });
+        assert.deepEqual(resumoLinguagem(10), { textos: 1, palavras: 2 });
+    });
+});
+
 describe('resumoGeral', () => {
     beforeEach(resetarDb);
 
@@ -631,8 +817,18 @@ describe('textos de terceiros nas Estatísticas', () => {
         ];
     });
 
-    const meu = (extra = {}) => ({ ano: 2020, texto: 'um dois', autoria: [{ autorId: 1, papel: 'Autor' }], ...extra });
-    const alheio = (extra = {}) => ({ ano: 1912, texto: 'um dois três', autoria: [{ autorId: 2, papel: 'Autor' }], ...extra });
+    const meu = (extra = {}) => ({
+        ano: 2020,
+        texto: 'um dois',
+        autoria: [{ autorId: 1, papel: 'Autor' }],
+        ...extra,
+    });
+    const alheio = (extra = {}) => ({
+        ano: 1912,
+        texto: 'um dois três',
+        autoria: [{ autorId: 2, papel: 'Autor' }],
+        ...extra,
+    });
 
     it('separação fica inativa se nenhum Autor está marcado souEu', () => {
         db.autores = [{ id: 2, nome: 'Augusto dos Anjos' }];
@@ -653,7 +849,12 @@ describe('textos de terceiros nas Estatísticas', () => {
     });
 
     it('coautoria com você (ou tradução sua) conta como sua', () => {
-        const misto = { autoria: [{ autorId: 2, papel: 'Autor' }, { autorId: 1, papel: 'Coautor' }] };
+        const misto = {
+            autoria: [
+                { autorId: 2, papel: 'Autor' },
+                { autorId: 1, papel: 'Coautor' },
+            ],
+        };
         assert.equal(ehTextoDeTerceiros(misto), false);
     });
 
@@ -711,5 +912,318 @@ describe('textos de terceiros nas Estatísticas', () => {
         assert.equal(idx(contarPorLivro()), 2);
         definirIncluirTerceiros(true);
         assert.equal(idx(contarPorLivro()), 3);
+    });
+});
+
+describe('filtros compartilhados das Estatísticas', () => {
+    beforeEach(resetarDb);
+
+    it('começa em Meus textos, todos os tipos e sem período, aproveitando o modo legado', () => {
+        assert.deepEqual(getFiltrosCompartilhados(), {
+            corpus: 'meus',
+            tipo: 'todos',
+            anoDe: '',
+            anoAte: '',
+            autorId: '',
+        });
+    });
+
+    it('aplica corpus, tipo e período ao N de textos', () => {
+        db.autores = [
+            { id: 1, nome: 'Eu', souEu: true },
+            { id: 2, nome: 'Terceiro', souEu: false },
+        ];
+        db.poemas = [
+            { ano: 2020, texto: 'meu', autoria: [{ autorId: 1, papel: 'Autor' }] },
+            { ano: 2022, texto: 'meu', autoria: [{ autorId: 1, papel: 'Autor' }] },
+            { ano: 2021, texto: 'outro', autoria: [{ autorId: 2, papel: 'Autor' }] },
+        ];
+        db.prosas = [{ ano: 2022, texto: 'prosa', autoria: [{ autorId: 1, papel: 'Autor' }] }];
+
+        definirFiltrosCompartilhados({
+            corpus: 'tudo',
+            tipo: 'poemas',
+            anoDe: '2021',
+            anoAte: '2022',
+        });
+        assert.deepEqual(contarTextosFiltrados(), { poemas: 2, prosas: 0, total: 2 });
+    });
+
+    it('limpar filtros volta ao padrão compartilhado', () => {
+        definirFiltrosCompartilhados({
+            corpus: 'importadas',
+            tipo: 'prosas',
+            anoDe: '2000',
+            anoAte: '2001',
+        });
+        limparFiltrosCompartilhados();
+        assert.deepEqual(getFiltrosCompartilhados(), {
+            corpus: 'meus',
+            tipo: 'todos',
+            anoDe: '',
+            anoAte: '',
+            autorId: '',
+        });
+    });
+});
+
+// ─── Temas e pessoas: séries temporais / coocorrência ───────────
+
+describe('agregarTemaPorAno / agregarPessoaPorAno / coocorrenciaTemasPessoas', () => {
+    beforeEach(resetarDb);
+
+    it('agrega a presença de um tema por ano, respeitando dataEscrita', async () => {
+        db.poemas = [
+            { dataEscrita: { ano: 2020 }, sinalizacoesTema: 'mar, noite' },
+            { dataEscrita: { ano: 2020 }, sinalizacoesTema: 'noite' },
+            { dataEscrita: { ano: 2021 }, sinalizacoesTema: 'mar' },
+        ];
+        const { agregarTemaPorAno } = await import('../js/estatisticas-dados.js');
+        assert.deepEqual(agregarTemaPorAno('mar'), { labels: ['2020', '2021'], data: [1, 1] });
+    });
+
+    it('agrega a presença de uma pessoa por ano', async () => {
+        db.pessoas = [
+            { id: 1, nome: 'Ana' },
+            { id: 2, nome: 'Bia' },
+        ];
+        db.poemas = [
+            { dataEscrita: { ano: 2020 }, pessoas: [{ pessoaId: 1, papeis: [] }] },
+            { dataEscrita: { ano: 2020 }, pessoas: [{ pessoaId: 2, papeis: [] }] },
+            { dataEscrita: { ano: 2021 }, pessoas: [{ pessoaId: 1, papeis: [] }] },
+        ];
+        const { agregarPessoaPorAno } = await import('../js/estatisticas-dados.js');
+        assert.deepEqual(agregarPessoaPorAno('Ana'), { labels: ['2020', '2021'], data: [1, 1] });
+    });
+
+    it('conta coocorrência uma vez por texto, mesmo se houver duplicação nos campos', async () => {
+        db.pessoas = [{ id: 1, nome: 'Ana' }];
+        db.poemas = [
+            {
+                sinalizacoesTema: 'mar, mar',
+                pessoas: [
+                    { pessoaId: 1, papeis: [] },
+                    { pessoaId: 1, papeis: [] },
+                ],
+            },
+            { sinalizacoesTema: 'mar', pessoas: [{ pessoaId: 1, papeis: [] }] },
+        ];
+        const { coocorrenciaTemasPessoas } = await import('../js/estatisticas-dados.js');
+        assert.deepEqual(coocorrenciaTemasPessoas({ temas: ['mar'], pessoas: ['Ana'] }), {
+            pessoas: ['Ana'],
+            temas: ['mar'],
+            valores: [[2]],
+        });
+    });
+
+    it('calcula coocorrência Temas × grupos uma vez por grupo em cada texto', async () => {
+        db.grupos = [
+            { id: 10, nome: 'Amigos' },
+            { id: 20, nome: 'Família' },
+        ];
+        db.pessoas = [
+            { id: 1, nome: 'Ana', grupoIds: [10] },
+            { id: 2, nome: 'Bia', grupoIds: [10, 20] },
+        ];
+        db.poemas = [
+            {
+                sinalizacoesTema: 'mar',
+                pessoas: [
+                    { pessoaId: 1, papeis: [] },
+                    { pessoaId: 2, papeis: [] },
+                ],
+            },
+            { sinalizacoesTema: 'mar', pessoas: [{ pessoaId: 2, papeis: [] }] },
+        ];
+        const { coocorrenciaTemasGrupos } = await import('../js/estatisticas-dados.js');
+        assert.deepEqual(
+            coocorrenciaTemasGrupos({ temas: ['mar'], grupos: ['Amigos', 'Família'] }),
+            {
+                grupos: ['Amigos', 'Família'],
+                temas: ['mar'],
+                valores: [[2], [2]],
+            },
+        );
+    });
+
+    it('coocorrência Temas × grupos: subgrupo repica pro grupo pai (só nas Estatísticas)', async () => {
+        db.grupos = [
+            { id: 10, nome: 'Família', paiId: null },
+            { id: 11, nome: 'Filhos', paiId: 10 },
+        ];
+        db.pessoas = [{ id: 1, nome: 'Dalton', grupoIds: [11] }];
+        db.poemas = [{ sinalizacoesTema: 'mar', pessoas: [{ pessoaId: 1, papeis: [] }] }];
+        const { coocorrenciaTemasGrupos } = await import('../js/estatisticas-dados.js');
+        assert.deepEqual(coocorrenciaTemasGrupos({ temas: ['mar'], grupos: ['Filhos', 'Família'] }), {
+            grupos: ['Filhos', 'Família'],
+            temas: ['mar'],
+            valores: [[1], [1]],
+        });
+    });
+});
+
+// ─── Drill-down (estatisticas-tela-comum.js) ───────────────────────
+// Funções chamadas a partir do clique numa barra de gráfico. Não têm
+// import de tela (é DOM/Chart.js puro), mas a lógica de navegação em
+// si (qual aba abre, qual filtro é aplicado) é pura o bastante pra
+// testar com window/document simulados.
+
+describe('navegarParaLista', () => {
+    let navegarParaLista;
+    let chamadas;
+
+    beforeEach(async () => {
+        ({ navegarParaLista } = await import('../js/estatisticas-tela-comum.js'));
+        chamadas = [];
+        window.abrirAba = (...args) => chamadas.push(['abrirAba', ...args]);
+        window.setFiltroPoemas = (...args) => chamadas.push(['setFiltroPoemas', ...args]);
+        window.setFiltroProsas = (...args) => chamadas.push(['setFiltroProsas', ...args]);
+        window.setFiltroDataRapidoPoemasEscrita = (...args) =>
+            chamadas.push(['setFiltroDataRapidoPoemasEscrita', ...args]);
+        window.setFiltroDataRapidoProsasEscrita = (...args) =>
+            chamadas.push(['setFiltroDataRapidoProsasEscrita', ...args]);
+    });
+
+    it('com prefixo e sem ano: abre Poemas e aplica só o filtro de texto', () => {
+        navegarParaLista('tema:', 'Amor', 'poema');
+        assert.deepEqual(chamadas, [
+            ['abrirAba', 'poemas'],
+            ['setFiltroPoemas', 'tema:Amor'],
+        ]);
+    });
+
+    it('tipo "prosa": abre Prosas em vez de Poemas', () => {
+        navegarParaLista('pessoa:', 'Ana', 'prosa');
+        assert.deepEqual(chamadas, [
+            ['abrirAba', 'prosas'],
+            ['setFiltroProsas', 'pessoa:Ana'],
+        ]);
+    });
+
+    it('sem prefixo (drill-down só por ano): não mexe no filtro de texto', () => {
+        navegarParaLista('', '', 'poema', '2020');
+        assert.deepEqual(chamadas, [
+            ['abrirAba', 'poemas'],
+            ['setFiltroDataRapidoPoemasEscrita', '2020'],
+        ]);
+    });
+
+    it('sem prefixo, tipo prosa: usa o atalho de data de Prosas, não o de Poemas', () => {
+        navegarParaLista('', '', 'prosa', '2019');
+        assert.deepEqual(chamadas, [
+            ['abrirAba', 'prosas'],
+            ['setFiltroDataRapidoProsasEscrita', '2019'],
+        ]);
+        assert.equal(
+            chamadas.some((c) => c[0] === 'setFiltroDataRapidoPoemasEscrita'),
+            false,
+        );
+    });
+
+    it('com prefixo e ano juntos: aplica os dois filtros', () => {
+        navegarParaLista('livro:', 'Cidade Cinza', 'poema', '2021');
+        assert.deepEqual(chamadas, [
+            ['abrirAba', 'poemas'],
+            ['setFiltroPoemas', 'livro:Cidade Cinza'],
+            ['setFiltroDataRapidoPoemasEscrita', '2021'],
+        ]);
+    });
+});
+
+describe('tipoDestino', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    it('retorna "poema" para o padrão e para "todos"', async () => {
+        const { tipoDestino } = await import('../js/estatisticas-tela-comum.js');
+        assert.equal(tipoDestino(), 'poema');
+        definirFiltrosCompartilhados({ tipo: 'poemas' });
+        assert.equal(tipoDestino(), 'poema');
+    });
+
+    it('retorna "prosa" quando o filtro de Tipo compartilhado é "prosas"', async () => {
+        const { tipoDestino } = await import('../js/estatisticas-tela-comum.js');
+        definirFiltrosCompartilhados({ tipo: 'prosas' });
+        assert.equal(tipoDestino(), 'prosa');
+    });
+});
+
+describe('bindDrillDownBarra', () => {
+    let bindDrillDownBarra;
+    let canvasFalso;
+    let elementoAnterior;
+
+    beforeEach(async () => {
+        ({ bindDrillDownBarra } = await import('../js/estatisticas-tela-comum.js'));
+        canvasFalso = { onclick: null };
+        elementoAnterior = document.getElementById;
+        document.getElementById = (id) => (id === 'grafico-teste' ? canvasFalso : null);
+        global.Chart = {
+            getChart: () => ({
+                data: { labels: ['Amor', 'Morte', 'Mar'] },
+                getElementsAtEventForMode: () => [{ index: 1 }],
+            }),
+        };
+    });
+
+    afterEach(() => {
+        document.getElementById = elementoAnterior;
+        delete global.Chart;
+    });
+
+    it('chama o callback com o label da barra clicada', () => {
+        let recebido = null;
+        bindDrillDownBarra('grafico-teste', (label) => {
+            recebido = label;
+        });
+        assert.equal(typeof canvasFalso.onclick, 'function');
+        canvasFalso.onclick({});
+        assert.equal(recebido, 'Morte');
+    });
+
+    it('não chama o callback quando não há ponto clicado (fora de uma barra)', () => {
+        global.Chart.getChart = () => ({
+            data: { labels: ['Amor'] },
+            getElementsAtEventForMode: () => [],
+        });
+        let chamado = false;
+        bindDrillDownBarra('grafico-teste', () => {
+            chamado = true;
+        });
+        canvasFalso.onclick({});
+        assert.equal(chamado, false);
+    });
+
+    it('não quebra quando o canvas não existe na tela', () => {
+        document.getElementById = () => null;
+        assert.doesNotThrow(() => bindDrillDownBarra('grafico-inexistente', () => {}));
+    });
+});
+
+describe('colunas da matriz de coocorrência', () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    it('começa exibindo todos os temas', () => {
+        assert.equal(getModoColunasCoocorrencia(), 'todos');
+        assert.deepEqual(getTemasColunasSelecionados(), []);
+    });
+
+    it('persiste o modo de seleção e os temas escolhidos', () => {
+        definirModoColunasCoocorrencia('selecionar');
+        toggleTemaColunaCoocorrencia('Amor', true);
+        toggleTemaColunaCoocorrencia('Morte', true);
+        toggleTemaColunaCoocorrencia('Amor', false);
+        assert.equal(getModoColunasCoocorrencia(), 'selecionar');
+        assert.deepEqual(getTemasColunasSelecionados(), ['Morte']);
+    });
+
+    it('selecionar todos e limpar seleção alteram apenas a lista de temas visíveis', () => {
+        selecionarTodosTemasColunas(['Amor', 'Morte', 'Cidade']);
+        assert.deepEqual(getTemasColunasSelecionados(), ['Amor', 'Morte', 'Cidade']);
+        limparTemasColunas();
+        assert.deepEqual(getTemasColunasSelecionados(), []);
     });
 });

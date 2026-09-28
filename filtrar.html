@@ -406,7 +406,8 @@
                     <p class="text-sm text-gray-500 dark:text-slate-400 mb-4">
                         <strong>JSON</strong> é uma cópia do backup original com os textos
                         substituídos pelas versões filtradas cadastradas acima — o único formato
-                        reimportável de volta no Arquivo Poético. <strong>Markdown/.docx/.pdf</strong>
+                        reimportável de volta no Arquivo Poético.
+                        <strong>Markdown/.docx/.pdf</strong>
                         geram um documento de leitura (título, texto e nota de cada item), a partir
                         da lista de poemas/prosas carregada. Textos sem versão filtrada são mantidos
                         como estão.
@@ -1284,7 +1285,9 @@
             function temTagSensivel(item) {
                 const sinais = sinalizacoesDe(item);
                 return (
-                    tagsFiltro.some((tag) => sinais.some((s) => s.toLowerCase() === tag.toLowerCase())) ||
+                    tagsFiltro.some((tag) =>
+                        sinais.some((s) => s.toLowerCase() === tag.toLowerCase()),
+                    ) ||
                     temConteudoSensivelPreenchido(item) ||
                     temVocabularioHiperacionantePreenchido(item)
                 );
@@ -1393,123 +1396,121 @@
                     const parsed = JSON.parse(jsonTexto);
                     arquivoOriginal = parsed; // preserva a árvore exatamente como veio, pra exportação respeitar a estrutura
 
-                        if (Array.isArray(parsed.itens)) {
-                            // Formato da "Exportação filtrada" (aba Exportar → por pessoa/tema/ano/status):
-                            // { itens: [{tipo:'poema'|'prosa', ..., contexto:{livro,parte,secao}}], coletaneas: [...] }
-                            // Não tem db.livros/partes/secoes — cada item já vem com o contexto resolvido,
-                            // então nomeLivro() abaixo usa item.contexto em vez de paiTipo/paiId.
-                            db = {
-                                poemas: parsed.itens.filter((i) => i.tipo === 'poema'),
-                                prosas: parsed.itens.filter((i) => i.tipo === 'prosa'),
-                                livros: [],
-                                partes: [],
-                                secoes: [],
-                                elementos: [],
-                                itensColetanea: [],
-                                coletaneas: [],
-                            };
-                            if (!db.poemas.length && !db.prosas.length)
-                                throw new Error('Estrutura inesperada');
+                    if (Array.isArray(parsed.itens)) {
+                        // Formato da "Exportação filtrada" (aba Exportar → por pessoa/tema/ano/status):
+                        // { itens: [{tipo:'poema'|'prosa', ..., contexto:{livro,parte,secao}}], coletaneas: [...] }
+                        // Não tem db.livros/partes/secoes — cada item já vem com o contexto resolvido,
+                        // então nomeLivro() abaixo usa item.contexto em vez de paiTipo/paiId.
+                        db = {
+                            poemas: parsed.itens.filter((i) => i.tipo === 'poema'),
+                            prosas: parsed.itens.filter((i) => i.tipo === 'prosa'),
+                            livros: [],
+                            partes: [],
+                            secoes: [],
+                            elementos: [],
+                            itensColetanea: [],
+                            coletaneas: [],
+                        };
+                        if (!db.poemas.length && !db.prosas.length)
+                            throw new Error('Estrutura inesperada');
 
-                            const avisoColetaneas = (parsed.coletaneas || []).length
-                                ? ` (${parsed.coletaneas.length} coletânea(s) do arquivo não entram aqui — itens de coletânea não têm sinalizações próprias para filtrar)`
-                                : '';
-                            mostrarStatus(
-                                `✓ Carregado (exportação filtrada): ${db.poemas.length} poemas, ${db.prosas.length} prosas${avisoColetaneas}`,
-                                'ok',
-                            );
-                        } else if (
-                            parsed.export_format === 'deep_nesting' ||
-                            Array.isArray(parsed.data)
-                        ) {
-                            // Formato de exportarTudoAninhado():
-                            // { export_format:'deep_nesting', data:[livros...], avulsos:{poemas,prosas}, coletaneas:[...] }
-                            const poemasOut = [],
-                                prosasOut = [];
-                            (parsed.data || []).forEach((l) =>
-                                flattenLivroAninhado(l, poemasOut, prosasOut),
-                            );
-                            const semContexto = { livro: null, parte: null, secao: null };
-                            (parsed.avulsos?.poemas || []).forEach((p) =>
-                                poemasOut.push({ ...p, contexto: semContexto }),
-                            );
-                            (parsed.avulsos?.prosas || []).forEach((p) =>
-                                prosasOut.push({ ...p, contexto: semContexto }),
-                            );
+                        const avisoColetaneas = (parsed.coletaneas || []).length
+                            ? ` (${parsed.coletaneas.length} coletânea(s) do arquivo não entram aqui — itens de coletânea não têm sinalizações próprias para filtrar)`
+                            : '';
+                        mostrarStatus(
+                            `✓ Carregado (exportação filtrada): ${db.poemas.length} poemas, ${db.prosas.length} prosas${avisoColetaneas}`,
+                            'ok',
+                        );
+                    } else if (
+                        parsed.export_format === 'deep_nesting' ||
+                        Array.isArray(parsed.data)
+                    ) {
+                        // Formato de exportarTudoAninhado():
+                        // { export_format:'deep_nesting', data:[livros...], avulsos:{poemas,prosas}, coletaneas:[...] }
+                        const poemasOut = [],
+                            prosasOut = [];
+                        (parsed.data || []).forEach((l) =>
+                            flattenLivroAninhado(l, poemasOut, prosasOut),
+                        );
+                        const semContexto = { livro: null, parte: null, secao: null };
+                        (parsed.avulsos?.poemas || []).forEach((p) =>
+                            poemasOut.push({ ...p, contexto: semContexto }),
+                        );
+                        (parsed.avulsos?.prosas || []).forEach((p) =>
+                            prosasOut.push({ ...p, contexto: semContexto }),
+                        );
 
-                            db = {
-                                poemas: poemasOut,
-                                prosas: prosasOut,
-                                livros: [],
-                                partes: [],
-                                secoes: [],
-                                elementos: [],
-                                itensColetanea: [],
-                                coletaneas: [],
-                            };
-                            if (!db.poemas.length && !db.prosas.length)
-                                throw new Error('Estrutura inesperada');
-                            mostrarStatus(
-                                `✓ Carregado (exportação aninhada): ${db.poemas.length} poemas, ${db.prosas.length} prosas`,
-                                'ok',
-                            );
-                        } else if (
-                            Array.isArray(parsed.livros) &&
-                            parsed.livros.some(pareceLivroAninhado)
-                        ) {
-                            // Formato de exportarLivrosCompletos(): { livros: [ <livro aninhado>, ... ] }
-                            const poemasOut = [],
-                                prosasOut = [];
-                            parsed.livros.forEach((l) =>
-                                flattenLivroAninhado(l, poemasOut, prosasOut),
-                            );
+                        db = {
+                            poemas: poemasOut,
+                            prosas: prosasOut,
+                            livros: [],
+                            partes: [],
+                            secoes: [],
+                            elementos: [],
+                            itensColetanea: [],
+                            coletaneas: [],
+                        };
+                        if (!db.poemas.length && !db.prosas.length)
+                            throw new Error('Estrutura inesperada');
+                        mostrarStatus(
+                            `✓ Carregado (exportação aninhada): ${db.poemas.length} poemas, ${db.prosas.length} prosas`,
+                            'ok',
+                        );
+                    } else if (
+                        Array.isArray(parsed.livros) &&
+                        parsed.livros.some(pareceLivroAninhado)
+                    ) {
+                        // Formato de exportarLivrosCompletos(): { livros: [ <livro aninhado>, ... ] }
+                        const poemasOut = [],
+                            prosasOut = [];
+                        parsed.livros.forEach((l) => flattenLivroAninhado(l, poemasOut, prosasOut));
 
-                            db = {
-                                poemas: poemasOut,
-                                prosas: prosasOut,
-                                livros: [],
-                                partes: [],
-                                secoes: [],
-                                elementos: [],
-                                itensColetanea: [],
-                                coletaneas: [],
-                            };
-                            if (!db.poemas.length && !db.prosas.length)
-                                throw new Error('Estrutura inesperada');
-                            mostrarStatus(
-                                `✓ Carregado (${parsed.livros.length} livro(s) completo(s)): ${db.poemas.length} poemas, ${db.prosas.length} prosas`,
-                                'ok',
-                            );
-                        } else if (pareceLivroAninhado(parsed)) {
-                            // Formato de exportarLivroCompleto(): o próprio livro aninhado, sem wrapper
-                            const poemasOut = [],
-                                prosasOut = [];
-                            flattenLivroAninhado(parsed, poemasOut, prosasOut);
+                        db = {
+                            poemas: poemasOut,
+                            prosas: prosasOut,
+                            livros: [],
+                            partes: [],
+                            secoes: [],
+                            elementos: [],
+                            itensColetanea: [],
+                            coletaneas: [],
+                        };
+                        if (!db.poemas.length && !db.prosas.length)
+                            throw new Error('Estrutura inesperada');
+                        mostrarStatus(
+                            `✓ Carregado (${parsed.livros.length} livro(s) completo(s)): ${db.poemas.length} poemas, ${db.prosas.length} prosas`,
+                            'ok',
+                        );
+                    } else if (pareceLivroAninhado(parsed)) {
+                        // Formato de exportarLivroCompleto(): o próprio livro aninhado, sem wrapper
+                        const poemasOut = [],
+                            prosasOut = [];
+                        flattenLivroAninhado(parsed, poemasOut, prosasOut);
 
-                            db = {
-                                poemas: poemasOut,
-                                prosas: prosasOut,
-                                livros: [],
-                                partes: [],
-                                secoes: [],
-                                elementos: [],
-                                itensColetanea: [],
-                                coletaneas: [],
-                            };
-                            if (!db.poemas.length && !db.prosas.length)
-                                throw new Error('Estrutura inesperada');
-                            mostrarStatus(
-                                `✓ Carregado (livro completo "${parsed.titulo || '—'}"): ${db.poemas.length} poemas, ${db.prosas.length} prosas`,
-                                'ok',
-                            );
-                        } else {
-                            db = parsed;
-                            if (!db.poemas && !db.prosas) throw new Error('Estrutura inesperada');
-                            mostrarStatus(
-                                `✓ Carregado: ${(db.poemas || []).length} poemas, ${(db.prosas || []).length} prosas`,
-                                'ok',
-                            );
-                        }
+                        db = {
+                            poemas: poemasOut,
+                            prosas: prosasOut,
+                            livros: [],
+                            partes: [],
+                            secoes: [],
+                            elementos: [],
+                            itensColetanea: [],
+                            coletaneas: [],
+                        };
+                        if (!db.poemas.length && !db.prosas.length)
+                            throw new Error('Estrutura inesperada');
+                        mostrarStatus(
+                            `✓ Carregado (livro completo "${parsed.titulo || '—'}"): ${db.poemas.length} poemas, ${db.prosas.length} prosas`,
+                            'ok',
+                        );
+                    } else {
+                        db = parsed;
+                        if (!db.poemas && !db.prosas) throw new Error('Estrutura inesperada');
+                        mostrarStatus(
+                            `✓ Carregado: ${(db.poemas || []).length} poemas, ${(db.prosas || []).length} prosas`,
+                            'ok',
+                        );
+                    }
 
                     document.getElementById('drop-zone').querySelector('p').textContent =
                         `✓ ${nomeExibicao}`;
@@ -2082,7 +2083,9 @@
                     ...(db.prosas || []).map((item) => ({ tipo: 'prosa', item })),
                 ];
                 if (apenasSubstituidos) {
-                    entradas = entradas.filter(({ tipo, item }) => versoesFiltradas[chave(tipo, item.id)]);
+                    entradas = entradas.filter(
+                        ({ tipo, item }) => versoesFiltradas[chave(tipo, item.id)],
+                    );
                 }
                 return entradas.map(({ tipo, item }) => {
                     const final = itemFinalParaRelatorio(item, tipo);
@@ -2209,7 +2212,10 @@
                 y += 12;
 
                 if (!itens.length) {
-                    escreverParagrafo('Nenhum texto para exportar.', { tamanho: 10, estilo: 'italic' });
+                    escreverParagrafo('Nenhum texto para exportar.', {
+                        tamanho: 10,
+                        estilo: 'italic',
+                    });
                 }
 
                 itens.forEach((it, i) => {
@@ -2264,7 +2270,9 @@
                 if (!itens.length) {
                     children.push(
                         new Paragraph({
-                            children: [new TextRun({ text: 'Nenhum texto para exportar.', italics: true })],
+                            children: [
+                                new TextRun({ text: 'Nenhum texto para exportar.', italics: true }),
+                            ],
                         }),
                     );
                 }
@@ -2289,14 +2297,21 @@
 
                     const corpo = corpoTextoSimples(it.texto);
                     (corpo ? corpo.split('\n') : ['(sem texto)']).forEach((linha) => {
-                        children.push(new Paragraph({ children: [new TextRun({ text: linha || ' ' })] }));
+                        children.push(
+                            new Paragraph({ children: [new TextRun({ text: linha || ' ' })] }),
+                        );
                     });
 
                     if (it.notas) {
                         children.push(
                             new Paragraph({
                                 children: [
-                                    new TextRun({ text: 'Nota: ', bold: true, italics: true, size: 18 }),
+                                    new TextRun({
+                                        text: 'Nota: ',
+                                        bold: true,
+                                        italics: true,
+                                        size: 18,
+                                    }),
                                     new TextRun({ text: it.notas, italics: true, size: 18 }),
                                 ],
                                 spacing: { before: 120 },

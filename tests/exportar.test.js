@@ -135,14 +135,8 @@ describe('correspondeFiltro (filtro combinado: livro, pessoa, tema, data, status
             { id: 2, nome: 'Sarinha', grupoIds: [] },
         ];
         const opcoes = { ...opcoesBase(), pessoasIncluir: ['dalton', 'dani'] };
-        assert.equal(
-            correspondeFiltro({ pessoas: [{ pessoaId: 1, papeis: [] }] }, opcoes),
-            true,
-        );
-        assert.equal(
-            correspondeFiltro({ pessoas: [{ pessoaId: 2, papeis: [] }] }, opcoes),
-            false,
-        );
+        assert.equal(correspondeFiltro({ pessoas: [{ pessoaId: 1, papeis: [] }] }, opcoes), true);
+        assert.equal(correspondeFiltro({ pessoas: [{ pessoaId: 2, papeis: [] }] }, opcoes), false);
     });
 
     it('tema a incluir E tema a excluir ao mesmo tempo: exclusão vence', () => {

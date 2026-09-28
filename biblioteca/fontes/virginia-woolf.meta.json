@@ -1,0 +1,54 @@
+{
+    "id": "virginia-woolf",
+    "titulo": "Virginia Woolf (seleção)",
+    "descricao": "Quatro textos curtos em inglês: The Mark on the Wall (1917), Kew Gardens (1919), Blue & Green e Monday or Tuesday (1921).",
+    "autor": {
+        "nome": "Virginia Woolf",
+        "nacionalidade": "Britânica",
+        "nascimento": {
+            "dia": 25,
+            "mes": 1,
+            "ano": 1882
+        },
+        "obito": {
+            "dia": 28,
+            "mes": 3,
+            "ano": 1941
+        },
+        "sexo": "Feminino"
+    },
+    "fonte": "Wikisource",
+    "edicao": "",
+    "link": "",
+    "ortografia": "",
+    "conferido": false,
+    "tipo": "prosa",
+    "idioma": "en",
+    "textos": {
+        "The Mark on the Wall": {
+            "edicao": "Two Stories. Richmond: Hogarth Press, 1917",
+            "dataPublicacao": {
+                "ano": 1917
+            }
+        },
+        "Kew Gardens": {
+            "edicao": "Kew Gardens. Richmond: Hogarth Press, 1919",
+            "dataPublicacao": {
+                "ano": 1919
+            }
+        },
+        "Blue & Green": {
+            "edicao": "Monday or Tuesday. Richmond: Hogarth Press, 1921",
+            "link": "https://en.wikisource.org/wiki/Monday_or_Tuesday/Blue_and_Green",
+            "dataPublicacao": {
+                "ano": 1921
+            }
+        },
+        "Monday or Tuesday": {
+            "edicao": "Monday or Tuesday. Richmond: Hogarth Press, 1921",
+            "dataPublicacao": {
+                "ano": 1921
+            }
+        }
+    }
+}

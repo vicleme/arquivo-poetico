@@ -6,10 +6,22 @@ import {
     db,
     save,
     obterOuCriarEpocaPorNome,
+    obterOuCriarPeriodoHistoricoPorNome,
+    obterGrupoPaiValido,
+    nivelGrupo,
+    alturaSubarvoreGrupo,
+    NIVEL_MAXIMO_GRUPO,
+    obterAutorSouEuId,
     calcularImpactoExclusaoPessoa,
     calcularImpactoExclusaoEpoca,
+    calcularImpactoExclusaoPeriodoHistorico,
+    calcularImpactoExclusaoMovimentoEscola,
+    calcularImpactoExclusaoGrupo,
     mesclarPessoas,
     mesclarEpocas,
+    mesclarGrupos,
+    mesclarPeriodosHistoricos,
+    mesclarMovimentosEscolas,
     getEscansaoDoPoema,
     getEstruturaDoPoema,
     deleteItem,
@@ -32,6 +44,8 @@ import {
     lerDataParcial,
     preencherDataParcial,
     preencherDataParcialSeVazio,
+    lerDataParcialMovimento,
+    preencherDataParcialMovimento,
     seqOuNull,
     gerarId,
     escapeHtml,
@@ -46,6 +60,7 @@ import {
     signoDoZodiaco,
     obterSugestaoEpocaPorId,
     nomeEpoca,
+    nomePeriodoHistorico,
     CORES_GRUPO,
     CORES_GRUPO_PADRAO,
     pontoCorGrupo,
@@ -84,6 +99,9 @@ import {
 } from './ui.js';
 import {
     atualizarDatalist,
+    atualizarDatalistRegiaoPeriodoHistorico,
+    atualizarDatalistRegiaoOrigemMovimento,
+    atualizarDatalistsAutor,
     carregarPessoas,
     obterPessoas,
     resetSinalizacoes,
@@ -115,6 +133,18 @@ import {
     adicionarNeurodivergenciaAutor,
     carregarInstituicoesAutor,
     adicionarInstituicaoAutor,
+    carregarMovimentosEscolasDiretos,
+    obterMovimentosEscolasDiretos,
+    carregarPremiosAutor,
+    carregarObrasAutor,
+    carregarCirculoLiterarioAutor,
+    carregarLinguasEscritaAutor,
+    carregarValoresMovimento,
+    carregarTemasMovimento,
+    carregarTecnicasMovimento,
+    carregarTiposComposicaoMovimento,
+    carregarLemasMovimento,
+    carregarManifestosMovimento,
     atualizarDatalistProsa,
     obterIntertextualidade,
     carregarIntertextualidade,
@@ -144,7 +174,14 @@ import {
     resetLojas,
     renderAutoclassificacao,
 } from './editor.js';
-import { renderPessoas, renderEpocas, renderMoldes } from './render-listas.js';
+import {
+    renderPessoas,
+    renderGrupos,
+    renderEpocas,
+    renderPeriodosHistoricos,
+    renderMovimentosEscolas,
+    renderMoldes,
+} from './render-listas.js';
 import {
     construirLinhasIniciais,
     inicializarGradeSonoridade,
@@ -359,8 +396,17 @@ export function initFormPessoa() {
         e.preventDefault();
         const id = document.getElementById('ps-edit-id').value;
         const nome = document.getElementById('ps-nome').value.trim();
+        const genero = document.getElementById('ps-genero').value.trim();
         const grupoIds = Array.from(
             document.querySelectorAll('#ps-grupos-container input[type="checkbox"]:checked'),
+        ).map((el) => parseInt(el.value));
+        // Autores a quem esta Pessoa está associada — N:N e opcional
+        // (pedido do Victor, 27/09/2026: "não ficasse presa a atribuir a
+        // apenas um autor"), por isso checkbox e não um <select> único
+        // (mesmo raciocínio de Grupos acima, não o de Autor em
+        // Grupo/Época, que é obrigatório e de escolha única).
+        const autorIds = Array.from(
+            document.querySelectorAll('#ps-autores-container input[type="checkbox"]:checked'),
         ).map((el) => parseInt(el.value));
 
         // Grava os dados do form no cadastro (cria se `id` vazio, atualiza
@@ -368,8 +414,21 @@ export function initFormPessoa() {
         // primeiro passo de "Mesclar agora" abaixo (o registro precisa
         // existir em `db.pessoas` antes de virar `origemId` de
         // mesclarPessoas, que só opera sobre entradas já cadastradas).
+        // `oculto` não tem campo neste form (é ação de lista, ver
+        // toggleOcultarPessoa em pessoas-acoes.js) — precisa ser carregado
+        // do registro existente aqui, senão salvar o form apagaria o
+        // estado de oculto a cada edição (dados abaixo substitui o
+        // objeto inteiro).
+        const existente = id ? db.pessoas.find((x) => x.id == id) : null;
         const gravar = () => {
-            const dados = { id: id ? parseInt(id) : gerarId(), nome, grupoIds };
+            const dados = {
+                id: id ? parseInt(id) : gerarId(),
+                nome,
+                genero,
+                grupoIds,
+                autorIds,
+                oculto: existente?.oculto || false,
+            };
             if (id) db.pessoas[db.pessoas.findIndex((x) => x.id == id)] = dados;
             else db.pessoas.push(dados);
             return dados.id;
@@ -422,12 +481,16 @@ export async function editarPessoa(id) {
     const p = db.pessoas.find((x) => x.id == id);
     if (!p) return;
     await garantirModal('modal-pessoa');
-    renderDropdowns(); // popula #ps-grupos-container com os grupos existentes
+    renderDropdowns(); // popula #ps-grupos-container e #ps-autores-container
 
     document.getElementById('ps-edit-id').value = p.id;
     document.getElementById('ps-nome').value = p.nome;
+    document.getElementById('ps-genero').value = p.genero || '';
     document.querySelectorAll('#ps-grupos-container input[type="checkbox"]').forEach((el) => {
         el.checked = (p.grupoIds || []).includes(parseInt(el.value));
+    });
+    document.querySelectorAll('#ps-autores-container input[type="checkbox"]').forEach((el) => {
+        el.checked = (p.autorIds || []).includes(parseInt(el.value));
     });
     document.getElementById('modal-pessoa-titulo').innerText = 'Editar Pessoa';
     toggleModal('modal-pessoa');
@@ -462,6 +525,102 @@ window.selecionarCorGrupo = (chave) => {
     renderSeletorCorGrupo(chave);
 };
 
+// Popula um <select> de Autor (usado em Grupo e Época, um por modal) com
+// todo `db.autores`, ordenado por nome — Autor é escolhido, não digitado
+// (cadastro fechado, diferente de Grupo/Época em si). `autorIdSelecionado`
+// pode ser `null` (novo registro): nesse caso cai no Autor marcado
+// "sou eu" como sugestão inicial (ver obterAutorSouEuId em db.js), sem
+// travar a escolha — o placeholder "— Selecione —" segue disponível.
+export function renderSelectAutor(selectId, autorIdSelecionado) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const autoresOrdenados = [...db.autores].sort((a, b) => a.nome.localeCompare(b, 'pt-BR'));
+    const valor = autorIdSelecionado ?? obterAutorSouEuId(db);
+    select.innerHTML =
+        '<option value="">— Selecione um Autor —</option>' +
+        autoresOrdenados
+            .map((a) => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`)
+            .join('');
+    select.value = valor != null ? String(valor) : '';
+}
+
+// Popula o <select> "Grupo pai" (#g-pai) com os grupos do Autor
+// selecionado em #g-autor que ainda podem receber filho SEM estourar
+// NIVEL_MAXIMO_GRUPO — o que depende não só do nível do próprio
+// candidato, mas também de quão funda já é a subárvore do grupo em
+// edição (se ele já tem filho/neto, a subárvore inteira desce junto ao
+// virar filho de alguém; mesma checagem que obterGrupoPaiValido faz de
+// novo no submit, mas filtrar aqui já poupa o usuário de escolher algo
+// que ia ser recusado silenciosamente). Chamada ao trocar o Autor
+// (onchange no HTML) e ao abrir o modal (novo ou edição).
+//
+// Níveis separados em <optgroup> (pedido do Victor, 27/09/2026): com o
+// teto em 5, uma lista só indentada por "↳" repetido virou difícil de
+// escanear — <optgroup label="Nível N"> é nativo do <select>, aparece em
+// negrito e não-clicável, e deixa claro de cara em que altura da árvore
+// cada opção está. O optgroup por si só não diz a qual RAMO a opção
+// pertence (dois grupos de nível 2 podem ter pais nível-1 diferentes),
+// então toda opção de nível > 1 ganha o nome do pai imediato entre
+// parênteses.
+window.atualizarSelectGrupoPai = () => {
+    const selectPai = document.getElementById('g-pai');
+    if (!selectPai) return;
+    const autorId = document.getElementById('g-autor')?.value;
+    const idEmEdicao = document.getElementById('g-edit-id')?.value;
+    const valorAnterior = selectPai.value;
+    if (!autorId) {
+        selectPai.innerHTML = '<option value="">— Nenhum (nível 1) —</option>';
+        return;
+    }
+    // Descendentes do grupo em edição (filhos e netos) não podem virar
+    // pai dele — geraria ciclo. Sem grupo em edição (cadastro novo) não
+    // tem descendente a excluir.
+    const descendentes = new Set();
+    if (idEmEdicao) {
+        const filhos = db.grupos.filter((g) => g.paiId == idEmEdicao).map((g) => g.id);
+        filhos.forEach((id) => descendentes.add(id));
+        db.grupos.filter((g) => filhos.includes(g.paiId)).forEach((g) => descendentes.add(g.id));
+    }
+    const gruposDoAutor = db.grupos.filter(
+        (g) => g.autorId == autorId && g.id != idEmEdicao && !descendentes.has(g.id),
+    );
+    // Altura da subárvore do grupo em edição: 0 pra cadastro novo (nada
+    // descendo junto). Um candidato só entra se nivelGrupo(candidato) + 1
+    // (o próprio grupo em edição) + essa altura ainda couber no teto.
+    const alturaEmEdicao = idEmEdicao ? alturaSubarvoreGrupo(db, parseInt(idEmEdicao)) : 0;
+    const candidatos = gruposDoAutor
+        .filter((g) => nivelGrupo(db, g.id) + 1 + alturaEmEdicao <= NIVEL_MAXIMO_GRUPO)
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    const porNivel = new Map();
+    candidatos.forEach((g) => {
+        const nivel = nivelGrupo(db, g.id);
+        if (!porNivel.has(nivel)) porNivel.set(nivel, []);
+        porNivel.get(nivel).push(g);
+    });
+
+    selectPai.innerHTML =
+        '<option value="">— Nenhum (nível 1) —</option>' +
+        [...porNivel.keys()]
+            .sort((a, b) => a - b)
+            .map((nivel) => {
+                const opcoes = porNivel
+                    .get(nivel)
+                    .map((g) => {
+                        const pai = db.grupos.find((x) => x.id == g.paiId);
+                        const contexto = pai ? ` (dentro de ${escapeHtml(pai.nome)})` : '';
+                        return `<option value="${g.id}">${escapeHtml(g.nome)}${contexto}</option>`;
+                    })
+                    .join('');
+                return `<optgroup label="Nível ${nivel}">${opcoes}</optgroup>`;
+            })
+            .join('');
+    // Preserva a escolha se o grupo pai continuar sendo um candidato
+    // válido pro Autor atual (ex.: reabrir o mesmo Autor depois de ter
+    // trocado e voltado) — senão volta pro "Nenhum".
+    if (candidatos.some((g) => g.id == valorAnterior)) selectPai.value = valorAnterior;
+};
+
 export function initFormGrupo() {
     const form = document.getElementById('form-grupo');
     if (!form) return;
@@ -469,17 +628,74 @@ export function initFormGrupo() {
     form.onsubmit = (e) => {
         e.preventDefault();
         const id = document.getElementById('g-edit-id').value;
-        const dados = {
-            id: id ? parseInt(id) : gerarId(),
-            nome: document.getElementById('g-nome').value.trim(),
-            cor: document.getElementById('g-cor').value || CORES_GRUPO_PADRAO,
+        const idFinal = id ? parseInt(id) : gerarId();
+        const autorId = parseInt(document.getElementById('g-autor').value) || null;
+        if (!autorId) return mostrarAviso('Escolha o Autor deste Grupo.');
+        const paiIdBruto = document.getElementById('g-pai').value;
+        const paiId = paiIdBruto
+            ? obterGrupoPaiValido(db, idFinal, autorId, parseInt(paiIdBruto))
+            : null;
+        const nome = document.getElementById('g-nome').value.trim();
+
+        // Mesmo raciocínio de initFormEpoca abaixo: grava primeiro, pra
+        // existir em `db.grupos` antes de virar `origemId` de
+        // mesclarGrupos se for esse o caminho escolhido.
+        // `oculto` idem ao mesmo campo em initFormPessoa acima — carregado
+        // do registro existente, não tem campo neste form.
+        const existente = id ? db.grupos.find((x) => x.id == id) : null;
+        const gravar = () => {
+            const dados = {
+                id: idFinal,
+                nome,
+                cor: document.getElementById('g-cor').value || CORES_GRUPO_PADRAO,
+                autorId,
+                paiId,
+                oculto: existente?.oculto || false,
+            };
+            if (id) db.grupos[db.grupos.findIndex((x) => x.id == id)] = dados;
+            else db.grupos.push(dados);
+            return dados.id;
         };
 
-        if (id) db.grupos[db.grupos.findIndex((x) => x.id == id)] = dados;
-        else db.grupos.push(dados);
+        // Nome duplicado DENTRO DO MESMO AUTOR (dedup por (nome, autorId)
+        // desde 27/09/2026 — mesmo critério de obterOuCriarGrupoPorNome/
+        // migrarGruposAutorId; nomes iguais em Autores diferentes não são
+        // duplicata, ver mesclarGrupos em db.js).
+        const duplicata = db.grupos.find(
+            (x) => x.nome === nome && x.autorId == autorId && x.id != idFinal,
+        );
 
-        save();
-        toggleModal('modal-grupo');
+        if (!duplicata) {
+            gravar();
+            save();
+            toggleModal('modal-grupo');
+            return;
+        }
+
+        abrirModalConfirmacao({
+            titulo: `Já existe um Grupo chamado "${duplicata.nome}" para este Autor`,
+            rotulo: 'Nome duplicado',
+            mensagem:
+                'Pode ser o mesmo Grupo cadastrado duas vezes, ou dois Grupos diferentes de propósito, mesmo nome. O que você quer fazer?',
+            textoConfirmar: 'Mesclar agora',
+            corConfirmar: '#d97706',
+            acaoSecundaria: {
+                texto: 'Salvar mesmo assim',
+                onClick: () => {
+                    gravar();
+                    save();
+                    toggleModal('modal-grupo');
+                },
+            },
+            onConfirmar: () => {
+                const origemId = gravar();
+                mesclarGrupos(db, origemId, duplicata.id);
+                save();
+                toggleModal('modal-grupo');
+                renderGrupos();
+                mostrarAviso(`Mesclado com "${duplicata.nome}"`, 'sucesso');
+            },
+        });
     };
 }
 
@@ -491,6 +707,9 @@ export async function editarGrupo(id) {
     document.getElementById('g-nome').value = g.nome;
     document.getElementById('g-cor').value = g.cor || CORES_GRUPO_PADRAO;
     renderSeletorCorGrupo(g.cor || CORES_GRUPO_PADRAO);
+    renderSelectAutor('g-autor', g.autorId);
+    window.atualizarSelectGrupoPai();
+    document.getElementById('g-pai').value = g.paiId != null ? String(g.paiId) : '';
     document.getElementById('modal-grupo-titulo').innerText = 'Editar Grupo';
     toggleModal('modal-grupo');
 }
@@ -520,7 +739,9 @@ export function initFormAutor() {
             id: id ? parseInt(id) : gerarId(),
             nome: document.getElementById('au-nome').value.trim(),
             isni: document.getElementById('au-isni').value.trim(),
-            nomesLiterarios: JSON.parse(document.getElementById('au-nomes-literarios').value || '[]'),
+            nomesLiterarios: JSON.parse(
+                document.getElementById('au-nomes-literarios').value || '[]',
+            ),
             souEu: !!document.getElementById('au-sou-eu')?.checked,
             nacionalidade: document.getElementById('au-nacionalidade').value.trim(),
             sexo: document.getElementById('au-sexo').value,
@@ -531,13 +752,20 @@ export function initFormAutor() {
             religiao: document.getElementById('au-religiao').value.trim(),
             classeSocial: document.getElementById('au-classe-social').value,
             neurodivergencias: document.getElementById('au-neurodivergencias').value.trim(),
-            condicoesClinicas: JSON.parse(document.getElementById('au-condicoes-clinicas').value || '[]'),
+            condicoesClinicas: JSON.parse(
+                document.getElementById('au-condicoes-clinicas').value || '[]',
+            ),
             deficiencias: JSON.parse(document.getElementById('au-deficiencias').value || '[]'),
             grauAcademico: document.getElementById('au-grau-academico').value.trim(),
             instituicoes: document.getElementById('au-instituicoes').value.trim(),
             ocupacoes: document.getElementById('au-ocupacoes').value.trim(),
             nascimento,
             obito,
+            movimentosEscolasIds: obterMovimentosEscolasDiretos('autores'),
+            premios: JSON.parse(document.getElementById('au-premios').value || '[]'),
+            obras: JSON.parse(document.getElementById('au-obras').value || '[]'),
+            circulo: JSON.parse(document.getElementById('au-circulo').value || '[]'),
+            linguasEscrita: JSON.parse(document.getElementById('au-linguas-escrita').value || '[]'),
             sobre: document.getElementById('au-sobre').value.trim(),
         };
 
@@ -558,11 +786,16 @@ export function initFormAutor() {
     // Idade/Signo do zodíaco: idem, mas reagem tanto ao Nascimento
     // (os dois dependem dele) quanto ao Óbito (só a Idade — signo é
     // fixo, não muda com a morte).
-    ['au-nasc-dia', 'au-nasc-mes', 'au-nasc-ano', 'au-obito-dia', 'au-obito-mes', 'au-obito-ano'].forEach(
-        (id) => {
-            document.getElementById(id)?.addEventListener('input', atualizarIdadeSignoAutorForm);
-        },
-    );
+    [
+        'au-nasc-dia',
+        'au-nasc-mes',
+        'au-nasc-ano',
+        'au-obito-dia',
+        'au-obito-mes',
+        'au-obito-ano',
+    ].forEach((id) => {
+        document.getElementById(id)?.addEventListener('input', atualizarIdadeSignoAutorForm);
+    });
 
     // Enter no input de Nome Literário — mesmo padrão do campo de
     // Gênero (Prosa, ver initEditorProsa em editor.js).
@@ -624,7 +857,10 @@ function atualizarIdadeSignoAutorForm() {
     const signo = signoDoZodiaco(nascimento);
 
     const partes = [];
-    if (idade) partes.push(`${idade.aproximada ? '≈ ' : ''}${idade.anos} anos${obito?.ano ? ' (à época do óbito)' : ''}`);
+    if (idade)
+        partes.push(
+            `${idade.aproximada ? '≈ ' : ''}${idade.anos} anos${obito?.ano ? ' (à época do óbito)' : ''}`,
+        );
     if (signo) partes.push(signo);
 
     if (partes.length) {
@@ -639,6 +875,9 @@ export async function editarAutor(id) {
     const a = db.autores.find((x) => x.id == id);
     if (!a) return;
     await garantirModal('modal-autor');
+    // Modal carregado sob demanda: o refresh inicial não alcançou os datalists.
+    renderDropdowns();
+    atualizarDatalistsAutor();
     document.getElementById('au-edit-id').value = a.id;
     document.getElementById('au-nome').value = a.nome;
     document.getElementById('au-isni').value = a.isni || '';
@@ -673,6 +912,11 @@ export async function editarAutor(id) {
     carregarOcupacoesAutor(a.ocupacoes || '');
     preencherDataParcial('au-nasc', a.nascimento);
     preencherDataParcial('au-obito', a.obito);
+    carregarMovimentosEscolasDiretos('autores', a.movimentosEscolasIds || []);
+    carregarPremiosAutor(a.premios || []);
+    carregarObrasAutor(a.obras || []);
+    carregarCirculoLiterarioAutor(a.circulo || []);
+    carregarLinguasEscritaAutor(a.linguasEscrita || []);
     document.getElementById('au-sobre').value = a.sobre || '';
     // Grupos colapsáveis: abre só os que já têm algo preenchido.
     const gruposComDados = autorGruposComDados(a);
@@ -704,24 +948,43 @@ export function initFormEpoca() {
         const nome = document.getElementById('ep-nome').value.trim();
         const contextoRelacao = document.getElementById('ep-contexto').value.trim();
         const notas = document.getElementById('ep-notas').value.trim();
+        const autorId = parseInt(document.getElementById('ep-autor').value) || null;
+        if (!autorId) return mostrarAviso('Escolha o Autor deste Período Biográfico.');
+        // Datas oficiais do cadastro (independentes das de epocaRetratada
+        // por texto — ver migrarDatasEpoca em db.js). Mesma leitura parcial
+        // e mesma validação de ordem do Período Histórico.
+        const inicio = lerDataParcial('ep-ini');
+        const fim = lerDataParcial('ep-fim');
+        if (violaOrdemDeDatas(inicio, fim)) {
+            return mostrarAviso('O "Até" não pode ser anterior ao "De".');
+        }
 
         // Mesmo raciocínio de initFormPessoa acima: grava primeiro (cria
         // se `id` vazio, atualiza no lugar se não), pra existir em
         // `db.epocas` antes de virar `origemId` de mesclarEpocas se for
         // esse o caminho escolhido.
         const gravar = () => {
-            const dados = { id: id ? parseInt(id) : gerarId(), nome, contextoRelacao, notas };
+            const dados = {
+                id: id ? parseInt(id) : gerarId(),
+                nome,
+                contextoRelacao,
+                notas,
+                autorId,
+                inicio,
+                fim,
+            };
             if (id) db.epocas[db.epocas.findIndex((x) => x.id == id)] = dados;
             else db.epocas.push(dados);
             return dados.id;
         };
 
-        // Nome duplicado (mesmo critério de dedup exato de
-        // obterOuCriarEpocaPorNome/migrarEpocas) — mesma pergunta de
-        // Pessoa acima: pode ser a mesma Época cadastrada duas vezes, ou
-        // duas Épocas diferentes de propósito, mesmo nome (ex.: o
-        // relacionamento muda, mas o período recebeu o mesmo apelido).
-        const duplicata = db.epocas.find((x) => x.nome === nome && x.id != id);
+        // Nome duplicado DENTRO DO MESMO AUTOR (dedup por (nome, autorId)
+        // desde 27/09/2026 — mesmo critério de obterOuCriarEpocaPorNome/
+        // migrarEpocasAutorId; nomes iguais em Autores diferentes não são
+        // duplicata).
+        const duplicata = db.epocas.find(
+            (x) => x.nome === nome && x.autorId == autorId && x.id != id,
+        );
 
         if (!duplicata) {
             gravar();
@@ -731,7 +994,7 @@ export function initFormEpoca() {
         }
 
         abrirModalConfirmacao({
-            titulo: `Já existe uma Época chamada "${duplicata.nome}"`,
+            titulo: `Já existe uma Época chamada "${duplicata.nome}" para este Autor`,
             rotulo: 'Nome duplicado',
             mensagem:
                 'Pode ser a mesma Época cadastrada duas vezes, ou duas Épocas diferentes de propósito, mesmo nome (ex.: o relacionamento mudou, mas o período ganhou o mesmo apelido). O que você quer fazer?',
@@ -765,11 +1028,243 @@ export async function editarEpoca(id) {
     document.getElementById('ep-nome').value = ep.nome;
     document.getElementById('ep-contexto').value = ep.contextoRelacao || '';
     document.getElementById('ep-notas').value = ep.notas || '';
-    document.getElementById('modal-epoca-titulo').innerText = 'Editar Época';
+    preencherDataParcial('ep-ini', ep.inicio);
+    preencherDataParcial('ep-fim', ep.fim);
+    renderSelectAutor('ep-autor', ep.autorId);
+    document.getElementById('modal-epoca-titulo').innerText = 'Editar Período Biográfico';
     toggleModal('modal-epoca');
 }
 
-// ─── Mesclar (Pessoa/Época) ────────────────────────────────────
+// ─── Período Histórico ──────────────────────────────────────────
+// Mesmo espírito de Época acima, mas cadastro mais simples (só
+// nome/notas, sem contextoRelacao) e vínculo mais simples também:
+// `periodoHistoricoId` é um campo solto no Poema/Prosa (não um
+// sub-objeto com datas/recorte, como epocaRetratada) — ver
+// calcularImpactoExclusaoPeriodoHistorico em db.js. O modal de
+// Poema/Prosa resolve/cria por nome no submit (ver
+// obterOuCriarPeriodoHistoricoPorNome em db.js); este modal serve pra
+// edição posterior e exclusão, na aba de gestão.
+
+export function initFormPeriodoHistorico() {
+    const form = document.getElementById('form-periodo-historico');
+    if (!form) return;
+
+    // O modal é carregado sob demanda: o datalist só existe agora, então o
+    // refresh do carregamento inicial (atualizarDatalist) não o alcançou.
+    atualizarDatalistRegiaoPeriodoHistorico();
+
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const id = document.getElementById('ph-edit-id').value;
+        const nome = document.getElementById('ph-nome').value.trim();
+        const notas = document.getElementById('ph-notas').value.trim();
+        const regiao = document.getElementById('ph-regiao').value.trim();
+        // Data do período em si (não do texto que o referencia — ver
+        // migrarDatasPeriodoHistorico em db.js). Mesma leitura parcial
+        // (dia/mês/ano cada um opcional) e mesma validação de ordem já
+        // usadas pra Data de Escrita/Publicação e pro De/Até de Época.
+        const inicio = lerDataParcial('ph-ini');
+        const fim = lerDataParcial('ph-fim');
+
+        if (violaOrdemDeDatas(inicio, fim)) {
+            return mostrarAviso('O "Até" não pode ser anterior ao "De".');
+        }
+
+        const gravar = () => {
+            const dados = { id: id ? parseInt(id) : gerarId(), nome, notas, regiao, inicio, fim };
+            if (id) {
+                // Preserva `embutido` (item de fábrica editado continua de
+                // fábrica) — o objeto novo substitui o antigo por inteiro.
+                const idx = db.periodosHistoricos.findIndex((x) => x.id == id);
+                if (db.periodosHistoricos[idx]?.embutido) dados.embutido = true;
+                db.periodosHistoricos[idx] = dados;
+            } else db.periodosHistoricos.push(dados);
+            return dados.id;
+        };
+
+        // Mesmo critério de dedup exato de
+        // obterOuCriarPeriodoHistoricoPorNome/migração — mesma pergunta
+        // de Época acima: pode ser o mesmo Período Histórico cadastrado
+        // duas vezes, ou dois períodos diferentes de propósito com o
+        // mesmo nome.
+        const duplicata = db.periodosHistoricos.find((x) => x.nome === nome && x.id != id);
+
+        if (!duplicata) {
+            gravar();
+            save();
+            toggleModal('modal-periodo-historico');
+            return;
+        }
+
+        abrirModalConfirmacao({
+            titulo: `Já existe um Período Histórico chamado "${duplicata.nome}"`,
+            rotulo: 'Nome duplicado',
+            mensagem:
+                'Pode ser o mesmo Período Histórico cadastrado duas vezes, ou dois períodos diferentes de propósito, mesmo nome. O que você quer fazer?',
+            textoConfirmar: 'Mesclar agora',
+            corConfirmar: '#d97706',
+            acaoSecundaria: {
+                texto: 'Salvar mesmo assim',
+                onClick: () => {
+                    gravar();
+                    save();
+                    toggleModal('modal-periodo-historico');
+                },
+            },
+            onConfirmar: () => {
+                const origemId = gravar();
+                mesclarPeriodosHistoricos(db, origemId, duplicata.id);
+                save();
+                toggleModal('modal-periodo-historico');
+                renderPeriodosHistoricos();
+                mostrarAviso(`Mesclado com "${duplicata.nome}"`, 'sucesso');
+            },
+        });
+    };
+}
+
+export async function editarPeriodoHistorico(id) {
+    const ph = db.periodosHistoricos.find((x) => x.id == id);
+    if (!ph) return;
+    await garantirModal('modal-periodo-historico');
+    document.getElementById('ph-edit-id').value = ph.id;
+    document.getElementById('ph-nome').value = ph.nome;
+    document.getElementById('ph-notas').value = ph.notas || '';
+    document.getElementById('ph-regiao').value = ph.regiao || '';
+    atualizarDatalistRegiaoPeriodoHistorico();
+    preencherDataParcial('ph-ini', ph.inicio);
+    preencherDataParcial('ph-fim', ph.fim);
+    document.getElementById('modal-periodo-historico-titulo').innerText =
+        'Editar Período Histórico';
+    toggleModal('modal-periodo-historico');
+}
+
+// ─── Movimento/Escola ────────────────────────────────────────────
+// Cadastro central (db.movimentosEscolas), mais rico que Período
+// Histórico: além de nome/notas/data (aqui com século/década, ver
+// lerDataParcialMovimento em utils.js), carrega Tipo, Região de
+// origem e os 6 campos de tag livre (Valores/Temas/Técnicas/Tipos de
+// Composição/Lemas/Manifestos — cada um com estado próprio em
+// editor.js, lido/gravado via hidden input JSON, mesmo padrão de
+// condicoesClinicas/deficiencias do Autor). O vínculo com Poema/
+// Prosa/Autor é N:N dos dois lados (`movimentosEscolasIds`, array em
+// cada um) — resolvido/criado por nome direto no submit de cada um
+// desses três modais (ver criarGrupoDeMovimentosEscolas em
+// editor.js), não aqui; este modal serve pra edição posterior
+// (completar os campos além do nome) e exclusão/mesclagem, na aba de
+// gestão.
+
+export function initFormMovimentoEscola() {
+    const form = document.getElementById('form-movimento-escola');
+    if (!form) return;
+
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const id = document.getElementById('me-edit-id').value;
+        const nome = document.getElementById('me-nome').value.trim();
+        const notas = document.getElementById('me-notas').value.trim();
+        const tipo = document.getElementById('me-tipo').value;
+        const regiaoOrigem = document.getElementById('me-regiao-origem').value.trim();
+        const inicio = lerDataParcialMovimento('me-ini');
+        const fim = lerDataParcialMovimento('me-fim');
+
+        if (violaOrdemDeDatas(inicio, fim)) {
+            return mostrarAviso('O "Até" não pode ser anterior ao "De".');
+        }
+
+        const valores = JSON.parse(document.getElementById('me-valores').value || '[]');
+        const temas = JSON.parse(document.getElementById('me-temas').value || '[]');
+        const tecnicas = JSON.parse(document.getElementById('me-tecnicas').value || '[]');
+        const tiposComposicao = JSON.parse(
+            document.getElementById('me-tipos-composicao').value || '[]',
+        );
+        const lemas = JSON.parse(document.getElementById('me-lemas').value || '[]');
+        const manifestos = JSON.parse(document.getElementById('me-manifestos').value || '[]');
+
+        const gravar = () => {
+            const dados = {
+                id: id ? parseInt(id) : gerarId(),
+                nome,
+                notas,
+                inicio,
+                fim,
+                tipo,
+                regiaoOrigem,
+                valores,
+                temas,
+                tecnicas,
+                tiposComposicao,
+                lemas,
+                manifestos,
+            };
+            if (id) db.movimentosEscolas[db.movimentosEscolas.findIndex((x) => x.id == id)] = dados;
+            else db.movimentosEscolas.push(dados);
+            return dados.id;
+        };
+
+        // Mesmo critério de dedup exato de
+        // obterOuCriarMovimentoEscolaPorNome/migração — mesma pergunta
+        // de Período Histórico acima.
+        const duplicata = db.movimentosEscolas.find((x) => x.nome === nome && x.id != id);
+
+        if (!duplicata) {
+            gravar();
+            save();
+            toggleModal('modal-movimento-escola');
+            return;
+        }
+
+        abrirModalConfirmacao({
+            titulo: `Já existe um Movimento/Escola chamado "${duplicata.nome}"`,
+            rotulo: 'Nome duplicado',
+            mensagem:
+                'Pode ser o mesmo Movimento/Escola cadastrado duas vezes, ou dois movimentos diferentes de propósito, mesmo nome. O que você quer fazer?',
+            textoConfirmar: 'Mesclar agora',
+            corConfirmar: '#d97706',
+            acaoSecundaria: {
+                texto: 'Salvar mesmo assim',
+                onClick: () => {
+                    gravar();
+                    save();
+                    toggleModal('modal-movimento-escola');
+                },
+            },
+            onConfirmar: () => {
+                const origemId = gravar();
+                mesclarMovimentosEscolas(db, origemId, duplicata.id);
+                save();
+                toggleModal('modal-movimento-escola');
+                renderMovimentosEscolas();
+                mostrarAviso(`Mesclado com "${duplicata.nome}"`, 'sucesso');
+            },
+        });
+    };
+}
+
+export async function editarMovimentoEscola(id) {
+    const m = db.movimentosEscolas.find((x) => x.id == id);
+    if (!m) return;
+    await garantirModal('modal-movimento-escola');
+    // Modal carregado sob demanda: o refresh inicial não alcançou o datalist.
+    atualizarDatalistRegiaoOrigemMovimento();
+    document.getElementById('me-edit-id').value = m.id;
+    document.getElementById('me-nome').value = m.nome;
+    document.getElementById('me-notas').value = m.notas || '';
+    document.getElementById('me-tipo').value = m.tipo || '';
+    document.getElementById('me-regiao-origem').value = m.regiaoOrigem || '';
+    preencherDataParcialMovimento('me-ini', m.inicio);
+    preencherDataParcialMovimento('me-fim', m.fim);
+    carregarValoresMovimento(m.valores || []);
+    carregarTemasMovimento(m.temas || []);
+    carregarTecnicasMovimento(m.tecnicas || []);
+    carregarTiposComposicaoMovimento(m.tiposComposicao || []);
+    carregarLemasMovimento(m.lemas || []);
+    carregarManifestosMovimento(m.manifestos || []);
+    document.getElementById('modal-movimento-escola-titulo').innerText = 'Editar Movimento/Escola';
+    toggleModal('modal-movimento-escola');
+}
+
+// ─── Mesclar (Pessoa/Época/Período Histórico) ───────────────────
 // Modal genérico (modal-mesclar.html), reaproveitado pelas duas abas de
 // gestão que têm o mesmo risco de duplicata por nome — renomear uma
 // Pessoa/Época pra igual a outra não mescla nada sozinho (ver
@@ -785,11 +1280,29 @@ const RENDER_MESCLAR = {
         mesclar: (origemId, destinoId) => mesclarPessoas(db, origemId, destinoId),
         rerender: renderPessoas,
     },
+    grupos: {
+        rotulo: 'Grupo',
+        impacto: (id) => calcularImpactoExclusaoGrupo(db, id),
+        mesclar: (origemId, destinoId) => mesclarGrupos(db, origemId, destinoId),
+        rerender: renderGrupos,
+    },
     epocas: {
-        rotulo: 'Época',
+        rotulo: 'Período Biográfico',
         impacto: (id) => calcularImpactoExclusaoEpoca(db, id),
         mesclar: (origemId, destinoId) => mesclarEpocas(db, origemId, destinoId),
         rerender: renderEpocas,
+    },
+    periodosHistoricos: {
+        rotulo: 'Período Histórico',
+        impacto: (id) => calcularImpactoExclusaoPeriodoHistorico(db, id),
+        mesclar: (origemId, destinoId) => mesclarPeriodosHistoricos(db, origemId, destinoId),
+        rerender: renderPeriodosHistoricos,
+    },
+    movimentosEscolas: {
+        rotulo: 'Movimento/Escola',
+        impacto: (id) => calcularImpactoExclusaoMovimentoEscola(db, id),
+        mesclar: (origemId, destinoId) => mesclarMovimentosEscolas(db, origemId, destinoId),
+        rerender: renderMovimentosEscolas,
     },
 };
 
@@ -809,8 +1322,23 @@ export function initFormMesclar() {
         const destino = db[tipo].find((x) => x.id == destinoId);
         if (!origem || !destino) return;
 
-        const { poemasIds, prosasIds } = cfg.impacto(origemId);
-        const total = poemasIds.length + prosasIds.length;
+        // `impacto` devolve poemasIds/prosasIds sempre, e autoresIds só
+        // no caso de Movimento/Escola (relação N:N dos dois lados — ver
+        // calcularImpactoExclusaoMovimentoEscola em db.js). Soma tudo
+        // pra decidir se há impacto; a frase discrimina autor(es) à
+        // parte de texto(s) só quando existir, pra não dizer "autor" pra
+        // quem mescla Pessoa/Época/Período Histórico (que nunca tem
+        // autoresIds).
+        const impacto = cfg.impacto(origemId);
+        const autoresCount = impacto.autoresIds?.length || 0;
+        const pessoasCount = impacto.pessoasIds?.length || 0;
+        const textosCount = impacto.poemasIds.length + impacto.prosasIds.length;
+        const total = autoresCount + pessoasCount + textosCount;
+        const partes = [];
+        if (autoresCount) partes.push(`${autoresCount} autor${autoresCount !== 1 ? 'es' : ''}`);
+        if (pessoasCount) partes.push(`${pessoasCount} pessoa${pessoasCount !== 1 ? 's' : ''}`);
+        if (textosCount) partes.push(`${textosCount} texto${textosCount !== 1 ? 's' : ''}`);
+        const resumoImpacto = partes.join(' e ');
 
         // Fecha o modal de escolha antes de abrir o de confirmação — os
         // dois usam a mesma tecla Esc/foco-trap (ver modais.js), então
@@ -821,7 +1349,7 @@ export function initFormMesclar() {
             rotulo: `Mesclar ${cfg.rotulo}`,
             mensagem:
                 total > 0
-                    ? `${total} texto${total !== 1 ? 's' : ''} que ${total !== 1 ? 'referenciam' : 'referencia'} "${origem.nome}" ${total !== 1 ? 'passam' : 'passa'} a referenciar "${destino.nome}". "${origem.nome}" será removido(a) do cadastro. Essa ação não pode ser desfeita.`
+                    ? `${resumoImpacto} que ${total !== 1 ? 'referenciam' : 'referencia'} "${origem.nome}" ${total !== 1 ? 'passam' : 'passa'} a referenciar "${destino.nome}". "${origem.nome}" será removido(a) do cadastro. Essa ação não pode ser desfeita.`
                     : `"${origem.nome}" será removido(a) do cadastro. Essa ação não pode ser desfeita.`,
             textoConfirmar: 'Mesclar',
             corConfirmar: '#d97706',
@@ -2319,11 +2847,22 @@ export async function abrirModalMesclar(tipo, origemId) {
     const origem = db[tipo]?.find((x) => x.id == origemId);
     if (!origem) return;
 
+    // Grupo e Época (Período Biográfico) são escopados por Autor desde
+    // 27/09/2026 — mesclar só faz sentido dentro do mesmo Autor (ver
+    // mesclarGrupos/mesclarEpocas em db.js), então as opções de destino
+    // já vêm filtradas, em vez de deixar o usuário escolher um destino
+    // que a mesclagem recusaria silenciosamente.
+    const escopadoPorAutor = tipo === 'grupos' || tipo === 'epocas';
     const outras = (db[tipo] || [])
         .filter((x) => x.id != origemId)
+        .filter((x) => (escopadoPorAutor ? x.autorId == origem.autorId : true))
         .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     if (outras.length === 0) {
-        mostrarAviso(`Não há outra ${cfg.rotulo.toLowerCase()} cadastrada pra mesclar.`);
+        mostrarAviso(
+            escopadoPorAutor
+                ? `Não há outra ${cfg.rotulo.toLowerCase()} do mesmo Autor pra mesclar.`
+                : `Não há outra ${cfg.rotulo.toLowerCase()} cadastrada pra mesclar.`,
+        );
         return;
     }
 
@@ -2630,7 +3169,18 @@ export function initFormPoema() {
             return mostrarAviso('O "Até" da Época Retratada não pode ser anterior ao "De".');
         }
 
-        const epocaCadastrada = epocaNome ? obterOuCriarEpocaPorNome(epocaNome) : null;
+        // Época pertence a um Autor desde 27/09/2026 — usa o primeiro
+        // Autor do texto como dono de uma Época nova criada aqui (mesmo
+        // critério de criarGrupoDeGruposDiretos.adicionar em editor.js,
+        // pro campo irmão "Grupos (referência direta)"). Sem nenhum
+        // Autor ainda no texto, não dá pra criar — mas dá pra deixar o
+        // resto do formulário seguir; só a Época em si fica de fora.
+        const autorIdEpoca = obterAutoria('poemas')[0]?.autorId ?? null;
+        if (epocaNome && !autorIdEpoca) {
+            mostrarAviso('Adicione um Autor ao texto antes de criar um Período Biográfico novo.');
+        }
+        const epocaCadastrada =
+            epocaNome && autorIdEpoca ? obterOuCriarEpocaPorNome(epocaNome, autorIdEpoca) : null;
 
         const epocaRetratada =
             epocaNa || epocaInicio || epocaFim || epocaCadastrada
@@ -2642,6 +3192,19 @@ export function initFormPoema() {
                       na: epocaNa,
                   }
                 : null;
+
+        // Período Histórico: campo solto e simples (só nome, sem
+        // datas/recorte próprios — diferente de epocaRetratada acima),
+        // resolvido/criado no cadastro central db.periodosHistoricos do
+        // mesmo jeito que Época. Coexiste com epocaRetratada no mesmo
+        // texto (ver calcularImpactoExclusaoPeriodoHistorico em db.js).
+        const periodoHistoricoNome = (
+            document.getElementById('p-periodo-historico-nome')?.value || ''
+        ).trim();
+        const periodoHistoricoCadastrado = periodoHistoricoNome
+            ? obterOuCriarPeriodoHistoricoPorNome(periodoHistoricoNome)
+            : null;
+        const periodoHistoricoId = periodoHistoricoCadastrado?.id ?? null;
 
         const dados = {
             id,
@@ -2679,7 +3242,8 @@ export function initFormPoema() {
             autoclassificacao: Number(document.getElementById('p-autoclassificacao').value) || 0,
             status: document.getElementById('p-status').value,
             epocaRetratada,
-            intertextualidade: obterIntertextualidade('poemas'),
+            periodoHistoricoId,
+            movimentosEscolasIds: obterMovimentosEscolasDiretos('poemas'),
             hipertextualidade: obterHipertextualidade('poemas'),
             referenciasExternas: obterReferenciasExternas('poemas'),
             anexos: obterAnexos('poemas'),
@@ -2812,6 +3376,11 @@ export async function editarPoema(id) {
     document.getElementById('p-epoca-nome').value = nomeEpoca(p.epocaRetratada, db.epocas);
     document.getElementById('p-epoca-recorte').value = p.epocaRetratada?.recorte || '';
     toggleCamposEpocaNa();
+    document.getElementById('p-periodo-historico-nome').value = nomePeriodoHistorico(
+        p.periodoHistoricoId,
+        db.periodosHistoricos,
+    );
+    carregarMovimentosEscolasDiretos('poemas', p.movimentosEscolasIds || []);
     document.getElementById('p-intertexto-tipo').value = '';
     document.getElementById('p-intertexto-texto').value = '';
     carregarIntertextualidade('poemas', p.intertextualidade || []);
@@ -2946,7 +3515,13 @@ export function initFormProsa() {
             return mostrarAviso('O "Até" da Época Retratada não pode ser anterior ao "De".');
         }
 
-        const epocaCadastrada = epocaNome ? obterOuCriarEpocaPorNome(epocaNome) : null;
+        // Mesmo critério de initFormPoema acima.
+        const autorIdEpoca = obterAutoria('prosas')[0]?.autorId ?? null;
+        if (epocaNome && !autorIdEpoca) {
+            mostrarAviso('Adicione um Autor ao texto antes de criar um Período Biográfico novo.');
+        }
+        const epocaCadastrada =
+            epocaNome && autorIdEpoca ? obterOuCriarEpocaPorNome(epocaNome, autorIdEpoca) : null;
 
         const epocaRetratada =
             epocaNa || epocaInicio || epocaFim || epocaCadastrada
@@ -2958,6 +3533,14 @@ export function initFormProsa() {
                       na: epocaNa,
                   }
                 : null;
+
+        const periodoHistoricoNomeProsa = (
+            document.getElementById('pr-periodo-historico-nome')?.value || ''
+        ).trim();
+        const periodoHistoricoCadastradoProsa = periodoHistoricoNomeProsa
+            ? obterOuCriarPeriodoHistoricoPorNome(periodoHistoricoNomeProsa)
+            : null;
+        const periodoHistoricoId = periodoHistoricoCadastradoProsa?.id ?? null;
 
         const dados = {
             id,
@@ -2998,6 +3581,8 @@ export function initFormProsa() {
             publicado: document.getElementById('pr-pub').checked,
             status: document.getElementById('pr-status').value,
             epocaRetratada,
+            periodoHistoricoId,
+            movimentosEscolasIds: obterMovimentosEscolasDiretos('prosas'),
             intertextualidade: obterIntertextualidade('prosas'),
             hipertextualidade: obterHipertextualidade('prosas'),
             referenciasExternas: obterReferenciasExternas('prosas'),
@@ -3120,6 +3705,11 @@ export async function editarProsa(id) {
     document.getElementById('pr-epoca-nome').value = nomeEpoca(pr.epocaRetratada, db.epocas);
     document.getElementById('pr-epoca-recorte').value = pr.epocaRetratada?.recorte || '';
     toggleCamposEpocaNaProsa();
+    document.getElementById('pr-periodo-historico-nome').value = nomePeriodoHistorico(
+        pr.periodoHistoricoId,
+        db.periodosHistoricos,
+    );
+    carregarMovimentosEscolasDiretos('prosas', pr.movimentosEscolasIds || []);
     document.getElementById('pr-intertexto-tipo').value = '';
     document.getElementById('pr-intertexto-texto').value = '';
     carregarIntertextualidade('prosas', pr.intertextualidade || []);

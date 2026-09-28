@@ -120,11 +120,11 @@ Formovimento, Forma e Progressão, Dialética Textual), o nome fechado
 tem **dois níveis**, no mesmo espírito de "Sonoridade" (menu) → "Adicionar
 Escansão" (botão, mais específico):
 
-- **Menu (dropdown Análise):** *Morfofuncionalidade*
+- **Menu (dropdown Análise):** _Morfofuncionalidade_
 - **`<h2>` da página (mais completo que o menu — um degrau além do
-  padrão de Sonoridade, decisão consciente do Victor):** *Progressão
-  Morfofuncional*
-- **Botão de ação:** *Adicionar Progressão*
+  padrão de Sonoridade, decisão consciente do Victor):** _Progressão
+  Morfofuncional_
+- **Botão de ação:** _Adicionar Progressão_
 
 Curiosidade registrada na conversa (o Victor perguntou, Claude
 pesquisou): "Volta" é termo real e consagrado da crítica de soneto;
@@ -228,51 +228,51 @@ como está), com:
    `index.html`/`ui.js`/`main.js`/`forms.js`/`render-listas.js`.
 4. **Testes** da lógica pura (`tests/estrutura-textual.test.js`) e rodada
    completa da suíte.
-5. *(Fora do escopo desta primeira leva, não descartado: exportação
+5. _(Fora do escopo desta primeira leva, não descartado: exportação
    md/pdf/docx dedicada, como Sonoridade tem; visão combinada
    Unidades+Eventos numa "linha do tempo" só, mencionada na conversa como
-   ideia de leitura unificada mas não desenhada em detalhe ainda.)*
+   ideia de leitura unificada mas não desenhada em detalhe ainda.)_
 
 ## O que já foi feito
 
 - `js/db.js`:
-  - `db.estruturasTextuais` e `db.templatesEstrutura` adicionados ao
-    estado inicial, com comentários documentando as regras acima.
-  - Guards de migração (`if (!db.estruturasTextuais) ...`) pra bancos
-    carregados sem esses campos.
-  - `TEMPLATES_ESTRUTURA_EMBUTIDOS` (template "Soneto") +
-    `migrarTemplatesEstruturaEmbutidos()` — reseeda sem duplicar, chamada
-    tanto no boot do módulo quanto em `importarDB` (restauração de
-    backup).
-  - `db.estruturasTextuais`/`db.templatesEstrutura` incluídos em
-    `importarDB` (import de backup JSON).
-  - `getEstruturaDoPoema(poemaId)`.
-  - `ROTULOS_COL.estruturasTextuais`/`ROTULOS_COL.templatesEstrutura` +
-    `tituloEstruturaTextual()` (resolve pelo poema vinculado, mesmo
-    padrão de `tituloEscansao`) — `deleteItem` funciona com a nova
-    coleção via o caminho genérico (sem cascata própria, `data-action="excluir-item" data-tipo="estruturasTextuais"`).
+    - `db.estruturasTextuais` e `db.templatesEstrutura` adicionados ao
+      estado inicial, com comentários documentando as regras acima.
+    - Guards de migração (`if (!db.estruturasTextuais) ...`) pra bancos
+      carregados sem esses campos.
+    - `TEMPLATES_ESTRUTURA_EMBUTIDOS` (template "Soneto") +
+      `migrarTemplatesEstruturaEmbutidos()` — reseeda sem duplicar, chamada
+      tanto no boot do módulo quanto em `importarDB` (restauração de
+      backup).
+    - `db.estruturasTextuais`/`db.templatesEstrutura` incluídos em
+      `importarDB` (import de backup JSON).
+    - `getEstruturaDoPoema(poemaId)`.
+    - `ROTULOS_COL.estruturasTextuais`/`ROTULOS_COL.templatesEstrutura` +
+      `tituloEstruturaTextual()` (resolve pelo poema vinculado, mesmo
+      padrão de `tituloEscansao`) — `deleteItem` funciona com a nova
+      coleção via o caminho genérico (sem cascata própria, `data-action="excluir-item" data-tipo="estruturasTextuais"`).
 - `js/estrutura-textual.js` — módulo novo inteiro, escrito nesta sessão
   ou na anterior (ver diff do zip pra confirmar de qual):
-  - `construirEstrofesDoTexto`, `itemPosicionado`, `overlapEntre`,
-    `detectarSobrepostos`, `ordenarPorPosicao`,
-    `instanciarTemplateEstrutura`/`extrairClassificacaoParaTemplate`,
-    `resumoPosicao` — lógica pura, testada.
-  - Estado de edição do modal (`unidadesAtuais`/`eventosAtuais`,
-    `inicializarEstruturaTextual`, `obterUnidadesAtuais`/
-    `obterEventosAtuais`, `adicionarUnidade`/`adicionarEvento`,
-    `removerUnidade`/`removerEvento`, `aplicarTemplateNoEstado`,
-    `toggleEstrofeItem`/`toggleVersoItem`/`setVersosTodosItem`) +
-    renderização dos cartões e do seletor de posição
-    (`renderTudo`/`montarCartaoHtml`/`montarSeletorPosicaoHtml`).
+    - `construirEstrofesDoTexto`, `itemPosicionado`, `overlapEntre`,
+      `detectarSobrepostos`, `ordenarPorPosicao`,
+      `instanciarTemplateEstrutura`/`extrairClassificacaoParaTemplate`,
+      `resumoPosicao` — lógica pura, testada.
+    - Estado de edição do modal (`unidadesAtuais`/`eventosAtuais`,
+      `inicializarEstruturaTextual`, `obterUnidadesAtuais`/
+      `obterEventosAtuais`, `adicionarUnidade`/`adicionarEvento`,
+      `removerUnidade`/`removerEvento`, `aplicarTemplateNoEstado`,
+      `toggleEstrofeItem`/`toggleVersoItem`/`setVersosTodosItem`) +
+      renderização dos cartões e do seletor de posição
+      (`renderTudo`/`montarCartaoHtml`/`montarSeletorPosicaoHtml`).
 - `tests/estrutura-textual.test.js` — 26 testes, todos passando
   (`node --test tests/estrutura-textual.test.js`).
 - `index.html` — botão "Morfofuncionalidade" no dropdown Análise
   (`onclick="abrirAba('morfofuncionalidade')"`) + `<section
-  id="morfofuncionalidade">` com busca por título do poema e a tabela
+id="morfofuncionalidade">` com busca por título do poema e a tabela
   (thead ID/Título · Unidades · Eventos · Ações, `tbody
-  id="lista-estrutura-textual"`).
+id="lista-estrutura-textual"`).
 - `js/ui.js` — entrada `{ id: 'morfofuncionalidade', rotulo:
-  'Morfofuncionalidade' }` em `GRUPOS_NAV` (grupo `analise`), entre
+'Morfofuncionalidade' }` em `GRUPOS_NAV` (grupo `analise`), entre
   Sonoridade e Estatísticas — sem isso o menu mobile e o destaque do
   grupo ativo na nav desktop não reconheciam a aba.
 - `js/render-listas.js` — `renderEstruturaTextual()` +
@@ -338,44 +338,44 @@ literal e as respostas:
    já existente de `detectarSobrepostos` continua valendo).
 2. **Ver/Baixar em Morfofuncionalidade, igual Sonoridade** — resposta
    do Victor: sim, os dois. Implementado nesta sessão:
-   - `js/exportar-estrutura-textual.js` (novo) — mesmos 4 formatos de
-     `exportar-sonoridade.js` (.md/.pdf/.docx/.json), dispatcher
-     `exportarEstruturaTextual(id, formato)`; `rotuloItem` exportado
-     pra ser reaproveitado pela visualização (item abaixo), evitando
-     duplicar o critério de título de Unidade/Evento.
-   - `js/visualizar-estrutura-textual.js` (novo) — modal somente-
-     leitura (`abrirVisualizacaoEstruturaTextual`/
-     `baixarDoModalVisualizacaoEstruturaTextual`), espelhando
-     `visualizar-sonoridade.js`: lista Unidades e Eventos (ordenados
-     por `ordenarPorPosicao`) com rótulo + `resumoPosicao`, sem os
-     controles de edição/posição do modal principal.
-   - `modais/modal-visualizar-estrutura-textual.html` (novo) —
-     esqueleto de `modal-visualizar-sonoridade.html`.
-   - `js/main.js` — imports, `registrarModal('modal-visualizar-estrutura-textual', ...)`,
-     entradas `ver-estrutura-textual`/`baixar-estrutura-textual` em
-     `ACOES_LISTA`, binding `window.baixarDoModalVisualizacaoEstruturaTextual`.
+    - `js/exportar-estrutura-textual.js` (novo) — mesmos 4 formatos de
+      `exportar-sonoridade.js` (.md/.pdf/.docx/.json), dispatcher
+      `exportarEstruturaTextual(id, formato)`; `rotuloItem` exportado
+      pra ser reaproveitado pela visualização (item abaixo), evitando
+      duplicar o critério de título de Unidade/Evento.
+    - `js/visualizar-estrutura-textual.js` (novo) — modal somente-
+      leitura (`abrirVisualizacaoEstruturaTextual`/
+      `baixarDoModalVisualizacaoEstruturaTextual`), espelhando
+      `visualizar-sonoridade.js`: lista Unidades e Eventos (ordenados
+      por `ordenarPorPosicao`) com rótulo + `resumoPosicao`, sem os
+      controles de edição/posição do modal principal.
+    - `modais/modal-visualizar-estrutura-textual.html` (novo) —
+      esqueleto de `modal-visualizar-sonoridade.html`.
+    - `js/main.js` — imports, `registrarModal('modal-visualizar-estrutura-textual', ...)`,
+      entradas `ver-estrutura-textual`/`baixar-estrutura-textual` em
+      `ACOES_LISTA`, binding `window.baixarDoModalVisualizacaoEstruturaTextual`.
 3. **Menu de colunas/ações (⚙️), como em Sonoridade** — resposta do
    Victor: Ações sim ("com certeza, vale"), Colunas não ("acho que é
    tranquilo não trazer" — tabela continua com as 4 colunas sempre
    fixas). Implementado nesta sessão, reaproveitando o módulo genérico
    `acoes-coluna.js` (já compartilhado por Poemas/Prosas/Sonoridade)
    com a chave de tabela `'estrutura-textual'`:
-   - `js/render-listas.js` — `celulaAcoesEstruturaTextual` reescrita no
-     padrão de `celulaAcoesSonoridade` (só os botões ativos no painel,
-     ordem Ver/Baixar/Editar/Excluir); `renderEstruturaTextual` chama
-     `atualizarPainelAcoes('estrutura-textual', 'painel-acoes-estrutura-textual')`;
-     listener de `acoes-coluna:alteradas` pra tabela `'estrutura-textual'`.
-   - `index.html` — botão "Ações ▾" + popover
-     `painel-acoes-estrutura-textual` na seção `#morfofuncionalidade`
-     (mesmo lugar/estilo do de Sonoridade), sem o popover de Colunas.
-   - Nenhuma mudança em `acoes-coluna.js` — os 4 formatos de Baixar e
-     o painel já eram genéricos por `tabela`, só precisou de uma nova
-     chave.
+    - `js/render-listas.js` — `celulaAcoesEstruturaTextual` reescrita no
+      padrão de `celulaAcoesSonoridade` (só os botões ativos no painel,
+      ordem Ver/Baixar/Editar/Excluir); `renderEstruturaTextual` chama
+      `atualizarPainelAcoes('estrutura-textual', 'painel-acoes-estrutura-textual')`;
+      listener de `acoes-coluna:alteradas` pra tabela `'estrutura-textual'`.
+    - `index.html` — botão "Ações ▾" + popover
+      `painel-acoes-estrutura-textual` na seção `#morfofuncionalidade`
+      (mesmo lugar/estilo do de Sonoridade), sem o popover de Colunas.
+    - Nenhuma mudança em `acoes-coluna.js` — os 4 formatos de Baixar e
+      o painel já eram genéricos por `tabela`, só precisou de uma nova
+      chave.
 
 ## O que falta (fim da segunda leva)
 
-- *(Ainda fora do escopo, não descartado: visão combinada
-  Unidades+Eventos numa "linha do tempo" só.)*
+- _(Ainda fora do escopo, não descartado: visão combinada
+  Unidades+Eventos numa "linha do tempo" só.)_
 
 ## Terceira leva (bugs de uso real + 2 pedidos novos)
 
@@ -405,7 +405,7 @@ com a sessão de cadastro do poema "Crisantemos") e trouxe 4 pontos:
    registrar recurso gráfico/divisão em linhas; esse título não é
    verso de verdade e não deveria entrar na grade nem contar pra
    estrofe. Novo campo de texto livre nos dois modais (`son-linhas-
-   ignoradas`/`estr-linhas-ignoradas`), aceitando números soltos e/ou
+ignoradas`/`estr-linhas-ignoradas`), aceitando números soltos e/ou
    intervalos misturados ("1, 5, 9" / "1-5, 6-9") — números de linha
    BRUTOS do campo Texto (1-based, antes de qualquer processamento).
    `parseListaIntervalos` (utils.js) faz o parse (tokens inválidos são
@@ -444,7 +444,7 @@ em `adicionarUnidade` e no `rotuloItem` (`exportar-estrutura-textual.test.js`)
 - Testar manualmente no navegador: Enter nos 3+1 campos, nome no
   cartão/exportações, "Linhas a ignorar" nos dois modais com um poema
   que tenha título digitado no campo Texto, e um poema com `<div
-  style="...">`/comentário no meio de um verso.
+style="...">`/comentário no meio de um verso.
 
 ## Quarta leva (edição pós-criação, bug de reconciliação, tabela e paginação)
 
@@ -461,7 +461,7 @@ Victor trouxe 4 pontos novos (ver `conversa-referencia.md`, sessão
    `sugestoes-unidade-discursiva`/`sugestoes-progressao-dialetica`,
    já existentes em `modal-morfofuncionalidade.html`). `onchange` (não
    a cada tecla) chama `atualizarCampoEstrutura(tipo, id, campo,
-   valor)`, nova função exportada em `estrutura-textual.js`. Estado
+valor)`, nova função exportada em `estrutura-textual.js`. Estado
    aberto/fechado do `<details>` persistido entre re-renders em
    `edicaoAbertos` (mesmo padrão de `detalhesPosicaoAbertos`, já
    existente pro seletor de Posição) via `onToggleEdicaoEstrutura`.
@@ -471,7 +471,7 @@ Victor trouxe 4 pontos novos (ver `conversa-referencia.md`, sessão
    depois de ignorar uma linha, a estrofe N podia passar a significar
    um trecho diferente do texto, e o item continuava "marcado" nela
    sem nenhum aviso. Nova `reconciliarItensComEstrofes(itens,
-   estrofesNovas)` (privada, `estrutura-textual.js`): remove da
+estrofesNovas)` (privada, `estrutura-textual.js`): remove da
    posição só os números de estrofe que não existem mais no recorte
    novo (e, com uma única estrofe restante, os números de verso que
    sumiram dela) — nunca inventa uma posição nova. Chamada por
@@ -498,7 +498,7 @@ Victor trouxe 4 pontos novos (ver `conversa-referencia.md`, sessão
    verticalmente, e poder ocultar a coluna mais densa ajuda a rolar.
    Reaproveita 100% a infra genérica já usada por Sonoridade
    (`colunas.js`): nova entrada `'estrutura-textual': [{key:
-   'unidades', ...}, {key: 'eventos', ...}]` em `DEFINICAO_COLUNAS`
+'unidades', ...}, {key: 'eventos', ...}]` em `DEFINICAO_COLUNAS`
    (as duas com `default: true` — mesmo comportamento "sempre
    visíveis" que a tabela já tinha antes deste seletor existir);
    `<thead>` dinâmico em `renderEstruturaTextual()` (mesmo padrão de

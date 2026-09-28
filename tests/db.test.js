@@ -1,6 +1,6 @@
 import './helpers/localstorage-shim.js';
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
@@ -17,12 +17,27 @@ import {
     migrarAutoria,
     calcularImpactoExclusaoAutor,
     migrarEpocas,
+    migrarDatasPeriodoHistorico,
+    migrarDatasEpoca,
     calcularImpactoExclusaoEpoca,
+    calcularImpactoExclusaoPeriodoHistorico,
     calcularImpactoExclusaoPoema,
     mesclarPessoas,
     mesclarEpocas,
+    mesclarGrupos,
+    mesclarPeriodosHistoricos,
     obterOuCriarGrupoPorNome,
+    obterOuCriarEpocaPorNome,
+    obterGrupoPaiValido,
+    nivelGrupo,
+    alturaSubarvoreGrupo,
+    cadeiaAncestraisGrupo,
+    NIVEL_MAXIMO_GRUPO,
+    obterOuCriarPeriodoHistoricoPorNome,
     calcularImpactoExclusaoGrupo,
+    migrarMovimentosEscolasEmbutidos,
+    migrarPeriodosHistoricosEmbutidos,
+    migrarRegiaoPeriodoHistorico,
     db,
 } from '../js/db.js';
 
@@ -555,39 +570,569 @@ describe('calcularImpactoExclusaoAutor (quem referencia o Autor, pra avisar ante
         assert.deepEqual(poemasIds, []);
         assert.deepEqual(prosasIds, []);
     });
+
+    // Desde 27/09/2026, Grupo e Época (Período Biográfico) são exclusivos
+    // de um Autor e somem em cascata junto com ele — calcularImpactoExclusaoAutor
+    // também precisa listar esses dois, não só poemas/prosas.
+    it('encontra os Grupos e Épocas que pertencem ao Autor (serão apagados em cascata)', () => {
+        const dbRef = {
+            poemas: [],
+            prosas: [],
+            grupos: [
+                { id: 1, nome: 'Família', autorId: 10, paiId: null },
+                { id: 2, nome: 'Amigos', autorId: 20, paiId: null },
+            ],
+            epocas: [
+                { id: 100, nome: 'Corte de contato', autorId: 10 },
+                { id: 200, nome: 'Infância', autorId: 20 },
+            ],
+        };
+        const { gruposIds, epocasIds } = calcularImpactoExclusaoAutor(dbRef, 10);
+        assert.deepEqual(gruposIds, [1]);
+        assert.deepEqual(epocasIds, [100]);
+    });
+
+    it('autor sem Grupos/Épocas próprios retorna gruposIds/epocasIds vazios', () => {
+        const dbRef = {
+            poemas: [],
+            prosas: [],
+            grupos: [{ id: 1, nome: 'Família', autorId: 20, paiId: null }],
+            epocas: [],
+        };
+        const { gruposIds, epocasIds } = calcularImpactoExclusaoAutor(dbRef, 10);
+        assert.deepEqual(gruposIds, []);
+        assert.deepEqual(epocasIds, []);
+    });
+
+    it('funciona mesmo se grupos/epocas estiverem ausentes do db (backup antigo)', () => {
+        const { gruposIds, epocasIds } = calcularImpactoExclusaoAutor({}, 10);
+        assert.deepEqual(gruposIds, []);
+        assert.deepEqual(epocasIds, []);
+    });
+
+    // `pessoasIds` (nova, 27/09/2026) segue o espírito OPOSTO de
+    // gruposIds/epocasIds acima: Pessoa não é exclusiva de um Autor
+    // (autorIds é N:N, ver migrarPessoasAutorIds) — excluir o Autor não
+    // apaga a Pessoa, só a lista pra saber quem vai perder essa
+    // associação específica.
+    it('encontra as Pessoas associadas ao Autor (só desvinculam, não são apagadas)', () => {
+        const dbRef = {
+            poemas: [],
+            prosas: [],
+            grupos: [],
+            epocas: [],
+            pessoas: [
+                { id: 1, nome: 'Pedro', autorIds: [10] },
+                { id: 2, nome: 'Ana', autorIds: [10, 20] },
+                { id: 3, nome: 'Bia', autorIds: [20] },
+            ],
+        };
+        const { pessoasIds } = calcularImpactoExclusaoAutor(dbRef, 10);
+        assert.deepEqual(pessoasIds, [1, 2]);
+    });
+
+    it('autor sem Pessoas associadas retorna pessoasIds vazio', () => {
+        const dbRef = {
+            poemas: [],
+            prosas: [],
+            pessoas: [{ id: 1, nome: 'Pedro', autorIds: [20] }],
+        };
+        const { pessoasIds } = calcularImpactoExclusaoAutor(dbRef, 10);
+        assert.deepEqual(pessoasIds, []);
+    });
+
+    it('funciona mesmo se pessoas estiver ausente do db (backup antigo)', () => {
+        const { pessoasIds } = calcularImpactoExclusaoAutor({}, 10);
+        assert.deepEqual(pessoasIds, []);
+    });
 });
 
 // ─── obterOuCriarGrupoPorNome ───────────────────────────────────────
+// Desde 27/09/2026, Grupo deixou de ter nome único globalmente — o dedup
+// passou a ser por (nome, autorId): dois Autores diferentes podem, cada
+// um, ter um Grupo chamado "Família" sem colidir.
 
-describe('obterOuCriarGrupoPorNome (dedup por nome exato, mesmo padrão de Pessoa/Autor)', () => {
+describe('obterOuCriarGrupoPorNome (dedup por (nome, autorId), não mais nome global)', () => {
     beforeEach(() => {
         db.grupos.length = 0;
     });
 
-    it('nome que já existe no cadastro retorna o grupo existente, sem duplicar', () => {
-        db.grupos.push({ id: 1, nome: 'Família', cor: 'blue' });
+    it('nome que já existe pro MESMO Autor retorna o grupo existente, sem duplicar', () => {
+        db.grupos.push({ id: 1, nome: 'Família', cor: 'blue', autorId: 10, paiId: null });
 
-        const grupo = obterOuCriarGrupoPorNome('Família');
+        const grupo = obterOuCriarGrupoPorNome('Família', 10);
 
         assert.equal(grupo.id, 1);
         assert.equal(db.grupos.length, 1);
     });
 
-    it('nome novo cria um grupo com cor padrão', () => {
-        const grupo = obterOuCriarGrupoPorNome('Trabalho');
+    it('mesmo nome em Autores DIFERENTES não colide — cria um grupo novo pro segundo Autor', () => {
+        db.grupos.push({ id: 1, nome: 'Família', cor: 'blue', autorId: 10, paiId: null });
+
+        const grupo = obterOuCriarGrupoPorNome('Família', 20);
+
+        assert.notEqual(grupo.id, 1);
+        assert.equal(grupo.autorId, 20);
+        assert.equal(
+            db.grupos.length,
+            2,
+            'Família de outro Autor é um grupo à parte, não duplicata',
+        );
+    });
+
+    it('nome novo cria um grupo com cor padrão, autorId gravado e paiId nulo (nível 1)', () => {
+        const grupo = obterOuCriarGrupoPorNome('Trabalho', 10);
 
         assert.equal(db.grupos.length, 1);
         assert.equal(grupo.nome, 'Trabalho');
+        assert.equal(grupo.autorId, 10);
+        assert.equal(grupo.paiId, null);
         assert.ok(grupo.cor, 'grupo novo deveria vir com uma cor padrão preenchida');
     });
 
-    it('nome com espaços nas pontas é normalizado antes de comparar/criar', () => {
-        db.grupos.push({ id: 1, nome: 'Amigos', cor: 'emerald' });
+    it('nome com espaços nas pontas é normalizado antes de comparar/criar, dentro do mesmo Autor', () => {
+        db.grupos.push({ id: 1, nome: 'Amigos', cor: 'emerald', autorId: 10, paiId: null });
 
-        const grupo = obterOuCriarGrupoPorNome('  Amigos  ');
+        const grupo = obterOuCriarGrupoPorNome('  Amigos  ', 10);
 
         assert.equal(grupo.id, 1);
         assert.equal(db.grupos.length, 1, 'não deveria criar um grupo duplicado só por espaços');
+    });
+});
+
+// ─── obterOuCriarEpocaPorNome ───────────────────────────────────────
+// Mesmo raciocínio de obterOuCriarGrupoPorNome acima — Época (Período
+// Biográfico) também passou a dedupar por (nome, autorId).
+
+describe('obterOuCriarEpocaPorNome (dedup por (nome, autorId), não mais nome global)', () => {
+    beforeEach(() => {
+        db.epocas.length = 0;
+    });
+
+    it('nome que já existe pro MESMO Autor retorna a época existente, sem duplicar', () => {
+        db.epocas.push({
+            id: 1,
+            nome: 'Corte de contato',
+            contextoRelacao: '',
+            notas: '',
+            autorId: 10,
+        });
+
+        const epoca = obterOuCriarEpocaPorNome('Corte de contato', 10);
+
+        assert.equal(epoca.id, 1);
+        assert.equal(db.epocas.length, 1);
+    });
+
+    it('mesmo nome em Autores DIFERENTES não colide — cria uma época nova pro segundo Autor', () => {
+        db.epocas.push({ id: 1, nome: 'Infância', contextoRelacao: '', notas: '', autorId: 10 });
+
+        const epoca = obterOuCriarEpocaPorNome('Infância', 20);
+
+        assert.notEqual(epoca.id, 1);
+        assert.equal(epoca.autorId, 20);
+        assert.equal(db.epocas.length, 2);
+    });
+
+    it('nome novo cria uma época com autorId gravado', () => {
+        const epoca = obterOuCriarEpocaPorNome('Luto', 10);
+
+        assert.equal(db.epocas.length, 1);
+        assert.equal(epoca.nome, 'Luto');
+        assert.equal(epoca.autorId, 10);
+    });
+
+    it('nome vazio (só espaços) não cria nada, retorna null', () => {
+        const epoca = obterOuCriarEpocaPorNome('   ', 10);
+
+        assert.equal(epoca, null);
+        assert.equal(db.epocas.length, 0);
+    });
+});
+
+// ─── nivelGrupo ──────────────────────────────────────────────────────
+
+describe('nivelGrupo (nível 1 a NIVEL_MAXIMO_GRUPO de um Grupo, subindo a cadeia de paiId)', () => {
+    it('teto atual é 5', () => {
+        assert.equal(NIVEL_MAXIMO_GRUPO, 5);
+    });
+
+    it('grupo sem pai é nível 1', () => {
+        const dbRef = { grupos: [{ id: 1, autorId: 10, paiId: null }] };
+        assert.equal(nivelGrupo(dbRef, 1), 1);
+    });
+
+    it('grupo com pai de nível 1 é nível 2', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, autorId: 10, paiId: null },
+                { id: 2, autorId: 10, paiId: 1 },
+            ],
+        };
+        assert.equal(nivelGrupo(dbRef, 2), 2);
+    });
+
+    it('cadeia de 5 grupos encaixados chega a nível 5', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, autorId: 10, paiId: null },
+                { id: 2, autorId: 10, paiId: 1 },
+                { id: 3, autorId: 10, paiId: 2 },
+                { id: 4, autorId: 10, paiId: 3 },
+                { id: 5, autorId: 10, paiId: 4 },
+            ],
+        };
+        assert.equal(nivelGrupo(dbRef, 5), 5);
+    });
+});
+
+// ─── alturaSubarvoreGrupo ──────────────────────────────────────────────
+
+describe('alturaSubarvoreGrupo (altura da subárvore abaixo de um Grupo)', () => {
+    it('grupo sem filho tem altura 0', () => {
+        const dbRef = { grupos: [{ id: 1, autorId: 10, paiId: null }] };
+        assert.equal(alturaSubarvoreGrupo(dbRef, 1), 0);
+    });
+
+    it('grupo com filho mas sem neto tem altura 1', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, autorId: 10, paiId: null },
+                { id: 2, autorId: 10, paiId: 1 },
+            ],
+        };
+        assert.equal(alturaSubarvoreGrupo(dbRef, 1), 1);
+    });
+
+    it('grupo com neto tem altura 2', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, autorId: 10, paiId: null },
+                { id: 2, autorId: 10, paiId: 1 },
+                { id: 3, autorId: 10, paiId: 2 },
+            ],
+        };
+        assert.equal(alturaSubarvoreGrupo(dbRef, 1), 2);
+    });
+
+    it('grupo inexistente (ainda não gravado, cadastro novo) tem altura 0', () => {
+        const dbRef = { grupos: [] };
+        assert.equal(alturaSubarvoreGrupo(dbRef, 999), 0);
+    });
+});
+
+// ─── cadeiaAncestraisGrupo ──────────────────────────────────────────────
+// Usada só pelas Estatísticas (agregarPorPessoa/coocorrenciaTemasGrupos em
+// estatisticas-dados.js) pra fazer um subgrupo "repicar" a contagem pro(s)
+// grupo(s) acima dele — nunca em atribuição de Grupo à Pessoa ou em
+// exibição/exportação de poema/prosa (paresGrupoPessoa, utils.js).
+describe('cadeiaAncestraisGrupo (do próprio grupo até a raiz, self-inclusive)', () => {
+    it('grupo sem pai: cadeia é só ele mesmo', () => {
+        const dbRef = { grupos: [{ id: 1, autorId: 10, paiId: null }] };
+        assert.deepEqual(cadeiaAncestraisGrupo(dbRef, 1), [1]);
+    });
+
+    it('subgrupo de nível 2: cadeia inclui ele mesmo e o pai, nessa ordem', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, autorId: 10, paiId: null },
+                { id: 2, autorId: 10, paiId: 1 },
+            ],
+        };
+        assert.deepEqual(cadeiaAncestraisGrupo(dbRef, 2), [2, 1]);
+    });
+
+    it('cadeia de 5 grupos encaixados sobe até a raiz', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, autorId: 10, paiId: null },
+                { id: 2, autorId: 10, paiId: 1 },
+                { id: 3, autorId: 10, paiId: 2 },
+                { id: 4, autorId: 10, paiId: 3 },
+                { id: 5, autorId: 10, paiId: 4 },
+            ],
+        };
+        assert.deepEqual(cadeiaAncestraisGrupo(dbRef, 5), [5, 4, 3, 2, 1]);
+    });
+
+    it('grupo inexistente devolve cadeia vazia', () => {
+        const dbRef = { grupos: [] };
+        assert.deepEqual(cadeiaAncestraisGrupo(dbRef, 999), []);
+    });
+});
+
+// ─── obterGrupoPaiValido ─────────────────────────────────────────────
+// Hierarquia travada em NIVEL_MAXIMO_GRUPO níveis fixos (2 até
+// 27/09/2026, destravada pro 3º no mesmo dia por um caso de uso real, e
+// direto pro 5º ainda no mesmo dia por decisão do Victor de já deixar
+// gordura — ver decisoes.md): o candidato a "Grupo pai" precisa existir,
+// ser do mesmo Autor do filho, e a ÁRVORE INTEIRA resultante (candidato +
+// 1 + a subárvore que o próprio grupo filho já carrega) precisa caber no
+// teto — nunca aponta pra outro Autor nem forma ciclo (virar pai de um
+// ancestral seu).
+
+describe('obterGrupoPaiValido (valida "Grupo pai": mesmo Autor, dentro do teto, sem ciclo)', () => {
+    it('candidato de nível 1 do mesmo Autor é aceito', () => {
+        const dbRef = {
+            grupos: [{ id: 1, nome: 'Família', autorId: 10, paiId: null }],
+        };
+        assert.equal(obterGrupoPaiValido(dbRef, 2, 10, 1), 1);
+    });
+
+    it('candidato de nível 2 do mesmo Autor também é aceito (filho vira nível 3)', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, nome: 'Ex-namorados', autorId: 10, paiId: null },
+                { id: 2, nome: 'Pedro', autorId: 10, paiId: 1 },
+            ],
+        };
+        assert.equal(obterGrupoPaiValido(dbRef, 3, 10, 2), 2);
+    });
+
+    it('candidato de nível 4 é aceito (filho vira nível 5, o teto)', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, autorId: 10, paiId: null },
+                { id: 2, autorId: 10, paiId: 1 },
+                { id: 3, autorId: 10, paiId: 2 },
+                { id: 4, autorId: 10, paiId: 3 },
+            ],
+        };
+        assert.equal(obterGrupoPaiValido(dbRef, 5, 10, 4), 4);
+    });
+
+    it('recusa candidato de nível 5 — já é o teto, não pode ter filho (viraria nível 6)', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, autorId: 10, paiId: null },
+                { id: 2, autorId: 10, paiId: 1 },
+                { id: 3, autorId: 10, paiId: 2 },
+                { id: 4, autorId: 10, paiId: 3 },
+                { id: 5, autorId: 10, paiId: 4 },
+            ],
+        };
+        assert.equal(obterGrupoPaiValido(dbRef, 6, 10, 5), null);
+    });
+
+    it('recusa reatribuir um grupo que já tem neto pra um pai que estouraria o teto com a subárvore junto', () => {
+        // "Amigos" (1) é nível 1 e já tem filho (2) que por sua vez tem
+        // neto (3) — altura 2. "Base" (10) é nível 4: se "Amigos" virasse
+        // filho de "Base", "Amigos" iria pra nível 5, o filho (2) pra
+        // nível 6 e o neto (3) pra nível 7 — estoura o teto de 5. Bug real
+        // corrigido 27/09/2026: antes só checava o nível de "Base"
+        // (4 < 5, passava), sem olhar a altura da subárvore de "Amigos".
+        const dbRef = {
+            grupos: [
+                { id: 1, nome: 'Amigos', autorId: 10, paiId: null },
+                { id: 2, nome: 'Amigos de infância', autorId: 10, paiId: 1 },
+                { id: 3, nome: 'Grupo do colégio', autorId: 10, paiId: 2 },
+                { id: 7, autorId: 10, paiId: null },
+                { id: 8, autorId: 10, paiId: 7 },
+                { id: 9, autorId: 10, paiId: 8 },
+                { id: 10, nome: 'Base', autorId: 10, paiId: 9 },
+            ],
+        };
+        assert.equal(obterGrupoPaiValido(dbRef, 1, 10, 10), null);
+    });
+
+    it('aceita reatribuir um grupo com neto pra um pai raso o bastante pra subárvore inteira caber', () => {
+        // Mesmo "Amigos" (altura 2) de cima, mas agora o candidato a pai é
+        // nível 1 — "Amigos" vai pra nível 2, filho pra 3, neto pra 4:
+        // cabe dentro do teto de 5.
+        const dbRef = {
+            grupos: [
+                { id: 1, nome: 'Amigos', autorId: 10, paiId: null },
+                { id: 2, nome: 'Amigos de infância', autorId: 10, paiId: 1 },
+                { id: 3, nome: 'Grupo do colégio', autorId: 10, paiId: 2 },
+                { id: 20, nome: 'Relações afetivas', autorId: 10, paiId: null },
+            ],
+        };
+        assert.equal(obterGrupoPaiValido(dbRef, 1, 10, 20), 20);
+    });
+
+    it('paiIdCandidato null (querer virar nível 1) é aceito, sem checar mais nada', () => {
+        const dbRef = { grupos: [] };
+        assert.equal(obterGrupoPaiValido(dbRef, 2, 10, null), null);
+    });
+
+    it('recusa candidato de Autor DIFERENTE do grupo filho', () => {
+        const dbRef = {
+            grupos: [{ id: 1, nome: 'Família', autorId: 20, paiId: null }],
+        };
+        assert.equal(obterGrupoPaiValido(dbRef, 2, 10, 1), null);
+    });
+
+    it('recusa o grupo apontar pra si mesmo como pai', () => {
+        const dbRef = {
+            grupos: [{ id: 1, nome: 'Família', autorId: 10, paiId: null }],
+        };
+        assert.equal(obterGrupoPaiValido(dbRef, 1, 10, 1), null);
+    });
+
+    it('recusa candidato inexistente no cadastro', () => {
+        const dbRef = { grupos: [] };
+        assert.equal(obterGrupoPaiValido(dbRef, 2, 10, 999), null);
+    });
+
+    it('recusa ciclo: um grupo virar pai do próprio pai (o filho direto como candidato)', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, nome: 'Família', autorId: 10, paiId: null },
+                { id: 2, nome: 'Tios', autorId: 10, paiId: 1 },
+            ],
+        };
+        // grupo 1 (pai de 2) tentando adotar 2 (seu próprio filho) como pai
+        assert.equal(obterGrupoPaiValido(dbRef, 1, 10, 2), null);
+    });
+
+    it('recusa ciclo: um grupo virar pai de um neto seu', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, nome: 'Ex-namorados', autorId: 10, paiId: null },
+                { id: 2, nome: 'Pedro', autorId: 10, paiId: 1 },
+                { id: 3, nome: 'Crushes de Pedro', autorId: 10, paiId: 2 },
+            ],
+        };
+        // grupo 1 (avô de 3) tentando adotar 3 (seu próprio neto) como pai
+        assert.equal(obterGrupoPaiValido(dbRef, 1, 10, 3), null);
+    });
+});
+
+// ─── mesclarGrupos ───────────────────────────────────────────────────
+
+describe('mesclarGrupos (junta dois Grupos do MESMO Autor numa só entrada)', () => {
+    it('reatribui grupoIds de Pessoa e gruposDiretos de Poema/Prosa da origem pro destino', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, nome: 'Família', autorId: 10, paiId: null },
+                { id: 2, nome: 'Familia', autorId: 10, paiId: null },
+            ],
+            pessoas: [{ id: 100, nome: 'Ana', grupoIds: [2] }],
+            poemas: [{ id: 200, gruposDiretos: [2] }],
+            prosas: [{ id: 300, gruposDiretos: [2] }],
+        };
+        mesclarGrupos(dbRef, 2, 1);
+
+        assert.deepEqual(dbRef.pessoas[0].grupoIds, [1]);
+        assert.deepEqual(dbRef.poemas[0].gruposDiretos, [1]);
+        assert.deepEqual(dbRef.prosas[0].gruposDiretos, [1]);
+        assert.equal(dbRef.grupos.length, 1);
+        assert.equal(dbRef.grupos[0].id, 1);
+    });
+
+    it('não duplica vínculo se a Pessoa/texto já tiver os dois ids (origem e destino)', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, nome: 'Família', autorId: 10, paiId: null },
+                { id: 2, nome: 'Familia', autorId: 10, paiId: null },
+            ],
+            pessoas: [{ id: 100, nome: 'Ana', grupoIds: [1, 2] }],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarGrupos(dbRef, 2, 1);
+
+        assert.deepEqual(dbRef.pessoas[0].grupoIds, [1]);
+    });
+
+    it('reatribui os subgrupos da origem (paiId == origemId) pro destino', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, nome: 'Família', autorId: 10, paiId: null },
+                { id: 2, nome: 'Familia', autorId: 10, paiId: null },
+                { id: 3, nome: 'Tios', autorId: 10, paiId: 2 },
+            ],
+            pessoas: [],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarGrupos(dbRef, 2, 1);
+
+        const tios = dbRef.grupos.find((g) => g.id == 3);
+        assert.equal(tios.paiId, 1);
+    });
+
+    it('recusa mesclar Grupos de Autores DIFERENTES', () => {
+        const dbRef = {
+            grupos: [
+                { id: 1, nome: 'Família', autorId: 10, paiId: null },
+                { id: 2, nome: 'Família', autorId: 20, paiId: null },
+            ],
+            pessoas: [],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarGrupos(dbRef, 2, 1);
+
+        assert.equal(dbRef.grupos.length, 2, 'não deveria mesclar grupos de Autores diferentes');
+    });
+
+    it('não faz nada se origem e destino forem o mesmo id', () => {
+        const dbRef = {
+            grupos: [{ id: 1, nome: 'Família', autorId: 10, paiId: null }],
+            pessoas: [],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarGrupos(dbRef, 1, 1);
+        assert.equal(dbRef.grupos.length, 1);
+    });
+
+    it('não faz nada se origem ou destino não existirem no cadastro', () => {
+        const dbRef = {
+            grupos: [{ id: 1, nome: 'Família', autorId: 10, paiId: null }],
+            pessoas: [],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarGrupos(dbRef, 999, 1);
+        assert.equal(dbRef.grupos.length, 1);
+    });
+
+    it('recusa mesclar quando reatribuir a subárvore da origem estouraria o teto', () => {
+        const dbRef = {
+            // destino já é nível 4 (bisneto de 1); origem é nível 1 mas
+            // tem um subgrupo (3) que por sua vez tem o seu próprio
+            // subgrupo (4b) — altura 2. Reatribuir essa subárvore pro
+            // destino (nível 4) faria 3 virar nível 5 e 4b virar nível 6,
+            // estourando o teto de 5.
+            grupos: [
+                { id: 1, autorId: 10, paiId: null },
+                { id: 6, autorId: 10, paiId: 1 },
+                { id: 7, autorId: 10, paiId: 6 },
+                { id: 2, nome: 'Atual', autorId: 10, paiId: 7 },
+                { id: 5, nome: 'Origem', autorId: 10, paiId: null },
+                { id: 3, nome: 'Amigos de Origem', autorId: 10, paiId: 5 },
+                { id: 4, nome: 'Crushes de Amigos', autorId: 10, paiId: 3 },
+            ],
+            pessoas: [],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarGrupos(dbRef, 5, 2);
+
+        assert.equal(dbRef.grupos.length, 7, 'nada deveria mudar, a mesclagem é recusada');
+        assert.equal(dbRef.grupos.find((g) => g.id == 3).paiId, 5, 'subgrupo continua na origem');
+    });
+
+    it('permite mesclar quando a subárvore reatribuída ainda cabe no teto', () => {
+        // destino é nível 1; origem é nível 1 com um subgrupo só (sem
+        // neto) — reatribuir esse subgrupo pro destino deixa ele em
+        // nível 2, dentro do limite.
+        const dbRef = {
+            grupos: [
+                { id: 1, nome: 'Família', autorId: 10, paiId: null },
+                { id: 2, nome: 'Familia', autorId: 10, paiId: null },
+                { id: 3, nome: 'Tios', autorId: 10, paiId: 2 },
+            ],
+            pessoas: [],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarGrupos(dbRef, 2, 1);
+
+        assert.equal(dbRef.grupos.length, 2);
+        assert.equal(dbRef.grupos.find((g) => g.id == 3).paiId, 1);
     });
 });
 
@@ -894,6 +1439,19 @@ describe('mesclarPessoas (junta duas entradas do cadastro de Pessoas numa só)',
         assert.deepEqual(new Set(dbRef.pessoas[0].grupoIds), new Set([100, 200]));
     });
 
+    it('une autorIds das duas pessoas sem duplicar', () => {
+        const dbRef = {
+            pessoas: [
+                { id: 1, nome: 'Pedro', grupoIds: [], autorIds: [10] },
+                { id: 2, nome: 'Pedro (dup)', grupoIds: [], autorIds: [10, 20] },
+            ],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarPessoas(dbRef, 2, 1);
+        assert.deepEqual(new Set(dbRef.pessoas[0].autorIds), new Set([10, 20]));
+    });
+
     it('não faz nada se origem e destino forem o mesmo id', () => {
         const dbRef = { pessoas: [{ id: 1, nome: 'Pedro', grupoIds: [] }], poemas: [], prosas: [] };
         mesclarPessoas(dbRef, 1, 1);
@@ -987,5 +1545,627 @@ describe('mesclarEpocas (junta duas entradas do cadastro de Épocas numa só)', 
         };
         mesclarEpocas(dbRef, 999, 1);
         assert.equal(dbRef.epocas.length, 1);
+    });
+
+    it('recusa mesclar Épocas de Autores DIFERENTES (Período Biográfico é exclusivo de um Autor)', () => {
+        const dbRef = {
+            epocas: [
+                { id: 1, nome: 'Corte de contato', contextoRelacao: '', notas: '', autorId: 10 },
+                { id: 2, nome: 'Corte de contato', contextoRelacao: '', notas: '', autorId: 20 },
+            ],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarEpocas(dbRef, 2, 1);
+        assert.equal(dbRef.epocas.length, 2, 'não deveria mesclar épocas de Autores diferentes');
+    });
+});
+
+// ─── obterOuCriarPeriodoHistoricoPorNome ────────────────────────────
+
+describe('obterOuCriarPeriodoHistoricoPorNome (dedup por nome exato, mesmo padrão de Grupo)', () => {
+    // `db.periodosHistoricos` já vem com os 12 períodos de fábrica (seed) e é
+    // o `db` real do módulo, compartilhado com os describes seguintes (ex.:
+    // "Seed de Período Histórico"). Zerar aqui sem restaurar deixava o
+    // cadastro com 0/1 item pra quem rodasse depois — mesmo tipo de vazamento
+    // entre testes já corrigido em filtro-periodos-dom.test.js.
+    const seedOriginal = structuredClone(db.periodosHistoricos);
+
+    beforeEach(() => {
+        db.periodosHistoricos.length = 0;
+    });
+
+    afterEach(() => {
+        db.periodosHistoricos.length = 0;
+        db.periodosHistoricos.push(...structuredClone(seedOriginal));
+    });
+
+    it('nome que já existe no cadastro retorna o período existente, sem duplicar', () => {
+        db.periodosHistoricos.push({ id: 1, nome: 'Ditadura Militar', notas: '' });
+
+        const periodo = obterOuCriarPeriodoHistoricoPorNome('Ditadura Militar');
+
+        assert.equal(periodo.id, 1);
+        assert.equal(db.periodosHistoricos.length, 1);
+    });
+
+    it('nome novo cria um Período Histórico', () => {
+        const periodo = obterOuCriarPeriodoHistoricoPorNome('Pandemia de Covid-19');
+
+        assert.equal(db.periodosHistoricos.length, 1);
+        assert.equal(periodo.nome, 'Pandemia de Covid-19');
+    });
+
+    it('nome com espaços nas pontas é normalizado antes de comparar/criar', () => {
+        db.periodosHistoricos.push({ id: 1, nome: 'Pandemia de Covid-19', notas: '' });
+
+        const periodo = obterOuCriarPeriodoHistoricoPorNome('  Pandemia de Covid-19  ');
+
+        assert.equal(periodo.id, 1);
+        assert.equal(
+            db.periodosHistoricos.length,
+            1,
+            'não deveria criar um período duplicado só por espaços',
+        );
+    });
+
+    it('nome vazio (ou só espaços) retorna null sem criar nada', () => {
+        const periodo = obterOuCriarPeriodoHistoricoPorNome('   ');
+        assert.equal(periodo, null);
+        assert.equal(db.periodosHistoricos.length, 0);
+    });
+
+    it('período criado por nome nasce com `regiao` vazia (preenche depois, na gestão)', () => {
+        const periodo = obterOuCriarPeriodoHistoricoPorNome('Enchente de 2024');
+        assert.equal(periodo.regiao, '');
+    });
+
+    it('período criado por nome fica com inicio/fim null (data se preenche depois, na gestão)', () => {
+        const periodo = obterOuCriarPeriodoHistoricoPorNome('Semana de Arte Moderna');
+        assert.equal(periodo.inicio, null);
+        assert.equal(periodo.fim, null);
+    });
+});
+
+// ─── migrarDatasPeriodoHistorico ─────────────────────────────────────
+
+describe('migrarDatasPeriodoHistorico (período histórico cadastrado antes de inicio/fim existirem)', () => {
+    it('preenche inicio/fim com null quando ausentes', () => {
+        const periodosHistoricos = [{ id: 1, nome: 'Ditadura Militar', notas: '' }];
+        migrarDatasPeriodoHistorico(periodosHistoricos);
+        assert.equal(periodosHistoricos[0].inicio, null);
+        assert.equal(periodosHistoricos[0].fim, null);
+    });
+
+    it('é idempotente: não sobrescreve inicio/fim já preenchidos', () => {
+        const periodosHistoricos = [
+            {
+                id: 1,
+                nome: 'Segunda Guerra Mundial',
+                notas: '',
+                inicio: { dia: 1, mes: 9, ano: 1939 },
+                fim: { dia: 2, mes: 9, ano: 1945 },
+            },
+        ];
+        migrarDatasPeriodoHistorico(periodosHistoricos);
+        assert.deepEqual(periodosHistoricos[0].inicio, { dia: 1, mes: 9, ano: 1939 });
+        assert.deepEqual(periodosHistoricos[0].fim, { dia: 2, mes: 9, ano: 1945 });
+    });
+
+    it('não confunde fim já null explícito com ausente (continua null, sem erro)', () => {
+        const periodosHistoricos = [
+            { id: 1, nome: 'Pandemia de Covid-19', notas: '', inicio: { ano: 2020 }, fim: null },
+        ];
+        migrarDatasPeriodoHistorico(periodosHistoricos);
+        assert.deepEqual(periodosHistoricos[0].inicio, { ano: 2020 });
+        assert.equal(periodosHistoricos[0].fim, null);
+    });
+});
+
+// ─── migrarDatasEpoca / datas oficiais do Período Biográfico ─────────
+
+describe('migrarDatasEpoca (Período Biográfico cadastrado antes de inicio/fim existirem)', () => {
+    it('preenche inicio/fim com null quando ausentes, sem deduzir dos textos', () => {
+        const epocas = [{ id: 1, nome: 'Luto', contextoRelacao: '', notas: '', autorId: 1 }];
+        migrarDatasEpoca(epocas);
+        assert.equal(epocas[0].inicio, null);
+        assert.equal(epocas[0].fim, null);
+    });
+
+    it('é idempotente: não sobrescreve datas já preenchidas', () => {
+        const epocas = [{ id: 1, nome: 'Luto', inicio: { ano: 2020 }, fim: { mes: 3, ano: 2021 } }];
+        migrarDatasEpoca(epocas);
+        assert.deepEqual(epocas[0].inicio, { ano: 2020 });
+        assert.deepEqual(epocas[0].fim, { mes: 3, ano: 2021 });
+    });
+});
+
+describe('mesclarEpocas (datas oficiais do cadastro)', () => {
+    const base = (destino, origem) => ({
+        epocas: [
+            { id: 1, nome: 'A', autorId: 7, contextoRelacao: '', notas: '', ...destino },
+            { id: 2, nome: 'A', autorId: 7, contextoRelacao: '', notas: '', ...origem },
+        ],
+        poemas: [],
+        prosas: [],
+    });
+
+    it('destino mantém as próprias datas mesmo se a origem tiver outras', () => {
+        const dbRef = base(
+            { inicio: { ano: 2018 }, fim: { ano: 2019 } },
+            { inicio: { ano: 2000 }, fim: { ano: 2001 } },
+        );
+        mesclarEpocas(dbRef, 2, 1);
+        assert.deepEqual(dbRef.epocas[0].inicio, { ano: 2018 });
+        assert.deepEqual(dbRef.epocas[0].fim, { ano: 2019 });
+    });
+
+    it('destino herda da origem só o que estiver vazio', () => {
+        const dbRef = base(
+            { inicio: { ano: 2018 }, fim: null },
+            { inicio: { ano: 2000 }, fim: { ano: 2001 } },
+        );
+        mesclarEpocas(dbRef, 2, 1);
+        assert.deepEqual(dbRef.epocas[0].inicio, { ano: 2018 });
+        assert.deepEqual(dbRef.epocas[0].fim, { ano: 2001 });
+    });
+});
+
+// ─── migrarMovimentosEscolasEmbutidos ────────────────────────────────
+
+describe('migrarMovimentosEscolasEmbutidos (cadastro de Movimento/Escola ganhando novos itens de fábrica, ex.: Tropicalismo)', () => {
+    // `db.movimentosEscolas` já passou pelo seed + pela própria migração
+    // no momento em que este módulo foi importado, então reflete o
+    // cadastro de fábrica completo e atualizado (22 itens, todos
+    // `embutido: true`) — usamos esse estado como base pra simular
+    // instalações antigas, em vez de reescrever o seed aqui.
+    const seedCompleto = () => structuredClone(db.movimentosEscolas);
+
+    it('instalação antiga (sem `embutido`, sem Tropicalismo) ganha só o item novo, sem duplicar os demais', () => {
+        const antigos = seedCompleto()
+            .filter((m) => m.nome !== 'Tropicalismo')
+            .map((m) => {
+                delete m.embutido;
+                return m;
+            });
+        assert.equal(antigos.length, 21);
+
+        migrarMovimentosEscolasEmbutidos(antigos, []);
+
+        assert.equal(antigos.length, 22);
+        const porNome = antigos.filter((m) => m.nome === 'Tropicalismo');
+        assert.equal(porNome.length, 1);
+        assert.equal(porNome[0].embutido, true);
+        // os 21 originais não duplicaram — cada nome do seed aparece uma
+        // única vez no resultado.
+        const nomesSeed = seedCompleto().map((m) => m.nome);
+        nomesSeed.forEach((nome) => {
+            assert.equal(
+                antigos.filter((m) => m.nome === nome).length,
+                1,
+                `"${nome}" deveria aparecer uma única vez`,
+            );
+        });
+    });
+
+    it('backfill: marca `embutido: true` por nome nos 21 originais que não tinham a chave', () => {
+        const antigos = seedCompleto()
+            .filter((m) => m.nome !== 'Tropicalismo')
+            .map((m) => {
+                delete m.embutido;
+                return m;
+            });
+        migrarMovimentosEscolasEmbutidos(antigos, []);
+        antigos
+            .filter((m) => m.nome !== 'Tropicalismo')
+            .forEach((m) => assert.equal(m.embutido, true));
+    });
+
+    it('item de fábrica excluído de propósito (em `ocultos`) não volta', () => {
+        const antigos = seedCompleto()
+            .filter((m) => m.nome !== 'Tropicalismo')
+            .map((m) => {
+                delete m.embutido;
+                return m;
+            });
+        migrarMovimentosEscolasEmbutidos(antigos, ['Tropicalismo']);
+        assert.equal(antigos.length, 21);
+        assert.equal(
+            antigos.some((m) => m.nome === 'Tropicalismo'),
+            false,
+        );
+    });
+
+    it('é idempotente: rodar de novo num cadastro já completo não duplica nada', () => {
+        const completos = seedCompleto();
+        migrarMovimentosEscolasEmbutidos(completos, []);
+        assert.equal(completos.length, 22);
+    });
+
+    it('não mexe em movimento personalizado do usuário (nome fora do seed)', () => {
+        const antigos = seedCompleto()
+            .filter((m) => m.nome !== 'Tropicalismo')
+            .map((m) => {
+                delete m.embutido;
+                return m;
+            });
+        antigos.push({ id: 'custom-1', nome: 'Movimento Inventado por Mim', notas: '' });
+
+        migrarMovimentosEscolasEmbutidos(antigos, []);
+
+        const custom = antigos.find((m) => m.nome === 'Movimento Inventado por Mim');
+        assert.ok(custom);
+        assert.equal(custom.embutido, undefined);
+        assert.equal(antigos.filter((m) => m.nome === 'Movimento Inventado por Mim').length, 1);
+    });
+});
+
+// ─── Seed de Período Histórico ──────────────────────────────────────
+
+describe('Seed de Período Histórico (12 períodos de relevância ampla/internacional pra literatura)', () => {
+    // Mesma técnica de seedCompleto() usada pra Movimento/Escola acima:
+    // `db.periodosHistoricos` já passou pelo seed no momento em que este
+    // módulo foi importado.
+    const seedCompleto = () => structuredClone(db.periodosHistoricos);
+
+    it('tem os 12 períodos, todos `embutido: true` e com nome único', () => {
+        const seed = seedCompleto();
+        assert.equal(seed.length, 12);
+        seed.forEach((p) => assert.equal(p.embutido, true));
+        const nomes = seed.map((p) => p.nome);
+        assert.equal(new Set(nomes).size, 12, 'nomes deveriam ser todos únicos');
+    });
+
+    it('ids são únicos e cada item tem `notas` preenchida (contexto literário)', () => {
+        const seed = seedCompleto();
+        const ids = seed.map((p) => p.id);
+        assert.equal(new Set(ids).size, 12);
+        seed.forEach((p) => assert.ok(p.notas && p.notas.length > 0, `"${p.nome}" sem notas`));
+    });
+
+    it('inclui os períodos pedidos pelo Victor: Guerras Mundiais e Semana de Arte Moderna', () => {
+        const nomes = seedCompleto().map((p) => p.nome);
+        assert.ok(nomes.includes('Primeira Guerra Mundial'));
+        assert.ok(nomes.includes('Segunda Guerra Mundial'));
+        assert.ok(nomes.includes('Semana de Arte Moderna'));
+    });
+
+    it('toda data tem só as chaves realmente preenchidas (nunca dia/mes/ano como `null` explícito)', () => {
+        seedCompleto().forEach((p) => {
+            [p.inicio, p.fim].forEach((data) => {
+                if (data === null) return;
+                Object.values(data).forEach((v) => assert.notEqual(v, null));
+            });
+        });
+    });
+
+    it('todo período com início e fim no mesmo campo (ano) tem início <= fim', () => {
+        seedCompleto().forEach((p) => {
+            if (p.inicio?.ano != null && p.fim?.ano != null) {
+                assert.ok(
+                    p.inicio.ano <= p.fim.ano,
+                    `"${p.nome}": início (${p.inicio.ano}) depois do fim (${p.fim.ano})`,
+                );
+            }
+        });
+    });
+
+    it('todo período de fábrica tem `regiao` preenchida (texto, sem espaços nas pontas)', () => {
+        seedCompleto().forEach((p) => {
+            assert.equal(typeof p.regiao, 'string', `"${p.nome}" sem regiao`);
+            assert.ok(p.regiao.length > 0, `"${p.nome}" com regiao vazia`);
+            assert.equal(p.regiao, p.regiao.trim());
+        });
+    });
+
+    it('regiões dos recortes locais e dos globais estão coerentes', () => {
+        const porNome = Object.fromEntries(seedCompleto().map((p) => [p.nome, p.regiao]));
+        assert.equal(porNome['Semana de Arte Moderna'], 'Brasil');
+        assert.equal(porNome['Ditadura Militar Brasileira'], 'Brasil');
+        assert.equal(porNome['Estado Novo (Portugal)'], 'Portugal');
+        assert.equal(porNome['Guerra Fria'], 'Internacional');
+        assert.equal(porNome['Segunda Guerra Mundial'], 'Internacional');
+    });
+
+    it('Semana de Arte Moderna tem a mesma âncora de 1922 já usada em Modernismo (Movimento/Escola)', () => {
+        const semana = seedCompleto().find((p) => p.nome === 'Semana de Arte Moderna');
+        assert.equal(semana.inicio.ano, 1922);
+        const modernismo = db.movimentosEscolas.find((m) => m.nome === 'Modernismo');
+        assert.equal(modernismo.inicio.decada, 1922);
+    });
+});
+
+// ─── migrarPeriodosHistoricosEmbutidos ───────────────────────────────
+
+describe('migrarPeriodosHistoricosEmbutidos (cadastro de Período Histórico ganhando os itens de fábrica)', () => {
+    const seedCompleto = () => structuredClone(db.periodosHistoricos);
+
+    it('instalação antiga (sem `embutido`, sem nenhum item de fábrica) ganha os 12, sem duplicar', () => {
+        const antigos = [];
+        migrarPeriodosHistoricosEmbutidos(antigos, []);
+        assert.equal(antigos.length, 12);
+        antigos.forEach((p) => assert.equal(p.embutido, true));
+    });
+
+    it('instalação com só parte do seed (sem Pandemia de Covid-19) ganha só o item que falta', () => {
+        const parcial = seedCompleto().filter((p) => p.nome !== 'Pandemia de Covid-19');
+        assert.equal(parcial.length, 11);
+        migrarPeriodosHistoricosEmbutidos(parcial, []);
+        assert.equal(parcial.length, 12);
+        const porNome = parcial.filter((p) => p.nome === 'Pandemia de Covid-19');
+        assert.equal(porNome.length, 1);
+        assert.equal(porNome[0].embutido, true);
+    });
+
+    it('backfill: marca `embutido: true` por nome nos itens que não tinham a chave', () => {
+        const antigos = seedCompleto().map((p) => {
+            delete p.embutido;
+            return p;
+        });
+        migrarPeriodosHistoricosEmbutidos(antigos, []);
+        antigos.forEach((p) => assert.equal(p.embutido, true));
+        assert.equal(antigos.length, 12, 'não deveria duplicar ao só fazer o backfill');
+    });
+
+    it('item de fábrica excluído de propósito (em `ocultos`) não volta', () => {
+        const antigos = seedCompleto()
+            .filter((p) => p.nome !== 'Guerra Fria')
+            .map((p) => {
+                delete p.embutido;
+                return p;
+            });
+        migrarPeriodosHistoricosEmbutidos(antigos, ['Guerra Fria']);
+        assert.equal(antigos.length, 11);
+        assert.equal(
+            antigos.some((p) => p.nome === 'Guerra Fria'),
+            false,
+        );
+    });
+
+    it('é idempotente: rodar de novo num cadastro já completo não duplica nada', () => {
+        const completos = seedCompleto();
+        migrarPeriodosHistoricosEmbutidos(completos, []);
+        assert.equal(completos.length, 12);
+    });
+
+    it('não mexe em período cadastrado pelo próprio usuário (nome fora do seed)', () => {
+        const antigos = seedCompleto();
+        antigos.push({ id: 'custom-1', nome: 'Enchente de 2024 na minha cidade', notas: '' });
+
+        migrarPeriodosHistoricosEmbutidos(antigos, []);
+
+        const custom = antigos.find((p) => p.nome === 'Enchente de 2024 na minha cidade');
+        assert.ok(custom);
+        assert.equal(custom.embutido, undefined);
+        assert.equal(
+            antigos.filter((p) => p.nome === 'Enchente de 2024 na minha cidade').length,
+            1,
+        );
+        assert.equal(antigos.length, 13);
+    });
+});
+
+// ─── calcularImpactoExclusaoPeriodoHistorico ────────────────────────
+
+describe('calcularImpactoExclusaoPeriodoHistorico (quem referencia o Período Histórico, pra avisar antes de excluir)', () => {
+    it('encontra os poemas cujo periodoHistoricoId aponta pra esse período', () => {
+        const dbRef = {
+            poemas: [
+                { id: 1, periodoHistoricoId: 10 },
+                { id: 2, periodoHistoricoId: 20 },
+                { id: 3, periodoHistoricoId: 10 },
+            ],
+        };
+        const { poemasIds } = calcularImpactoExclusaoPeriodoHistorico(dbRef, 10);
+        assert.deepEqual(poemasIds, [1, 3]);
+    });
+
+    it('encontra também as prosas cujo periodoHistoricoId aponta pra esse período', () => {
+        const dbRef = {
+            poemas: [{ id: 1, periodoHistoricoId: 10 }],
+            prosas: [
+                { id: 100, periodoHistoricoId: 10 },
+                { id: 101, periodoHistoricoId: 20 },
+            ],
+        };
+        const { poemasIds, prosasIds } = calcularImpactoExclusaoPeriodoHistorico(dbRef, 10);
+        assert.deepEqual(poemasIds, [1]);
+        assert.deepEqual(prosasIds, [100]);
+    });
+
+    it('período sem nenhum vínculo retorna listas vazias', () => {
+        const dbRef = { poemas: [{ id: 1, periodoHistoricoId: 10 }] };
+        const { poemasIds, prosasIds } = calcularImpactoExclusaoPeriodoHistorico(dbRef, 999);
+        assert.deepEqual(poemasIds, []);
+        assert.deepEqual(prosasIds, []);
+    });
+
+    it('funciona mesmo se poemas/prosas estiverem ausentes do db (backup antigo)', () => {
+        const { poemasIds, prosasIds } = calcularImpactoExclusaoPeriodoHistorico({}, 10);
+        assert.deepEqual(poemasIds, []);
+        assert.deepEqual(prosasIds, []);
+    });
+});
+
+// ─── mesclarPeriodosHistoricos ───────────────────────────────────────
+
+describe('mesclarPeriodosHistoricos (junta duas entradas do cadastro de Período Histórico numa só)', () => {
+    it('reatribui periodoHistoricoId da origem pro destino em poemas e prosas', () => {
+        const dbRef = {
+            periodosHistoricos: [
+                { id: 1, nome: 'Ditadura Militar', notas: '' },
+                { id: 2, nome: 'Ditadura Militar', notas: '' },
+            ],
+            poemas: [{ id: 10, periodoHistoricoId: 2 }],
+            prosas: [{ id: 20, periodoHistoricoId: 2 }],
+        };
+        mesclarPeriodosHistoricos(dbRef, 2, 1);
+        assert.equal(dbRef.poemas[0].periodoHistoricoId, 1);
+        assert.equal(dbRef.prosas[0].periodoHistoricoId, 1);
+        assert.equal(dbRef.periodosHistoricos.length, 1);
+        assert.equal(dbRef.periodosHistoricos[0].id, 1);
+    });
+
+    it('preenche `regiao` do destino a partir da origem, só se o destino estiver vazio', () => {
+        const vazioNoDestino = {
+            periodosHistoricos: [
+                { id: 1, nome: 'Guerra Fria', regiao: '' },
+                { id: 2, nome: 'Guerra Fria', regiao: 'Internacional' },
+            ],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarPeriodosHistoricos(vazioNoDestino, 2, 1);
+        assert.equal(vazioNoDestino.periodosHistoricos[0].regiao, 'Internacional');
+
+        const jaPreenchido = {
+            periodosHistoricos: [
+                { id: 1, nome: 'Guerra Fria', regiao: 'Europa' },
+                { id: 2, nome: 'Guerra Fria', regiao: 'Internacional' },
+            ],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarPeriodosHistoricos(jaPreenchido, 2, 1);
+        assert.equal(jaPreenchido.periodosHistoricos[0].regiao, 'Europa');
+    });
+
+    it('preenche notas do destino a partir da origem, só se o destino estiver vazio', () => {
+        const dbRef = {
+            periodosHistoricos: [
+                { id: 1, nome: 'Ditadura Militar', notas: '' },
+                { id: 2, nome: 'Ditadura Militar', notas: 'anos de chumbo' },
+            ],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarPeriodosHistoricos(dbRef, 2, 1);
+        assert.equal(dbRef.periodosHistoricos[0].notas, 'anos de chumbo');
+    });
+
+    it('nunca sobrescreve notas do destino já preenchidas', () => {
+        const dbRef = {
+            periodosHistoricos: [
+                { id: 1, nome: 'Ditadura Militar', notas: 'nota original' },
+                { id: 2, nome: 'Ditadura Militar', notas: 'outra nota' },
+            ],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarPeriodosHistoricos(dbRef, 2, 1);
+        assert.equal(dbRef.periodosHistoricos[0].notas, 'nota original');
+    });
+
+    it('preenche inicio/fim do destino a partir da origem, só se o destino estiver vazio', () => {
+        const dbRef = {
+            periodosHistoricos: [
+                { id: 1, nome: 'Segunda Guerra Mundial', notas: '', inicio: null, fim: null },
+                {
+                    id: 2,
+                    nome: 'Segunda Guerra Mundial',
+                    notas: '',
+                    inicio: { dia: 1, mes: 9, ano: 1939 },
+                    fim: { dia: 2, mes: 9, ano: 1945 },
+                },
+            ],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarPeriodosHistoricos(dbRef, 2, 1);
+        assert.deepEqual(dbRef.periodosHistoricos[0].inicio, { dia: 1, mes: 9, ano: 1939 });
+        assert.deepEqual(dbRef.periodosHistoricos[0].fim, { dia: 2, mes: 9, ano: 1945 });
+    });
+
+    it('nunca sobrescreve inicio/fim do destino já preenchidos', () => {
+        const dbRef = {
+            periodosHistoricos: [
+                {
+                    id: 1,
+                    nome: 'Guerra Fria',
+                    notas: '',
+                    inicio: { ano: 1947 },
+                    fim: { ano: 1991 },
+                },
+                { id: 2, nome: 'Guerra Fria', notas: '', inicio: { ano: 1945 }, fim: null },
+            ],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarPeriodosHistoricos(dbRef, 2, 1);
+        assert.deepEqual(dbRef.periodosHistoricos[0].inicio, { ano: 1947 });
+        assert.deepEqual(dbRef.periodosHistoricos[0].fim, { ano: 1991 });
+    });
+
+    it('não faz nada se origem e destino forem o mesmo id', () => {
+        const dbRef = {
+            periodosHistoricos: [{ id: 1, nome: 'Guerra Fria', notas: '' }],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarPeriodosHistoricos(dbRef, 1, 1);
+        assert.equal(dbRef.periodosHistoricos.length, 1);
+    });
+
+    it('não faz nada se origem ou destino não existirem no cadastro', () => {
+        const dbRef = {
+            periodosHistoricos: [{ id: 1, nome: 'Guerra Fria', notas: '' }],
+            poemas: [],
+            prosas: [],
+        };
+        mesclarPeriodosHistoricos(dbRef, 999, 1);
+        assert.equal(dbRef.periodosHistoricos.length, 1);
+    });
+});
+
+// ─── migrarRegiaoPeriodoHistorico ────────────────────────────────────
+
+describe('migrarRegiaoPeriodoHistorico (campo `regiao` nascendo depois do seed)', () => {
+    const seedCompleto = () => structuredClone(db.periodosHistoricos);
+
+    it('item de fábrica sem a chave ganha a região do seed, por nome', () => {
+        const antigos = seedCompleto().map((p) => {
+            delete p.regiao;
+            return p;
+        });
+        migrarRegiaoPeriodoHistorico(antigos);
+        const guerraFria = antigos.find((p) => p.nome === 'Guerra Fria');
+        assert.equal(guerraFria.regiao, 'Internacional');
+        antigos.forEach((p) => assert.ok(p.regiao, `"${p.nome}" ficou sem regiao`));
+    });
+
+    it('período do próprio usuário (fora do seed) ganha `regiao` vazia, não inventada', () => {
+        const lista = [{ id: 'c1', nome: 'Enchente de 2024 na minha cidade', notas: '' }];
+        migrarRegiaoPeriodoHistorico(lista);
+        assert.equal(lista[0].regiao, '');
+    });
+
+    it('mesmo nome de item de fábrica, mas sem `embutido`, não recebe região do seed', () => {
+        const lista = [{ id: 'c2', nome: 'Guerra Fria', notas: 'minha' }];
+        migrarRegiaoPeriodoHistorico(lista);
+        assert.equal(lista[0].regiao, '');
+    });
+
+    it('não sobrescreve `regiao` já gravada, inclusive `""` apagada de propósito', () => {
+        const lista = [
+            { id: 1, nome: 'Guerra Fria', embutido: true, regiao: '' },
+            { id: 2, nome: 'Renascimento', embutido: true, regiao: 'Itália' },
+        ];
+        migrarRegiaoPeriodoHistorico(lista);
+        assert.equal(lista[0].regiao, '');
+        assert.equal(lista[1].regiao, 'Itália');
+    });
+
+    it('é idempotente e tolera lista ausente', () => {
+        const lista = seedCompleto();
+        const antes = JSON.stringify(lista);
+        migrarRegiaoPeriodoHistorico(lista);
+        assert.equal(JSON.stringify(lista), antes);
+        assert.doesNotThrow(() => migrarRegiaoPeriodoHistorico(undefined));
+    });
+
+    it('migrarPeriodosHistoricosEmbutidos cria os que faltam já com `regiao`', () => {
+        const vazio = [];
+        migrarPeriodosHistoricosEmbutidos(vazio, []);
+        vazio.forEach((p) => assert.ok(p.regiao, `"${p.nome}" criado sem regiao`));
     });
 });

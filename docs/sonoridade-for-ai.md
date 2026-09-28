@@ -89,10 +89,13 @@ One item per line of the poem's original text, in order:
 ## 3. `rimas` — rhyme pairs
 
 ```json
-{ "a": { "linha": 0, "silabas": [8] }, "b": { "linha": 1, "silabas": [8] },
-  "acentuacao": "Grave / Paroxítona",
-  "tonalidade": "Soante / Consoante (Perfeita)",
-  "riqueza": "Pobre (mesma classe gramatical)" }
+{
+    "a": { "linha": 0, "silabas": [8] },
+    "b": { "linha": 1, "silabas": [8] },
+    "acentuacao": "Grave / Paroxítona",
+    "tonalidade": "Soante / Consoante (Perfeita)",
+    "riqueza": "Pobre (mesma classe gramatical)"
+}
 ```
 
 - `linha` ("line") is the 0-based index of the verse's position within

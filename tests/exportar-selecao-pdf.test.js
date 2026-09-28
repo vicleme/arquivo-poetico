@@ -93,7 +93,11 @@ describe('exportarSelecaoPdf', () => {
         globalThis.window.jspdf = { jsPDF: Espiao };
 
         assert.doesNotThrow(() => exportarSelecaoPdf('poema', []));
-        assert.equal(instancias, 0, 'jsPDF não deveria ter sido instanciado sem itens selecionados');
+        assert.equal(
+            instancias,
+            0,
+            'jsPDF não deveria ter sido instanciado sem itens selecionados',
+        );
     });
 
     it('lib jsPDF indisponível: não lança, só avisa (mesmo padrão de exportarItem)', (t) => {

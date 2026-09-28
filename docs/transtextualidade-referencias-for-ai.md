@@ -29,7 +29,13 @@ and are not the subject of this document.
 Structure of each entry:
 
 ```json
-{ "tipo": "Música", "texto": "\"Águas de Março\", Tom Jobim", "link": "", "linkTexto": "", "nota": "" }
+{
+    "tipo": "Música",
+    "texto": "\"Águas de Março\", Tom Jobim",
+    "link": "",
+    "linkTexto": "",
+    "nota": ""
+}
 ```
 
 - **`tipo`** (type): free text with suggestions (Book, Text, Song, Film,
@@ -52,7 +58,14 @@ transform the source.
 Structure of each entry:
 
 ```json
-{ "tipo": "Livro", "relacao": "Paródia", "hipotexto": "Dom Casmurro", "link": "", "linkTexto": "", "nota": "" }
+{
+    "tipo": "Livro",
+    "relacao": "Paródia",
+    "hipotexto": "Dom Casmurro",
+    "link": "",
+    "linkTexto": "",
+    "nota": ""
+}
 ```
 
 - **`tipo`** (type): the same medium-type suggestion list as
@@ -72,7 +85,7 @@ stronger, more structural relationship than Intertextuality: it isn't just
 rule: if the text **reworks, rewrites, or structurally leans on** a
 specific source work (a parody, a rereading, an adapted translation), that
 is Hypertextuality; if it's a quote, mention, or looser dialogue with a
-work (without the text itself *being* a transformation of it), that is
+work (without the text itself _being_ a transformation of it), that is
 Intertextuality.
 
 ## Referências (Externas) (External References)
@@ -105,18 +118,18 @@ the correct link is `pessoas`, not an entry here.
 
 ## Comparison summary
 
-| Field                  | Points to                              | Nature of the link                        |
-| ------------------------ | ---------------------------------------- | -------------------------------------------- |
-| Intertextuality           | A specific, nameable work/artifact       | Dialogue, quote, allusion — can be light   |
-| Hypertextuality            | A specific source hypotext                | Direct structural derivation/transformation |
-| External References       | A real-world fact, event, or public figure | Factual anchor, no work/authorship involved |
+| Field               | Points to                                  | Nature of the link                          |
+| ------------------- | ------------------------------------------ | ------------------------------------------- |
+| Intertextuality     | A specific, nameable work/artifact         | Dialogue, quote, allusion — can be light    |
+| Hypertextuality     | A specific source hypotext                 | Direct structural derivation/transformation |
+| External References | A real-world fact, event, or public figure | Factual anchor, no work/authorship involved |
 
 And, outside this group but often confused with it:
 
-| Field                                        | Points to                             |
-| ---------------------------------------------- | ---------------------------------------- |
-| Links / Echoes (Intratextuality)                | Another poem/prose piece in the archive itself |
-| Imagery Domain (Tags/Sinalizações)              | Vocabulary/repertoire from a field of knowledge, with no specific work cited |
+| Field                              | Points to                                                                    |
+| ---------------------------------- | ---------------------------------------------------------------------------- |
+| Links / Echoes (Intratextuality)   | Another poem/prose piece in the archive itself                               |
+| Imagery Domain (Tags/Sinalizações) | Vocabulary/repertoire from a field of knowledge, with no specific work cited |
 
 ## What this means in practice for an AI reading the data
 

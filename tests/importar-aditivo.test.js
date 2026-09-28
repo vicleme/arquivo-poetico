@@ -16,6 +16,7 @@ function dbVazio() {
         grupos: [],
         autores: [],
         epocas: [],
+        periodosHistoricos: [],
         livros: [],
         escansoes: [],
         estruturasTextuais: [],
@@ -37,12 +38,11 @@ function poemaExportado(overrides = {}) {
     };
 }
 
-function depsFake(dbRef) {
+function depsFake() {
     return {
         tirarSnapshotSeNecessario: mock.fn(async () => true),
         save: mock.fn(() => {}),
     };
-    void dbRef;
 }
 
 // ─── normalizarItensPayload ────────────────────────────────────────
@@ -118,6 +118,49 @@ describe('classificarImportacaoAditiva — referências com candidato exato', ()
         assert.equal(ref.decisao, 'casar');
         assert.equal(ref.entidadeDestinoId, 12);
         assert.equal(ref.candidatos[0].match, 'exato');
+    });
+});
+
+describe('classificarImportacaoAditiva — Período Histórico', () => {
+    it('periodoHistoricoId sem nenhum candidato no destino é pré-marcado "criar" automaticamente', () => {
+        const payload = {
+            itens: [
+                poemaExportado({
+                    periodoHistoricoId: 5,
+                    periodoHistoricoNome: 'Ditadura Militar',
+                }),
+            ],
+        };
+        const { itensOrigem } = classificarImportacaoAditiva(payload, dbVazio());
+        assert.equal(itensOrigem[0].status, 'pronto');
+        const ref = itensOrigem[0].referencias.find((r) => r.campo === 'periodoHistoricoId');
+        assert.ok(ref);
+        assert.equal(ref.decisao, 'criar');
+        assert.equal(ref.entidadeDestinoId, null);
+    });
+
+    it('candidato de match exato é pré-marcado "casar"', () => {
+        const db = dbVazio();
+        db.periodosHistoricos.push({ id: 30, nome: 'Ditadura Militar', notas: '' });
+        const payload = {
+            itens: [
+                poemaExportado({
+                    periodoHistoricoId: 5,
+                    periodoHistoricoNome: 'ditadura militar',
+                }),
+            ],
+        };
+        const { itensOrigem } = classificarImportacaoAditiva(payload, db);
+        const ref = itensOrigem[0].referencias.find((r) => r.campo === 'periodoHistoricoId');
+        assert.equal(ref.decisao, 'casar');
+        assert.equal(ref.entidadeDestinoId, 30);
+    });
+
+    it('item sem periodoHistoricoId não gera referência nenhuma pra esse campo', () => {
+        const payload = { itens: [poemaExportado()] };
+        const { itensOrigem } = classificarImportacaoAditiva(payload, dbVazio());
+        const ref = itensOrigem[0].referencias.find((r) => r.campo === 'periodoHistoricoId');
+        assert.equal(ref, undefined);
     });
 });
 
@@ -306,6 +349,46 @@ describe('aplicarImportacaoAditiva', () => {
 
         assert.equal(db.autores.length, 1); // não duplicou
         assert.equal(db.poemas[0].autoria[0].autorId, 55);
+    });
+
+    it('Período Histórico "criar" gera entidade nova e remapeia periodoHistoricoId no item, sem persistir periodoHistoricoNome', async () => {
+        const db = dbVazio();
+        const payload = {
+            itens: [
+                poemaExportado({
+                    periodoHistoricoId: 5,
+                    periodoHistoricoNome: 'Ditadura Militar',
+                }),
+            ],
+        };
+        const relatorio = classificarImportacaoAditiva(payload, db);
+        const deps = depsFake(db);
+        await aplicarImportacaoAditiva(payload, relatorio, db, deps);
+
+        assert.equal(db.periodosHistoricos.length, 1);
+        assert.equal(db.periodosHistoricos[0].nome, 'Ditadura Militar');
+        const novoPoema = db.poemas[0];
+        assert.equal(novoPoema.periodoHistoricoId, db.periodosHistoricos[0].id);
+        assert.equal(novoPoema.periodoHistoricoNome, undefined); // decorativo, não persiste
+    });
+
+    it('Período Histórico "casar" reaproveita a entidade existente, sem criar nada', async () => {
+        const db = dbVazio();
+        db.periodosHistoricos.push({ id: 30, nome: 'Ditadura Militar', notas: '' });
+        const payload = {
+            itens: [
+                poemaExportado({
+                    periodoHistoricoId: 5,
+                    periodoHistoricoNome: 'Ditadura Militar',
+                }),
+            ],
+        };
+        const relatorio = classificarImportacaoAditiva(payload, db);
+        const deps = depsFake(db);
+        await aplicarImportacaoAditiva(payload, relatorio, db, deps);
+
+        assert.equal(db.periodosHistoricos.length, 1); // não duplicou
+        assert.equal(db.poemas[0].periodoHistoricoId, 30);
     });
 
     it('duas entidades "criar" com a mesma idOrigem no lote reaproveitam a mesma nova entidade', async () => {

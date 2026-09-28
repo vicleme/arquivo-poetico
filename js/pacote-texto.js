@@ -146,6 +146,9 @@ function montarAutoria(meta, sobre, titulo) {
 // Tipo, por ordem de precedência: `meta.textos[título].tipo` (pacote
 // misto, ex.: Machado de Assis), o argumento `tipo` (envio da aba
 // Biblioteca), `meta.tipo` (pacote todo de um tipo) e, por fim, 'poema'.
+//
+// Idioma: `meta.textos[título].idioma` (pacote em mais de uma língua),
+// `meta.idioma` (pacote todo numa língua) e, por fim, 'pt-BR'.
 export function montarItem(id, texto, meta, tipo) {
     const sobre = meta.textos?.[texto.titulo] || {};
     const pedido = [sobre.tipo, tipo, meta.tipo].find((v) => String(v ?? '').trim() !== '');
@@ -160,7 +163,7 @@ export function montarItem(id, texto, meta, tipo) {
         paiTipo: null,
         paiId: null,
         sequencia: null,
-        idioma: 'pt-BR',
+        idioma: String(sobre.idioma ?? meta.idioma ?? '').trim() || 'pt-BR',
         dataEscrita,
         dataPublicacao,
         ano: dataEscrita?.ano || '',
@@ -463,4 +466,38 @@ export function montarPayloadDeTexto(campos) {
         tituloPadrao: campos.tituloPadrao,
         tipo: campos.tipo,
     });
+}
+
+// Junta vários pacotes já carregados (payload completo, cada um com
+// `itens`/`autores`) num payload só, pra Importação Aditiva tratar como
+// um lote único (aba Biblioteca: "importar todos"/"importar selecionados").
+// Cada pacote tem seus próprios ids de Autor partindo de 1 — sem remapear,
+// dois pacotes colidiriam (ex.: id 1 de um autor virando id 1 de outro na
+// hora de casar metadados). Desloca os ids de cada pacote por uma faixa
+// própria (autor e a referência em item.autoria[].autorId juntos, senão o
+// vínculo quebra) antes de concatenar `itens`/`autores`.
+export function mesclarPacotesBiblioteca(pacotes) {
+    const lista = Array.isArray(pacotes) ? pacotes.filter(Boolean) : [];
+    const itens = [];
+    const autores = [];
+    let deslocamento = 0;
+    for (const pacote of lista) {
+        const mapaAutores = new Map();
+        (pacote.autores || []).forEach((autor) => {
+            const novoId = autor.id + deslocamento;
+            mapaAutores.set(autor.id, novoId);
+            autores.push({ ...autor, id: novoId });
+        });
+        (pacote.itens || []).forEach((item) => {
+            itens.push({
+                ...item,
+                autoria: (item.autoria || []).map((a) => ({
+                    ...a,
+                    autorId: mapaAutores.has(a.autorId) ? mapaAutores.get(a.autorId) : a.autorId,
+                })),
+            });
+        });
+        deslocamento += 1_000_000;
+    }
+    return { export_format: 'biblioteca-multiplo', itens, autores };
 }

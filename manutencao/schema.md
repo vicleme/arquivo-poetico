@@ -71,8 +71,18 @@ No item:
 
 ```json
 // db.epocas
-{ "id": 123, "nome": "Corte de contato", "contextoRelacao": "Pedro e Victor", "notas": "" }
+{
+    "id": 123,
+    "nome": "Corte de contato",
+    "contextoRelacao": "Pedro e Victor",
+    "notas": "",
+    "autorId": 1,
+    "inicio": { "mes": 3, "ano": 2021 },
+    "fim": null
+}
 ```
+
+`inicio`/`fim` = datas oficiais do cadastro (datas parciais, `null` quando ausentes; ver `migrarDatasEpoca`). São independentes das datas por texto em `epocaRetratada`: não se alimentam mutuamente.
 
 No item:
 
@@ -184,4 +194,3 @@ Não é schema de dado, é o mapa cadastro → colunas. Cada coluna declara em `
 
 - Poema/Prosa (`colunasTexto(tipo)`, entrada = `montarRegistro`): 75 colunas. Poema tem `n_versos`/`n_estrofes`, `anotacoes_marginais`, `descricao_visual`; Prosa tem `n_linhas`/`n_paragrafos`, `genero`, `publicado`. Datas em `_ano/_mes/_dia`; Sinalizações uma coluna por categoria de `SINALIZACOES_CATEGORIAS` (`sinal_*`); listas de objetos (elos, ecos, intertextualidade, envios...) uma entrada de texto por objeto, separadas por `" | "`.
 - Autor (`COLUNAS_AUTOR`, entrada = `itensDaSelecaoAutores`): 33 colunas, `derivados` no fim.
-

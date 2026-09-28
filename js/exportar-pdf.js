@@ -272,7 +272,11 @@ function medirAlturaBloco(doc, linhas, bloco, larguraUtilBloco, tamanhoBase) {
 // renderizarBlocoComCaixa). `direcao` é 1 pra buscar a partir do início
 // (primeira linha com texto) ou -1 a partir do fim (última).
 function tamanhoNaBorda(linhas, bloco, tamanhoBase, direcao) {
-    for (let i = direcao === 1 ? bloco.inicio : bloco.fim; i >= bloco.inicio && i <= bloco.fim; i += direcao) {
+    for (
+        let i = direcao === 1 ? bloco.inicio : bloco.fim;
+        i >= bloco.inicio && i <= bloco.fim;
+        i += direcao
+    ) {
         const runs = linhas[i];
         if (runs && runs.length) return Math.max(...runs.map((r) => r.tamanho || tamanhoBase));
     }
@@ -287,7 +291,8 @@ function tamanhoNaBorda(linhas, bloco, tamanhoBase, direcao) {
 // `true` quando desenhou a caixa, `false` quando desistiu (não coube
 // nem numa página em branco — ver comentário acima).
 function renderizarBlocoComCaixa(doc, linhas, bloco, opcoes) {
-    const { margem, larguraUtil, estadoY, quebrarPaginaSeNecessario, tamanhoBase, alturaPagina } = opcoes;
+    const { margem, larguraUtil, estadoY, quebrarPaginaSeNecessario, tamanhoBase, alturaPagina } =
+        opcoes;
     const PX_PARA_PT = 0.75;
     const paddingPt = (bloco.padding || 0) * PX_PARA_PT;
     const raioPt = (bloco.raio || 0) * PX_PARA_PT;
@@ -316,7 +321,8 @@ function renderizarBlocoComCaixa(doc, linhas, bloco, opcoes) {
     const primeiroTamanho = tamanhoNaBorda(linhas, bloco, tamanhoBase, 1);
     const ultimoTamanho = tamanhoNaBorda(linhas, bloco, tamanhoBase, -1);
     const extraTopo = extensaoVerticalTexto(primeiroTamanho).subida;
-    const espacoFantasmaUltimaLinha = ultimoTamanho * 1.4 - extensaoVerticalTexto(ultimoTamanho).descida;
+    const espacoFantasmaUltimaLinha =
+        ultimoTamanho * 1.4 - extensaoVerticalTexto(ultimoTamanho).descida;
     const reservaSeguranca = extensaoVerticalTexto(Math.max(tamanhoBase, 11.5)).subida;
 
     const alturaTotal = alturaConteudo + paddingPt * 2 + extraTopo - espacoFantasmaUltimaLinha;
@@ -360,206 +366,212 @@ function renderizarBlocoComCaixa(doc, linhas, bloco, opcoes) {
 // renderizarBlocoComCaixa (texto deslocado pelo padding, com o fundo de
 // linha suprimido porque a caixa contínua já foi desenhada por trás).
 function renderizarLinhaRica(doc, linhas, indice, opcoes) {
-    const { margem, larguraUtil, estadoY, quebrarPaginaSeNecessario, tamanhoBase, suprimirFundoDeLinhaInteira } =
-        opcoes;
+    const {
+        margem,
+        larguraUtil,
+        estadoY,
+        quebrarPaginaSeNecessario,
+        tamanhoBase,
+        suprimirFundoDeLinhaInteira,
+    } = opcoes;
     const runsDaLinha = linhas[indice];
     if (!runsDaLinha.length) {
-            // Linha em branco (verso/parágrafo vazio, ex.: um Enter duplo
-            // no editor) — o efeito pretendido é uma quebra de parágrafo,
-            // que precisa ocupar PELO MENOS o espaço de uma linha normal.
-            // Antes usava um valor fixo (tamanhoBase*0.8 = 8pt pro
-            // tamanhoBase de 10 usado aqui), menor que a altura de uma
-            // linha comum (tamanhoBase*1.4 = 14pt) — ou seja, uma quebra
-            // de PARÁGRAFO ficava com MENOS respiro do que uma simples
-            // quebra de LINHA, o oposto do esperado, e por isso a linha
-            // em branco "sumia" visualmente no PDF. Também olha a linha
-            // seguinte com conteúdo: se ela tiver um tamanho de fonte bem
-            // maior (ex.: um <div style="font-size:48pt">, caso comum de
-            // uma palavra de destaque), o respiro escala junto — senão um
-            // texto grande vem colado num respiro pensado pro corpo
-            // normal, pequeno demais pra ele.
-            const proximaComTexto = linhas.slice(indice + 1).find((l) => l.length);
-            const maiorTamanhoVizinho = proximaComTexto
-                ? Math.max(...proximaComTexto.map((r) => r.tamanho || tamanhoBase))
-                : tamanhoBase;
-            estadoY.y += Math.max(tamanhoBase, maiorTamanhoVizinho) * 1.4;
-            return;
+        // Linha em branco (verso/parágrafo vazio, ex.: um Enter duplo
+        // no editor) — o efeito pretendido é uma quebra de parágrafo,
+        // que precisa ocupar PELO MENOS o espaço de uma linha normal.
+        // Antes usava um valor fixo (tamanhoBase*0.8 = 8pt pro
+        // tamanhoBase de 10 usado aqui), menor que a altura de uma
+        // linha comum (tamanhoBase*1.4 = 14pt) — ou seja, uma quebra
+        // de PARÁGRAFO ficava com MENOS respiro do que uma simples
+        // quebra de LINHA, o oposto do esperado, e por isso a linha
+        // em branco "sumia" visualmente no PDF. Também olha a linha
+        // seguinte com conteúdo: se ela tiver um tamanho de fonte bem
+        // maior (ex.: um <div style="font-size:48pt">, caso comum de
+        // uma palavra de destaque), o respiro escala junto — senão um
+        // texto grande vem colado num respiro pensado pro corpo
+        // normal, pequeno demais pra ele.
+        const proximaComTexto = linhas.slice(indice + 1).find((l) => l.length);
+        const maiorTamanhoVizinho = proximaComTexto
+            ? Math.max(...proximaComTexto.map((r) => r.tamanho || tamanhoBase))
+            : tamanhoBase;
+        estadoY.y += Math.max(tamanhoBase, maiorTamanhoVizinho) * 1.4;
+        return;
+    }
+
+    // Alinhamento da linha: o primeiro run que declarar um vale pra
+    // linha inteira (na prática, applyStyle sempre envolve o verso
+    // inteiro quando o objetivo é alinhar, então não costuma haver
+    // mistura de alinhamentos numa mesma linha).
+    const alinhamento = runsDaLinha.find((r) => r.alinhamento)?.alinhamento || 'left';
+    // Fundo de linha inteira (todo run com texto na linha compartilha
+    // o mesmo fundo) vira faixa de largura total em vez de colar nas
+    // palavras — ver comentário no topo do arquivo.
+    const fundoUniforme = linhaTemFundoUniforme(runsDaLinha);
+
+    // Empacotamento em sub-linhas (quebra de palavra) — fatorado em
+    // empacotarPalavras() pra ser a MESMA função usada por
+    // medirAlturaBloco() na medição prévia de uma caixa contínua
+    // (ver comentário acima de renderizarBlocoComCaixa); assim as
+    // duas passadas nunca divergem.
+    const { subLinhas } = empacotarPalavras(doc, runsDaLinha, larguraUtil, tamanhoBase);
+    if (!subLinhas.length) {
+        estadoY.y += tamanhoBase * 1.4;
+        return;
+    }
+
+    function largura(palavra) {
+        doc.setFont('helvetica', variantePorEstilo(palavra.negrito, palavra.italico));
+        doc.setFontSize(palavra.tamanho);
+        return doc.getTextWidth(palavra.texto);
+    }
+    // Largura do espaço no tamanho da palavra à direita dele (não no
+    // tamanhoBase fixo) — senão um espaço "normal" de 10pt some
+    // visualmente colado entre duas palavras num trecho maior (ex.:
+    // 16pt de <div style="font-size:16pt">), como se tivesse virado
+    // uma palavra só.
+    const larguraEspaco = (tamanho = tamanhoBase) => {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(tamanho);
+        return doc.getTextWidth(' ');
+    };
+
+    subLinhas.forEach((sub, indiceSub) => {
+        const maiorTamanho = Math.max(...sub.map((p) => p.tamanho));
+        const alturaLinha = maiorTamanho * 1.4;
+        quebrarPaginaSeNecessario(alturaLinha);
+
+        // Largura total da sub-linha, pra resolver alinhamento.
+        const larguraTotal = sub.reduce(
+            (acc, p, i) => acc + largura(p) + (i > 0 ? larguraEspaco() : 0),
+            0,
+        );
+        let x = margem;
+        // Justificado: em vez de deslocar o x inicial (como right/
+        // center), aumenta o ESPAÇO ENTRE PALAVRAS pra ocupar a
+        // largura útil inteira — mas só quando há pelo menos 2
+        // palavras (senão não há espaço nenhum pra esticar) e a
+        // sub-linha NÃO é a última da linha/verso (a última
+        // sub-linha de um parágrafo não é esticada em tipografia
+        // convencional — senão a última linha de um trecho curto
+        // ficaria com espaços enormes entre 2-3 palavras soltas).
+        const ehUltimaSubLinha = indiceSub === subLinhas.length - 1;
+        let espacoEntrePalavras = larguraEspaco();
+        if (alinhamento === 'right') {
+            x = margem + (larguraUtil - larguraTotal);
+        } else if (alinhamento === 'center') {
+            x = margem + (larguraUtil - larguraTotal) / 2;
+        } else if (alinhamento === 'justify' && !ehUltimaSubLinha && sub.length > 1) {
+            const larguraPalavras = sub.reduce((acc, p) => acc + largura(p), 0);
+            espacoEntrePalavras = (larguraUtil - larguraPalavras) / (sub.length - 1);
         }
 
-        // Alinhamento da linha: o primeiro run que declarar um vale pra
-        // linha inteira (na prática, applyStyle sempre envolve o verso
-        // inteiro quando o objetivo é alinhar, então não costuma haver
-        // mistura de alinhamentos numa mesma linha).
-        const alinhamento = runsDaLinha.find((r) => r.alinhamento)?.alinhamento || 'left';
-        // Fundo de linha inteira (todo run com texto na linha compartilha
-        // o mesmo fundo) vira faixa de largura total em vez de colar nas
-        // palavras — ver comentário no topo do arquivo.
-        const fundoUniforme = linhaTemFundoUniforme(runsDaLinha);
+        // 1º passo: só calcula onde cada palavra vai cair (sem
+        // desenhar nada ainda) — o fundo precisa ser desenhado ANTES
+        // do texto, mas só sabemos a largura/posição de cada palavra
+        // depois de já ter passado por todas (mesmo cálculo de
+        // largura(palavra) já usado acima pro empacotamento, reaproveitado
+        // aqui em vez de medido de novo dentro do laço de desenho).
+        const posicoes = sub.map((palavra, i) => {
+            if (i > 0) x += espacoEntrePalavras;
+            const w = largura(palavra);
+            const posicao = { palavra, x, w };
+            x += w;
+            return posicao;
+        });
 
-        // Empacotamento em sub-linhas (quebra de palavra) — fatorado em
-        // empacotarPalavras() pra ser a MESMA função usada por
-        // medirAlturaBloco() na medição prévia de uma caixa contínua
-        // (ver comentário acima de renderizarBlocoComCaixa); assim as
-        // duas passadas nunca divergem.
-        const { subLinhas } = empacotarPalavras(doc, runsDaLinha, larguraUtil, tamanhoBase);
-        if (!subLinhas.length) {
-            estadoY.y += tamanhoBase * 1.4;
-            return;
+        // 2º passo: fundo (shading), desenhado ATRÁS do texto. Suprimido
+        // quando a linha faz parte de uma caixa contínua (ver
+        // renderizarBlocoComCaixa) — a caixa inteira já foi pintada por
+        // trás do bloco, repetir aqui só faria o mesmo fundo por cima
+        // de novo, sem efeito visual, e sem respeitar o padding.
+        if (fundoUniforme && !suprimirFundoDeLinhaInteira) {
+            // Linha inteira com o mesmo fundo: um retângulo só, margem
+            // a margem (largura útil da página) — não ao redor das
+            // palavras.
+            const { subida, descida } = extensaoVerticalTexto(maiorTamanho);
+            doc.setFillColor(fundoUniforme.r, fundoUniforme.g, fundoUniforme.b);
+            doc.rect(margem, estadoY.y - subida, larguraUtil, subida + descida, 'F');
+        } else if (!fundoUniforme) {
+            // Palavras ADJACENTES com o mesmo fundo viram um único
+            // retângulo — cobrindo também o espaço entre elas — em vez
+            // de uma caixa por palavra com uma lasquinha branca no
+            // espaço; mesmo cuidado que motivou a troca da geração de
+            // .docx pro OOXML nativo (shading colado ao texto, sem
+            // buracos artificiais).
+            let grupoFundo = null;
+            const fecharGrupoFundo = () => {
+                if (!grupoFundo) return;
+                const { subida, descida } = extensaoVerticalTexto(grupoFundo.maiorTamanho);
+                doc.setFillColor(grupoFundo.fundo.r, grupoFundo.fundo.g, grupoFundo.fundo.b);
+                doc.rect(
+                    grupoFundo.xInicio,
+                    estadoY.y - subida,
+                    grupoFundo.xFim - grupoFundo.xInicio,
+                    subida + descida,
+                    'F',
+                );
+                grupoFundo = null;
+            };
+            posicoes.forEach(({ palavra, x: xPalavra, w }) => {
+                if (!palavra.fundo) {
+                    fecharGrupoFundo();
+                    return;
+                }
+                if (grupoFundo && mesmoFundo(grupoFundo.fundo, palavra.fundo)) {
+                    grupoFundo.xFim = xPalavra + w;
+                    grupoFundo.maiorTamanho = Math.max(grupoFundo.maiorTamanho, palavra.tamanho);
+                } else {
+                    fecharGrupoFundo();
+                    grupoFundo = {
+                        fundo: palavra.fundo,
+                        xInicio: xPalavra,
+                        xFim: xPalavra + w,
+                        maiorTamanho: palavra.tamanho,
+                    };
+                }
+            });
+            fecharGrupoFundo();
         }
 
-        function largura(palavra) {
+        // 3º passo: texto por cima do fundo já desenhado (e sublinhado
+        // por cima do texto, como já era antes).
+        posicoes.forEach(({ palavra, x: xPalavra, w }) => {
             doc.setFont('helvetica', variantePorEstilo(palavra.negrito, palavra.italico));
             doc.setFontSize(palavra.tamanho);
-            return doc.getTextWidth(palavra.texto);
-        }
-        // Largura do espaço no tamanho da palavra à direita dele (não no
-        // tamanhoBase fixo) — senão um espaço "normal" de 10pt some
-        // visualmente colado entre duas palavras num trecho maior (ex.:
-        // 16pt de <div style="font-size:16pt">), como se tivesse virado
-        // uma palavra só.
-        const larguraEspaco = (tamanho = tamanhoBase) => {
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(tamanho);
-            return doc.getTextWidth(' ');
-        };
+            if (palavra.cor) doc.setTextColor(palavra.cor.r, palavra.cor.g, palavra.cor.b);
+            else doc.setTextColor(0, 0, 0);
 
-        subLinhas.forEach((sub, indiceSub) => {
-            const maiorTamanho = Math.max(...sub.map((p) => p.tamanho));
-            const alturaLinha = maiorTamanho * 1.4;
-            quebrarPaginaSeNecessario(alturaLinha);
-
-            // Largura total da sub-linha, pra resolver alinhamento.
-            const larguraTotal = sub.reduce(
-                (acc, p, i) => acc + largura(p) + (i > 0 ? larguraEspaco() : 0),
-                0,
-            );
-            let x = margem;
-            // Justificado: em vez de deslocar o x inicial (como right/
-            // center), aumenta o ESPAÇO ENTRE PALAVRAS pra ocupar a
-            // largura útil inteira — mas só quando há pelo menos 2
-            // palavras (senão não há espaço nenhum pra esticar) e a
-            // sub-linha NÃO é a última da linha/verso (a última
-            // sub-linha de um parágrafo não é esticada em tipografia
-            // convencional — senão a última linha de um trecho curto
-            // ficaria com espaços enormes entre 2-3 palavras soltas).
-            const ehUltimaSubLinha = indiceSub === subLinhas.length - 1;
-            let espacoEntrePalavras = larguraEspaco();
-            if (alinhamento === 'right') {
-                x = margem + (larguraUtil - larguraTotal);
-            } else if (alinhamento === 'center') {
-                x = margem + (larguraUtil - larguraTotal) / 2;
-            } else if (alinhamento === 'justify' && !ehUltimaSubLinha && sub.length > 1) {
-                const larguraPalavras = sub.reduce((acc, p) => acc + largura(p), 0);
-                espacoEntrePalavras = (larguraUtil - larguraPalavras) / (sub.length - 1);
+            doc.text(palavra.texto, xPalavra, estadoY.y);
+            if (palavra.sublinhado) {
+                doc.setDrawColor(
+                    palavra.cor ? palavra.cor.r : 0,
+                    palavra.cor ? palavra.cor.g : 0,
+                    palavra.cor ? palavra.cor.b : 0,
+                );
+                doc.line(xPalavra, estadoY.y + 1.5, xPalavra + w, estadoY.y + 1.5);
             }
-
-            // 1º passo: só calcula onde cada palavra vai cair (sem
-            // desenhar nada ainda) — o fundo precisa ser desenhado ANTES
-            // do texto, mas só sabemos a largura/posição de cada palavra
-            // depois de já ter passado por todas (mesmo cálculo de
-            // largura(palavra) já usado acima pro empacotamento, reaproveitado
-            // aqui em vez de medido de novo dentro do laço de desenho).
-            const posicoes = sub.map((palavra, i) => {
-                if (i > 0) x += espacoEntrePalavras;
-                const w = largura(palavra);
-                const posicao = { palavra, x, w };
-                x += w;
-                return posicao;
-            });
-
-            // 2º passo: fundo (shading), desenhado ATRÁS do texto. Suprimido
-            // quando a linha faz parte de uma caixa contínua (ver
-            // renderizarBlocoComCaixa) — a caixa inteira já foi pintada por
-            // trás do bloco, repetir aqui só faria o mesmo fundo por cima
-            // de novo, sem efeito visual, e sem respeitar o padding.
-            if (fundoUniforme && !suprimirFundoDeLinhaInteira) {
-                // Linha inteira com o mesmo fundo: um retângulo só, margem
-                // a margem (largura útil da página) — não ao redor das
-                // palavras.
-                const { subida, descida } = extensaoVerticalTexto(maiorTamanho);
-                doc.setFillColor(fundoUniforme.r, fundoUniforme.g, fundoUniforme.b);
-                doc.rect(margem, estadoY.y - subida, larguraUtil, subida + descida, 'F');
-            } else if (!fundoUniforme) {
-                // Palavras ADJACENTES com o mesmo fundo viram um único
-                // retângulo — cobrindo também o espaço entre elas — em vez
-                // de uma caixa por palavra com uma lasquinha branca no
-                // espaço; mesmo cuidado que motivou a troca da geração de
-                // .docx pro OOXML nativo (shading colado ao texto, sem
-                // buracos artificiais).
-                let grupoFundo = null;
-                const fecharGrupoFundo = () => {
-                    if (!grupoFundo) return;
-                    const { subida, descida } = extensaoVerticalTexto(grupoFundo.maiorTamanho);
-                    doc.setFillColor(grupoFundo.fundo.r, grupoFundo.fundo.g, grupoFundo.fundo.b);
-                    doc.rect(
-                        grupoFundo.xInicio,
-                        estadoY.y - subida,
-                        grupoFundo.xFim - grupoFundo.xInicio,
-                        subida + descida,
-                        'F',
-                    );
-                    grupoFundo = null;
-                };
-                posicoes.forEach(({ palavra, x: xPalavra, w }) => {
-                    if (!palavra.fundo) {
-                        fecharGrupoFundo();
-                        return;
-                    }
-                    if (grupoFundo && mesmoFundo(grupoFundo.fundo, palavra.fundo)) {
-                        grupoFundo.xFim = xPalavra + w;
-                        grupoFundo.maiorTamanho = Math.max(grupoFundo.maiorTamanho, palavra.tamanho);
-                    } else {
-                        fecharGrupoFundo();
-                        grupoFundo = {
-                            fundo: palavra.fundo,
-                            xInicio: xPalavra,
-                            xFim: xPalavra + w,
-                            maiorTamanho: palavra.tamanho,
-                        };
-                    }
-                });
-                fecharGrupoFundo();
+            if (palavra.tachado) {
+                // Traço na altura média da palavra (proporcional ao
+                // tamanho da fonte, ao contrário do sublinhado acima
+                // que usa um deslocamento fixo de 1.5pt — abaixo da
+                // linha de base um valor fixo funciona bem porque a
+                // descida das letras é pequena e pouco variável;
+                // achar o "meio" do texto precisa escalar com o
+                // tamanho, senão um trecho grande (ex.: 24pt) ficaria
+                // com o traço baixo demais, quase colado no sublinhado).
+                doc.setDrawColor(
+                    palavra.cor ? palavra.cor.r : 0,
+                    palavra.cor ? palavra.cor.g : 0,
+                    palavra.cor ? palavra.cor.b : 0,
+                );
+                const yTachado = estadoY.y - palavra.tamanho * 0.3;
+                doc.line(xPalavra, yTachado, xPalavra + w, yTachado);
             }
-
-            // 3º passo: texto por cima do fundo já desenhado (e sublinhado
-            // por cima do texto, como já era antes).
-            posicoes.forEach(({ palavra, x: xPalavra, w }) => {
-                doc.setFont('helvetica', variantePorEstilo(palavra.negrito, palavra.italico));
-                doc.setFontSize(palavra.tamanho);
-                if (palavra.cor) doc.setTextColor(palavra.cor.r, palavra.cor.g, palavra.cor.b);
-                else doc.setTextColor(0, 0, 0);
-
-                doc.text(palavra.texto, xPalavra, estadoY.y);
-                if (palavra.sublinhado) {
-                    doc.setDrawColor(
-                        palavra.cor ? palavra.cor.r : 0,
-                        palavra.cor ? palavra.cor.g : 0,
-                        palavra.cor ? palavra.cor.b : 0,
-                    );
-                    doc.line(xPalavra, estadoY.y + 1.5, xPalavra + w, estadoY.y + 1.5);
-                }
-                if (palavra.tachado) {
-                    // Traço na altura média da palavra (proporcional ao
-                    // tamanho da fonte, ao contrário do sublinhado acima
-                    // que usa um deslocamento fixo de 1.5pt — abaixo da
-                    // linha de base um valor fixo funciona bem porque a
-                    // descida das letras é pequena e pouco variável;
-                    // achar o "meio" do texto precisa escalar com o
-                    // tamanho, senão um trecho grande (ex.: 24pt) ficaria
-                    // com o traço baixo demais, quase colado no sublinhado).
-                    doc.setDrawColor(
-                        palavra.cor ? palavra.cor.r : 0,
-                        palavra.cor ? palavra.cor.g : 0,
-                        palavra.cor ? palavra.cor.b : 0,
-                    );
-                    const yTachado = estadoY.y - palavra.tamanho * 0.3;
-                    doc.line(xPalavra, yTachado, xPalavra + w, yTachado);
-                }
-            });
-
-            doc.setTextColor(0, 0, 0);
-            estadoY.y += alturaLinha;
         });
+
+        doc.setTextColor(0, 0, 0);
+        estadoY.y += alturaLinha;
+    });
 }
 
 // Desenha o corpo rico de um item (uma linha por verso/parágrafo do

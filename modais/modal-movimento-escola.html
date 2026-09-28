@@ -1,0 +1,396 @@
+<div
+    id="modal-movimento-escola"
+    class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-movimento-escola-titulo"
+    tabindex="-1"
+>
+    <div
+        class="bg-white dark:bg-slate-900 rounded-lg w-full max-w-lg shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+    >
+        <div
+            class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0"
+        >
+            <h3 id="modal-movimento-escola-titulo" class="text-2xl font-bold">
+                Cadastrar Movimento/Escola
+            </h3>
+            <div class="flex items-center gap-1 ml-4">
+                <button
+                    type="button"
+                    onclick="document.getElementById('form-movimento-escola').requestSubmit()"
+                    title="Salvar (atalho: Ctrl+Enter)"
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors border border-emerald-200 dark:border-emerald-800"
+                    aria-label="Salvar"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        class="w-4 h-4"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                            clip-rule="evenodd"
+                        />
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    onclick="toggleModal('modal-movimento-escola')"
+                    title="Fechar (Esc)"
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-600 dark:hover:text-slate-300 transition-colors border border-gray-200 dark:border-slate-700"
+                    aria-label="Fechar"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        class="w-4 h-4"
+                    >
+                        <path
+                            d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+                        />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-y-auto flex-1 px-8 py-6">
+            <form id="form-movimento-escola" class="grid grid-cols-1 gap-4">
+                <input type="hidden" id="me-edit-id" />
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label">Nome</label>
+                        <input
+                            type="text"
+                            id="me-nome"
+                            required
+                            placeholder="Ex: Barroco, Modernismo, Concretismo"
+                        />
+                    </div>
+                    <div>
+                        <label class="form-label">Tipo</label>
+                        <select id="me-tipo">
+                            <option value="">Não especificado</option>
+                            <option value="Artístico">Artístico</option>
+                            <option value="Literário">Literário</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Notas</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Nota livre sobre este movimento/escola — opcional, não aparece na
+                        exportação.
+                    </p>
+                    <textarea
+                        id="me-notas"
+                        class="h-20"
+                        placeholder="Ex: recorte usado para os textos escritos sob influência direta deste movimento."
+                    ></textarea>
+                </div>
+                <div>
+                    <label class="form-label">Região de origem</label>
+                    <input
+                        type="text"
+                        id="me-regiao-origem"
+                        list="sugestoes-regiao-origem-movimento"
+                        placeholder="Ex: Brasil, Europa, Itália"
+                    />
+                    <datalist id="sugestoes-regiao-origem-movimento"></datalist>
+                </div>
+                <div>
+                    <label class="form-label">Data</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Preencha com a precisão que tiver: dia/mês/ano para um evento datado, só o
+                        ano para um marco aproximado, ou século/década quando não há um recorte mais
+                        preciso (ex.: "Barroco, século XVII"). Preencha só o "De" para um marco
+                        pontual, os dois para um intervalo.
+                    </p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <span class="text-[10px] text-gray-400 dark:text-slate-500">De</span>
+                            <div class="grid grid-cols-3 gap-1">
+                                <input
+                                    type="number"
+                                    id="me-ini-dia"
+                                    placeholder="Dia"
+                                    min="1"
+                                    max="31"
+                                    title="Dia"
+                                />
+                                <input
+                                    type="number"
+                                    id="me-ini-mes"
+                                    placeholder="Mês"
+                                    min="1"
+                                    max="12"
+                                    title="Mês"
+                                />
+                                <input
+                                    type="number"
+                                    id="me-ini-ano"
+                                    placeholder="Ano"
+                                    min="1"
+                                    max="2100"
+                                    title="Ano"
+                                />
+                            </div>
+                            <div class="grid grid-cols-2 gap-1 mt-1">
+                                <select id="me-ini-seculo" title="Século">
+                                    <option value="">Século</option>
+                                    <option value="I">I</option>
+                                    <option value="II">II</option>
+                                    <option value="III">III</option>
+                                    <option value="IV">IV</option>
+                                    <option value="V">V</option>
+                                    <option value="VI">VI</option>
+                                    <option value="VII">VII</option>
+                                    <option value="VIII">VIII</option>
+                                    <option value="IX">IX</option>
+                                    <option value="X">X</option>
+                                    <option value="XI">XI</option>
+                                    <option value="XII">XII</option>
+                                    <option value="XIII">XIII</option>
+                                    <option value="XIV">XIV</option>
+                                    <option value="XV">XV</option>
+                                    <option value="XVI">XVI</option>
+                                    <option value="XVII">XVII</option>
+                                    <option value="XVIII">XVIII</option>
+                                    <option value="XIX">XIX</option>
+                                    <option value="XX">XX</option>
+                                    <option value="XXI">XXI</option>
+                                </select>
+                                <input
+                                    type="number"
+                                    id="me-ini-decada"
+                                    placeholder="Década"
+                                    title="Década"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-gray-400 dark:text-slate-500">Até</span>
+                            <div class="grid grid-cols-3 gap-1">
+                                <input
+                                    type="number"
+                                    id="me-fim-dia"
+                                    placeholder="Dia"
+                                    min="1"
+                                    max="31"
+                                    title="Dia"
+                                />
+                                <input
+                                    type="number"
+                                    id="me-fim-mes"
+                                    placeholder="Mês"
+                                    min="1"
+                                    max="12"
+                                    title="Mês"
+                                />
+                                <input
+                                    type="number"
+                                    id="me-fim-ano"
+                                    placeholder="Ano"
+                                    min="1"
+                                    max="2100"
+                                    title="Ano"
+                                />
+                            </div>
+                            <div class="grid grid-cols-2 gap-1 mt-1">
+                                <select id="me-fim-seculo" title="Século">
+                                    <option value="">Século</option>
+                                    <option value="I">I</option>
+                                    <option value="II">II</option>
+                                    <option value="III">III</option>
+                                    <option value="IV">IV</option>
+                                    <option value="V">V</option>
+                                    <option value="VI">VI</option>
+                                    <option value="VII">VII</option>
+                                    <option value="VIII">VIII</option>
+                                    <option value="IX">IX</option>
+                                    <option value="X">X</option>
+                                    <option value="XI">XI</option>
+                                    <option value="XII">XII</option>
+                                    <option value="XIII">XIII</option>
+                                    <option value="XIV">XIV</option>
+                                    <option value="XV">XV</option>
+                                    <option value="XVI">XVI</option>
+                                    <option value="XVII">XVII</option>
+                                    <option value="XVIII">XVIII</option>
+                                    <option value="XIX">XIX</option>
+                                    <option value="XX">XX</option>
+                                    <option value="XXI">XXI</option>
+                                </select>
+                                <input
+                                    type="number"
+                                    id="me-fim-decada"
+                                    placeholder="Década"
+                                    title="Década"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="form-label">Valores</label>
+                        <div class="flex gap-2 mb-2">
+                            <input
+                                type="text"
+                                id="me-valor-input"
+                                class="text-sm flex-1"
+                                placeholder="Ex: Fé, razão, ordem..."
+                            />
+                            <button
+                                type="button"
+                                onclick="adicionarValorMovimento()"
+                                class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                            >
+                                +
+                            </button>
+                        </div>
+                        <div
+                            id="me-valores-container"
+                            class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                        ></div>
+                        <input type="hidden" id="me-valores" />
+                    </div>
+                    <div>
+                        <label class="form-label">Temas</label>
+                        <div class="flex gap-2 mb-2">
+                            <input
+                                type="text"
+                                id="me-tema-input"
+                                class="text-sm flex-1"
+                                placeholder="Ex: Morte, amor, natureza..."
+                            />
+                            <button
+                                type="button"
+                                onclick="adicionarTemaMovimento()"
+                                class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                            >
+                                +
+                            </button>
+                        </div>
+                        <div
+                            id="me-temas-container"
+                            class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                        ></div>
+                        <input type="hidden" id="me-temas" />
+                    </div>
+                    <div>
+                        <label class="form-label">Técnicas</label>
+                        <div class="flex gap-2 mb-2">
+                            <input
+                                type="text"
+                                id="me-tecnica-input"
+                                class="text-sm flex-1"
+                                placeholder="Ex: Antítese, hipérbole..."
+                            />
+                            <button
+                                type="button"
+                                onclick="adicionarTecnicaMovimento()"
+                                class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                            >
+                                +
+                            </button>
+                        </div>
+                        <div
+                            id="me-tecnicas-container"
+                            class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                        ></div>
+                        <input type="hidden" id="me-tecnicas" />
+                    </div>
+                    <div>
+                        <label class="form-label">Tipos de composição</label>
+                        <div class="flex gap-2 mb-2">
+                            <input
+                                type="text"
+                                id="me-tipo-composicao-input"
+                                class="text-sm flex-1"
+                                placeholder="Ex: Soneto, poema-piada..."
+                            />
+                            <button
+                                type="button"
+                                onclick="adicionarTipoComposicaoMovimento()"
+                                class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                            >
+                                +
+                            </button>
+                        </div>
+                        <div
+                            id="me-tipos-composicao-container"
+                            class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                        ></div>
+                        <input type="hidden" id="me-tipos-composicao" />
+                    </div>
+                    <div>
+                        <label class="form-label">Lemas</label>
+                        <div class="flex gap-2 mb-2">
+                            <input
+                                type="text"
+                                id="me-lema-input"
+                                class="text-sm flex-1"
+                                placeholder="Ex: Carpe diem"
+                            />
+                            <button
+                                type="button"
+                                onclick="adicionarLemaMovimento()"
+                                class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                            >
+                                +
+                            </button>
+                        </div>
+                        <div
+                            id="me-lemas-container"
+                            class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                        ></div>
+                        <input type="hidden" id="me-lemas" />
+                    </div>
+                    <div>
+                        <label class="form-label">Manifestos</label>
+                        <div class="flex gap-2 mb-2">
+                            <input
+                                type="text"
+                                id="me-manifesto-input"
+                                class="text-sm flex-1"
+                                placeholder="Ex: Manifesto Antropófago"
+                            />
+                            <button
+                                type="button"
+                                onclick="adicionarManifestoMovimento()"
+                                class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                            >
+                                +
+                            </button>
+                        </div>
+                        <div
+                            id="me-manifestos-container"
+                            class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                        ></div>
+                        <input type="hidden" id="me-manifestos" />
+                    </div>
+                </div>
+                <div
+                    class="flex justify-end gap-2 border-t pt-6 border-gray-200 dark:border-slate-700"
+                >
+                    <button
+                        type="button"
+                        onclick="toggleModal('modal-movimento-escola')"
+                        class="text-gray-600 dark:text-slate-300 px-4 py-2"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        class="bg-blue-600 text-white px-8 py-2 rounded font-bold"
+                    >
+                        SALVAR
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

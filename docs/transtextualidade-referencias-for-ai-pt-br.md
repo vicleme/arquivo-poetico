@@ -26,7 +26,13 @@ ecos)", e não são o assunto deste documento.
 Estrutura de cada entrada:
 
 ```json
-{ "tipo": "Música", "texto": "\"Águas de Março\", Tom Jobim", "link": "", "linkTexto": "", "nota": "" }
+{
+    "tipo": "Música",
+    "texto": "\"Águas de Março\", Tom Jobim",
+    "link": "",
+    "linkTexto": "",
+    "nota": ""
+}
 ```
 
 - **`tipo`**: texto livre com sugestões (Livro, Texto, Música, Filme,
@@ -48,7 +54,14 @@ estrutural do texto.
 Estrutura de cada entrada:
 
 ```json
-{ "tipo": "Livro", "relacao": "Paródia", "hipotexto": "Dom Casmurro", "link": "", "linkTexto": "", "nota": "" }
+{
+    "tipo": "Livro",
+    "relacao": "Paródia",
+    "hipotexto": "Dom Casmurro",
+    "link": "",
+    "linkTexto": "",
+    "nota": ""
+}
 ```
 
 - **`tipo`**: mesma lista de sugestões de mídia da Intertextualidade
@@ -67,7 +80,7 @@ transformação ou derivação direta de um "hipotexto" de origem específico.
 texto **retrabalha, reescreve ou se apoia estruturalmente** numa obra de
 origem específica (uma paródia, uma releitura, uma tradução adaptada),
 isso é Hipertextualidade; se é uma citação, menção ou diálogo mais solto
-com uma obra (sem que o texto *seja*, em si, uma transformação dela),
+com uma obra (sem que o texto _seja_, em si, uma transformação dela),
 isso é Intertextualidade.
 
 ## Referências (Externas)
@@ -99,18 +112,18 @@ central, o vínculo correto é `pessoas`, não uma entrada aqui.
 
 ## Resumo comparativo
 
-| Campo               | Aponta para                          | Natureza do vínculo                          |
-| -------------------- | ------------------------------------- | --------------------------------------------- |
-| Intertextualidade     | Uma obra/artefato específico e nomeável | Diálogo, citação, alusão — pode ser leve     |
-| Hipertextualidade     | Um hipotexto de origem específico       | Derivação/transformação estrutural direta    |
-| Referências (Externas)| Um fato, evento ou pessoa do mundo real | Âncora factual, sem obra/autoria envolvida   |
+| Campo                  | Aponta para                             | Natureza do vínculo                        |
+| ---------------------- | --------------------------------------- | ------------------------------------------ |
+| Intertextualidade      | Uma obra/artefato específico e nomeável | Diálogo, citação, alusão — pode ser leve   |
+| Hipertextualidade      | Um hipotexto de origem específico       | Derivação/transformação estrutural direta  |
+| Referências (Externas) | Um fato, evento ou pessoa do mundo real | Âncora factual, sem obra/autoria envolvida |
 
 E, fora deste grupo, mas frequentemente confundidos com ele:
 
-| Campo                                     | Aponta para                     |
-| ------------------------------------------ | -------------------------------- |
-| Elos / Ecos (Intratextualidade)             | Outro poema/prosa do próprio acervo |
-| Domínio Imagético (Sinalizações)            | Vocabulário/repertório de uma área de conhecimento, sem obra específica citada |
+| Campo                            | Aponta para                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------------ |
+| Elos / Ecos (Intratextualidade)  | Outro poema/prosa do próprio acervo                                            |
+| Domínio Imagético (Sinalizações) | Vocabulário/repertório de uma área de conhecimento, sem obra específica citada |
 
 ## O que isso significa na prática para uma IA lendo os dados
 

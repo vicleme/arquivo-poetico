@@ -33,6 +33,8 @@
 //                     - meta.tipo ('poema'|'prosa', padrão poema) vale
 //                       pro pacote todo; textos[título].tipo sobrescreve
 //                       (pacote misto, ex.: Machado de Assis).
+//                     - meta.idioma (padrão 'pt-BR') vale pro pacote todo;
+//                       textos[título].idioma sobrescreve (ex.: 'en', 'fr').
 //                     - autor.sexo, autor.corRaca (listas fechadas de
 //                       utils.js) e autor.nomesLiterarios
 //                       [{ nome, tipo: Heterônimo|Pseudônimo }] —

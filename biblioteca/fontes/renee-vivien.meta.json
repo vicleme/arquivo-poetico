@@ -1,0 +1,73 @@
+{
+    "id": "renee-vivien",
+    "titulo": "Renée Vivien (seleção)",
+    "descricao": "Seis poemas (Poèmes, 1909; À l’heure des mains jointes, 1906) e dois poemas em prosa (Poèmes en prose), em francês.",
+    "autor": {
+        "nome": "Renée Vivien",
+        "nacionalidade": "Britânica",
+        "nascimento": {
+            "dia": 11,
+            "mes": 6,
+            "ano": 1877
+        },
+        "obito": {
+            "dia": 18,
+            "mes": 11,
+            "ano": 1909
+        },
+        "sexo": "Feminino"
+    },
+    "fonte": "Wikisource",
+    "edicao": "",
+    "link": "",
+    "ortografia": "",
+    "conferido": false,
+    "idioma": "fr",
+    "textos": {
+        "Parle-moi": {
+            "edicao": "Poèmes, A. Lemerre, 1909 (p. 9-10)",
+            "link": "https://fr.wikisource.org/wiki/Po%C3%A8mes_(Vivien)/Parle-Moi",
+            "dataPublicacao": {
+                "ano": 1909
+            }
+        },
+        "À l’heure des mains jointes": {
+            "edicao": "À l’Heure des Mains jointes, Alphonse Lemerre, 1906 (p. 1-2)",
+            "dataPublicacao": {
+                "ano": 1906
+            }
+        },
+        "Psappha revit": {
+            "edicao": "À l’Heure des Mains jointes, Alphonse Lemerre, 1906 (p. 3-6)",
+            "dataPublicacao": {
+                "ano": 1906
+            }
+        },
+        "Ainsi je parlerai…": {
+            "edicao": "À l’Heure des Mains jointes, Alphonse Lemerre, 1906 (p. 7-12)",
+            "dataPublicacao": {
+                "ano": 1906
+            }
+        },
+        "Attire-moi, Venise…": {
+            "edicao": "À l’Heure des Mains jointes, Alphonse Lemerre, 1906 (p. 13-14)",
+            "dataPublicacao": {
+                "ano": 1906
+            }
+        },
+        "Nous irons vers les Poètes": {
+            "edicao": "À l’Heure des Mains jointes, Alphonse Lemerre, 1906 (p. 15-18)",
+            "dataPublicacao": {
+                "ano": 1906
+            }
+        },
+        "Les Quatre Vents": {
+            "edicao": "Poèmes en Prose, E. Sansot et Cie (p. 7-15)",
+            "tipo": "prosa"
+        },
+        "Le Cygne Noir": {
+            "edicao": "Poèmes en Prose, E. Sansot et Cie (p. 19-22)",
+            "tipo": "prosa"
+        }
+    }
+}

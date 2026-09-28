@@ -72,9 +72,9 @@ const {
     obterIntertextualidade,
     resetIntertextualidade,
 } = await import('../js/editor.js');
-const { renderSinalizacoesProsa, initEditorProsa, editarSinalRelacao } = await import(
-    '../js/editor.js'
-);
+const { renderSinalizacoesProsa, initEditorProsa, editarSinalRelacao } =
+    await import('../js/editor.js');
+const { adicionarAutoria, resetAutoria } = await import('../js/editor.js');
 
 function limparDb() {
     db.pessoas.length = 0;
@@ -83,6 +83,23 @@ function limparDb() {
     resetPessoas('poemas');
     resetGruposDiretos('poemas');
     resetGruposDiretos('prosas');
+}
+
+// Desde 27/09/2026, criar um Grupo novo via chip exige saber de qual
+// Autor ele é (Grupo passou a pertencer a um Autor — ver
+// criarGrupoDeGruposDiretos em editor.js), então os testes de "Grupos
+// referenciados diretamente" precisam de um Autor já adicionado ao
+// texto antes de cada caso. adicionarAutoria aceita o nome direto
+// (sem precisar de input no DOM) e, como o autor já existe em
+// db.autores, entra sem passar pelo modal de confirmação.
+function limparDbComAutor() {
+    limparDb();
+    db.autores.length = 0;
+    db.autores.push({ id: 1, nome: 'Victor Leme', sobre: '' });
+    resetAutoria('poemas');
+    resetAutoria('prosas');
+    adicionarAutoria('poemas', 'Victor Leme');
+    adicionarAutoria('prosas', 'Victor Leme');
 }
 
 describe('Criação de pessoa nova via chip (editor.js, DOM real)', () => {
@@ -214,10 +231,10 @@ describe('Painel somente-leitura de Grupos embaixo dos chips (editor.js, DOM rea
 // sem dropdown.
 
 describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () => {
-    beforeEach(limparDb);
+    beforeEach(limparDbComAutor);
 
     it('nome que bate com grupo já cadastrado reaproveita o id direto, sem pedir confirmação', () => {
-        db.grupos.push({ id: 10, nome: 'Família', cor: 'blue' });
+        db.grupos.push({ id: 10, nome: 'Família', cor: 'blue', autorId: 1 });
 
         adicionarGrupoDireto('poemas', 'Família');
 
@@ -248,6 +265,7 @@ describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () =
         const criado = db.grupos[0];
         assert.equal(criado.nome, 'Coletivo Novo');
         assert.ok(criado.cor, 'grupo novo via chip deveria vir com uma cor padrão');
+        assert.equal(criado.autorId, 1, 'grupo novo via chip deveria herdar o Autor do texto');
 
         assert.deepEqual(obterGruposDiretos('poemas'), [criado.id]);
         assert.match(
@@ -258,7 +276,7 @@ describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () =
     });
 
     it('adicionar o mesmo grupo duas vezes não duplica o chip', () => {
-        db.grupos.push({ id: 20, nome: 'Trabalho', cor: 'emerald' });
+        db.grupos.push({ id: 20, nome: 'Trabalho', cor: 'emerald', autorId: 1 });
 
         adicionarGrupoDireto('poemas', 'Trabalho');
         adicionarGrupoDireto('poemas', 'Trabalho');
@@ -267,7 +285,7 @@ describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () =
     });
 
     it('remover um chip tira o grupo da lista de itens, sem afetar o cadastro central', () => {
-        db.grupos.push({ id: 30, nome: 'Faculdade', cor: 'amber' });
+        db.grupos.push({ id: 30, nome: 'Faculdade', cor: 'amber', autorId: 1 });
         adicionarGrupoDireto('poemas', 'Faculdade');
 
         removerGrupoDireto('poemas', 30);
@@ -300,7 +318,7 @@ describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () =
     });
 
     it('a variante de Prosa é independente da de Poema (containers e estado próprios)', () => {
-        db.grupos.push({ id: 50, nome: 'Editora', cor: 'sky' });
+        db.grupos.push({ id: 50, nome: 'Editora', cor: 'sky', autorId: 1 });
 
         adicionarGrupoDireto('prosas', 'Editora');
 
@@ -313,7 +331,7 @@ describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () =
         assert.deepEqual(obterGruposDiretos('prosas'), []);
     });
 
-    it('carregarGruposDiretos(\'prosas\', ...) restaura o array salvo, sem vazar pro estado de Poema', () => {
+    it("carregarGruposDiretos('prosas', ...) restaura o array salvo, sem vazar pro estado de Poema", () => {
         carregarGruposDiretos('prosas', [50]);
         assert.deepEqual(obterGruposDiretos('prosas'), [50]);
         assert.deepEqual(obterGruposDiretos('poemas'), []);

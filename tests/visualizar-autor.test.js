@@ -25,7 +25,8 @@ document.body.innerHTML =
 const { registrarModal } = await import('../js/modais.js');
 const { db } = await import('../js/db.js');
 const { initFormAutor } = await import('../js/forms.js');
-const { renderAutores } = await import('../js/render-listas.js');
+const { renderAutores, resumoNomesLiterarios, resumoContagemTextosAutor, verTextosAutor } =
+    await import('../js/render-listas.js');
 const { renderVisualizacaoAutorHtml, abrirVisualizacaoAutor, editarAutorDoVisualizador } =
     await import('../js/visualizar-autor.js');
 
@@ -237,7 +238,7 @@ describe('Card do Autor na lista (renderAutores)', () => {
         const texto = document.getElementById('lista-autores').textContent;
         assert.match(texto, /Cruz e Sousa/);
         assert.match(texto, /brasileira/);
-        assert.match(texto, /aparece em 1 texto/);
+        assert.match(texto, /aparece em 1 poema/);
         [
             '0000 0001',
             'Catolicismo',
@@ -246,7 +247,108 @@ describe('Card do Autor na lista (renderAutores)', () => {
             'TDAH',
             'Jornalista',
             'Nota livre',
-            'Domínio público',
         ].forEach((t) => assert.ok(!texto.includes(t), `"${t}" não deveria aparecer no card`));
+    });
+});
+
+describe('Card do Autor: contagem, nomes literários, domínio público e Ver textos', () => {
+    const card = () => document.getElementById('lista-autores');
+
+    beforeEach(() => {
+        db.autores = [{ ...AUTOR_COMPLETO }];
+        db.poemas = [
+            { id: 10, titulo: 'P1', autoria: [{ autorId: 1 }] },
+            { id: 11, titulo: 'P2', autoria: [{ autorId: 1 }] },
+        ];
+        db.prosas = [{ id: 20, titulo: 'R1', autoria: [{ autorId: 1 }] }];
+        db.movimentosEscolas = [{ id: 5, nome: 'Simbolismo' }];
+    });
+
+    it('separa poemas e prosas na contagem', () => {
+        renderAutores();
+        assert.match(card().textContent, /aparece em 2 poemas e 1 prosa/);
+    });
+
+    it('mostra nome literário com o tipo', () => {
+        renderAutores();
+        assert.match(card().textContent, /Pseudônimo: Dante Negro/);
+    });
+
+    it('mostra o selo de domínio público quando há óbito', () => {
+        renderAutores();
+        assert.match(card().textContent, /domínio público desde 1969/);
+    });
+
+    it('sem óbito, não mostra selo de domínio público', () => {
+        db.autores = [{ id: 1, nome: 'Vivo', nascimento: { ano: 1990 } }];
+        renderAutores();
+        assert.ok(!/domínio público|protegido/.test(card().textContent));
+    });
+
+    it('autor ainda protegido mostra até quando', () => {
+        db.autores = [{ id: 1, nome: 'Recente', obito: { ano: 2000 } }];
+        renderAutores();
+        assert.match(card().textContent, /ainda protegido até 2070/);
+    });
+
+    it('mostra movimentos/escolas pelo nome e ignora ids órfãos', () => {
+        db.autores = [{ ...AUTOR_COMPLETO, movimentosEscolasIds: [5, 999] }];
+        renderAutores();
+        assert.match(card().textContent, /Simbolismo/);
+        assert.ok(!card().textContent.includes('999'));
+    });
+
+    it('botão Ver textos aparece só com textos', () => {
+        renderAutores();
+        assert.match(card().innerHTML, /data-action="ver-textos-autor" data-id="1"/);
+        db.poemas = [];
+        db.prosas = [];
+        renderAutores();
+        assert.ok(!card().innerHTML.includes('ver-textos-autor'));
+    });
+
+    it('verTextosAutor com id inexistente não quebra', () => {
+        assert.doesNotThrow(() => verTextosAutor(424242));
+    });
+});
+
+describe('resumoNomesLiterarios / resumoContagemTextosAutor', () => {
+    it('vazio devolve string vazia', () => {
+        assert.equal(resumoNomesLiterarios([]), '');
+        assert.equal(resumoNomesLiterarios(undefined), '');
+    });
+
+    it('agrupa por tipo e usa singular/plural', () => {
+        const r = resumoNomesLiterarios([
+            { nome: 'Álvaro de Campos', tipo: 'Heterônimo' },
+            { nome: 'Ricardo Reis', tipo: 'Heterônimo' },
+            { nome: 'Bernardo Soares', tipo: 'Pseudônimo' },
+        ]);
+        assert.equal(
+            r,
+            'Heterônimos: Álvaro de Campos, Ricardo Reis · Pseudônimo: Bernardo Soares',
+        );
+    });
+
+    it('limita a 3 nomes e sinaliza o resto com +N', () => {
+        const r = resumoNomesLiterarios([
+            { nome: 'A', tipo: 'Heterônimo' },
+            { nome: 'B', tipo: 'Heterônimo' },
+            { nome: 'C', tipo: 'Heterônimo' },
+            { nome: 'D', tipo: 'Heterônimo' },
+            { nome: 'E', tipo: 'Pseudônimo' },
+        ]);
+        assert.equal(r, 'Heterônimos: A, B, C +2');
+    });
+
+    it('aceita formato legado (strings) como "Nome literário"', () => {
+        assert.equal(resumoNomesLiterarios(['X']), 'Nome literário: X');
+    });
+
+    it('contagem: só as partes existentes', () => {
+        assert.equal(resumoContagemTextosAutor(1, 0), '1 poema');
+        assert.equal(resumoContagemTextosAutor(0, 2), '2 prosas');
+        assert.equal(resumoContagemTextosAutor(12, 3), '12 poemas e 3 prosas');
+        assert.equal(resumoContagemTextosAutor(0, 0), '0 textos');
     });
 });

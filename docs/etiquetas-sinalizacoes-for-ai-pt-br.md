@@ -26,23 +26,23 @@ na lista — não fundir as duas num rótulo composto. Só vale fundir num
 indivisível, que não é a soma das partes — em Tom, por exemplo, "Muito
 meloso" não é "romântico" + "intenso" acontecendo em paralelo, é uma
 textura de leitura própria, então funciona como uma etiqueta só. Fora esse
-caso (ex.: um poema que é ao mesmo tempo melancólico *e*, num outro
+caso (ex.: um poema que é ao mesmo tempo melancólico _e_, num outro
 trecho, esperançoso — duas sensações reais, mas distintas, não uma coisa
 só), etiquetas separadas mantêm a lista mais útil para filtrar e cruzar
 dados depois.
 
 Os 8 campos, na ordem em que aparecem no editor:
 
-| Campo (chave)                 | Rótulo            |
-| ------------------------------ | ------------------ |
-| `sinalizacoesTradicao`         | Tradição           |
-| `sinalizacoesEstilo`           | Estilo             |
-| `sinalizacoesTema`             | Tema               |
-| `sinalizacoesRelacao`          | Relação            |
-| `sinalizacoesSensibilidade`    | Sensibilidade      |
-| `sinalizacoesTom`              | Tom                |
-| `sinalizacoesDominioImagetico` | Domínio Imagético  |
-| `sinalizacoesOutros`           | Outros             |
+| Campo (chave)                  | Rótulo            |
+| ------------------------------ | ----------------- |
+| `sinalizacoesTradicao`         | Tradição          |
+| `sinalizacoesEstilo`           | Estilo            |
+| `sinalizacoesTema`             | Tema              |
+| `sinalizacoesRelacao`          | Relação           |
+| `sinalizacoesSensibilidade`    | Sensibilidade     |
+| `sinalizacoesTom`              | Tom               |
+| `sinalizacoesDominioImagetico` | Domínio Imagético |
+| `sinalizacoesOutros`           | Outros            |
 
 Uma exportação "flat" combina tudo numa string única (`sinalizacoesCombinadas`)
 para busca geral e estatísticas simples — mas essa versão combinada **perde
@@ -84,8 +84,8 @@ não a string combinada.
 - **Tom**: o registro emocional ou atitude percebida no texto (ex.: "Muito
   meloso"). Isso é um juízo/tom de leitura, não um recurso formal (isso
   seria Estilo) nem um tipo de conteúdo sensível.
-- **Domínio Imagético** *(rótulo completo: "Domínio Imagético
-  (repertório)")*: vocabulário ou imagética que o texto toma emprestado de
+- **Domínio Imagético** _(rótulo completo: "Domínio Imagético
+  (repertório)")_: vocabulário ou imagética que o texto toma emprestado de
   um domínio de conhecimento inteiro — ex.: "Astrologia", quando o poema
   usa termos como Vênus/Trânsitos como registro geral, sem citar uma obra
   específica. A distinção importante é com **Intertextualidade** (ver o

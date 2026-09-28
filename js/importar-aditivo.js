@@ -31,7 +31,9 @@ const COLECAO_POR_CAMPO = {
     grupos: 'grupos',
     autores: 'autores',
     'epocaRetratada.epocaId': 'epocas',
+    periodoHistoricoId: 'periodosHistoricos',
     livroId: 'livros',
+    movimentosEscolas: 'movimentosEscolas',
 };
 
 function normalizarTexto(s) {
@@ -77,7 +79,8 @@ function classificarReferencia(campo, idOrigem, nome, lista) {
 
 // Extrai as referências de um item exportado (formato montarRegistro,
 // já com os nomes denormalizados: pessoas[].nome, autoria[].nome,
-// gruposDiretosResolvidos, livrosResolvidos, epocaRetratada.nomeEpoca).
+// gruposDiretosResolvidos, livrosResolvidos, epocaRetratada.nomeEpoca,
+// periodoHistoricoNome).
 function extrairReferencias(item, dbRef) {
     const refs = [];
 
@@ -106,6 +109,31 @@ function extrairReferencias(item, dbRef) {
             ),
         );
     }
+
+    // periodoHistoricoId é campo solto (não objeto, ao contrário de
+    // epocaRetratada acima) — o nome vem de periodoHistoricoNome,
+    // denormalizado por montarRegistro (exportar.js) do mesmo jeito
+    // que epocaRetratada.nomeEpoca.
+    if (item.periodoHistoricoId != null) {
+        refs.push(
+            classificarReferencia(
+                'periodoHistoricoId',
+                item.periodoHistoricoId,
+                item.periodoHistoricoNome,
+                dbRef.periodosHistoricos,
+            ),
+        );
+    }
+
+    // Movimento/Escola: N:N (array), mesmo padrão de livrosResolvidos
+    // logo abaixo — um item de referência por entrada do array, não um
+    // campo solto como periodoHistoricoId acima.
+    (item.movimentosEscolasResolvidos || []).forEach((m) => {
+        if (m?.id == null) return;
+        refs.push(
+            classificarReferencia('movimentosEscolas', m.id, m.nome, dbRef.movimentosEscolas),
+        );
+    });
 
     // Livro: só a menção "solta" (livrosIds — associação sem posição
     // fixa). A posição estrutural (paiId/paiTipo em Partes/Seções)
@@ -251,11 +279,28 @@ function criarEntidade(campo, nome, dbRef, extra = null) {
             }));
         }
         dbRef.autores.push(autor);
-    }
-    else if (campo === 'epocaRetratada.epocaId')
-        dbRef.epocas.push({ id, nome, contextoRelacao: '', notas: '' });
+    } else if (campo === 'epocaRetratada.epocaId')
+        dbRef.epocas.push({ id, nome, contextoRelacao: '', notas: '', inicio: null, fim: null });
+    else if (campo === 'periodoHistoricoId')
+        dbRef.periodosHistoricos.push({ id, nome, notas: '', regiao: '', inicio: null, fim: null });
     else if (campo === 'livroId')
         dbRef.livros.push({ id, titulo: nome, sequencia: null, tipo: '', fase: '' });
+    else if (campo === 'movimentosEscolas')
+        dbRef.movimentosEscolas.push({
+            id,
+            nome,
+            notas: '',
+            inicio: { dia: null, mes: null, ano: null, seculo: null, decada: null },
+            fim: { dia: null, mes: null, ano: null, seculo: null, decada: null },
+            tipo: '',
+            regiaoOrigem: '',
+            valores: [],
+            temas: [],
+            tecnicas: [],
+            tiposComposicao: [],
+            lemas: [],
+            manifestos: [],
+        });
     return id;
 }
 
@@ -276,6 +321,8 @@ function remontarItem(itemOrigem, novoId, referencias) {
     delete novo.contexto; // decorativo/derivado, nunca persiste no item
     delete novo.gruposDiretosResolvidos;
     delete novo.livrosResolvidos;
+    delete novo.movimentosEscolasResolvidos;
+    delete novo.periodoHistoricoNome; // só existia pra resolução de referência, não persiste
     delete novo.sonoridade; // vira registro próprio em db.escansoes, ver aplicarImportacaoAditiva
     delete novo.estruturaTextual; // idem, em db.estruturasTextuais
 
@@ -312,8 +359,16 @@ function remontarItem(itemOrigem, novoId, referencias) {
         };
     }
 
+    if (itemOrigem.periodoHistoricoId != null) {
+        novo.periodoHistoricoId = destinoDe('periodoHistoricoId', itemOrigem.periodoHistoricoId);
+    }
+
     novo.livrosIds = (itemOrigem.livrosResolvidos || [])
         .map((l) => destinoDe('livroId', l.id))
+        .filter((id) => id != null);
+
+    novo.movimentosEscolasIds = (itemOrigem.movimentosEscolasResolvidos || [])
+        .map((m) => destinoDe('movimentosEscolas', m.id))
         .filter((id) => id != null);
 
     return novo;
@@ -358,7 +413,15 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
 
     // Uma entidade "criar" só é criada uma vez por lote, mesmo que
     // vários itens importados apontem pra ela (mesma idOrigem).
-    const mapaCriados = { pessoas: {}, grupos: {}, autores: {}, epocas: {}, livros: {} };
+    const mapaCriados = {
+        pessoas: {},
+        grupos: {},
+        autores: {},
+        epocas: {},
+        periodosHistoricos: {},
+        livros: {},
+        movimentosEscolas: {},
+    };
 
     const novosPoemas = [];
     const novasProsas = [];
@@ -386,7 +449,11 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
             if (destinoId === undefined) {
                 const extra =
                     r.campo === 'autores'
-                        ? metadadosAutorDoPayload(payload, r.valorOrigem.idOrigem, r.valorOrigem.nome)
+                        ? metadadosAutorDoPayload(
+                              payload,
+                              r.valorOrigem.idOrigem,
+                              r.valorOrigem.nome,
+                          )
                         : null;
                 destinoId = criarEntidade(r.campo, r.valorOrigem.nome, dbRef, extra);
                 mapaCriados[colecao][r.valorOrigem.idOrigem] = destinoId;

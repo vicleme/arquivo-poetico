@@ -77,10 +77,13 @@ Um item por linha do texto original do poema, na ordem em que aparecem:
 ## 3. `rimas` — pares de rima
 
 ```json
-{ "a": { "linha": 0, "silabas": [8] }, "b": { "linha": 1, "silabas": [8] },
-  "acentuacao": "Grave / Paroxítona",
-  "tonalidade": "Soante / Consoante (Perfeita)",
-  "riqueza": "Pobre (mesma classe gramatical)" }
+{
+    "a": { "linha": 0, "silabas": [8] },
+    "b": { "linha": 1, "silabas": [8] },
+    "acentuacao": "Grave / Paroxítona",
+    "tonalidade": "Soante / Consoante (Perfeita)",
+    "riqueza": "Pobre (mesma classe gramatical)"
+}
 ```
 
 - `linha` é o índice (base 0) da posição do verso dentro do array

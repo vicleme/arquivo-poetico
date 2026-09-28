@@ -73,13 +73,13 @@ existente) — precisava ser um tipo por si só.
 
 ## Nome: por que "Criação" e "Molde"
 
-- **Aba (nav de primeiro nível):** *Criação* — nome de grupo, não de
+- **Aba (nav de primeiro nível):** _Criação_ — nome de grupo, não de
   "modo" (ao contrário de "Modo Criação", cogitado e descartado): os
   outros grupos da nav (Conteúdo, Análise, Exportação) também nomeiam o
   que mora ali dentro, não uma alternância de estado. "Modo" ficou
-  reservado pras alternâncias *dentro* de uma tela (Modo Sílaba Tônica/
+  reservado pras alternâncias _dentro_ de uma tela (Modo Sílaba Tônica/
   Modo Rima, já existentes em Sonoridade).
-- **Item dentro da aba:** *Molde* — descartado "Rascunho" (achado genérico
+- **Item dentro da aba:** _Molde_ — descartado "Rascunho" (achado genérico
   demais: carrega ideia de provisoriedade sem forma nenhuma) e "Esqueleto"
   (conotação anatômica/rígida, contra a mutabilidade do item seguinte).
   "Molde" comunica estrutura definida antes do conteúdo — a forma existe,
@@ -92,8 +92,7 @@ existente) — precisava ser um tipo por si só.
    (forma, métrica, rimas...) pode ser trocado a qualquer momento sem
    perder o que já foi escrito no Molde — decisão explícita: o processo
    criativo é fluido, não fixo desde o início. Implica que os alvos
-   derivados da meta (sílabas/tônica/rima esperadas por verso, ver Bloco
-   2) nunca podem ser gravados junto com o texto — têm que ser sempre
+   derivados da meta (sílabas/tônica/rima esperadas por verso, ver Bloco 2) nunca podem ser gravados junto com o texto — têm que ser sempre
    recalculados ao vivo a partir da classificação atual.
 2. **Pares de rima confirmados manualmente sobrevivem à troca de meta.**
    Se o Esquema de Rimas mudar no meio da escrita e um par já confirmado
@@ -105,8 +104,8 @@ existente) — precisava ser um tipo por si só.
 3. **Reaproveitar a taxonomia inteira da Sonoridade, não recriar uma
    nova.** Um Molde e uma Escansão descrevem o mesmo conjunto de eixos
    (Forma do Poema, Regularidade Métrica, Tamanho do Verso, Esquema de
-   Rimas, Origem/Tradição, Registro, Tom) — a diferença é só *quando* são
-   preenchidos (antes vs. depois do texto), não *o quê*. Molde reusa
+   Rimas, Origem/Tradição, Registro, Tom) — a diferença é só _quando_ são
+   preenchidos (antes vs. depois do texto), não _o quê_. Molde reusa
    `FORMAS_POEMA`/`REGULARIDADES_METRICAS`/`TAMANHOS_VERSO`/
    `ESQUEMA_RIMAS_PRESENCA`/`ESQUEMA_RIMAS_PADRAO`/
    `ORIGENS_TRADICAO_SONORIDADE`/`REGISTROS_SONORIDADE`/
@@ -130,43 +129,43 @@ existente) — precisava ser um tipo por si só.
    métricos (`PES_METRICOS`, `utils.js`) pra dar um alvo mais rico, com
    posição de CADA sílaba forte, não só da última. Dois tipos, com
    mecânica diferente:
-   - **Contínuo** (Iambo, Troqueu, Dáctilo, Anapéstico, Anfibráquio, Peão
-     Quarto/Corimbo) — a fórmula (posição inicial + intervalo) se repete
-     verso afora, sem depender de nenhum Tamanho do Verso fixo; a
-     expectativa cobre TODA posição da fórmula, até onde o verso alcança.
-     Peão Quarto é contestado pela maioria dos teóricos da métrica
-     portuguesa (só reconhecem pés de 2-3 sílabas) — mantido por pedido
-     explícito do Victor; o label chegou a trazer "— pé raro/contestado"
-     no próprio rótulo, mas o Victor pediu pra remover essa ressalva da
-     UI (continua documentada aqui e em PES_METRICOS, `utils.js`).
-   - **Fixo** (Decassílabo Heroico, Decassílabo Sáfico, Martelo
-     Agalopado, Pé de Arte Maior) — forma nomeada de sílaba fixa, cada
-     uma amarrada a um `tamanhoVersoExigido`; só as `posicoesObrigatorias`
-     citadas são exigidas, o resto do verso fica livre. Rótulo renomeado
-     de "Verso de Arte Maior" pra "Pé de Arte Maior" (`chave: 'arte-maior'`
-     não mudou, só o rótulo) — "arte maior" na tradição também nomeia a
-     categoria genérica de tamanho (qualquer verso de 9+ sílabas, sem
-     acentuação fixa nenhuma), então o rótulo antigo dava a entender que
-     todo verso de arte maior seguia 2-5-8-11, quando na verdade só essa
-     forma fixa específica (a do Cancioneiro Geral/tradição castelhana,
-     com cesura) segue. "Pé de Arte Maior" deixa claro que é a forma
-     nomeada, não a categoria de tamanho.
-   - **Espondeu (forte-forte) e Pirríquio (fraca-fraca) ficam de fora do
-     catálogo, por decisão explícita do Victor** — são pés de
-     substituição usados pontualmente no meio de um verso que segue
-     outro metro, não um padrão que o verso inteiro segue; não têm
-     "posição esperada" que faça sentido calcular.
-   - **Trava bidirecional com Tamanho do Verso** (`calcularOpcoesPeMetrico`/
-     `calcularTamanhoVersoForcadoPorPe`, `utils.js`) — mais forte que
-     qualquer trava já existente no sistema (Forma → Tamanho é só de mão
-     única): escolher um pé fixo força o Tamanho pro valor que exige, E
-     mudar o Tamanho pra algo incompatível tira os pés fixos incompatíveis
-     da lista de opções. Pés contínuos nunca são afetados.
-   - **Replicado em Sonoridade por pedido do Victor**, mantendo a
-     simetria entre as duas telas de classificação (mesmo espírito da
-     decisão 3 acima) — mesmo catálogo, mesma trava, dois selects
-     (`son-pe-metrico`/`molde-pe-metrico`) plugados na mesma lógica de
-     `utils.js`.
+    - **Contínuo** (Iambo, Troqueu, Dáctilo, Anapéstico, Anfibráquio, Peão
+      Quarto/Corimbo) — a fórmula (posição inicial + intervalo) se repete
+      verso afora, sem depender de nenhum Tamanho do Verso fixo; a
+      expectativa cobre TODA posição da fórmula, até onde o verso alcança.
+      Peão Quarto é contestado pela maioria dos teóricos da métrica
+      portuguesa (só reconhecem pés de 2-3 sílabas) — mantido por pedido
+      explícito do Victor; o label chegou a trazer "— pé raro/contestado"
+      no próprio rótulo, mas o Victor pediu pra remover essa ressalva da
+      UI (continua documentada aqui e em PES_METRICOS, `utils.js`).
+    - **Fixo** (Decassílabo Heroico, Decassílabo Sáfico, Martelo
+      Agalopado, Pé de Arte Maior) — forma nomeada de sílaba fixa, cada
+      uma amarrada a um `tamanhoVersoExigido`; só as `posicoesObrigatorias`
+      citadas são exigidas, o resto do verso fica livre. Rótulo renomeado
+      de "Verso de Arte Maior" pra "Pé de Arte Maior" (`chave: 'arte-maior'`
+      não mudou, só o rótulo) — "arte maior" na tradição também nomeia a
+      categoria genérica de tamanho (qualquer verso de 9+ sílabas, sem
+      acentuação fixa nenhuma), então o rótulo antigo dava a entender que
+      todo verso de arte maior seguia 2-5-8-11, quando na verdade só essa
+      forma fixa específica (a do Cancioneiro Geral/tradição castelhana,
+      com cesura) segue. "Pé de Arte Maior" deixa claro que é a forma
+      nomeada, não a categoria de tamanho.
+    - **Espondeu (forte-forte) e Pirríquio (fraca-fraca) ficam de fora do
+      catálogo, por decisão explícita do Victor** — são pés de
+      substituição usados pontualmente no meio de um verso que segue
+      outro metro, não um padrão que o verso inteiro segue; não têm
+      "posição esperada" que faça sentido calcular.
+    - **Trava bidirecional com Tamanho do Verso** (`calcularOpcoesPeMetrico`/
+      `calcularTamanhoVersoForcadoPorPe`, `utils.js`) — mais forte que
+      qualquer trava já existente no sistema (Forma → Tamanho é só de mão
+      única): escolher um pé fixo força o Tamanho pro valor que exige, E
+      mudar o Tamanho pra algo incompatível tira os pés fixos incompatíveis
+      da lista de opções. Pés contínuos nunca são afetados.
+    - **Replicado em Sonoridade por pedido do Victor**, mantendo a
+      simetria entre as duas telas de classificação (mesmo espírito da
+      decisão 3 acima) — mesmo catálogo, mesma trava, dois selects
+      (`son-pe-metrico`/`molde-pe-metrico`) plugados na mesma lógica de
+      `utils.js`.
 6. **Letra de rima esperada — avança a cada estrofe, nunca reinicia; e
    posição solta fica sem letra.** Surgiu da mesma lacuna de fundo do
    item 5 (Pé Métrico): faltava uma regra objetiva pra transformar
@@ -174,57 +173,57 @@ existente) — precisava ser um tipo por si só.
    (`calcularLetraRimaEsperada`, `editor-sonoridade.js`, reaproveitada
    pelo Molde — ver Bloco 2 sub-passo 3). Duas decisões, as duas do
    Victor:
-   - **Letras avançam a cada novo ciclo do padrão (nunca reiniciam em
-     A)** — tanto ao cruzar uma quebra de estrofe quanto ao completar um
-     ciclo inteiro sem quebra nenhuma (o padrão se repete sozinho a cada
-     N versos, N = tamanho do ciclo). Motivo discutido na conversa: essa
-     letra não é como a de `calcularLetrasRima` (que vem de pares REAIS
-     já confirmados no texto) — aqui é só o rótulo de "quais versos, DENTRO
-     do mesmo bloco, esperam soar parecido entre si". Reiniciar em A a
-     cada estrofe sugeriria que a 2ª estrofe deveria rimar com a 1ª, o
-     que nenhum desses padrões promete; avançar (2ª estrofe de uma
-     Alternada vira CD, não AB de novo) deixa isso explícito. Uma quebra
-     que corta um ciclo pela metade também avança — o resto do ciclo
-     cortado não é reaproveitado.
-   - **Posição que ocorre só 1 vez dentro de um ciclo fica sem letra**
-     (ex.: 1º e 3º verso da Quadra `ABCB` — só o 2º/4º, que repetem,
-     ganham letra). Mesmo espírito não-punitivo do resto do sistema:
-     melhor não mostrar nada do que inventar uma expectativa de rima que
-     o nome do próprio padrão não sustenta (esses versos são "soltos"
-     por definição).
-   - **Depois de Z, continua em AA, AB... estilo coluna de planilha**
-     (`letraEsperadaDeIndice`, `editor-sonoridade.js`) — decisão de
-     sessão posterior, motivada por uma pergunta do Victor sobre o que
-     acontecia passado o 26º ciclo. A implementação original usava
-     `i % 26`, que reiniciava silenciosamente em "A" depois de Z — uma
-     contradição de fato com "nunca reinicia em A" acima, mesmo sendo
-     um cenário raro (26+ estrofes/ciclos com o mesmo esquema). Cogitado
-     e descartado um esquema tipo "ZA, ZB... ZZA..." (não cresce de
-     forma previsível, cada usuário teria que aprender a regra do zero);
-     escolhida a conversão bijective base-26 (a mesma lógica de colunas
-     do Excel/Sheets: A...Z, AA...AZ, BA...), por ser convenção já
-     reconhecida e calculável sem tabela. `corDaLetra` (mesmo arquivo)
-     foi corrigida junto — lia só o 1º caractere da letra, então "A" e
-     "AA" caíam na mesma cor da paleta; agora decodifica a letra inteira
-     pelo mesmo esquema bijective, senão a mudança acima reintroduziria
-     visualmente a mesma confusão entre ciclos que motivou avançar a
-     letra em primeiro lugar. `calcularLetrasRima` (a letra de pares
-     REAIS confirmados, ver acima) não foi tocada — continua com
-     `i % 26` puro, decisão mantida por ser cenário praticamente
-     impossível ali (pares confirmados manualmente pelo Victor, não um
-     padrão que se repete sozinho).
-   - **Monorrima Absoluta, Monorrima por Blocos e Terza Rima têm regra
-     própria**, fora do modelo genérico acima: Absoluta nunca avança
-     (sempre "A", mesmo cruzando quebras); Monorrima por Blocos só avança
-     em quebra de estrofe explícita (o "bloco" é a própria estrofe, sem
-     um N fixo que o nome do padrão defina); Terza Rima avança 1 letra
-     por terceto e ignora quebra de estrofe (o encadeamento — a rima do
-     meio de um terceto virar a externa do próximo — é o que dá nome ao
-     padrão, teria que continuar mesmo se o Victor separar os tercetos
-     visualmente).
-   - `esquemaRimasPresenca` diferente de `'Rimado'` (ou `esquemaRimasPadrao`
-     sem template fixo, caso de `Mista / Completa`) deixa a coluna toda
-     em branco — sem fórmula fixa, não tenta advinhar nada.
+    - **Letras avançam a cada novo ciclo do padrão (nunca reiniciam em
+      A)** — tanto ao cruzar uma quebra de estrofe quanto ao completar um
+      ciclo inteiro sem quebra nenhuma (o padrão se repete sozinho a cada
+      N versos, N = tamanho do ciclo). Motivo discutido na conversa: essa
+      letra não é como a de `calcularLetrasRima` (que vem de pares REAIS
+      já confirmados no texto) — aqui é só o rótulo de "quais versos, DENTRO
+      do mesmo bloco, esperam soar parecido entre si". Reiniciar em A a
+      cada estrofe sugeriria que a 2ª estrofe deveria rimar com a 1ª, o
+      que nenhum desses padrões promete; avançar (2ª estrofe de uma
+      Alternada vira CD, não AB de novo) deixa isso explícito. Uma quebra
+      que corta um ciclo pela metade também avança — o resto do ciclo
+      cortado não é reaproveitado.
+    - **Posição que ocorre só 1 vez dentro de um ciclo fica sem letra**
+      (ex.: 1º e 3º verso da Quadra `ABCB` — só o 2º/4º, que repetem,
+      ganham letra). Mesmo espírito não-punitivo do resto do sistema:
+      melhor não mostrar nada do que inventar uma expectativa de rima que
+      o nome do próprio padrão não sustenta (esses versos são "soltos"
+      por definição).
+    - **Depois de Z, continua em AA, AB... estilo coluna de planilha**
+      (`letraEsperadaDeIndice`, `editor-sonoridade.js`) — decisão de
+      sessão posterior, motivada por uma pergunta do Victor sobre o que
+      acontecia passado o 26º ciclo. A implementação original usava
+      `i % 26`, que reiniciava silenciosamente em "A" depois de Z — uma
+      contradição de fato com "nunca reinicia em A" acima, mesmo sendo
+      um cenário raro (26+ estrofes/ciclos com o mesmo esquema). Cogitado
+      e descartado um esquema tipo "ZA, ZB... ZZA..." (não cresce de
+      forma previsível, cada usuário teria que aprender a regra do zero);
+      escolhida a conversão bijective base-26 (a mesma lógica de colunas
+      do Excel/Sheets: A...Z, AA...AZ, BA...), por ser convenção já
+      reconhecida e calculável sem tabela. `corDaLetra` (mesmo arquivo)
+      foi corrigida junto — lia só o 1º caractere da letra, então "A" e
+      "AA" caíam na mesma cor da paleta; agora decodifica a letra inteira
+      pelo mesmo esquema bijective, senão a mudança acima reintroduziria
+      visualmente a mesma confusão entre ciclos que motivou avançar a
+      letra em primeiro lugar. `calcularLetrasRima` (a letra de pares
+      REAIS confirmados, ver acima) não foi tocada — continua com
+      `i % 26` puro, decisão mantida por ser cenário praticamente
+      impossível ali (pares confirmados manualmente pelo Victor, não um
+      padrão que se repete sozinho).
+    - **Monorrima Absoluta, Monorrima por Blocos e Terza Rima têm regra
+      própria**, fora do modelo genérico acima: Absoluta nunca avança
+      (sempre "A", mesmo cruzando quebras); Monorrima por Blocos só avança
+      em quebra de estrofe explícita (o "bloco" é a própria estrofe, sem
+      um N fixo que o nome do padrão defina); Terza Rima avança 1 letra
+      por terceto e ignora quebra de estrofe (o encadeamento — a rima do
+      meio de um terceto virar a externa do próximo — é o que dá nome ao
+      padrão, teria que continuar mesmo se o Victor separar os tercetos
+      visualmente).
+    - `esquemaRimasPresenca` diferente de `'Rimado'` (ou `esquemaRimasPadrao`
+      sem template fixo, caso de `Mista / Completa`) deixa a coluna toda
+      em branco — sem fórmula fixa, não tenta advinhar nada.
 
 ## Divisão em blocos
 
@@ -235,8 +234,8 @@ sozinhas, cada uma entregável por si.
 ### Bloco 1 — Dados + aba Criação + meta (✅ implementado e entregue)
 
 - `db.moldes`: `{ id, titulo, formaPoema, regularidadeMetrica,
-  tamanhoVerso, esquemaRimasPresenca, esquemaRimasPadrao, origemTradicao,
-  registro, tom }` — só título + os 6 campos de classificação.
+tamanhoVerso, esquemaRimasPresenca, esquemaRimasPadrao, origemTradicao,
+registro, tom }` — só título + os 6 campos de classificação.
 - Nova entrada em `GRUPOS_NAV` (`ui.js`): grupo `criacao` ("Criação"),
   aba `moldes` ("Moldes") — dropdown de primeiro nível na nav, ao lado de
   Conteúdo/Análise/Exportação.
@@ -427,7 +426,7 @@ download, toasts) em `js/ui-molde-json.js`.
   (`TABELAS_SEM_FORMATO_BAIXAR`, `acoes-coluna.js`). Arquivo:
   `molde-<titulo-slug>.json`.
 - **Formato:** `{ tipo: 'molde', versao: 1, titulo, <9 campos de
-  classificação>, moldeLinhas, paresRima, status }`. Sem `id` (não
+classificação>, moldeLinhas, paresRima, status }`. Sem `id` (não
   significa nada em outro acervo), sem `poemaId`, e os pares de rima
   perdem o `id` interno. `tipo` deixa recusar arquivo errado (export de
   Poema/Escansão); `versao` diferente de 1 é recusada.

@@ -28,7 +28,9 @@ import {
     valorBateTermo,
     formatarDataParcial,
     situacaoDominioPublico,
+    nomesMovimentosEscolas,
 } from './utils.js';
+import { db } from './db.js';
 
 // Prefixo digitado (sem acento, minúsculo) → chave no objeto "decorado"
 // devolvido por decorarAutorParaBusca abaixo.
@@ -55,6 +57,11 @@ export const CAMPOS_ATRIBUTO_AUTOR = {
     grau: 'grauAcademico',
     instituicao: 'instituicoes',
     ocupacao: 'ocupacoes',
+    movimento: 'movimentosEscolas',
+    premio: 'premios',
+    obra: 'obras',
+    circulo: 'circulo',
+    lingua: 'linguasEscrita',
     sobre: 'sobre',
     dominio: 'dominioPublico',
     // Só existe (e só faz sentido) como presença: `voce:*` = autores
@@ -86,6 +93,11 @@ export const PREFIXOS_CANONICOS_AUTOR = [
     'grau',
     'instituicao',
     'ocupacao',
+    'movimento',
+    'premio',
+    'obra',
+    'circulo',
+    'lingua',
     'sobre',
     'dominio',
     'voce',
@@ -115,6 +127,16 @@ function nomesDe(valor, { comTipo = false } = {}) {
         })
         .filter((i) => i.nome)
         .map((i) => (comTipo && i.tipo ? `${i.nome} ${i.tipo}` : i.nome));
+}
+
+// Prêmios/Obras: [{ nome, ano }] → "nome ano, nome ano", pra `premio:1990`
+// e `premio:jabuti` funcionarem os dois.
+function nomesComAno(valor) {
+    if (!Array.isArray(valor)) return [];
+    return valor
+        .map((i) => (i?.ano ? `${i.nome} ${i.ano}` : i?.nome || ''))
+        .map((s) => s.trim())
+        .filter(Boolean);
 }
 
 // Data parcial → texto pesquisável: "1861", "10/11/1861" e o ano solto,
@@ -162,6 +184,16 @@ export function decorarAutorParaBusca(autor) {
         grauAcademico: autor.grauAcademico || '',
         instituicoes: nomesDe(autor.instituicoes).join(', '),
         ocupacoes: nomesDe(autor.ocupacoes).join(', '),
+        // Nome resolvido via cadastro central (db.movimentosEscolas) — o
+        // Autor só guarda os ids, mesmo padrão de Poema/Prosa.
+        movimentosEscolas: nomesMovimentosEscolas(
+            autor.movimentosEscolasIds,
+            db.movimentosEscolas,
+        ).join(', '),
+        premios: nomesComAno(autor.premios).join(', '),
+        obras: nomesComAno(autor.obras).join(', '),
+        circulo: nomesDe(autor.circulo).join(', '),
+        linguasEscrita: nomesDe(autor.linguasEscrita).join(', '),
         sobre: autor.sobre || '',
         // "livre"/"protegido" (só existe se há óbito) — `dominio:livre`
         dominioPublico: dominio.estado === 'sem-obito' ? '' : dominio.estado,

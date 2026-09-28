@@ -38,6 +38,8 @@ import {
     paresGrupoPessoa,
     rotuloElo,
     tokenizar,
+    nomePeriodoHistorico,
+    nomesMovimentosEscolas,
 } from './utils.js';
 
 export const SEPARADOR_LISTA = ' | ';
@@ -190,6 +192,34 @@ function deTerceiros(item, banco) {
 
 // Recebe o registro de `montarRegistro` (exportar.js): o item inteiro +
 // `tipo`, `contexto` (livro/parte/seção), nomes já resolvidos.
+// Rótulo de Grupo pra uma linha do CSV, com o mesmo critério de
+// desambiguação por Autor de badgesGrupos (celulas-tabela.js) e
+// textoGrupos (exportar-md.js): olha TODOS os Grupos citados nesta
+// linha (via pessoa + diretos, as duas colunas juntas — daí `banco`
+// pra buscar `paresGrupoPessoa` de novo aqui dentro) e só acrescenta o
+// nome do Autor quando dois deles colidem em nome. Retorna uma função
+// (grupo) => rótulo, pronta pra usar em .map() nas duas colunas.
+function rotuloGrupoCsv(item, banco) {
+    const viaPessoa = paresGrupoPessoa(item, banco.pessoas, banco.grupos).map(({ grupo }) => grupo);
+    const diretos = (item.gruposDiretosResolvidos || []).filter(Boolean);
+    const autorIdsPorNome = new Map();
+    for (const g of [...viaPessoa, ...diretos]) {
+        if (!autorIdsPorNome.has(g.nome)) autorIdsPorNome.set(g.nome, new Set());
+        autorIdsPorNome.get(g.nome).add(g.autorId);
+    }
+    const nomesColidindo = new Set(
+        [...autorIdsPorNome.entries()]
+            .filter(([, autorIds]) => autorIds.size > 1)
+            .map(([nome]) => nome),
+    );
+    return (grupo) => {
+        if (!nomesColidindo.has(grupo.nome)) return grupo.nome;
+        const nomeAutor =
+            (banco.autores || []).find((a) => a.id == grupo.autorId)?.nome || '(autor)';
+        return `${grupo.nome}, ${nomeAutor}`;
+    };
+}
+
 export function colunasTexto(tipo) {
     const ehPoema = tipo === 'poema';
     const nomeSinal = (chave) => `sinal_${chave.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`)}`;
@@ -258,18 +288,29 @@ export function colunasTexto(tipo) {
                     ),
             );
         }),
-        coluna('grupos_via_pessoas', [], (r, ctx) =>
-            juntar([
-                ...new Set(
-                    paresGrupoPessoa(r, ctx.banco.pessoas, ctx.banco.grupos).map(
-                        ({ grupo }) => grupo.nome,
-                    ),
-                ),
-            ]),
-        ),
-        coluna('grupos_diretos', ['gruposDiretos'], (r) =>
-            juntar((r.gruposDiretosResolvidos || []).map((g) => g.nome)),
-        ),
+        // Desambiguação por Autor (decisão B, 27/09/2026 — mesmo critério de
+        // badgesGrupos em celulas-tabela.js e textoGrupos em exportar-md.js):
+        // "Nome, Autor" só entra quando, dentro desta linha, dois Grupos
+        // citados (via pessoa OU diretos, as duas colunas juntas) têm o
+        // mesmo nome mas Autores diferentes (coautoria); resolvido via
+        // rotuloGrupoCsv abaixo, que olha as duas colunas juntas pra achar
+        // a colisão antes de montar cada uma separadamente.
+        coluna('grupos_via_pessoas', [], (r, ctx) => {
+            const gruposViaPessoa = [
+                ...new Map(
+                    paresGrupoPessoa(r, ctx.banco.pessoas, ctx.banco.grupos).map(({ grupo }) => [
+                        grupo.id,
+                        grupo,
+                    ]),
+                ).values(),
+            ];
+            const rotulo = rotuloGrupoCsv(r, ctx.banco);
+            return juntar(gruposViaPessoa.map(rotulo));
+        }),
+        coluna('grupos_diretos', ['gruposDiretos'], (r, ctx) => {
+            const rotulo = rotuloGrupoCsv(r, ctx.banco);
+            return juntar((r.gruposDiretosResolvidos || []).map(rotulo));
+        }),
 
         // Época retratada
         coluna('epoca', ['epocaRetratada'], (r) => r.epocaRetratada?.nomeEpoca || ''),
@@ -277,6 +318,16 @@ export function colunasTexto(tipo) {
         coluna('epoca_nao_se_aplica', [], (r) => vazioSeNulo(r.epocaRetratada?.na)),
         ...colunasData('epoca_inicio', [], (r) => r.epocaRetratada?.inicio),
         ...colunasData('epoca_fim', [], (r) => r.epocaRetratada?.fim),
+
+        // Período Histórico retratado (sem recorte de data, campo solto)
+        coluna('periodo_historico', ['periodoHistoricoId'], (r, ctx) =>
+            nomePeriodoHistorico(r.periodoHistoricoId, ctx.banco.periodosHistoricos),
+        ),
+
+        // Movimento/Escola (N:N, cadastro central — ver Autor também)
+        coluna('movimentos_escolas', ['movimentosEscolasIds'], (r, ctx) =>
+            juntar(nomesMovimentosEscolas(r.movimentosEscolasIds, ctx.banco.movimentosEscolas)),
+        ),
 
         // Sinalizações: uma coluna por categoria
         ...Object.entries(SINALIZACOES_CATEGORIAS).map(([chave, campo]) =>

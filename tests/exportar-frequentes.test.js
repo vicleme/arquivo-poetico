@@ -142,14 +142,20 @@ describe('baixarFixo — backup/aninhado/flat', () => {
         db.poemas = [{ id: 'p1', titulo: 'Um poema' }];
         await baixarFixo('backup');
         const texto = await textoDoBlob(downloads[0].blob);
-        assert.equal(Object.prototype.hasOwnProperty.call(JSON.parse(texto), '_capasBase64'), false);
+        assert.equal(
+            Object.prototype.hasOwnProperty.call(JSON.parse(texto), '_capasBase64'),
+            false,
+        );
     });
 
     it('backup com o checkbox de capas desmarcado não inclui _capasBase64', async () => {
         elementoGetById['chk-capas-fixo-backup'] = { checked: false };
         await baixarFixo('backup');
         const texto = await textoDoBlob(downloads[0].blob);
-        assert.equal(Object.prototype.hasOwnProperty.call(JSON.parse(texto), '_capasBase64'), false);
+        assert.equal(
+            Object.prototype.hasOwnProperty.call(JSON.parse(texto), '_capasBase64'),
+            false,
+        );
     });
 });
 

@@ -62,11 +62,30 @@ function encontrarOcorrencias(texto, termo) {
 // que a quebra de linha do texto espelhado seja idêntica à do textarea
 // de verdade — sem isso, a posição vertical calculada não bate.
 const PROPRIEDADES_ESPELHO = [
-    'boxSizing', 'width', 'fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
-    'letterSpacing', 'lineHeight', 'paddingTop', 'paddingRight', 'paddingBottom',
-    'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth',
-    'borderLeftWidth', 'borderTopStyle', 'borderRightStyle', 'borderBottomStyle',
-    'borderLeftStyle', 'textTransform', 'wordSpacing', 'textIndent', 'textAlign',
+    'boxSizing',
+    'width',
+    'fontFamily',
+    'fontSize',
+    'fontWeight',
+    'fontStyle',
+    'letterSpacing',
+    'lineHeight',
+    'paddingTop',
+    'paddingRight',
+    'paddingBottom',
+    'paddingLeft',
+    'borderTopWidth',
+    'borderRightWidth',
+    'borderBottomWidth',
+    'borderLeftWidth',
+    'borderTopStyle',
+    'borderRightStyle',
+    'borderBottomStyle',
+    'borderLeftStyle',
+    'textTransform',
+    'wordSpacing',
+    'textIndent',
+    'textAlign',
     'tabSize',
 ];
 
@@ -133,7 +152,11 @@ function atualizarVisual() {
     // simulamos com uma classe (ver Ctrl+A no onKeydown).
     termoEl.classList.toggle('bg-blue-200', !!termoSelecionado && !!termo);
     termoEl.classList.toggle('dark:bg-blue-700', !!termoSelecionado && !!termo);
-    contadorEl.textContent = matches.length ? `${indice + 1}/${matches.length}` : termo ? '0/0' : '';
+    contadorEl.textContent = matches.length
+        ? `${indice + 1}/${matches.length}`
+        : termo
+          ? '0/0'
+          : '';
 }
 
 // Substitui o termo inteiro (usado depois de Ctrl+A + digitar, ou
@@ -170,7 +193,8 @@ function substituirIntervalo(textarea, start, tamanho, valor) {
     textarea.setSelectionRange(start, start + tamanho);
     const ok = document.execCommand('insertText', false, valor);
     if (!ok) {
-        textarea.value = textarea.value.substring(0, start) + valor + textarea.value.substring(start + tamanho);
+        textarea.value =
+            textarea.value.substring(0, start) + valor + textarea.value.substring(start + tamanho);
         textarea.setSelectionRange(start + valor.length, start + valor.length);
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
     }
@@ -213,7 +237,9 @@ function substituirTudo() {
     barraAtual.indice = 0;
     atualizarVisual();
     if (barraAtual.matches.length) irParaOcorrencia();
-    mostrarAviso(`${total} ocorrência${total === 1 ? '' : 's'} substituída${total === 1 ? '' : 's'}.`);
+    mostrarAviso(
+        `${total} ocorrência${total === 1 ? '' : 's'} substituída${total === 1 ? '' : 's'}.`,
+    );
 }
 
 // Fecha e limpa a barra — remover `el` do DOM já derruba junto o
@@ -288,7 +314,9 @@ function criarBarra(textarea) {
 
     const termoEl = el.querySelector('[data-papel="termo"]');
     const contadorEl = el.querySelector('[data-papel="contador"]');
-    const [btnAnterior, btnProximo, btnExpandir, btnFechar] = el.querySelectorAll('div.flex.items-center.gap-1 > button');
+    const [btnAnterior, btnProximo, btnExpandir, btnFechar] = el.querySelectorAll(
+        'div.flex.items-center.gap-1 > button',
+    );
     const linhaSubstituir = el.querySelector('[data-papel="linha-substituir"]');
     const substituirInput = el.querySelector('[data-papel="substituir"]');
     const btnSubstituirUm = el.querySelector('[data-papel="substituir-um"]');
@@ -389,8 +417,14 @@ function criarBarra(textarea) {
         fn();
         textarea.focus();
     };
-    btnAnterior.addEventListener('mousedown', semRoubarFoco(() => navegar(-1)));
-    btnProximo.addEventListener('mousedown', semRoubarFoco(() => navegar(1)));
+    btnAnterior.addEventListener(
+        'mousedown',
+        semRoubarFoco(() => navegar(-1)),
+    );
+    btnProximo.addEventListener(
+        'mousedown',
+        semRoubarFoco(() => navegar(1)),
+    );
     btnFechar.addEventListener('mousedown', (e) => {
         e.preventDefault();
         fecharBuscaEmCampo();
@@ -415,8 +449,14 @@ function criarBarra(textarea) {
         }
     });
 
-    btnSubstituirUm.addEventListener('mousedown', semRoubarFoco(() => substituirAtual()));
-    btnSubstituirTudo.addEventListener('mousedown', semRoubarFoco(() => substituirTudo()));
+    btnSubstituirUm.addEventListener(
+        'mousedown',
+        semRoubarFoco(() => substituirAtual()),
+    );
+    btnSubstituirTudo.addEventListener(
+        'mousedown',
+        semRoubarFoco(() => substituirTudo()),
+    );
 
     // O input de substituição é um campo de texto de verdade (ver nota
     // de design acima) — só intercepta Enter (atalho pra "Substituir")

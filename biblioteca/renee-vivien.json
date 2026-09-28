@@ -1,0 +1,620 @@
+{
+  "export_format": "biblioteca",
+  "pacote": {
+    "id": "renee-vivien",
+    "titulo": "Renée Vivien (seleção)",
+    "descricao": "Seis poemas (Poèmes, 1909; À l’heure des mains jointes, 1906) e dois poemas em prosa (Poèmes en prose), em francês.",
+    "fonte": "Wikisource",
+    "edicao": "",
+    "link": "",
+    "ortografia": "",
+    "conferido": false
+  },
+  "autores": [
+    {
+      "id": 1,
+      "sobre": "",
+      "nome": "Renée Vivien",
+      "nacionalidade": "Britânica",
+      "nascimento": {
+        "dia": 11,
+        "mes": 6,
+        "ano": 1877
+      },
+      "obito": {
+        "dia": 18,
+        "mes": 11,
+        "ano": 1909
+      },
+      "sexo": "Feminino"
+    }
+  ],
+  "itens": [
+    {
+      "id": 1,
+      "tipo": "poema",
+      "titulo": "Parle-moi",
+      "texto": "Parle-moi, de ta voix pareille à l’eau courante,\nLorsque s’est ralenti le souffle des aveux.\nDis-moi des mots railleurs et cruels si tu veux,\nMais berce-moi de la mélopée enivrante.\n\nDe ce timbre voilé qui m’attriste et m’enchante,\nLorsque mon front s’égare en tes vagues cheveux,\nExprime tes espoirs, tes regrets et tes vœux,\nÔ mon harmonieuse et musicale amante !\n\nEt moi, j’écouterai ta voix et son doux chant.\nJe ne comprendrai plus, j’écouterai, cherchant,\nSinon l’entier oubli, du moins la somnolence.\n\nCar si tu t’arrêtais, ne fût-ce qu’un moment,\nJ’entendrais… j’entendrais au profond du silence\nQuelque chose d’affreux qui pleure horriblement.\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "fr",
+      "dataEscrita": null,
+      "dataPublicacao": {
+        "ano": 1909
+      },
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Renée Vivien"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "Poèmes, A. Lemerre, 1909 (p. 9-10)",
+        "link": "https://fr.wikisource.org/wiki/Po%C3%A8mes_(Vivien)/Parle-Moi",
+        "conferido": false,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 2,
+      "tipo": "poema",
+      "titulo": "À l’heure des mains jointes",
+      "texto": "J’ai puérilisé mon cœur dans l’innocence\nDe notre amour, éveil de calice enchanté.\nDans les jardins où se parfume le silence,\nOù le rire lascif retrouve l’innocence,\nÔ chère ! je t’adore avec simplicité.\n\nTes doigts se sont noués autour de mon cœur rude.\nEn un balbutiement pareil au cri naïf\nDe l’inexpérience et de la gratitude,\nJe te dirai comment, lasse de la mer rude,\nJ’ai jeté l’ancre au port où s’amarre l’esquif.\n\nTes cheveux et ta voix et tes bras m’ont guérie.\nJ’ai dépouillé la crainte et le brutal soupçon.\nEt l’artificiel et la bizarrerie…\nJ’abrite ma langueur de malade guérie\nSous le toit amical de la bonne maison.\n\nJ’ai la sécurité pourtant un peu tremblante\nDe celles dont les yeux, pleins d’images, sont lourds,\nEt je me réjouis de l’herbe et de la plante ;\nDans ces jardins aux bleus midis, un peu tremblante\nD’avoir trop redouté l’aspect des mauvais jours.\n\nÀ l’heure sororale et douce des mains jointes,\nJ’ai contemplé, sereine, un visage effacé,\nTels les convalescents aux fraîches courtepointes,\nLa fièvre disparue… À l’heure des mains jointes,\nJe t’ai donné les derniers lys de mon passé.\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "fr",
+      "dataEscrita": null,
+      "dataPublicacao": {
+        "ano": 1906
+      },
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Renée Vivien"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "À l’Heure des Mains jointes, Alphonse Lemerre, 1906 (p. 1-2)",
+        "link": "",
+        "conferido": false,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 3,
+      "tipo": "poema",
+      "titulo": "Psappha revit",
+      "texto": "La lune se levait autrefois à Lesbos\nSur le verger nocturne où veillaient les amantes.\nL’amour rassasié montait des eaux dormantes\nEt sanglotait au cœur profond du sarbitos.\n\nPsappha ceignait son front d’auguste violettes\nEt célébrait l’Érôs qui s’abat comme un vent\nSur les chênes… Atthis l’écoutait en rêvant,\nEt la torche avivait l’éclat des bandelettes.\n\nLes rives flamboyaient, blondes sous les pois d’or…\nLes vierges enseignaient aux belles étrangères\nCombien l’ombre est propice aux caresses légères,\nEt le ciel et la mer déployaient leur décor.\n\n… Certaines d’entre nous ont conservé les rites\nDe ce brûlant Lesbos doré comme un autel.\nNous savons que l’amour est puissant et cruel,\nEt nos amantes ont les pieds blancs des Kharites.\n\nNos corps sont pour leur corps un fraternel miroir.\nNos compagnes, aux seins de neige printanière,\nSavent de quelle étrange et suave manière\nPsappha pliait naguère Atthis à son vouloir.\n\nNous adorons avec des candeurs infinies,\nEn l’émerveillement d’un enfant étonné\nÀ qui l’or éternel des mondes fut donné…\nPsappha revit, par la vertu des harmonies.\n\nNous savons effleurer d’un baiser de velours,\nEt nous savons étreindre avec des fougues blêmes ;\nNos caresses sont nos mélodieux poèmes…\nNotre amour est plus grand que toutes les amours.\n\nNous redisons ces mots de Psappha, quand nous sommes\nRêveuses sous un ciel illuminé d’argent :\n« Ô belles, envers vous mon cœur n’est point changeant… »\nCelles que nous aimons ont méprisé les hommes.\n\nNos lunaires baisers ont de pâles douceurs,\nNos doigts ne froissent point le duvet d’une joue,\nEt nous pouvons, quand la ceinture se dénoue,\nÊtre tout à la fois des amants et des sœurs.\n\nLe désir est en nous moins fort que la tendresse.\nEt cependant l’amour d’une enfant nous dompta\nSelon la volonté de l’âpre Aphrodita,\nEt chacune de nous demeure sa prêtresse.\n\nPsappha revit et règne en nos corps frémissants ;\nComme elle, nous avons écouté la sirène,\nComme elle encore, nous avons l’âme sereine,\nNous qui n’entendons point l’insulte des passants.\n\nFerventes, nous prions : « Que la nuit soit doublée\nPour nous dont le baiser craint l’aurore, pour nous\nDont l’Érôs mortel a délié les genoux,\nQui sommes une chair éblouie et troublée… »\n\nEt nos maîtresses ne sauraient nous décevoir,\nPuisque c’est l’infini que nous aimons en elles…\nEt puisque leurs baisers nous rendent éternelles,\nNous ne redoutons point l’oubli dans l’Hadès noir.\n\nAinsi, nous les chantons, l’âme sonore et pleine.\nNos jours sans impudeur, sans crainte ni remords,\nSe déroulent, ainsi que de larges accords,\nEt nous aimons, comme on aimait à Mytilène.\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "fr",
+      "dataEscrita": null,
+      "dataPublicacao": {
+        "ano": 1906
+      },
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Renée Vivien"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "À l’Heure des Mains jointes, Alphonse Lemerre, 1906 (p. 3-6)",
+        "link": "",
+        "conferido": false,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 4,
+      "tipo": "poema",
+      "titulo": "Ainsi je parlerai…",
+      "texto": "Si le Seigneur penchait son front sur mon trépas,\nJe lui dirais : « Ô Christ, je ne te connais pas.\n\n« Seigneur, ta stricte loi ne fut jamais la mienne,\nEt je vécus ainsi qu’une simple païenne.\n\n« Vois l’ingénuité de mon cœur pauvre et nu.\nJe ne te connais point. Je ne t’ai point connu.\n\n« J’ai passé comme l’eau, j’ai fui comme le sable.\nSi j’ai péché, jamais je ne fus responsable.\n\n« Le monde était autour de moi, tel un jardin.\nJe buvais l’aube claire et le soir cristallin.\n\n« Le soleil me ceignit de ses plus vives flammes,\nEt l’amour m’inclina vers la beauté des femmes.\n\n« Le ciel, d’un bleu velours, s’étalait comme un dais…\nUne vierge parut sur mon seuil. J’attendais.\n\n« La nuit tomba… Puis le matin nous a surprises\nMaussadement, de ses maussades lueurs grises.\n\n« Et dans mes bras qui la pressaient, elle a dormi\nAinsi que dort l’amante aux bras de son ami.\n\n« Depuis lors, j’ai vécu dans le trouble d’un rêve,\nToute une éternité dans la minute brève.\n\n« Elle était belle, avec des yeux glauques et froids,\nEt j’aimai cette femme, au mépris de tes lois.\n\n« Comme je ne cherchais que l’amour, obsédée\nPar un regard, les gens de bien m’ont lapidée.\n\n« Ceux-là qui s’indignaient de voir mon front serein\nEspéraient me courber sous leur pesant dédain.\n\n« Mais, comme je naquis douloureusement fière,\nJ’ai méprisé ceux-là qui me jetaient la pierre.\n\n« Et je n’écoutai plus que la voix que j’aimais,\nAyant compris que nul ne comprendrait jamais…\n\n« Déjà la nuit approche, et mon nom périssable\nS’efface, tel un mot qu’on écrit sur le sable.\n\n« Le couchant a jailli comme un vin du pressoir…\nNul ne murmurera mes strophes, vers le soir.\n\n« Et maintenant, Seigneur, juge-moi. Car nous sommes\nFace à face, devant le silence des hommes.\n\n« Autant que doux, l’amour me fut jadis amer,\nEt je n’ai mérité ni le ciel ni l’enfer.\n\n« J’écouterais très mal les cantiques des anges,\nPour avoir entendu jadis des chants étranges,\n\n« Les chants de ce Lesbos dont les cœurs se sont tus…\nEt je ne saurais point célébrer tes vertus.\n\n« Je n’ai jamais tenté de révolte farouche :\nLe baiser fut le seul blasphème de ma bouche.\n\n« Laisse-moi, me hâtant vers le soir bienvenu,\nRejoindre celles-là qui ne t’ont point connu…\n\n« J’irai, loin du troupeau de tes chastes fidèles,\nMe souvenir, parmi les chemins d’asphodèles,\n\n« Et là, parlant d’amour à celle que je vis\nSi blonde, et qui charma longtemps mes yeux ravis,\n\n« J’apprendrai que les lys sont plus beaux que les roses,\nEt que le chant a moins d’infini que les pauses…\n\n« Les yeux emplis encor du soleil trépassé,\nNous considérerons notre brûlant passé.\n\n« Psappha, les doigts errants sur la lyre endormie,\nS’étonnera de la beauté de mon amie,\n\n« Et la vierge de mon désir, pareille aux lys,\nLui semblera plus blanche et plus souple qu’Atthis.\n\n« Psappha nous jettera, de sa fervente haleine,\nLes odes dont les sons charmèrent Mytilène.\n\n« Et nous préparerons les fleurs et le flambeau,\nNous qui l’avons aimée en un siècle moins beau.\n\n« Psappha nous versera, parmi l’or et les soies\nDes couches molles, le nektar mêlé de joies.\n\n« Elle nous montrera, dans un sourire clair,\nLe verger lesbien qui s’ouvre sur la mer,\n\n« Le doux verger plein de cigales, d’où s’échappe,\nVibrant comme une voix, le parfum de la grappe.\n\n« Nos robes ondoieront parmi les blancs péplos…\nDika, Timas, Atthis, Éranna de Télos…\n\n« Nous verrons les seins nus d’une prêtresse brune\nQui mènera les chœurs dansants au clair de lune…\n\n« Ô Christ que l’on redoute à l’heure du trépas,\nJe ne t’ai point connu. Je ne te connais pas.\n\n« Je te l’ai dit : je fus une simple païenne.\nLaisse-moi me hâter vers la douceur ancienne,\n\n« Et, puisque enfin l’instant de ma mort est venu,\nRetrouver celles-là qui ne t’ont point connu. »\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "fr",
+      "dataEscrita": null,
+      "dataPublicacao": {
+        "ano": 1906
+      },
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Renée Vivien"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "À l’Heure des Mains jointes, Alphonse Lemerre, 1906 (p. 7-12)",
+        "link": "",
+        "conferido": false,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 5,
+      "tipo": "poema",
+      "titulo": "Attire-moi, Venise…",
+      "texto": "Sans amie et sans livre, errante au bord des eaux\nQue le soleil meurtrit, que la lune caresse,\nVenise, je serai comme une Dogaresse\nÉprise du sommeil de tes mornes canaux.\n\nAh ! toi qui sais combien les tristesses sont fortes,\nPuisque leur volonté triomphe de l’instinct\nEt que, seul, leur visage est frappant et distinct,\nAttire-moi, Venise, au fond de tes eaux mortes !\n\nEt dis à ces amants vulgaires de demain\nQue je les ai jugés et que je les méprise…\nO toi, la solitaire et l’altière, ô Venise !\nDis-leur que nous rions de leur bonheur humain.\n\nDédaignons-les : ils sont une troupe insensée,\nCeux qui ne goûtent plus le précieux ennui\nD’être seuls au milieu des hommes, et chez qui\nLe désordre charnel a tué la pensée.\n\nDis-leur encore, ô toi qui pèses sur les eaux !\nFunèbre comme moi, comme moi froide et sombre,\nDis-leur avec ma voix sans écho, ma voix d’ombre,\nQue la mort seule est belle au fond de tes canaux…\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "fr",
+      "dataEscrita": null,
+      "dataPublicacao": {
+        "ano": 1906
+      },
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Renée Vivien"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "À l’Heure des Mains jointes, Alphonse Lemerre, 1906 (p. 13-14)",
+        "link": "",
+        "conferido": false,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 6,
+      "tipo": "poema",
+      "titulo": "Nous irons vers les Poètes",
+      "texto": "L’ombre paraît une ennemie en embuscade…\nViens, je t’emporterai comme une enfant malade,\nComme une enfant plaintive et craintive et malade.\n\nEntre mes bras nerveux j’étreins ton corps léger.\nTu verras que je sais guérir et protéger,\nEt que mes bras sont forts pour mieux te protéger.\n\nLes bois sacrés n’ont plus d’efficaces dictames,\nEt le monde a toujours été cruel aux femmes…\nNous le savons, le monde est cruel pour les femmes.\n\nLes blâmes des humains ont pesé sur nos fronts,\nMais nous irons au loin et nous les oublierons…\nNous n’avons qu’à vouloir et nous les oublierons.\n\nNous souvenant qu’il est de plus larges planètes,\nNous entrerons dans le royaume des poètes,\nLe merveilleux royaume où chantent les poètes.\n\nLa lumière s’y meut sur un rythme divin.\nPlus de soucis : l’on rêve et l’on est libre enfin…\nMa Douceur, conçois-tu que l’on soit libre enfin ?…\n\nJe bâtirai pour toi des palais d’émeraude\nOù le parfum s’égare, où la musique rôde,\nSemblable au souvenir qui s’attarde et qui rôde…\n\nMon amour, qui s’élève à la hauteur du chant,\nLouera tes cheveux roux plus beaux que le couchant…\nAh ! tes cheveux, plus beaux que le plus beau couchant !\n\nLes douleurs se feront exquises et lointaines,\nDans le miracle des jardins et des fontaines,\nDes jardins langoureux où dorment les fontaines.\n\nParce que j’ai frémi, que j’ai pleuré comme eux,\nChère, j’irai vers les poètes lumineux,\nSans redouter l’éclat de leur front lumineux.\n\nJe leur dirai : « Mon œuvre est une œuvre illusoire…\nJe marche obscurément vers une mort sans gloire,\nJe suis une qui vit et qui mourra sans gloire.\n\n« Mais entr’ouvrez vos rangs jalousement étroits,\nParce que je vous ai vénérés autrefois,\nEt que j’ai lu vos vers, par les soirs d’autrefois.\n\n« Accueillez parmi vous votre sœur sans génie,\nMais dont l’âme est pareille à votre âme infinie…\nCar mon âme est pareille à votre âme infinie.\n\n« Je juge l’aube triste et le plaisir amer :\nLe soir me voit errer en regardant la mer,\nLes pieds nus, attentive aux refrains de la mer.\n\n« Puisque le désir fut mon unique poème,\nContemplez la splendeur de la femme que j’aime…\nÔ poètes ! voyez cette femme que j’aime ! »\n\n… Nous entrerons, grâce aux poètes fraternels,\nDans le pays créé par leurs vers éternels,\nDans l’harmonie et le clair de lune éternels.\n\nLa nuit rassurera nos âmes inquiètes,\nEt nous verrons passer, en chantant, les poètes\nGraves et doux, et les amantes des poètes.\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "fr",
+      "dataEscrita": null,
+      "dataPublicacao": {
+        "ano": 1906
+      },
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Renée Vivien"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "À l’Heure des Mains jointes, Alphonse Lemerre, 1906 (p. 15-18)",
+        "link": "",
+        "conferido": false,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 7,
+      "tipo": "prosa",
+      "titulo": "Les Quatre Vents",
+      "texto": "Comme je m’acheminais vers la colline, je rencontrai le Vent du Nord.\n\nIl était vêtu d’un grand manteau et portait une couronne de glaçons.\n\nIl me dit : « Laisse-moi t’emporter vers les neiges.\n\n« Tu verras les forêts de pins qui abritent des troupeaux de loups errants.\n\n« Tu verras le vol des grands cygnes sauvages au-dessus des fjords où s’ébattent les phoques de velours humide. Tu verras aussi les montagnes, les palais, les cités et les jardins de cristal translucide qui voguent sur l’eau d’hiver.\n\n« Tu verras ces énormes solitudes que seuls osent traverser les ours blancs.\n\n« Tu entendras le grelot sonore et mince de ces traîneaux finlandais qu’emporte le léger galop des rennes. Viens ! Tu entreras dans l’énorme silence blanc. »\n\nJe répondis au Vent du Nord :\n\n« Je ne puis quitter mon village, puisque la jeune fille que j’aime y demeure. »\n\nLe Vent du Nord s’enfuit, en un frisson d’ailes.\n\nComme je m’acheminais vers la colline, je rencontrai le Vent de l’Est.\n\nIl était vêtu de pourpre et portait une couronne de rayons rouges.\n\nIl me dit : « Laisse-moi t’emporter vers la lumière.\n\n« Tu verras ces mousmés dont la robe de soie riante est brodée d’oiseaux et de fantastiques paysages.\n\n« Elles s’éparpillent en de minuscules jardins dont les très petits arbres sont parés de lucioles comme de lanternes. Tu verras les pagodes de l’éternel Bouddha, ces étranges pagodes aux mille clochetons dentelés. »\n\nLe Vent de l’Est se tut un instant et reprit :\n\n« Je te montrerai les temples hindous entourés de religieux étangs d’où s’élèvent les lotus sacrés.\n\n« Au fond de ces terribles sanctuaires où sont les images sacrées, la terreur règne.\n\n« Mais, dans le doux Japon féerique qui est aussi de mon domaine, tu verras le bienfaisant Bouddha et l’éternel sourire répandu sur toute sa face paisible. »\n\nJe répondis au Vent de l’Est :\n\n« Je ne puis quitter mon village, car la jeune fille que j’aime y demeure. »\n\nLe Vent de l’Est s’enfuit.\n\nComme je m’acheminais vers la colline, je rencontrai le Vent du Sud.\n\nCelui-là était vêtu d’or et portait une couronne d’étoiles.\n\nIl me dit : « Laisse-moi t’emporter vers l’azur.\n\n« Tu verras les sables éternels qui emprisonnent des sphinx accroupis dont les yeux de pierre s’ouvrent sur l’immensité. Tu verras les peuplades noires qui hurlent à la lune, ainsi que des chiens inquiets. Tu verras aussi les brousses très pâles où rôde la soif. Tu verras enfin ces îles d’or où les femmes amoureuses s’endorment en des hamacs de soie parmi les oiseaux et les fleurs. »\n\nJe répondis au Vent du Sud :\n\n« Je ne puis quitter mon village. Car la jeune fille que j’aime y demeure. »\n\nLe Vent du Sud s’enfuit, en un frisson d’ailes.\n\nComme je m’acheminais vers la colline, je rencontrai le Vent de l’Ouest.\n\nIl était vêtu de vert et portait une couronne de perles humides.\n\nIl me dit : « Laisse-moi t’emporter vers la mer.\n\n« Tu verras l’infini du ciel et de l’eau, de l’eau et du ciel.\n\n« Tu te réjouiras du léger passage des voiles dont la blancheur frissonnante se colore, vers le couchant, de pourpre et d’or rouge. Tu verras les formes architecturales des poissons monstrueux et le vol circulaire des goélands qui tournoient infatigablement au-dessus des mâts. Tu verras mes brumes que j’évoque dans le soir et l’embrun que je fais jaillir des vagues. Tu verras ces divins couchers de soleil qui précèdent la lune. »\n\nJe répondis au Vent de l’Ouest :\n\n« Je ne puis quitter mon village. Car la jeune fille que j’aime y demeure. »\n\nLe Vent de l’Ouest s’enfuit, lui aussi, dans un frisson d’ailes.\n\nMoi, je demeurai solitaire, dans la bonne chaumière où le feu brûlait.\n\nEt je regarde les flammes.\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "fr",
+      "dataEscrita": null,
+      "dataPublicacao": null,
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Renée Vivien"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "Poèmes en Prose, E. Sansot et Cie (p. 7-15)",
+        "link": "",
+        "conferido": false,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 8,
+      "tipo": "prosa",
+      "titulo": "Le Cygne Noir",
+      "texto": "Sur les fjords, passaient, comme un nuage, des cygnes blancs.\n\nMais un jour, ils aperçurent dans leur nombre un cygne noir dont le bec était rouge comme du sang.\n\nVoici que les cygnes tout blancs s’épouvantèrent de voir au milieu de leur troupe ce compagnon singulier.\n\nRassurés enfin, ils passèrent de la terreur à la haine.\n\nDonc, ils assaillirent le cygne noir avec tant de haine, qu’il faillit périr.\n\nEt le cygne noir se dit :\n\n« Je suis las des cruautés de mes semblables, qui ne sont pas mes pareils.\n\n« Je fuirai à jamais au fond des solitudes.\n\n« Je prendrai l’essor et je m’envolerai vers la mer.\n\n« Je connaîtrai le goût des brises du large. J’entendrai les grands cris de la tempête.\n\n« Les flots tumultueux berceront mon sommeil, et je me reposerai dans l’orage.\n\n« La foudre sera ma sœur, et le tonnerre, mon frère bien-aimé. »\n\nAyant entendu de très loin le bruit lointain des vagues, le cygne noir prit l’essor et s’envola vers la mer.\n\nMais l’ouragan le surprit et l’abattit et lui brisa les ailes…\n\nLe cygne noir crut alors qu’il allait mourir sans avoir vu la mer.\n\nPourtant, il sentait dans l’air la bonne odeur des algues.\n\nLes ailes brisées se soulevèrent dans un dernier effort…\n\nEt le vent emporta le cygne mort jusqu’à la mer…\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "fr",
+      "dataEscrita": null,
+      "dataPublicacao": null,
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Renée Vivien"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "Poèmes en Prose, E. Sansot et Cie (p. 19-22)",
+        "link": "",
+        "conferido": false,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    }
+  ]
+}

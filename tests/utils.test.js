@@ -71,6 +71,11 @@ import {
     CORES_RACA_AUTOR,
     IDENTIDADES_CIS_TRANS,
     extrairGenerosAutorUnicos,
+    extrairGenerosPessoasUnicos,
+    simboloGeneroPessoa,
+    formaOcultadoPorGenero,
+    formaReexibidoPorGenero,
+    formaOcultaAdjetivoPorGenero,
     extrairOrientacoesUnicas,
     RELIGIOES_SUGERIDAS,
     extrairReligioesUnicas,
@@ -78,11 +83,14 @@ import {
     TIPOS_DEFICIENCIA,
     GRAUS_ACADEMICOS_AUTOR,
     extrairInstituicoesUnicas,
+    extrairCirculosLiterariosUnicos,
     CLASSES_SOCIAIS_AUTOR,
     autorGruposComDados,
     signoDoZodiaco,
     idadeAutor,
     grupoSexualGenero,
+    romanoParaNumero,
+    anoEquivalenteMovimento,
 } from '../js/utils.js';
 
 describe('parseListaIntervalos', () => {
@@ -587,11 +595,36 @@ describe('parseFiltroDataRapido', () => {
         assert.equal(parseFiltroDataRapido('abc'), null);
     });
 
-    it('retorna null pra valores fora da faixa válida', () => {
+    it('retorna null pra valores fora da faixa válida (dia/mês/ano — ano agora vai de 1 a 2100)', () => {
         assert.equal(parseFiltroDataRapido('32/01/2020'), null, 'dia inválido');
         assert.equal(parseFiltroDataRapido('15/13/2020'), null, 'mês inválido');
-        assert.equal(parseFiltroDataRapido('15/03/1899'), null, 'ano abaixo do mínimo');
         assert.equal(parseFiltroDataRapido('13/2020'), null, 'mês inválido em mês/ano');
+        assert.equal(parseFiltroDataRapido('2200'), null, 'ano acima do novo teto (2100)');
+        assert.equal(parseFiltroDataRapido('0'), null, 'ano zero, ainda inválido');
+    });
+
+    // Bug relatado por Victor (27/09/2026): filtrar Movimento/Escola por
+    // "1500" até "1600" mostrava os 22 movimentos, sem filtrar nada. Causa:
+    // este atalho rejeitava (retornava null) qualquer ano fora de
+    // 1900-2100, faixa que fazia sentido pra data de escrita/publicação de
+    // Poema/Prosa (sempre contemporânea) mas não pra Movimento/Escola, que
+    // tem item cadastrado desde o século XII — e quem chama trata null como
+    // "sem filtro", então a lista aparecia inteira. Piso corrigido pra 1
+    // (mesmo `min="1"` já usado no campo de ano de todos os modais, ver
+    // modal-movimento-escola.html); teto continua 2100.
+    it('aceita ano anterior a 1900 (não é mais fora da faixa válida)', () => {
+        assert.deepEqual(parseFiltroDataRapido('1500'), {
+            de: { ano: 1500 },
+            ate: { ano: 1500 },
+        });
+        assert.deepEqual(parseFiltroDataRapido('15/03/1899'), {
+            de: { dia: 15, mes: 3, ano: 1899 },
+            ate: { dia: 15, mes: 3, ano: 1899 },
+        });
+        assert.deepEqual(parseFiltroDataRapido('1101'), {
+            de: { ano: 1101 },
+            ate: { ano: 1101 },
+        });
     });
 });
 
@@ -840,7 +873,12 @@ describe('paresAutoria (Autor/Coautor, resolução via cadastro central)', () =>
     it('resolve assinatura e nomeLiterario do vínculo (Ortônimo/"" quando ausentes)', () => {
         const item = {
             autoria: [
-                { autorId: 1, papel: 'Autor', assinatura: 'Heterônimo', nomeLiterario: 'Álvaro de Campos' },
+                {
+                    autorId: 1,
+                    papel: 'Autor',
+                    assinatura: 'Heterônimo',
+                    nomeLiterario: 'Álvaro de Campos',
+                },
                 { autorId: 2, papel: 'Coautor' },
             ],
         };
@@ -866,7 +904,11 @@ describe('nomeAutoriaExibido (nome literário > nome do Autor)', () => {
 
     it('usa o nome literário quando a Assinatura é Heterônimo', () => {
         assert.equal(
-            nomeAutoriaExibido({ autor, assinatura: 'Heterônimo', nomeLiterario: 'Álvaro de Campos' }),
+            nomeAutoriaExibido({
+                autor,
+                assinatura: 'Heterônimo',
+                nomeLiterario: 'Álvaro de Campos',
+            }),
             'Álvaro de Campos',
         );
     });
@@ -880,13 +922,20 @@ describe('nomeAutoriaExibido (nome literário > nome do Autor)', () => {
 
     it('cai pro nome do Autor quando a Assinatura é Ortônimo, mesmo com nomeLiterario preenchido', () => {
         assert.equal(
-            nomeAutoriaExibido({ autor, assinatura: 'Ortônimo', nomeLiterario: 'Álvaro de Campos' }),
+            nomeAutoriaExibido({
+                autor,
+                assinatura: 'Ortônimo',
+                nomeLiterario: 'Álvaro de Campos',
+            }),
             'Fernando Pessoa',
         );
     });
 
     it('cai pro nome do Autor sem nome literário', () => {
-        assert.equal(nomeAutoriaExibido({ autor, assinatura: 'Heterônimo', nomeLiterario: '' }), 'Fernando Pessoa');
+        assert.equal(
+            nomeAutoriaExibido({ autor, assinatura: 'Heterônimo', nomeLiterario: '' }),
+            'Fernando Pessoa',
+        );
         assert.equal(nomeAutoriaExibido({ autor }), 'Fernando Pessoa');
     });
 });
@@ -1262,8 +1311,17 @@ describe('filtrarTextos (busca com sintaxe estilo Google)', () => {
 
     it('prefixo grafia: restringe a busca ao rótulo da tradição ortográfica (não ao valor cru do enum), e "atual" só bate no que foi marcado de propósito', () => {
         const comGrafia = [
-            { id: 90, titulo: 'A', _buscaGrafia: 'Etimológica (ph, th, y, dobradas — ex.: Cruz e Sousa, Augusto dos Anjos)' },
-            { id: 91, titulo: 'B', _buscaGrafia: 'Quinhentista (português do séc. XVI — ex.: Camões)' },
+            {
+                id: 90,
+                titulo: 'A',
+                _buscaGrafia:
+                    'Etimológica (ph, th, y, dobradas — ex.: Cruz e Sousa, Augusto dos Anjos)',
+            },
+            {
+                id: 91,
+                titulo: 'B',
+                _buscaGrafia: 'Quinhentista (português do séc. XVI — ex.: Camões)',
+            },
             { id: 92, titulo: 'C', _buscaGrafia: '' },
             { id: 93, titulo: 'D', _buscaGrafia: 'Atual (padrão)' },
         ];
@@ -1997,10 +2055,7 @@ describe('PES_METRICOS / calcularOpcoesPeMetrico / calcularTamanhoVersoForcadoPo
     });
 
     it('calcularTamanhoVersoForcadoPorPe retorna o Tamanho exigido por um pé fixo', () => {
-        assert.equal(
-            calcularTamanhoVersoForcadoPorPe('Decassílabo Heroico'),
-            'Decassílabo (10)',
-        );
+        assert.equal(calcularTamanhoVersoForcadoPorPe('Decassílabo Heroico'), 'Decassílabo (10)');
         assert.equal(
             calcularTamanhoVersoForcadoPorPe('Pé de Arte Maior'),
             'Alexandrino / Dodecassílabo (12)',
@@ -2097,6 +2152,48 @@ describe('Dados demográficos do Autor (Sexo/Gênero/Orientação/Cor-Raça/Ocup
     });
 });
 
+describe('Gênero de Pessoa (símbolo ♀/♂ no card, concordância de ocultar/reexibir)', () => {
+    it('extrairGenerosPessoasUnicos soma a semente (GENEROS_SUGERIDOS) ao que já foi digitado', () => {
+        const pessoas = [{ genero: 'Bigênero' }, { genero: 'Mulher' }, { genero: '' }, {}];
+        const resultado = extrairGenerosPessoasUnicos(pessoas);
+        GENEROS_SUGERIDOS.forEach((g) => assert.ok(resultado.includes(g)));
+        assert.ok(resultado.includes('Bigênero'));
+        assert.equal(resultado.filter((g) => g === 'Mulher').length, 1);
+    });
+
+    it('simboloGeneroPessoa reconhece variações óbvias de mulher/homem, sem diferenciar maiúsculas', () => {
+        assert.equal(simboloGeneroPessoa('Mulher'), '♀');
+        assert.equal(simboloGeneroPessoa('feminino'), '♀');
+        assert.equal(simboloGeneroPessoa('Homem'), '♂');
+        assert.equal(simboloGeneroPessoa('MASCULINO'), '♂');
+    });
+
+    it('simboloGeneroPessoa não força símbolo em não-binário, vazio ou não informado', () => {
+        assert.equal(simboloGeneroPessoa('Não-binário'), '');
+        assert.equal(simboloGeneroPessoa('Prefere não dizer'), '');
+        assert.equal(simboloGeneroPessoa(''), '');
+        assert.equal(simboloGeneroPessoa(undefined), '');
+    });
+
+    it('formaOcultadoPorGenero/formaReexibidoPorGenero/formaOcultaAdjetivoPorGenero concordam com o Gênero reconhecido', () => {
+        assert.equal(formaOcultadoPorGenero('Mulher'), 'ocultada');
+        assert.equal(formaOcultadoPorGenero('Homem'), 'ocultado');
+        assert.equal(formaReexibidoPorGenero('Mulher'), 'reexibida');
+        assert.equal(formaReexibidoPorGenero('Homem'), 'reexibido');
+        assert.equal(formaOcultaAdjetivoPorGenero('Mulher'), 'oculta');
+        assert.equal(formaOcultaAdjetivoPorGenero('Homem'), 'oculto');
+    });
+
+    it('as três funções caem em "(a)" quando o Gênero não é binário/reconhecido ou está vazio', () => {
+        assert.equal(formaOcultadoPorGenero('Não-binário'), 'ocultado(a)');
+        assert.equal(formaOcultadoPorGenero(''), 'ocultado(a)');
+        assert.equal(formaReexibidoPorGenero('Não-binário'), 'reexibido(a)');
+        assert.equal(formaReexibidoPorGenero(undefined), 'reexibido(a)');
+        assert.equal(formaOcultaAdjetivoPorGenero('Não-binário'), 'oculto(a)');
+        assert.equal(formaOcultaAdjetivoPorGenero(''), 'oculto(a)');
+    });
+});
+
 describe('Dados sociais do Autor (Religião/Classe social/Condições clínicas/Escolaridade)', () => {
     it('CLASSES_SOCIAIS_AUTOR é lista fechada, do menos ao mais abastado, sem "Não informado"', () => {
         assert.deepEqual(CLASSES_SOCIAIS_AUTOR, [
@@ -2123,7 +2220,12 @@ describe('Dados sociais do Autor (Religião/Classe social/Condições clínicas/
     });
 
     it('extrairReligioesUnicas soma a semente ao acervo, sem duplicar nem incluir vazios', () => {
-        const autores = [{ religiao: 'Budismo' }, { religiao: 'Catolicismo' }, { religiao: '  ' }, {}];
+        const autores = [
+            { religiao: 'Budismo' },
+            { religiao: 'Catolicismo' },
+            { religiao: '  ' },
+            {},
+        ];
         const resultado = extrairReligioesUnicas(autores);
         RELIGIOES_SUGERIDAS.forEach((r) => assert.ok(resultado.includes(r)));
         assert.ok(resultado.includes('Budismo'));
@@ -2146,19 +2248,50 @@ describe('Dados sociais do Autor (Religião/Classe social/Condições clínicas/
     });
 
     it('extrairInstituicoesUnicas separa por vírgula, deduplica e ordena; sem semente fixa', () => {
-        const autores = [{ instituicoes: 'USP, Colégio Pedro II' }, { instituicoes: 'USP' }, { instituicoes: '' }, {}];
+        const autores = [
+            { instituicoes: 'USP, Colégio Pedro II' },
+            { instituicoes: 'USP' },
+            { instituicoes: '' },
+            {},
+        ];
         assert.deepEqual(extrairInstituicoesUnicas(autores), ['Colégio Pedro II', 'USP']);
         assert.deepEqual(extrairInstituicoesUnicas([]), []);
         assert.deepEqual(extrairInstituicoesUnicas(undefined), []);
+    });
+
+    it('extrairCirculosLiterariosUnicos lê a lista gravada pelo formulário, deduplica e ordena', () => {
+        const autores = [
+            { nome: 'A', circulo: ['Grupo Sul', 'Clube do Livro'] },
+            { nome: 'B', circulo: ['Grupo Sul', '  Academia  '] },
+            { nome: 'C', circulo: [] },
+            { nome: 'D' },
+        ];
+        assert.deepEqual(extrairCirculosLiterariosUnicos(autores), [
+            'Academia',
+            'Clube do Livro',
+            'Grupo Sul',
+        ]);
+    });
+
+    it('extrairCirculosLiterariosUnicos ainda aceita o formato antigo em texto separado por vírgula', () => {
+        const autores = [
+            { nome: 'A', circulo: 'Grupo Sul, Academia' },
+            { nome: 'B', circulo: '' },
+        ];
+        assert.deepEqual(extrairCirculosLiterariosUnicos(autores), ['Academia', 'Grupo Sul']);
+        assert.deepEqual(extrairCirculosLiterariosUnicos(undefined), []);
     });
 });
 
 describe('autorGruposComDados (grupos colapsáveis do modal de Autor)', () => {
     it('Autor vazio ou nulo: nenhum grupo tem dados', () => {
-        const vazio = { identidade: false, saude: false, formacao: false };
+        const vazio = { identidade: false, saude: false, formacao: false, reconhecimento: false };
         assert.deepEqual(autorGruposComDados({ id: 1, nome: 'A' }), vazio);
         assert.deepEqual(autorGruposComDados(null), vazio);
-        assert.deepEqual(autorGruposComDados({ sexo: '', condicoesClinicas: [], ocupacoes: '   ' }), vazio);
+        assert.deepEqual(
+            autorGruposComDados({ sexo: '', condicoesClinicas: [], ocupacoes: '   ' }),
+            vazio,
+        );
     });
 
     it('cada campo marca só o seu grupo', () => {
@@ -2166,28 +2299,56 @@ describe('autorGruposComDados (grupos colapsáveis do modal de Autor)', () => {
             identidade: true,
             saude: false,
             formacao: false,
+            reconhecimento: false,
         });
         assert.deepEqual(autorGruposComDados({ neurodivergencias: 'TDAH' }), {
             identidade: false,
             saude: true,
             formacao: false,
+            reconhecimento: false,
         });
-        assert.equal(autorGruposComDados({ deficiencias: [{ nome: 'Cegueira', tipo: 'Visual' }] }).saude, true);
+        assert.equal(
+            autorGruposComDados({ deficiencias: [{ nome: 'Cegueira', tipo: 'Visual' }] }).saude,
+            true,
+        );
         assert.deepEqual(autorGruposComDados({ instituicoes: 'USP' }), {
             identidade: false,
             saude: false,
             formacao: true,
+            reconhecimento: false,
         });
+        assert.deepEqual(autorGruposComDados({ premios: [{ nome: 'Jabuti', ano: 1990 }] }), {
+            identidade: false,
+            saude: false,
+            formacao: false,
+            reconhecimento: true,
+        });
+        assert.equal(autorGruposComDados({ movimentosEscolasIds: [500] }).reconhecimento, true);
+        assert.equal(autorGruposComDados({ obras: [{ nome: 'X' }] }).reconhecimento, true);
+        assert.equal(autorGruposComDados({ circulo: ['Grupo X'] }).reconhecimento, true);
+        assert.equal(autorGruposComDados({ linguasEscrita: ['Português'] }).reconhecimento, true);
     });
 
     it('Condições clínicas conta como array (novo) e como string (legado)', () => {
-        assert.equal(autorGruposComDados({ condicoesClinicas: [{ nome: 'Asma', tipo: 'Física' }] }).saude, true);
+        assert.equal(
+            autorGruposComDados({ condicoesClinicas: [{ nome: 'Asma', tipo: 'Física' }] }).saude,
+            true,
+        );
         assert.equal(autorGruposComDados({ condicoesClinicas: 'Asma' }).saude, true);
     });
 
     it('Nacionalidade, datas e nomes literários não pertencem a nenhum grupo (ficam sempre visíveis)', () => {
-        const r = autorGruposComDados({ nacionalidade: 'portuguesa', nascimento: { ano: 1888 }, nomesLiterarios: [{ nome: 'X', tipo: 'Pseudônimo' }] });
-        assert.deepEqual(r, { identidade: false, saude: false, formacao: false });
+        const r = autorGruposComDados({
+            nacionalidade: 'portuguesa',
+            nascimento: { ano: 1888 },
+            nomesLiterarios: [{ nome: 'X', tipo: 'Pseudônimo' }],
+        });
+        assert.deepEqual(r, {
+            identidade: false,
+            saude: false,
+            formacao: false,
+            reconhecimento: false,
+        });
     });
 });
 
@@ -2233,7 +2394,10 @@ describe('idadeAutor', () => {
     });
 
     it('faltando dia/mês de qualquer um dos lados, aproxima só por ano-calendário e sinaliza aproximada:true', () => {
-        assert.deepEqual(idadeAutor({ nascimento: { ano: 1990 } }, hoje), { anos: 36, aproximada: true });
+        assert.deepEqual(idadeAutor({ nascimento: { ano: 1990 } }, hoje), {
+            anos: 36,
+            aproximada: true,
+        });
         assert.deepEqual(
             idadeAutor({ nascimento: { dia: 1, mes: 1, ano: 1990 }, obito: { ano: 2020 } }),
             { anos: 30, aproximada: true },
@@ -2250,39 +2414,63 @@ describe('idadeAutor', () => {
 describe('grupoSexualGenero (derivado — Cis-heteronormativo / Queer / Não informado)', () => {
     it('Sexo e Gênero alinhados ao padrão + Orientação heterossexual → cis-heteronormativo', () => {
         assert.equal(
-            grupoSexualGenero({ sexo: 'Feminino', genero: 'Mulher', orientacaoSexual: 'Heterossexual' }),
+            grupoSexualGenero({
+                sexo: 'Feminino',
+                genero: 'Mulher',
+                orientacaoSexual: 'Heterossexual',
+            }),
             'cis-heteronormativo',
         );
         assert.equal(
-            grupoSexualGenero({ sexo: 'Masculino', genero: 'Homem', orientacaoSexual: 'Heterossexual' }),
+            grupoSexualGenero({
+                sexo: 'Masculino',
+                genero: 'Homem',
+                orientacaoSexual: 'Heterossexual',
+            }),
             'cis-heteronormativo',
         );
     });
 
     it('qualquer Orientação não-heterossexual → queer, mesmo com Sexo/Gênero alinhados', () => {
         assert.equal(
-            grupoSexualGenero({ sexo: 'Feminino', genero: 'Mulher', orientacaoSexual: 'Bissexual' }),
+            grupoSexualGenero({
+                sexo: 'Feminino',
+                genero: 'Mulher',
+                orientacaoSexual: 'Bissexual',
+            }),
             'queer',
         );
     });
 
     it('Sexo Intersexo → queer, independente de Gênero/Orientação', () => {
         assert.equal(
-            grupoSexualGenero({ sexo: 'Intersexo', genero: 'Mulher', orientacaoSexual: 'Heterossexual' }),
+            grupoSexualGenero({
+                sexo: 'Intersexo',
+                genero: 'Mulher',
+                orientacaoSexual: 'Heterossexual',
+            }),
             'queer',
         );
     });
 
     it('Gênero contendo "trans" → queer', () => {
         assert.equal(
-            grupoSexualGenero({ sexo: 'Masculino', genero: 'Homem trans', orientacaoSexual: 'Heterossexual' }),
+            grupoSexualGenero({
+                sexo: 'Masculino',
+                genero: 'Homem trans',
+                orientacaoSexual: 'Heterossexual',
+            }),
             'queer',
         );
     });
 
     it('Gênero fora de mulher/homem (não-binário, agênero...) → queer', () => {
         assert.equal(
-            grupoSexualGenero({ sexo: 'Feminino', genero: 'Não-binário', orientacaoSexual: 'Assexual' }),
+            grupoSexualGenero({
+                sexo: 'Feminino',
+                genero: 'Não-binário',
+                orientacaoSexual: 'Assexual',
+            }),
             'queer',
         );
     });
@@ -2346,5 +2534,50 @@ describe('grupoSexualGenero (derivado — Cis-heteronormativo / Queer / Não inf
             }),
             'cis-heteronormativo',
         );
+    });
+});
+
+describe('romanoParaNumero (séculos de Movimento/Escola)', () => {
+    it('converte os séculos cadastráveis no app (I a XXI)', () => {
+        assert.equal(romanoParaNumero('I'), 1);
+        assert.equal(romanoParaNumero('IV'), 4);
+        assert.equal(romanoParaNumero('IX'), 9);
+        assert.equal(romanoParaNumero('XII'), 12);
+        assert.equal(romanoParaNumero('XIV'), 14);
+        assert.equal(romanoParaNumero('XIX'), 19);
+        assert.equal(romanoParaNumero('XX'), 20);
+        assert.equal(romanoParaNumero('XXI'), 21);
+    });
+
+    it('é insensível a caixa (minúsculo também funciona)', () => {
+        assert.equal(romanoParaNumero('xix'), 19);
+    });
+
+    it('vazio, nulo ou não numeral romano devolve null, sem quebrar', () => {
+        assert.equal(romanoParaNumero(''), null);
+        assert.equal(romanoParaNumero(null), null);
+        assert.equal(romanoParaNumero(undefined), null);
+        assert.equal(romanoParaNumero('ABC'), null);
+    });
+});
+
+describe('anoEquivalenteMovimento (ordenação cronológica de Movimento/Escola)', () => {
+    it('usa o ano quando presente, mesmo com decada/seculo também preenchidos', () => {
+        assert.equal(anoEquivalenteMovimento({ ano: 1922, decada: 1920, seculo: 'XX' }), 1922);
+    });
+
+    it('sem ano, usa a década', () => {
+        assert.equal(anoEquivalenteMovimento({ decada: 1830, seculo: 'XIX' }), 1830);
+    });
+
+    it('sem ano nem década, usa o primeiro ano do século', () => {
+        assert.equal(anoEquivalenteMovimento({ seculo: 'XX' }), 1901);
+        assert.equal(anoEquivalenteMovimento({ seculo: 'XII' }), 1101);
+    });
+
+    it('data vazia ou nula devolve null', () => {
+        assert.equal(anoEquivalenteMovimento(null), null);
+        assert.equal(anoEquivalenteMovimento({}), null);
+        assert.equal(anoEquivalenteMovimento({ dia: 10, mes: 5 }), null);
     });
 });

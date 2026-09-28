@@ -130,16 +130,19 @@ Para cada par identificado no Passo 2, classifique nos três eixos abaixo
 (escolha uma opção de cada lista para cada par):
 
 **Acentuação** (da palavra que rima):
+
 - Aguda / Oxítona
 - Grave / Paroxítona
 - Esdrúxula / Proparoxítona
 
 **Tonalidade** (qualidade sonora da rima):
+
 - Soante / Consoante (Perfeita) — vogais e consoantes finais idênticas
 - Toante (Assonante) — só as vogais coincidem
 - Imperfeita — semelhança parcial, nem perfeita nem puramente assonante
 
 **Riqueza** (relação gramatical entre as palavras que rimam):
+
 - Pobre (mesma classe gramatical)
 - Rica (classes gramaticais diferentes)
 - Rara (palavra com poucas opções de rima)
@@ -249,8 +252,7 @@ Duas observações que ajudam a decidir Presença/Padrão de Rima:
 
 ## Formato de saída
 
-Por padrão, devolva sua análise no formato de **texto** abaixo (seções 1 a
-5) — é nele que dá pra eu revisar e tirar dúvidas com você antes de
+Por padrão, devolva sua análise no formato de **texto** abaixo (seções 1 a 5) — é nele que dá pra eu revisar e tirar dúvidas com você antes de
 transcrever pro sistema. Só gere o **JSON** (seção "Formato JSON — sob
 pedido", mais abaixo) quando eu pedir explicitamente — por exemplo, depois
 de revisar a análise em texto, eu digo algo como "agora me dá isso em JSON
@@ -301,35 +303,35 @@ Estrutura exata esperada pelo sistema:
 
 ```json
 {
-  "poemaTitulo": "Título exato do poema",
-  "formaPoema": "Forma Livre / Indefinida",
-  "regularidadeMetrica": "Versos Livres",
-  "tamanhoVerso": "Variável / Sem Metro",
-  "esquemaRimasPresenca": "Rimas Ocasionais",
-  "origemTradicao": "Contemporânea / Livre",
-  "registro": "Coloquial / Popular",
-  "tom": "Lírico / Introspectivo",
-  "escansaoLinhas": [
-    { "tipo": "verso", "texto": "Be/be/co/mo eu/be/bi:/de/bru/ça-te", "tonicas": [1, 5, 8] },
-    { "tipo": "verso", "texto": "..." },
-    { "tipo": "vazia" }
-  ],
-  "rimas": [
-    {
-      "a": { "linha": 0, "silabas": [8] },
-      "b": { "linha": 1, "silabas": [8] },
-      "acentuacao": "Grave / Paroxítona",
-      "tonalidade": "Soante / Consoante (Perfeita)",
-      "riqueza": "Pobre (mesma classe gramatical)"
-    }
-  ],
-  "ecos": [
-    {
-      "a": { "linha": 2, "silabas": [3] },
-      "b": { "linha": 4, "silabas": [2] },
-      "tipo": "Assonância"
-    }
-  ]
+    "poemaTitulo": "Título exato do poema",
+    "formaPoema": "Forma Livre / Indefinida",
+    "regularidadeMetrica": "Versos Livres",
+    "tamanhoVerso": "Variável / Sem Metro",
+    "esquemaRimasPresenca": "Rimas Ocasionais",
+    "origemTradicao": "Contemporânea / Livre",
+    "registro": "Coloquial / Popular",
+    "tom": "Lírico / Introspectivo",
+    "escansaoLinhas": [
+        { "tipo": "verso", "texto": "Be/be/co/mo eu/be/bi:/de/bru/ça-te", "tonicas": [1, 5, 8] },
+        { "tipo": "verso", "texto": "..." },
+        { "tipo": "vazia" }
+    ],
+    "rimas": [
+        {
+            "a": { "linha": 0, "silabas": [8] },
+            "b": { "linha": 1, "silabas": [8] },
+            "acentuacao": "Grave / Paroxítona",
+            "tonalidade": "Soante / Consoante (Perfeita)",
+            "riqueza": "Pobre (mesma classe gramatical)"
+        }
+    ],
+    "ecos": [
+        {
+            "a": { "linha": 2, "silabas": [3] },
+            "b": { "linha": 4, "silabas": [2] },
+            "tipo": "Assonância"
+        }
+    ]
 }
 ```
 

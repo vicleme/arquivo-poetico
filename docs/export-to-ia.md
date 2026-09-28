@@ -62,10 +62,10 @@ Use this when the items you want don't form an easy filter to describe (e.g., "t
 
 ## Quick summary
 
-| Situation                                                                                   | Recommended format                |
-| --------------------------------------------------------------------------------------------| ---------------------------------- |
-| Analyzing structure, arc, progression of a book                                             | Nested (all)                       |
-| Processing texts one by one (commenting, translating, classifying)                          | Filtered flat                      |
-| Picking one-off items by browsing the tree                                                  | Flat via Structure tab             |
-| Picking one-off items in the Poems/Prose listing, with resolved context or in Markdown      | Flat via listing (JSON or MD)      |
-| Large collection that doesn't fit the model's context                                       | Flat filtered by book/theme/year   |
+| Situation                                                                              | Recommended format               |
+| -------------------------------------------------------------------------------------- | -------------------------------- |
+| Analyzing structure, arc, progression of a book                                        | Nested (all)                     |
+| Processing texts one by one (commenting, translating, classifying)                     | Filtered flat                    |
+| Picking one-off items by browsing the tree                                             | Flat via Structure tab           |
+| Picking one-off items in the Poems/Prose listing, with resolved context or in Markdown | Flat via listing (JSON or MD)    |
+| Large collection that doesn't fit the model's context                                  | Flat filtered by book/theme/year |

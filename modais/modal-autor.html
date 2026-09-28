@@ -473,6 +473,162 @@
                         </div>
                     </div>
                 </details>
+                <details
+                    class="campo-grupo md:col-span-2"
+                    data-grupo-autor="reconhecimento"
+                    style="margin: 0"
+                >
+                    <summary>
+                        Reconhecimento e formação literária
+                        <span class="campo-grupo-dica"
+                            >(Movimento/Escola, prêmios, obras, círculo literário, línguas de
+                            escrita)</span
+                        >
+                    </summary>
+                    <div class="campo-grupo-corpo">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            <div class="md:col-span-2">
+                                <label class="form-label"
+                                    >Movimento/Escola
+                                    <span
+                                        class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                        >(0 a N)</span
+                                    ></label
+                                >
+                                <div class="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="au-movimento-escola-input"
+                                        list="sugestoes-movimentos-escolas-autor"
+                                        class="text-sm flex-1"
+                                        placeholder="Nome do movimento/escola..."
+                                    />
+                                    <datalist id="sugestoes-movimentos-escolas-autor"></datalist>
+                                    <button
+                                        type="button"
+                                        onclick="adicionarMovimentoEscolaDireto('autores')"
+                                        class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <div
+                                    id="au-movimentos-escolas-container"
+                                    class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                                ></div>
+                            </div>
+                            <div>
+                                <label class="form-label">Prêmios</label>
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                                    Nome do prêmio; o ano ao lado é opcional.
+                                </p>
+                                <div class="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="au-premio-input"
+                                        class="text-sm flex-1"
+                                        placeholder="Ex: Prêmio Camões"
+                                    />
+                                    <button
+                                        type="button"
+                                        onclick="adicionarPremioAutor()"
+                                        class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <div
+                                    id="au-premios-container"
+                                    class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                                ></div>
+                                <input type="hidden" id="au-premios" />
+                            </div>
+                            <div>
+                                <label class="form-label">Obras principais</label>
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                                    Título da obra; o ano ao lado é opcional.
+                                </p>
+                                <div class="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="au-obra-input"
+                                        class="text-sm flex-1"
+                                        placeholder="Ex: Os Lusíadas"
+                                    />
+                                    <button
+                                        type="button"
+                                        onclick="adicionarObraAutor()"
+                                        class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <div
+                                    id="au-obras-container"
+                                    class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                                ></div>
+                                <input type="hidden" id="au-obras" />
+                            </div>
+                            <div>
+                                <label class="form-label">Círculo literário</label>
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                                    Grupos, rodas ou coletivos literários dos quais participou.
+                                </p>
+                                <div class="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="au-circulo-input"
+                                        list="sugestoes-circulo-literario"
+                                        class="text-sm flex-1"
+                                        placeholder="Ex: Semana de Arte Moderna"
+                                    />
+                                    <datalist id="sugestoes-circulo-literario"></datalist>
+                                    <button
+                                        type="button"
+                                        onclick="adicionarCirculoLiterarioAutor()"
+                                        class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <div
+                                    id="au-circulo-container"
+                                    class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                                ></div>
+                                <input type="hidden" id="au-circulo" />
+                            </div>
+                            <div>
+                                <label class="form-label">Línguas de escrita</label>
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                                    Em quais línguas este Autor escreveu/escreve (pode ser mais de
+                                    uma).
+                                </p>
+                                <div class="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="au-lingua-input"
+                                        list="sugestoes-linguas-escrita-autor"
+                                        class="text-sm flex-1"
+                                        placeholder="Ex: Português"
+                                    />
+                                    <datalist id="sugestoes-linguas-escrita-autor"></datalist>
+                                    <button
+                                        type="button"
+                                        onclick="adicionarLinguaEscritaAutor()"
+                                        class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <div
+                                    id="au-linguas-container"
+                                    class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                                ></div>
+                                <input type="hidden" id="au-linguas-escrita" />
+                            </div>
+                        </div>
+                    </div>
+                </details>
                 <div class="md:col-span-2">
                     <label class="form-label">Sobre</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">

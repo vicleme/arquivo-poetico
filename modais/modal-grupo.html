@@ -58,6 +58,10 @@
             <form id="form-grupo" class="grid grid-cols-1 gap-4">
                 <input type="hidden" id="g-edit-id" />
                 <div>
+                    <label class="form-label">Autor</label>
+                    <select id="g-autor" required onchange="atualizarSelectGrupoPai()"></select>
+                </div>
+                <div>
                     <label class="form-label">Nome do Grupo</label>
                     <input
                         type="text"
@@ -65,6 +69,16 @@
                         required
                         placeholder="Ex: Amigos, Família, Ex..."
                     />
+                </div>
+                <div>
+                    <label class="form-label">Grupo pai</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Opcional — escolha um Grupo do mesmo Autor pra criar um subgrupo (ex.:
+                        "Tios" dentro de "Família"). Até 5 níveis: quanto mais indentado (↳) na
+                        lista, mais fundo já está — o último nível não aparece aqui como opção, já
+                        não pode ter filho.
+                    </p>
+                    <select id="g-pai"></select>
                 </div>
                 <div>
                     <label class="form-label">Cor</label>

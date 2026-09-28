@@ -713,9 +713,7 @@ describe('legendaCorParaMarkdown (cor/fundo/fonte perdidos na conversão para Ma
     });
 
     it('runs consecutivos com o mesmo estilo (cor/fundo/fonte) viram um único trecho agrupado', () => {
-        const md = legendaCorParaMarkdown(
-            '<div style="color: #ff0000;">um **dois** três</div>',
-        );
+        const md = legendaCorParaMarkdown('<div style="color: #ff0000;">um **dois** três</div>');
         // "um ", "dois" (negrito) e " três" são 3 runs com a mesma cor —
         // devem virar um único grupo/linha, não três.
         const ocorrencias = (md.match(/— cor do texto #FF0000/g) || []).length;

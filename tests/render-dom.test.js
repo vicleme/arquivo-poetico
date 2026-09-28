@@ -12,6 +12,7 @@ document.body.innerHTML = `
     <main>
         <div id="lista-livros"></div>
         <div id="lista-grupos"></div>
+        <div id="lista-movimentos-escolas"></div>
 
         <div id="barra-acoes-poemas" class="hidden">
             <span id="contador-selecao-poemas"></span>
@@ -49,6 +50,8 @@ const {
     renderSonoridade,
     setFiltroSonoridade,
     renderMoldes,
+    renderMovimentosEscolas,
+    definirOrdenacaoMovimentosEscolas,
 } = await import('../js/render-listas.js');
 const { toggleSelecao } = await import('../js/selecao-massa.js');
 const { toggleColuna } = await import('../js/colunas.js');
@@ -67,6 +70,7 @@ function limparDb() {
     db.livros.length = 0;
     db.poemas.length = 0;
     db.escansoes.length = 0;
+    db.movimentosEscolas.length = 0;
     document.getElementById('modal-confirmar-exclusao')?.remove();
     document.getElementById('avisos-toast')?.remove();
 }
@@ -153,10 +157,15 @@ describe('Grupos — bolinha de cor no card (DOM real via happy-dom)', () => {
     beforeEach(() => {
         db.grupos.length = 0;
         db.pessoas.length = 0;
+        // Grupo pertence a um Autor desde 27/09/2026 — renderGrupos agrupa
+        // os cards por Autor, então precisa de um Autor de verdade em
+        // db.autores pra um grupo aparecer no DOM.
+        db.autores.length = 0;
+        db.autores.push({ id: 1, nome: 'Victor Leme', sobre: '' });
     });
 
     it('mostra a bolinha com a cor cadastrada do grupo', () => {
-        db.grupos.push({ id: 1, nome: 'Amigos', cor: 'emerald' });
+        db.grupos.push({ id: 1, nome: 'Amigos', cor: 'emerald', autorId: 1 });
         renderGrupos();
 
         const ponto = document.querySelector('[title="Cor do grupo"]');
@@ -165,7 +174,7 @@ describe('Grupos — bolinha de cor no card (DOM real via happy-dom)', () => {
     });
 
     it('grupo sem cor salva (dado anterior à feature) cai no padrão, sem quebrar', () => {
-        db.grupos.push({ id: 1, nome: 'Legado' });
+        db.grupos.push({ id: 1, nome: 'Legado', autorId: 1 });
         renderGrupos();
 
         const ponto = document.querySelector('[title="Cor do grupo"]');
@@ -277,12 +286,17 @@ describe('Grupos — exclusão com cascata em gruposDiretos (DOM real via happy-
         db.pessoas.length = 0;
         db.poemas.length = 0;
         db.prosas.length = 0;
+        // Grupo pertence a um Autor desde 27/09/2026 — renderGrupos agrupa
+        // os cards por Autor, então precisa de um Autor de verdade em
+        // db.autores pra um grupo aparecer no DOM.
+        db.autores.length = 0;
+        db.autores.push({ id: 1, nome: 'Victor Leme', sobre: '' });
         document.getElementById('modal-confirmar-exclusao')?.remove();
         document.getElementById('avisos-toast')?.remove();
     });
 
     it('mensagem de confirmação avisa separadamente pessoas e textos com referência direta', () => {
-        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose' });
+        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose', autorId: 1 });
         db.pessoas.push({ id: 1, nome: 'Dalton', grupoIds: [10] });
         db.poemas.push({ id: 100, titulo: 'Poema A', sequencia: 1, gruposDiretos: [10] });
         renderGrupos();
@@ -295,7 +309,7 @@ describe('Grupos — exclusão com cascata em gruposDiretos (DOM real via happy-
     });
 
     it('confirmar a exclusão limpa gruposDiretos do poema/prosa, mas mantém o texto', () => {
-        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose' });
+        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose', autorId: 1 });
         db.poemas.push({ id: 100, titulo: 'Poema A', sequencia: 1, gruposDiretos: [10] });
         db.prosas.push({ id: 200, titulo: 'Prosa A', sequencia: 1, gruposDiretos: [10] });
         renderGrupos();
@@ -311,7 +325,7 @@ describe('Grupos — exclusão com cascata em gruposDiretos (DOM real via happy-
     });
 
     it('"Desfazer" restaura o grupo e a referência direta no poema/prosa', () => {
-        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose' });
+        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose', autorId: 1 });
         db.poemas.push({ id: 100, titulo: 'Poema A', sequencia: 1, gruposDiretos: [10] });
         renderGrupos();
 
@@ -326,6 +340,174 @@ describe('Grupos — exclusão com cascata em gruposDiretos (DOM real via happy-
         assert.equal(db.grupos.length, 1);
         assert.equal(db.grupos[0].nome, 'Família');
         assert.deepEqual(db.poemas[0].gruposDiretos, [10]);
+    });
+
+    // Excluir um Grupo que tem subgrupos promove os filhos a nível 1
+    // (paiId vira null) em vez de apagá-los ou bloquear a exclusão —
+    // decisão de 27/09/2026. Só a cascata em gruposDiretos (acima) estava
+    // coberta; este describe cobre vinculosSubgrupoPromovidos.
+    it('excluir um Grupo com subgrupos promove os filhos a nível 1 (paiId vira null)', () => {
+        db.grupos.push(
+            { id: 10, nome: 'Família', cor: 'rose', autorId: 1, paiId: null },
+            { id: 11, nome: 'Tios', cor: 'rose', autorId: 1, paiId: 10 },
+            { id: 12, nome: 'Primos', cor: 'rose', autorId: 1, paiId: 10 },
+        );
+        renderGrupos();
+
+        document
+            .querySelector('[data-action="excluir-item"][data-tipo="grupos"][data-id="10"]')
+            .click();
+        document.getElementById('excl-confirmar').click();
+
+        assert.equal(db.grupos.length, 2, 'os dois subgrupos continuam existindo, só promovidos');
+        const tios = db.grupos.find((g) => g.id == 11);
+        const primos = db.grupos.find((g) => g.id == 12);
+        assert.equal(tios.paiId, null);
+        assert.equal(primos.paiId, null);
+    });
+
+    // Desde a hierarquia de 3 níveis (27/09/2026), promover não é mais
+    // sempre "virar null": promove herdando o paiId que o próprio grupo
+    // excluído tinha. Excluir um grupo de NÍVEL 2 (que por sua vez tinha
+    // pai) deve deixar os netos (antes nível 3) como filhos do avô —
+    // nível 2 — e não pulando direto pra nível 1.
+    it('excluir um Grupo de nível 2 promove os netos a nível 2, sob o mesmo avô (não pulam pra nível 1)', () => {
+        db.grupos.push(
+            { id: 1, nome: 'Ex-namorados', cor: 'rose', autorId: 1, paiId: null },
+            { id: 2, nome: 'Pedro', cor: 'rose', autorId: 1, paiId: 1 },
+            { id: 3, nome: 'Crushes de Pedro', cor: 'rose', autorId: 1, paiId: 2 },
+        );
+        renderGrupos();
+
+        document
+            .querySelector('[data-action="excluir-item"][data-tipo="grupos"][data-id="2"]')
+            .click();
+        document.getElementById('excl-confirmar').click();
+
+        assert.equal(db.grupos.length, 2, 'Ex-namorados e Crushes de Pedro continuam existindo');
+        const crushes = db.grupos.find((g) => g.id == 3);
+        assert.equal(crushes.paiId, 1, 'promovido pro avô (Ex-namorados), não pra nível 1 solto');
+    });
+
+    it('"Desfazer" restaura o paiId original dos subgrupos promovidos', () => {
+        db.grupos.push(
+            { id: 10, nome: 'Família', cor: 'rose', autorId: 1, paiId: null },
+            { id: 11, nome: 'Tios', cor: 'rose', autorId: 1, paiId: 10 },
+        );
+        renderGrupos();
+
+        document
+            .querySelector('[data-action="excluir-item"][data-tipo="grupos"][data-id="10"]')
+            .click();
+        document.getElementById('excl-confirmar').click();
+
+        assert.equal(db.grupos.find((g) => g.id == 11).paiId, null);
+
+        document.querySelector('#avisos-toast button')?.click();
+
+        assert.equal(db.grupos.length, 2);
+        assert.equal(db.grupos.find((g) => g.id == 11).paiId, 10, 'Desfazer deveria restaurar o paiId original');
+    });
+});
+
+// Desde 27/09/2026, Grupo e Época (Período Biográfico) são exclusivos de
+// um Autor: excluir o Autor apaga os dois EM CASCATA junto (diferente do
+// resto de deleteItem, que só desvincula sem apagar). O botão de excluir
+// Autor é injetado direto no DOM (dentro de <main>, onde o listener
+// delegado de clique está registrado), sem precisar renderizar a lista
+// de Autores — não há um renderAutores nesta suíte de imports.
+describe('Autores — exclusão em cascata sobre Grupos/Épocas (DOM real via happy-dom)', () => {
+    function botaoExcluirAutor(id) {
+        const btn = document.createElement('button');
+        btn.dataset.action = 'excluir-item';
+        btn.dataset.tipo = 'autores';
+        btn.dataset.id = String(id);
+        document.querySelector('main').appendChild(btn);
+        return btn;
+    }
+
+    beforeEach(() => {
+        db.grupos.length = 0;
+        db.epocas.length = 0;
+        db.pessoas.length = 0;
+        db.poemas.length = 0;
+        db.prosas.length = 0;
+        db.autores.length = 0;
+        document.getElementById('modal-confirmar-exclusao')?.remove();
+        document.getElementById('avisos-toast')?.remove();
+        document.querySelectorAll('main > [data-action="excluir-item"]').forEach((el) => el.remove());
+    });
+
+    it('mensagem de confirmação avisa quantos Grupos/Períodos Biográficos serão apagados junto', () => {
+        db.autores.push({ id: 1, nome: 'Victor Leme', sobre: '' });
+        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose', autorId: 1, paiId: null });
+        db.epocas.push({ id: 20, nome: 'Corte de contato', contextoRelacao: '', notas: '', autorId: 1 });
+
+        botaoExcluirAutor(1).click();
+
+        const rotulo = document.getElementById('excl-rotulo').textContent;
+        assert.match(rotulo, /1 Grupo apagado junto/);
+        assert.match(rotulo, /1 Período Biográfico apagado junto/);
+    });
+
+    it('confirmar a exclusão do Autor apaga os Grupos/Épocas dele e desvincula Pessoa/Poema/Prosa', () => {
+        db.autores.push({ id: 1, nome: 'Victor Leme', sobre: '' });
+        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose', autorId: 1, paiId: null });
+        db.epocas.push({ id: 20, nome: 'Corte de contato', contextoRelacao: '', notas: '', autorId: 1 });
+        db.pessoas.push({ id: 100, nome: 'Ana', grupoIds: [10] });
+        db.poemas.push({
+            id: 200,
+            titulo: 'Poema A',
+            sequencia: 1,
+            gruposDiretos: [10],
+            epocaRetratada: { epocaId: 20 },
+        });
+
+        botaoExcluirAutor(1).click();
+        document.getElementById('excl-confirmar').click();
+
+        assert.equal(db.grupos.length, 0);
+        assert.equal(db.epocas.length, 0);
+        assert.equal(db.autores.length, 0);
+        assert.deepEqual(db.pessoas[0].grupoIds, []);
+        assert.deepEqual(db.poemas[0].gruposDiretos, []);
+        assert.equal(db.poemas[0].epocaRetratada.epocaId, null);
+    });
+
+    it('Grupo/Época de OUTRO Autor não é afetado pela exclusão', () => {
+        db.autores.push(
+            { id: 1, nome: 'Victor Leme', sobre: '' },
+            { id: 2, nome: 'Outro Autor', sobre: '' },
+        );
+        db.grupos.push(
+            { id: 10, nome: 'Família', cor: 'rose', autorId: 1, paiId: null },
+            { id: 11, nome: 'Família', cor: 'blue', autorId: 2, paiId: null },
+        );
+
+        botaoExcluirAutor(1).click();
+        document.getElementById('excl-confirmar').click();
+
+        assert.equal(db.grupos.length, 1);
+        assert.equal(db.grupos[0].id, 11);
+    });
+
+    it('"Desfazer" restaura o Autor, seus Grupos/Épocas e os vínculos desfeitos', () => {
+        db.autores.push({ id: 1, nome: 'Victor Leme', sobre: '' });
+        db.grupos.push({ id: 10, nome: 'Família', cor: 'rose', autorId: 1, paiId: null });
+        db.pessoas.push({ id: 100, nome: 'Ana', grupoIds: [10] });
+
+        botaoExcluirAutor(1).click();
+        document.getElementById('excl-confirmar').click();
+
+        assert.equal(db.grupos.length, 0);
+        assert.equal(db.autores.length, 0);
+
+        document.querySelector('#avisos-toast button')?.click();
+
+        assert.equal(db.autores.length, 1);
+        assert.equal(db.grupos.length, 1);
+        assert.equal(db.grupos[0].nome, 'Família');
+        assert.deepEqual(db.pessoas[0].grupoIds, [10]);
     });
 });
 
@@ -560,5 +742,61 @@ describe('Sonoridade — colunas de contagem na tabela (DOM real via happy-dom)'
         renderSonoridade();
 
         assert.equal(document.querySelectorAll('#lista-sonoridade tr').length, 1);
+    });
+});
+
+describe('Movimento/Escola — ordenação alfabética/cronológica (DOM real via happy-dom)', () => {
+    beforeEach(() => {
+        limparDb();
+        definirOrdenacaoMovimentosEscolas('alfabetica');
+    });
+
+    function nomesRenderizados() {
+        return [...document.querySelectorAll('#lista-movimentos-escolas h4')].map(
+            (h4) => h4.textContent,
+        );
+    }
+
+    it('alfabética ordena por nome', () => {
+        db.movimentosEscolas.push(
+            { id: 1, nome: 'Realismo', inicio: { ano: 1881 }, fim: {} },
+            { id: 2, nome: 'Barroco', inicio: { seculo: 'XVII' }, fim: {} },
+            { id: 3, nome: 'Modernismo', inicio: { decada: 1920 }, fim: {} },
+        );
+        renderMovimentosEscolas();
+
+        assert.deepEqual(nomesRenderizados(), ['Barroco', 'Modernismo', 'Realismo']);
+    });
+
+    it('cronológica ordena por data de início, e item sem nenhuma data vai pro final', () => {
+        db.movimentosEscolas.push(
+            { id: 1, nome: 'Realismo', inicio: { ano: 1881 }, fim: {} },
+            { id: 2, nome: 'Barroco', inicio: { seculo: 'XVII' }, fim: {} },
+            { id: 3, nome: 'Modernismo', inicio: { decada: 1920 }, fim: {} },
+            { id: 4, nome: 'Sem Data Nenhuma', inicio: {}, fim: {} },
+        );
+        definirOrdenacaoMovimentosEscolas('cronologica');
+
+        assert.deepEqual(nomesRenderizados(), [
+            'Barroco',
+            'Realismo',
+            'Modernismo',
+            'Sem Data Nenhuma',
+        ]);
+    });
+
+    it('voltar pra alfabética a partir da cronológica reordena de novo', () => {
+        // Nomes e datas propositalmente invertidos entre si, pra distinguir
+        // de verdade uma ordenação da outra (não bastaria se as duas
+        // concordassem na ordem).
+        db.movimentosEscolas.push(
+            { id: 1, nome: 'Arcadismo', inicio: { ano: 1900 }, fim: {} },
+            { id: 2, nome: 'Zeitgeist', inicio: { ano: 1100 }, fim: {} },
+        );
+        definirOrdenacaoMovimentosEscolas('cronologica');
+        assert.deepEqual(nomesRenderizados(), ['Zeitgeist', 'Arcadismo']);
+
+        definirOrdenacaoMovimentosEscolas('alfabetica');
+        assert.deepEqual(nomesRenderizados(), ['Arcadismo', 'Zeitgeist']);
     });
 });

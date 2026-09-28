@@ -48,7 +48,10 @@ describe('renderVisualizacaoEstruturaTextualHtml', () => {
         const html = renderVisualizacaoEstruturaTextualHtml(estrutura);
         const posQuartetos = html.indexOf('Quartetos');
         const posTercetos = html.indexOf('Tercetos');
-        assert.ok(posQuartetos < posTercetos, 'Quartetos (estrofe 1) deveria vir antes de Tercetos (estrofe 3)');
+        assert.ok(
+            posQuartetos < posTercetos,
+            'Quartetos (estrofe 1) deveria vir antes de Tercetos (estrofe 3)',
+        );
     });
 
     it('escapa HTML no rótulo (evita injeção via campo livre com datalist)', () => {

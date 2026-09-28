@@ -1152,7 +1152,22 @@ export const IDENTIDADES_CIS_TRANS = ['Cisgênero', 'Transgênero', 'Não se apl
 // sugestão, não lista fechada. Gay/Lésbica ficam como sugestões
 // separadas (não um "Homossexual" genérico) — respeitam o termo que a
 // própria pessoa costuma usar pra se descrever.
-export const ORIENTACOES_SUGERIDAS = ['Heterossexual', 'Gay', 'Lésbica', 'Bissexual', 'Pansexual', 'Assexual'];
+// Sáfica/Aquileano: descrevem a direção do desejo (mulheres que amam
+// mulheres / homens que amam homens) sem afirmar uma identidade — úteis
+// pra autores históricos, cuja sexualidade a biografia documenta mas que
+// nunca se declararam (ou viveram antes de "gay"/"lésbica" existirem
+// como identidade). Como qualquer valor diferente de "Heterossexual", entram
+// em 'queer' em grupoSexualGenero.
+export const ORIENTACOES_SUGERIDAS = [
+    'Heterossexual',
+    'Gay',
+    'Lésbica',
+    'Bissexual',
+    'Pansexual',
+    'Assexual',
+    'Sáfica',
+    'Aquileano',
+];
 
 // COR/RAÇA: lista fechada nos moldes do IBGE (Branca/Preta/Parda/
 // Amarela/Indígena). Sem "Não informado" própria, mesmo motivo de
@@ -1174,10 +1189,76 @@ export function extrairGenerosAutorUnicos(autores) {
     return Array.from(generos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
+// Mesmo padrão de extrairGenerosAutorUnicos acima, agora pro Gênero de
+// Pessoa (cadastro central de Pessoas, não Autor) — mesma semente
+// (GENEROS_SUGERIDOS), coleção diferente. Pedido do Victor: saber se
+// escreve mais sobre mulheres ou sobre homens (ver
+// simboloGeneroPessoa abaixo, que decide o ícone ♀/♂ do card a partir
+// deste campo).
+export function extrairGenerosPessoasUnicos(pessoas) {
+    const generos = new Set(GENEROS_SUGERIDOS);
+    (pessoas || []).forEach((p) => {
+        if (p.genero && p.genero.trim()) generos.add(p.genero.trim());
+    });
+    return Array.from(generos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// Símbolo (♀/♂) pro card de Pessoa, a partir do texto livre de
+// Gênero — só reconhece variações óbvias de "mulher"/"homem" (mesmo
+// espírito da checagem `genero === 'mulher'`/`'homem'` em
+// grupoSexualGenero acima); qualquer outra coisa (não-binário, vazio,
+// "prefere não dizer" etc.) não ganha símbolo — melhor nenhum ícone do
+// que um que force alguém a caber num dos dois.
+export function simboloGeneroPessoa(genero) {
+    const g = (genero || '').trim().toLowerCase();
+    if (!g) return '';
+    if (g === 'mulher' || g === 'feminino') return '♀';
+    if (g === 'homem' || g === 'masculino') return '♂';
+    return '';
+}
+
+// Forma gramatical de "ocultado/ocultada" a partir do mesmo texto
+// livre de Gênero — usado nos avisos de ocultar/reexibir Pessoa
+// (pessoas-acoes.js) e no badge do card (render-listas.js). Cai em
+// "ocultado(a)" (proposta do Victor) sempre que o Gênero não bater
+// claramente com um dos dois — igual simboloGeneroPessoa acima, de
+// propósito não força concordância em quem não é binário ou não tem
+// Gênero cadastrado.
+export function formaOcultadoPorGenero(genero) {
+    const simbolo = simboloGeneroPessoa(genero);
+    if (simbolo === '♀') return 'ocultada';
+    if (simbolo === '♂') return 'ocultado';
+    return 'ocultado(a)';
+}
+
+// Mesma lógica de formaOcultadoPorGenero acima, agora pro particípio de
+// "reexibir" — o outro hardcode fixo citado pelo Victor junto do de
+// ocultar (toggleOcultarPessoa, em pessoas-acoes.js).
+export function formaReexibidoPorGenero(genero) {
+    const simbolo = simboloGeneroPessoa(genero);
+    if (simbolo === '♀') return 'reexibida';
+    if (simbolo === '♂') return 'reexibido';
+    return 'reexibido(a)';
+}
+
+// Mesma lógica ainda, agora na forma adjetiva ("pessoa oculta"/"pessoa
+// oculto") usada no badge "(oculta)" do card de Pessoa em
+// render-listas.js — particípio (ocultado/ocultada, ação de alguém) e
+// adjetivo (oculto/oculta, estado atual) coincidem na grafia em
+// português, mas são conceitos diferentes; função separada só pra
+// deixar cada uso no código nomeado pelo que ele realmente representa.
+export function formaOcultaAdjetivoPorGenero(genero) {
+    const simbolo = simboloGeneroPessoa(genero);
+    if (simbolo === '♀') return 'oculta';
+    if (simbolo === '♂') return 'oculto';
+    return 'oculto(a)';
+}
+
 export function extrairOrientacoesUnicas(autores) {
     const orientacoes = new Set(ORIENTACOES_SUGERIDAS);
     (autores || []).forEach((a) => {
-        if (a.orientacaoSexual && a.orientacaoSexual.trim()) orientacoes.add(a.orientacaoSexual.trim());
+        if (a.orientacaoSexual && a.orientacaoSexual.trim())
+            orientacoes.add(a.orientacaoSexual.trim());
     });
     return Array.from(orientacoes).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
@@ -1278,6 +1359,23 @@ export function extrairInstituicoesUnicas(autores) {
     return Array.from(instituicoes).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
+// Mesmo padrão de extrairInstituicoesUnicas acima, pro campo Círculo/
+// associações literárias do 4º grupo do Autor (texto livre + sugestão
+// do que já foi cadastrado, ver decisoes.md). O campo é gravado como
+// lista de textos (criarGrupoDeTagsArray, `[]` quando vazio); a string
+// "a, b, c" fica aceita só por defesa, para dado de formato antigo.
+export function extrairCirculosLiterariosUnicos(autores) {
+    const circulos = new Set();
+    (autores || []).forEach((a) => {
+        const valores = Array.isArray(a.circulo) ? a.circulo : String(a.circulo || '').split(',');
+        valores
+            .map((s) => String(s ?? '').trim())
+            .filter(Boolean)
+            .forEach((c) => circulos.add(c));
+    });
+    return Array.from(circulos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
 // CLASSE SOCIAL: lista FECHADA, mesmo espírito de CORES_RACA_AUTOR —
 // categorias historicamente amplas o bastante pra cobrir do Brasil
 // colonial/imperial (daí "Escravizado/liberto") até hoje, sem um teto
@@ -1298,11 +1396,30 @@ export const CLASSES_SOCIAIS_AUTOR = [
 // Aceita `condicoesClinicas` tanto como array quanto como string legada.
 export function autorGruposComDados(autor) {
     const a = autor || {};
-    const tem = (v) => (Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.trim() !== '' : !!v);
+    const tem = (v) =>
+        Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.trim() !== '' : !!v;
     return {
-        identidade: [a.sexo, a.corRaca, a.genero, a.orientacaoSexual, a.identidadeCisTrans, a.religiao].some(tem),
+        identidade: [
+            a.sexo,
+            a.corRaca,
+            a.genero,
+            a.orientacaoSexual,
+            a.identidadeCisTrans,
+            a.religiao,
+        ].some(tem),
         saude: [a.neurodivergencias, a.condicoesClinicas, a.deficiencias].some(tem),
         formacao: [a.classeSocial, a.grauAcademico, a.instituicoes, a.ocupacoes].some(tem),
+        // 4º grupo (ver decisoes.md, sessão de Movimento/Escola): tudo
+        // que não tinha campo nenhum no cadastro de Autor antes disso.
+        // Geração literária (ex. "Geração de 45") não virou campo à
+        // parte — decidido que é só mais um item de movimentosEscolas.
+        reconhecimento: [
+            a.movimentosEscolasIds,
+            a.premios,
+            a.obras,
+            a.circulo,
+            a.linguasEscrita,
+        ].some(tem),
     };
 }
 
@@ -1374,7 +1491,10 @@ export function idadeAutor(autor, hoje = new Date()) {
     const refMes = referenciaEhObito ? obito.mes : hoje.getMonth() + 1;
     const refDia = referenciaEhObito ? obito.dia : hoje.getDate();
 
-    const temDataCompleta = nasc.dia && nasc.mes && ((referenciaEhObito && obito.dia && obito.mes) || !referenciaEhObito);
+    const temDataCompleta =
+        nasc.dia &&
+        nasc.mes &&
+        ((referenciaEhObito && obito.dia && obito.mes) || !referenciaEhObito);
 
     let anos = refAno - nasc.ano;
     if (temDataCompleta) {
@@ -1430,11 +1550,13 @@ export function grupoSexualGenero(autor) {
 
     if (orientacao.toLowerCase() !== 'heterossexual') return 'queer';
     if (sexo === 'Intersexo') return 'queer';
-    if (identidadeCisTrans === 'Transgênero' || identidadeCisTrans === 'Não se aplica') return 'queer';
+    if (identidadeCisTrans === 'Transgênero' || identidadeCisTrans === 'Não se aplica')
+        return 'queer';
     if (genero.includes('trans')) return 'queer';
 
     const generoBateComSexo =
-        (sexo === 'Feminino' && genero === 'mulher') || (sexo === 'Masculino' && genero === 'homem');
+        (sexo === 'Feminino' && genero === 'mulher') ||
+        (sexo === 'Masculino' && genero === 'homem');
     return generoBateComSexo ? 'cis-heteronormativo' : 'queer';
 }
 
@@ -1553,7 +1675,10 @@ export function linhasFonteTexto(item, autoresCadastro = [], anoAtual = new Date
         // o rótulo de OPCOES_GRAFIA, não o valor cru do enum.
         if ((f.grafia || '').trim()) {
             const opcaoGrafia = OPCOES_GRAFIA.find((o) => o.valor === f.grafia);
-            linhas.push({ rotulo: 'Grafia', valor: opcaoGrafia ? opcaoGrafia.rotulo : f.grafia.trim() });
+            linhas.push({
+                rotulo: 'Grafia',
+                valor: opcaoGrafia ? opcaoGrafia.rotulo : f.grafia.trim(),
+            });
         }
         // Obra própria não tem "edição de origem" pra conferir.
         if (!ehObraPropria(f)) {
@@ -1648,6 +1773,15 @@ export function nomeEpoca(epoca, epocasCadastro = []) {
     return epoca.nome || '';
 }
 
+// Resolve o `periodoHistoricoId` solto do Poema/Prosa (campo simples,
+// sem sub-objeto — diferente de epocaRetratada, ver comentário em
+// calcularImpactoExclusaoPeriodoHistorico em db.js) pro nome cadastrado
+// em db.periodosHistoricos. Mesmo critério defensivo de nomeEpoca acima.
+export function nomePeriodoHistorico(periodoHistoricoId, periodosHistoricosCadastro = []) {
+    if (!periodoHistoricoId) return '';
+    return periodosHistoricosCadastro.find((p) => p.id == periodoHistoricoId)?.nome || '';
+}
+
 // Resolve epocaRetratada.epocaId pro Contexto do relacionamento
 // cadastrado (db.epocas.contextoRelacao, ex. "Pedro e Victor" — ver
 // modal-epoca.html). Dado ainda não migrado (schema antigo, sem
@@ -1723,6 +1857,140 @@ export function formatarIntervaloEpocaRetratada(epoca) {
     if (ini !== '—') return `A partir de ${ini}`;
     if (fim !== '—') return `Até ${fim}`;
     return '—';
+}
+
+// Mesmo formato de formatarIntervaloEpocaRetratada acima, pro cadastro
+// central de Período Histórico — mais simples, porque `inicio`/`fim`
+// vivem direto no registro do período (não em `epocaRetratada.na`, que
+// não existe aqui: um Período Histórico sem data é só "sem data
+// cadastrada ainda", não "não se aplica").
+export function formatarIntervaloPeriodoHistorico(ph) {
+    if (!ph) return '—';
+    const ini = formatarDataParcial(ph.inicio);
+    const fim = formatarDataParcial(ph.fim);
+    if (ini !== '—' && fim !== '—') return `${ini} – ${fim}`;
+    if (ini !== '—') return `A partir de ${ini}`;
+    if (fim !== '—') return `Até ${fim}`;
+    return '—';
+}
+
+// ─── Movimento/Escola — data com granularidade extra ────────────
+// Mesmo objeto parcial de dia/mes/ano de Período Histórico, mas com
+// `seculo` (romano, string) e `decada` (número) a mais — pedido do
+// Victor porque movimento raramente tem data no dia/mês, às vezes nem
+// no ano (ver decisoes.md, sessão de Movimento/Escola). `seculo`/
+// `decada` só entram no formato quando dia/mes/ano faltam todos —
+// não fazem sentido junto de uma data completa.
+export const TIPOS_MOVIMENTO_ESCOLA = ['Artístico', 'Literário'];
+export const SECULOS_ROMANOS = [
+    'I',
+    'II',
+    'III',
+    'IV',
+    'V',
+    'VI',
+    'VII',
+    'VIII',
+    'IX',
+    'X',
+    'XI',
+    'XII',
+    'XIII',
+    'XIV',
+    'XV',
+    'XVI',
+    'XVII',
+    'XVIII',
+    'XIX',
+    'XX',
+    'XXI',
+];
+
+export function lerDataParcialMovimento(prefixo) {
+    const num = (campo) => {
+        const v = document.getElementById(`${prefixo}-${campo}`)?.value;
+        return v !== '' && v != null ? parseInt(v) : null;
+    };
+    const seculo = document.getElementById(`${prefixo}-seculo`)?.value || null;
+    return { dia: num('dia'), mes: num('mes'), ano: num('ano'), seculo, decada: num('decada') };
+}
+
+export function preencherDataParcialMovimento(prefixo, dataObj) {
+    const d = dataObj || {};
+    const set = (campo, valor) => {
+        const el = document.getElementById(`${prefixo}-${campo}`);
+        if (el) el.value = valor != null ? valor : '';
+    };
+    set('dia', d.dia);
+    set('mes', d.mes);
+    set('ano', d.ano);
+    set('seculo', d.seculo);
+    set('decada', d.decada);
+}
+
+export function formatarDataParcialMovimento(d) {
+    if (!d) return '—';
+    const base = formatarDataParcial(d); // cobre dia/mes/ano
+    if (base !== '—') return base;
+    if (d.decada) return `déc. ${d.decada}`;
+    if (d.seculo) return `séc. ${d.seculo}`;
+    return '—';
+}
+
+export function formatarIntervaloMovimentoEscola(m) {
+    if (!m) return '—';
+    const ini = formatarDataParcialMovimento(m.inicio);
+    const fim = formatarDataParcialMovimento(m.fim);
+    if (ini !== '—' && fim !== '—' && ini !== fim) return `${ini} – ${fim}`;
+    if (ini !== '—') return ini;
+    if (fim !== '—') return fim;
+    return '—';
+}
+
+// Converte um número romano (só o que este app usa: séculos de I a
+// XXI, sempre maiúsculo) num inteiro, pra dar pra comparar/ordenar.
+// Não é um validador romano completo (não rejeita formas inválidas
+// como "IIX") — cobre com folga o intervalo de séculos cadastráveis
+// aqui (ver select `${prefixo}-seculo` no modal de Movimento/Escola).
+const VALORES_ROMANOS = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+export function romanoParaNumero(romano) {
+    if (!romano) return null;
+    const s = String(romano).toUpperCase();
+    let total = 0;
+    for (let i = 0; i < s.length; i++) {
+        const atual = VALORES_ROMANOS[s[i]];
+        if (!atual) return null;
+        const proximo = VALORES_ROMANOS[s[i + 1]];
+        total += proximo && atual < proximo ? -atual : atual;
+    }
+    return total || null;
+}
+
+// Ano aproximado equivalente de uma data parcial de Movimento/Escola
+// (dia/mes/ano OU decada OU seculo, em ordem de precisão) — só pra dar
+// uma posição relativa na ordenação cronológica (ver
+// ordenacaoMovimentosEscolas em render-listas.js), nunca pra exibição
+// (isso é formatarDataParcialMovimento). Século vira o ano do seu
+// primeiro ano (ex. "XX" → 1901): impreciso de propósito, é só pra
+// intercalar corretamente com movimentos que têm década ou ano exato.
+export function anoEquivalenteMovimento(d) {
+    if (!d) return null;
+    if (d.ano) return d.ano;
+    if (d.decada) return d.decada;
+    if (d.seculo) {
+        const n = romanoParaNumero(d.seculo);
+        return n ? (n - 1) * 100 + 1 : null;
+    }
+    return null;
+}
+
+// Nomes resolvidos a partir de `movimentosEscolasIds` (array de id, ver
+// db.js) — usado por célula da tabela, Visualização e exportação.
+// Filtra silenciosamente ids órfãos (movimento excluído sem que o
+// vínculo tenha sido limpo por algum motivo) em vez de mostrar "(?)".
+export function nomesMovimentosEscolas(ids, movimentosEscolasCadastro = []) {
+    if (!Array.isArray(ids) || !ids.length) return [];
+    return ids.map((id) => movimentosEscolasCadastro.find((m) => m.id == id)?.nome).filter(Boolean);
 }
 
 // Sugestão automática de datas e contexto pra uma Época já cadastrada
@@ -1802,6 +2070,64 @@ export function itemBateFiltroData(dataItem, filtro) {
     return iniItem <= fimFiltro && fimItem >= iniFiltro;
 }
 
+// ─── Filtro De/Até pra cadastros de período (Biográfico, Histórico, Movimento/Escola) ───
+// Diferente de itemBateFiltroData acima (data pontual de um texto), o
+// item aqui é um PERÍODO: `inicio`/`fim` cada um uma data parcial. A
+// faixa do período vai do começo possível do `inicio` ao fim possível do
+// `fim`; só `inicio` = aberto no fim ("a partir de"), só `fim` = aberto
+// no começo ("até"). Movimento/Escola aceita ainda década/século nas
+// duas pontas (via anoEquivalenteMovimento) — `movimento: true`.
+function faixaDePontaMovimento(d, ehFim) {
+    if (!d) return null;
+    if (d.ano || d.mes || d.dia) return faixaDeDataParcial(d);
+    const base = anoEquivalenteMovimento(d);
+    if (!base) return null;
+    const amplitude = d.decada ? 9 : d.seculo ? 99 : 0;
+    return faixaDeDataParcial({ ano: ehFim ? base + amplitude : base });
+}
+
+export function faixaDePeriodo(item, { movimento = false } = {}) {
+    if (!item) return null;
+    const ponta = (d, ehFim) =>
+        movimento ? faixaDePontaMovimento(d, ehFim) : faixaDeDataParcial(d);
+    const fIni = ponta(item.inicio, false);
+    const fFim = ponta(item.fim, true);
+    if (!fIni && !fFim) return null;
+    return [fIni ? fIni[0] : 0, fFim ? fFim[1] : 99991231];
+}
+
+// "Sem data" = nem `inicio` nem `fim` com qualquer parte preenchida.
+export function periodoTemData(item, opcoes) {
+    return faixaDePeriodo(item, opcoes) !== null;
+}
+
+export const MODOS_PERIODO_SEM_DATA = ['todos', 'com-data', 'sem-data'];
+
+/**
+ * Filtro De/Até + tratamento dos itens sem data, compartilhado pelas
+ * abas Período Biográfico, Período Histórico e Movimento/Escola.
+ *   modoData 'todos'    → sem data continua visível; o intervalo só recorta os datados
+ *   modoData 'com-data' → esconde os sem data; o intervalo recorta os datados
+ *   modoData 'sem-data' → só os sem data; De/Até não se aplicam (um item sem
+ *                         data não pode satisfazer um intervalo)
+ * `intervalo` = { de: {dia?,mes?,ano?}, ate: {...} } (mesmo formato de
+ * filtroDataVazio). Sobreposição, não contenção: um período longo não
+ * some quando se filtra uma janela dentro dele.
+ */
+export function filtrarPeriodosPorData(
+    itens,
+    { intervalo, modoData = 'todos', movimento = false } = {},
+) {
+    const faixaFiltro = faixaDeFiltro(intervalo);
+    return itens.filter((it) => {
+        const faixa = faixaDePeriodo(it, { movimento });
+        if (!faixa) return modoData !== 'com-data';
+        if (modoData === 'sem-data') return false;
+        if (!faixaFiltro) return true;
+        return faixa[0] <= faixaFiltro[1] && faixa[1] >= faixaFiltro[0];
+    });
+}
+
 // Um filtro de data "vazio" (de e até ambos sem nenhum campo) — usado
 // pra inicializar o estado e pra resetar ao trocar de aba/limpar.
 export function filtroDataVazio() {
@@ -1822,8 +2148,25 @@ export function filtroDataVazio() {
  *
  * Texto vazio limpa o filtro (retorna filtroDataVazio()). Texto que não
  * bate com nenhum formato, ou com valores fora da faixa válida (dia
- * 1-31, mês 1-12, ano 1900-2100), retorna null — quem chama deve
+ * 1-31, mês 1-12, ano 1-2100), retorna null — quem chama deve
  * simplesmente não aplicar nada, sem mensagem de erro.
+ *
+ * O teto de ano já foi 1900-2100 (fazia sentido pra data de
+ * escrita/publicação de Poema/Prosa, sempre contemporânea) — mas essa
+ * mesma função também virou o atalho De/Até de Movimento/Escola (ver
+ * aplicarFiltroPeriodo em render-listas.js), que tem item cadastrado
+ * desde o século XII (ano equivalente 1101, ver anoEquivalenteMovimento
+ * acima). Um filtro tipo "1500" caía fora daquela faixa e retornava
+ * null — que quem chama trata como "sem filtro", então a lista
+ * aparecia inteira, sem aviso nenhum de que o texto digitado foi
+ * ignorado. Piso agora é 1, alinhado ao mesmo `min="1"` já usado nos
+ * campos de ano em todos os modais (ver modal-movimento-escola.html,
+ * onde essa faixa mais larga já existia antes por causa dos movimentos
+ * antigos, e os outros modais, ajustados na mesma leva por causa dos
+ * textos de domínio público de autores pré-1900 que passaram a entrar
+ * no acervo — ex.: Camões, Cruz e Sousa, Castro Alves); teto continua
+ * 2100 só por simetria com esses mesmos campos, sem motivo prático pra
+ * ir além.
  */
 export function parseFiltroDataRapido(texto) {
     const t = (texto || '').trim();
@@ -1836,7 +2179,7 @@ export function parseFiltroDataRapido(texto) {
         const dia = parseInt(m[1], 10);
         const mes = parseInt(m[2], 10);
         const ano = parseInt(m[3], 10);
-        if (!dentro(dia, 1, 31) || !dentro(mes, 1, 12) || !dentro(ano, 1900, 2100)) return null;
+        if (!dentro(dia, 1, 31) || !dentro(mes, 1, 12) || !dentro(ano, 1, 2100)) return null;
         return { de: { dia, mes, ano }, ate: { dia, mes, ano } };
     }
 
@@ -1844,7 +2187,7 @@ export function parseFiltroDataRapido(texto) {
     if (m) {
         const mes = parseInt(m[1], 10);
         const ano = parseInt(m[2], 10);
-        if (!dentro(mes, 1, 12) || !dentro(ano, 1900, 2100)) return null;
+        if (!dentro(mes, 1, 12) || !dentro(ano, 1, 2100)) return null;
         return { de: { mes, ano }, ate: { mes, ano } };
     }
 
@@ -1852,14 +2195,14 @@ export function parseFiltroDataRapido(texto) {
     if (m) {
         const anoDe = parseInt(m[1], 10);
         const anoAte = parseInt(m[2], 10);
-        if (!dentro(anoDe, 1900, 2100) || !dentro(anoAte, 1900, 2100)) return null;
+        if (!dentro(anoDe, 1, 2100) || !dentro(anoAte, 1, 2100)) return null;
         return { de: { ano: anoDe }, ate: { ano: anoAte } };
     }
 
     m = t.match(/^(\d{4})$/);
     if (m) {
         const ano = parseInt(m[1], 10);
-        if (!dentro(ano, 1900, 2100)) return null;
+        if (!dentro(ano, 1, 2100)) return null;
         return { de: { ano }, ate: { ano } };
     }
 
@@ -2182,6 +2525,9 @@ const CAMPOS_ATRIBUTO = {
     genero: 'genero',
     idioma: 'idioma',
     epoca: '_buscaEpoca',
+    periodohistorico: '_buscaPeriodoHistorico',
+    movimento: '_buscaMovimentosEscolas',
+    escola: '_buscaMovimentosEscolas',
     autor: '_buscaAutoria',
     envio: '_buscaEnvios',
     nota: 'notas',
@@ -2249,6 +2595,8 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     genero: 'genero',
     idioma: 'idioma',
     _buscaEpoca: 'epoca',
+    _buscaPeriodoHistorico: 'periodohistorico',
+    _buscaMovimentosEscolas: 'movimento',
     _buscaAutoria: 'autor',
     _buscaEnvios: 'envio',
     notas: 'nota',
@@ -2425,6 +2773,7 @@ export function filtrarTextos(lista, query, opts = opcoesBuscaPadrao()) {
                 item._buscaGrupos,
                 item._buscaPapeis,
                 item._buscaEpoca,
+                item._buscaPeriodoHistorico,
                 item.genero,
                 item.notas,
                 item._livros,
@@ -2761,7 +3110,9 @@ export function paresAutoria(item, autoresCadastro = []) {
             pares.push({
                 autor,
                 papel: v.papel,
-                assinatura: ASSINATURAS_AUTORIA.includes(v.assinatura) ? v.assinatura : ASSINATURAS_AUTORIA[0],
+                assinatura: ASSINATURAS_AUTORIA.includes(v.assinatura)
+                    ? v.assinatura
+                    : ASSINATURAS_AUTORIA[0],
                 nomeLiterario: v.nomeLiterario || '',
             });
     });

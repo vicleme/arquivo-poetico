@@ -17,16 +17,16 @@ This is a personal project, but it follows a fixed convention for commit message
 
 **Types used in this project:**
 
-| Type       | Use for                                                        |
-| ---------- | --------------------------------------------------------------- |
-| `feat`     | a new field, screen, or user-facing capability                  |
-| `fix`      | a bug fix                                                        |
-| `refactor` | internal restructuring with no behavior change                  |
-| `docs`     | changes to `README*.md`, `manutencao/*.md`, or code comments    |
-| `test`     | adding or adjusting tests, no production code change             |
-| `style`    | formatting, whitespace, Prettier/ESLint fixes                   |
-| `chore`    | tooling, dependencies, config, build scripts                    |
-| `perf`     | performance improvements                                        |
+| Type       | Use for                                                      |
+| ---------- | ------------------------------------------------------------ |
+| `feat`     | a new field, screen, or user-facing capability               |
+| `fix`      | a bug fix                                                    |
+| `refactor` | internal restructuring with no behavior change               |
+| `docs`     | changes to `README*.md`, `manutencao/*.md`, or code comments |
+| `test`     | adding or adjusting tests, no production code change         |
+| `style`    | formatting, whitespace, Prettier/ESLint fixes                |
+| `chore`    | tooling, dependencies, config, build scripts                 |
+| `perf`     | performance improvements                                     |
 
 **Breaking changes** (schema/data format changes that require migration): add `!` after the type/scope, e.g. `feat(pessoas)!: add sixth PAPEIS_PESSOA value`, and explain the migration in the body or a `BREAKING CHANGE:` footer.
 

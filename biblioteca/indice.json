@@ -3,9 +3,9 @@
     {
       "id": "augusto-dos-anjos",
       "arquivo": "augusto-dos-anjos",
-      "titulo": "Augusto dos Anjos — sonetos (piloto)",
+      "titulo": "Augusto dos Anjos (seleção)",
       "autor": "Augusto dos Anjos",
-      "descricao": "Dois sonetos pra demonstrar Sonoridade, Estatísticas e Conexões sem usar o acervo pessoal.",
+      "descricao": "Dois sonetos de Eu (1912).",
       "quantidade": 2,
       "conferido": true
     },
@@ -70,6 +70,33 @@
       "autor": "Maria Firmina dos Reis",
       "descricao": "Um capítulo de Úrsula (1859) e um poema de Cantos à Beira-Mar.",
       "quantidade": 2,
+      "conferido": false
+    },
+    {
+      "id": "mario-de-andrade",
+      "arquivo": "mario-de-andrade",
+      "titulo": "Mário de Andrade (seleção)",
+      "autor": "Mário de Andrade",
+      "descricao": "Três poemas de Paulicéia Desvairada (1922).",
+      "quantidade": 3,
+      "conferido": false
+    },
+    {
+      "id": "renee-vivien",
+      "arquivo": "renee-vivien",
+      "titulo": "Renée Vivien (seleção)",
+      "autor": "Renée Vivien",
+      "descricao": "Seis poemas (Poèmes, 1909; À l’heure des mains jointes, 1906) e dois poemas em prosa (Poèmes en prose), em francês.",
+      "quantidade": 8,
+      "conferido": false
+    },
+    {
+      "id": "virginia-woolf",
+      "arquivo": "virginia-woolf",
+      "titulo": "Virginia Woolf (seleção)",
+      "autor": "Virginia Woolf",
+      "descricao": "Quatro textos curtos em inglês: The Mark on the Wall (1917), Kew Gardens (1919), Blue & Green e Monday or Tuesday (1921).",
+      "quantidade": 4,
       "conferido": false
     }
   ]

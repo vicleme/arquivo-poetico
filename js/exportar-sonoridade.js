@@ -392,7 +392,11 @@ function blocoParesEcosMarkdown(es, _poema) {
 }
 
 export function escansaoParaMarkdown(es, poema) {
-    return blocoCabecalhoMarkdown(es, poema) + blocoGradeMarkdown(es, poema) + blocoParesEcosMarkdown(es, poema);
+    return (
+        blocoCabecalhoMarkdown(es, poema) +
+        blocoGradeMarkdown(es, poema) +
+        blocoParesEcosMarkdown(es, poema)
+    );
 }
 
 // Pedaços avulsos pro exportador de PDF abrangente (ver comentário
@@ -449,7 +453,8 @@ const PDF_COR_DIVERGE_ALVO = { r: 217, g: 119, b: 6 };
 // que desenham a mesma Grade Silábica em PDF (ver exportar-pdf.js, seção
 // de Sonoridade do Download Abrangente) sem duplicar o limiar.
 export function decidirOrientacaoGradePdf(n, larguraUtilRetrato, larguraUtilPaisagem) {
-    const larguraReservada = PDF_LARGURA_COL_NUMERO + PDF_LARGURA_COL_CONTAGEM + PDF_LARGURA_COL_RIMA;
+    const larguraReservada =
+        PDF_LARGURA_COL_NUMERO + PDF_LARGURA_COL_CONTAGEM + PDF_LARGURA_COL_RIMA;
     const colRetrato = (larguraUtilRetrato - larguraReservada) / n;
     if (colRetrato >= PDF_MIN_COL_SILABA) return 'portrait';
     const colPaisagem = (larguraUtilPaisagem - larguraReservada) / n;
@@ -609,11 +614,19 @@ export function desenharGradeSilabicaPdf(doc, tabela, ctx) {
         );
         x += PDF_LARGURA_COL_CONTAGEM;
         const corLetra = linha.letra ? hexParaRgb(CORES_RIMA_HEX[corDaLetra(linha.letra)]) : null;
-        desenharCelulaGradePdf(doc, x, y, PDF_LARGURA_COL_RIMA, PDF_ALTURA_LINHA_GRADE, linha.letra || '', {
-            tamanho: 9,
-            negrito: true,
-            cor: corLetra,
-        });
+        desenharCelulaGradePdf(
+            doc,
+            x,
+            y,
+            PDF_LARGURA_COL_RIMA,
+            PDF_ALTURA_LINHA_GRADE,
+            linha.letra || '',
+            {
+                tamanho: 9,
+                negrito: true,
+                cor: corLetra,
+            },
+        );
         definirY(y + PDF_ALTURA_LINHA_GRADE);
     });
 }
@@ -885,7 +898,10 @@ function construirTabelaGradeDocx(docx, tabela, larguraConteudo) {
     } = docx;
     const colSilaba = Math.max(
         DOCX_MIN_COL_SILABA,
-        (larguraConteudo - DOCX_LARGURA_COL_NUMERO - DOCX_LARGURA_COL_CONTAGEM - DOCX_LARGURA_COL_RIMA) /
+        (larguraConteudo -
+            DOCX_LARGURA_COL_NUMERO -
+            DOCX_LARGURA_COL_CONTAGEM -
+            DOCX_LARGURA_COL_RIMA) /
             tabela.n,
     );
 

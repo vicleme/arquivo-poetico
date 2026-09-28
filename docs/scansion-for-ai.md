@@ -138,17 +138,20 @@ For each pair identified in Step 2, classify it along the three axes below
 (pick one option from each list per pair):
 
 **Stress** (of the rhyming word):
+
 - Aguda / Oxítona (oxytone — stressed on the last syllable)
 - Grave / Paroxítona (paroxytone — stressed on the second-to-last syllable)
 - Esdrúxula / Proparoxítona (proparoxytone — stressed on the
   third-to-last syllable)
 
 **Tonality** (sound quality of the rhyme):
+
 - Soante / Consoante (Perfeita) — identical vowels and final consonants
 - Toante (Assonante) — only the vowels match
 - Imperfeita — partial resemblance, neither perfect nor purely assonant
 
 **Richness** (grammatical relationship between the rhyming words):
+
 - Pobre (mesma classe gramatical) — same part of speech
 - Rica (classes gramaticais diferentes) — different parts of speech
 - Rara (palavra com poucas opções de rima) — word with few rhyming
@@ -320,35 +323,35 @@ Exact structure the system expects:
 
 ```json
 {
-  "poemaTitulo": "Exact poem title",
-  "formaPoema": "Forma Livre / Indefinida",
-  "regularidadeMetrica": "Versos Livres",
-  "tamanhoVerso": "Variável / Sem Metro",
-  "esquemaRimasPresenca": "Rimas Ocasionais",
-  "origemTradicao": "Contemporânea / Livre",
-  "registro": "Coloquial / Popular",
-  "tom": "Lírico / Introspectivo",
-  "escansaoLinhas": [
-    { "tipo": "verso", "texto": "Be/be/co/mo eu/be/bi:/de/bru/ça-te", "tonicas": [1, 5, 8] },
-    { "tipo": "verso", "texto": "..." },
-    { "tipo": "vazia" }
-  ],
-  "rimas": [
-    {
-      "a": { "linha": 0, "silabas": [8] },
-      "b": { "linha": 1, "silabas": [8] },
-      "acentuacao": "Grave / Paroxítona",
-      "tonalidade": "Soante / Consoante (Perfeita)",
-      "riqueza": "Pobre (mesma classe gramatical)"
-    }
-  ],
-  "ecos": [
-    {
-      "a": { "linha": 2, "silabas": [3] },
-      "b": { "linha": 4, "silabas": [2] },
-      "tipo": "Assonância"
-    }
-  ]
+    "poemaTitulo": "Exact poem title",
+    "formaPoema": "Forma Livre / Indefinida",
+    "regularidadeMetrica": "Versos Livres",
+    "tamanhoVerso": "Variável / Sem Metro",
+    "esquemaRimasPresenca": "Rimas Ocasionais",
+    "origemTradicao": "Contemporânea / Livre",
+    "registro": "Coloquial / Popular",
+    "tom": "Lírico / Introspectivo",
+    "escansaoLinhas": [
+        { "tipo": "verso", "texto": "Be/be/co/mo eu/be/bi:/de/bru/ça-te", "tonicas": [1, 5, 8] },
+        { "tipo": "verso", "texto": "..." },
+        { "tipo": "vazia" }
+    ],
+    "rimas": [
+        {
+            "a": { "linha": 0, "silabas": [8] },
+            "b": { "linha": 1, "silabas": [8] },
+            "acentuacao": "Grave / Paroxítona",
+            "tonalidade": "Soante / Consoante (Perfeita)",
+            "riqueza": "Pobre (mesma classe gramatical)"
+        }
+    ],
+    "ecos": [
+        {
+            "a": { "linha": 2, "silabas": [3] },
+            "b": { "linha": 4, "silabas": [2] },
+            "tipo": "Assonância"
+        }
+    ]
 }
 ```
 

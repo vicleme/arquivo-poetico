@@ -358,12 +358,12 @@ npm run format:check   # prettier --check .
   deleting it).
 - **Hypertextuality** (Poem and Prose): a list of direct transformations
   of a specific source work — type (same suggestions as Intertextuality)
-  + relation (Rereading, Adapted Translation, Parody, Pastiche,
-  Expansion, Rescaling, Homage, Transposition) + hypotext (the source
-  work's name). A stronger, more structural relationship than
-  Intertextuality: the archive's text isn't just dialoguing with or
-  quoting the source, it's deriving from/transforming it. Editable
-  in-place like Intertextuality.
+    - relation (Rereading, Adapted Translation, Parody, Pastiche,
+      Expansion, Rescaling, Homage, Transposition) + hypotext (the source
+      work's name). A stronger, more structural relationship than
+      Intertextuality: the archive's text isn't just dialoguing with or
+      quoting the source, it's deriving from/transforming it. Editable
+      in-place like Intertextuality.
 - **External References** (Poem and Prose): a list of real-world anchors
   — a historical landmark, news, or public figure — with no work or
   authorship involved, which is what sets it apart from Intertextuality
@@ -474,61 +474,61 @@ npm run format:check   # prettier --check .
 - **Sonoridade** (Analysis > Sonoridade): metrical scansion of an already
   registered poem, stored as its own record (`db.sonoridades`), linked to
   the poem via `poemaId`.
-  - **Syllable Grid**: split each verse into syllables by typing `/`
-    between them (an orthographic hyphen doesn't count as a division — same
-    weight as a space) and mark the stressed syllable(s) in **Stressed
-    Syllable Mode**.
-  - **Rhyme Mode**: click a syllable to open one side of the pair
-    (shift-click extends it for a rich rhyme), click a syllable in another
-    verse to open the other side, then confirm the pair — mutually
-    exclusive with Stressed Syllable Mode. The scheme letter (A, B, C...),
-    Position (External/Internal), and Proximity (Neighboring/Distant) are
-    never chosen by hand: the system derives all three from the confirmed
-    pairs — Proximity from how many verses apart the two sides are (see
-    `DISTANCIA_VIZINHO_MAXIMA` in `js/utils.js`).
-  - **Rhyme Pairs**: a list below the grid with each pair's classification
-    — Stress (Oxytone/Paroxytone/Proparoxytone), Tonality (Perfect/
-    Assonant/Imperfect), and Richness (Poor/Rich/Rare/Precious/Identical/
-    Homonymous) — plus removal with "Undo" and side reassignment without
-    losing the classification already made. The panel header shows the
-    final count of neighboring vs. distant pairs and characterizes the
-    poem as a whole ("Com Rimas mais Próximas"/"Com Rimas mais Distantes",
-    or "Com Rimas Equilibradas" on a tie) — same auto-derived spirit as
-    Position, never chosen by hand — followed by a per-value count line
-    for each of the other axes (Position, Stress, Tonality, Richness),
-    with a note for how many pairs are still unclassified on that axis
-    when that's the case. Same summary reused across all three export
-    formats (`.md`/`.pdf`/`.docx`).
-  - **Poem classification**: 7 closed-option fields (Poem Form, Metrical
-    Regularity, Verse Length, Rhyme Scheme — Presence and Structural
-    Pattern —, Origin/Tradition, Register, and Tone). Choosing the Poem
-    Form **filters** (never auto-fills or disables) the valid options for
-    the other fields for fixed forms with known rules (Classic Sonnet,
-    Haiku, Tanka, Brazilian Lira, Limerick, Trova, and, partially,
-    Narrative Poetry/Cordel) — the field stays editable among the filtered
-    options. Non-blocking warnings flag an atypical monorhyme in a fixed
-    form, or a mismatch between the syllable count in the grid and the
-    chosen Verse Length, without preventing saving.
-  - **View/Download**: same configurable "⚙️ Actions ▾" column as
-    Poems/Prose. "View" opens a read-only grid of the scansion; "Download"
-    exports as `.md`, `.pdf`, `.docx`, or `.json`. In the latter two, the
-    stressed syllable is real bold text and the Syllable Grid renders as a
-    **table** aligned by syllable column (same as on screen) — in the
-    `.pdf`, the page automatically switches to landscape if the poem has
-    verses too long to fit in portrait; in the `.docx`, the whole document
-    is born in landscape when needed instead.
-  - See `docs/sonoridade-for-ai.md` for the full field breakdown of this
-    record, and `docs/scansion-for-ai.md` for a ready-made guide on
-    asking an AI to scan a poem and return the fields already in the
-    right shape to fill in here.
-  - **Count columns** in the tab's table: add as many columns as you like,
-    each counting a value of your choice (same feature already available
-    in the Poems/Prose tables) — in Sonoridade, the fields are Rhymes
-    (total), Rhymes (per verse), External/Internal, Neighboring/Distant,
-    and one field per value of Stress/Tonality/Richness (grouped into
-    `<optgroup>` in the field selector, since there are nearly 20 options)
-    —, each column with an optional numeric filter (e.g. only show poems
-    with 3 or more rhymes).
+    - **Syllable Grid**: split each verse into syllables by typing `/`
+      between them (an orthographic hyphen doesn't count as a division — same
+      weight as a space) and mark the stressed syllable(s) in **Stressed
+      Syllable Mode**.
+    - **Rhyme Mode**: click a syllable to open one side of the pair
+      (shift-click extends it for a rich rhyme), click a syllable in another
+      verse to open the other side, then confirm the pair — mutually
+      exclusive with Stressed Syllable Mode. The scheme letter (A, B, C...),
+      Position (External/Internal), and Proximity (Neighboring/Distant) are
+      never chosen by hand: the system derives all three from the confirmed
+      pairs — Proximity from how many verses apart the two sides are (see
+      `DISTANCIA_VIZINHO_MAXIMA` in `js/utils.js`).
+    - **Rhyme Pairs**: a list below the grid with each pair's classification
+      — Stress (Oxytone/Paroxytone/Proparoxytone), Tonality (Perfect/
+      Assonant/Imperfect), and Richness (Poor/Rich/Rare/Precious/Identical/
+      Homonymous) — plus removal with "Undo" and side reassignment without
+      losing the classification already made. The panel header shows the
+      final count of neighboring vs. distant pairs and characterizes the
+      poem as a whole ("Com Rimas mais Próximas"/"Com Rimas mais Distantes",
+      or "Com Rimas Equilibradas" on a tie) — same auto-derived spirit as
+      Position, never chosen by hand — followed by a per-value count line
+      for each of the other axes (Position, Stress, Tonality, Richness),
+      with a note for how many pairs are still unclassified on that axis
+      when that's the case. Same summary reused across all three export
+      formats (`.md`/`.pdf`/`.docx`).
+    - **Poem classification**: 7 closed-option fields (Poem Form, Metrical
+      Regularity, Verse Length, Rhyme Scheme — Presence and Structural
+      Pattern —, Origin/Tradition, Register, and Tone). Choosing the Poem
+      Form **filters** (never auto-fills or disables) the valid options for
+      the other fields for fixed forms with known rules (Classic Sonnet,
+      Haiku, Tanka, Brazilian Lira, Limerick, Trova, and, partially,
+      Narrative Poetry/Cordel) — the field stays editable among the filtered
+      options. Non-blocking warnings flag an atypical monorhyme in a fixed
+      form, or a mismatch between the syllable count in the grid and the
+      chosen Verse Length, without preventing saving.
+    - **View/Download**: same configurable "⚙️ Actions ▾" column as
+      Poems/Prose. "View" opens a read-only grid of the scansion; "Download"
+      exports as `.md`, `.pdf`, `.docx`, or `.json`. In the latter two, the
+      stressed syllable is real bold text and the Syllable Grid renders as a
+      **table** aligned by syllable column (same as on screen) — in the
+      `.pdf`, the page automatically switches to landscape if the poem has
+      verses too long to fit in portrait; in the `.docx`, the whole document
+      is born in landscape when needed instead.
+    - See `docs/sonoridade-for-ai.md` for the full field breakdown of this
+      record, and `docs/scansion-for-ai.md` for a ready-made guide on
+      asking an AI to scan a poem and return the fields already in the
+      right shape to fill in here.
+    - **Count columns** in the tab's table: add as many columns as you like,
+      each counting a value of your choice (same feature already available
+      in the Poems/Prose tables) — in Sonoridade, the fields are Rhymes
+      (total), Rhymes (per verse), External/Internal, Neighboring/Distant,
+      and one field per value of Stress/Tonality/Richness (grouped into
+      `<optgroup>` in the field selector, since there are nearly 20 options)
+      —, each column with an optional numeric filter (e.g. only show poems
+      with 3 or more rhymes).
 - **Morfofuncionalidade** (Analysis > Morfofuncionalidade): argumentative/
   formal analysis of an already registered poem, stored as its own record
   (`db.estruturasTextuais`, shown in the UI as "Progressão
@@ -536,28 +536,28 @@ npm run format:check   # prettier --check .
   most one record per poem; re-cataloging replaces the previous one. Two
   independent lists, both free text with `<datalist>` suggestions (no
   closed vocabulary, since terminology varies by poetic form):
-  - **Unidades** ("Units"): sections that have both a form (**Unidade
-    Estrófica** — e.g. Quatrains, Tercets, Octave) and an argumentative
-    function (**Unidade Discursiva** — e.g. Proposição, Resolução).
-    Either field can be left empty, but not both.
-  - **Eventos** ("Events"): one-off movements with no form of their own
-    (**Progressão Dialética** — e.g. Tensão, Volta, Síntese).
-  - Both types share a **position** (stanzas + verses, 1-based, derived
-    automatically from the poem's blank lines, never typed by hand) — an
-    "unpositioned" item (`estrofes: []`) is a valid, expected state, not
-    missing data. Overlap between items and the position's text summary
-    are always recomputed on read, never stored.
-  - **Templates** (`db.templatesEstrutura`): reusable classification
-    combos, independent of any specific poem (a built-in "Soneto"
-    template plus any the user saves) — applying one instantiates new,
-    unpositioned items ready to place on the poem at hand.
-  - **View/Download**: same configurable "⚙️ Actions ▾" column as
-    Sonoridade (View/Download/Edit/Delete); "Download" exports as `.md`,
-    `.pdf`, `.docx`, or `.json`. Unlike Poems/Prose and Sonoridade, this
-    table's columns aren't configurable — they're fixed.
-  - See `docs/morfofuncionalidade-for-ai.md` for the full field
-    breakdown, including how this differs from the similarly-named
-    "Estrutura" button (the archive's Book/Part/Section hierarchy).
+    - **Unidades** ("Units"): sections that have both a form (**Unidade
+      Estrófica** — e.g. Quatrains, Tercets, Octave) and an argumentative
+      function (**Unidade Discursiva** — e.g. Proposição, Resolução).
+      Either field can be left empty, but not both.
+    - **Eventos** ("Events"): one-off movements with no form of their own
+      (**Progressão Dialética** — e.g. Tensão, Volta, Síntese).
+    - Both types share a **position** (stanzas + verses, 1-based, derived
+      automatically from the poem's blank lines, never typed by hand) — an
+      "unpositioned" item (`estrofes: []`) is a valid, expected state, not
+      missing data. Overlap between items and the position's text summary
+      are always recomputed on read, never stored.
+    - **Templates** (`db.templatesEstrutura`): reusable classification
+      combos, independent of any specific poem (a built-in "Soneto"
+      template plus any the user saves) — applying one instantiates new,
+      unpositioned items ready to place on the poem at hand.
+    - **View/Download**: same configurable "⚙️ Actions ▾" column as
+      Sonoridade (View/Download/Edit/Delete); "Download" exports as `.md`,
+      `.pdf`, `.docx`, or `.json`. Unlike Poems/Prose and Sonoridade, this
+      table's columns aren't configurable — they're fixed.
+    - See `docs/morfofuncionalidade-for-ai.md` for the full field
+      breakdown, including how this differs from the similarly-named
+      "Estrutura" button (the archive's Book/Part/Section hierarchy).
 - **Find and Replace** (`localizar-substituir.html`): a separate tool
   (reachable from the "Tools" nav group) to search for a text snippet in
   Poems and/or Prose — with case-sensitivity, scoping to Poems, Prose, or

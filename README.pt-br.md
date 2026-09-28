@@ -471,62 +471,62 @@ npm run format:check   # prettier --check .
 - **Sonoridade** (Análise > Sonoridade): escansão métrica de um poema já
   cadastrado, guardada como registro próprio (`db.sonoridades`), vinculado
   ao poema por `poemaId`.
-  - **Grade Silábica**: divida cada verso em sílabas digitando `/` entre
-    elas (hífen ortográfico não conta como divisão, mesmo peso de um
-    espaço) e marque a(s) sílaba(s) tônica(s) no **Modo Sílaba Tônica**.
-  - **Modo Rima**: clique numa sílaba pra abrir um lado do par (shift-clique
-    estende pra rima rica), clique noutro verso pra abrir o outro lado e
-    confirme o par — mutuamente exclusivo com o Modo Tônica. A letra do
-    esquema (A, B, C...), a Posição (Externa/Interna) e a Proximidade
-    (Vizinha/Distante) nunca são escolhidas à mão: o sistema deriva as três
-    a partir dos pares confirmados — Proximidade a partir de quantos
-    versos separam os dois lados (ver `DISTANCIA_VIZINHO_MAXIMA` em
-    `js/utils.js`).
-  - **Pares de Rima**: lista abaixo da grade com a classificação de cada
-    par — Acentuação (Aguda/Grave/Esdrúxula), Tonalidade (Soante/Toante/
-    Imperfeita) e Riqueza (Pobre/Rica/Rara/Preciosa/Idêntica/Homônima) —,
-    remoção com "Desfazer" e correção/reatribuição de lado sem perder a
-    classificação já feita. O cabeçalho da lista mostra a contagem final
-    de pares vizinhos x distantes e caracteriza o poema como um todo
-    ("Com Rimas mais Próximas"/"Com Rimas mais Distantes", ou "Com Rimas
-    Equilibradas" em caso de empate) — mesmo espírito de derivação
-    automática da Posição, nunca escolhido à mão —, seguida de uma linha
-    de contagem por valor para cada um dos outros eixos (Posição,
-    Acentuação, Tonalidade, Riqueza), com aviso de quantos pares ainda
-    não foram classificados naquele eixo quando for o caso. Mesmo resumo
-    reaproveitado nos três formatos de exportação (`.md`/`.pdf`/`.docx`).
-  - **Classificação do poema**: 7 campos de opções fechadas (Forma do
-    Poema, Regularidade Métrica, Tamanho do Verso, Esquema de Rimas —
-    Presença e Padrão Estrutural —, Origem/Tradição, Registro e Tom).
-    Escolher a Forma do Poema **filtra** (nunca autopreenche nem desabilita)
-    as opções válidas dos outros campos pra formas fixas com regras
-    conhecidas (Soneto — Genérico, Petrarquiano/Camoniano ou Shakespeariano —,
-    Haikai, Tanka, Lira Brasileira, Limerick,
-    Trova e, parcialmente, Poesia Narrativa/Cordel) — o campo continua
-    editável entre as opções filtradas. Avisos não-bloqueantes alertam
-    sobre monorrima atípica numa forma fixa ou divergência entre a
-    contagem de sílabas da grade e o Tamanho do Verso escolhido, sem
-    impedir salvar.
-  - **Ver/Baixar**: mesma coluna "⚙️ Ações ▾" configurável de Poemas/Prosas.
-    "Ver" abre uma grade somente-leitura da escansão; "Baixar" exporta em
-    `.md`, `.pdf`, `.docx` ou `.json`. Nos dois primeiros, a tônica sai em
-    negrito de verdade e a Grade Silábica vira uma **tabela** alinhada por
-    coluna de sílaba (igual à tela) — no `.pdf`, a página vira paisagem
-    automaticamente se o poema tiver versos longos demais pra caber em
-    retrato; no `.docx`, é o documento inteiro que nasce em paisagem
-    quando necessário.
-  - Ver `docs/sonoridade-for-ai-pt-br.md` para o detalhamento completo dos
-    campos desse registro, e `docs/scansion-for-ai-pt-br.md` pra um guia
-    pronto de como pedir a uma IA que escanda um poema e devolva os campos
-    já no formato certo pra preencher aqui.
-  - **Colunas de contagem** na tabela da aba: adicione quantas colunas
-    quiser, cada uma contando um valor à escolha (mesmo recurso já disponível
-    nas tabelas de Poemas/Prosas) — em Sonoridade, os campos são Rimas
-    (total), Rimas (por verso), Externas/Internas, Vizinhas/Distantes e um
-    campo por valor de Acentuação/Tonalidade/Riqueza (agrupados em
-    `<optgroup>` no seletor de campo, por serem quase 20 opções) —, cada
-    coluna com filtro numérico opcional (ex. só mostrar poemas com 3 ou
-    mais rimas).
+    - **Grade Silábica**: divida cada verso em sílabas digitando `/` entre
+      elas (hífen ortográfico não conta como divisão, mesmo peso de um
+      espaço) e marque a(s) sílaba(s) tônica(s) no **Modo Sílaba Tônica**.
+    - **Modo Rima**: clique numa sílaba pra abrir um lado do par (shift-clique
+      estende pra rima rica), clique noutro verso pra abrir o outro lado e
+      confirme o par — mutuamente exclusivo com o Modo Tônica. A letra do
+      esquema (A, B, C...), a Posição (Externa/Interna) e a Proximidade
+      (Vizinha/Distante) nunca são escolhidas à mão: o sistema deriva as três
+      a partir dos pares confirmados — Proximidade a partir de quantos
+      versos separam os dois lados (ver `DISTANCIA_VIZINHO_MAXIMA` em
+      `js/utils.js`).
+    - **Pares de Rima**: lista abaixo da grade com a classificação de cada
+      par — Acentuação (Aguda/Grave/Esdrúxula), Tonalidade (Soante/Toante/
+      Imperfeita) e Riqueza (Pobre/Rica/Rara/Preciosa/Idêntica/Homônima) —,
+      remoção com "Desfazer" e correção/reatribuição de lado sem perder a
+      classificação já feita. O cabeçalho da lista mostra a contagem final
+      de pares vizinhos x distantes e caracteriza o poema como um todo
+      ("Com Rimas mais Próximas"/"Com Rimas mais Distantes", ou "Com Rimas
+      Equilibradas" em caso de empate) — mesmo espírito de derivação
+      automática da Posição, nunca escolhido à mão —, seguida de uma linha
+      de contagem por valor para cada um dos outros eixos (Posição,
+      Acentuação, Tonalidade, Riqueza), com aviso de quantos pares ainda
+      não foram classificados naquele eixo quando for o caso. Mesmo resumo
+      reaproveitado nos três formatos de exportação (`.md`/`.pdf`/`.docx`).
+    - **Classificação do poema**: 7 campos de opções fechadas (Forma do
+      Poema, Regularidade Métrica, Tamanho do Verso, Esquema de Rimas —
+      Presença e Padrão Estrutural —, Origem/Tradição, Registro e Tom).
+      Escolher a Forma do Poema **filtra** (nunca autopreenche nem desabilita)
+      as opções válidas dos outros campos pra formas fixas com regras
+      conhecidas (Soneto — Genérico, Petrarquiano/Camoniano ou Shakespeariano —,
+      Haikai, Tanka, Lira Brasileira, Limerick,
+      Trova e, parcialmente, Poesia Narrativa/Cordel) — o campo continua
+      editável entre as opções filtradas. Avisos não-bloqueantes alertam
+      sobre monorrima atípica numa forma fixa ou divergência entre a
+      contagem de sílabas da grade e o Tamanho do Verso escolhido, sem
+      impedir salvar.
+    - **Ver/Baixar**: mesma coluna "⚙️ Ações ▾" configurável de Poemas/Prosas.
+      "Ver" abre uma grade somente-leitura da escansão; "Baixar" exporta em
+      `.md`, `.pdf`, `.docx` ou `.json`. Nos dois primeiros, a tônica sai em
+      negrito de verdade e a Grade Silábica vira uma **tabela** alinhada por
+      coluna de sílaba (igual à tela) — no `.pdf`, a página vira paisagem
+      automaticamente se o poema tiver versos longos demais pra caber em
+      retrato; no `.docx`, é o documento inteiro que nasce em paisagem
+      quando necessário.
+    - Ver `docs/sonoridade-for-ai-pt-br.md` para o detalhamento completo dos
+      campos desse registro, e `docs/scansion-for-ai-pt-br.md` pra um guia
+      pronto de como pedir a uma IA que escanda um poema e devolva os campos
+      já no formato certo pra preencher aqui.
+    - **Colunas de contagem** na tabela da aba: adicione quantas colunas
+      quiser, cada uma contando um valor à escolha (mesmo recurso já disponível
+      nas tabelas de Poemas/Prosas) — em Sonoridade, os campos são Rimas
+      (total), Rimas (por verso), Externas/Internas, Vizinhas/Distantes e um
+      campo por valor de Acentuação/Tonalidade/Riqueza (agrupados em
+      `<optgroup>` no seletor de campo, por serem quase 20 opções) —, cada
+      coluna com filtro numérico opcional (ex. só mostrar poemas com 3 ou
+      mais rimas).
 - **Morfofuncionalidade** (Análise > Morfofuncionalidade): análise
   argumentativa/formal de um poema já cadastrado, guardada como registro
   próprio (`db.estruturasTextuais`, mostrado na interface como "Progressão
@@ -535,30 +535,30 @@ npm run format:check   # prettier --check .
   anterior. Duas listas independentes, ambas texto livre com sugestão por
   `<datalist>` (sem vocabulário fechado, já que a terminologia varia
   conforme a forma poética):
-  - **Unidades**: trechos que têm forma (**Unidade Estrófica** — ex.
-    Quartetos, Tercetos, Oitava) e função argumentativa (**Unidade
-    Discursiva** — ex. Proposição, Resolução) ao mesmo tempo. Qualquer um
-    dos dois campos pode ficar vazio, mas não os dois.
-  - **Eventos**: movimentos pontuais sem forma própria (**Progressão
-    Dialética** — ex. Tensão, Volta, Síntese).
-  - Os dois tipos compartilham uma **posição** (estrofes + versos, base 1,
-    derivada automaticamente das linhas em branco do poema, nunca
-    digitada à mão) — um item "não posicionado" (`estrofes: []`) é um
-    estado válido e esperado, não dado faltando. A sobreposição entre
-    itens e o resumo textual da posição são sempre recalculados na
-    leitura, nunca armazenados.
-  - **Templates** (`db.templatesEstrutura`): combos de classificação
-    reutilizáveis, independentes de um poema específico (um template
-    embutido "Soneto" mais os que o usuário salvar) — aplicar um instancia
-    itens novos, não posicionados, prontos pra posicionar no poema em
-    questão.
-  - **Ver/Baixar**: mesma coluna "⚙️ Ações ▾" configurável de Sonoridade
-    (Ver/Baixar/Editar/Excluir); "Baixar" exporta em `.md`, `.pdf`, `.docx`
-    ou `.json`. Diferente de Poemas/Prosas e Sonoridade, as colunas dessa
-    tabela não são configuráveis — são fixas.
-  - Ver `docs/morfofuncionalidade-for-ai-pt-br.md` para o detalhamento
-    completo dos campos, incluindo a diferença com o botão de nome
-    parecido "Estrutura" (a hierarquia Livro/Parte/Seção do acervo).
+    - **Unidades**: trechos que têm forma (**Unidade Estrófica** — ex.
+      Quartetos, Tercetos, Oitava) e função argumentativa (**Unidade
+      Discursiva** — ex. Proposição, Resolução) ao mesmo tempo. Qualquer um
+      dos dois campos pode ficar vazio, mas não os dois.
+    - **Eventos**: movimentos pontuais sem forma própria (**Progressão
+      Dialética** — ex. Tensão, Volta, Síntese).
+    - Os dois tipos compartilham uma **posição** (estrofes + versos, base 1,
+      derivada automaticamente das linhas em branco do poema, nunca
+      digitada à mão) — um item "não posicionado" (`estrofes: []`) é um
+      estado válido e esperado, não dado faltando. A sobreposição entre
+      itens e o resumo textual da posição são sempre recalculados na
+      leitura, nunca armazenados.
+    - **Templates** (`db.templatesEstrutura`): combos de classificação
+      reutilizáveis, independentes de um poema específico (um template
+      embutido "Soneto" mais os que o usuário salvar) — aplicar um instancia
+      itens novos, não posicionados, prontos pra posicionar no poema em
+      questão.
+    - **Ver/Baixar**: mesma coluna "⚙️ Ações ▾" configurável de Sonoridade
+      (Ver/Baixar/Editar/Excluir); "Baixar" exporta em `.md`, `.pdf`, `.docx`
+      ou `.json`. Diferente de Poemas/Prosas e Sonoridade, as colunas dessa
+      tabela não são configuráveis — são fixas.
+    - Ver `docs/morfofuncionalidade-for-ai-pt-br.md` para o detalhamento
+      completo dos campos, incluindo a diferença com o botão de nome
+      parecido "Estrutura" (a hierarquia Livro/Parte/Seção do acervo).
 - **Localizar e Substituir** (`localizar-substituir.html`): ferramenta
   separada (grupo "Ferramentas" na nav) para buscar um trecho em
   Poemas e/ou Prosas — com opção de diferenciar maiúsculas/minúsculas,

@@ -28,6 +28,7 @@ import {
     grupoSexualGenero,
     ROTULOS_GRUPO_SEXUAL_GENERO,
     mostrarAviso,
+    nomesMovimentosEscolas,
 } from './utils.js';
 import { coluna, colunasData, gerarCsv, baixarCsv, juntar } from './exportar-csv.js';
 
@@ -42,6 +43,22 @@ function listaComTipo(valor) {
                 : { nome: (i?.nome || '').trim(), tipo: i?.tipo || '' },
         )
         .filter((i) => i.nome);
+}
+
+// Prêmios/Obras: [{ nome, ano }], ano opcional (ver criarGrupoDeTagsComAno
+// em editor.js). Sem formato legado em string — esses dois campos nunca
+// existiram como string separada por vírgula.
+function listaComAno(valor) {
+    if (!Array.isArray(valor)) return [];
+    return valor
+        .map((i) => ({ nome: (i?.nome || '').trim(), ano: i?.ano ?? null }))
+        .filter((i) => i.nome);
+}
+
+// Círculo literário / Línguas de escrita: array simples de string (ver
+// criarGrupoDeTagsArray em editor.js).
+function listaSimples(valor) {
+    return Array.isArray(valor) ? valor.map((v) => String(v).trim()).filter(Boolean) : [];
 }
 
 // Registro exportado de um Autor: os campos do cadastro como estão +
@@ -85,6 +102,10 @@ function listaTexto(itens) {
     return itens.map((i) => (i.tipo ? `${i.nome} (${i.tipo})` : i.nome)).join(', ');
 }
 
+function listaTextoComAno(itens) {
+    return itens.map((i) => (i.ano ? `${i.nome} (${i.ano})` : i.nome)).join(', ');
+}
+
 // Um Autor em Markdown: título + linhas só dos campos preenchidos.
 export function autorParaMarkdown(item) {
     const nomesLit = listaComTipo(item.nomesLiterarios);
@@ -97,15 +118,9 @@ export function autorParaMarkdown(item) {
         linha('Nacionalidade', item.nacionalidade),
         linha('Nascimento', nasc !== '—' ? nasc : ''),
         linha('Óbito', obito !== '—' ? obito : ''),
-        linha(
-            'Idade',
-            d.idade != null ? `${d.idade_aproximada ? '≈ ' : ''}${d.idade} anos` : '',
-        ),
+        linha('Idade', d.idade != null ? `${d.idade_aproximada ? '≈ ' : ''}${d.idade} anos` : ''),
         linha('Signo', d.signo),
-        linha(
-            'Domínio público',
-            d.dominio_publico_desde ? `desde ${d.dominio_publico_desde}` : '',
-        ),
+        linha('Domínio público', d.dominio_publico_desde ? `desde ${d.dominio_publico_desde}` : ''),
         linha('Sexo', item.sexo),
         linha('Cor/Raça', item.corRaca),
         linha('Gênero', item.genero),
@@ -126,12 +141,27 @@ export function autorParaMarkdown(item) {
         linha('Deficiências', listaTexto(listaComTipo(item.deficiencias))),
         linha('Classe social', item.classeSocial),
         linha('Grau acadêmico', item.grauAcademico),
-        linha('Instituições', listaComTipo(item.instituicoes).map((i) => i.nome).join(', ')),
-        linha('Ocupações', listaComTipo(item.ocupacoes).map((i) => i.nome).join(', ')),
         linha(
-            'Aparece em',
-            `${d.total_poemas || 0} poema(s) e ${d.total_prosas || 0} prosa(s)`,
+            'Instituições',
+            listaComTipo(item.instituicoes)
+                .map((i) => i.nome)
+                .join(', '),
         ),
+        linha(
+            'Ocupações',
+            listaComTipo(item.ocupacoes)
+                .map((i) => i.nome)
+                .join(', '),
+        ),
+        linha(
+            'Movimento/Escola',
+            nomesMovimentosEscolas(item.movimentosEscolasIds, db.movimentosEscolas).join(', '),
+        ),
+        linha('Prêmios', listaTextoComAno(listaComAno(item.premios))),
+        linha('Obras principais', listaTextoComAno(listaComAno(item.obras))),
+        linha('Círculo literário', listaSimples(item.circulo).join(', ')),
+        linha('Línguas de escrita', listaSimples(item.linguasEscrita).join(', ')),
+        linha('Aparece em', `${d.total_poemas || 0} poema(s) e ${d.total_prosas || 0} prosa(s)`),
     ].filter(Boolean);
 
     let md = `## ${item.nome}${item.souEu ? ' (você)' : ''}\n\n${linhas.join('\n')}\n`;
@@ -181,6 +211,9 @@ export function exportarAutoresMarkdown(ids) {
 
 const itemComTipo = (i) => (i.tipo ? `${i.nome} (${i.tipo})` : i.nome);
 const listaCsv = (valor) => juntar(listaComTipo(valor).map(itemComTipo));
+const itemComAno = (i) => (i.ano ? `${i.nome} (${i.ano})` : i.nome);
+const listaComAnoCsv = (valor) => juntar(listaComAno(valor).map(itemComAno));
+const listaSimplesCsv = (valor) => juntar(listaSimples(valor));
 
 export const COLUNAS_AUTOR = [
     coluna('id', ['id'], (a) => a.id),
@@ -204,6 +237,13 @@ export const COLUNAS_AUTOR = [
     coluna('grau_academico', ['grauAcademico'], (a) => a.grauAcademico),
     coluna('instituicoes', ['instituicoes'], (a) => listaCsv(a.instituicoes)),
     coluna('ocupacoes', ['ocupacoes'], (a) => listaCsv(a.ocupacoes)),
+    coluna('movimentos_escolas', ['movimentosEscolasIds'], (a, ctx) =>
+        juntar(nomesMovimentosEscolas(a.movimentosEscolasIds, ctx.banco.movimentosEscolas)),
+    ),
+    coluna('premios', ['premios'], (a) => listaComAnoCsv(a.premios)),
+    coluna('obras', ['obras'], (a) => listaComAnoCsv(a.obras)),
+    coluna('circulo', ['circulo'], (a) => listaSimplesCsv(a.circulo)),
+    coluna('linguas_escrita', ['linguasEscrita'], (a) => listaSimplesCsv(a.linguasEscrita)),
     coluna('sobre', ['sobre'], (a) => a.sobre),
     coluna('idade', [], (a) => a.derivados?.idade ?? ''),
     coluna('idade_aproximada', [], (a) => a.derivados?.idade_aproximada ?? ''),
@@ -215,8 +255,8 @@ export const COLUNAS_AUTOR = [
 ];
 
 // itens: saída de `itensDaSelecaoAutores` (cadastro + `derivados`).
-export function gerarCsvAutores(itens) {
-    return gerarCsv(COLUNAS_AUTOR, itens);
+export function gerarCsvAutores(itens, banco = db) {
+    return gerarCsv(COLUNAS_AUTOR, itens, () => ({ banco }));
 }
 
 export function exportarAutoresCsv(ids) {

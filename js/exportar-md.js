@@ -28,6 +28,8 @@ import {
     linhasFonteTexto,
     corpoParaLinhasRicas,
     formatarAutoclassificacaoTexto,
+    nomePeriodoHistorico,
+    nomesMovimentosEscolas,
 } from './utils.js';
 import { db } from './db.js';
 import { blocosExtrasMarkdown } from './download-abrangente.js';
@@ -247,6 +249,7 @@ function verificacoesDeCampos(item) {
         !!item.dataEscrita,
         !!item.dataPublicacao,
         !!item.epocaRetratada,
+        Array.isArray(item.movimentosEscolasIds) && item.movimentosEscolasIds.length > 0,
         !!textoPessoas(item),
         !!textoGrupos(item),
         !!sinalizacoesCombinadas(item),
@@ -324,14 +327,38 @@ export function textoPessoas(item) {
 // obterGruposDiretos em editor.js): o texto se refere ao grupo em geral,
 // sem citar ninguém dele em particular, então aparece só pelo nome, sem
 // parêntese de pessoa.
+//
+// Desambiguação por Autor (decisão B, 27/09/2026 — mesmo critério de
+// badgesGrupos em celulas-tabela.js): ", Autor" só entra quando, dentro
+// deste item, dois Grupos citados têm o mesmo nome mas Autores
+// diferentes (coautoria); no resto do tempo fica só o nome.
 export function textoGrupos(item) {
     const pares = paresGrupoPessoa(item, db.pessoas, db.grupos);
-    const viaPessoa = agruparParesGrupoPessoa(pares).map(
-        ({ grupo, pessoas }) => `${grupo.nome} (${pessoas.map((p) => p.nome).join(', ')})`,
-    );
-    const diretos = (item.gruposDiretos || [])
-        .map((id) => db.grupos.find((g) => g.id == id)?.nome)
+    const gruposViaPessoa = agruparParesGrupoPessoa(pares);
+    const gruposDiretos = (item.gruposDiretos || [])
+        .map((id) => db.grupos.find((g) => g.id == id))
         .filter(Boolean);
+
+    const autorIdsPorNome = new Map();
+    for (const g of [...gruposViaPessoa.map((p) => p.grupo), ...gruposDiretos]) {
+        if (!autorIdsPorNome.has(g.nome)) autorIdsPorNome.set(g.nome, new Set());
+        autorIdsPorNome.get(g.nome).add(g.autorId);
+    }
+    const nomesColidindo = new Set(
+        [...autorIdsPorNome.entries()]
+            .filter(([, autorIds]) => autorIds.size > 1)
+            .map(([nome]) => nome),
+    );
+    const rotuloGrupo = (grupo) => {
+        if (!nomesColidindo.has(grupo.nome)) return grupo.nome;
+        const nomeAutor = db.autores.find((a) => a.id == grupo.autorId)?.nome || '(autor)';
+        return `${grupo.nome}, ${nomeAutor}`;
+    };
+
+    const viaPessoa = gruposViaPessoa.map(
+        ({ grupo, pessoas }) => `${rotuloGrupo(grupo)} (${pessoas.map((p) => p.nome).join(', ')})`,
+    );
+    const diretos = gruposDiretos.map((grupo) => rotuloGrupo(grupo));
     const todos = [...viaPessoa, ...diretos];
     return todos.length ? todos.join(', ') : null;
 }
@@ -406,6 +433,18 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
     }
     if (item.epocaRetratada) {
         md += linhaMeta('Época retratada', formatarEpocaRetratada(item.epocaRetratada, db.epocas));
+    }
+    if (item.periodoHistoricoId) {
+        md += linhaMeta(
+            'Período Histórico Retratado',
+            nomePeriodoHistorico(item.periodoHistoricoId, db.periodosHistoricos),
+        );
+    }
+    if (item.movimentosEscolasIds?.length) {
+        md += linhaMeta(
+            'Movimento/Escola',
+            nomesMovimentosEscolas(item.movimentosEscolasIds, db.movimentosEscolas).join(', '),
+        );
     }
     md += linhaMeta('Pessoas', textoPessoas(item));
     md += linhaMeta('Grupos', textoGrupos(item));

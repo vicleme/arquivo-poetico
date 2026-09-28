@@ -1,0 +1,256 @@
+{
+  "export_format": "biblioteca",
+  "pacote": {
+    "id": "mario-de-andrade",
+    "titulo": "Mário de Andrade (seleção)",
+    "descricao": "Três poemas de Paulicéia Desvairada (1922).",
+    "fonte": "Wikisource",
+    "edicao": "Paulicéia Desvairada, 1922",
+    "link": "",
+    "ortografia": "",
+    "conferido": false
+  },
+  "autores": [
+    {
+      "id": 1,
+      "sobre": "",
+      "nome": "Mário de Andrade",
+      "nacionalidade": "Brasileira",
+      "nascimento": {
+        "dia": 9,
+        "mes": 10,
+        "ano": 1893
+      },
+      "obito": {
+        "dia": 25,
+        "mes": 2,
+        "ano": 1945
+      },
+      "sexo": "Masculino"
+    }
+  ],
+  "itens": [
+    {
+      "id": 1,
+      "tipo": "poema",
+      "titulo": "Ode ao Burguês",
+      "texto": "Eu insulto o burguês! O burguês-níquel,\no burguês-burguês!\nA digestão bem-feita de São Paulo!\nO homem-curva! O homem-nádegas!\nO homem que sendo francês, brasileiro, italiano,\né sempre um cauteloso pouco-a-pouco!\n\nEu insulto as aristocracias cautelosas!\nOs barões lampiões! os condes Joões! os duques zurros!\nque vivem dentro de muros sem pulos;\ne gemem sangues de alguns mil-réis fracos\npara dizerem que as filhas da senhora falam o francês\ne tocam os Printemps com as unhas!\n\nEu insulto o burguês-funesto!\nO indigesto feijão com toucinho, dono das tradições!\nFora os que algarismam os amanhãs!\nOlha a vida dos nossos setembros!\nFará Sol? Choverá? Arlequinal!\nMas à chuva dos rosais\no êxtase fará sempre Sol!\n\nMorte à gordura!\nMorte às adiposidades cerebrais!\nMorte ao burguês-mensal!\nao burguês-cinema! ao burguês-tílburi!\nPadaria Suissa! Morte viva ao Adriano!\n\"– Ai, filha, que te darei pelos teus anos?\n– Um colar... – Conto e quinhentos!!!\nMas nós morremos de fome!\"\n\nCome! Come-te a ti mesmo, oh gelatina pasma!\nOh! purée de batatas morais!\nOh! cabelos nas ventas! oh! carecas!\nÓdio aos temperamentos regulares!\nÓdio aos relógios musculares! Morte à infâmia!\nÓdio à soma! Ódio aos secos e molhados!\nÓdio aos sem desfalecimentos nem arrependimentos,\nsempiternamente as mesmices convencionais!\nDe mãos nas costas! Marco eu o compasso! Eia!\nDois a dois! Primeira posição! Marcha!\nTodos para a Central do meu rancor inebriante\nÓdio e insulto! Ódio e raiva! Ódio e mais ódio!\nMorte ao burguês de giolhos,\ncheirando religião e que não crê em Deus!\nÓdio vermelho! Ódio fecundo! Ódio cíclico!\nÓdio fundamento, sem perdão!\n\nFora! Fu! Fora o bom burguês!...\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "pt-BR",
+      "dataEscrita": null,
+      "dataPublicacao": {
+        "ano": 1922
+      },
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Mário de Andrade"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Horizonte (UNAM)",
+        "edicao": "Paulicéia Desvairada, 1922",
+        "link": "http://www.horizonte.unam.mx/brasil/mario4.html",
+        "conferido": false,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 2,
+      "tipo": "poema",
+      "titulo": "Inspiração",
+      "texto": "«Onde até na fôrça do verão havia\ntempestades de ventos e frios de\ncrudelíssimo inverno»\nFR. LUIS DE SOUSA\n\nSão Paulo! comoção de minha vida...\nOs meus amores são flores feitas de original...\nArlequinal!... Traje de losangos... Cinza e ouro...\nLuz e bruma... Forno e inverno morno...\nElegâncias sutis sem escândalos, sem ciúmes...\nPerfumes de Paris... Arys!\nBofetadas líricas no Trianon... Algodoal!...\n\nSão Paulo! comoção de minha vida...\nGalicismo a berrar nos desertos da América!\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "pt-BR",
+      "dataEscrita": null,
+      "dataPublicacao": {
+        "ano": 1922
+      },
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Mário de Andrade"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Wikisource",
+        "edicao": "Paulicéia Desvairada, 1922",
+        "link": "https://pt.wikisource.org/wiki/Paulicea_Desvairada/Inspira%C3%A7%C3%A3o",
+        "conferido": false,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    },
+    {
+      "id": 3,
+      "tipo": "poema",
+      "titulo": "Colloque Sentimental",
+      "texto": "Tenho os pés chegados nos espinhos das calçadas…\n\nHigienópolis! … As Babilônias dos meus desejos baixos…\n\nCasas nobres de estilo… Enriqueceres em tragédias…\n\nMas a noite é toda um véu-de-noiva ao luar!\n\nA preamar dos brilhos das mansões…\n\no jazz-band da cor… O arco-íris dos perfumes…\n\nO clamor dos cofres abarrotados de vidas…\n\nOmbros nus, ombros nus, lábios pesados de adultério…\n\nE o rouge – cogumelo das podridões…\n\nExércitos de casacas eruditamente bem talhadas…\n\nSem crimes, sem roubos o carnaval dos títulos…\n\nSi não fosse o talco adeus sacos de farinha!\n\nImpiedosamente…\n\n-Cavalheiro… -Sou conde! -Perdão.\n\nSabe que existe um Brás, um Bom Retiro?\n\n-Apre, respiro… Pensei que era pedido.\n\nSó conheço Paris!\n\n-Venha comigo então.\n\nEsqueça um pouco os braços da vizinha…\n\n-Percebeu, hein! Dou-lhe gorjeta e cale-se.\n\nO sultão tem dez mil… Mas eu sou conde!\n\n-Vê? Estas paragens trevas de silêncio…\n\nNada de asas, nada de alegria… A Lua…\n\nA rua toda nua… As casas sem luzes…\n\nE a mirra dos martírios inconscientes…\n\n-Deixe-me pôr o lenço no nariz.\n\nTenho todos os perfumes de Paris!\n\n-Mas olhe, embaixo das portas, a escorrer…\n\n-Para os esgotos! Para os esgotos!\n\n-… a escorrer,\n\nUm fio de lágrimas sem nome!…\n",
+      "paiTipo": null,
+      "paiId": null,
+      "sequencia": null,
+      "idioma": "pt-BR",
+      "dataEscrita": null,
+      "dataPublicacao": {
+        "ano": 1922
+      },
+      "ano": "",
+      "livrosIds": [],
+      "livrosResolvidos": [],
+      "conceitos": {
+        "elos": [],
+        "ecos": []
+      },
+      "notas": "",
+      "sinalizacoesTradicao": "",
+      "sinalizacoesEstilo": "",
+      "sinalizacoesTema": "",
+      "sinalizacoesRelacao": "",
+      "sinalizacoesSensibilidade": "",
+      "sinalizacoesTom": "",
+      "sinalizacoesDominioImagetico": "",
+      "sinalizacoesOutros": "",
+      "pessoas": [],
+      "gruposDiretos": [],
+      "gruposDiretosResolvidos": [],
+      "autoria": [
+        {
+          "autorId": 1,
+          "papel": "Autor",
+          "nome": "Mário de Andrade"
+        }
+      ],
+      "envios": [],
+      "reconhecimentos": [],
+      "autoavaliacao": "",
+      "autoclassificacao": 0,
+      "status": "publicado",
+      "epocaRetratada": null,
+      "intertextualidade": [],
+      "hipertextualidade": [],
+      "referenciasExternas": [],
+      "anexos": [],
+      "anexosNotaGeral": "",
+      "anotacoesMarginais": [],
+      "descricaoVisual": "",
+      "contextoHistorico": "",
+      "ocultacao": "",
+      "conteudoSensivel": "",
+      "vocabularioHiperacionante": "",
+      "cortadoDe": null,
+      "lancadoEm": null,
+      "justificativaMigracao": "",
+      "descarte": "",
+      "pendencia": "",
+      "fonteTexto": {
+        "origem": "Universidade Livre do Alvito",
+        "edicao": "Paulicéia Desvairada, 1922",
+        "link": "https://universidadelivredoalvito.xyz/poema-de-hoje-colloque-sentimental-mario-de-andrade/",
+        "conferido": false,
+        "grafia": ""
+      },
+      "contexto": {
+        "livro": null,
+        "parte": null,
+        "secao": null
+      }
+    }
+  ]
+}

@@ -8,6 +8,8 @@ import {
     obterOuCriarPessoaPorNome,
     obterOuCriarAutorPorNome,
     obterOuCriarGrupoPorNome,
+    obterOuCriarMovimentoEscolaPorNome,
+    nivelGrupo,
 } from './db.js';
 import {
     extrairSinalizacoesUnicas,
@@ -46,6 +48,8 @@ import {
     formatarDataParcial,
     renderCoracoesHtml,
     formatarAutoclassificacaoTexto,
+    IDIOMAS_SUGERIDOS,
+    extrairCirculosLiterariosUnicos,
 } from './utils.js';
 
 // ─── Estado local ─────────────────────────────────────────────
@@ -258,6 +262,232 @@ function criarGrupoDeTags({
     }
 
     return { adicionar, remover, editar, renderizar, reset, carregar };
+}
+
+// Mesma fábrica que criarGrupoDeTags acima, mas pro caso em que o campo
+// já é array de verdade no registro (não string separada por vírgula) —
+// caso dos 6 campos de tags do cadastro central de Movimento/Escola
+// (Valores/Temas/Técnicas/Tipos de Composição/Lemas/Manifestos, ver
+// SEED_MOVIMENTOS_ESCOLAS em db.js). O hidden input carrega
+// JSON.stringify(itens) em vez de itens.join(', ') — forms.js faz
+// JSON.parse no submit.
+function criarGrupoDeTagsArray({
+    inputId,
+    containerId,
+    hiddenInputId,
+    corClasse,
+    nomeFuncaoRemover,
+    nomeFuncaoEditar,
+}) {
+    let itens = [];
+
+    function adicionar(valor = null) {
+        const input = document.getElementById(inputId);
+        const item = (valor ?? input?.value ?? '').trim();
+        if (item && !itens.includes(item)) {
+            itens.push(item);
+            renderizar();
+        }
+        if (input) input.value = '';
+    }
+
+    function remover(item) {
+        itens = itens.filter((i) => i !== item);
+        renderizar();
+    }
+
+    function editar(item) {
+        const input = document.getElementById(inputId);
+        remover(item);
+        if (input) {
+            input.value = item;
+            input.focus();
+        }
+    }
+
+    function renderizar() {
+        const container = document.getElementById(containerId);
+        const inputOculto = document.getElementById(hiddenInputId);
+        if (!container) return;
+        container.innerHTML = itens
+            .map(
+                (i) => `
+            <span class="${corClasse} text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1">
+                ${escapeHtml(i)}
+                <button type="button" data-valor="${escapeHtml(i)}" onclick="${nomeFuncaoEditar}(this.dataset.valor)" class="hover:text-blue-200 ml-1" title="Editar">✎</button>
+                <button type="button" data-valor="${escapeHtml(i)}" onclick="${nomeFuncaoRemover}(this.dataset.valor)" class="hover:text-red-200 font-bold ml-1" title="Remover">×</button>
+            </span>`,
+            )
+            .join('');
+        if (inputOculto) inputOculto.value = JSON.stringify(itens);
+    }
+
+    function reset() {
+        itens = [];
+        renderizar();
+    }
+
+    function carregar(arr) {
+        itens = Array.isArray(arr) ? [...arr] : [];
+        renderizar();
+    }
+
+    return { adicionar, remover, editar, renderizar, reset, carregar };
+}
+
+// As 6 instâncias, uma por campo de tags do modal-movimento-escola.html
+// — mesmo raciocínio de grupoCirculoLiterarioAutor/grupoLinguasEscritaAutor
+// (estado isolado por campo, sem nenhuma referência a outro cadastro).
+const grupoValoresMovimento = criarGrupoDeTagsArray({
+    inputId: 'me-valor-input',
+    containerId: 'me-valores-container',
+    hiddenInputId: 'me-valores',
+    corClasse: 'bg-purple-700',
+    nomeFuncaoRemover: 'removerValorMovimento',
+    nomeFuncaoEditar: 'editarValorMovimento',
+});
+export function adicionarValorMovimento(v) {
+    grupoValoresMovimento.adicionar(v);
+}
+export function removerValorMovimento(v) {
+    grupoValoresMovimento.remover(v);
+}
+export function editarValorMovimento(v) {
+    grupoValoresMovimento.editar(v);
+}
+export function resetValoresMovimento() {
+    grupoValoresMovimento.reset();
+}
+export function carregarValoresMovimento(v) {
+    grupoValoresMovimento.carregar(v);
+}
+
+const grupoTemasMovimento = criarGrupoDeTagsArray({
+    inputId: 'me-tema-input',
+    containerId: 'me-temas-container',
+    hiddenInputId: 'me-temas',
+    corClasse: 'bg-sky-700',
+    nomeFuncaoRemover: 'removerTemaMovimento',
+    nomeFuncaoEditar: 'editarTemaMovimento',
+});
+export function adicionarTemaMovimento(v) {
+    grupoTemasMovimento.adicionar(v);
+}
+export function removerTemaMovimento(v) {
+    grupoTemasMovimento.remover(v);
+}
+export function editarTemaMovimento(v) {
+    grupoTemasMovimento.editar(v);
+}
+export function resetTemasMovimento() {
+    grupoTemasMovimento.reset();
+}
+export function carregarTemasMovimento(v) {
+    grupoTemasMovimento.carregar(v);
+}
+
+const grupoTecnicasMovimento = criarGrupoDeTagsArray({
+    inputId: 'me-tecnica-input',
+    containerId: 'me-tecnicas-container',
+    hiddenInputId: 'me-tecnicas',
+    corClasse: 'bg-emerald-700',
+    nomeFuncaoRemover: 'removerTecnicaMovimento',
+    nomeFuncaoEditar: 'editarTecnicaMovimento',
+});
+export function adicionarTecnicaMovimento(v) {
+    grupoTecnicasMovimento.adicionar(v);
+}
+export function removerTecnicaMovimento(v) {
+    grupoTecnicasMovimento.remover(v);
+}
+export function editarTecnicaMovimento(v) {
+    grupoTecnicasMovimento.editar(v);
+}
+export function resetTecnicasMovimento() {
+    grupoTecnicasMovimento.reset();
+}
+export function carregarTecnicasMovimento(v) {
+    grupoTecnicasMovimento.carregar(v);
+}
+
+const grupoTiposComposicaoMovimento = criarGrupoDeTagsArray({
+    inputId: 'me-tipo-composicao-input',
+    containerId: 'me-tipos-composicao-container',
+    hiddenInputId: 'me-tipos-composicao',
+    corClasse: 'bg-orange-700',
+    nomeFuncaoRemover: 'removerTipoComposicaoMovimento',
+    nomeFuncaoEditar: 'editarTipoComposicaoMovimento',
+});
+export function adicionarTipoComposicaoMovimento(v) {
+    grupoTiposComposicaoMovimento.adicionar(v);
+}
+export function removerTipoComposicaoMovimento(v) {
+    grupoTiposComposicaoMovimento.remover(v);
+}
+export function editarTipoComposicaoMovimento(v) {
+    grupoTiposComposicaoMovimento.editar(v);
+}
+export function resetTiposComposicaoMovimento() {
+    grupoTiposComposicaoMovimento.reset();
+}
+export function carregarTiposComposicaoMovimento(v) {
+    grupoTiposComposicaoMovimento.carregar(v);
+}
+
+const grupoLemasMovimento = criarGrupoDeTagsArray({
+    inputId: 'me-lema-input',
+    containerId: 'me-lemas-container',
+    hiddenInputId: 'me-lemas',
+    corClasse: 'bg-rose-700',
+    nomeFuncaoRemover: 'removerLemaMovimento',
+    nomeFuncaoEditar: 'editarLemaMovimento',
+});
+export function adicionarLemaMovimento(v) {
+    grupoLemasMovimento.adicionar(v);
+}
+export function removerLemaMovimento(v) {
+    grupoLemasMovimento.remover(v);
+}
+export function editarLemaMovimento(v) {
+    grupoLemasMovimento.editar(v);
+}
+export function resetLemasMovimento() {
+    grupoLemasMovimento.reset();
+}
+export function carregarLemasMovimento(v) {
+    grupoLemasMovimento.carregar(v);
+}
+
+const grupoManifestosMovimento = criarGrupoDeTagsArray({
+    inputId: 'me-manifesto-input',
+    containerId: 'me-manifestos-container',
+    hiddenInputId: 'me-manifestos',
+    corClasse: 'bg-slate-600',
+    nomeFuncaoRemover: 'removerManifestoMovimento',
+    nomeFuncaoEditar: 'editarManifestoMovimento',
+});
+export function adicionarManifestoMovimento(v) {
+    grupoManifestosMovimento.adicionar(v);
+}
+export function removerManifestoMovimento(v) {
+    grupoManifestosMovimento.remover(v);
+}
+export function editarManifestoMovimento(v) {
+    grupoManifestosMovimento.editar(v);
+}
+export function resetManifestosMovimento() {
+    grupoManifestosMovimento.reset();
+}
+export function carregarManifestosMovimento(v) {
+    grupoManifestosMovimento.carregar(v);
+}
+export function resetTodosOsGruposDeMovimento() {
+    resetValoresMovimento();
+    resetTemasMovimento();
+    resetTecnicasMovimento();
+    resetTiposComposicaoMovimento();
+    resetLemasMovimento();
+    resetManifestosMovimento();
 }
 
 // Sinalizações viraram 5 grupos (Estilo/Tema/Relação/Sensibilidade/Tom)
@@ -564,7 +794,9 @@ function criarGrupoDeTagsComTipo({
         if (!container) return;
 
         const opcoesTipo = (i) =>
-            tipos.map((t) => `<option value="${t}" ${i.tipo === t ? 'selected' : ''}>${t}</option>`).join('');
+            tipos
+                .map((t) => `<option value="${t}" ${i.tipo === t ? 'selected' : ''}>${t}</option>`)
+                .join('');
 
         container.innerHTML = itens
             .map(
@@ -805,6 +1037,10 @@ function criarGrupoDePessoas({
     // "Grupos" das tabelas — ver badgesGrupos em render-listas.js — e na
     // exportação em Markdown — ver exportar-md.js). Some quando ninguém
     // selecionado está em grupo nenhum, pra não sobrar um rótulo vazio.
+    // Desambiguação por Autor (decisão B, 27/09/2026, mesmo critério de
+    // badgesGrupos/textoGrupos): "— Autor" só entra se, entre as pessoas
+    // selecionadas, dois Grupos com o mesmo nome vierem de Autores
+    // diferentes.
     function renderPainelGrupos() {
         if (!infoGruposId) return;
         const painel = document.getElementById(infoGruposId);
@@ -814,11 +1050,24 @@ function criarGrupoDePessoas({
             painel.innerHTML = '';
             return;
         }
-        const badges = agruparParesGrupoPessoa(pares)
-            .map(
-                ({ grupo, pessoas }) =>
-                    `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)} <span class="opacity-70">(${pessoas.map((p) => escapeHtml(p.nome)).join(', ')})</span></span>`,
-            )
+        const agrupados = agruparParesGrupoPessoa(pares);
+        const autorIdsPorNome = new Map();
+        for (const { grupo } of agrupados) {
+            if (!autorIdsPorNome.has(grupo.nome)) autorIdsPorNome.set(grupo.nome, new Set());
+            autorIdsPorNome.get(grupo.nome).add(grupo.autorId);
+        }
+        const nomesColidindo = new Set(
+            [...autorIdsPorNome.entries()]
+                .filter(([, autorIds]) => autorIds.size > 1)
+                .map(([nome]) => nome),
+        );
+        const badges = agrupados
+            .map(({ grupo, pessoas }) => {
+                const rotulo = nomesColidindo.has(grupo.nome)
+                    ? `${escapeHtml(grupo.nome)} — ${escapeHtml(db.autores.find((a) => a.id == grupo.autorId)?.nome || '(autor)')}`
+                    : escapeHtml(grupo.nome);
+                return `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${rotulo} <span class="opacity-70">(${pessoas.map((p) => escapeHtml(p.nome)).join(', ')})</span></span>`;
+            })
             .join('');
         painel.innerHTML = `<span class="mr-1">Grupos:</span>${badges}`;
     }
@@ -934,11 +1183,124 @@ function criarGrupoDePessoas({
 // com Grupo já cadastrado reaproveita o id direto; nome sem
 // correspondência pede confirmação antes de criar (mesmo padrão de
 // Pessoa, ver obterOuCriarGrupoPorNome em db.js).
-function criarGrupoDeGruposDiretos({ tabela, inputId, containerId, nomeFuncaoRemover }) {
+function criarGrupoDeGruposDiretos({
+    tabela,
+    inputId,
+    containerId,
+    sugestoesId,
+    nomeFuncaoRemover,
+    nomeFuncaoSelecionar,
+}) {
     let itens = []; // array de grupoId
+    let sugestoesAbertas = false;
 
     function grupoDe(grupoId) {
         return db.grupos.find((g) => g.id == grupoId);
+    }
+
+    // Dropdown próprio (não mais <input list="..."> nativo) — pedido do
+    // Victor, 27/09/2026: "o select nos modais [de Poema/Prosa e Pessoa]
+    // devia separar os níveis dos grupos". Um <datalist> nativo não dá
+    // pra estilizar (sem indentação/cabeçalho por Autor, e dois grupos
+    // "Família" de Autores diferentes apareceriam idênticos na sugestão),
+    // então vira o mesmo padrão já usado em ps-grupos-container (ui.js) e
+    // seletorGrupos (estatisticas-tela-temas-pessoas.js): cabeçalho por
+    // Autor (só quando há mais de um candidato) + "↳" pro nível > 1, com
+    // o pai imediato entre parênteses pra não perder contexto quando o
+    // filtro digitado esconde o pai da lista. Fecha ao clicar fora, mesmo
+    // mecanismo (composedPath) do dropdown de papel em
+    // criarGrupoDePessoas acima.
+    function candidatosPorAutoria() {
+        const autorIdsAtuais = obterAutoria(tabela).map((a) => a.autorId);
+        const base = autorIdsAtuais.length
+            ? db.grupos.filter((g) => autorIdsAtuais.includes(g.autorId))
+            : db.grupos;
+        return base.filter((g) => !itens.includes(g.id));
+    }
+
+    function abrirSugestoes() {
+        sugestoesAbertas = true;
+        renderSugestoes();
+    }
+
+    function fecharSugestoes() {
+        if (!sugestoesAbertas) return;
+        sugestoesAbertas = false;
+        renderSugestoes();
+    }
+
+    function renderSugestoes() {
+        const el = sugestoesId ? document.getElementById(sugestoesId) : null;
+        if (!el) return;
+        // A borda/sombra do painel vivem na própria <div> (classe fixa no
+        // HTML, não recriada aqui a cada render) — por isso alterna
+        // "hidden" em vez de só zerar o innerHTML, senão uma caixinha
+        // vazia (com borda/sombra) ficaria visível flutuando sob o input
+        // mesmo fechado, sobrevivendo entre aberturas.
+        el.classList.toggle('hidden', !sugestoesAbertas);
+        if (!sugestoesAbertas) {
+            el.innerHTML = '';
+            return;
+        }
+        const input = document.getElementById(inputId);
+        const filtro = (input?.value || '').trim().toLocaleLowerCase('pt-BR');
+        const candidatos = candidatosPorAutoria();
+        const visiveis = filtro
+            ? candidatos.filter((g) => g.nome.toLocaleLowerCase('pt-BR').includes(filtro))
+            : candidatos;
+        if (!visiveis.length) {
+            el.innerHTML = `<p class="px-2 py-1.5 text-[11px] text-gray-400 dark:text-slate-500 whitespace-nowrap">Nenhum grupo encontrado${filtro ? '' : ''} — digite e clique em "+" pra criar um novo.</p>`;
+            return;
+        }
+        const autoresComGrupo = [...new Set(visiveis.map((g) => g.autorId))]
+            .map((id) => db.autores?.find((a) => a.id == id))
+            .filter(Boolean)
+            .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        const opcao = (g) => {
+            const nivel = nivelGrupo(db, g.id);
+            const pai = g.paiId != null ? db.grupos.find((x) => x.id == g.paiId) : null;
+            const contexto = pai
+                ? ` <span class="opacity-60">(dentro de ${escapeHtml(pai.nome)})</span>`
+                : '';
+            const seta = nivel > 1 ? '↳ ' : '';
+            return `<button type="button" data-id="${g.id}" onclick="${nomeFuncaoSelecionar}('${tabela}', ${g.id})" class="block w-full text-left px-2 py-1 text-xs text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer whitespace-nowrap">${seta}${escapeHtml(g.nome)}${contexto}</button>`;
+        };
+        el.innerHTML = autoresComGrupo
+            .map((autor) => {
+                const doAutor = visiveis
+                    .filter((g) => g.autorId == autor.id)
+                    .sort(
+                        (a, b) =>
+                            nivelGrupo(db, a.id) - nivelGrupo(db, b.id) ||
+                            a.nome.localeCompare(b.nome, 'pt-BR'),
+                    );
+                const cabecalho =
+                    autoresComGrupo.length > 1
+                        ? `<h5 class="px-2 pt-1.5 text-[10px] font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide">${escapeHtml(autor.nome)}</h5>`
+                        : '';
+                return cabecalho + doAutor.map(opcao).join('');
+            })
+            .join('');
+    }
+
+    function selecionarSugestao(grupoId) {
+        adicionarPorId(grupoId);
+        const input = document.getElementById(inputId);
+        if (input) input.value = '';
+        fecharSugestoes();
+        input?.focus();
+    }
+
+    if (sugestoesId) {
+        document.addEventListener('click', (ev) => {
+            if (!sugestoesAbertas) return;
+            const input = document.getElementById(inputId);
+            const painel = document.getElementById(sugestoesId);
+            const dentro =
+                (input && ev.composedPath().includes(input)) ||
+                (painel && ev.composedPath().includes(painel));
+            if (!dentro) fecharSugestoes();
+        });
     }
 
     function adicionarPorId(grupoId) {
@@ -954,20 +1316,45 @@ function criarGrupoDeGruposDiretos({ tabela, inputId, containerId, nomeFuncaoRem
         if (input) input.value = '';
         if (!nome) return;
 
-        const existente = db.grupos.find((g) => g.nome === nome);
+        // Desde 27/09/2026, Grupo pertence a um Autor — dedup/sugestão
+        // aqui escopada pela união dos Autores já adicionados no texto
+        // (mesmo critério do dropdown, ver candidatosPorAutoria acima).
+        // Sem nenhum Autor ainda adicionado no momento (campo
+        // preenchido antes de Autoria), cai num fallback permissivo
+        // (todos os grupos, sem filtro) — mais seguro que travar o
+        // fluxo por causa da ordem em que os campos foram preenchidos.
+        const autorIdsAtuais = obterAutoria(tabela).map((a) => a.autorId);
+        const candidatos = autorIdsAtuais.length
+            ? db.grupos.filter((g) => autorIdsAtuais.includes(g.autorId))
+            : db.grupos;
+
+        const existente = candidatos.find((g) => g.nome === nome);
         if (existente) {
             adicionarPorId(existente.id);
             return;
         }
 
+        // Criar um Grupo novo exige saber de qual Autor ele é — sem
+        // nenhum Autor no texto ainda, não tem como decidir isso.
+        if (autorIdsAtuais.length === 0) {
+            mostrarAviso('Adicione um Autor ao texto antes de criar um Grupo novo.');
+            return;
+        }
+        const autorIdNovoGrupo = autorIdsAtuais[0];
+        const nomeAutor = db.autores.find((a) => a.id == autorIdNovoGrupo)?.nome || '(autor)';
+        const sufixoAutor =
+            autorIdsAtuais.length > 1
+                ? ` — vinculado a "${nomeAutor}" (primeiro autor do texto)`
+                : ` — vinculado a "${nomeAutor}"`;
+
         abrirModalConfirmacao({
             titulo: `Criar grupo "${nome}"?`,
             rotulo: 'Grupo novo',
-            mensagem: `"${nome}" ainda não está no cadastro de Grupos. Criar agora (cor padrão — dá pra trocar depois na aba Grupos)?`,
+            mensagem: `"${nome}" ainda não está no cadastro de Grupos${sufixoAutor}. Criar agora (cor padrão — dá pra trocar depois na aba Grupos)?`,
             textoConfirmar: 'Criar',
             corConfirmar: '#e11d48',
             onConfirmar: () => {
-                const grupo = obterOuCriarGrupoPorNome(nome);
+                const grupo = obterOuCriarGrupoPorNome(nome, autorIdNovoGrupo);
                 adicionarPorId(grupo.id);
             },
         });
@@ -1011,7 +1398,17 @@ function criarGrupoDeGruposDiretos({ tabela, inputId, containerId, nomeFuncaoRem
         return [...itens];
     }
 
-    return { adicionar, remover, renderizar, reset, carregar, obterItens };
+    return {
+        adicionar,
+        remover,
+        renderizar,
+        reset,
+        carregar,
+        obterItens,
+        abrirSugestoes,
+        fecharSugestoes,
+        selecionarSugestao,
+    };
 }
 
 // ─── Fábrica de grupo de Autoria (chip + papel único) ──────────
@@ -1160,14 +1557,17 @@ function criarGrupoDeAutoria({
         container.innerHTML = itens
             .map((i) => {
                 const nome = nomeDe(i.autorId);
-                if (!ASSINATURAS_AUTORIA.includes(i.assinatura)) i.assinatura = ASSINATURAS_AUTORIA[0];
-                const nomesLiterariosDoAutor = db.autores.find((a) => a.id == i.autorId)?.nomesLiterarios || [];
+                if (!ASSINATURAS_AUTORIA.includes(i.assinatura))
+                    i.assinatura = ASSINATURAS_AUTORIA[0];
+                const nomesLiterariosDoAutor =
+                    db.autores.find((a) => a.id == i.autorId)?.nomesLiterarios || [];
                 const nomesDoTipo = nomesLiterariosDoAutor.filter((n) => n.tipo === i.assinatura);
                 // Nome literário escolhido antes, mas removido do cadastro
                 // do Autor (ou recadastrado com outro tipo) depois — volta
                 // a vazio (mesmo critério defensivo de alterarNomeLiterario
                 // acima).
-                if (i.nomeLiterario && !nomesDoTipo.some((n) => n.nome === i.nomeLiterario)) i.nomeLiterario = '';
+                if (i.nomeLiterario && !nomesDoTipo.some((n) => n.nome === i.nomeLiterario))
+                    i.nomeLiterario = '';
                 // Seletor de nome literário só aparece quando a Assinatura
                 // não é Ortônimo — nome próprio não precisa de nome
                 // alternativo nenhum. Sem nome cadastrado pro tipo, mostra
@@ -1216,11 +1616,14 @@ function criarGrupoDeAutoria({
     // automático do formulário, não digitação).
     function carregar(autoria) {
         itens = (Array.isArray(autoria) ? autoria : []).map((a) => {
-            const autorId = a.autorId !== undefined ? a.autorId : obterOuCriarAutorPorNome(a.nome).id;
+            const autorId =
+                a.autorId !== undefined ? a.autorId : obterOuCriarAutorPorNome(a.nome).id;
             return {
                 autorId,
                 papel: a.papel || AUTORIA_PAPEIS[0],
-                assinatura: ASSINATURAS_AUTORIA.includes(a.assinatura) ? a.assinatura : ASSINATURAS_AUTORIA[0],
+                assinatura: ASSINATURAS_AUTORIA.includes(a.assinatura)
+                    ? a.assinatura
+                    : ASSINATURAS_AUTORIA[0],
                 nomeLiterario: a.nomeLiterario || '',
             };
         });
@@ -1276,13 +1679,17 @@ const grupoGruposDiretosPoema = criarGrupoDeGruposDiretos({
     tabela: 'poemas',
     inputId: 'p-grupo-direto-input',
     containerId: 'p-grupos-diretos-container',
+    sugestoesId: 'p-grupo-direto-sugestoes',
     nomeFuncaoRemover: 'removerGrupoDireto',
+    nomeFuncaoSelecionar: 'selecionarGrupoDireto',
 });
 const grupoGruposDiretosProsa = criarGrupoDeGruposDiretos({
     tabela: 'prosas',
     inputId: 'pr-grupo-direto-input',
     containerId: 'pr-grupos-diretos-container',
+    sugestoesId: 'pr-grupo-direto-sugestoes',
     nomeFuncaoRemover: 'removerGrupoDireto',
+    nomeFuncaoSelecionar: 'selecionarGrupoDireto',
 });
 function grupoGruposDiretos(tabela) {
     if (tabela === 'poemas') return grupoGruposDiretosPoema;
@@ -2932,7 +3339,6 @@ export function atualizarDatalist() {
             .join('');
     }
     atualizarDatalistPessoas();
-    atualizarDatalistGrupos();
     atualizarDatalistAutores();
     atualizarDatalistMigracao();
     atualizarDatalistAnotacoes();
@@ -2940,10 +3346,16 @@ export function atualizarDatalist() {
     atualizarDatalistReferenciaExterna('poemas');
     atualizarDatalistHipertextualidade('poemas');
     atualizarDatalistEpoca();
+    atualizarDatalistPeriodoHistorico();
     atualizarDatalistIdioma();
     atualizarDatalistFonte();
     atualizarDatalistEnvios();
     atualizarDatalistReconhecimentos();
+    atualizarDatalistMovimentosEscolas();
+    atualizarDatalistRegiaoOrigemMovimento();
+    atualizarDatalistRegiaoPeriodoHistorico();
+    atualizarDatalistCirculoLiterarioAutor();
+    atualizarDatalistLinguasEscritaAutor();
 }
 
 // Item 3 do plano de schema: Época deixou de ser texto livre varrido de
@@ -2951,10 +3363,38 @@ export function atualizarDatalist() {
 // datalist agora vem de lá (nomes já cadastrados), não mais dos nomes
 // já digitados em poemas. Item 4: mesmo cadastro central vale pra
 // Prosa — um datalist por modal (mesmo padrão de sugestoes-pessoas/
-// sugestoes-pessoas-prosa), preenchidos com a mesma lista.
-export function atualizarDatalistEpoca() {
-    const nomes = [...db.epocas].map((e) => e.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    ['sugestoes-epoca-nome', 'sugestoes-epoca-nome-prosa'].forEach((id) => {
+// sugestoes-pessoas-prosa), preenchidos com a mesma lista. Desde
+// 27/09/2026, Época pertence a um Autor — mesma lógica de escopo por
+// união de Autoria (e mesmo fallback permissivo sem Autor ainda) do
+// dropdown de Grupo (candidatosPorAutoria, ver criarGrupoDeGruposDiretos
+// acima).
+export function atualizarDatalistEpoca(tabela = null) {
+    const tabelas = tabela ? [tabela] : ['poemas', 'prosas'];
+    const idsPorTabela = {
+        poemas: 'sugestoes-epoca-nome',
+        prosas: 'sugestoes-epoca-nome-prosa',
+    };
+    tabelas.forEach((tab) => {
+        const autorIds = obterAutoria(tab).map((a) => a.autorId);
+        const candidatos = autorIds.length
+            ? db.epocas.filter((e) => autorIds.includes(e.autorId))
+            : db.epocas;
+        const nomes = candidatos.map((e) => e.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        const datalist = document.getElementById(idsPorTabela[tab]);
+        if (datalist) {
+            datalist.innerHTML = nomes.map((v) => `<option value="${escapeHtml(v)}">`).join('');
+        }
+    });
+}
+
+// Mesmo padrão de atualizarDatalistEpoca acima, pro cadastro central de
+// Período Histórico (db.periodosHistoricos) — sugestão vem dos nomes já
+// cadastrados, um datalist por modal (Poema/Prosa).
+export function atualizarDatalistPeriodoHistorico() {
+    const nomes = [...db.periodosHistoricos]
+        .map((p) => p.nome)
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    ['sugestoes-periodo-historico-nome', 'sugestoes-periodo-historico-nome-prosa'].forEach((id) => {
         const datalist = document.getElementById(id);
         if (datalist) {
             datalist.innerHTML = nomes.map((v) => `<option value="${escapeHtml(v)}">`).join('');
@@ -3372,23 +3812,34 @@ export function obterPessoas(tabela) {
 
 // ─── Grupos referenciados diretamente (poema) ─────────────────
 
-export function atualizarDatalistGrupos() {
-    const nomes = db.grupos.map((g) => g.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    ['sugestoes-grupos', 'sugestoes-grupos-prosa'].forEach((id) => {
-        const datalist = document.getElementById(id);
-        if (datalist) {
-            datalist.innerHTML = nomes
-                .map((nome) => `<option value="${escapeHtml(nome)}">`)
-                .join('');
-        }
-    });
-}
+// Desde 27/09/2026, Grupo pertence a um Autor — a sugestão passa a ser
+// escopada pela união dos Autores já adicionados no texto (mesmo
+// critério usado em criarGrupoDeGruposDiretos.adicionar acima: sem
+// nenhum Autor ainda, cai num fallback permissivo com todos os grupos).
+// O dropdown próprio (candidatosPorAutoria, dentro da fábrica) recalcula
+// isso a cada abertura, então — ao contrário do antigo <datalist> nativo
+// — não precisa de uma função de refresh chamada de fora a cada mudança
+// de Autoria; ela só ficaria desatualizada se o painel já estivesse
+// aberto no instante exato da mudança, caso raríssimo (Autoria e Grupo
+// direto não são editados ao mesmo tempo pela mesma pessoa).
 
 export function adicionarGrupoDireto(tabela, valor = null) {
     grupoGruposDiretos(tabela).adicionar(valor);
 }
 export function removerGrupoDireto(tabela, grupoId) {
     grupoGruposDiretos(tabela).remover(grupoId);
+}
+// Dropdown próprio de sugestão (ver criarGrupoDeGruposDiretos acima) —
+// abre ao focar/digitar no input, fecha ao clicar fora (tratado dentro
+// da própria fábrica) ou ao escolher uma opção.
+export function abrirSugestoesGrupoDireto(tabela) {
+    grupoGruposDiretos(tabela).abrirSugestoes();
+}
+export function fecharSugestoesGrupoDireto(tabela) {
+    grupoGruposDiretos(tabela).fecharSugestoes();
+}
+export function selecionarGrupoDireto(tabela, grupoId) {
+    grupoGruposDiretos(tabela).selecionarSugestao(grupoId);
 }
 export function resetGruposDiretos(tabela) {
     grupoGruposDiretos(tabela).reset();
@@ -3398,6 +3849,409 @@ export function carregarGruposDiretos(tabela, ids) {
 }
 export function obterGruposDiretos(tabela) {
     return grupoGruposDiretos(tabela).obterItens();
+}
+
+// ─── Movimento/Escola (referência direta — N:N) ─────────────────
+// Mesmo espírito de criarGrupoDeGruposDiretos acima (array de id,
+// autocomplete por nome, cria com confirmação se não existir) —
+// generalizada aqui pra servir aos TRÊS lugares que referenciam
+// db.movimentosEscolas: Poema, Prosa (dentro de "Época e Contexto") e
+// Autor (4º grupo do modal, ver decisoes.md). "tabela" cobre também
+// 'autores', não só 'poemas'/'prosas' como no resto do arquivo.
+function criarGrupoDeMovimentosEscolas({ tabela, inputId, containerId, nomeFuncaoRemover }) {
+    let itens = []; // array de movimentoEscolaId
+
+    function movimentoDe(id) {
+        return db.movimentosEscolas.find((m) => m.id == id);
+    }
+
+    function adicionarPorId(id) {
+        if (!itens.some((i) => i == id)) {
+            itens.push(id);
+            renderizar();
+        }
+    }
+
+    function adicionar(valor = null) {
+        const input = document.getElementById(inputId);
+        const nome = (valor ?? input?.value ?? '').trim();
+        if (input) input.value = '';
+        if (!nome) return;
+
+        const existente = db.movimentosEscolas.find((m) => m.nome === nome);
+        if (existente) {
+            adicionarPorId(existente.id);
+            return;
+        }
+
+        abrirModalConfirmacao({
+            titulo: `Criar Movimento/Escola "${nome}"?`,
+            rotulo: 'Movimento/Escola novo',
+            mensagem: `"${nome}" ainda não está no cadastro de Movimento/Escola. Criar agora (só com o nome — dá pra completar o resto depois na aba Movimento/Escola)?`,
+            textoConfirmar: 'Criar',
+            corConfirmar: '#e11d48',
+            onConfirmar: () => {
+                const movimento = obterOuCriarMovimentoEscolaPorNome(nome);
+                adicionarPorId(movimento.id);
+            },
+        });
+    }
+
+    function remover(id) {
+        itens = itens.filter((i) => i != id);
+        renderizar();
+    }
+
+    function renderizar() {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = itens
+            .map((id) => {
+                const movimento = movimentoDe(id);
+                const nome = movimento?.nome || '(movimento/escola removido)';
+                return `
+            <span class="text-[11px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded-full inline-flex items-center gap-1">
+                ${escapeHtml(nome)}
+                <button type="button" data-id="${escapeHtml(String(id))}" onclick="${nomeFuncaoRemover}('${tabela}', this.dataset.id)" class="hover:text-red-600 dark:hover:text-red-400 font-bold ml-1">×</button>
+            </span>`;
+            })
+            .join('');
+    }
+
+    function reset() {
+        itens = [];
+        renderizar();
+    }
+
+    function carregar(ids) {
+        itens = Array.isArray(ids) ? [...ids] : [];
+        renderizar();
+    }
+
+    function obterItens() {
+        return itens;
+    }
+
+    return { adicionar, remover, renderizar, reset, carregar, obterItens };
+}
+
+const grupoMovimentosEscolasPoema = criarGrupoDeMovimentosEscolas({
+    tabela: 'poemas',
+    inputId: 'p-movimento-escola-input',
+    containerId: 'p-movimentos-escolas-container',
+    nomeFuncaoRemover: 'removerMovimentoEscolaDireto',
+});
+const grupoMovimentosEscolasProsa = criarGrupoDeMovimentosEscolas({
+    tabela: 'prosas',
+    inputId: 'pr-movimento-escola-input',
+    containerId: 'pr-movimentos-escolas-container',
+    nomeFuncaoRemover: 'removerMovimentoEscolaDireto',
+});
+const grupoMovimentosEscolasAutor = criarGrupoDeMovimentosEscolas({
+    tabela: 'autores',
+    inputId: 'au-movimento-escola-input',
+    containerId: 'au-movimentos-escolas-container',
+    nomeFuncaoRemover: 'removerMovimentoEscolaDireto',
+});
+function grupoMovimentosEscolas(tabela) {
+    if (tabela === 'poemas') return grupoMovimentosEscolasPoema;
+    if (tabela === 'prosas') return grupoMovimentosEscolasProsa;
+    if (tabela === 'autores') return grupoMovimentosEscolasAutor;
+    throw new Error(`Tabela desconhecida em grupoMovimentosEscolas: ${tabela}`);
+}
+
+// Sugestão por nome já cadastrado — mesmo padrão do dropdown de Grupo
+// acima (candidatosPorAutoria), só que alimentando os TRÊS modais.
+export function atualizarDatalistMovimentosEscolas() {
+    const nomes = db.movimentosEscolas
+        .map((m) => m.nome)
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    [
+        'sugestoes-movimentos-escolas',
+        'sugestoes-movimentos-escolas-prosa',
+        'sugestoes-movimentos-escolas-autor',
+    ].forEach((id) => {
+        const datalist = document.getElementById(id);
+        if (datalist) {
+            datalist.innerHTML = nomes
+                .map((nome) => `<option value="${escapeHtml(nome)}">`)
+                .join('');
+        }
+    });
+}
+
+// Sugestão de Região de origem — direto de db.movimentosEscolas (o
+// próprio cadastro central), não de Poemas/Prosas (mesmo espírito de
+// extrairInstituicoesUnicas, mas sem precisar de split por vírgula
+// porque regiaoOrigem já é um campo simples de texto por registro).
+export function atualizarDatalistRegiaoOrigemMovimento() {
+    const regioes = [
+        ...new Set(db.movimentosEscolas.map((m) => (m.regiaoOrigem || '').trim()).filter(Boolean)),
+    ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const datalist = document.getElementById('sugestoes-regiao-origem-movimento');
+    if (datalist) {
+        datalist.innerHTML = regioes.map((r) => `<option value="${escapeHtml(r)}">`).join('');
+    }
+}
+
+// Mesmo padrão de atualizarDatalistRegiaoOrigemMovimento acima, pro campo
+// Região do cadastro de Período Histórico — sugestão vem do próprio
+// db.periodosHistoricos.
+export function atualizarDatalistRegiaoPeriodoHistorico() {
+    const regioes = [
+        ...new Set(db.periodosHistoricos.map((p) => (p.regiao || '').trim()).filter(Boolean)),
+    ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const datalist = document.getElementById('sugestoes-regiao-periodo-historico');
+    if (datalist) {
+        datalist.innerHTML = regioes.map((r) => `<option value="${escapeHtml(r)}">`).join('');
+    }
+}
+
+export function adicionarMovimentoEscolaDireto(tabela, valor = null) {
+    grupoMovimentosEscolas(tabela).adicionar(valor);
+}
+export function removerMovimentoEscolaDireto(tabela, id) {
+    grupoMovimentosEscolas(tabela).remover(id);
+}
+export function resetMovimentosEscolasDiretos(tabela) {
+    grupoMovimentosEscolas(tabela).reset();
+}
+export function carregarMovimentosEscolasDiretos(tabela, ids) {
+    grupoMovimentosEscolas(tabela).carregar(ids);
+}
+export function obterMovimentosEscolasDiretos(tabela) {
+    return grupoMovimentosEscolas(tabela).obterItens();
+}
+
+// ─── 4º grupo do Autor: Reconhecimento e formação literária ─────
+// Prêmios/Obras (fábrica nova, chip + ano livre — diferente de
+// criarGrupoDeTagsComTipo, que é chip + <select> de tipo FECHADO);
+// Círculo/Línguas de escrita reaproveitam criarGrupoDeTags (chip
+// simples), mesmo padrão de Ocupações. Ver decisoes.md.
+function criarGrupoDeTagsComAno({
+    inputId,
+    containerId,
+    hiddenInputId,
+    corClasse,
+    nomeFuncaoRemover,
+    nomeFuncaoEditar,
+    nomeFuncaoAlterarAno,
+}) {
+    let itens = []; // [{ nome, ano }], ano opcional
+
+    function adicionar(valor = null) {
+        const input = document.getElementById(inputId);
+        const nome = (valor ?? input?.value ?? '').trim();
+        if (input) input.value = '';
+        if (!nome || itens.some((i) => i.nome === nome)) return;
+        itens.push({ nome, ano: null });
+        renderizar();
+    }
+
+    function remover(nome) {
+        itens = itens.filter((i) => i.nome !== nome);
+        renderizar();
+    }
+
+    function alterarAno(nome, ano) {
+        const item = itens.find((i) => i.nome === nome);
+        if (!item) return;
+        const anoNum = parseInt(ano);
+        item.ano = Number.isFinite(anoNum) ? anoNum : null;
+        renderizar();
+    }
+
+    function editar(nome) {
+        const input = document.getElementById(inputId);
+        remover(nome);
+        if (input) {
+            input.value = nome;
+            input.focus();
+        }
+    }
+
+    function renderizar() {
+        const container = document.getElementById(containerId);
+        const inputOculto = document.getElementById(hiddenInputId);
+        if (!container) return;
+
+        container.innerHTML = itens
+            .map(
+                (i) => `
+            <span class="${corClasse} text-white text-[10px] pl-2 pr-1 py-1 rounded-full inline-flex items-center gap-1">
+                ${escapeHtml(i.nome)}
+                <input type="number" data-nome="${escapeHtml(i.nome)}" value="${i.ano ?? ''}" placeholder="ano"
+                    onchange="${nomeFuncaoAlterarAno}(this.dataset.nome, this.value)"
+                    class="w-14 text-[9px] bg-white/20 rounded px-1 py-0 border-0 text-white placeholder-white/60">
+                <button type="button" data-nome="${escapeHtml(i.nome)}" onclick="${nomeFuncaoEditar}(this.dataset.nome)" class="hover:text-blue-200 ml-1" title="Editar">✎</button>
+                <button type="button" data-nome="${escapeHtml(i.nome)}" onclick="${nomeFuncaoRemover}(this.dataset.nome)" class="hover:text-red-200 font-bold ml-1" title="Remover">×</button>
+            </span>`,
+            )
+            .join('');
+
+        if (inputOculto) inputOculto.value = JSON.stringify(itens);
+    }
+
+    function reset() {
+        itens = [];
+        renderizar();
+    }
+
+    // Aceita array já {nome, ano} e, por defesa, string legada "a, b, c".
+    function carregar(valor) {
+        itens = Array.isArray(valor)
+            ? valor.map((i) =>
+                  typeof i === 'string'
+                      ? { nome: i, ano: null }
+                      : { nome: i.nome, ano: i.ano ?? null },
+              )
+            : [];
+        renderizar();
+    }
+
+    return { adicionar, remover, editar, alterarAno, renderizar, reset, carregar };
+}
+
+const grupoPremiosAutor = criarGrupoDeTagsComAno({
+    inputId: 'au-premio-input',
+    containerId: 'au-premios-container',
+    hiddenInputId: 'au-premios',
+    corClasse: 'bg-amber-600',
+    nomeFuncaoRemover: 'removerPremioAutor',
+    nomeFuncaoEditar: 'editarPremioAutor',
+    nomeFuncaoAlterarAno: 'alterarAnoPremioAutor',
+});
+export function adicionarPremioAutor(valor = null) {
+    grupoPremiosAutor.adicionar(valor);
+}
+export function removerPremioAutor(nome) {
+    grupoPremiosAutor.remover(nome);
+}
+export function editarPremioAutor(nome) {
+    grupoPremiosAutor.editar(nome);
+}
+export function alterarAnoPremioAutor(nome, ano) {
+    grupoPremiosAutor.alterarAno(nome, ano);
+}
+export function resetPremiosAutor() {
+    grupoPremiosAutor.reset();
+}
+export function carregarPremiosAutor(valor) {
+    grupoPremiosAutor.carregar(valor);
+}
+
+const grupoObrasAutor = criarGrupoDeTagsComAno({
+    inputId: 'au-obra-input',
+    containerId: 'au-obras-container',
+    hiddenInputId: 'au-obras',
+    corClasse: 'bg-cyan-700',
+    nomeFuncaoRemover: 'removerObraAutor',
+    nomeFuncaoEditar: 'editarObraAutor',
+    nomeFuncaoAlterarAno: 'alterarAnoObraAutor',
+});
+export function adicionarObraAutor(valor = null) {
+    grupoObrasAutor.adicionar(valor);
+}
+export function removerObraAutor(nome) {
+    grupoObrasAutor.remover(nome);
+}
+export function editarObraAutor(nome) {
+    grupoObrasAutor.editar(nome);
+}
+export function alterarAnoObraAutor(nome, ano) {
+    grupoObrasAutor.alterarAno(nome, ano);
+}
+export function resetObrasAutor() {
+    grupoObrasAutor.reset();
+}
+export function carregarObrasAutor(valor) {
+    grupoObrasAutor.carregar(valor);
+}
+
+const grupoCirculoLiterarioAutor = criarGrupoDeTagsArray({
+    inputId: 'au-circulo-input',
+    containerId: 'au-circulo-container',
+    hiddenInputId: 'au-circulo',
+    corClasse: 'bg-fuchsia-700',
+    nomeFuncaoRemover: 'removerCirculoLiterarioAutor',
+    nomeFuncaoEditar: 'editarCirculoLiterarioAutor',
+});
+export function adicionarCirculoLiterarioAutor(valor = null) {
+    grupoCirculoLiterarioAutor.adicionar(valor);
+}
+export function removerCirculoLiterarioAutor(item) {
+    grupoCirculoLiterarioAutor.remover(item);
+}
+export function editarCirculoLiterarioAutor(item) {
+    grupoCirculoLiterarioAutor.editar(item);
+}
+export function resetCirculoLiterarioAutor() {
+    grupoCirculoLiterarioAutor.reset();
+}
+export function carregarCirculoLiterarioAutor(valor) {
+    grupoCirculoLiterarioAutor.carregar(valor);
+}
+
+// Sugestão por nome já digitado em outros Autores — mesmo padrão de
+// atualizarDatalistIdioma, mas a fonte é extrairCirculosLiterariosUnicos
+// (utils.js) em vez de Poemas/Prosas.
+export function atualizarDatalistCirculoLiterarioAutor() {
+    const valores = extrairCirculosLiterariosUnicos(db.autores);
+    const datalist = document.getElementById('sugestoes-circulo-literario');
+    if (datalist) {
+        datalist.innerHTML = valores.map((v) => `<option value="${escapeHtml(v)}">`).join('');
+    }
+}
+
+// Línguas de escrita — mesma semente IDIOMAS_SUGERIDOS do campo Idioma
+// de Poema/Prosa, mas multi-select (um Autor pode escrever em mais de
+// uma língua) e sem derivar de nenhum texto — datalist populado 1x
+// (semente fixa) por atualizarDatalistLinguasEscritaAutor abaixo.
+const grupoLinguasEscritaAutor = criarGrupoDeTagsArray({
+    inputId: 'au-lingua-input',
+    containerId: 'au-linguas-container',
+    hiddenInputId: 'au-linguas-escrita',
+    corClasse: 'bg-lime-700',
+    nomeFuncaoRemover: 'removerLinguaEscritaAutor',
+    nomeFuncaoEditar: 'editarLinguaEscritaAutor',
+});
+export function adicionarLinguaEscritaAutor(valor = null) {
+    grupoLinguasEscritaAutor.adicionar(valor);
+}
+export function removerLinguaEscritaAutor(item) {
+    grupoLinguasEscritaAutor.remover(item);
+}
+export function editarLinguaEscritaAutor(item) {
+    grupoLinguasEscritaAutor.editar(item);
+}
+export function resetLinguasEscritaAutor() {
+    grupoLinguasEscritaAutor.reset();
+}
+export function carregarLinguasEscritaAutor(valor) {
+    grupoLinguasEscritaAutor.carregar(valor);
+}
+
+// Semente fixa (IDIOMAS_SUGERIDOS), não derivada de Poemas/Prosas — ver
+// comentário acima de grupoLinguasEscritaAutor.
+export function atualizarDatalistLinguasEscritaAutor() {
+    const datalist = document.getElementById('sugestoes-linguas-escrita-autor');
+    if (datalist) {
+        datalist.innerHTML = IDIOMAS_SUGERIDOS.map((v) => `<option value="${escapeHtml(v)}">`).join(
+            '',
+        );
+    }
+}
+
+// O modal de Autor é carregado sob demanda (garantirModal), então o
+// refresh inicial de atualizarDatalist() não alcança os datalists dele.
+// Chamado a cada abertura (Novo Autor e Editar Autor), depois do modal
+// existir; assim um Movimento/Escola criado entre duas aberturas também
+// já aparece nas sugestões. Os de Nacionalidade, Gênero, Orientação,
+// Religião e Instituições vêm de renderDropdowns (ui.js).
+export function atualizarDatalistsAutor() {
+    atualizarDatalistMovimentosEscolas();
+    atualizarDatalistCirculoLiterarioAutor();
+    atualizarDatalistLinguasEscritaAutor();
 }
 
 // Nomes do cadastro central de Autores (db.autores), ordenados —
@@ -3494,6 +4348,9 @@ export function atualizarDatalistProsa() {
     atualizarDatalistIntertexto('prosas');
     atualizarDatalistReferenciaExterna('prosas');
     atualizarDatalistHipertextualidade('prosas');
+    // Movimento/Escola: o modal de Prosa também é carregado sob demanda e
+    // atualizarDatalist() só o alcança se ele já existir (mesmo motivo do Autor).
+    atualizarDatalistMovimentosEscolas();
 }
 
 // Wrappers de Sinalizações (Prosa) unificados acima em

@@ -262,13 +262,13 @@ describe('Modal de Autor: novos campos (Religião, Classe social, Neurodivergên
         ]);
     });
 
-    it('modal tem os 3 grupos colapsáveis, fechados por padrão, com todos os campos dentro do grupo certo', () => {
+    it('modal tem os 4 grupos colapsáveis, fechados por padrão, com todos os campos dentro do grupo certo', () => {
         const grupos = Array.from(
             document.querySelectorAll('#modal-autor details[data-grupo-autor]'),
         );
         assert.deepEqual(
             grupos.map((d) => d.dataset.grupoAutor),
-            ['identidade', 'saude', 'formacao'],
+            ['identidade', 'saude', 'formacao', 'reconhecimento'],
         );
         assert.ok(grupos.every((d) => d.classList.contains('campo-grupo')));
 

@@ -1,0 +1,47 @@
+{
+    "id": "mario-de-andrade",
+    "titulo": "Mário de Andrade (seleção)",
+    "descricao": "Três poemas de Paulicéia Desvairada (1922).",
+    "autor": {
+        "nome": "Mário de Andrade",
+        "nacionalidade": "Brasileira",
+        "nascimento": {
+            "dia": 9,
+            "mes": 10,
+            "ano": 1893
+        },
+        "obito": {
+            "dia": 25,
+            "mes": 2,
+            "ano": 1945
+        },
+        "sexo": "Masculino"
+    },
+    "fonte": "Wikisource",
+    "edicao": "Paulicéia Desvairada, 1922",
+    "link": "",
+    "ortografia": "",
+    "conferido": false,
+    "textos": {
+        "Ode ao Burguês": {
+            "fonte": "Horizonte (UNAM)",
+            "link": "http://www.horizonte.unam.mx/brasil/mario4.html",
+            "dataPublicacao": {
+                "ano": 1922
+            }
+        },
+        "Inspiração": {
+            "link": "https://pt.wikisource.org/wiki/Paulicea_Desvairada/Inspira%C3%A7%C3%A3o",
+            "dataPublicacao": {
+                "ano": 1922
+            }
+        },
+        "Colloque Sentimental": {
+            "fonte": "Universidade Livre do Alvito",
+            "link": "https://universidadelivredoalvito.xyz/poema-de-hoje-colloque-sentimental-mario-de-andrade/",
+            "dataPublicacao": {
+                "ano": 1922
+            }
+        }
+    }
+}

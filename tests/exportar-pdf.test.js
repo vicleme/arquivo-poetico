@@ -283,7 +283,9 @@ describe('gerarPdfExportacao', () => {
             };
             const doc = gerarPdfExportacao([item]);
             const rect = doc.chamadas.find((c) => c.tipo === 'rect' && c.estilo === 'F');
-            const primeiroTexto = doc.chamadas.find((c) => c.tipo === 'text' && c.texto === 'verso');
+            const primeiroTexto = doc.chamadas.find(
+                (c) => c.tipo === 'text' && c.texto === 'verso',
+            );
             const paddingPt = 20 * 0.75; // 1px = 0.75pt, mesma conversão do código
             const subida = 18 * 0.78; // extensaoVerticalTexto
             const topoVisualDoTexto = primeiroTexto.y - subida;
@@ -490,7 +492,10 @@ describe('gerarPdfExportacao', () => {
             respiro < 30,
             `respiro título->corpo deveria ser bem menor que os ~36pt do bug antigo, mas foi ${respiro}pt`,
         );
-        assert.ok(respiro > 15, `respiro não deveria ter colapsado quase a zero (foi ${respiro}pt)`);
+        assert.ok(
+            respiro > 15,
+            `respiro não deveria ter colapsado quase a zero (foi ${respiro}pt)`,
+        );
     });
 
     it('respiro entre o corpo do Texto e o próximo campo (Autoria) cai de 8pt fixos pra 4pt', () => {
@@ -507,7 +512,10 @@ describe('gerarPdfExportacao', () => {
         const yCorpo = chamadas.find((c) => c.texto === 'x').y;
         const yAutoria = chamadas.find((c) => /Autoria/.test(c.texto)).y;
         const respiro = yAutoria - yCorpo;
-        assert.ok(respiro <= 19, `respiro corpo->Autoria deveria ter caído (foi ${respiro}pt, antes era ~22pt)`);
+        assert.ok(
+            respiro <= 19,
+            `respiro corpo->Autoria deveria ter caído (foi ${respiro}pt, antes era ~22pt)`,
+        );
         assert.ok(respiro >= 14, `respiro não deveria ter colapsado demais (foi ${respiro}pt)`);
     });
 
@@ -619,7 +627,12 @@ describe('gerarPdfExportacao — Grade Silábica em paisagem', () => {
             texto: 'verso único',
             sonoridade: {
                 escansaoLinhas: [
-                    { tipo: 'verso', numero: 1, texto: Array(silabas).fill('sí').join('/'), tonicas: [] },
+                    {
+                        tipo: 'verso',
+                        numero: 1,
+                        texto: Array(silabas).fill('sí').join('/'),
+                        tonicas: [],
+                    },
                 ],
                 rimas: [],
                 ecos: [],
@@ -641,7 +654,12 @@ describe('gerarPdfExportacao — Grade Silábica em paisagem', () => {
 
     it('dois itens com grade longa: cada um abre e fecha sua própria paisagem (não vaza pro outro)', () => {
         const doc = gerarPdfExportacao([itemComGrade(1, 30), itemComGrade(2, 32)]);
-        assert.deepEqual(orientacoesDePagina(doc), ['landscape', 'portrait', 'landscape', 'portrait']);
+        assert.deepEqual(orientacoesDePagina(doc), [
+            'landscape',
+            'portrait',
+            'landscape',
+            'portrait',
+        ]);
     });
 
     it('item com grade longa seguido de item sem sonoridade: o segundo item continua em retrato', () => {

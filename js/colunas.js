@@ -46,10 +46,27 @@ export const DEFINICAO_COLUNAS = {
         // primeiro bloco do modal, já aberto por padrão.
         { key: 'dataEscrita', label: 'Escrito em', default: true, sortType: 'data' },
         { key: 'dataPublicacao', label: 'Publicação', default: true, sortType: 'data' },
-        { key: 'epocaRetratada', label: 'Época Retratada', default: false, sortType: 'data' },
+        {
+            key: 'epocaRetratada',
+            label: 'Período Biográfico Retratado',
+            default: false,
+            sortType: 'data',
+        },
+        {
+            key: 'periodoHistoricoId',
+            label: 'Período Histórico Retratado',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'movimentosEscolas',
+            label: 'Movimento/Escola',
+            default: false,
+            sortType: 'alfabetico',
+        },
         {
             key: 'contextoHistorico',
-            label: 'Contexto Histórico/Pessoal',
+            label: 'Inspiração',
             default: false,
             sortType: 'alfabetico',
         },
@@ -206,10 +223,27 @@ export const DEFINICAO_COLUNAS = {
         // Item 4: mesmas colunas novas de Poemas, na ordem em que os
         // grupos aparecem no modal de Prosa (ver comentário no topo
         // do arquivo — ordem espelha o modal).
-        { key: 'epocaRetratada', label: 'Época Retratada', default: false, sortType: 'data' },
+        {
+            key: 'epocaRetratada',
+            label: 'Período Biográfico Retratado',
+            default: false,
+            sortType: 'data',
+        },
+        {
+            key: 'periodoHistoricoId',
+            label: 'Período Histórico Retratado',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'movimentosEscolas',
+            label: 'Movimento/Escola',
+            default: false,
+            sortType: 'alfabetico',
+        },
         {
             key: 'contextoHistorico',
-            label: 'Contexto Histórico/Pessoal',
+            label: 'Inspiração',
             default: false,
             sortType: 'alfabetico',
         },

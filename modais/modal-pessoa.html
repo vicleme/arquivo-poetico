@@ -62,14 +62,34 @@
                     <input type="text" id="ps-nome" required />
                 </div>
                 <div>
+                    <label class="form-label">Gênero</label>
+                    <input
+                        type="text"
+                        id="ps-genero"
+                        list="sugestoes-genero-pessoa"
+                        placeholder="Ex: Mulher, Homem, Não-binário..."
+                    />
+                    <datalist id="sugestoes-genero-pessoa"></datalist>
+                </div>
+                <div>
                     <label class="form-label">Grupos</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
-                        Quem essa pessoa é na sua vida, constante entre poemas — para criar um
-                        grupo novo, use a aba Grupos.
+                        Quem essa pessoa é na sua vida, constante entre poemas — para criar um grupo
+                        novo, use a aba Grupos.
                     </p>
                     <div id="ps-grupos-container" class="flex flex-col gap-1.5"></div>
                 </div>
-                <div class="flex justify-end gap-2 border-t pt-6 border-gray-200 dark:border-slate-700">
+                <div>
+                    <label class="form-label">Autores</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        A quais Autores esta Pessoa está associada — opcional, e pode ser mais de um
+                        (ex.: um amigo em comum entre dois Autores da Biblioteca).
+                    </p>
+                    <div id="ps-autores-container" class="flex flex-col gap-1.5"></div>
+                </div>
+                <div
+                    class="flex justify-end gap-2 border-t pt-6 border-gray-200 dark:border-slate-700"
+                >
                     <button
                         type="button"
                         onclick="toggleModal('modal-pessoa')"

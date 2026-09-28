@@ -18,6 +18,7 @@ import {
     abrirAba,
     toggleModal,
     prepararNovo,
+    prepararNovoSubgrupo,
     toggleCamposIntroducao,
     sugerirSequencia,
     filtrarDestinoPoema,
@@ -53,6 +54,11 @@ import { exportarItem } from './exportar.js';
 import { abrirVisualizacao, baixarDoModalVisualizacao } from './visualizar.js';
 import { abrirVisualizacaoAutor, editarAutorDoVisualizador } from './visualizar-autor.js';
 import {
+    abrirVisualizacaoMovimentoEscola,
+    editarMovimentoEscolaDoVisualizador,
+} from './visualizar-movimento-escola.js';
+import { abrirVisualizacaoGrupo, editarGrupoDoVisualizador } from './visualizar-grupo.js';
+import {
     toggleDownloadAbrangente,
     sincronizarCheckboxesComEstadoSalvo,
 } from './download-abrangente.js';
@@ -86,6 +92,12 @@ import {
     setFiltroPapelPoemas,
     setFiltroPessoaProsas,
     setFiltroPapelProsas,
+    verTextosPessoa,
+    verTextosEpoca,
+    verTextosPeriodoHistorico,
+    verTextosMovimentoEscola,
+    verTextosAutor,
+    verAutoresMovimentoEscola,
     ordenarPor,
     buscarPorPrefixo,
     setStatusPoemas,
@@ -117,6 +129,15 @@ import {
     setFiltroEstruturaTextual,
     setFiltroMoldes,
     setPaginaMoldes,
+    definirOrdenacaoMovimentosEscolas,
+    definirOrdenacaoEpocas,
+    definirOrdenacaoPeriodosHistoricos,
+    setFiltroPeriodo,
+    toggleColapsoGrupo,
+    setFiltroAutorGrupos,
+    setFiltroNomeGrupos,
+    setVisibilidadeGrupos,
+    toggleOcultarGrupo,
 } from './render-listas.js';
 import {
     setFiltroAutores,
@@ -128,6 +149,22 @@ import {
     exportarSelecaoAutoresCsv,
     exportarSelecaoAutoresMarkdown,
 } from './autores-acoes.js';
+import {
+    setFiltroAutorPessoas,
+    setFiltroGrupoPessoas,
+    setFiltroNomePessoas,
+    toggleSelecaoPessoa,
+    toggleSelecaoTodosPessoas,
+    limparSelecaoPessoas,
+    aplicarGrupoEmMassaPessoas,
+    aplicarAutorEmMassaPessoas,
+    aplicarGeneroEmMassaPessoas,
+    limparGeneroEmMassaPessoas,
+    setVisibilidadePessoas,
+    toggleOcultarPessoa,
+    ocultarSelecaoPessoas,
+    reexibirSelecaoPessoas,
+} from './pessoas-acoes.js';
 import {
     toggleSelecao,
     toggleSelecaoTodos,
@@ -150,6 +187,10 @@ import {
     trocarCampoPreencherMassa,
     aplicarPreenchimentoEmMassa,
     limparCampoEmMassa,
+    prepararPainelPeriodosMassa,
+    trocarTipoPeriodoMassa,
+    aplicarPeriodoEmMassa,
+    removerPeriodoEmMassa,
     aplicarGeneroEmMassaProsa,
     removerGeneroEmMassaProsa,
 } from './selecao-massa.js';
@@ -198,6 +239,10 @@ import {
     selecionarPacoteBiblioteca,
     fecharDetalhePacoteBiblioteca,
     usarPacoteBiblioteca as confirmarUsoPacoteBiblioteca,
+    alternarSelecaoPacoteBiblioteca,
+    alternarSelecionarTodosBiblioteca,
+    importarSelecionadosBiblioteca as confirmarImportarSelecionadosBiblioteca,
+    importarTodosBiblioteca as confirmarImportarTodosBiblioteca,
 } from './ui-biblioteca.js';
 import {
     lerArquivoTextoBiblioteca,
@@ -206,6 +251,16 @@ import {
     limparFormTextoBiblioteca,
 } from './ui-biblioteca-texto.js';
 import {
+    initModoAprendizado,
+    abrirModoAprendizado,
+    abrirModoAprendizadoSeNecessario,
+    avancarModoAprendizadoPerfil,
+    voltarModoAprendizadoPerfil,
+    iniciarTourModoAprendizado,
+} from './modo-aprendizado.js';
+import { definirNavegacaoTour } from './tour.js';
+import { initCentralAjuda, abrirCentralAjuda, abrirApresentacaoDaAjuda } from './central-ajuda.js';
+import {
     renderEstatisticas,
     toggleTipoEtiqueta,
     definirModoGraficoPessoas,
@@ -213,6 +268,14 @@ import {
     toggleGrupoFiltroPessoas,
     toggleOcultoItem,
     restaurarOcultosGrafico,
+    definirOrdemOcultos,
+    definirMinimoAparicoes,
+    definirMinimoAnos,
+    filtrarItensOcultos,
+    toggleSelecaoTemporal,
+    definirOrdemTemporal,
+    definirFiltrosCompartilhados,
+    limparFiltrosCompartilhados,
 } from './estatisticas.js';
 import { renderConexoes, baixarDiagramaEcos } from './render-conexoes.js';
 import {
@@ -252,6 +315,9 @@ import {
     alternarDropdownPapelPessoa,
     adicionarGrupoDireto,
     removerGrupoDireto,
+    abrirSugestoesGrupoDireto,
+    fecharSugestoesGrupoDireto,
+    selecionarGrupoDireto,
     adicionarAutoria,
     removerAutoria,
     alterarPapelAutoria,
@@ -291,6 +357,40 @@ import {
     adicionarInstituicaoAutor,
     removerInstituicaoAutor,
     editarInstituicaoAutor,
+    adicionarMovimentoEscolaDireto,
+    removerMovimentoEscolaDireto,
+    adicionarValorMovimento,
+    removerValorMovimento,
+    editarValorMovimento,
+    adicionarTemaMovimento,
+    removerTemaMovimento,
+    editarTemaMovimento,
+    adicionarTecnicaMovimento,
+    removerTecnicaMovimento,
+    editarTecnicaMovimento,
+    adicionarTipoComposicaoMovimento,
+    removerTipoComposicaoMovimento,
+    editarTipoComposicaoMovimento,
+    adicionarLemaMovimento,
+    removerLemaMovimento,
+    editarLemaMovimento,
+    adicionarManifestoMovimento,
+    removerManifestoMovimento,
+    editarManifestoMovimento,
+    adicionarPremioAutor,
+    removerPremioAutor,
+    editarPremioAutor,
+    alterarAnoPremioAutor,
+    adicionarObraAutor,
+    removerObraAutor,
+    editarObraAutor,
+    alterarAnoObraAutor,
+    adicionarCirculoLiterarioAutor,
+    removerCirculoLiterarioAutor,
+    editarCirculoLiterarioAutor,
+    adicionarLinguaEscritaAutor,
+    removerLinguaEscritaAutor,
+    editarLinguaEscritaAutor,
     adicionarIntertexto,
     removerIntertexto,
     editarIntertexto,
@@ -341,6 +441,8 @@ import {
     toggleCamposEpocaNa,
     aplicarSugestaoEpoca,
     initFormProsa,
+    toggleCamposEpocaNaProsa,
+    aplicarSugestaoEpocaProsa,
     editarProsa,
     initFormElemento,
     editarElemento,
@@ -352,6 +454,10 @@ import {
     editarAutor,
     initFormEpoca,
     editarEpoca,
+    initFormPeriodoHistorico,
+    editarPeriodoHistorico,
+    initFormMovimentoEscola,
+    editarMovimentoEscola,
     initFormMesclar,
     abrirModalMesclar,
     initFormSonoridade,
@@ -447,6 +553,8 @@ registrarModal('modal-pessoa', 'modal-pessoa.html', initFormPessoa);
 registrarModal('modal-grupo', 'modal-grupo.html', initFormGrupo);
 registrarModal('modal-autor', 'modal-autor.html', initFormAutor);
 registrarModal('modal-epoca', 'modal-epoca.html', initFormEpoca);
+registrarModal('modal-periodo-historico', 'modal-periodo-historico.html', initFormPeriodoHistorico);
+registrarModal('modal-movimento-escola', 'modal-movimento-escola.html', initFormMovimentoEscola);
 registrarModal('modal-sonoridade', 'modal-sonoridade.html', initFormSonoridade);
 registrarModal('modal-molde', 'modal-molde.html', initFormMolde);
 registrarModal(
@@ -459,6 +567,8 @@ registrarModal(
 // modal-visualizar acima.
 registrarModal('modal-template-estrutura', 'modal-template-estrutura.html', () => {});
 registrarModal('modal-mesclar', 'modal-mesclar.html', initFormMesclar);
+registrarModal('modal-modo-aprendizado', 'modal-modo-aprendizado.html', initModoAprendizado);
+registrarModal('modal-central-ajuda', 'modal-central-ajuda.html', initCentralAjuda);
 registrarModal('modal-col-parte', 'modal-col-parte.html', initFormColParte);
 registrarModal('modal-col-item', 'modal-col-item.html', initFormColItem);
 // Sem form/init próprio — o conteúdo é preenchido a cada abertura por
@@ -470,6 +580,16 @@ registrarModal('modal-visualizar', 'modal-visualizar.html', () => {});
 registrarModal('modal-visualizar-sonoridade', 'modal-visualizar-sonoridade.html', () => {});
 // Idem, pro Autor (ver visualizar-autor.js) — botão "Ver" do card em Autores.
 registrarModal('modal-visualizar-autor', 'modal-visualizar-autor.html', () => {});
+// Idem, pro Movimento/Escola (ver visualizar-movimento-escola.js) —
+// botão "Ver" do card em Movimentos/Escolas.
+registrarModal(
+    'modal-visualizar-movimento-escola',
+    'modal-visualizar-movimento-escola.html',
+    () => {},
+);
+// Idem, pro Grupo (ver visualizar-grupo.js) — botão "Ver" do card em
+// Grupos.
+registrarModal('modal-visualizar-grupo', 'modal-visualizar-grupo.html', () => {});
 // Idem, agora pra Morfofuncionalidade (ver visualizar-estrutura-textual.js).
 registrarModal(
     'modal-visualizar-estrutura-textual',
@@ -495,11 +615,23 @@ const ACOES_LISTA = {
     'editar-poema': (el) => editarPoema(Number(el.dataset.id)),
     'editar-prosa': (el) => editarProsa(Number(el.dataset.id)),
     'editar-elemento': (el) => editarElemento(Number(el.dataset.id)),
+    'ver-textos-pessoa': (el) => verTextosPessoa(Number(el.dataset.id)),
+    'ver-textos-epoca': (el) => verTextosEpoca(Number(el.dataset.id)),
+    'ver-textos-periodo-historico': (el) => verTextosPeriodoHistorico(Number(el.dataset.id)),
+    'ver-textos-movimento-escola': (el) => verTextosMovimentoEscola(Number(el.dataset.id)),
+    'ver-textos-autor': (el) => verTextosAutor(Number(el.dataset.id)),
+    'ver-autores-movimento-escola': (el) => verAutoresMovimentoEscola(Number(el.dataset.id)),
     'editar-pessoa': (el) => editarPessoa(Number(el.dataset.id)),
     'editar-grupo': (el) => editarGrupo(Number(el.dataset.id)),
+    'ver-grupo': (el) => abrirVisualizacaoGrupo(Number(el.dataset.id)),
+    'novo-subgrupo': (el) => prepararNovoSubgrupo(Number(el.dataset.id)),
+    'toggle-grupo-colapso': (el) => toggleColapsoGrupo(Number(el.dataset.id)),
     'editar-autor': (el) => editarAutor(Number(el.dataset.id)),
     'ver-autor': (el) => abrirVisualizacaoAutor(Number(el.dataset.id)),
     'editar-epoca': (el) => editarEpoca(Number(el.dataset.id)),
+    'editar-periodo-historico': (el) => editarPeriodoHistorico(Number(el.dataset.id)),
+    'editar-movimento-escola': (el) => editarMovimentoEscola(Number(el.dataset.id)),
+    'ver-movimento-escola': (el) => abrirVisualizacaoMovimentoEscola(Number(el.dataset.id)),
     'editar-sonoridade': (el) => editarSonoridade(Number(el.dataset.id)),
     'editar-molde': (el) => editarMolde(Number(el.dataset.id)),
     'promover-molde': (el) => promoverMolde(Number(el.dataset.id)),
@@ -537,6 +669,10 @@ const ACOES_LISTA = {
         toggleSelecao('prosas', el.checked, Number(el.dataset.id), e?.shiftKey),
     'toggle-autor': (el) => toggleSelecaoAutor(Number(el.dataset.id), el.checked),
     'toggle-todos-autores': (el) => toggleSelecaoTodosAutores(el.checked),
+    'toggle-pessoa': (el) => toggleSelecaoPessoa(Number(el.dataset.id), el.checked),
+    'toggle-todos-pessoas': (el) => toggleSelecaoTodosPessoas(el.checked),
+    'toggle-ocultar-pessoa': (el) => toggleOcultarPessoa(Number(el.dataset.id)),
+    'toggle-ocultar-grupo': (el) => toggleOcultarGrupo(Number(el.dataset.id)),
     'toggle-todos-poemas': (el) => toggleSelecaoTodos('poemas', el.checked),
     'toggle-todos-prosas': (el) => toggleSelecaoTodos('prosas', el.checked),
     'selecionar-pagina-poemas': (el) =>
@@ -587,6 +723,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chkCapas = document.getElementById('chk-incluir-capas');
     const prefCapas = localStorage.getItem('arquivoPoetico_incluirCapasBackup');
     if (chkCapas && prefCapas !== null) chkCapas.checked = prefCapas === 'true';
+
+    // Por último: só abre sozinho se a pessoa nunca marcou "não exibir
+    // novamente" — depois do resto da tela já estar montada, senão o
+    // modal abriria por cima de uma página ainda incompleta.
+    await abrirModoAprendizadoSeNecessario();
 });
 
 // ─── Lista de backups automáticos (ver autobackup.js) ─────────
@@ -767,6 +908,14 @@ window.fecharDetalhePacoteBiblioteca = fecharDetalhePacoteBiblioteca;
 window.usarPacoteBiblioteca = function () {
     if (confirmarUsoPacoteBiblioteca()) abrirAba('importacao-aditiva');
 };
+window.alternarSelecaoPacoteBiblioteca = alternarSelecaoPacoteBiblioteca;
+window.alternarSelecionarTodosBiblioteca = alternarSelecionarTodosBiblioteca;
+window.importarSelecionadosBiblioteca = async function () {
+    if (await confirmarImportarSelecionadosBiblioteca()) abrirAba('importacao-aditiva');
+};
+window.importarTodosBiblioteca = async function () {
+    if (await confirmarImportarTodosBiblioteca()) abrirAba('importacao-aditiva');
+};
 window.lerArquivoTextoBiblioteca = lerArquivoTextoBiblioteca;
 window.atualizarPreviaTextoBiblioteca = atualizarPreviaTextoBiblioteca;
 window.enviarTextoParaImportacao = function () {
@@ -774,6 +923,15 @@ window.enviarTextoParaImportacao = function () {
 };
 window.limparFormTextoBiblioteca = limparFormTextoBiblioteca;
 window.sugerirSequencia = sugerirSequencia;
+window.abrirModoAprendizado = abrirModoAprendizado;
+window.avancarModoAprendizadoPerfil = avancarModoAprendizadoPerfil;
+window.voltarModoAprendizadoPerfil = voltarModoAprendizadoPerfil;
+window.iniciarTourModoAprendizado = iniciarTourModoAprendizado;
+window.abrirCentralAjuda = abrirCentralAjuda;
+window.abrirApresentacaoDaAjuda = abrirApresentacaoDaAjuda;
+// O tour troca de aba pelo mesmo caminho da nav (abrirAba); injetado aqui
+// pra tour.js não importar ui.js.
+definirNavegacaoTour(abrirAba);
 window.filtrarDestinoPoema = filtrarDestinoPoema;
 window.filtrarDestinoProsa = filtrarDestinoProsa;
 window.autoPreencherDataPublicacao = autoPreencherDataPublicacao;
@@ -813,6 +971,9 @@ window.alternarPapelPessoa = alternarPapelPessoa;
 window.alternarDropdownPapelPessoa = alternarDropdownPapelPessoa;
 window.adicionarGrupoDireto = adicionarGrupoDireto;
 window.removerGrupoDireto = removerGrupoDireto;
+window.abrirSugestoesGrupoDireto = abrirSugestoesGrupoDireto;
+window.fecharSugestoesGrupoDireto = fecharSugestoesGrupoDireto;
+window.selecionarGrupoDireto = selecionarGrupoDireto;
 window.adicionarAutoria = adicionarAutoria;
 window.removerAutoria = removerAutoria;
 window.alterarPapelAutoria = alterarPapelAutoria;
@@ -852,6 +1013,40 @@ window.editarNeurodivergenciaAutor = editarNeurodivergenciaAutor;
 window.adicionarInstituicaoAutor = adicionarInstituicaoAutor;
 window.removerInstituicaoAutor = removerInstituicaoAutor;
 window.editarInstituicaoAutor = editarInstituicaoAutor;
+window.adicionarMovimentoEscolaDireto = adicionarMovimentoEscolaDireto;
+window.removerMovimentoEscolaDireto = removerMovimentoEscolaDireto;
+window.adicionarValorMovimento = adicionarValorMovimento;
+window.removerValorMovimento = removerValorMovimento;
+window.editarValorMovimento = editarValorMovimento;
+window.adicionarTemaMovimento = adicionarTemaMovimento;
+window.removerTemaMovimento = removerTemaMovimento;
+window.editarTemaMovimento = editarTemaMovimento;
+window.adicionarTecnicaMovimento = adicionarTecnicaMovimento;
+window.removerTecnicaMovimento = removerTecnicaMovimento;
+window.editarTecnicaMovimento = editarTecnicaMovimento;
+window.adicionarTipoComposicaoMovimento = adicionarTipoComposicaoMovimento;
+window.removerTipoComposicaoMovimento = removerTipoComposicaoMovimento;
+window.editarTipoComposicaoMovimento = editarTipoComposicaoMovimento;
+window.adicionarLemaMovimento = adicionarLemaMovimento;
+window.removerLemaMovimento = removerLemaMovimento;
+window.editarLemaMovimento = editarLemaMovimento;
+window.adicionarManifestoMovimento = adicionarManifestoMovimento;
+window.removerManifestoMovimento = removerManifestoMovimento;
+window.editarManifestoMovimento = editarManifestoMovimento;
+window.adicionarPremioAutor = adicionarPremioAutor;
+window.removerPremioAutor = removerPremioAutor;
+window.editarPremioAutor = editarPremioAutor;
+window.alterarAnoPremioAutor = alterarAnoPremioAutor;
+window.adicionarObraAutor = adicionarObraAutor;
+window.removerObraAutor = removerObraAutor;
+window.editarObraAutor = editarObraAutor;
+window.alterarAnoObraAutor = alterarAnoObraAutor;
+window.adicionarCirculoLiterarioAutor = adicionarCirculoLiterarioAutor;
+window.removerCirculoLiterarioAutor = removerCirculoLiterarioAutor;
+window.editarCirculoLiterarioAutor = editarCirculoLiterarioAutor;
+window.adicionarLinguaEscritaAutor = adicionarLinguaEscritaAutor;
+window.removerLinguaEscritaAutor = removerLinguaEscritaAutor;
+window.editarLinguaEscritaAutor = editarLinguaEscritaAutor;
 window.adicionarIntertexto = adicionarIntertexto;
 window.removerIntertexto = removerIntertexto;
 window.editarIntertexto = editarIntertexto;
@@ -900,6 +1095,20 @@ window.limparSelecaoAutores = limparSelecaoAutores;
 window.exportarSelecaoAutoresJson = exportarSelecaoAutoresJson;
 window.exportarSelecaoAutoresCsv = exportarSelecaoAutoresCsv;
 window.exportarSelecaoAutoresMarkdown = exportarSelecaoAutoresMarkdown;
+window.setFiltroAutorGrupos = setFiltroAutorGrupos;
+window.setFiltroNomeGrupos = setFiltroNomeGrupos;
+window.setFiltroNomePessoas = setFiltroNomePessoas;
+window.setFiltroAutorPessoas = setFiltroAutorPessoas;
+window.setFiltroGrupoPessoas = setFiltroGrupoPessoas;
+window.limparSelecaoPessoas = limparSelecaoPessoas;
+window.aplicarGrupoEmMassaPessoas = aplicarGrupoEmMassaPessoas;
+window.aplicarAutorEmMassaPessoas = aplicarAutorEmMassaPessoas;
+window.aplicarGeneroEmMassaPessoas = aplicarGeneroEmMassaPessoas;
+window.limparGeneroEmMassaPessoas = limparGeneroEmMassaPessoas;
+window.setVisibilidadePessoas = setVisibilidadePessoas;
+window.ocultarSelecaoPessoas = ocultarSelecaoPessoas;
+window.reexibirSelecaoPessoas = reexibirSelecaoPessoas;
+window.setVisibilidadeGrupos = setVisibilidadeGrupos;
 window.setFiltroMoldes = debounce(setFiltroMoldes, 200);
 window.setFiltroEstruturaTextual = debounce(setFiltroEstruturaTextual, 200);
 window.prepararNovaEstruturaTextual = prepararNovaEstruturaTextual;
@@ -970,6 +1179,10 @@ window.setFiltroPapelProsas = setFiltroPapelProsas;
 window.ordenarPor = ordenarPor;
 window.buscarPorPrefixo = buscarPorPrefixo;
 window.setStatusPoemas = setStatusPoemas;
+window.definirOrdenacaoMovimentosEscolas = definirOrdenacaoMovimentosEscolas;
+window.definirOrdenacaoEpocas = definirOrdenacaoEpocas;
+window.definirOrdenacaoPeriodosHistoricos = definirOrdenacaoPeriodosHistoricos;
+window.setFiltroPeriodo = setFiltroPeriodo;
 window.setStatusProsas = setStatusProsas;
 window.setItensPorPagina = setItensPorPagina;
 window.togglePainel = togglePainel;
@@ -990,6 +1203,8 @@ window.resetarAcoesColuna = resetarAcoesColuna;
 window.toggleDownloadAbrangente = toggleDownloadAbrangente;
 window.baixarDoModalVisualizacao = baixarDoModalVisualizacao;
 window.editarAutorDoVisualizador = editarAutorDoVisualizador;
+window.editarMovimentoEscolaDoVisualizador = editarMovimentoEscolaDoVisualizador;
+window.editarGrupoDoVisualizador = editarGrupoDoVisualizador;
 window.baixarDoModalVisualizacaoSonoridade = baixarDoModalVisualizacaoSonoridade;
 window.baixarDoModalVisualizacaoEstruturaTextual = baixarDoModalVisualizacaoEstruturaTextual;
 window.setTema = setTema;
@@ -1007,6 +1222,8 @@ window.limparFiltroDataPoemas = limparFiltroDataPoemas;
 window.limparFiltroDataProsas = limparFiltroDataProsas;
 window.toggleCamposEpocaNa = toggleCamposEpocaNa;
 window.aplicarSugestaoEpoca = aplicarSugestaoEpoca;
+window.toggleCamposEpocaNaProsa = toggleCamposEpocaNaProsa;
+window.aplicarSugestaoEpocaProsa = aplicarSugestaoEpocaProsa;
 // toggleSelecaoTodos segue em window: index.html ainda tem um onclick
 // estático nesse checkbox, em Poemas e em Prosas (fica pra quando
 // migrarmos index.html).
@@ -1030,6 +1247,10 @@ window.prepararPainelPreencherMassa = prepararPainelPreencherMassa;
 window.trocarCampoPreencherMassa = trocarCampoPreencherMassa;
 window.aplicarPreenchimentoEmMassa = aplicarPreenchimentoEmMassa;
 window.limparCampoEmMassa = limparCampoEmMassa;
+window.prepararPainelPeriodosMassa = prepararPainelPeriodosMassa;
+window.trocarTipoPeriodoMassa = trocarTipoPeriodoMassa;
+window.aplicarPeriodoEmMassa = aplicarPeriodoEmMassa;
+window.removerPeriodoEmMassa = removerPeriodoEmMassa;
 window.aplicarGeneroEmMassaProsa = aplicarGeneroEmMassaProsa;
 window.removerGeneroEmMassaProsa = removerGeneroEmMassaProsa;
 window.setLivroEstrutura = setLivroEstrutura;
@@ -1051,6 +1272,14 @@ window.definirModoTerceiros = definirModoTerceiros;
 window.toggleGrupoFiltroPessoas = toggleGrupoFiltroPessoas;
 window.toggleOcultoItem = toggleOcultoItem;
 window.restaurarOcultosGrafico = restaurarOcultosGrafico;
+window.definirOrdemOcultos = definirOrdemOcultos;
+window.definirMinimoAparicoes = definirMinimoAparicoes;
+window.definirMinimoAnos = definirMinimoAnos;
+window.filtrarItensOcultos = filtrarItensOcultos;
+window.toggleSelecaoTemporal = toggleSelecaoTemporal;
+window.definirOrdemTemporal = definirOrdemTemporal;
+window.definirFiltrosCompartilhados = definirFiltrosCompartilhados;
+window.limparFiltrosCompartilhados = limparFiltrosCompartilhados;
 window.renderConexoes = renderConexoes;
 window.exportarTudoAninhado = exportarTudoAninhado;
 window.exportarLivroCompleto = exportarLivroCompleto;

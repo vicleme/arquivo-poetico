@@ -24,6 +24,8 @@ import {
     renderGrupos,
     renderAutores,
     renderEpocas,
+    renderPeriodosHistoricos,
+    renderMovimentosEscolas,
     renderSonoridade,
     renderEstruturaTextual,
     renderMoldes,
@@ -38,6 +40,8 @@ export function renderLists() {
     renderGrupos();
     renderAutores();
     renderEpocas();
+    renderPeriodosHistoricos();
+    renderMovimentosEscolas();
     renderSonoridade();
     renderEstruturaTextual();
     renderMoldes();

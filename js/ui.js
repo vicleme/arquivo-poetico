@@ -11,6 +11,9 @@ import {
     resetEnvios,
     resetReconhecimentos,
     atualizarDatalist,
+    atualizarDatalistRegiaoPeriodoHistorico,
+    atualizarDatalistRegiaoOrigemMovimento,
+    atualizarDatalistsAutor,
     resetIntertextualidade,
     resetAnexos,
     resetAnotacoes,
@@ -20,11 +23,14 @@ import {
     renderPainelElosDerivados,
     atualizarRotulosDirecaoElo,
     renderAutoclassificacao,
+    resetMovimentosEscolasDiretos,
+    resetTodosOsGruposDeMovimento,
 } from './editor.js';
 import {
     extrairFasesUnicas,
     extrairNacionalidadesUnicas,
     extrairGenerosAutorUnicos,
+    extrairGenerosPessoasUnicos,
     extrairOrientacoesUnicas,
     extrairReligioesUnicas,
     extrairInstituicoesUnicas,
@@ -73,10 +79,19 @@ export const GRUPOS_NAV = [
             { id: 'coletaneas', rotulo: 'Coletâneas' },
             { id: 'partes', rotulo: 'Partes' },
             { id: 'secoes', rotulo: 'Seções' },
+            { id: 'autores', rotulo: 'Autores' },
+            { id: 'estrutura', rotulo: 'Estrutura' },
+        ],
+    },
+    {
+        id: 'cadastros',
+        rotulo: 'Cadastros',
+        abas: [
             { id: 'pessoas', rotulo: 'Pessoas' },
             { id: 'grupos', rotulo: 'Grupos' },
-            { id: 'autores', rotulo: 'Autores' },
-            { id: 'epocas', rotulo: 'Épocas' },
+            { id: 'epocas', rotulo: 'Período Biográfico' },
+            { id: 'periodos-historicos', rotulo: 'Período Histórico' },
+            { id: 'movimentos-escolas', rotulo: 'Movimento/Escola' },
         ],
     },
     {
@@ -92,7 +107,6 @@ export const GRUPOS_NAV = [
         id: 'analise',
         rotulo: 'Análise',
         abas: [
-            { id: 'estrutura', rotulo: 'Estrutura' },
             { id: 'conexoes', rotulo: 'Conexões' },
             { id: 'sonoridade', rotulo: 'Sonoridade' },
             { id: 'morfofuncionalidade', rotulo: 'Morfofuncionalidade' },
@@ -101,7 +115,12 @@ export const GRUPOS_NAV = [
     {
         id: 'estatisticas',
         rotulo: 'Estatísticas',
-        abas: [{ id: 'estatisticas', rotulo: 'Análise Exploratória' }],
+        abas: [
+            { id: 'estatisticas', rotulo: 'Visão geral' },
+            { id: 'estatisticas-producao', rotulo: 'Produção' },
+            { id: 'estatisticas-temas-pessoas', rotulo: 'Temas e pessoas' },
+            { id: 'estatisticas-linguagem', rotulo: 'Linguagem' },
+        ],
     },
     {
         id: 'criacao',
@@ -145,7 +164,7 @@ const TODAS_ABAS = GRUPOS_NAV.flatMap((g) => g.abas);
 export function abrirAba(tabName) {
     openTab(tabName);
     if (tabName === 'conexoes') renderConexoes();
-    if (tabName === 'estatisticas') renderEstatisticas();
+    if (tabName.startsWith('estatisticas')) renderEstatisticas();
     if (tabName === 'exportacoes-frequentes') renderExportacoesFrequentes();
     if (tabName === 'biblioteca') renderBiblioteca();
     atualizarRotuloAbaAtual(tabName);
@@ -476,6 +495,28 @@ export function renderDropdowns() {
             .join('');
     }
 
+    // 0.065. Sugestões de "Gênero" da Pessoa (cadastro central de
+    // Pessoas, distinto do Autor acima) — mesmo padrão, semente
+    // GENEROS_SUGERIDOS + o que já foi digitado (extrairGenerosPessoasUnicos
+    // em utils.js).
+    const datalistGeneroPessoa = document.getElementById('sugestoes-genero-pessoa');
+    if (datalistGeneroPessoa) {
+        datalistGeneroPessoa.innerHTML = extrairGenerosPessoasUnicos(db.pessoas)
+            .map((g) => `<option value="${escapeHtml(g)}">`)
+            .join('');
+    }
+    // Mesma sugestão, agora pro input "Definir gênero" da barra de ações
+    // em massa da aba Pessoas (index.html) — datalist própria porque o
+    // input fica sempre na página, enquanto a de cima (sugestoes-genero-pessoa)
+    // só existe no DOM depois que o modal-pessoa é carregado (fetch lazy,
+    // ver garantirModal em modais.js).
+    const datalistGeneroPessoaMassa = document.getElementById('sugestoes-genero-pessoas-massa');
+    if (datalistGeneroPessoaMassa) {
+        datalistGeneroPessoaMassa.innerHTML = extrairGenerosPessoasUnicos(db.pessoas)
+            .map((g) => `<option value="${escapeHtml(g)}">`)
+            .join('');
+    }
+
     // 0.07. Sugestões de "Religião" e "Instituições frequentadas" do
     // Autor — mesmo padrão acima: Religião soma semente fixa + o que já
     // existe no acervo; Instituições só vem do acervo (nome de instituição não tem teto
@@ -677,21 +718,84 @@ export function renderDropdowns() {
     // 8. Grupos → checkboxes do Modal de Pessoa. Sempre reconstruído
     // (e portanto sempre desmarcado) — editarPessoa() marca de volta os
     // que a pessoa já pertence logo em seguida, depois desta chamada.
+    //
+    // Agrupado por Autor (cabeçalho de seção) e, dentro de cada Autor,
+    // por "família" (um grupo de nível 1 e toda a sua descendência, em
+    // pré-ordem alfabética, indentada por nível com "↳") — mesma lógica
+    // de `seletorGrupos` em estatisticas-tela-temas-pessoas.js e de
+    // `cartoesDaFamilia`/`renderGrupos` em render-listas.js. Antes disto
+    // a lista era só `db.grupos` cru ordenado por nome, sem Autor nem
+    // nível — o mesmo problema real já corrigido nos outros dois lugares
+    // (dois Autores podem ter cada um um grupo "Família": sem o Autor
+    // como cabeçalho, ficariam indistinguíveis aqui). Pedido do Victor,
+    // 27/09/2026: "na seleção de grupos a que uma pessoa pertence,
+    // também acho que cabe mostrar a subdivisão de níveis".
     const cGrupos = document.getElementById('ps-grupos-container');
     if (cGrupos) {
-        const ordenados = [...db.grupos].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-        cGrupos.innerHTML = ordenados.length
-            ? ordenados
-                  .map(
-                      (g) => `
-                <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+        if (!db.grupos.length) {
+            cGrupos.innerHTML = `<p class="text-xs text-gray-400 dark:text-slate-500">Nenhum grupo cadastrado ainda — use "+ Criar novo grupo" acima.</p>`;
+        } else {
+            const checkboxGrupo = (g, nivel) => {
+                const indent = nivel > 1 ? ` style="padding-left:${(nivel - 1) * 0.9}rem"` : '';
+                const seta = nivel > 1 ? '↳ ' : '';
+                return `<label class="flex items-center gap-1.5 text-sm cursor-pointer"${indent}>
                     <input type="checkbox" value="${g.id}"
                         class="rounded border-gray-300 dark:border-slate-600 text-rose-500 focus:ring-rose-400" />
-                    ${escapeHtml(g.nome)}
+                    ${seta}${escapeHtml(g.nome)}
+                </label>`;
+            };
+            const familiaGrupo = (g, gruposDoAutor, nivel) => {
+                const filhos = gruposDoAutor
+                    .filter((sub) => sub.paiId == g.id)
+                    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+                return (
+                    checkboxGrupo(g, nivel) +
+                    filhos.map((f) => familiaGrupo(f, gruposDoAutor, nivel + 1)).join('')
+                );
+            };
+            const autoresComGrupo = [...new Set(db.grupos.map((g) => g.autorId))]
+                .map((id) => db.autores?.find((a) => a.id == id))
+                .filter(Boolean)
+                .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+            cGrupos.innerHTML = autoresComGrupo
+                .map((autor) => {
+                    const gruposDoAutor = db.grupos.filter((g) => g.autorId == autor.id);
+                    const nivel1 = gruposDoAutor
+                        .filter((g) => g.paiId == null)
+                        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+                    const itens = nivel1.map((g) => familiaGrupo(g, gruposDoAutor, 1)).join('');
+                    return `<h4 class="w-full text-[10px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mt-1.5 first:mt-0">${escapeHtml(autor.nome)}</h4>${itens}`;
+                })
+                .join('');
+        }
+    }
+
+    // 8b. Autores → checkboxes do Modal de Pessoa (lacuna apontada pelo
+    // Victor, 27/09/2026: "Pessoas ainda não atribui a autores... a
+    // ideia seria que tivesse essa atribuição, só que não ficasse presa
+    // a atribuir a apenas um autor"). N:N e opcional — por isso
+    // checkbox, não um `<select>` único como em Grupo/Época (onde Autor
+    // é obrigatório e de escolha única, ver `g-autor`/`ep-autor`). Lista
+    // simples (sem hierarquia — Autor não tem nível, diferente do bloco
+    // de Grupos acima), sempre reconstruída e desmarcada; `editarPessoa`
+    // marca de volta os já associados.
+    const cAutoresPessoa = document.getElementById('ps-autores-container');
+    if (cAutoresPessoa) {
+        const autoresOrdenados = [...db.autores].sort((a, b) =>
+            a.nome.localeCompare(b.nome, 'pt-BR'),
+        );
+        cAutoresPessoa.innerHTML = autoresOrdenados.length
+            ? autoresOrdenados
+                  .map(
+                      (a) => `
+                <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <input type="checkbox" value="${a.id}"
+                        class="rounded border-gray-300 dark:border-slate-600 text-rose-500 focus:ring-rose-400" />
+                    ${escapeHtml(a.nome)}
                 </label>`,
                   )
                   .join('')
-            : `<p class="text-xs text-gray-400 dark:text-slate-500">Nenhum grupo cadastrado ainda — use "+ Criar novo grupo" acima.</p>`;
+            : `<p class="text-xs text-gray-400 dark:text-slate-500">Nenhum Autor cadastrado ainda.</p>`;
     }
 }
 
@@ -741,10 +845,16 @@ export async function prepararNovo(tipo) {
         grupo: 'g-edit-id',
         autor: 'au-edit-id',
         epoca: 'ep-edit-id',
+        'periodo-historico': 'ph-edit-id',
+        'movimento-escola': 'me-edit-id',
     };
 
     const idField = document.getElementById(idFields[tipo]);
     if (idField) idField.value = '';
+
+    if (tipo === 'periodo-historico') atualizarDatalistRegiaoPeriodoHistorico();
+    if (tipo === 'movimento-escola') atualizarDatalistRegiaoOrigemMovimento();
+    if (tipo === 'autor') atualizarDatalistsAutor();
 
     if (tipo === 'poema') {
         resetSinalizacoes('poemas');
@@ -758,6 +868,7 @@ export async function prepararNovo(tipo) {
         resetAnotacoes();
         resetElos('poemas');
         resetEcos('poemas');
+        resetMovimentosEscolasDiretos('poemas');
         renderPainelElosDerivados(null);
         renderAutoclassificacao('poemas');
         atualizarDatalist();
@@ -796,6 +907,7 @@ export async function prepararNovo(tipo) {
         resetAnexos('prosas');
         resetElos('prosas');
         resetEcos('prosas');
+        resetMovimentosEscolasDiretos('prosas');
         renderPainelElosDerivados(null);
         renderAutoclassificacao('prosas');
         import('./editor.js').then(
@@ -839,6 +951,10 @@ export async function prepararNovo(tipo) {
                 resetCondicoesClinicasAutor,
                 resetDeficienciasAutor,
                 resetInstituicoesAutor,
+                resetPremiosAutor,
+                resetObrasAutor,
+                resetCirculoLiterarioAutor,
+                resetLinguasEscritaAutor,
             }) => {
                 resetNomesLiterariosAutor();
                 resetOcupacoesAutor();
@@ -846,8 +962,21 @@ export async function prepararNovo(tipo) {
                 resetCondicoesClinicasAutor();
                 resetDeficienciasAutor();
                 resetInstituicoesAutor();
+                resetPremiosAutor();
+                resetObrasAutor();
+                resetCirculoLiterarioAutor();
+                resetLinguasEscritaAutor();
             },
         );
+        resetMovimentosEscolasDiretos('autores');
+    }
+
+    if (tipo === 'movimento-escola') {
+        // Mesmo motivo do bloco 'autor' acima: os 6 campos de tag livre
+        // (Valores/Temas/Técnicas/Tipos de Composição/Lemas/Manifestos)
+        // vivem em estado próprio (closure de criarGrupoDeTagsArray),
+        // fora do form.reset() nativo.
+        resetTodosOsGruposDeMovimento();
     }
 
     if (tipo === 'grupo') {
@@ -855,10 +984,23 @@ export async function prepararNovo(tipo) {
         // resetPessoas('prosas') acima pelo mesmo motivo). Sem cor marcada
         // ainda no form novo: seleciona a primeira da paleta por padrão
         // (mesmo padrão do fallback em classesCorGrupo, ver utils.js).
-        import('./forms.js').then(({ renderSeletorCorGrupo }) => {
+        // Autor: pré-seleciona quem estiver marcado "sou eu" (sugestão,
+        // não trava — ver obterAutorSouEuId em db.js); "Grupo pai" nasce
+        // vazio até um Autor ser escolhido (ver atualizarSelectGrupoPai).
+        import('./forms.js').then(({ renderSeletorCorGrupo, renderSelectAutor }) => {
             const corField = document.getElementById('g-cor');
             if (corField) corField.value = CORES_GRUPO_PADRAO;
             renderSeletorCorGrupo(CORES_GRUPO_PADRAO);
+            renderSelectAutor('g-autor', null);
+            window.atualizarSelectGrupoPai();
+        });
+    }
+
+    if (tipo === 'epoca') {
+        // Mesmo raciocínio do bloco 'grupo' acima: Autor pré-selecionado
+        // com quem estiver marcado "sou eu", sem travar a escolha.
+        import('./forms.js').then(({ renderSelectAutor }) => {
+            renderSelectAutor('ep-autor', null);
         });
     }
 
@@ -866,6 +1008,24 @@ export async function prepararNovo(tipo) {
     if (title) title.innerText = `Novo(a) ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
 
     toggleModal(`modal-${tipo}`);
+}
+
+// Atalho pro botão "Novo subgrupo" no card de um Grupo em qualquer nível
+// abaixo do teto (ver cartaoGrupo em render-listas.js e NIVEL_MAXIMO_GRUPO
+// em db.js — o último nível não ganha esse botão, já é o mais fundo
+// permitido). Passa pelo mesmo `prepararNovo('grupo')`
+// de sempre e só poupa os dois passos manuais mais comuns nesse
+// caminho: Autor e Grupo pai já saem pré-selecionados a partir do grupo
+// clicado, em vez de vazios.
+export async function prepararNovoSubgrupo(paiId) {
+    const pai = db.grupos.find((g) => g.id == paiId);
+    if (!pai) return;
+    await prepararNovo('grupo');
+    const { renderSelectAutor } = await import('./forms.js');
+    renderSelectAutor('g-autor', pai.autorId);
+    window.atualizarSelectGrupoPai();
+    const selectPai = document.getElementById('g-pai');
+    if (selectPai) selectPai.value = String(pai.id);
 }
 
 // Toggle genérico pra painéis recolhíveis (ex.: filtro de data em

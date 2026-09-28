@@ -197,6 +197,15 @@ export function badgesPessoas(pessoas) {
 // Além disso, um badge por grupo referenciado diretamente
 // (item.gruposDiretos — ver obterGruposDiretos em editor.js), sem o
 // parêntese de pessoa (não há uma pessoa específica associada).
+//
+// Desambiguação por Autor (decisão B, 27/09/2026, ver
+// manutencao/decisoes.md): Grupo deixou de ter nome único globalmente
+// (agora só único por Autor — ver migrarGruposAutorId em db.js), então
+// um texto de coautoria pode, em tese, citar dois Grupos com o mesmo
+// nome vindos de Autores diferentes. Em vez de mostrar o Autor sempre
+// (poluiria os 99% dos casos sem Autor duplicado), o nome do Autor só
+// entra no badge quando há colisão de fato DENTRO deste item — ver
+// rotuloGrupo/nomesColidindo abaixo.
 export function badgesGrupos(item) {
     const pares = paresGrupoPessoa(item, db.pessoas, db.grupos);
     const diretos = (item.gruposDiretos || [])
@@ -207,13 +216,29 @@ export function badgesGrupos(item) {
     // Agrupado por Grupo (ver agruparParesGrupoPessoa em utils.js): um
     // badge por Grupo, com todas as pessoas que pertencem a ele entre
     // parênteses — não um badge repetido por pessoa.
-    const badgesViaPessoa = agruparParesGrupoPessoa(pares).map(
+    const viaPessoa = agruparParesGrupoPessoa(pares);
+    const autorIdsPorNome = new Map();
+    for (const g of [...viaPessoa.map((p) => p.grupo), ...diretos]) {
+        if (!autorIdsPorNome.has(g.nome)) autorIdsPorNome.set(g.nome, new Set());
+        autorIdsPorNome.get(g.nome).add(g.autorId);
+    }
+    const nomesColidindo = new Set(
+        [...autorIdsPorNome.entries()]
+            .filter(([, autorIds]) => autorIds.size > 1)
+            .map(([nome]) => nome),
+    );
+    const rotuloGrupo = (grupo) => {
+        if (!nomesColidindo.has(grupo.nome)) return escapeHtml(grupo.nome);
+        const nomeAutor = db.autores.find((a) => a.id == grupo.autorId)?.nome || '(autor)';
+        return `${escapeHtml(grupo.nome)}, ${escapeHtml(nomeAutor)}`;
+    };
+    const badgesViaPessoa = viaPessoa.map(
         ({ grupo, pessoas }) =>
-            `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)} <span class="opacity-70">(${pessoas.map((p) => escapeHtml(p.nome)).join(', ')})</span></span>`,
+            `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${rotuloGrupo(grupo)} <span class="opacity-70">(${pessoas.map((p) => escapeHtml(p.nome)).join(', ')})</span></span>`,
     );
     const badgesDiretos = diretos.map(
         (grupo) =>
-            `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(grupo.nome)}</span>`,
+            `<span class="text-[9px] ${classesCorGrupo(grupo.cor)} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${rotuloGrupo(grupo)}</span>`,
     );
     return [...badgesViaPessoa, ...badgesDiretos].join('');
 }
@@ -233,7 +258,10 @@ export function badgesAutoria(item) {
             // Heterônimo/Pseudônimo em uso: badge mostra o nome literário,
             // `title` guarda o Autor real por trás dele (passar o mouse
             // revela quem é).
-            const titulo = assinatura !== 'Ortônimo' && nomeLiterario ? ` title="${escapeHtml(autor.nome)}"` : '';
+            const titulo =
+                assinatura !== 'Ortônimo' && nomeLiterario
+                    ? ` title="${escapeHtml(autor.nome)}"`
+                    : '';
             return `<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block"${titulo}>${escapeHtml(nome)} <span class="opacity-70">(${escapeHtml(papel)})</span></span>`;
         })
         .join('');
@@ -542,6 +570,7 @@ const COLUNA_CAMPO_BUSCA = {
         reconhecimentos: '_buscaReconhecimentos',
         autoavaliacao: 'autoavaliacao',
         epocaRetratada: '_buscaEpoca',
+        periodoHistoricoId: '_buscaPeriodoHistorico',
         fonte: '_buscaFonte',
         grafia: '_buscaGrafia',
         // ID do Sistema (ver comentário em CAMPOS_ATRIBUTO, utils.js) —
@@ -581,6 +610,7 @@ const COLUNA_CAMPO_BUSCA = {
         ecos: '_buscaEcos',
         referenciasExternas: '_buscaReferenciasExternas',
         epocaRetratada: '_buscaEpoca',
+        periodoHistoricoId: '_buscaPeriodoHistorico',
         fonte: '_buscaFonte',
         grafia: '_buscaGrafia',
         idSistema: 'id',

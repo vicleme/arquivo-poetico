@@ -26,22 +26,22 @@ combination is itself an indivisible feeling or idea, one that isn't the
 sum of its parts — in Tone, for example, "Very saccharine" isn't
 "romantic" + "intense" happening in parallel, it's a reading texture of
 its own, so it works as a single tag. Outside that case (e.g., a poem
-that is melancholic *and*, in a different passage, hopeful — two real but
+that is melancholic _and_, in a different passage, hopeful — two real but
 distinct impressions, not one single thing), separate tags keep the list
 more useful for filtering and cross-referencing later.
 
 The 8 fields, in the order they appear in the editor:
 
-| Field (key)                    | Label              |
-| ------------------------------- | ------------------- |
-| `sinalizacoesTradicao`          | Tradição (Tradition) |
-| `sinalizacoesEstilo`            | Estilo (Style)        |
-| `sinalizacoesTema`              | Tema (Theme)           |
-| `sinalizacoesRelacao`           | Relação (Relation)    |
-| `sinalizacoesSensibilidade`     | Sensibilidade (Sensitivity) |
-| `sinalizacoesTom`               | Tom (Tone)             |
-| `sinalizacoesDominioImagetico`  | Domínio Imagético (Imagery Domain) |
-| `sinalizacoesOutros`            | Outros (Other)          |
+| Field (key)                    | Label                              |
+| ------------------------------ | ---------------------------------- |
+| `sinalizacoesTradicao`         | Tradição (Tradition)               |
+| `sinalizacoesEstilo`           | Estilo (Style)                     |
+| `sinalizacoesTema`             | Tema (Theme)                       |
+| `sinalizacoesRelacao`          | Relação (Relation)                 |
+| `sinalizacoesSensibilidade`    | Sensibilidade (Sensitivity)        |
+| `sinalizacoesTom`              | Tom (Tone)                         |
+| `sinalizacoesDominioImagetico` | Domínio Imagético (Imagery Domain) |
+| `sinalizacoesOutros`           | Outros (Other)                     |
 
 A "flat" export combines everything into a single string
 (`sinalizacoesCombinadas`) for general search and simple statistics — but
@@ -87,8 +87,8 @@ the 8 separate fields, not the combined string.
 - **Tom (Tone)**: the emotional register or attitude perceived in the
   text (e.g., "Very saccharine"). This is a reading judgment/tone, not a
   formal device (that would be Style) nor a type of sensitive content.
-- **Domínio Imagético (Imagery Domain)** *(full label: "Domínio Imagético
-  (repertório)" — "Imagery Domain (repertoire)")*: vocabulary or imagery
+- **Domínio Imagético (Imagery Domain)** _(full label: "Domínio Imagético
+  (repertório)" — "Imagery Domain (repertoire)")_: vocabulary or imagery
   the text borrows from an entire knowledge domain — e.g., "Astrology,"
   when the poem uses terms like Venus/Transits as a general register,
   without citing one specific work. The important distinction is with

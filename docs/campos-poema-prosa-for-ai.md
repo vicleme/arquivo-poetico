@@ -97,7 +97,7 @@ Links to other texts in the archive itself, by id (`conceitos.elos`,
 `conceitos.ecos`):
 
 - **Elos** ("Links", bilateral): `{ id, poemaId, relacao, direcao,
-  texto }`. `relacao` ("relation") comes from a closed list (Reescrita —
+texto }`. `relacao` ("relation") comes from a closed list (Reescrita —
   Rewrite, Continuidade — Continuation, Tradução — Translation, Variação
   — Variation, Versão — Version, Resposta — Response, Díptico — Diptych,
   Outro — Other). `direcao` ("direction") is `"origem"` (the older/base
@@ -120,7 +120,7 @@ Three similar-looking fields, detailed in `pessoas-papeis-for-ai.md`:
   (Retratado(a) — Depicted, Dedicatário(a) — Dedicatee, etc.) — the field
   with the most nuance, has its own doc.
 - **`autoria`** ("authorship"): who wrote the text — `{ autorId,
-  papel }`, `papel` ("role") is a single value (not an array) from
+papel }`, `papel` ("role") is a single value (not an array) from
   `Autor`/`Coautor` (Author/Co-author). Resolves against `db.autores`, a
   central registry separate from `db.pessoas`.
 - **`gruposDiretos`** ("direct groups"): an array of `grupoId` — a group
@@ -179,11 +179,11 @@ Three similar-looking fields, detailed in `pessoas-papeis-for-ai.md`:
 ## Sendings, recognitions, and attachments
 
 - **`envios`** ("sendings"): a list of `{ pessoa, data, meio, reacao,
-  notas }` — who the text was sent to, when, through which channel, and
+notas }` — who the text was sent to, when, through which channel, and
   the reaction recorded. `pessoa` and `meio` ("channel") are free text
   with autocomplete (no id link to `db.pessoas`).
 - **`reconhecimentos`** ("recognitions"): a list of `{ premio, posicao,
-  ano, texto }` — awards/recognitions the text received.
+ano, texto }` — awards/recognitions the text received.
 - **`anexos`** ("attachments", formerly `ilustracoes`): a list of
   attachments for the text, with **`anexosNotaGeral`** as a free note
   covering the whole set (not one specific attachment).

@@ -44,6 +44,15 @@ import {
     aplicarLimpeza,
 } from './campos-preenchiveis.js';
 import {
+    TIPOS_PERIODO_MASSA,
+    rotuloTipoPeriodoMassa,
+    nomesCadastroPeriodoMassa,
+    planejarAplicacaoPeriodo,
+    aplicarPlanoPeriodo,
+    planejarRemocaoPeriodo,
+    aplicarRemocaoPeriodo,
+} from './periodos-massa.js';
+import {
     selecaoPoemas,
     selecaoProsas,
     getListaVisivelPoemas,
@@ -748,6 +757,218 @@ export function removerGeneroEmMassaProsa() {
             });
             if (input) input.value = '';
             selecaoProsas.clear();
+            save();
+        },
+    });
+}
+
+// ─── Períodos e movimentos em massa ───────────────────
+// Painel único (Movimento/Escola, Período Biográfico, Período
+// Histórico) — a lógica de cada campo mora em periodos-massa.js (sem
+// DOM); aqui só o painel e as confirmações. Mesmo esquema do painel de
+// "Preencher campo": o <div> vazio fica no index.html
+// (id painel-periodos-massa[-prosa]) e o conteúdo é montado aqui.
+const idsPeriodos = (c) => ({
+    painel: `painel-periodos-massa${c.sufixoDom}`,
+    tipo: `bulk-periodo-tipo${c.sufixoDom}`,
+    nome: `bulk-periodo-nome${c.sufixoDom}`,
+    sugestoes: `bulk-periodo-sugestoes${c.sufixoDom}`,
+    sobrescreverWrap: `bulk-periodo-sobrescrever-wrap${c.sufixoDom}`,
+    sobrescrever: `bulk-periodo-sobrescrever${c.sufixoDom}`,
+    dica: `bulk-periodo-dica${c.sufixoDom}`,
+});
+
+const DICAS_PERIODO = {
+    movimento:
+        'Aditivo: acrescenta o movimento sem tirar os que o texto já tem. "Remover" tira só este.',
+    epoca: 'A Época pertence a um Autor: vale a do Autor de cada texto (se ainda não existir, é criada para o primeiro Autor do texto). Texto sem Autor é pulado. Datas e recorte que o texto já tinha são mantidos.',
+    periodoHistorico:
+        'Quem já tem outro Período Histórico é mantido, a menos que você marque para substituir. "Remover" só limpa quem está com este.',
+};
+
+function tipoPeriodoSelecionado(tabela) {
+    const ids = idsPeriodos(cfg(tabela));
+    const v = document.getElementById(ids.tipo)?.value;
+    return TIPOS_PERIODO_MASSA.some((t) => t.chave === v) ? v : TIPOS_PERIODO_MASSA[0].chave;
+}
+
+function opcoesPeriodo(tipo) {
+    return nomesCadastroPeriodoMassa(tipo)
+        .map((n) => `<option value="${escapeHtml(n)}"></option>`)
+        .join('');
+}
+
+// Atualiza o que depende do tipo escolhido: sugestões, placeholder,
+// dica e a caixa "substituir" (Movimento/Escola é sempre aditivo).
+function atualizarCamposPeriodo(tabela) {
+    const ids = idsPeriodos(cfg(tabela));
+    const tipo = tipoPeriodoSelecionado(tabela);
+    const datalist = document.getElementById(ids.sugestoes);
+    if (datalist) datalist.innerHTML = opcoesPeriodo(tipo);
+    const input = document.getElementById(ids.nome);
+    if (input) input.placeholder = `Nome do ${rotuloTipoPeriodoMassa(tipo)}...`;
+    const dica = document.getElementById(ids.dica);
+    if (dica) dica.textContent = DICAS_PERIODO[tipo];
+    document.getElementById(ids.sobrescreverWrap)?.classList.toggle('hidden', tipo === 'movimento');
+}
+
+export function prepararPainelPeriodosMassa(tabela) {
+    const c = cfg(tabela);
+    const ids = idsPeriodos(c);
+    const painel = document.getElementById(ids.painel);
+    if (!painel) return;
+
+    if (!document.getElementById(ids.tipo)) {
+        const rotulo = (t) =>
+            `<label class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1">${t}</label>`;
+        painel.innerHTML = `
+            <div>
+                ${rotulo('Campo')}
+                <select id="${ids.tipo}" class="text-xs p-2"
+                    onchange="trocarTipoPeriodoMassa('${tabela}')">
+                    ${TIPOS_PERIODO_MASSA.map((t) => `<option value="${t.chave}">${escapeHtml(t.rotulo)}</option>`).join('')}
+                </select>
+            </div>
+            <div>
+                ${rotulo('Nome')}
+                <input type="text" id="${ids.nome}" list="${ids.sugestoes}"
+                    class="text-xs p-2 min-w-[220px] mb-0"
+                    onkeydown="aoEnterAplicar(event, () => aplicarPeriodoEmMassa('${tabela}'))" />
+                <datalist id="${ids.sugestoes}"></datalist>
+            </div>
+            <label id="${ids.sobrescreverWrap}" class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-300 pb-2">
+                <input type="checkbox" id="${ids.sobrescrever}" style="width: auto; margin: 0" />
+                Substituir o que já está definido
+            </label>
+            <button type="button" onclick="aplicarPeriodoEmMassa('${tabela}')"
+                class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap">
+                + Aplicar
+            </button>
+            <button type="button" onclick="removerPeriodoEmMassa('${tabela}')"
+                class="bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap">
+                − Remover
+            </button>
+            <p id="${ids.dica}" class="text-[10px] text-gray-400 dark:text-slate-500 w-full"></p>`;
+    }
+    // Sempre atualiza as sugestões: o cadastro pode ter mudado desde a
+    // última vez que o painel foi aberto (o que foi digitado fica).
+    atualizarCamposPeriodo(tabela);
+}
+
+export function trocarTipoPeriodoMassa(tabela) {
+    atualizarCamposPeriodo(tabela);
+}
+
+function lerNomePeriodo(tabela) {
+    const ids = idsPeriodos(cfg(tabela));
+    return (document.getElementById(ids.nome)?.value || '').trim();
+}
+
+function limparNomePeriodo(tabela) {
+    const ids = idsPeriodos(cfg(tabela));
+    const input = document.getElementById(ids.nome);
+    if (input) input.value = '';
+}
+
+export function aplicarPeriodoEmMassa(tabela) {
+    const c = cfg(tabela);
+    if (c.selecao.size === 0) return;
+    const tipo = tipoPeriodoSelecionado(tabela);
+    const rotuloTipo = rotuloTipoPeriodoMassa(tipo);
+    const nome = lerNomePeriodo(tabela);
+    if (!nome) return mostrarAviso(`Digite o nome do ${rotuloTipo}.`);
+
+    const ids = idsPeriodos(c);
+    const sobrescrever =
+        tipo !== 'movimento' && !!document.getElementById(ids.sobrescrever)?.checked;
+    const plano = planejarAplicacaoPeriodo(tipo, itensSelecionados(tabela), nome, { sobrescrever });
+
+    if (plano.alterar.length === 0) {
+        const motivos = [];
+        if (plano.jaIguais)
+            motivos.push(`${plano.jaIguais} já ${plural(plano.jaIguais, 'está', 'estão')} assim`);
+        if (plano.jaPreenchidos)
+            motivos.push(
+                `${plano.jaPreenchidos} já ${plural(plano.jaPreenchidos, 'tem', 'têm')} outro valor`,
+            );
+        if (plano.semAutor) motivos.push(`${plano.semAutor} sem Autor cadastrado no texto`);
+        return mostrarAviso(
+            `Nada a alterar em "${rotuloTipo}"${motivos.length ? ` (${motivos.join(', ')})` : ''}.`,
+            'info',
+        );
+    }
+
+    const n = plano.alterar.length;
+    const avisos = [];
+    if (tipo === 'epoca') {
+        if (plano.epocasACriar) {
+            avisos.push(
+                `${plano.epocasACriar} ${plural(plano.epocasACriar, 'Período Biográfico novo será criado', 'Períodos Biográficos novos serão criados')} (um por Autor).`,
+            );
+        }
+    } else if (plano.cadastroNovo) {
+        avisos.push(`"${nome}" ainda não existe no cadastro e será criado.`);
+    }
+    const mantidos = [];
+    if (plano.jaIguais)
+        mantidos.push(
+            `${plano.jaIguais} ${plural(plano.jaIguais, 'já estava assim', 'já estavam assim')}`,
+        );
+    if (plano.jaPreenchidos)
+        mantidos.push(
+            `${plano.jaPreenchidos} ${plural(plano.jaPreenchidos, 'já tinha outro valor e será mantido', 'já tinham outro valor e serão mantidos')}`,
+        );
+    if (plano.semAutor)
+        mantidos.push(`${plano.semAutor} ${plural(plano.semAutor, 'sem Autor', 'sem Autor')}`);
+
+    abrirModalConfirmacao({
+        titulo: `${rotuloTipo}: "${nome}"`,
+        rotulo: 'Ação em massa',
+        mensagem:
+            `Isso vai ${tipo === 'movimento' ? 'acrescentar' : 'definir'} "${nome}" em "${rotuloTipo}" de ${n} ${c.singular}${n !== 1 ? 's' : ''}.` +
+            `${avisos.length ? ` ${avisos.join(' ')}` : ''}` +
+            `${mantidos.length ? ` Pulados: ${mantidos.join('; ')}.` : ''}`,
+        textoConfirmar: 'Aplicar',
+        corConfirmar: '#2563eb',
+        // Só foca Confirmar quando nada é substituído (mesmo critério de
+        // aplicarPreenchimentoEmMassa).
+        focarConfirmar: !sobrescrever,
+        onConfirmar: () => {
+            aplicarPlanoPeriodo(tipo, plano, nome);
+            limparNomePeriodo(tabela);
+            c.selecao.clear();
+            save();
+        },
+    });
+}
+
+export function removerPeriodoEmMassa(tabela) {
+    const c = cfg(tabela);
+    if (c.selecao.size === 0) return;
+    const tipo = tipoPeriodoSelecionado(tabela);
+    const rotuloTipo = rotuloTipoPeriodoMassa(tipo);
+    const nome = lerNomePeriodo(tabela);
+    if (!nome) return mostrarAviso(`Digite o nome do ${rotuloTipo} a remover.`);
+
+    const plano = planejarRemocaoPeriodo(tipo, itensSelecionados(tabela), nome);
+    if (plano.alterar.length === 0) {
+        return mostrarAviso(
+            `Nada a remover: nenhum dos selecionados está com "${nome}" em "${rotuloTipo}".`,
+            'info',
+        );
+    }
+
+    const n = plano.alterar.length;
+    abrirModalConfirmacao({
+        titulo: `Remover "${nome}"`,
+        rotulo: 'Ação em massa',
+        mensagem: `Isso vai remover "${nome}" de "${rotuloTipo}" em ${n} ${c.singular}${n !== 1 ? 's' : ''}.${plano.naoTinham ? ` ${plano.naoTinham} ${plural(plano.naoTinham, 'não tinha', 'não tinham')} esse valor.` : ''} O cadastro em si não é apagado.`,
+        textoConfirmar: 'Remover',
+        corConfirmar: '#dc2626',
+        onConfirmar: () => {
+            aplicarRemocaoPeriodo(tipo, plano, nome);
+            limparNomePeriodo(tabela);
+            c.selecao.clear();
             save();
         },
     });

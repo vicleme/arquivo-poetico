@@ -43,11 +43,11 @@ item mistura campos dos dois tipos.
 
 ```json
 {
-  "id": 1757856000000,
-  "nome": "Presença e ausência",
-  "unidadeEstrofica": "Quartetos",
-  "unidadeDiscursiva": "Proposição",
-  "posicao": { "estrofes": [1, 2], "versos": "todos" }
+    "id": 1757856000000,
+    "nome": "Presença e ausência",
+    "unidadeEstrofica": "Quartetos",
+    "unidadeDiscursiva": "Proposição",
+    "posicao": { "estrofes": [1, 2], "versos": "todos" }
 }
 ```
 
@@ -88,9 +88,9 @@ item mistura campos dos dois tipos.
 
 ```json
 {
-  "id": 1757856000001,
-  "progressaoDialetica": "Volta",
-  "posicao": { "estrofes": [4], "versos": [1] }
+    "id": 1757856000001,
+    "progressaoDialetica": "Volta",
+    "posicao": { "estrofes": [4], "versos": [1] }
 }
 ```
 
@@ -157,18 +157,18 @@ pertence a nenhum poema específico:
 
 ```json
 {
-  "id": 1,
-  "nome": "Soneto",
-  "embutido": true,
-  "unidades": [
-    { "unidadeEstrofica": "Quartetos", "unidadeDiscursiva": "Proposição" },
-    { "unidadeEstrofica": "Tercetos", "unidadeDiscursiva": "Resolução" }
-  ],
-  "eventos": [
-    { "progressaoDialetica": "Tensão" },
-    { "progressaoDialetica": "Volta" },
-    { "progressaoDialetica": "Síntese" }
-  ]
+    "id": 1,
+    "nome": "Soneto",
+    "embutido": true,
+    "unidades": [
+        { "unidadeEstrofica": "Quartetos", "unidadeDiscursiva": "Proposição" },
+        { "unidadeEstrofica": "Tercetos", "unidadeDiscursiva": "Resolução" }
+    ],
+    "eventos": [
+        { "progressaoDialetica": "Tensão" },
+        { "progressaoDialetica": "Volta" },
+        { "progressaoDialetica": "Síntese" }
+    ]
 }
 ```
 

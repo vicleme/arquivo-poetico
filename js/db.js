@@ -38,6 +38,534 @@ const LS_KEY_ULTIMO_BACKUP = 'arquivoPoetico_ultimoBackup';
 // melhor "sobrar" barra do que a pessoa achar que tem folga e não ter.
 const LIMITE_ESTIMADO_BYTES = 5 * 1024 * 1024;
 
+// ─── Seed de Movimento/Escola ───────────────────────────────────
+// Dado bruto dos 22 movimentos pré-cadastrados (eixo Brasil/Portugal +
+// principais influências internacionais no Modernismo), curado em
+// sessão com o Victor (27/09/2026 — ver decisoes.md; Pós-modernismo
+// incluído em sessão seguinte, sem sucessor cadastrado de propósito;
+// Tropicalismo incluído numa terceira sessão, preenchendo o intervalo
+// entre Concretismo e Pós-modernismo; Literatura Contemporânea teve
+// regiaoOrigem e ini revistos na mesma sessão).
+// `ini`/`fim` usam
+// a forma compacta [dia, mes, ano, seculo, decada] (todos opcionais,
+// `null` onde não se aplica) só pra não repetir 5 chaves por linha
+// aqui; `criarMovimentoEscola` abaixo expande pro formato de verdade
+// `{ dia, mes, ano, seculo, decada }` (mesmo objeto parcial que
+// periodosHistoricos usa, só que com seculo/decada a mais — granularidade
+// pedida pelo Victor, já que movimento raramente tem data no dia/mês).
+const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
+    {
+        nome: 'Trovadorismo',
+        ini: [null, null, null, 'XII', null],
+        fim: [null, null, null, 'XIV', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'Portugal/Galiza',
+        valores: ['tradição oral', 'cortesia', 'amor cortês'],
+        temas: ['amor não correspondido', 'saudade', 'amizade', 'zombaria'],
+        tecnicas: ['refrão', 'paralelismo', 'mote e glosa'],
+        tiposComposicao: [
+            'cantiga de amor',
+            'cantiga de amigo',
+            'cantiga de escárnio',
+            'cantiga de maldizer',
+        ],
+        lemas: [],
+        manifestos: [],
+    },
+    {
+        nome: 'Humanismo',
+        ini: [null, null, null, 'XV', null],
+        fim: [null, null, null, 'XV', null],
+        tipo: 'Literário',
+        regiaoOrigem: 'Portugal',
+        valores: ['racionalidade emergente', 'valorização do indivíduo'],
+        temas: ['feitos régios', 'moral cortesã'],
+        tecnicas: ['prosa cronística', 'diálogo doutrinário'],
+        tiposComposicao: ['crônica', 'farsa', 'auto'],
+        lemas: [],
+        manifestos: [],
+    },
+    {
+        nome: 'Classicismo (Quinhentismo)',
+        ini: [null, null, null, 'XVI', 1550],
+        fim: [null, null, null, 'XVI', null],
+        tipo: 'Literário',
+        regiaoOrigem: 'Portugal',
+        valores: ['equilíbrio', 'universalismo clássico', 'heroísmo nacional'],
+        temas: ['navegação/epopeia', 'amor platônico', 'mitologia'],
+        tecnicas: ['métrica clássica (decassílabo)', 'alusão mitológica'],
+        tiposComposicao: ['epopeia', 'soneto', 'écloga'],
+        lemas: [],
+        manifestos: [],
+    },
+    {
+        nome: 'Barroco',
+        ini: [null, null, null, 'XVII', 1640],
+        fim: [null, null, null, 'XVII', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'Brasil/Portugal',
+        valores: ['conflito fé×razão', 'efemeridade da vida'],
+        temas: ['morte', 'pecado e salvação', 'vaidade (vanitas)'],
+        tecnicas: [
+            'antítese',
+            'hipérbato',
+            'paradoxo',
+            'jogo de contrários (cultismo/conceptismo)',
+        ],
+        tiposComposicao: ['soneto', 'sermão', 'auto sacramental'],
+        lemas: ['Vanitas vanitatum, omnia vanitas'],
+        manifestos: [],
+    },
+    {
+        nome: 'Arcadismo (Neoclassicismo)',
+        ini: [null, null, null, 'XVIII', 1760],
+        fim: [null, null, null, 'XVIII', null],
+        tipo: 'Literário',
+        regiaoOrigem: 'Brasil/Portugal',
+        valores: ['simplicidade', 'racionalidade iluminista'],
+        temas: ['vida bucólica', 'amor idealizado', 'fuga da cidade'],
+        tecnicas: [
+            'pseudônimo pastoril (arcádico)',
+            'imitação de modelos clássicos (Horácio, Virgílio)',
+        ],
+        tiposComposicao: ['soneto', 'écloga', 'ode'],
+        lemas: [
+            'Fugere urbem',
+            'Locus amoenus',
+            'Inutilia truncat',
+            'Aurea mediocritas',
+            'Carpe diem',
+        ],
+        manifestos: [],
+    },
+    {
+        nome: 'Romantismo',
+        ini: [null, null, null, 'XIX', 1830],
+        fim: [null, null, null, 'XIX', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'Brasil/Portugal',
+        valores: ['subjetivismo', 'nacionalismo', 'liberdade individual'],
+        temas: ['amor idealizado', 'natureza', 'indianismo', 'melancolia'],
+        tecnicas: ['primeira pessoa exacerbada', 'hipérbole sentimental'],
+        tiposComposicao: ['romance-folhetim', 'poema lírico-narrativo', 'poema indianista'],
+        lemas: [],
+        manifestos: [],
+    },
+    {
+        nome: 'Realismo',
+        ini: [null, null, null, 'XIX', 1870],
+        fim: [null, null, null, 'XIX', null],
+        tipo: 'Literário',
+        regiaoOrigem: 'Brasil/Portugal',
+        valores: ['objetividade', 'crítica social'],
+        temas: ['adultério', 'hipocrisia burguesa', 'decadência moral'],
+        tecnicas: ['narrador crítico/irônico', 'análise psicológica', 'digressão ensaística'],
+        tiposComposicao: ['romance urbano', 'conto'],
+        lemas: [],
+        manifestos: [],
+    },
+    {
+        nome: 'Naturalismo',
+        ini: [null, null, null, 'XIX', 1880],
+        fim: [null, null, null, 'XIX', null],
+        tipo: 'Literário',
+        regiaoOrigem: 'Brasil/Portugal',
+        valores: ['determinismo', 'cientificismo', 'denúncia social'],
+        temas: ['exclusão social', 'doença/degeneração', 'instinto'],
+        tecnicas: ['descrição cientificista', 'zoomorfização'],
+        tiposComposicao: ['romance de tese'],
+        lemas: [],
+        manifestos: [],
+    },
+    {
+        nome: 'Parnasianismo',
+        ini: [null, null, null, 'XIX', 1880],
+        fim: [null, null, null, 'XIX', null],
+        tipo: 'Literário',
+        regiaoOrigem: 'Brasil',
+        valores: ['impessoalidade', 'culto à forma'],
+        temas: ['beleza plástica', 'mitologia clássica', 'o fazer poético'],
+        tecnicas: ['rigor métrico', 'rima rica', 'busca da forma fixa'],
+        tiposComposicao: ['soneto'],
+        lemas: ['Arte pela arte'],
+        manifestos: [],
+    },
+    {
+        nome: 'Simbolismo',
+        ini: [null, null, null, 'XIX', 1890],
+        fim: [null, null, null, 'XIX', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'Brasil/Portugal',
+        valores: ['musicalidade', 'subjetividade', 'misticismo'],
+        temas: ['morte', 'transcendência', 'o inefável'],
+        tecnicas: ['sinestesia', 'sugestão em vez de descrição', 'musicalidade sonora'],
+        tiposComposicao: ['soneto', 'poema em prosa'],
+        lemas: [],
+        manifestos: ['Manifesto Simbolista (Jean Moréas, 1886, França)'],
+    },
+    {
+        nome: 'Pré-Modernismo',
+        ini: [null, null, null, 'XX', 1910],
+        fim: [null, null, null, 'XX', null],
+        tipo: 'Literário',
+        regiaoOrigem: 'Brasil',
+        valores: ['crítica social', 'hibridismo estético'],
+        temas: ['exclusão/marginalidade', 'sertão e litoral'],
+        tecnicas: ['hibridismo de registro (culto/coloquial)'],
+        tiposComposicao: ['romance urbano', 'conto'],
+        lemas: [],
+        manifestos: [],
+    },
+    {
+        nome: 'Futurismo',
+        ini: [null, null, null, 'XX', 1910],
+        fim: [null, null, null, 'XX', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'Itália',
+        valores: ['culto à velocidade', 'ruptura com o passado'],
+        temas: ['guerra', 'tecnologia', 'cidade moderna'],
+        tecnicas: ['palavras em liberdade', 'ruptura sintática', 'tipografia expressiva'],
+        tiposComposicao: ['manifesto', 'poema-cartaz'],
+        lemas: ['Parole in libertà'],
+        manifestos: ['Manifesto Futurista (Marinetti, 1909)'],
+    },
+    {
+        nome: 'Expressionismo',
+        ini: [null, null, null, 'XX', 1910],
+        fim: [null, null, null, 'XX', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'Alemanha',
+        valores: ['subjetividade extrema', 'angústia existencial'],
+        temas: ['alienação', 'guerra', 'opressão urbana'],
+        tecnicas: ['distorção grotesca', 'linguagem fragmentada'],
+        tiposComposicao: ['drama expressionista', 'poema em prosa'],
+        lemas: [],
+        manifestos: [],
+    },
+    {
+        nome: 'Cubismo literário',
+        ini: [null, null, null, 'XX', 1910],
+        fim: [null, null, null, 'XX', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'França',
+        valores: ['simultaneidade', 'multiplicidade de perspectivas'],
+        temas: ['vida moderna urbana', 'fragmentação da experiência'],
+        tecnicas: ['simultaneísmo', 'justaposição sem conectivos'],
+        tiposComposicao: ['caligrama', 'poema-colagem'],
+        lemas: [],
+        manifestos: [],
+    },
+    {
+        nome: 'Dadaísmo',
+        ini: [null, null, null, 'XX', 1916],
+        fim: [null, null, null, 'XX', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'Suíça/Europa',
+        valores: ['antiarte', 'acaso', 'negação da lógica'],
+        temas: ['absurdo da guerra', 'falência da razão burguesa'],
+        tecnicas: ['colagem', 'acaso (cadavre exquis)', 'corte-e-recombinação de palavras'],
+        tiposComposicao: ['poema-colagem', 'manifesto-dadá'],
+        lemas: ['Dada não significa nada'],
+        manifestos: ['Manifesto Dadá (Tristan Tzara, 1918)'],
+    },
+    {
+        nome: 'Modernismo',
+        ini: [null, null, null, 'XX', 1922],
+        fim: [null, null, null, 'XX', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'Brasil',
+        valores: ['ruptura formal', 'nacionalismo crítico', 'liberdade de expressão'],
+        temas: ['identidade nacional', 'cotidiano urbano', 'crítica ao passadismo'],
+        tecnicas: ['verso livre', 'coloquialidade', 'paródia/humor'],
+        tiposComposicao: ['manifesto', 'poema-piada', 'crônica modernista'],
+        lemas: ['Tupy, or not tupy, that is the question'],
+        manifestos: ['Manifesto da Poesia Pau-Brasil (1924)', 'Manifesto Antropófago (1928)'],
+    },
+    {
+        nome: 'Surrealismo',
+        ini: [null, null, null, 'XX', 1924],
+        fim: [null, null, null, 'XX', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'França',
+        valores: ['automatismo psíquico', 'valorização do inconsciente'],
+        temas: ['sonho', 'desejo', 'o maravilhoso cotidiano'],
+        tecnicas: ['escrita automática', 'justaposição onírica', 'associação livre de imagens'],
+        tiposComposicao: ['poema em prosa', 'manifesto'],
+        lemas: [],
+        manifestos: ['Manifesto do Surrealismo (André Breton, 1924)'],
+    },
+    {
+        nome: 'Geração de 45',
+        ini: [null, null, null, 'XX', 1945],
+        fim: [null, null, null, 'XX', null],
+        tipo: 'Literário',
+        regiaoOrigem: 'Brasil',
+        valores: ['retorno ao rigor formal', 'equilíbrio tradição/modernidade'],
+        temas: ['intimismo', 'universalismo'],
+        tecnicas: ['metrificação recuperada', 'economia verbal', 'precisão lexical'],
+        tiposComposicao: ['soneto retomado', 'poema curto de rigor formal'],
+        lemas: [],
+        manifestos: [],
+    },
+    {
+        nome: 'Concretismo',
+        ini: [null, null, null, 'XX', 1956],
+        fim: [null, null, null, 'XX', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'Brasil',
+        valores: ['síntese', 'economia verbal radical', 'palavra como objeto'],
+        temas: ['linguagem e forma como próprio conteúdo'],
+        tecnicas: [
+            'disposição gráfico-espacial da palavra',
+            'uso do espaço em branco como elemento sintático',
+            'verbivocovisualidade',
+        ],
+        tiposComposicao: ['poema-objeto', 'poema visual'],
+        lemas: [],
+        manifestos: [
+            'Plano-piloto para poesia concreta (1958, Grupo Noigandres — Haroldo de Campos, Augusto de Campos, Décio Pignatari)',
+        ],
+    },
+    {
+        // Preenchendo o intervalo entre Concretismo (1956) e Pós-modernismo
+        // (1970), lacuna notada pelo Victor em 27/09/2026: entre Poesia
+        // Práxis, Tropicalismo e Beat Generation, escolhido o Tropicalismo
+        // por ser o mais reconhecível pra quem não é especialista em
+        // vanguarda (mesmo critério de "amplamente conhecido", não "achado
+        // de nicho", que orienta o resto da lista).
+        nome: 'Tropicalismo',
+        ini: [null, null, null, 'XX', 1967],
+        fim: [null, null, null, 'XX', null],
+        tipo: 'Artístico',
+        regiaoOrigem: 'Brasil',
+        valores: ['antropofagia cultural', 'mistura de erudito e popular', 'experimentalismo'],
+        temas: [
+            'identidade nacional',
+            'consumo e modernização',
+            'colagem entre tradição e vanguarda',
+        ],
+        tecnicas: ['colagem', 'letra-manifesto', 'justaposição de linguagens (popular/erudito)'],
+        tiposComposicao: ['letra de canção-manifesto', 'poema-colagem'],
+        lemas: [],
+        manifestos: ['Álbum "Tropicália ou Panis et Circensis" (1968, vários artistas)'],
+    },
+    {
+        // Sem sucessor pré-cadastrado de propósito (decisão de 27/09/2026):
+        // o termo pro que vem depois (metamodernismo, pós-pós-modernismo
+        // etc.) ainda está em debate acadêmico sem consenso — o Victor
+        // cadastra manualmente se/quando um nome se consolidar, em vez de
+        // forçar uma resposta aqui.
+        nome: 'Pós-modernismo',
+        ini: [null, null, null, 'XX', 1970],
+        fim: [null, null, null, null, null],
+        tipo: 'Literário',
+        regiaoOrigem: 'Internacional',
+        valores: ['ceticismo às metanarrativas', 'pluralidade de vozes', 'ironia'],
+        temas: ['simulacro', 'crise de identidade', 'paródia da tradição'],
+        tecnicas: [
+            'metaficção',
+            'pastiche',
+            'intertextualidade paródica',
+            'fragmentação narrativa',
+        ],
+        tiposComposicao: ['metapoema', 'poema-colagem', 'prosa fragmentária'],
+        lemas: [],
+        manifestos: ['A Condição Pós-Moderna (Jean-François Lyotard, 1979)'],
+    },
+    {
+        // regiaoOrigem e ini ajustados em 27/09/2026 (decisão do Victor):
+        // 'Internacional' pra ficar coerente com o Pós-modernismo (mesmo
+        // tipo de rótulo amplo, não periodização lusófona) e não com o
+        // eixo Brasil/Portugal que o resto da lista segue; início movido
+        // de "século XX" (impreciso, incluiria até 1901) pra década de
+        // 1990, âncora que já bate com o que os próprios `temas`/
+        // `tiposComposicao` abaixo descrevem (cotidiano digital, poema-
+        // vídeo) e evita colidir com a Geração de 45 (1945), que também
+        // usa a "queda das metanarrativas do pós-guerra" como marco.
+        nome: 'Literatura Contemporânea',
+        ini: [null, null, null, 'XX', 1990],
+        fim: [null, null, null, 'XXI', null],
+        tipo: 'Literário',
+        regiaoOrigem: 'Internacional',
+        valores: ['pluralidade', 'hibridismo', 'ausência de escola dominante'],
+        temas: ['identidade', 'memória', 'corpo', 'tecnologia e cotidiano digital'],
+        tecnicas: [
+            'hibridismo de linguagens/mídias',
+            'intertextualidade explícita',
+            'fragmentação narrativa',
+        ],
+        tiposComposicao: ['crônica', 'poema-vídeo', 'romance híbrido/autoficção'],
+        lemas: [],
+        manifestos: [],
+    },
+];
+
+function _dataParcialDoSeed([dia, mes, ano, seculo, decada]) {
+    return { dia, mes, ano, seculo, decada };
+}
+
+// ─── Seed de Período Histórico ──────────────────────────────────
+// Diferente de Movimento/Escola (catálogo de escolas literárias),
+// Período Histórico nasceu como cadastro 100% livre do usuário — sem
+// seed nenhum (ver conversa-referencia.md, pedido do Victor em
+// 28/09/2026). Estes 12 são eventos/períodos de relevância ampla e
+// internacional pra literatura em geral, mesmo espírito educativo do
+// seed de Movimento/Escola, mas sem se limitar ao eixo Brasil/Portugal
+// (decisão do Victor: "mais amplo/internacional"). `ini`/`fim` usam a
+// forma compacta [dia, mes, ano] (`null` onde não se aplica) — mesma
+// razão de DADOS_SEED_MOVIMENTOS_ESCOLAS, só sem seculo/decada porque o
+// schema de Período Histórico não tem essa granularidade (ver
+// conversa-referencia.md: seria uma mudança de schema equivalente à de
+// Movimento/Escola, fora de escopo aqui). Datas com só ano (sem dia/mês)
+// são aproximações deliberadas de processos históricos sem um marco
+// diário exato (Renascimento, Iluminismo, Guerra Fria etc.) — a nota de
+// cada item deixa isso explícito. Ordem: cronológica pelo início.
+// `regiao` (texto livre, mesmo vocabulário de regiaoOrigem em Movimento/
+// Escola: 'Brasil', 'Europa', 'Internacional' pra o que não tem um lugar
+// só) diz ONDE o período aconteceu/teve alcance — por isso não se chama
+// `regiaoOrigem`: Guerra Fria e Covid-19 não têm origem, têm abrangência.
+const DADOS_SEED_PERIODOS_HISTORICOS = [
+    {
+        nome: 'Renascimento',
+        regiao: 'Europa',
+        ini: [null, null, 1400],
+        fim: [null, null, 1600],
+        notas: 'Movimento cultural e artístico europeu de resgate dos clássicos greco-latinos e do antropocentrismo, entre a Idade Média e a Idade Moderna — datas aproximadas (varia por região). Pano de fundo do Humanismo e do Classicismo/Quinhentismo português (Camões), já cadastrados em Movimento/Escola.',
+    },
+    {
+        nome: 'Iluminismo',
+        regiao: 'Europa',
+        ini: [null, null, 1715],
+        fim: [null, null, 1789],
+        notas: 'Movimento filosófico europeu de valorização da razão e da crítica ao Antigo Regime, do auge no século XVIII até a Revolução Francesa. Pano de fundo do Arcadismo (Neoclassicismo), já cadastrado em Movimento/Escola.',
+    },
+    {
+        nome: 'Revolução Industrial (primeira fase)',
+        regiao: 'Inglaterra/Europa',
+        ini: [null, null, 1760],
+        fim: [null, null, 1840],
+        notas: 'Mecanização e urbanização aceleradas, a partir da Inglaterra — pano de fundo econômico e social mais amplo das tensões depois retratadas pelo Realismo/Naturalismo.',
+    },
+    {
+        nome: 'Revolução Francesa',
+        regiao: 'França',
+        ini: [14, 7, 1789],
+        fim: [null, null, 1799],
+        notas: 'Marco simbólico do fim do Antigo Regime, do 14/07 (Queda da Bastilha) ao Golpe do 18 de Brumário — alimenta o culto à liberdade individual e o nacionalismo que o Romantismo herda.',
+    },
+    {
+        nome: 'Belle Époque',
+        regiao: 'Europa',
+        ini: [null, null, 1871],
+        fim: [null, null, 1914],
+        notas: 'Otimismo e efervescência cultural na Europa, entre a Guerra Franco-Prussiana e a Primeira Guerra Mundial — pano de fundo do Parnasianismo e do Simbolismo, já cadastrados em Movimento/Escola.',
+    },
+    {
+        nome: 'Primeira Guerra Mundial',
+        regiao: 'Internacional',
+        ini: [28, 7, 1914],
+        fim: [11, 11, 1918],
+        notas: 'Encerra a Belle Époque e alimenta o desencanto e a ruptura formal que antecedem o Modernismo.',
+    },
+    {
+        nome: 'Semana de Arte Moderna',
+        regiao: 'Brasil',
+        ini: [11, 2, 1922],
+        fim: [18, 2, 1922],
+        notas: 'Theatro Municipal de São Paulo, sessões principais em 13, 15 e 17/02 — marco do início do Modernismo brasileiro, já cadastrado em Movimento/Escola com a mesma âncora de 1922.',
+    },
+    {
+        nome: 'Segunda Guerra Mundial',
+        regiao: 'Internacional',
+        ini: [1, 9, 1939],
+        fim: [2, 9, 1945],
+        notas: 'Reconfigura a ordem internacional — pano de fundo da literatura de testemunho e da reflexão sobre a barbárie no pós-guerra.',
+    },
+    {
+        nome: 'Estado Novo (Portugal)',
+        regiao: 'Portugal',
+        ini: [null, null, 1933],
+        fim: [25, 4, 1974],
+        notas: 'Ditadura salazarista/marcelista, encerrada pela Revolução dos Cravos (25/04) — pano de fundo da censura e da poesia/prosa de intervenção em Portugal.',
+    },
+    {
+        nome: 'Ditadura Militar Brasileira',
+        regiao: 'Brasil',
+        ini: [31, 3, 1964],
+        fim: [null, null, 1985],
+        notas: 'Regime militar no Brasil — pano de fundo da poesia marginal, da MPB de protesto e da literatura de resistência e censura.',
+    },
+    {
+        nome: 'Guerra Fria',
+        regiao: 'Internacional',
+        ini: [null, null, 1947],
+        fim: [null, null, 1991],
+        notas: 'Disputa geopolítica EUA–URSS que atravessa boa parte do século XX — pano de fundo mais amplo das ditaduras latino-americanas, da Guerra Colonial Portuguesa e do "boom" da literatura latino-americana.',
+    },
+    {
+        nome: 'Pandemia de Covid-19',
+        regiao: 'Internacional',
+        ini: [11, 3, 2020],
+        fim: [5, 5, 2023],
+        notas: 'Emergência sanitária global — a OMS caracteriza como pandemia em 11/03/2020 e declara o fim da emergência em 05/05/2023. Pano de fundo de uma leva recente de literatura de isolamento e luto coletivo.',
+    },
+];
+
+// Só os subcampos de fato preenchidos (mesmo contrato de retorno de
+// lerDataParcial em utils.js: undefined vira ausente, nunca `null`
+// explícito por chave) — diferente de _dataParcialDoSeed (Movimento/
+// Escola), que sempre grava as 5 chaves porque esse schema tem
+// seculo/decada. Período Histórico não tem essas duas, então uma data
+// só-ano fica `{ ano }`, não `{ dia: null, mes: null, ano }` — bate com
+// o que um cadastro feito à mão pelo próprio usuário produziria.
+function _dataParcialPeriodoHistoricoDoSeed([dia, mes, ano]) {
+    const obj = {};
+    if (dia != null) obj.dia = dia;
+    if (mes != null) obj.mes = mes;
+    if (ano != null) obj.ano = ano;
+    return Object.keys(obj).length ? obj : null;
+}
+
+// Mesmo espírito de SEED_MOVIMENTOS_ESCOLAS logo acima — chamada só no
+// momento de semear, nunca guardada pronta, pra cada instalação ganhar
+// ids próprios.
+function SEED_PERIODOS_HISTORICOS() {
+    return DADOS_SEED_PERIODOS_HISTORICOS.map((p) => ({
+        id: gerarId(),
+        nome: p.nome,
+        embutido: true,
+        notas: p.notas,
+        regiao: p.regiao,
+        inicio: _dataParcialPeriodoHistoricoDoSeed(p.ini),
+        fim: _dataParcialPeriodoHistoricoDoSeed(p.fim),
+    }));
+}
+
+// Expande DADOS_SEED_MOVIMENTOS_ESCOLAS pro formato de registro de
+// verdade, com id gerado e todos os campos array garantidos (nunca
+// undefined) — chamada só no momento de semear (primeiro load ou
+// import de backup antigo sem o campo), nunca guardada como constante
+// pronta, pra cada instalação ganhar ids próprios (mesmo espírito de
+// qualquer outro dado que passa por gerarId()).
+function SEED_MOVIMENTOS_ESCOLAS() {
+    return DADOS_SEED_MOVIMENTOS_ESCOLAS.map((m) => ({
+        id: gerarId(),
+        nome: m.nome,
+        embutido: true,
+        notas: '',
+        inicio: _dataParcialDoSeed(m.ini),
+        fim: _dataParcialDoSeed(m.fim),
+        tipo: m.tipo,
+        regiaoOrigem: m.regiaoOrigem,
+        valores: [...m.valores],
+        temas: [...m.temas],
+        tecnicas: [...m.tecnicas],
+        tiposComposicao: [...m.tiposComposicao],
+        lemas: [...m.lemas],
+        manifestos: [...m.manifestos],
+    }));
+}
+
 export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     livros: [],
     partes: [],
@@ -47,10 +575,39 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     elementos: [],
     coletaneas: [], // legado, não usado pela aba Coletâneas atual — mantido só por compatibilidade na importação de backups antigos
     itensColetanea: [], // itens de Coletânea de fato (ver coletaneas.js); cada item referencia uma Parte via parteId
-    pessoas: [], // cadastro central de Pessoas ({ id, nome, grupoIds }) — ver migrarPessoasParaCadastro
-    grupos: [], // cadastro central de Grupos ({ id, nome }) — quem uma Pessoa é na vida de quem escreve, constante entre poemas
+    pessoas: [], // cadastro central de Pessoas ({ id, nome, grupoIds, autorIds, oculto }) — ver migrarPessoasParaCadastro/migrarPessoasAutorIds/migrarPessoasOculto
+    grupos: [], // cadastro central de Grupos ({ id, nome, oculto }) — quem uma Pessoa é na vida de quem escreve, constante entre poemas
     autores: [], // cadastro central de Autores ({ id, nome, sobre }) — quem escreveu o item, ver migrarAutoria
-    epocas: [], // cadastro central de Épocas ({ id, nome, contextoRelacao, notas }) — a que período um poema se refere, ver migrarEpocas
+    epocas: [], // cadastro central de Período Biográfico (rótulo na interface; nome interno "epocas" mantido por compatibilidade — { id, nome, contextoRelacao, notas }) — a que período pessoal um poema se refere, ver migrarEpocas
+    // cadastro central de Período Histórico ({ id, nome, notas, regiao,
+    // inicio, fim, embutido? }) — período histórico (não pessoal) que um poema
+    // retrata; referenciado por Poema/Prosa via periodoHistoricoId (link
+    // simples, sem recorte por texto — ver decisoes.md). `inicio`/`fim`
+    // são datas parciais { dia, mes, ano } (cada campo opcional, mesmo
+    // formato de epocaRetratada) e vivem no cadastro, não por texto,
+    // porque a data é do período em si (ver migrarDatasPeriodoHistorico).
+    // Vem pré-populado com 12 períodos de relevância ampla/internacional
+    // pra literatura (Renascimento, Iluminismo, Guerras Mundiais, Semana
+    // de Arte Moderna etc. — ver SEED_PERIODOS_HISTORICOS), semeado só na
+    // primeira vez que o app roda e migrado aditivamente depois (mesmo
+    // mecanismo de Movimento/Escola, ver migrarPeriodosHistoricosEmbutidos)
+    periodosHistoricos: SEED_PERIODOS_HISTORICOS(),
+    // cadastro central de Movimento/Escola ({ id, nome, notas, inicio, fim,
+    // tipo, valores, temas, tecnicas, tiposComposicao, lemas, manifestos,
+    // regiaoOrigem }) — diferente de Período Histórico, a relação aqui é
+    // N:N dos dois lados: Autor.movimentosEscolasIds e
+    // Poema/Prosa.movimentosEscolasIds são arrays de id (um Autor pode não
+    // se enquadrar em nenhum movimento, ou pertencer a vários; um texto
+    // idem — ver decisoes.md). `inicio`/`fim` são datas parciais no mesmo
+    // formato de periodosHistoricos, mas com `seculo` (número romano,
+    // string) e `decada` (número, ex. 1920) somados, porque um movimento
+    // literário raramente tem data conhecida no dia/mês. Vem pré-populado
+    // com os principais movimentos de língua portuguesa + influências
+    // internacionais (ver SEED_MOVIMENTOS_ESCOLAS) — só semeado na
+    // primeira vez que o app roda (chave ausente), nunca recriado depois
+    // que a pessoa mexe no cadastro (mesmo raciocínio de qualquer
+    // migração idempotente aqui)
+    movimentosEscolas: SEED_MOVIMENTOS_ESCOLAS(),
     // Análise de escansão/métrica/rimas de um poema (aba Sonoridade).
     // Um poema pode ter no máximo uma escansão vinculada (não é histórico
     // de versões) — ver getEscansaoDoPoema. Bloco 1 (dados + tabela) cobre
@@ -143,6 +700,14 @@ if (!db.pessoas) db.pessoas = [];
 if (!db.grupos) db.grupos = [];
 if (!db.autores) db.autores = [];
 if (!db.epocas) db.epocas = [];
+if (!db.periodosHistoricos) db.periodosHistoricos = [];
+if (!db.periodosHistoricosOcultos) db.periodosHistoricosOcultos = [];
+// Instalação já existente (localStorage anterior a este item do
+// roadmap) não passa pelo objeto padrão lá em cima — chave ausente aqui
+// significa "nunca teve Movimento/Escola", então semeia agora, uma
+// única vez (idempotente: só entra quando a chave nem existe).
+if (!db.movimentosEscolas) db.movimentosEscolas = SEED_MOVIMENTOS_ESCOLAS();
+if (!db.movimentosEscolasOcultos) db.movimentosEscolasOcultos = [];
 if (!db.escansoes) db.escansoes = [];
 if (!db.estruturasTextuais) db.estruturasTextuais = [];
 if (!db.templatesEstrutura) db.templatesEstrutura = [];
@@ -573,11 +1138,12 @@ migrarNomesDePapel(db.poemas);
 migrarNomesDePapel(db.prosas);
 
 // Migração: Pessoa passa a ser entidade própria em `db.pessoas`
-// ({ id, nome, grupoIds }), em vez de nome solto repetido em cada
-// poema/prosa. `papel`/`papeis` é vínculo do texto com a pessoa (varia
-// por poema) e continua em `item.pessoas`; o que muda é a chave: de
-// `{ nome, papeis }` pra `{ pessoaId, papeis }` — quem a pessoa É
-// (nome, grupos) passa a morar só no cadastro central, uma vez.
+// ({ id, nome, grupoIds, autorIds }), em vez de nome solto repetido em
+// cada poema/prosa. `papel`/`papeis` é vínculo do texto com a pessoa
+// (varia por poema) e continua em `item.pessoas`; o que muda é a chave:
+// de `{ nome, papeis }` pra `{ pessoaId, papeis }` — quem a pessoa É
+// (nome, grupos, autores a quem pertence) passa a morar só no cadastro
+// central, uma vez.
 //
 // Dedup por nome exato (mesmo critério que extrairPessoasUnicas já
 // usava) — nomes que só diferem por acento/maiúscula/espaço extra
@@ -597,7 +1163,7 @@ export function migrarPessoasParaCadastro(dbRef) {
     function idParaNome(nome) {
         let pessoa = porNome.get(nome);
         if (!pessoa) {
-            pessoa = { id: gerarId(), nome, grupoIds: [] };
+            pessoa = { id: gerarId(), nome, grupoIds: [], autorIds: [] };
             dbRef.pessoas.push(pessoa);
             porNome.set(nome, pessoa);
         }
@@ -737,7 +1303,14 @@ export function migrarEpocas(dbRef) {
     function idParaNome(nome) {
         let epoca = porNome.get(nome);
         if (!epoca) {
-            epoca = { id: gerarId(), nome, contextoRelacao: '', notas: '' };
+            epoca = {
+                id: gerarId(),
+                nome,
+                contextoRelacao: '',
+                notas: '',
+                inicio: null,
+                fim: null,
+            };
             dbRef.epocas.push(epoca);
             porNome.set(nome, epoca);
         }
@@ -758,6 +1331,65 @@ export function migrarEpocas(dbRef) {
     });
 }
 migrarEpocas(db);
+
+// Helper compartilhado por migrarGruposAutorId/migrarEpocasAutorId
+// abaixo: Victor Leme como Autor padrão de backfill (único autor com
+// dado real antes de Grupo/Época passarem a pertencer a um Autor —
+// decisão de 27/09/2026, ver manutencao/decisoes.md). Mesmo dedup por
+// nome de migrarAutoria/obterOuCriarAutorPorNome, mas operando sobre um
+// dbRef arbitrário (não o db global), pra migração continuar testável
+// com dbRef isolado — mesmo raciocínio de migrarAutoria acima.
+// Autor marcado "Este autor sou eu" (db.autores[].souEu, ver
+// AUTOR_SOU_EU em editor.js) — usado pra pré-selecionar um valor
+// sensato nos selects de Autor dos modais de Grupo/Época (a maioria dos
+// grupos/períodos cadastrados hoje são do próprio Victor). Devolve
+// `null` se ninguém estiver marcado (força escolha explícita no select,
+// sem chute).
+export function obterAutorSouEuId(dbRef) {
+    return (dbRef.autores || []).find((a) => a.souEu)?.id ?? null;
+}
+
+function obterOuCriarAutorPadraoId(dbRef) {
+    let victor = (dbRef.autores || []).find((a) => a.nome === 'Victor Leme');
+    if (!victor) {
+        victor = { id: gerarId(), nome: 'Victor Leme', sobre: '' };
+        (dbRef.autores ||= []).push(victor);
+    }
+    return victor.id;
+}
+
+// Migração: `autorId` em Grupo (+ `paiId`, novo, pra permitir níveis de
+// agrupamento — um Grupo pode ter outro Grupo do MESMO Autor como pai,
+// ver obterGrupoPaiValido abaixo). Grupo deixa de ser um balde global
+// único e passa a pertencer a um Autor específico — cada Autor (Victor,
+// e cada autor da Biblioteca) tem seus próprios Família/Amigos/etc., em
+// vez de todos compartilharem o mesmo cadastro achatado (decisão de
+// 27/09/2026: "família de um autor, família de outro"). Todo grupo
+// cadastrado antes dessa mudança ganha autorId de Victor Leme (único
+// autor com dado real até aqui); `paiId` começa `null` pra todo mundo —
+// ninguém tinha isso antes, é campo novo.
+// Idempotente: só toca grupo sem `autorId`.
+export function migrarGruposAutorId(dbRef) {
+    (dbRef.grupos || []).forEach((g) => {
+        if (g.autorId !== undefined) return;
+        g.autorId = obterOuCriarAutorPadraoId(dbRef);
+        if (g.paiId === undefined) g.paiId = null;
+    });
+}
+migrarGruposAutorId(db);
+
+// Mesmo raciocínio de migrarGruposAutorId acima, pro cadastro de Época
+// (Período Biográfico) — também deixa de ser geral e passa a pertencer a
+// um Autor (mesma pendência apontada por ele: "período biográfico tem
+// essa mesma característica").
+// Idempotente: só toca época sem `autorId`.
+export function migrarEpocasAutorId(dbRef) {
+    (dbRef.epocas || []).forEach((e) => {
+        if (e.autorId !== undefined) return;
+        e.autorId = obterOuCriarAutorPadraoId(dbRef);
+    });
+}
+migrarEpocasAutorId(db);
 
 // Resolve nome → Autor no cadastro central, criando um novo se ainda
 // não existir (dedup por nome exato, mesmo critério de
@@ -785,46 +1417,424 @@ export function obterOuCriarPessoaPorNome(nome) {
     const nomeLimpo = String(nome ?? '').trim();
     let pessoa = db.pessoas.find((p) => p.nome === nomeLimpo);
     if (!pessoa) {
-        pessoa = { id: gerarId(), nome: nomeLimpo, grupoIds: [] };
+        pessoa = { id: gerarId(), nome: nomeLimpo, grupoIds: [], autorIds: [] };
         db.pessoas.push(pessoa);
     }
     return pessoa;
 }
 
-// Resolve nome → Grupo no cadastro central, criando um novo se ainda
-// não existir (dedup por nome exato, mesmo critério de
-// obterOuCriarPessoaPorNome acima). Usada por editor.js: caminho de
-// confirmação explícita do usuário ao digitar, no campo de referência
-// direta a Grupo do poema/prosa (ver criarGrupoDeGruposDiretos), o
-// nome de um grupo que ainda não está cadastrado — cor sai no padrão
-// (CORES_GRUPO_PADRAO), trocável depois na aba Grupos, mesmo espírito
-// de Pessoa nova entrar sem grupo e ganhar um depois.
-export function obterOuCriarGrupoPorNome(nome) {
+// Resolve (nome, autorId) → Grupo no cadastro central, criando um novo
+// se ainda não existir (dedup por nome DENTRO do mesmo Autor — desde a
+// decisão de 27/09/2026, "família de um autor, família de outro", nome
+// de Grupo só é único por Autor, não mais globalmente). Usada por
+// editor.js: caminho de confirmação explícita do usuário ao digitar, no
+// campo de referência direta a Grupo do poema/prosa (ver
+// criarGrupoDeGruposDiretos), o nome de um grupo que ainda não está
+// cadastrado — cor sai no padrão (CORES_GRUPO_PADRAO), trocável depois
+// na aba Grupos, mesmo espírito de Pessoa nova entrar sem grupo e
+// ganhar um depois. `paiId` sempre nasce `null` (grupo novo digitado
+// vira nível 1; virar subgrupo de outro é feito depois, na aba de
+// gestão, com `obterGrupoPaiValido` abaixo).
+export function obterOuCriarGrupoPorNome(nome, autorId) {
     const nomeLimpo = String(nome ?? '').trim();
-    let grupo = db.grupos.find((g) => g.nome === nomeLimpo);
+    let grupo = db.grupos.find((g) => g.nome === nomeLimpo && g.autorId == autorId);
     if (!grupo) {
-        grupo = { id: gerarId(), nome: nomeLimpo, cor: CORES_GRUPO_PADRAO };
+        grupo = { id: gerarId(), nome: nomeLimpo, cor: CORES_GRUPO_PADRAO, autorId, paiId: null };
         db.grupos.push(grupo);
     }
     return grupo;
 }
 
-// Resolve nome → Época no cadastro central, criando uma nova se ainda
-// não existir (dedup por nome exato, mesmo critério de
-// obterOuCriarPessoaPorNome acima). Usada por forms.js ao gravar o
-// campo "Época" do modal de Poema — texto digitado, resolvido/criado no
+// Teto fixo de níveis da hierarquia de Grupo — 2 até 27/09/2026,
+// destravado pro 3º no mesmo dia por um caso de uso real ("Ex-namorados"
+// > "Pedro" > subgrupos do universo de Pedro, não cabia em 2), e pro 5º
+// ainda no mesmo dia por decisão explícita do Victor: em vez de destravar
+// só até o próximo caso concreto (que seria 4 — "Relações afetivas" >
+// Namorado/Ex/Ficante > pessoa > universo de grupos dela), subir direto
+// pra 5 de propósito, como gordura pra evitar destravar de novo na
+// próxima necessidade imprevista. Ver decisoes.md. Único ponto de
+// verdade do número — `nivelGrupo`/`obterGrupoPaiValido`/`mesclarGrupos`
+// e `forms.js` (select "Grupo pai") leem daqui, nunca hardcodam o valor
+// de novo.
+export const NIVEL_MAXIMO_GRUPO = 5;
+
+// Calcula em que nível da hierarquia um Grupo está (1 a NIVEL_MAXIMO_GRUPO),
+// subindo a cadeia de `paiId` até achar um grupo sem pai. `guarda` evita
+// loop infinito se algum dado ficar corrompido com um ciclo (não deveria
+// acontecer, `obterGrupoPaiValido` abaixo impede na entrada, mas dado
+// antigo importado sem passar por ali é sempre possível) — 10 fica acima
+// do teto atual, só de margem extra.
+export function nivelGrupo(dbRef, grupoId) {
+    let nivel = 1;
+    let atual = dbRef.grupos?.find((g) => g.id == grupoId);
+    let guarda = 0;
+    while (atual?.paiId != null && guarda < 10) {
+        nivel++;
+        atual = dbRef.grupos?.find((g) => g.id == atual.paiId);
+        guarda++;
+    }
+    return nivel;
+}
+
+// Altura da subárvore abaixo de `grupoId` (0 se não tem filho, 1 se tem
+// filho mas nenhum neto, e por aí vai). Usada por `mesclarGrupos` (pra
+// checar se reatribuir a subárvore inteira da origem pro destino ainda
+// cabe no teto) e por `obterGrupoPaiValido` logo abaixo (mesma checagem,
+// mas pra reatribuir um `paiId` em vez de mesclar) — exportada pra
+// `forms.js` reaproveitar no filtro do select "Grupo pai", em vez de
+// deixar o usuário escolher uma opção que a validação recusaria depois
+// em silêncio.
+export function alturaSubarvoreGrupo(dbRef, grupoId) {
+    const filhos = (dbRef.grupos || []).filter((g) => g.paiId == grupoId);
+    if (filhos.length === 0) return 0;
+    return 1 + Math.max(...filhos.map((f) => alturaSubarvoreGrupo(dbRef, f.id)));
+}
+
+// Cadeia de um Grupo até a raiz da árvore: [próprioId, paiId, avôId, ...],
+// sempre incluindo o próprio grupoId primeiro. Usada só pelas Estatísticas
+// (agregarPorPessoa/contarPorPessoa em estatisticas-dados.js) pra fazer um
+// subgrupo "contar também" pro(s) grupo(s) acima dele na hierarquia — pedido
+// do Victor, 27/09/2026, explicitamente restrito a Estatísticas: em todo o
+// resto do app (atribuição de Grupo à Pessoa, badges/exportação do
+// poema/prosa — ver paresGrupoPessoa em utils.js) o subgrupo continua
+// contando só como ele mesmo, sem repique pro pai — ali é a Pessoa quem
+// decide o que sinalizar, e o Victor prefere essa liberdade de marcar só o
+// nível específico. Mesmo guarda-loop de nivelGrupo acima; grupoId
+// inexistente devolve array vazio.
+export function cadeiaAncestraisGrupo(dbRef, grupoId) {
+    const cadeia = [];
+    let atual = dbRef.grupos?.find((g) => g.id == grupoId);
+    let guarda = 0;
+    while (atual && guarda < 10) {
+        cadeia.push(atual.id);
+        atual = atual.paiId != null ? dbRef.grupos?.find((g) => g.id == atual.paiId) : null;
+        guarda++;
+    }
+    return cadeia;
+}
+
+// Valida um `paiId` candidato pra um Grupo — usado pela aba de gestão de
+// Grupos ao trocar o "Grupo pai" de um subgrupo, e pelo submit do modal
+// de Grupo (onde o grupo filho pode ainda nem existir em `dbRef.grupos`
+// se for um cadastro novo — por isso recebe `autorId` explícito, em vez
+// de derivá-lo olhando o próprio grupo). O candidato precisa (1) existir,
+// (2) pertencer ao MESMO Autor do grupo filho — um grupo nunca aponta pra
+// pai de outro Autor — e (3) deixar a ÁRVORE INTEIRA resultante dentro de
+// NIVEL_MAXIMO_GRUPO: não basta o candidato estar num nível que aceite
+// filho (nivelGrupo(pai) < NIVEL_MAXIMO_GRUPO) — se o próprio `grupoId`
+// já tiver descendentes (um grupo com filhos sendo reatribuído pra um
+// novo pai, não só um cadastro novo), a subárvore dele inteira desce
+// junto, e é o nível mais fundo dessa subárvore depois de mover que
+// precisa caber, não só o do grupo movido. Bug real corrigido
+// 27/09/2026: antes só olhava o nível do candidato a pai, então
+// reatribuir um grupo que já tinha neto podia empurrar esse neto além do
+// teto sem aviso nenhum (mesma checagem que `mesclarGrupos` já fazia do
+// lado da mesclagem, só que faltava aqui do lado do "Grupo pai"). Também
+// recusa o grupo apontar pra si mesmo e recusa ciclo (um grupo virar pai
+// de um dos seus próprios ancestrais, o que só pode acontecer escolhendo
+// como pai um descendente do próprio grupo em edição). Devolve o `paiId`
+// válido ou `null` (silenciosamente recusa em vez de lançar erro, mesmo
+// estilo defensivo do resto do arquivo) — quem chama decide se avisa o
+// usuário.
+export function obterGrupoPaiValido(dbRef, grupoId, autorId, paiIdCandidato) {
+    if (paiIdCandidato == null) return null;
+    if (paiIdCandidato == grupoId) return null;
+    const pai = dbRef.grupos?.find((g) => g.id == paiIdCandidato);
+    if (!pai) return null;
+    if (pai.autorId != autorId) return null;
+    if (nivelGrupo(dbRef, pai.id) + 1 + alturaSubarvoreGrupo(dbRef, grupoId) > NIVEL_MAXIMO_GRUPO) {
+        return null;
+    }
+    let atual = pai;
+    let guarda = 0;
+    while (atual?.paiId != null && guarda < 10) {
+        if (atual.paiId == grupoId) return null;
+        atual = dbRef.grupos?.find((g) => g.id == atual.paiId);
+        guarda++;
+    }
+    return pai.id;
+}
+
+// Resolve (nome, autorId) → Época (Período Biográfico) no cadastro
+// central, criando uma nova se ainda não existir (dedup por nome DENTRO
+// do mesmo Autor, mesmo raciocínio de obterOuCriarGrupoPorNome acima —
+// decisão de 27/09/2026, "período biográfico tem essa mesma
+// característica"). Usada por forms.js ao gravar o campo "Período
+// Biográfico" do modal de Poema — texto digitado, resolvido/criado no
 // submit, mesmo caminho de obterOuCriarAutorPorNome (não chip de lista,
 // já que só existe uma Época por poema).
-export function obterOuCriarEpocaPorNome(nome) {
+export function obterOuCriarEpocaPorNome(nome, autorId) {
     const nomeLimpo = String(nome ?? '').trim();
     if (!nomeLimpo) return null;
-    let epoca = db.epocas.find((e) => e.nome === nomeLimpo);
+    let epoca = db.epocas.find((e) => e.nome === nomeLimpo && e.autorId == autorId);
     if (!epoca) {
-        epoca = { id: gerarId(), nome: nomeLimpo, contextoRelacao: '', notas: '' };
+        epoca = {
+            id: gerarId(),
+            nome: nomeLimpo,
+            contextoRelacao: '',
+            notas: '',
+            autorId,
+            inicio: null,
+            fim: null,
+        };
         db.epocas.push(epoca);
     }
     return epoca;
 }
+
+// Mesmo padrão de obterOuCriarEpocaPorNome, pro cadastro central de
+// Período Histórico — mais simples (sem contextoRelacao, que não se
+// aplica a um período histórico).
+export function obterOuCriarPeriodoHistoricoPorNome(nome) {
+    const nomeLimpo = String(nome ?? '').trim();
+    if (!nomeLimpo) return null;
+    let periodo = db.periodosHistoricos.find((p) => p.nome === nomeLimpo);
+    if (!periodo) {
+        periodo = { id: gerarId(), nome: nomeLimpo, notas: '', regiao: '', inicio: null, fim: null };
+        db.periodosHistoricos.push(periodo);
+    }
+    return periodo;
+}
+
+// Migração: cadastros de Período Histórico criados antes de `inicio`/
+// `fim` existirem (ver decisão de guardar a data no cadastro central,
+// não por texto — mesmo raciocínio de mesclarPeriodosHistoricos abaixo)
+// ficam sem essas chaves — preenche com `null` pra não quebrar código
+// que espera `periodo.inicio`/`fim` existirem. Idempotente: só toca
+// quem está com a chave ausente (`undefined`); um `fim` já gravado como
+// `null` explícito (evento sem data de término) não é reescrito.
+export function migrarDatasPeriodoHistorico(periodosHistoricos) {
+    (periodosHistoricos || []).forEach((p) => {
+        if (p.inicio === undefined) p.inicio = null;
+        if (p.fim === undefined) p.fim = null;
+    });
+}
+migrarDatasPeriodoHistorico(db.periodosHistoricos);
+
+// Migração aditiva: mesmo raciocínio de migrarMovimentosEscolasEmbutidos
+// (ver comentário lá) — instalação que já tinha `periodosHistoricos`
+// (mesmo que `[]`, ou já com cadastro próprio do usuário) nunca passa
+// pelo `if (!db.periodosHistoricos)` lá em cima, então os 12 períodos de
+// DADOS_SEED_PERIODOS_HISTORICOS (curados com o Victor, 28/09/2026 — ver
+// decisoes.md) só chegariam sozinhos em instalação nova. Casa por nome
+// contra o seed, pula quem a pessoa já excluiu de propósito (registrado
+// em periodosHistoricosOcultos por _removerParaExclusao) e só cria o que
+// nem chegou a existir — idempotente, e não mexe em período cadastrado
+// pelo próprio usuário (nome fora do seed), inclusive se por coincidência
+// tiver o mesmo nome de um item de fábrica e ainda não tiver `embutido`
+// marcado (aí só ganha a chave, sem duplicar nem perder o que a pessoa
+// já tinha preenchido em notas/datas).
+export function migrarPeriodosHistoricosEmbutidos(periodosHistoricos, ocultos = []) {
+    const nomesSeed = new Set(DADOS_SEED_PERIODOS_HISTORICOS.map((p) => p.nome));
+    periodosHistoricos.forEach((p) => {
+        if (p.embutido === undefined && nomesSeed.has(p.nome)) p.embutido = true;
+    });
+
+    DADOS_SEED_PERIODOS_HISTORICOS.forEach((modelo) => {
+        if (ocultos.includes(modelo.nome)) return;
+        const jaExiste = periodosHistoricos.some(
+            (p) => p.embutido && p.nome === modelo.nome,
+        );
+        if (jaExiste) return;
+        periodosHistoricos.push({
+            id: gerarId(),
+            nome: modelo.nome,
+            embutido: true,
+            notas: modelo.notas,
+            regiao: modelo.regiao,
+            inicio: _dataParcialPeriodoHistoricoDoSeed(modelo.ini),
+            fim: _dataParcialPeriodoHistoricoDoSeed(modelo.fim),
+        });
+    });
+}
+migrarPeriodosHistoricosEmbutidos(db.periodosHistoricos, db.periodosHistoricosOcultos);
+
+// Migração: `regiao` nasceu depois do seed de Período Histórico. Só toca
+// quem está com a chave ausente (`undefined`): item de fábrica ganha a
+// região do seed (por nome); qualquer outro (cadastro do próprio usuário)
+// ganha `''`. Um `regiao` já gravado — inclusive `''` apagado de propósito
+// — nunca é reescrito, então isto é idempotente e não desfaz edição.
+// Precisa rodar DEPOIS de migrarPeriodosHistoricosEmbutidos (é ela que
+// marca `embutido` por nome nos itens antigos).
+export function migrarRegiaoPeriodoHistorico(periodosHistoricos) {
+    const regiaoPorNome = new Map(DADOS_SEED_PERIODOS_HISTORICOS.map((p) => [p.nome, p.regiao]));
+    (periodosHistoricos || []).forEach((p) => {
+        if (p.regiao !== undefined) return;
+        p.regiao = p.embutido && regiaoPorNome.has(p.nome) ? regiaoPorNome.get(p.nome) : '';
+    });
+}
+migrarRegiaoPeriodoHistorico(db.periodosHistoricos);
+
+// Período Biográfico (`epocas`) ganhou datas oficiais no cadastro
+// (`inicio`/`fim`, datas parciais { dia, mes, ano } — mesmo formato de
+// Período Histórico). Independem das datas por texto (`epocaRetratada`):
+// não alimentam o modal do texto nem são alimentadas por ele. Registros
+// antigos ficam null, sem tentar deduzir dos textos (o texto pode retratar
+// um período em data diferente da que foi escrito).
+export function migrarDatasEpoca(epocas) {
+    (epocas || []).forEach((e) => {
+        if (e.inicio === undefined) e.inicio = null;
+        if (e.fim === undefined) e.fim = null;
+    });
+}
+migrarDatasEpoca(db.epocas);
+
+// Mesmo padrão de obterOuCriarPeriodoHistoricoPorNome acima, pro
+// cadastro central de Movimento/Escola. Diferente de Época/Autor
+// (vínculo único), este é chamado por um campo de chips (Autor e
+// Poema/Prosa podem ter vários movimentos) — quem chama decide se
+// empilha o id retornado num array já existente.
+export function obterOuCriarMovimentoEscolaPorNome(nome) {
+    const nomeLimpo = String(nome ?? '').trim();
+    if (!nomeLimpo) return null;
+    let movimento = db.movimentosEscolas.find((m) => m.nome === nomeLimpo);
+    if (!movimento) {
+        movimento = {
+            id: gerarId(),
+            nome: nomeLimpo,
+            notas: '',
+            inicio: { dia: null, mes: null, ano: null, seculo: null, decada: null },
+            fim: { dia: null, mes: null, ano: null, seculo: null, decada: null },
+            tipo: '',
+            regiaoOrigem: '',
+            valores: [],
+            temas: [],
+            tecnicas: [],
+            tiposComposicao: [],
+            lemas: [],
+            manifestos: [],
+        };
+        db.movimentosEscolas.push(movimento);
+    }
+    return movimento;
+}
+
+// Migração defensiva: registros de Movimento/Escola criados antes de
+// algum campo existir (ou vindos de obterOuCriarMovimentoEscolaPorNome
+// numa versão anterior desta função) ficam sem essas chaves — mesmo
+// raciocínio de migrarDatasPeriodoHistorico acima, só que cobrindo
+// todos os campos novos de uma vez.
+export function migrarMovimentosEscolas(movimentosEscolas) {
+    (movimentosEscolas || []).forEach((m) => {
+        if (m.inicio === undefined)
+            m.inicio = { dia: null, mes: null, ano: null, seculo: null, decada: null };
+        if (m.fim === undefined)
+            m.fim = { dia: null, mes: null, ano: null, seculo: null, decada: null };
+        if (m.notas === undefined) m.notas = '';
+        if (m.tipo === undefined) m.tipo = '';
+        if (m.regiaoOrigem === undefined) m.regiaoOrigem = '';
+        if (!Array.isArray(m.valores)) m.valores = [];
+        if (!Array.isArray(m.temas)) m.temas = [];
+        if (!Array.isArray(m.tecnicas)) m.tecnicas = [];
+        if (!Array.isArray(m.tiposComposicao)) m.tiposComposicao = [];
+        if (!Array.isArray(m.lemas)) m.lemas = [];
+        if (!Array.isArray(m.manifestos)) m.manifestos = [];
+    });
+}
+migrarMovimentosEscolas(db.movimentosEscolas);
+
+// Migração aditiva: instalação que já tinha `movimentosEscolas` (chave
+// presente) nunca passa pelo `if (!db.movimentosEscolas)` lá em cima, então
+// um movimento novo entrando em DADOS_SEED_MOVIMENTOS_ESCOLAS (ex.:
+// Tropicalismo, curado com o Victor em 27/09/2026 — ver decisoes.md) nunca
+// chegaria sozinho em quem já usa o app, ficando só nas instalações novas.
+// Mesmo raciocínio de migrarTemplatesEstruturaEmbutidos acima: casa por
+// nome contra o seed, pula quem a pessoa já excluiu de propósito (registrado
+// em movimentosEscolasOcultos por _removerParaExclusao) e só cria o que
+// nem chegou a existir — idempotente, então rodar de novo em quem já tem
+// Tropicalismo não duplica.
+export function migrarMovimentosEscolasEmbutidos(movimentosEscolas, ocultos = []) {
+    // Backfill: `embutido` só passou a existir nesta sessão — a chave
+    // Movimento/Escola já rodava há semanas sem esse campo, então quem já
+    // usa o app tem os 21 movimentos originais sem ele. Sem isso, nenhum
+    // bateria no `jaExiste` abaixo (m.embutido undefined) e a função
+    // duplicaria os 21 na primeira vez que rodasse numa instalação
+    // existente — casa só por nome contra o próprio seed, e só marca quem
+    // ainda não tem a chave (idempotente, não pisa em renomeações manuais
+    // já marcadas).
+    const nomesSeed = new Set(DADOS_SEED_MOVIMENTOS_ESCOLAS.map((m) => m.nome));
+    movimentosEscolas.forEach((m) => {
+        if (m.embutido === undefined && nomesSeed.has(m.nome)) m.embutido = true;
+    });
+
+    DADOS_SEED_MOVIMENTOS_ESCOLAS.forEach((modelo) => {
+        if (ocultos.includes(modelo.nome)) return;
+        const jaExiste = movimentosEscolas.some((m) => m.embutido && m.nome === modelo.nome);
+        if (jaExiste) return;
+        movimentosEscolas.push({
+            id: gerarId(),
+            nome: modelo.nome,
+            embutido: true,
+            notas: '',
+            inicio: _dataParcialDoSeed(modelo.ini),
+            fim: _dataParcialDoSeed(modelo.fim),
+            tipo: modelo.tipo,
+            regiaoOrigem: modelo.regiaoOrigem,
+            valores: [...modelo.valores],
+            temas: [...modelo.temas],
+            tecnicas: [...modelo.tecnicas],
+            tiposComposicao: [...modelo.tiposComposicao],
+            lemas: [...modelo.lemas],
+            manifestos: [...modelo.manifestos],
+        });
+    });
+}
+migrarMovimentosEscolasEmbutidos(db.movimentosEscolas, db.movimentosEscolasOcultos);
+
+// Migração defensiva do outro lado da relação N:N: Autor, Poema e Prosa
+// criados antes deste campo existir ficam com `movimentosEscolasIds`
+// undefined — mesmo raciocínio de qualquer array de referência novo já
+// usado aqui (ver migrarPessoas/migrarSinalizacoes).
+export function migrarMovimentosEscolasIds(itens) {
+    (itens || []).forEach((it) => {
+        if (!Array.isArray(it.movimentosEscolasIds)) it.movimentosEscolasIds = [];
+    });
+}
+migrarMovimentosEscolasIds(db.autores);
+migrarMovimentosEscolasIds(db.poemas);
+migrarMovimentosEscolasIds(db.prosas);
+
+// Migração: `autorIds` em Pessoa — quais Autores essa Pessoa está
+// associada (pedido do Victor, 27/09/2026: "Pessoas ainda não atribui a
+// autores... a ideia seria que tivesse essa atribuição, só que não
+// ficasse presa a atribuir a apenas um autor"). Array (N:N), não campo
+// único: a mesma Pessoa pode aparecer na vida de mais de um Autor (ex.
+// um amigo em comum entre dois autores da Biblioteca), e não é
+// obrigatório — diferente de Grupo/Época (que SEMPRE pertencem a um
+// Autor, ver migrarGruposAutorId/migrarEpocasAutorId acima), Pessoa
+// existe e funciona normalmente sem nenhum Autor atribuído. Por isso o
+// backfill aqui é só garantir o array vazio, nunca um Autor padrão
+// (mesmo padrão de migrarMovimentosEscolasIds acima, não o de
+// migrarGruposAutorId).
+// Idempotente: só toca pessoa sem `autorIds`.
+export function migrarPessoasAutorIds(pessoas) {
+    (pessoas || []).forEach((p) => {
+        if (!Array.isArray(p.autorIds)) p.autorIds = [];
+    });
+}
+migrarPessoasAutorIds(db.pessoas);
+
+// `oculto` (boolean) em Pessoa/Grupo — recolhe da lista de gerenciamento
+// por padrão sem excluir nem quebrar vínculo com textos/grupos/autores
+// (diferente de excluir); eixo ortogonal ao filtro por Autor (ver
+// filtroAutorGrupos em render-listas.js e getFiltroAutorPessoas em
+// pessoas-acoes.js) — aqui é "isso importa ver agora", lá é "de quem".
+// Pedido do Victor, 27/09/2026. Idempotente: só toca quem ainda não tem
+// o campo (`undefined`, não `false`, pra registro já migrado com
+// `oculto: false` explícito não ser tocado de novo à toa).
+export function migrarPessoasOculto(pessoas) {
+    (pessoas || []).forEach((p) => {
+        if (p.oculto === undefined) p.oculto = false;
+    });
+}
+migrarPessoasOculto(db.pessoas);
+
+export function migrarGruposOculto(grupos) {
+    (grupos || []).forEach((g) => {
+        if (g.oculto === undefined) g.oculto = false;
+    });
+}
+migrarGruposOculto(db.grupos);
 
 // ─── Ordenações ──────────────────────────────────────────────
 // Recebem os arrays como parâmetro (em vez de fechar sobre o `db` do
@@ -1003,6 +2013,22 @@ export async function importarDB(novoDb) {
     db.grupos = novoDb.grupos || [];
     db.autores = novoDb.autores || [];
     db.epocas = novoDb.epocas || [];
+    // `|| SEED_PERIODOS_HISTORICOS()` (não `|| []`) de propósito, mesmo
+    // raciocínio do comentário de movimentosEscolas logo abaixo: um
+    // backup tirado antes deste item do roadmap não tem a chave e deve
+    // ganhar os 12 períodos pré-cadastrados; um backup mais recente com
+    // a chave já presente (mesmo `[]` esvaziado de propósito) é
+    // respeitado como está.
+    db.periodosHistoricos = novoDb.periodosHistoricos || SEED_PERIODOS_HISTORICOS();
+    db.periodosHistoricosOcultos = novoDb.periodosHistoricosOcultos || [];
+    // `|| SEED_MOVIMENTOS_ESCOLAS()` (não `|| []`) de propósito: um
+    // backup tirado antes deste item do roadmap não tem a chave
+    // (undefined) e deve ganhar os movimentos pré-cadastrados, igual a
+    // uma instalação nova — um backup mais recente com o campo já
+    // presente (mesmo que `[]`, esvaziado de propósito) é respeitado
+    // como está, porque array vazio é truthy em JS.
+    db.movimentosEscolas = novoDb.movimentosEscolas || SEED_MOVIMENTOS_ESCOLAS();
+    db.movimentosEscolasOcultos = novoDb.movimentosEscolasOcultos || [];
     db.escansoes = novoDb.escansoes || [];
     migrarRegistroTomSonoridade(db.escansoes);
     db.estruturasTextuais = novoDb.estruturasTextuais || [];
@@ -1036,6 +2062,28 @@ export async function importarDB(novoDb) {
     migrarReconhecimentos(db.poemas);
     migrarReconhecimentos(db.prosas);
     migrarEpocas(db);
+    migrarDatasPeriodoHistorico(db.periodosHistoricos);
+    migrarPeriodosHistoricosEmbutidos(db.periodosHistoricos, db.periodosHistoricosOcultos);
+    migrarRegiaoPeriodoHistorico(db.periodosHistoricos);
+    migrarDatasEpoca(db.epocas);
+    migrarMovimentosEscolas(db.movimentosEscolas);
+    migrarMovimentosEscolasEmbutidos(db.movimentosEscolas, db.movimentosEscolasOcultos);
+    migrarMovimentosEscolasIds(db.autores);
+    migrarMovimentosEscolasIds(db.poemas);
+    migrarMovimentosEscolasIds(db.prosas);
+    migrarPessoasAutorIds(db.pessoas);
+    // migrarGruposAutorId/migrarEpocasAutorId só rodavam no load do
+    // módulo (topo deste arquivo), nunca aqui em importarDB — mesmo
+    // risco de "migração que fica pra trás" que migrarReconhecimentos
+    // teve (ver comentário logo acima). Um backup de antes de 27/09/2026
+    // restaurado por aqui traria Grupos/Épocas sem `autorId`, quebrando
+    // tudo que depende dele (obterGrupoPaiValido, nivelGrupo, a própria
+    // listagem por Autor). Corrigido nesta sessão, junto da migração de
+    // Pessoa acima.
+    migrarGruposAutorId(db);
+    migrarEpocasAutorId(db);
+    migrarPessoasOculto(db.pessoas);
+    migrarGruposOculto(db.grupos);
 
     // Se o backup foi gerado com "incluir capas" marcado, ele traz um
     // _capasBase64 com as imagens embutidas — restaura pro IndexedDB
@@ -1159,7 +2207,9 @@ const ROTULOS_COL = {
     pessoas: 'Pessoa',
     grupos: 'Grupo',
     autores: 'Autor',
-    epocas: 'Época',
+    epocas: 'Período Biográfico',
+    periodosHistoricos: 'Período Histórico',
+    movimentosEscolas: 'Movimento/Escola',
     escansoes: 'Escansão',
     estruturasTextuais: 'Progressão Morfofuncional',
     templatesEstrutura: 'Template de Progressão',
@@ -1213,10 +2263,15 @@ export function calcularImpactoExclusaoPessoa(dbRef, pessoaId) {
 /**
  * Quem referencia o Grupo `grupoId` — pessoas do cadastro que pertencem
  * a ele (excluir o Grupo não exclui a Pessoa, só tira ela desse grupo —
- * ela pode pertencer a vários, sobreposição é o ponto do campo) e,
- * desde a referência direta a Grupo (ver criarGrupoDeGruposDiretos em
- * editor.js), também poemas/prosas cujo `gruposDiretos` aponta pra ele
- * sem passar por nenhuma Pessoa.
+ * ela pode pertencer a vários, sobreposição é o ponto do campo),
+ * poemas/prosas cujo `gruposDiretos` aponta pra ele sem passar por
+ * nenhuma Pessoa (ver criarGrupoDeGruposDiretos em editor.js) e, desde a
+ * hierarquia multinível (decisão de 27/09/2026, teto em NIVEL_MAXIMO_GRUPO),
+ * os subgrupos que têm
+ * esse Grupo como pai — excluir um Grupo NÃO exclui os filhos, só
+ * promove eles um nível, herdando o `paiId` que o próprio Grupo
+ * excluído tinha (ver `_removerParaExclusao`); aqui só contamos quantos
+ * são, pro aviso.
  */
 export function calcularImpactoExclusaoGrupo(dbRef, grupoId) {
     const pessoasIds = (dbRef.pessoas || [])
@@ -1225,19 +2280,39 @@ export function calcularImpactoExclusaoGrupo(dbRef, grupoId) {
     const achaGrupoDireto = (item) => (item.gruposDiretos || []).includes(grupoId);
     const poemasIds = (dbRef.poemas || []).filter(achaGrupoDireto).map((p) => p.id);
     const prosasIds = (dbRef.prosas || []).filter(achaGrupoDireto).map((p) => p.id);
-    return { pessoasIds, poemasIds, prosasIds };
+    const subgruposIds = (dbRef.grupos || []).filter((g) => g.paiId == grupoId).map((g) => g.id);
+    return { pessoasIds, poemasIds, prosasIds, subgruposIds };
 }
 
 /**
  * Quem referencia o Autor `autorId` — poemas e prosas onde ele está
- * vinculado (independente do papel). Mesmo espírito de
- * calcularImpactoExclusaoPessoa acima.
+ * vinculado (independente do papel), e, desde a decisão de 27/09/2026
+ * ("família de um autor, família de outro" / "período biográfico tem
+ * essa mesma característica"), também os Grupos e Épocas (Período
+ * Biográfico) que pertencem a ele — esses dois cadastros são exclusivos
+ * de um Autor (não têm sentido sem ele), então excluir o Autor exclui
+ * os dois EM CASCATA (decisão explícita, diferente do resto desta
+ * função, que só desvincula sem apagar nada). Um Grupo de nível 1 do
+ * Autor e seus subgrupos são sempre do MESMO Autor (`obterGrupoPaiValido`
+ * garante isso), então não sobra filho órfão de outro Autor ao apagar
+ * a lista inteira junto.
+ *
+ * `pessoasIds` (nova, 27/09/2026) segue o espírito OPOSTO ao de Grupo/
+ * Época: Pessoa não é exclusiva de um Autor (`autorIds` é N:N, ver
+ * migrarPessoasAutorIds), então excluir o Autor NÃO exclui nem esvazia
+ * a Pessoa — só tira esse Autor específico do array dela, igual
+ * calcularImpactoExclusaoMovimentoEscola faz com `movimentosEscolasIds`.
  */
 export function calcularImpactoExclusaoAutor(dbRef, autorId) {
     const acha = (item) => (item.autoria || []).some((a) => a.autorId == autorId);
     return {
         poemasIds: (dbRef.poemas || []).filter(acha).map((p) => p.id),
         prosasIds: (dbRef.prosas || []).filter(acha).map((p) => p.id),
+        gruposIds: (dbRef.grupos || []).filter((g) => g.autorId == autorId).map((g) => g.id),
+        epocasIds: (dbRef.epocas || []).filter((e) => e.autorId == autorId).map((e) => e.id),
+        pessoasIds: (dbRef.pessoas || [])
+            .filter((p) => (p.autorIds || []).includes(autorId))
+            .map((p) => p.id),
     };
 }
 
@@ -1257,6 +2332,37 @@ export function calcularImpactoExclusaoAutor(dbRef, autorId) {
 export function calcularImpactoExclusaoEpoca(dbRef, epocaId) {
     const acha = (item) => item.epocaRetratada?.epocaId == epocaId;
     return {
+        poemasIds: (dbRef.poemas || []).filter(acha).map((p) => p.id),
+        prosasIds: (dbRef.prosas || []).filter(acha).map((p) => p.id),
+    };
+}
+
+/**
+ * Quem referencia o Período Histórico `periodoHistoricoId` — poemas e
+ * prosas com esse link direto (campo simples, sem sub-objeto de
+ * recorte/datas — diferente de epocaRetratada). Mesmo espírito de
+ * calcularImpactoExclusaoEpoca acima: excluir o Período Histórico não
+ * exclui o texto, só desvincula.
+ */
+export function calcularImpactoExclusaoPeriodoHistorico(dbRef, periodoHistoricoId) {
+    const acha = (item) => item.periodoHistoricoId == periodoHistoricoId;
+    return {
+        poemasIds: (dbRef.poemas || []).filter(acha).map((p) => p.id),
+        prosasIds: (dbRef.prosas || []).filter(acha).map((p) => p.id),
+    };
+}
+
+/**
+ * Quem referencia o Movimento/Escola `movimentoEscolaId` — diferente de
+ * Período Histórico (link direto), aqui a busca é em três arrays
+ * (`movimentosEscolasIds`, dos dois lados da relação N:N): Autor,
+ * Poema e Prosa. Excluir o Movimento/Escola não exclui ninguém nem
+ * nenhum texto, só tira o id do array de quem o tinha.
+ */
+export function calcularImpactoExclusaoMovimentoEscola(dbRef, movimentoEscolaId) {
+    const acha = (item) => (item.movimentosEscolasIds || []).includes(movimentoEscolaId);
+    return {
+        autoresIds: (dbRef.autores || []).filter(acha).map((a) => a.id),
         poemasIds: (dbRef.poemas || []).filter(acha).map((p) => p.id),
         prosasIds: (dbRef.prosas || []).filter(acha).map((p) => p.id),
     };
@@ -1296,12 +2402,12 @@ export function calcularImpactoExclusaoPoema(dbRef, poemaId) {
 
 /**
  * Reatribui pra `destinoId` todo vínculo de Pessoa que apontava pra
- * `origemId` (em `item.pessoas`, Poema e Prosa), une `grupoIds` das
- * duas (sem duplicar) e remove a origem do cadastro. Se um mesmo item
- * já vinculava as duas pessoas (raro, mas possível — ex. cadastradas
- * separadamente antes de alguém perceber que eram a mesma), os `papeis`
- * das duas entradas são unidos numa só, em vez de deixar duas entradas
- * pra mesma pessoa (agora idêntica) no mesmo item.
+ * `origemId` (em `item.pessoas`, Poema e Prosa), une `grupoIds` e
+ * `autorIds` das duas (sem duplicar) e remove a origem do cadastro. Se
+ * um mesmo item já vinculava as duas pessoas (raro, mas possível — ex.
+ * cadastradas separadamente antes de alguém perceber que eram a mesma),
+ * os `papeis` das duas entradas são unidos numa só, em vez de deixar
+ * duas entradas pra mesma pessoa (agora idêntica) no mesmo item.
  */
 export function mesclarPessoas(dbRef, origemId, destinoId) {
     if (origemId == destinoId) return;
@@ -1327,6 +2433,7 @@ export function mesclarPessoas(dbRef, origemId, destinoId) {
     });
 
     destino.grupoIds = [...new Set([...(destino.grupoIds || []), ...(origem.grupoIds || [])])];
+    destino.autorIds = [...new Set([...(destino.autorIds || []), ...(origem.autorIds || [])])];
     dbRef.pessoas = dbRef.pessoas.filter((p) => p.id != origemId);
 }
 
@@ -1343,6 +2450,10 @@ export function mesclarEpocas(dbRef, origemId, destinoId) {
     const origem = dbRef.epocas?.find((e) => e.id == origemId);
     const destino = dbRef.epocas?.find((e) => e.id == destinoId);
     if (!origem || !destino) return;
+    // Época pertence a um Autor específico desde 27/09/2026 — mesclar só
+    // faz sentido dentro do mesmo Autor (senão o Período Biográfico
+    // "herdaria" pra outro Autor, o que não tem significado).
+    if (origem.autorId != destino.autorId) return;
 
     ['poemas', 'prosas'].forEach((col) => {
         (dbRef[col] || []).forEach((it) => {
@@ -1358,7 +2469,138 @@ export function mesclarEpocas(dbRef, origemId, destinoId) {
     if (!destino.notas && origem.notas) {
         destino.notas = origem.notas;
     }
+    // Datas oficiais do cadastro: o destino mantém as suas; só herda da
+    // origem o que estiver vazio (mesmo tratamento de contextoRelacao/notas).
+    if (!destino.inicio && origem.inicio) destino.inicio = origem.inicio;
+    if (!destino.fim && origem.fim) destino.fim = origem.fim;
     dbRef.epocas = dbRef.epocas.filter((e) => e.id != origemId);
+}
+
+/**
+ * Mescla dois Grupos do MESMO Autor (recusa silenciosamente se forem de
+ * Autores diferentes, mesma guarda de mesclarEpocas acima — nome de
+ * Grupo só é único dentro de um Autor desde 27/09/2026). Reatribui pra
+ * `destinoId` todo `grupoIds` de Pessoa e `gruposDiretos` de Poema/Prosa
+ * que apontava pra `origemId` (sem duplicar), reatribui os subgrupos da
+ * origem (`paiId == origemId`) pro destino, e remove a origem do
+ * cadastro. Se a origem era ela mesma um subgrupo (`paiId` não-nulo) e o
+ * destino também, o `paiId` do destino não muda — mesclar dois
+ * subgrupos não promove nem rebaixa ninguém, só une os vínculos.
+ *
+ * Também recusa (silenciosamente, nada é alterado) quando reatribuir a
+ * subárvore da origem pro destino ultrapassaria NIVEL_MAXIMO_GRUPO — ex.:
+ * origem é nível 1 com um subgrupo que por sua vez tem os seus próprios
+ * subgrupos, e destino já está fundo na hierarquia; a subárvore
+ * reatribuída estouraria o teto. Sem essa checagem a mesclagem poderia
+ * empurrar subgrupo pra um nível que nem o cadastro normal
+ * (obterGrupoPaiValido) permitiria criar.
+ */
+export function mesclarGrupos(dbRef, origemId, destinoId) {
+    if (origemId == destinoId) return;
+    const origem = dbRef.grupos?.find((g) => g.id == origemId);
+    const destino = dbRef.grupos?.find((g) => g.id == destinoId);
+    if (!origem || !destino) return;
+    if (origem.autorId != destino.autorId) return;
+    if (nivelGrupo(dbRef, destinoId) + alturaSubarvoreGrupo(dbRef, origemId) > NIVEL_MAXIMO_GRUPO) {
+        return;
+    }
+
+    (dbRef.pessoas || []).forEach((p) => {
+        if (!Array.isArray(p.grupoIds) || !p.grupoIds.includes(origemId)) return;
+        p.grupoIds = p.grupoIds.filter((gid) => gid != origemId);
+        if (!p.grupoIds.includes(destinoId)) p.grupoIds.push(destinoId);
+    });
+
+    ['poemas', 'prosas'].forEach((col) => {
+        (dbRef[col] || []).forEach((it) => {
+            if (!Array.isArray(it.gruposDiretos) || !it.gruposDiretos.includes(origemId)) return;
+            it.gruposDiretos = it.gruposDiretos.filter((gid) => gid != origemId);
+            if (!it.gruposDiretos.includes(destinoId)) it.gruposDiretos.push(destinoId);
+        });
+    });
+
+    (dbRef.grupos || []).forEach((g) => {
+        if (g.paiId == origemId) g.paiId = destinoId;
+    });
+
+    dbRef.grupos = dbRef.grupos.filter((g) => g.id != origemId);
+}
+
+/**
+ * Mesmo espírito de mesclarEpocas acima, pro cadastro de Período
+ * Histórico — mais simples, porque o vínculo no Poema/Prosa é um
+ * `periodoHistoricoId` direto (sem sub-objeto), e o cadastro só tem
+ * nome/notas (sem contextoRelacao).
+ */
+export function mesclarPeriodosHistoricos(dbRef, origemId, destinoId) {
+    if (origemId == destinoId) return;
+    const origem = dbRef.periodosHistoricos?.find((p) => p.id == origemId);
+    const destino = dbRef.periodosHistoricos?.find((p) => p.id == destinoId);
+    if (!origem || !destino) return;
+
+    ['poemas', 'prosas'].forEach((col) => {
+        (dbRef[col] || []).forEach((it) => {
+            if (it.periodoHistoricoId == origemId) {
+                it.periodoHistoricoId = destinoId;
+            }
+        });
+    });
+
+    if (!destino.notas && origem.notas) {
+        destino.notas = origem.notas;
+    }
+    if (!destino.inicio && origem.inicio) {
+        destino.inicio = origem.inicio;
+    }
+    if (!destino.fim && origem.fim) {
+        destino.fim = origem.fim;
+    }
+    if (!destino.regiao && origem.regiao) {
+        destino.regiao = origem.regiao;
+    }
+    dbRef.periodosHistoricos = dbRef.periodosHistoricos.filter((p) => p.id != origemId);
+}
+
+/**
+ * Mesmo espírito de mesclarPeriodosHistoricos acima, pro cadastro de
+ * Movimento/Escola — mais trabalhoso porque o vínculo é um array dos
+ * dois lados (Autor e Poema/Prosa), não um id único: em vez de
+ * reatribuir, precisa trocar `origemId` por `destinoId` dentro de cada
+ * array (sem duplicar, caso o item já referenciasse os dois
+ * separadamente — mesmo cuidado de mesclarPessoas com `papeis`
+ * duplicados). Campos escalares (notas/tipo/regiaoOrigem/inicio/fim)
+ * só entram no destino se estiver vazio; campos de tags (valores,
+ * temas, técnicas, tipos de composição, lemas, manifestos) são
+ * unidos por Set, sem duplicar.
+ */
+export function mesclarMovimentosEscolas(dbRef, origemId, destinoId) {
+    if (origemId == destinoId) return;
+    const origem = dbRef.movimentosEscolas?.find((m) => m.id == origemId);
+    const destino = dbRef.movimentosEscolas?.find((m) => m.id == destinoId);
+    if (!origem || !destino) return;
+
+    ['autores', 'poemas', 'prosas'].forEach((col) => {
+        (dbRef[col] || []).forEach((it) => {
+            if (!Array.isArray(it.movimentosEscolasIds)) return;
+            if (!it.movimentosEscolasIds.includes(origemId)) return;
+            it.movimentosEscolasIds = it.movimentosEscolasIds.filter((id) => id != origemId);
+            if (!it.movimentosEscolasIds.includes(destinoId)) {
+                it.movimentosEscolasIds.push(destinoId);
+            }
+        });
+    });
+
+    if (!destino.notas && origem.notas) destino.notas = origem.notas;
+    if (!destino.tipo && origem.tipo) destino.tipo = origem.tipo;
+    if (!destino.regiaoOrigem && origem.regiaoOrigem) destino.regiaoOrigem = origem.regiaoOrigem;
+    const inicioVazio = (d) => !d || (!d.dia && !d.mes && !d.ano && !d.seculo && !d.decada);
+    if (inicioVazio(destino.inicio) && !inicioVazio(origem.inicio)) destino.inicio = origem.inicio;
+    if (inicioVazio(destino.fim) && !inicioVazio(origem.fim)) destino.fim = origem.fim;
+    ['valores', 'temas', 'tecnicas', 'tiposComposicao', 'lemas', 'manifestos'].forEach((campo) => {
+        destino[campo] = [...new Set([...(destino[campo] || []), ...(origem[campo] || [])])];
+    });
+
+    dbRef.movimentosEscolas = dbRef.movimentosEscolas.filter((m) => m.id != origemId);
 }
 
 // ─── Exclusão com "desfazer" ───────────────────────────────────
@@ -1459,6 +2701,88 @@ function _removerParaExclusao(col, id) {
         });
     }
 
+    // Excluir Autor (continuação): tira o id de `autorIds` de toda
+    // Pessoa associada a ele — Pessoa não é exclusiva de um Autor (N:N,
+    // ver migrarPessoasAutorIds), então ela continua existindo, só perde
+    // essa associação específica (pode continuar associada a outros
+    // Autores). Mesmo espírito de vinculosAutoriaRemovidos acima (só
+    // desvincula), diferente do bloco de Grupos/Épocas logo abaixo (que
+    // cascade-deleta).
+    let vinculosPessoaAutorRemovidos = [];
+    if (col === 'autores') {
+        (db.pessoas || []).forEach((p) => {
+            if (!Array.isArray(p.autorIds)) return;
+            const idx = p.autorIds.indexOf(id);
+            if (idx !== -1) {
+                vinculosPessoaAutorRemovidos.push({ pessoaId: p.id, autorId: id });
+                p.autorIds.splice(idx, 1);
+            }
+        });
+    }
+
+    // Excluir Autor (continuação): Grupos e Épocas (Período Biográfico)
+    // são exclusivos de um Autor desde a decisão de 27/09/2026, então
+    // somem EM CASCATA junto com ele (diferente do resto desta função,
+    // que só desvincula) — ver calcularImpactoExclusaoAutor acima. Cada
+    // Grupo/Época removido carrega seus próprios vínculos (grupoIds de
+    // Pessoa, gruposDiretos de Poema/Prosa, epocaRetratada.epocaId), que
+    // também precisam ser desfeitos e guardados pra `_restaurar`. Como
+    // subgrupo é sempre do MESMO Autor do pai (`obterGrupoPaiValido`),
+    // apagar a lista inteira de uma vez nunca deixa filho órfão de outro
+    // Autor pra promover — bem diferente da exclusão avulsa de UM Grupo
+    // (bloco "Excluir Grupo" mais abaixo), que promove os filhos em vez
+    // de apagá-los.
+    let gruposAutorRemovidos = [];
+    let vinculosGrupoAutorRemovidos = [];
+    let vinculosGrupoDiretoAutorRemovidos = [];
+    let epocasAutorRemovidas = [];
+    let vinculosEpocaAutorRemovidos = [];
+    if (col === 'autores') {
+        const gruposDoAutor = db.grupos.filter((g) => g.autorId == id);
+        gruposDoAutor.forEach((g) => {
+            (db.pessoas || []).forEach((p) => {
+                if (!Array.isArray(p.grupoIds)) return;
+                const idx = p.grupoIds.indexOf(g.id);
+                if (idx !== -1) {
+                    vinculosGrupoAutorRemovidos.push({ pessoaId: p.id, grupoId: g.id });
+                    p.grupoIds.splice(idx, 1);
+                }
+            });
+            ['poemas', 'prosas'].forEach((itemCol) => {
+                (db[itemCol] || []).forEach((it) => {
+                    if (!Array.isArray(it.gruposDiretos)) return;
+                    const idx = it.gruposDiretos.indexOf(g.id);
+                    if (idx !== -1) {
+                        vinculosGrupoDiretoAutorRemovidos.push({
+                            itemCol,
+                            itemId: it.id,
+                            grupoId: g.id,
+                        });
+                        it.gruposDiretos.splice(idx, 1);
+                    }
+                });
+            });
+        });
+        gruposAutorRemovidos = gruposDoAutor;
+        const gruposDoAutorIds = gruposDoAutor.map((g) => g.id);
+        db.grupos = db.grupos.filter((g) => !gruposDoAutorIds.includes(g.id));
+
+        const epocasDoAutor = db.epocas.filter((e) => e.autorId == id);
+        epocasDoAutor.forEach((e) => {
+            ['poemas', 'prosas'].forEach((itemCol) => {
+                (db[itemCol] || []).forEach((it) => {
+                    if (it.epocaRetratada?.epocaId == e.id) {
+                        vinculosEpocaAutorRemovidos.push({ itemCol, itemId: it.id, epocaId: e.id });
+                        it.epocaRetratada.epocaId = null;
+                    }
+                });
+            });
+        });
+        epocasAutorRemovidas = epocasDoAutor;
+        const epocasDoAutorIds = epocasDoAutor.map((e) => e.id);
+        db.epocas = db.epocas.filter((e) => !epocasDoAutorIds.includes(e.id));
+    }
+
     // Excluir Época: some do cadastro e o `epocaId` de todo poema/prosa
     // que a referenciava volta pra null — o texto continua existindo, só
     // "perde" a referência ao período (mesmo espírito de vínculos de
@@ -1472,6 +2796,26 @@ function _removerParaExclusao(col, id) {
                 if (it.epocaRetratada?.epocaId == id) {
                     vinculosEpocaRemovidos.push({ itemCol, itemId: it.id, epocaId: id });
                     it.epocaRetratada.epocaId = null;
+                }
+            });
+        });
+    }
+
+    // Excluir Período Histórico: some do cadastro e o `periodoHistoricoId`
+    // de todo poema/prosa que o referenciava volta pra null. Mesmo
+    // espírito de vinculosEpocaRemovidos acima, mas mais simples (link
+    // direto, sem sub-objeto).
+    let vinculosPeriodoHistoricoRemovidos = [];
+    if (col === 'periodosHistoricos') {
+        ['poemas', 'prosas'].forEach((itemCol) => {
+            (db[itemCol] || []).forEach((it) => {
+                if (it.periodoHistoricoId == id) {
+                    vinculosPeriodoHistoricoRemovidos.push({
+                        itemCol,
+                        itemId: it.id,
+                        periodoHistoricoId: id,
+                    });
+                    it.periodoHistoricoId = null;
                 }
             });
         });
@@ -1534,6 +2878,51 @@ function _removerParaExclusao(col, id) {
         });
     }
 
+    // Excluir Grupo (continuação): se ele tinha subgrupos (outros Grupos
+    // do mesmo Autor com `paiId` apontando pra ele), eles são promovidos
+    // um nível em vez de apagados junto — decisão de 27/09/2026. Promovido
+    // significa herdar o `paiId` que o próprio grupo excluído tinha (não
+    // sempre `null`): excluir um grupo do meio da cadeia promove os filhos
+    // pro nível do avô, herdando o `paiId` que o excluído tinha — assim
+    // ninguém pula direto pro topo só porque o do meio sumiu, e a exclusão
+    // nunca aumenta a profundidade de ninguém (só reduz em 1, o do meio que
+    // sumiu). Guarda o `paiId` anterior de cada um pra `_restaurar` devolver
+    // a hierarquia como estava.
+    let vinculosSubgrupoPromovidos = [];
+    if (col === 'grupos') {
+        const paiHerdado = item.paiId ?? null;
+        db.grupos.forEach((g) => {
+            if (g.paiId == id) {
+                vinculosSubgrupoPromovidos.push({ grupoId: g.id, paiIdAnterior: g.paiId });
+                g.paiId = paiHerdado;
+            }
+        });
+    }
+
+    // Excluir Movimento/Escola: some do cadastro e some de
+    // `movimentosEscolasIds` de todo Autor/Poema/Prosa que o
+    // referenciava — três coleções porque a relação é N:N dos dois
+    // lados (ver decisoes.md), mesmo espírito de vinculosGrupoRemovidos/
+    // vinculosGrupoDiretoRemovidos acima (splice + guarda pra desfazer),
+    // só que cobrindo autores, poemas e prosas na mesma varredura.
+    let vinculosMovimentoEscolaRemovidos = [];
+    if (col === 'movimentosEscolas') {
+        ['autores', 'poemas', 'prosas'].forEach((itemCol) => {
+            (db[itemCol] || []).forEach((it) => {
+                if (!Array.isArray(it.movimentosEscolasIds)) return;
+                const idx = it.movimentosEscolasIds.indexOf(id);
+                if (idx !== -1) {
+                    vinculosMovimentoEscolaRemovidos.push({
+                        itemCol,
+                        itemId: it.id,
+                        movimentoEscolaId: id,
+                    });
+                    it.movimentosEscolasIds.splice(idx, 1);
+                }
+            });
+        });
+    }
+
     // Excluir Template de Progressão: se for embutido (de fábrica),
     // registra o nome em templatesEstruturaOcultos pra
     // migrarTemplatesEstruturaEmbutidos nunca recriar (ver comentário lá) —
@@ -1547,6 +2936,35 @@ function _removerParaExclusao(col, id) {
     ) {
         db.templatesEstruturaOcultos.push(item.nome);
         ocultoAdicionado = item.nome;
+    }
+
+    // Excluir Movimento/Escola de fábrica: mesmo raciocínio de
+    // templatesEstruturaOcultos logo acima, só que em
+    // movimentosEscolasOcultos — sem isso, migrarMovimentosEscolasEmbutidos
+    // recriaria o movimento sozinho no próximo load, e a exclusão nunca
+    // "pegaria" de vez pra quem apagou um dos pré-cadastrados de propósito.
+    let ocultoMovimentoAdicionado = null;
+    if (
+        col === 'movimentosEscolas' &&
+        item?.embutido &&
+        !db.movimentosEscolasOcultos.includes(item.nome)
+    ) {
+        db.movimentosEscolasOcultos.push(item.nome);
+        ocultoMovimentoAdicionado = item.nome;
+    }
+
+    // Excluir Período Histórico de fábrica: mesmo raciocínio dos dois
+    // acima, em periodosHistoricosOcultos — sem isso,
+    // migrarPeriodosHistoricosEmbutidos recriaria o período sozinho no
+    // próximo load.
+    let ocultoPeriodoHistoricoAdicionado = null;
+    if (
+        col === 'periodosHistoricos' &&
+        item?.embutido &&
+        !db.periodosHistoricosOcultos.includes(item.nome)
+    ) {
+        db.periodosHistoricosOcultos.push(item.nome);
+        ocultoPeriodoHistoricoAdicionado = item.nome;
     }
 
     // Fecha o buraco deixado na numeração do grupo de onde o item saiu
@@ -1574,14 +2992,25 @@ function _removerParaExclusao(col, id) {
         itensRemovidos,
         vinculosPessoaRemovidos,
         vinculosAutoriaRemovidos,
+        vinculosPessoaAutorRemovidos,
+        gruposAutorRemovidos,
+        vinculosGrupoAutorRemovidos,
+        vinculosGrupoDiretoAutorRemovidos,
+        epocasAutorRemovidas,
+        vinculosEpocaAutorRemovidos,
         vinculosGrupoRemovidos,
         vinculosGrupoDiretoRemovidos,
+        vinculosSubgrupoPromovidos,
         vinculosEpocaRemovidos,
+        vinculosPeriodoHistoricoRemovidos,
+        vinculosMovimentoEscolaRemovidos,
         vinculosMoldeRemovidos,
         capasParaDescartar,
         posicaoRemovida,
         irmaos,
         ocultoAdicionado,
+        ocultoMovimentoAdicionado,
+        ocultoPeriodoHistoricoAdicionado,
     };
 }
 
@@ -1596,13 +3025,24 @@ function _restaurar(removido) {
         itensRemovidos,
         vinculosPessoaRemovidos,
         vinculosAutoriaRemovidos,
+        vinculosPessoaAutorRemovidos,
+        gruposAutorRemovidos,
+        vinculosGrupoAutorRemovidos,
+        vinculosGrupoDiretoAutorRemovidos,
+        epocasAutorRemovidas,
+        vinculosEpocaAutorRemovidos,
         vinculosGrupoRemovidos,
         vinculosGrupoDiretoRemovidos,
+        vinculosSubgrupoPromovidos,
         vinculosEpocaRemovidos,
+        vinculosPeriodoHistoricoRemovidos,
+        vinculosMovimentoEscolaRemovidos,
         vinculosMoldeRemovidos,
         posicaoRemovida,
         irmaos,
         ocultoAdicionado,
+        ocultoMovimentoAdicionado,
+        ocultoPeriodoHistoricoAdicionado,
     } = removido;
 
     if (irmaos) abrirEspaco(irmaos, posicaoRemovida);
@@ -1610,6 +3050,14 @@ function _restaurar(removido) {
     if (ocultoAdicionado) {
         const idx = db.templatesEstruturaOcultos.indexOf(ocultoAdicionado);
         if (idx !== -1) db.templatesEstruturaOcultos.splice(idx, 1);
+    }
+    if (ocultoMovimentoAdicionado) {
+        const idx = db.movimentosEscolasOcultos.indexOf(ocultoMovimentoAdicionado);
+        if (idx !== -1) db.movimentosEscolasOcultos.splice(idx, 1);
+    }
+    if (ocultoPeriodoHistoricoAdicionado) {
+        const idx = db.periodosHistoricosOcultos.indexOf(ocultoPeriodoHistoricoAdicionado);
+        if (idx !== -1) db.periodosHistoricosOcultos.splice(idx, 1);
     }
 
     db[col].push(item);
@@ -1625,6 +3073,10 @@ function _restaurar(removido) {
         const it = db[itemCol]?.find((i) => i.id == itemId);
         if (it) (it.autoria ||= []).push(entrada);
     });
+    (vinculosPessoaAutorRemovidos || []).forEach(({ pessoaId, autorId }) => {
+        const p = db.pessoas?.find((i) => i.id == pessoaId);
+        if (p) (p.autorIds ||= []).push(autorId);
+    });
     (vinculosGrupoRemovidos || []).forEach(({ pessoaId }) => {
         const p = db.pessoas?.find((i) => i.id == pessoaId);
         if (p) (p.grupoIds ||= []).push(item.id);
@@ -1633,9 +3085,35 @@ function _restaurar(removido) {
         const it = db[itemCol]?.find((i) => i.id == itemId);
         if (it) (it.gruposDiretos ||= []).push(grupoId);
     });
+    (vinculosSubgrupoPromovidos || []).forEach(({ grupoId, paiIdAnterior }) => {
+        const g = db.grupos?.find((i) => i.id == grupoId);
+        if (g) g.paiId = paiIdAnterior;
+    });
+    if (gruposAutorRemovidos?.length) db.grupos.push(...gruposAutorRemovidos);
+    (vinculosGrupoAutorRemovidos || []).forEach(({ pessoaId, grupoId }) => {
+        const p = db.pessoas?.find((i) => i.id == pessoaId);
+        if (p) (p.grupoIds ||= []).push(grupoId);
+    });
+    (vinculosGrupoDiretoAutorRemovidos || []).forEach(({ itemCol, itemId, grupoId }) => {
+        const it = db[itemCol]?.find((i) => i.id == itemId);
+        if (it) (it.gruposDiretos ||= []).push(grupoId);
+    });
+    if (epocasAutorRemovidas?.length) db.epocas.push(...epocasAutorRemovidas);
+    (vinculosEpocaAutorRemovidos || []).forEach(({ itemCol, itemId, epocaId }) => {
+        const it = db[itemCol]?.find((i) => i.id == itemId);
+        if (it && it.epocaRetratada) it.epocaRetratada.epocaId = epocaId;
+    });
     (vinculosEpocaRemovidos || []).forEach(({ itemCol, itemId, epocaId }) => {
         const it = db[itemCol]?.find((i) => i.id == itemId);
         if (it && it.epocaRetratada) it.epocaRetratada.epocaId = epocaId;
+    });
+    (vinculosPeriodoHistoricoRemovidos || []).forEach(({ itemCol, itemId, periodoHistoricoId }) => {
+        const it = db[itemCol]?.find((i) => i.id == itemId);
+        if (it) it.periodoHistoricoId = periodoHistoricoId;
+    });
+    (vinculosMovimentoEscolaRemovidos || []).forEach(({ itemCol, itemId, movimentoEscolaId }) => {
+        const it = db[itemCol]?.find((i) => i.id == itemId);
+        if (it) (it.movimentosEscolasIds ||= []).push(movimentoEscolaId);
     });
     (vinculosMoldeRemovidos || []).forEach(({ moldeId, statusAnterior, poemaIdAnterior }) => {
         const m = db.moldes?.find((i) => i.id == moldeId);
@@ -1741,14 +3219,37 @@ export function deleteItem(col, id, aposConfirmar = null) {
     }
 
     // Para Autor, avisa em quantos poemas/prosas ele vai deixar de
-    // aparecer (o vínculo some, o texto em si não é afetado).
+    // aparecer (o vínculo some, o texto em si não é afetado), quantas
+    // Pessoas deixarão de estar associadas a ele (desvincula, sem
+    // apagar a Pessoa — ver calcularImpactoExclusaoAutor) e, desde a
+    // decisão de 27/09/2026, quantos Grupos/Épocas dele serão apagados
+    // EM CASCATA junto (esses dois cadastros são exclusivos do Autor).
     if (col === 'autores') {
-        const { poemasIds, prosasIds } = calcularImpactoExclusaoAutor(db, id);
-        const total = poemasIds.length + prosasIds.length;
-        rotulo =
-            total > 0
-                ? `Autor · deixará de aparecer em ${total} texto${total !== 1 ? 's' : ''}`
-                : 'Autor';
+        const { poemasIds, prosasIds, gruposIds, epocasIds, pessoasIds } =
+            calcularImpactoExclusaoAutor(db, id);
+        const totalTextos = poemasIds.length + prosasIds.length;
+        const partes = [];
+        if (totalTextos > 0) {
+            partes.push(
+                `deixará de aparecer em ${totalTextos} texto${totalTextos !== 1 ? 's' : ''}`,
+            );
+        }
+        if (pessoasIds.length > 0) {
+            partes.push(
+                `${pessoasIds.length} Pessoa${pessoasIds.length !== 1 ? 's' : ''} deixará${pessoasIds.length !== 1 ? 'ão' : ''} de estar associada${pessoasIds.length !== 1 ? 's' : ''} a ele`,
+            );
+        }
+        if (gruposIds.length > 0) {
+            partes.push(
+                `${gruposIds.length} Grupo${gruposIds.length !== 1 ? 's' : ''} apagado${gruposIds.length !== 1 ? 's' : ''} junto`,
+            );
+        }
+        if (epocasIds.length > 0) {
+            partes.push(
+                `${epocasIds.length} Período${epocasIds.length !== 1 ? 's' : ''} Biográfico${epocasIds.length !== 1 ? 's' : ''} apagado${epocasIds.length !== 1 ? 's' : ''} junto`,
+            );
+        }
+        rotulo = partes.length ? `Autor · ${partes.join(', ')}` : 'Autor';
     }
 
     // Para Época, avisa em quantos poemas/prosas ela vai deixar de
@@ -1763,14 +3264,20 @@ export function deleteItem(col, id, aposConfirmar = null) {
                 : 'Época';
     }
 
-    // Para Grupo, avisa quantas pessoas deixarão de pertencer a ele e,
-    // separadamente, em quantos textos ele deixará de aparecer como
-    // referência direta (sem pessoa) — os dois números têm significado
-    // diferente, por isso não somados num total só.
+    // Para Grupo, avisa quantas pessoas deixarão de pertencer a ele,
+    // separadamente em quantos textos ele deixará de aparecer como
+    // referência direta (sem pessoa), e, se ele tiver subgrupos, quantos
+    // serão promovidos a nível 1 (não apagados — ver
+    // vinculosSubgrupoPromovidos) — os números têm significado diferente,
+    // por isso não somados num total só.
     if (col === 'grupos') {
-        const { pessoasIds, poemasIds, prosasIds } = calcularImpactoExclusaoGrupo(db, id);
+        const { pessoasIds, poemasIds, prosasIds, subgruposIds } = calcularImpactoExclusaoGrupo(
+            db,
+            id,
+        );
         const totalPessoas = pessoasIds.length;
         const totalTextos = poemasIds.length + prosasIds.length;
+        const totalSubgrupos = subgruposIds.length;
         const partes = [];
         if (totalPessoas > 0) {
             partes.push(
@@ -1782,7 +3289,12 @@ export function deleteItem(col, id, aposConfirmar = null) {
                 `deixará de ser referência direta em ${totalTextos} texto${totalTextos !== 1 ? 's' : ''}`,
             );
         }
-        rotulo = partes.length ? `Grupo · ${partes.join(' e ')}` : 'Grupo';
+        if (totalSubgrupos > 0) {
+            partes.push(
+                `${totalSubgrupos} subgrupo${totalSubgrupos !== 1 ? 's' : ''} será${totalSubgrupos !== 1 ? 'ão' : ''} promovido${totalSubgrupos !== 1 ? 's' : ''} a nível 1`,
+            );
+        }
+        rotulo = partes.length ? `Grupo · ${partes.join(', ')}` : 'Grupo';
     }
 
     // Para Poema, avisa quando ele é a origem de algum Molde promovido

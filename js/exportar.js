@@ -316,6 +316,17 @@ export function montarRegistro(tipo, item) {
                   },
               }
             : {}),
+        // periodoHistoricoId é campo solto (não objeto, ao contrário de
+        // epocaRetratada acima) — mesmo motivo (nome junto do id, pra
+        // Importação Aditiva casar por nome quando o id não bate em
+        // nada num acervo de destino diferente).
+        ...(item.periodoHistoricoId
+            ? {
+                  periodoHistoricoNome:
+                      db.periodosHistoricos.find((ph) => ph.id == item.periodoHistoricoId)?.nome ||
+                      '',
+              }
+            : {}),
     };
 }
 

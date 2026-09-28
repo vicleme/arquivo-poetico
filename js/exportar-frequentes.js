@@ -213,9 +213,7 @@ function montarColetaneas() {
 async function gerarBackupBlob() {
     const chkCapas = document.getElementById('chk-capas-fixo-backup');
     const incluirCapas = chkCapas ? chkCapas.checked : false;
-    const payload = incluirCapas
-        ? { ...db, _capasBase64: await exportarTodasCapasBase64() }
-        : db;
+    const payload = incluirCapas ? { ...db, _capasBase64: await exportarTodasCapasBase64() } : db;
     return new Blob([JSON.stringify(payload)], { type: 'application/json;charset=utf-8' });
 }
 
