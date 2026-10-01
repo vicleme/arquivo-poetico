@@ -185,6 +185,9 @@
         <datalist id="sugestoes-sinais-tema"></datalist>
         <datalist id="sugestoes-sinais-tema-bulk"></datalist>
         <datalist id="sugestoes-sinais-tema-bulk-prosa"></datalist>
+        <datalist id="sugestoes-sinais-territorialidade"></datalist>
+        <datalist id="sugestoes-sinais-territorialidade-bulk"></datalist>
+        <datalist id="sugestoes-sinais-territorialidade-bulk-prosa"></datalist>
         <datalist id="sugestoes-sinais-relacao"></datalist>
         <datalist id="sugestoes-sinais-relacao-bulk"></datalist>
         <datalist id="sugestoes-sinais-relacao-bulk-prosa"></datalist>
@@ -305,6 +308,27 @@
                         <div
                             class="flex flex-col gap-0.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1"
                         >
+                            <button
+                                id="btn-temas"
+                                onclick="abrirAba('temas')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Temas
+                            </button>
+                            <button
+                                id="btn-assuntos"
+                                onclick="abrirAba('assuntos')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Assuntos
+                            </button>
+                            <button
+                                id="btn-locais"
+                                onclick="abrirAba('locais')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Locais
+                            </button>
                             <button
                                 id="btn-pessoas"
                                 onclick="abrirAba('pessoas')"
@@ -453,6 +477,13 @@
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
                                 Temas e pessoas
+                            </button>
+                            <button
+                                id="btn-estatisticas-local-idioma"
+                                onclick="abrirAba('estatisticas-local-idioma')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Local e idioma
                             </button>
                             <button
                                 id="btn-estatisticas-linguagem"
@@ -1134,6 +1165,157 @@
                 ></div>
             </section>
 
+            <section id="temas" class="tab-content">
+                <div class="flex justify-between items-center mb-6 gap-3 flex-wrap">
+                    <h2 class="text-xl font-semibold">Temas</h2>
+                    <div class="flex gap-2 flex-wrap">
+                        <button
+                            onclick="excluirTemasSemTexto()"
+                            title="Exclui do cadastro os temas que nenhum texto usa. Os temas em uso ficam, e nenhum texto é alterado."
+                            class="border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/30"
+                        >
+                            Excluir temas sem texto
+                        </button>
+                        <button
+                            onclick="prepararNovo('tema')"
+                            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                        >
+                            Novo Tema
+                        </button>
+                    </div>
+                </div>
+                <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
+                    Os temas que aparecem nos seus textos. Renomear aqui muda o nome em todos os
+                    textos e assuntos. Dois temas que dizem a mesma coisa podem ser juntados com
+                    Mesclar. Um tema pode pertencer a mais de um assunto.
+                </p>
+                <div class="flex flex-wrap items-center gap-3 mb-3">
+                    <input
+                        type="search"
+                        id="busca-temas"
+                        oninput="renderTemas()"
+                        placeholder="Buscar tema..."
+                        aria-label="Buscar tema"
+                        class="text-sm"
+                        style="width: 16rem; margin-bottom: 0"
+                    />
+                    <label class="text-sm flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            id="filtro-temas-sem-assunto"
+                            onchange="renderTemas()"
+                            style="width: auto; margin-bottom: 0"
+                        />
+                        Só sem assunto
+                    </label>
+                    <select
+                        id="ordem-temas"
+                        onchange="renderTemas()"
+                        aria-label="Ordenar temas"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="alfabetica">Ordem alfabética</option>
+                        <option value="usados">Mais usados primeiro</option>
+                    </select>
+                    <span
+                        id="resumo-temas"
+                        class="text-[11px] text-gray-400 dark:text-slate-500"
+                    ></span>
+                </div>
+                <div id="duplicatas-temas" class="mb-3"></div>
+                <div id="lista-temas" class="grid grid-cols-1 gap-2"></div>
+            </section>
+
+            <section id="assuntos" class="tab-content">
+                <div class="flex justify-between items-center mb-6 gap-3 flex-wrap">
+                    <h2 class="text-xl font-semibold">Assuntos</h2>
+                    <div class="flex gap-2">
+                        <button
+                            onclick="baixarAssuntosMd()"
+                            title="Baixa um .md com os assuntos, os temas de cada um e os temas sem assunto — útil para colar numa IA e pedir ajuda para agrupar"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            Baixar .md
+                        </button>
+                        <button
+                            onclick="excluirTodosAssuntos()"
+                            title="Exclui todos os assuntos do cadastro. Os temas e os textos não são alterados."
+                            class="border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/30"
+                        >
+                            Excluir todos os assuntos
+                        </button>
+                        <button
+                            onclick="prepararNovo('assunto')"
+                            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                        >
+                            Novo Assunto
+                        </button>
+                    </div>
+                </div>
+                <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
+                    Um assunto agrupa temas. O assunto de um texto vem dos temas que ele tem, então
+                    não é preciso marcá-lo em cada poema ou prosa.
+                </p>
+                <div id="lista-assuntos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                <div id="temas-sem-assunto" class="mt-6"></div>
+            </section>
+
+            <section id="locais" class="tab-content">
+                <div class="flex justify-between items-center mb-6 gap-3 flex-wrap">
+                    <h2 class="text-xl font-semibold">Locais</h2>
+                    <button
+                        onclick="novoLocal()"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                    >
+                        Novo Local
+                    </button>
+                </div>
+                <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
+                    Os lugares do acervo, do país à praça. Cada local pertence a um local maior (ou
+                    a mais de um: o primeiro é o principal e define onde ele aparece na árvore; nos
+                    demais ele aparece como referência). Os números mostram quantos textos citam o
+                    local e quantos foram escritos nele, e, entre parênteses, quantos contando os
+                    locais que pertencem a ele. Renomear aqui muda o nome em todos os textos. Dois
+                    locais que dizem a mesma coisa podem ser juntados com Mesclar.
+                </p>
+                <div class="flex flex-wrap items-center gap-3 mb-3">
+                    <input
+                        type="search"
+                        id="busca-locais"
+                        oninput="renderLocais()"
+                        placeholder="Buscar local..."
+                        aria-label="Buscar local"
+                        class="text-sm"
+                        style="width: 16rem; margin-bottom: 0"
+                    />
+                    <select
+                        id="filtro-locais"
+                        onchange="renderLocais()"
+                        aria-label="Filtrar locais"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="todos">Todos</option>
+                        <option value="sem-tipo">Só sem tipo</option>
+                        <option value="sem-pai">Só sem local maior</option>
+                    </select>
+                    <select
+                        id="filtro-uso-locais"
+                        onchange="renderLocais()"
+                        aria-label="Filtrar locais por uso nos textos"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="todos">Todos</option>
+                        <option value="citados">Só citados</option>
+                        <option value="escritos">Só locais de escrita</option>
+                    </select>
+                    <span
+                        id="resumo-locais"
+                        class="text-[11px] text-gray-400 dark:text-slate-500"
+                    ></span>
+                </div>
+                <div id="lista-locais" class="flex flex-col gap-1"></div>
+            </section>
+
             <section id="poemas" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-semibold">Conteúdo Literário</h2>
@@ -1307,6 +1489,34 @@
                                 <code>imagetico:</code> <code>outros:</code> — categorias de
                                 Etiqueta (a coluna Etiquetas mostra todas juntas; use um destes pra
                                 restringir a só uma categoria).
+                            </li>
+                            <li>
+                                <code>temaprincipal:</code> <code>temasecundario:</code>
+                                <code>temasempapel:</code> — Tema por papel no texto (<code
+                                    >tema:</code
+                                >
+                                acha o tema em qualquer papel).
+                            </li>
+                            <li>
+                                <code>assuntoprincipal:</code> <code>assuntosecundario:</code>
+                                <code>assuntoindefinido:</code> — Assunto por papel no texto (<code
+                                    >assunto:</code
+                                >
+                                acha o assunto em qualquer papel).
+                            </li>
+                            <li>
+                                <code>territorialidade:</code> <code>localescrita:</code> Local
+                                citado e Local onde foi escrito, incluindo o que está dentro dele
+                                (<code>territorialidade:Brasil</code> acha tudo no Brasil;
+                                <code>territorialidade:"São Paulo (Cidade)"</code> distingue
+                                homônimos). Com <code>territorialidadedireta:</code> e
+                                <code>localescritadireta:</code>, só o Local exato.
+                            </li>
+                            <li>
+                                <code>idiomaprincipal:</code> <code>idiomasecundario:</code> Idioma
+                                por papel no texto (<code>idioma:</code> acha o idioma em qualquer
+                                papel). <code>dialeto:</code> busca em qualquer dos dialetos do
+                                texto.
                             </li>
                             <li>
                                 <code>livro:</code> <code>parte:</code> <code>secao:</code> —
@@ -1516,7 +1726,7 @@
                         </div>
                         <div>
                             <div class="font-bold text-gray-600 dark:text-slate-300 mb-1">
-                                Época Retratada
+                                Período Biográfico Retratado
                             </div>
                             <input
                                 type="text"
@@ -1709,6 +1919,7 @@
                         <option value="sinalizacoesTradicao">Tradição</option>
                         <option value="sinalizacoesEstilo">Estilo</option>
                         <option value="sinalizacoesTema">Tema</option>
+                        <option value="sinalizacoesTerritorialidade">Territorialidade</option>
                         <option value="sinalizacoesRelacao">Relação</option>
                         <option value="sinalizacoesSensibilidade">Sensibilidade</option>
                         <option value="sinalizacoesTom">Tom</option>
@@ -2095,6 +2306,34 @@
                                 restringir a só uma categoria).
                             </li>
                             <li>
+                                <code>temaprincipal:</code> <code>temasecundario:</code>
+                                <code>temasempapel:</code> — Tema por papel no texto (<code
+                                    >tema:</code
+                                >
+                                acha o tema em qualquer papel).
+                            </li>
+                            <li>
+                                <code>assuntoprincipal:</code> <code>assuntosecundario:</code>
+                                <code>assuntoindefinido:</code> — Assunto por papel no texto (<code
+                                    >assunto:</code
+                                >
+                                acha o assunto em qualquer papel).
+                            </li>
+                            <li>
+                                <code>territorialidade:</code> <code>localescrita:</code> Local
+                                citado e Local onde foi escrito, incluindo o que está dentro dele
+                                (<code>territorialidade:Brasil</code> acha tudo no Brasil;
+                                <code>territorialidade:"São Paulo (Cidade)"</code> distingue
+                                homônimos). Com <code>territorialidadedireta:</code> e
+                                <code>localescritadireta:</code>, só o Local exato.
+                            </li>
+                            <li>
+                                <code>idiomaprincipal:</code> <code>idiomasecundario:</code> Idioma
+                                por papel no texto (<code>idioma:</code> acha o idioma em qualquer
+                                papel). <code>dialeto:</code> busca em qualquer dos dialetos do
+                                texto.
+                            </li>
+                            <li>
                                 <code>livro:</code> <code>parte:</code> <code>secao:</code> —
                                 posição na estrutura.
                             </li>
@@ -2107,9 +2346,9 @@
                         </ul>
                         <p class="mt-1">
                             Os demais campos de Poema (Ocultação, Conteúdo Sensível, Vocabulário
-                            Hiperacionante, Descarte, Contexto Histórico etc.) ainda não existem em
-                            Prosa — ela ganha esses campos quando o item 4 do schema (paridade com
-                            Poema) for implementado.
+                            Hiperacionante, Descarte, Inspiração etc.) ainda não existem em Prosa —
+                            ela ganha esses campos quando o item 4 do schema (paridade com Poema)
+                            for implementado.
                         </p>
                     </div>
                     <div>
@@ -2409,6 +2648,7 @@
                         <option value="sinalizacoesTradicao">Tradição</option>
                         <option value="sinalizacoesEstilo">Estilo</option>
                         <option value="sinalizacoesTema">Tema</option>
+                        <option value="sinalizacoesTerritorialidade">Territorialidade</option>
                         <option value="sinalizacoesRelacao">Relação</option>
                         <option value="sinalizacoesSensibilidade">Sensibilidade</option>
                         <option value="sinalizacoesTom">Tom</option>
@@ -3836,6 +4076,7 @@
                                 🚫 Ocultar ▾
                             </button>
                         </div>
+                        <div id="painel-papel-tema" class="mb-3"></div>
                         <div
                             id="painel-ocultos-temas"
                             class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
@@ -3910,6 +4151,36 @@
                         class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
                     ></div>
                     <canvas id="grafico-generos-pessoa" height="220"></canvas>
+                </div>
+
+                <div
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mt-6"
+                >
+                    <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Assuntos
+                            </h3>
+                            <p class="text-[10px] text-gray-400 mt-1">
+                                Textos por Assunto (Cadastros → Assunto), derivado dos Temas que
+                                cada texto tem — um texto com temas de mais de um Assunto conta em
+                                cada um.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onclick="togglePainel('painel-ocultos-assuntos', this)"
+                            class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                        >
+                            🚫 Ocultar ▾
+                        </button>
+                    </div>
+                    <div id="painel-papel-assunto" class="mb-3"></div>
+                    <div
+                        id="painel-ocultos-assuntos"
+                        class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
+                    ></div>
+                    <canvas id="grafico-assuntos" height="220"></canvas>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
@@ -4010,6 +4281,146 @@
                     </div>
                     <div id="painel-colunas-coocorrencia"></div>
                     <div id="tabela-coocorrencia"></div>
+                </div>
+            </section>
+
+            <section id="estatisticas-local-idioma" class="tab-content">
+                <div class="mb-5">
+                    <h2 class="text-xl font-semibold">Local e idioma</h2>
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        Onde os textos se passam, onde foram escritos e em que idiomas. Clique numa
+                        barra para abrir a lista de textos.
+                    </p>
+                </div>
+                <div class="est-filtros-compartilhados mb-6"></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Locais citados (Territorialidade)
+                                </h3>
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Textos por Local citado no texto. Separe o que é citado
+                                    diretamente (cidades, países) do que inclui tudo que está dentro
+                                    de um Local, e filtre por tipo (Cidade, País, Estado...).
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onclick="
+                                    togglePainel('painel-ocultos-local-territorialidade', this)
+                                "
+                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                            >
+                                🚫 Ocultar ▾
+                            </button>
+                        </div>
+                        <div id="painel-controles-local-territorialidade" class="mb-3"></div>
+                        <div
+                            id="painel-ocultos-local-territorialidade"
+                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
+                        ></div>
+                        <canvas id="grafico-local-territorialidade" height="220"></canvas>
+                    </div>
+
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Locais de escrita
+                                </h3>
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Textos por Local onde foram escritos (um por texto). Com "Com o
+                                    que está dentro", escrever em Santos também conta para o Brasil.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onclick="togglePainel('painel-ocultos-local-escrita', this)"
+                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                            >
+                                🚫 Ocultar ▾
+                            </button>
+                        </div>
+                        <div id="painel-controles-local-escrita" class="mb-3"></div>
+                        <div
+                            id="painel-ocultos-local-escrita"
+                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
+                        ></div>
+                        <canvas id="grafico-local-escrita" height="220"></canvas>
+                    </div>
+
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Assuntos por local de escrita
+                                </h3>
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Assuntos (derivados dos Temas) dos textos escritos num Local e
+                                    dentro dele.
+                                </p>
+                                <p
+                                    id="est-assuntos-escrita-contexto"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                ></p>
+                            </div>
+                            <button
+                                type="button"
+                                onclick="togglePainel('painel-ocultos-assuntos-escrita', this)"
+                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                            >
+                                🚫 Ocultar ▾
+                            </button>
+                        </div>
+                        <div id="painel-local-assuntos-escrita" class="mb-3"></div>
+                        <div
+                            id="painel-ocultos-assuntos-escrita"
+                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
+                        ></div>
+                        <canvas id="grafico-assuntos-escrita" height="220"></canvas>
+                    </div>
+
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Idiomas
+                                </h3>
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Textos por idioma, com o papel que o idioma tem no texto
+                                    (Principal ou Secundário).
+                                </p>
+                                <p
+                                    id="est-idiomas-contexto"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                ></p>
+                            </div>
+                            <button
+                                type="button"
+                                onclick="togglePainel('painel-ocultos-idiomas', this)"
+                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                            >
+                                🚫 Ocultar ▾
+                            </button>
+                        </div>
+                        <div id="painel-papel-idioma" class="mb-3"></div>
+                        <div
+                            id="painel-ocultos-idiomas"
+                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
+                        ></div>
+                        <canvas id="grafico-idiomas" height="220"></canvas>
+                    </div>
                 </div>
             </section>
 

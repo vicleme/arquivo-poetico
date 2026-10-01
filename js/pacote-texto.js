@@ -174,6 +174,7 @@ export function montarItem(id, texto, meta, tipo) {
         sinalizacoesTradicao: '',
         sinalizacoesEstilo: '',
         sinalizacoesTema: '',
+        sinalizacoesTerritorialidade: '',
         sinalizacoesRelacao: '',
         sinalizacoesSensibilidade: '',
         sinalizacoesTom: '',

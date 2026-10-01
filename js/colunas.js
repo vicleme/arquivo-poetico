@@ -42,6 +42,18 @@ export const DEFINICAO_COLUNAS = {
     poemas: [
         // Campo simples logo abaixo de Título/Sequência no modal.
         { key: 'idioma', label: 'Idioma', default: false, sortType: 'alfabetico' },
+        {
+            key: 'localEscrita',
+            label: 'Local de escrita',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'territorialidade',
+            label: 'Territorialidade',
+            default: false,
+            sortType: 'alfabetico',
+        },
         // Data de Escrita / Publicação / Época Retratada / Contexto —
         // primeiro bloco do modal, já aberto por padrão.
         { key: 'dataEscrita', label: 'Escrito em', default: true, sortType: 'data' },
@@ -152,6 +164,11 @@ export const DEFINICAO_COLUNAS = {
         // editor.js — não tem seção própria no modal, mas mora aqui por
         // andar sempre junto de Pessoas).
         { key: 'etiquetas', label: 'Etiquetas', default: false, sortType: 'alfabetico' },
+        // Temas do texto (por id, com papel ★/☆) — antes só apareciam como
+        // badges dentro de Etiquetas.
+        { key: 'temas', label: 'Tema', default: false, sortType: 'alfabetico' },
+        // Derivado dos Temas do texto (db.assuntos) — não é campo gravado.
+        { key: 'assuntos', label: 'Assunto', default: false, sortType: 'alfabetico' },
         { key: 'pessoas', label: 'Pessoas', default: true, sortType: 'alfabetico' },
         { key: 'grupos', label: 'Grupos', default: false, sortType: 'alfabetico' },
         // "Fonte" — último grupo do modal antes de "Status e Pendências"
@@ -218,6 +235,18 @@ export const DEFINICAO_COLUNAS = {
     ],
     prosas: [
         { key: 'idioma', label: 'Idioma', default: false, sortType: 'alfabetico' },
+        {
+            key: 'localEscrita',
+            label: 'Local de escrita',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'territorialidade',
+            label: 'Territorialidade',
+            default: false,
+            sortType: 'alfabetico',
+        },
         { key: 'dataEscrita', label: 'Data', default: true, sortType: 'data' },
         { key: 'dataPublicacao', label: 'Publicação', default: true, sortType: 'data' },
         // Item 4: mesmas colunas novas de Poemas, na ordem em que os
@@ -254,6 +283,11 @@ export const DEFINICAO_COLUNAS = {
         { key: 'vinculo', label: 'Vínculo', default: true, sortType: 'estrutura' },
         { key: 'genero', label: 'Gênero', default: true, sortType: 'alfabetico' },
         { key: 'etiquetas', label: 'Etiquetas', default: false, sortType: 'alfabetico' },
+        // Temas do texto (por id, com papel ★/☆) — antes só apareciam como
+        // badges dentro de Etiquetas.
+        { key: 'temas', label: 'Tema', default: false, sortType: 'alfabetico' },
+        // Derivado dos Temas do texto (db.assuntos) — não é campo gravado.
+        { key: 'assuntos', label: 'Assunto', default: false, sortType: 'alfabetico' },
         { key: 'pessoas', label: 'Pessoas', default: true, sortType: 'alfabetico' },
         { key: 'grupos', label: 'Grupos', default: false, sortType: 'alfabetico' },
         { key: 'notas', label: 'Notas', default: false, sortType: 'alfabetico' },

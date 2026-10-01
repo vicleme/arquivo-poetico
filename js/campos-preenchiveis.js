@@ -11,9 +11,10 @@
 // nesta lista — a tela monta o painel a partir dela.
 //
 // A lista é curada de propósito, só com campos de VALOR ÚNICO
-// (texto ou sim/não). Ficam de fora:
+// (texto, sim/não, uma opção ou um Local do cadastro). Ficam de fora:
 //   - os que já têm ação própria (Pessoas, Sinalizações, Gênero, Datas);
-//   - os que são listas de objetos ou têm forma própria (Autoria,
+//   - os que são listas (Territorialidade) ou de objetos, ou têm forma
+//     própria (Autoria,
 //     Estrutura, Envios, Reconhecimentos...): um campo genérico não
 //     tem como pedir os subcampos certos;
 //   - os que têm valor padrão implícito (Idioma grava 'pt-BR' quando
@@ -22,8 +23,9 @@
 // Cada entrada:
 //   chave       id estável do campo (vai no <option> do painel)
 //   rotulo      nome mostrado na tela e nas confirmações
-//   tipo        'texto' | 'booleano'
-//   ler(item)   valor atual (string ou boolean)
+//   tipo        'texto' | 'booleano' | 'opcoes' | 'local'
+//   ler(item)   valor atual (string, boolean ou, em 'local', o id do
+//               Local ou null)
 //   gravar(item, valor)   grava — pra limpar, recebe '' / false
 //   sugestoes(itens)      (opcional) valores pro autocompletar
 //   placeholder (opcional) dica do campo de texto
@@ -93,6 +95,21 @@ export const CAMPOS_PREENCHIVEIS = [
         ler: (item) => item.fonteTexto?.grafia || '',
         gravar: (item, valor) => definirSubcampoFonte(item, 'grafia', valor),
     },
+    // Tipo 'local': o valor é o id de um Local do cadastro (um só por texto,
+    // como no modal). Resolver o nome digitado em id — e criar o Local que
+    // ainda não existe — exige o banco, então fica na tela (selecao-massa.js);
+    // aqui o plano e a gravação só enxergam o id. `valor` null no plano
+    // significa "Local ainda a criar": nenhum texto já está com ele.
+    {
+        chave: 'localEscrita',
+        rotulo: 'Local de escrita',
+        tipo: 'local',
+        ler: (item) => item.localEscrita ?? null,
+        gravar: (item, valor) => {
+            item.localEscrita = valor == null || valor === '' ? null : valor;
+        },
+        placeholder: 'Local já cadastrado ou novo...',
+    },
     {
         chave: 'pendencia',
         rotulo: 'Pendência',
@@ -114,6 +131,15 @@ function estaVazio(campo, item) {
     return campo.tipo === 'booleano' ? !v : !String(v ?? '').trim();
 }
 
+// O que será gravado: booleano vira true/false, texto e opção ficam sem
+// espaços nas pontas, e o Local fica como veio (o id — ou null, o "a criar" —
+// sem virar string, senão o id numérico se perderia).
+function valorAlvo(campo, valor) {
+    if (campo.tipo === 'booleano') return !!valor;
+    if (campo.tipo === 'local') return valor ?? null;
+    return String(valor ?? '').trim();
+}
+
 // Decide o que o preenchimento faria, sem tocar em nada — a tela usa
 // isso pra mostrar "N serão alterados, M mantidos" antes de confirmar.
 //
@@ -125,7 +151,7 @@ function estaVazio(campo, item) {
 // Booleano ignora `sobrescrever`: "Sim"/"Não" define o valor em todos
 // os selecionados, e só pula quem já está assim.
 export function planejarPreenchimento(itens, campo, valor, { sobrescrever = false } = {}) {
-    const alvo = campo.tipo === 'booleano' ? !!valor : String(valor ?? '').trim();
+    const alvo = valorAlvo(campo, valor);
     const alterar = [];
     let jaPreenchidos = 0;
     let jaIguais = 0;
@@ -138,7 +164,7 @@ export function planejarPreenchimento(itens, campo, valor, { sobrescrever = fals
             return;
         }
         if (!estaVazio(campo, item)) {
-            if (String(atual).trim() === alvo) jaIguais++;
+            if (String(atual).trim() === String(alvo)) jaIguais++;
             else if (!sobrescrever) jaPreenchidos++;
             else alterar.push(item);
             return;
@@ -157,7 +183,7 @@ export function planejarLimpeza(itens, campo) {
 }
 
 export function aplicarPreenchimento(alterar, campo, valor) {
-    const alvo = campo.tipo === 'booleano' ? !!valor : String(valor ?? '').trim();
+    const alvo = valorAlvo(campo, valor);
     alterar.forEach((item) => campo.gravar(item, alvo));
 }
 

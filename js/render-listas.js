@@ -19,6 +19,13 @@ import {
     calcularImpactoExclusaoMovimentoEscola,
     NIVEL_MAXIMO_GRUPO,
 } from './db.js';
+import { baixarAssuntosMarkdown } from './exportar-assuntos.js';
+import {
+    contarTextosPorTema,
+    textosDoTema,
+    temasCadastradosSemAssunto,
+    sugerirTemasDuplicados,
+} from './temas.js';
 import {
     getElementHierarchy,
     getPosicaoElemento,
@@ -63,7 +70,28 @@ import {
     OPCOES_GRAFIA,
     simboloGeneroPessoa,
     formaOcultaAdjetivoPorGenero,
+    assuntosDoTexto,
+    assuntosComPapel,
+    nomesAssuntosPorPapel,
+    temasComPapel,
+    chaveTema,
+    contarTextosPorAssunto,
+    resumoTemas,
+    nomesTemasDoAssunto,
+    nomesTemasPorPapel,
+    nomesIdiomasPorPapel,
+    textoIdiomasComPapel,
+    dialetosDoItem,
 } from './utils.js';
+import {
+    buscaTerritorialidadeDoTexto,
+    buscaLocalEscritaDoTexto,
+    caminhoDoLocal,
+    territorialidadeDoTexto,
+    textoLocalComCaminho,
+    textoLocalEscrita,
+    textoTerritorialidadeComCaminho,
+} from './locais.js';
 import { preencherCapas } from './render-lightbox.js';
 import { getColunasAtivas, DEFINICAO_COLUNAS, renderSeletorColunas } from './colunas.js';
 import {
@@ -90,6 +118,8 @@ import {
     atualizarPainelAcoes,
     badgesEtiquetas,
     badgesEtiquetasPorCategoria,
+    badgesTemas,
+    badgesAssuntos,
     badgesPessoas,
     badgesGrupos,
     badgesAutoria,
@@ -108,6 +138,7 @@ import { atualizarBarraSelecao } from './selecao-massa.js';
 // no header de lá: usado só dentro de verAutoresMovimentoEscola abaixo,
 // nunca no topo do módulo.
 import { setFiltroAutores } from './autores-acoes.js';
+import { abrirPorAtalho } from './faixa-origem.js';
 import {
     selecaoAutores,
     getFiltroAutores,
@@ -717,23 +748,35 @@ export function setFiltroPessoaProsas(valor) {
 export function verTextosPessoa(id) {
     const { poemasIds, prosasIds } = calcularImpactoExclusaoPessoa(db, id);
     const destino = poemasIds.length === 0 && prosasIds.length > 0 ? 'prosas' : 'poemas';
-    window.abrirAba?.(destino);
-    if (destino === 'prosas') {
-        setFiltroPapelProsas('');
-        setFiltroPessoaProsas(id);
-    } else {
-        setFiltroPapelPoemas('');
-        setFiltroPessoaPoemas(id);
-    }
-    // Os dois setFiltro* acima já dispararam o re-render da lista (com o
-    // filtro certo já aplicado); só falta sincronizar os <select>
-    // visíveis, que no meio desse render leram o valor antigo direto do
-    // próprio DOM (ver popularSelectPessoaFiltro/popularSelectPapelFiltro
-    // acima) em vez do id que acabamos de passar.
-    const selPessoa = document.getElementById(`filtro-pessoa-${destino}`);
-    if (selPessoa) selPessoa.value = id;
-    const selPapel = document.getElementById(`filtro-papel-${destino}`);
-    if (selPapel) selPapel.value = '';
+    const pessoa = (db.pessoas || []).find((p) => p.id == id);
+    const setPessoa = destino === 'prosas' ? setFiltroPessoaProsas : setFiltroPessoaPoemas;
+    const setPapel = destino === 'prosas' ? setFiltroPapelProsas : setFiltroPapelPoemas;
+    abrirPorAtalho({
+        destino,
+        descricao: `Textos com a pessoa “${pessoa?.nome ?? ''}”`,
+        controles: [`filtro-pessoa-${destino}`, `filtro-papel-${destino}`],
+        aplicar: () => {
+            setPapel('');
+            setPessoa(id);
+            // Os dois setFiltro* acima já dispararam o re-render da lista (com o
+            // filtro certo já aplicado); só falta sincronizar os <select>
+            // visíveis, que no meio desse render leram o valor antigo direto do
+            // próprio DOM (ver popularSelectPessoaFiltro/popularSelectPapelFiltro
+            // acima) em vez do id que acabamos de passar.
+            const selPessoa = document.getElementById(`filtro-pessoa-${destino}`);
+            if (selPessoa) selPessoa.value = id;
+            const selPapel = document.getElementById(`filtro-papel-${destino}`);
+            if (selPapel) selPapel.value = '';
+        },
+        limpar: () => {
+            setPessoa('');
+            setPapel('');
+            const selPessoa = document.getElementById(`filtro-pessoa-${destino}`);
+            if (selPessoa) selPessoa.value = '';
+            const selPapel = document.getElementById(`filtro-papel-${destino}`);
+            if (selPapel) selPapel.value = '';
+        },
+    });
 }
 
 export function setFiltroPapelProsas(valor) {
@@ -760,20 +803,39 @@ export function setFiltroPapelProsas(valor) {
 // padrão; só abre em Prosas se o item não aparecer em nenhum poema mas
 // aparecer em alguma prosa (mesmo critério de verTextosPessoa acima).
 function abrirListaFiltrada(prefixo, nome, poemasIds, prosasIds) {
+    abrirListaComConsulta(
+        `${prefixo}:"${nome}"`,
+        poemasIds,
+        prosasIds,
+        `Textos filtrados por ${prefixo} “${nome}”`,
+    );
+}
+
+// Mesma abertura de abrirListaFiltrada, com a consulta já montada — pra
+// quem precisa de mais de um termo (ex.: "Ver textos" de um Assunto, que
+// junta os Temas dele com "ou"). Mostra a faixa "Voltar / Limpar filtro"
+// (faixa-origem.js) na aba de destino.
+export function abrirListaComConsulta(consulta, poemasIds, prosasIds, descricao) {
     const destino = poemasIds.length === 0 && prosasIds.length > 0 ? 'prosas' : 'poemas';
-    window.abrirAba?.(destino);
-    const consulta = `${prefixo}:"${nome}"`;
-    if (destino === 'prosas') {
-        setFiltroProsas(consulta);
-    } else {
-        setFiltroPoemas(consulta);
-    }
-    // Mesma sincronização de DOM de verTextosPessoa acima: o setFiltro*
-    // já re-renderizou a lista com o filtro certo, só falta refletir o
-    // valor na caixa de busca visível (ela lê o próprio DOM, não este
-    // estado, então re-render sozinho não atualiza o que está digitado).
-    const caixaBusca = document.getElementById(`busca-${destino}`);
-    if (caixaBusca) caixaBusca.value = consulta;
+    const setFiltro = destino === 'prosas' ? setFiltroProsas : setFiltroPoemas;
+    abrirPorAtalho({
+        destino,
+        descricao: descricao || `Filtrando por ${consulta}`,
+        controles: [`busca-${destino}`],
+        aplicar: () => {
+            setFiltro(consulta);
+            // O setFiltro* já re-renderizou a lista com o filtro certo, só falta
+            // refletir o valor na caixa de busca visível (ela lê o próprio DOM,
+            // não este estado, então re-render sozinho não atualiza o digitado).
+            const caixaBusca = document.getElementById(`busca-${destino}`);
+            if (caixaBusca) caixaBusca.value = consulta;
+        },
+        limpar: () => {
+            setFiltro('');
+            const caixaBusca = document.getElementById(`busca-${destino}`);
+            if (caixaBusca) caixaBusca.value = '';
+        },
+    });
 }
 
 export function verTextosEpoca(id) {
@@ -805,11 +867,22 @@ export function verTextosMovimentoEscola(id) {
 export function verAutoresMovimentoEscola(id) {
     const m = db.movimentosEscolas.find((x) => x.id == id);
     if (!m) return;
-    window.abrirAba?.('autores');
     const consulta = `movimento:"${m.nome}"`;
-    setFiltroAutores(consulta);
-    const caixaBusca = document.getElementById('busca-autores');
-    if (caixaBusca) caixaBusca.value = consulta;
+    abrirPorAtalho({
+        destino: 'autores',
+        descricao: `Autores do movimento/escola “${m.nome}”`,
+        controles: ['busca-autores'],
+        aplicar: () => {
+            setFiltroAutores(consulta);
+            const caixaBusca = document.getElementById('busca-autores');
+            if (caixaBusca) caixaBusca.value = consulta;
+        },
+        limpar: () => {
+            setFiltroAutores('');
+            const caixaBusca = document.getElementById('busca-autores');
+            if (caixaBusca) caixaBusca.value = '';
+        },
+    });
 }
 
 // "Ver textos" do card de Autor (pedido do Victor, 28/09/2026): mesmo
@@ -1073,7 +1146,7 @@ function nomesLivros(p) {
 // "secao:" em filtrarTextos (utils.js). extraLivros é usado só pra
 // Poemas, que também podem estar vinculados a outros livros/coletâneas
 // via livrosIds (ver nomesLivros acima).
-function decorarCamposBusca(item, extraLivros = '') {
+export function decorarCamposBusca(item, extraLivros = '') {
     let livroTitulo = '',
         parteTitulo = '',
         secaoTitulo = '';
@@ -1248,6 +1321,48 @@ function decorarCamposBusca(item, extraLivros = '') {
             item.movimentosEscolasIds,
             db.movimentosEscolas,
         ).join(' '),
+        // Tema por papel (item.temas[].papel — ver nomesTemasPorPapel em
+        // utils.js): alimenta os prefixos temaprincipal:, temasecundario: e
+        // temasempapel:. `tema:` segue lendo o espelho e acha em qualquer papel.
+        // Territorialidade e Local onde foi escrito, hierárquicos (citar a
+        // Estação Lapa conta para Lapa, São Paulo e Brasil — ver
+        // buscaTerritorialidadeDoTexto em locais.js): alimentam
+        // territorialidade:, localescrita: e as versões ...direta: (só o
+        // Local exato). Idioma por papel e dialeto: idiomaprincipal:,
+        // idiomasecundario: e dialeto: (`idioma:` segue lendo o espelho).
+        _buscaTerritorialidade: buscaTerritorialidadeDoTexto(db, item),
+        _buscaTerritorialidadeDireta: buscaTerritorialidadeDoTexto(db, item, { direta: true }),
+        _buscaLocalEscrita: buscaLocalEscritaDoTexto(db, item),
+        _buscaLocalEscritaDireta: buscaLocalEscritaDoTexto(db, item, { direta: true }),
+        _buscaIdiomaPrincipal: nomesIdiomasPorPapel(item, 'principal').join(', '),
+        _buscaIdiomaSecundario: nomesIdiomasPorPapel(item, 'secundario').join(', '),
+        _buscaDialeto: dialetosDoItem(item).join(', '),
+        _buscaTemaPrincipal: nomesTemasPorPapel(item, db.temas, 'principal').join(', '),
+        _buscaTemaSecundario: nomesTemasPorPapel(item, db.temas, 'secundario').join(', '),
+        _buscaTemaSemPapel: nomesTemasPorPapel(item, db.temas, '').join(', '),
+        // Assuntos derivados dos Temas do texto (db.assuntos — ver
+        // assuntosDoTexto em utils.js); nomes entram na busca geral e no
+        // prefixo "assunto:" (ver CAMPOS_ATRIBUTO), mesmo padrão de
+        // _buscaMovimentosEscolas acima.
+        _buscaAssuntos: assuntosDoTexto(item, db.assuntos, db.temas)
+            .map((a) => a.nome)
+            .join(' '),
+        // Assunto por papel efetivo (nomesAssuntosPorPapel em utils.js: herdado
+        // do Tema ou fixado no texto): alimenta assuntoprincipal:,
+        // assuntosecundario: e assuntoindefinido:. `assunto:` acha em qualquer papel.
+        _buscaAssuntoPrincipal: nomesAssuntosPorPapel(
+            item,
+            db.assuntos,
+            db.temas,
+            'principal',
+        ).join(', '),
+        _buscaAssuntoSecundario: nomesAssuntosPorPapel(
+            item,
+            db.assuntos,
+            db.temas,
+            'secundario',
+        ).join(', '),
+        _buscaAssuntoIndefinido: nomesAssuntosPorPapel(item, db.assuntos, db.temas, '').join(', '),
         // envios é array {pessoa, data, meio, reacao, notas} — pessoa/meio
         // são texto livre (não vínculo por id), entram na busca geral e
         // no prefixo "envio:" junto de reação/notas (ver CAMPOS_ATRIBUTO
@@ -1651,12 +1766,62 @@ function compararPorEpocaRetratada(a, b, asc) {
 // Prosa (ver DEFINICAO_COLUNAS.prosas em colunas.js) e 'anotacoesMarginais'/
 // 'descricaoVisual' exclusivos de Poema; nenhum problema em ficarem juntos
 // aqui, já que só são de fato buscados pra coluna que os declara.
+// Célula da coluna Assunto (Poemas e Prosas): Assuntos derivados dos
+// Temas do texto, um selo por Assunto — mesmo formato dos selos de
+// Movimento/Escola, em verde pra não se confundir com eles.
+function celulaAssuntos(item) {
+    return `<td class="p-4">${badgesAssuntos(item)}</td>`;
+}
+
+// Célula da coluna Idioma (Poemas e Prosas): idiomas com papel e dialetos,
+// como no .md ("pt-BR (principal; dialeto: paulistano), Inglês (secundário)");
+// um idioma Principal sem dialeto sai só com o nome.
+function celulaIdioma(item) {
+    const texto = textoIdiomasComPapel(item) || 'pt-BR';
+    return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${escapeHtml(texto)}</td>`;
+}
+
+// Célula da coluna Local onde foi escrito: nome e, em cinza, o caminho até a
+// raiz (o mesmo texto do .md).
+function celulaLocalEscrita(item) {
+    const texto = textoLocalEscrita(db, item);
+    return `<td class="p-4 text-xs ${texto ? 'text-gray-500 dark:text-slate-400' : 'text-gray-300 dark:text-slate-600'}">${texto ? escapeHtml(texto) : '—'}</td>`;
+}
+
+// Célula da coluna Territorialidade: um selo por Local citado, com o caminho
+// na dica. Texto sem ids (só o espelho de nomes) mostra os nomes do espelho.
+function celulaTerritorialidade(item) {
+    const selo = (nome, dica) =>
+        `<span title="${escapeHtml(dica)}" class="text-[9px] bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(nome)}</span>`;
+    const ids = territorialidadeDoTexto(db, item);
+    const selos = ids.length
+        ? ids.map((id) => selo(caminhoDoLocal(db, id)[0].nome, textoLocalComCaminho(db, id)))
+        : String(item.sinalizacoesTerritorialidade || '')
+              .split(',')
+              .map((n) => n.trim())
+              .filter(Boolean)
+              .map((n) => selo(n, n));
+    return `<td class="p-4">${selos.length ? selos.join('') : '<span class="text-gray-300 dark:text-slate-600">—</span>'}</td>`;
+}
+
 const COMPARADORES_ORDENACAO = {
     titulo: compararPorTexto((p) => p.titulo),
     idioma: compararPorTexto((p) => p.idioma),
+    localEscrita: compararPorTexto((p) => textoLocalEscrita(db, p)),
+    territorialidade: compararPorTexto((p) => textoTerritorialidadeComCaminho(db, p)),
     dataEscrita: compararPorData((p) => p.dataEscrita),
     dataPublicacao: compararPorData((p) => p.dataPublicacao),
     epocaRetratada: compararPorEpocaRetratada,
+    assuntos: compararPorTexto((p) =>
+        assuntosComPapel(p, db.assuntos, db.temas)
+            .map((a) => a.nome)
+            .join(', '),
+    ),
+    temas: compararPorTexto((p) =>
+        temasComPapel(p, db.temas)
+            .map((t) => t.nome)
+            .join(', '),
+    ),
     status: compararPorStatus,
     pessoas: compararPorTexto((p) => nomesPessoas(p, db.pessoas).join(', ')),
     grupos: compararPorTexto((p) =>
@@ -2102,8 +2267,9 @@ export function renderPoemas() {
         );
 
     const CELULAS_POEMAS = {
-        idioma: (p) =>
-            `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${escapeHtml(p.idioma || 'pt-BR')}</td>`,
+        idioma: (p) => celulaIdioma(p),
+        localEscrita: (p) => celulaLocalEscrita(p),
+        territorialidade: (p) => celulaTerritorialidade(p),
         dataEscrita: (p) => {
             const aproximada = !!(p.dataEscrita && !p.dataEscrita.exata);
             const dicas = [];
@@ -2158,7 +2324,9 @@ export function renderPoemas() {
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(p.conceitos?.elos, rotuloEntradaElo, 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300')}</td>`,
         ecos: (p) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(p.conceitos?.ecos, rotuloEntradaEco, 'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-700 dark:text-fuchsia-300')}</td>`,
-        etiquetas: (p) => `<td class="p-4">${badgesEtiquetasPorCategoria(p)}</td>`,
+        etiquetas: (p) =>
+            `<td class="p-4">${badgesEtiquetasPorCategoria(p, { semTema: true })}</td>`,
+        temas: (p) => `<td class="p-4">${badgesTemas(p)}</td>`,
         notas: (p) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.notas)}</td>`,
         autoavaliacao: (p) =>
@@ -2173,6 +2341,7 @@ export function renderPoemas() {
             const nome = nomePeriodoHistorico(p.periodoHistoricoId, db.periodosHistoricos);
             return `<td class="p-4 text-xs ${nome ? 'text-gray-500 dark:text-slate-400' : 'text-gray-300 dark:text-slate-600'}">${nome ? escapeHtml(nome) : '—'}</td>`;
         },
+        assuntos: (p) => celulaAssuntos(p),
         movimentosEscolas: (p) => {
             const nomes = nomesMovimentosEscolas(p.movimentosEscolasIds, db.movimentosEscolas);
             return `<td class="p-4">${
@@ -2449,8 +2618,9 @@ export function renderProsas() {
         );
 
     const CELULAS_PROSAS = {
-        idioma: (pr) =>
-            `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${escapeHtml(pr.idioma || 'pt-BR')}</td>`,
+        idioma: (pr) => celulaIdioma(pr),
+        localEscrita: (pr) => celulaLocalEscrita(pr),
+        territorialidade: (pr) => celulaTerritorialidade(pr),
         dataEscrita: (pr) => {
             const aproximada = !!(pr.dataEscrita && !pr.dataEscrita.exata);
             const dicas = [];
@@ -2504,7 +2674,9 @@ export function renderProsas() {
         autoria: (pr) => `<td class="p-4">${badgesAutoria(pr)}</td>`,
         envios: (pr) => `<td class="p-4">${badgesEnvios(pr)}</td>`,
         reconhecimentos: (pr) => `<td class="p-4">${badgesReconhecimentos(pr)}</td>`,
-        etiquetas: (pr) => `<td class="p-4">${badgesEtiquetasPorCategoria(pr)}</td>`,
+        etiquetas: (pr) =>
+            `<td class="p-4">${badgesEtiquetasPorCategoria(pr, { semTema: true })}</td>`,
+        temas: (pr) => `<td class="p-4">${badgesTemas(pr)}</td>`,
         genero: (pr) =>
             `<td class="p-4">${badgesEtiquetas(pr.genero, 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-400')}</td>`,
         notas: (pr) =>
@@ -2521,6 +2693,7 @@ export function renderProsas() {
             const nome = nomePeriodoHistorico(pr.periodoHistoricoId, db.periodosHistoricos);
             return `<td class="p-4 text-xs ${nome ? 'text-gray-500 dark:text-slate-400' : 'text-gray-300 dark:text-slate-600'}">${nome ? escapeHtml(nome) : '—'}</td>`;
         },
+        assuntos: (pr) => celulaAssuntos(pr),
         movimentosEscolas: (pr) => {
             const nomes = nomesMovimentosEscolas(pr.movimentosEscolasIds, db.movimentosEscolas);
             return `<td class="p-4">${
@@ -4328,6 +4501,274 @@ export function renderMovimentosEscolas() {
                 <button data-action="excluir-item" data-tipo="movimentosEscolas" data-id="${m.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
             </div>
         </div>`;
+        })
+        .join('');
+}
+
+// ─── Assunto ─────────────────────────────────────────────────────
+// Cadastro que agrupa Temas (ver o bloco de Assuntos em utils.js): o
+// Assunto de um texto é derivado dos Temas dele, então o card mostra
+// quantos textos caem no Assunto, contando cada texto uma vez por
+// Assunto, e cada Tema do Assunto com a própria contagem de textos.
+// Abaixo da lista, uma linha-aviso diz quantos Temas do cadastro ainda não
+// têm Assunto e leva à aba Temas já filtrada por "só sem assunto" (a
+// triagem em si mora lá).
+// Sem filtro por período nem ordenação escolhível: a lista é pequena e
+// fica em ordem alfabética.
+
+// "Ver textos" do card: os textos do Assunto (derivado dos Temas), pela
+// mesma abertura de "Ver textos" dos outros cadastros — a caixa de busca
+// de Poemas/Prosas com o prefixo `assunto:"Nome"` (ver CAMPOS_ATRIBUTO em
+// utils.js). Vai pra Prosas só se o Assunto não aparecer em nenhum poema.
+export function verTextosAssunto(id) {
+    const assunto = db.assuntos.find((a) => a.id == id);
+    if (!assunto) return;
+    const noAssunto = (t) => assuntosDoTexto(t, db.assuntos, db.temas).some((a) => a.id == id);
+    const poemasIds = db.poemas.filter(noAssunto).map((t) => t.id);
+    const prosasIds = (db.prosas || []).filter(noAssunto).map((t) => t.id);
+    if (poemasIds.length + prosasIds.length === 0) {
+        return mostrarAviso('Nenhum texto tem os temas deste assunto ainda.');
+    }
+    abrirListaFiltrada('assunto', assunto.nome, poemasIds, prosasIds);
+}
+
+// Botão "Baixar .md" da aba: exporta o cadastro inteiro de uma vez (com
+// os Temas de cada Assunto e os Temas sem assunto), pensado pra colar
+// numa IA e pedir ajuda pra agrupar os temas soltos (ver
+// exportar-assuntos.js). Sem seleção — a lista costuma ser pequena.
+export function baixarAssuntosMd() {
+    baixarAssuntosMarkdown(db.assuntos, [...db.poemas, ...(db.prosas || [])], db.temas);
+}
+
+function badgeTemaAssunto(nome, contagem) {
+    const usado = contagem > 0;
+    const cor = usado
+        ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300'
+        : 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 italic';
+    const titulo = usado
+        ? `${contagem} texto${contagem !== 1 ? 's' : ''} com este tema`
+        : 'Nenhum texto usa este tema';
+    return `<button type="button" data-action="ir-para-tema" data-nome="${escapeHtml(nome)}" title="${titulo} — abrir na aba Temas" class="text-[9px] ${cor} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block hover:underline">${escapeHtml(nome)}${usado ? ` · ${contagem}` : ''}</button>`;
+}
+
+export function renderAssuntos() {
+    const container = document.getElementById('lista-assuntos');
+    if (!container) return;
+
+    const textos = [...db.poemas, ...(db.prosas || [])];
+    const contagemPorAssunto = contarTextosPorAssunto(textos, db.assuntos, db.temas);
+    const resumo = resumoTemas(textos, db.assuntos, db.temas);
+    const contagemPorTema = new Map(resumo.map((t) => [chaveTema(t.nome), t.contagem]));
+    const ordenados = [...db.assuntos].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    if (ordenados.length === 0) {
+        container.innerHTML =
+            '<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum assunto cadastrado ainda.</div>';
+    } else {
+        container.innerHTML = ordenados
+            .map((a) => {
+                const temas = nomesTemasDoAssunto(a, db.temas);
+                const totalTextos = contagemPorAssunto.get(a.id) || 0;
+                const badges = temas
+                    .map((t) => badgeTemaAssunto(t, contagemPorTema.get(chaveTema(t)) || 0))
+                    .join('');
+                return `
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-start gap-3">
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(a.nome)}</h4>
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
+                    ${temas.length} tema${temas.length !== 1 ? 's' : ''} · aparece em ${totalTextos} texto${totalTextos !== 1 ? 's' : ''}
+                </p>
+                ${badges ? `<div class="mt-2">${badges}</div>` : ''}
+            </div>
+            <div class="flex gap-3 flex-shrink-0">
+                <button data-action="ver-textos-assunto" data-id="${a.id}" title="Ver textos" aria-label="Ver textos" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_LISTA_TEXTOS}</button>
+                <button data-action="editar-assunto" data-id="${a.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
+                <button data-action="excluir-item" data-tipo="assuntos" data-id="${a.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+            </div>
+        </div>`;
+            })
+            .join('');
+    }
+
+    renderTemasSemAssunto();
+}
+
+// Linha-aviso no fim da aba Assuntos: quantos Temas do cadastro nenhum
+// Assunto lista (o mesmo recorte do filtro "Só sem assunto" da aba Temas,
+// que é pra onde o botão leva).
+function renderTemasSemAssunto() {
+    const aviso = document.getElementById('temas-sem-assunto');
+    if (!aviso) return;
+    const soltos = temasCadastradosSemAssunto(db).length;
+    if ((db.temas || []).length === 0) {
+        aviso.innerHTML = '';
+        return;
+    }
+    if (soltos === 0) {
+        aviso.innerHTML =
+            '<p class="text-sm text-gray-400 dark:text-slate-500">Todos os temas cadastrados já pertencem a algum assunto.</p>';
+        return;
+    }
+    aviso.innerHTML = `
+        <p class="text-sm text-gray-600 dark:text-slate-300">
+            ${soltos} tema${soltos !== 1 ? 's' : ''} sem assunto.
+            <button type="button" data-action="ir-para-temas-sem-assunto" class="text-blue-600 dark:text-blue-400 underline hover:no-underline">Abrir na aba Temas</button>
+        </p>`;
+}
+
+// Abre a lista de Temas já filtrada por "Só sem assunto" (botão da
+// linha-aviso da aba Assuntos).
+export function filtrarTemasSemAssunto() {
+    const campo = document.getElementById('busca-temas');
+    if (campo) campo.value = '';
+    const semAssunto = document.getElementById('filtro-temas-sem-assunto');
+    if (semAssunto) semAssunto.checked = true;
+    renderTemas();
+}
+
+// ─── Temas (Cadastros → Temas) ──────────────────────────────────
+// Cadastro central de Tema (db.temas — ver temas.js). Lista com busca,
+// filtro "sem assunto" e ordenação; cada linha mostra os Assuntos do
+// Tema (clicáveis, abrem o Assunto), um seletor pra atribuí-lo a mais um
+// Assunto (mesmo handler do painel da aba Assunto) e as ações
+// Ver textos / Editar / Excluir. Os controles vivem no index.html; o
+// estado do filtro é lido do DOM a cada render.
+
+export function definirBuscaTemas(texto) {
+    const campo = document.getElementById('busca-temas');
+    if (campo) campo.value = texto || '';
+    const semAssunto = document.getElementById('filtro-temas-sem-assunto');
+    if (semAssunto) semAssunto.checked = false;
+    renderTemas();
+}
+
+// "Ver textos" do card do Tema: mesma abertura de "Ver textos" do
+// Assunto, com a busca `tema:"Nome"` — os ids vêm da comparação exata
+// (temas.js), a busca por prefixo casa por trecho.
+export function verTextosTema(id) {
+    const tema = (db.temas || []).find((t) => t.id == id);
+    if (!tema) return;
+    const { poemasIds, prosasIds } = textosDoTema(db, tema.nome);
+    if (poemasIds.length + prosasIds.length === 0) {
+        return mostrarAviso('Nenhum texto tem este tema ainda.');
+    }
+    abrirListaFiltrada('tema', tema.nome, poemasIds, prosasIds);
+}
+
+// Painel "Possíveis duplicatas" no alto da aba Temas: pares com a mesma
+// forma escrita (ver sugerirTemasDuplicados em temas.js). Nada é mesclado
+// sozinho; cada par tem "Manter X" (o outro entra nele), "Manter Y" e
+// "Não são iguais". Some quando não há par.
+function renderDuplicatasTemas() {
+    const painel = document.getElementById('duplicatas-temas');
+    if (!painel) return;
+    const pares = sugerirTemasDuplicados(db);
+    if (pares.length === 0) {
+        painel.innerHTML = '';
+        return;
+    }
+    const textos = (n) => `${n} texto${n !== 1 ? 's' : ''}`;
+    const botao = 'text-xs px-2 py-1 rounded border';
+    const linhas = pares
+        .map(({ a, b, textosA, textosB }) => {
+            const manter = (deste, outro) =>
+                `<button type="button" data-action="mesclar-duplicata" data-manter="${deste.id}" data-remover="${outro.id}" title="Junta “${escapeHtml(outro.nome)}” em “${escapeHtml(deste.nome)}”" class="${botao} border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40">Manter “${escapeHtml(deste.nome)}”</button>`;
+            return `
+        <li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-1.5">
+            <span class="text-sm text-gray-800 dark:text-slate-100"><strong>${escapeHtml(a.nome)}</strong> <span class="text-[10px] font-mono text-gray-400 dark:text-slate-500">${textos(textosA)}</span> e <strong>${escapeHtml(b.nome)}</strong> <span class="text-[10px] font-mono text-gray-400 dark:text-slate-500">${textos(textosB)}</span></span>
+            <span class="flex flex-wrap gap-1.5">
+                ${manter(a, b)}
+                ${manter(b, a)}
+                <button type="button" data-action="nao-sao-iguais" data-a="${a.id}" data-b="${b.id}" class="${botao} border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800">Não são iguais</button>
+            </span>
+        </li>`;
+        })
+        .join('');
+    painel.innerHTML = `
+        <details open class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-2">
+            <summary class="text-sm text-amber-800 dark:text-amber-200 cursor-pointer">${pares.length} possíve${pares.length !== 1 ? 'is duplicatas' : 'l duplicata'}: temas que só mudam em hífen, plural ou acento</summary>
+            <ul class="mt-1 divide-y divide-amber-100 dark:divide-amber-900/50">${linhas}</ul>
+        </details>`;
+}
+
+export function renderTemas() {
+    const container = document.getElementById('lista-temas');
+    if (!container) return;
+    renderDuplicatasTemas();
+
+    const busca = chaveTema(document.getElementById('busca-temas')?.value || '');
+    const soSemAssunto = !!document.getElementById('filtro-temas-sem-assunto')?.checked;
+    const ordem = document.getElementById('ordem-temas')?.value || 'alfabetica';
+    const contagem = contarTextosPorTema(db);
+    const assuntos = [...db.assuntos].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    const linhas = (db.temas || []).map((t) => {
+        const chave = chaveTema(t.nome);
+        return {
+            tema: t,
+            textos: contagem.get(chave) || 0,
+            assuntos: assuntos.filter((a) => (a.temaIds || []).some((id) => id == t.id)),
+        };
+    });
+
+    const resumo = document.getElementById('resumo-temas');
+    const filtradas = linhas
+        .filter((l) => !busca || chaveTema(l.tema.nome).includes(busca))
+        .filter((l) => !soSemAssunto || l.assuntos.length === 0)
+        .sort((a, b) =>
+            ordem === 'usados'
+                ? b.textos - a.textos || a.tema.nome.localeCompare(b.tema.nome, 'pt-BR')
+                : a.tema.nome.localeCompare(b.tema.nome, 'pt-BR'),
+        );
+    if (resumo) {
+        const semAssunto = linhas.filter((l) => l.assuntos.length === 0).length;
+        resumo.textContent = `${filtradas.length} de ${linhas.length} tema${linhas.length !== 1 ? 's' : ''} · ${semAssunto} sem assunto`;
+    }
+
+    if (filtradas.length === 0) {
+        container.innerHTML = `<div class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
+            linhas.length === 0 ? 'Nenhum tema cadastrado ainda.' : 'Nenhum tema bate com o filtro.'
+        }</div>`;
+        return;
+    }
+
+    container.innerHTML = filtradas
+        .map(({ tema: t, textos, assuntos: dele }) => {
+            const badges = dele
+                .map(
+                    (a) =>
+                        `<button type="button" data-action="editar-assunto" data-id="${a.id}" title="Abrir o assunto" class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded mr-1 inline-block hover:underline">${escapeHtml(a.nome)}</button>`,
+                )
+                .join('');
+            const disponiveis = assuntos.filter((a) => !dele.some((d) => d.id === a.id));
+            const seletor =
+                disponiveis.length === 0
+                    ? ''
+                    : `<select data-tema="${escapeHtml(t.nome)}" onchange="atribuirTemaDoPainel(this)" aria-label="Atribuir o tema ${escapeHtml(t.nome)} a um assunto" style="width: auto; margin-bottom: 0">
+                        <option value="">${dele.length ? 'Adicionar a…' : 'Atribuir a…'}</option>
+                        ${disponiveis.map((a) => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join('')}
+                    </select>`;
+            const nota = t.notas
+                ? `<p class="text-[11px] text-gray-500 dark:text-slate-400 mt-1 line-clamp-2">${escapeHtml(t.notas)}</p>`
+                : '';
+            return `
+<div class="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-start gap-3">
+    <div class="flex-1 min-w-0">
+        <div class="flex flex-wrap items-baseline gap-x-2">
+            <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(t.nome)}</h4>
+            <span class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">${textos} texto${textos !== 1 ? 's' : ''}</span>
+        </div>
+        ${nota}
+        <div class="mt-2 flex flex-wrap items-center gap-y-1">${badges}${seletor}</div>
+    </div>
+    <div class="flex gap-3 flex-shrink-0">
+        <button data-action="ver-textos-tema" data-id="${t.id}" title="Ver textos" aria-label="Ver textos" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_LISTA_TEXTOS}</button>
+        <button data-action="editar-tema" data-id="${t.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
+        <button data-action="mesclar-item" data-tipo="temas" data-id="${t.id}" title="Mesclar com outro tema" aria-label="Mesclar" class="inline-flex items-center justify-center p-1.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">${ICONE_MESCLAR}</button>
+        <button data-action="excluir-tema" data-id="${t.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+    </div>
+</div>`;
         })
         .join('');
 }

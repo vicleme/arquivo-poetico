@@ -40,7 +40,7 @@ function escapeParaOnclick(valor) {
     return escapeHtml(jsEscapado);
 }
 
-// Mesmas 8 categorias de SINALIZACOES_CATEGORIAS (utils.js), na mesma
+// Mesmas 9 categorias de SINALIZACOES_CATEGORIAS (utils.js), na mesma
 // ordem de definição (Object.keys preserva ordem de inserção pra chaves
 // string) — é essa ordem que aparece no seletor de tipos do gráfico
 // "Etiquetas mais frequentes".
@@ -55,6 +55,7 @@ const ROTULOS_TIPOS_ETIQUETA = {
     tradicao: 'Tradição',
     estilo: 'Estilo',
     tema: 'Tema',
+    territorialidade: 'Territorialidade',
     relacao: 'Relação',
     sensibilidade: 'Sensibilidade',
     tom: 'Tom',
@@ -69,7 +70,8 @@ const ROTULOS_TIPOS_ETIQUETA = {
 const CORES_TIPOS_ETIQUETA = {
     tradicao: '#8b5cf6',
     estilo: '#6366f1',
-    tema: '#10b981',
+    tema: '#f97316',
+    territorialidade: '#10b981',
     relacao: '#ec4899',
     sensibilidade: '#ef4444',
     tom: '#0ea5e9',
@@ -145,6 +147,129 @@ export function definirOrdemTemporal(chave, ordem) {
     localStorage.setItem(
         LS_PREFIX_EST + 'ordemTemporal_' + chave,
         ordem === 'alfabetica' ? 'alfabetica' : 'frequencia',
+    );
+    notificarMudanca();
+}
+
+// ─── Papel do Tema (aba Temas e pessoas) ───────────────────────────
+// Recorta os Temas contados nas Estatísticas por papel no texto: 'todos'
+// (padrão: qualquer papel, comportamento de sempre), 'principal',
+// 'secundario' ou 'semPapel'. A escolha persiste no navegador; por isso a
+// tela mostra sempre qual papel está ativo (um "só principais" esquecido
+// continuaria valendo na próxima visita).
+export const PAPEIS_TEMA_ESTATISTICAS = ['todos', 'principal', 'secundario', 'semPapel'];
+export const ROTULOS_PAPEL_TEMA_ESTATISTICAS = {
+    todos: 'Todos',
+    principal: 'Principal',
+    secundario: 'Secundário',
+    semPapel: 'Indefinido',
+};
+
+export function getPapelTemaEstatisticas() {
+    const valor = localStorage.getItem(LS_PREFIX_EST + 'papelTema');
+    return PAPEIS_TEMA_ESTATISTICAS.includes(valor) ? valor : 'todos';
+}
+
+export function definirPapelTemaEstatisticas(papel) {
+    localStorage.setItem(
+        LS_PREFIX_EST + 'papelTema',
+        PAPEIS_TEMA_ESTATISTICAS.includes(papel) ? papel : 'todos',
+    );
+    notificarMudanca();
+}
+
+// ─── Papel do Assunto (aba Temas e pessoas) ────────────────────────
+// Mesmo recorte do Tema, mas para o gráfico de Assuntos, com o papel
+// efetivo do Assunto no texto (herdado do Tema, ou fixado na mão). Valores
+// iguais aos do Tema; a escolha persiste no navegador em chave própria,
+// então mexer no papel do Tema não muda o do Assunto e vice-versa.
+export const PAPEIS_ASSUNTO_ESTATISTICAS = PAPEIS_TEMA_ESTATISTICAS;
+export const ROTULOS_PAPEL_ASSUNTO_ESTATISTICAS = ROTULOS_PAPEL_TEMA_ESTATISTICAS;
+
+export function getPapelAssuntoEstatisticas() {
+    const valor = localStorage.getItem(LS_PREFIX_EST + 'papelAssunto');
+    return PAPEIS_ASSUNTO_ESTATISTICAS.includes(valor) ? valor : 'todos';
+}
+
+export function definirPapelAssuntoEstatisticas(papel) {
+    localStorage.setItem(
+        LS_PREFIX_EST + 'papelAssunto',
+        PAPEIS_ASSUNTO_ESTATISTICAS.includes(papel) ? papel : 'todos',
+    );
+    notificarMudanca();
+}
+
+// ─── Local e idioma (aba Local e idioma) ───────────────────────────
+// Dois gráficos de Local (o que o texto CITA, a Territorialidade, e onde foi
+// ESCRITO) com o mesmo par de controles, guardados por campo: o modo
+// ('direto' conta só o Local marcado; 'agregado' conta também quem está
+// dentro dele, cada texto uma vez) e o tipo ('' = todos; ou um tipo como
+// Cidade, País). As escolhas persistem no navegador, por isso a tela diz
+// sempre o que está ativo.
+export const CAMPOS_LOCAL_ESTATISTICAS = ['territorialidade', 'escrita'];
+export const TIPO_LOCAL_SEM_TIPO = '__sem_tipo__';
+
+function campoLocalValido(campo) {
+    return CAMPOS_LOCAL_ESTATISTICAS.includes(campo) ? campo : 'territorialidade';
+}
+
+export function getModoLocalEstatisticas(campo) {
+    const valor = localStorage.getItem(LS_PREFIX_EST + 'modoLocal_' + campoLocalValido(campo));
+    return valor === 'agregado' ? 'agregado' : 'direto';
+}
+
+export function definirModoLocalEstatisticas(campo, modo) {
+    localStorage.setItem(
+        LS_PREFIX_EST + 'modoLocal_' + campoLocalValido(campo),
+        modo === 'agregado' ? 'agregado' : 'direto',
+    );
+    notificarMudanca();
+}
+
+export function getTipoLocalEstatisticas(campo) {
+    return localStorage.getItem(LS_PREFIX_EST + 'tipoLocal_' + campoLocalValido(campo)) || '';
+}
+
+export function definirTipoLocalEstatisticas(campo, tipo) {
+    const chave = LS_PREFIX_EST + 'tipoLocal_' + campoLocalValido(campo);
+    if (tipo) localStorage.setItem(chave, String(tipo));
+    else localStorage.removeItem(chave);
+    notificarMudanca();
+}
+
+// Assuntos dos textos escritos num Local: '' = todos os textos que têm local
+// de escrita; senão, o id do Local (conta também os escritos dentro dele).
+export function getLocalAssuntosEscrita() {
+    return localStorage.getItem(LS_PREFIX_EST + 'localAssuntosEscrita') || '';
+}
+
+export function definirLocalAssuntosEscrita(id) {
+    const chave = LS_PREFIX_EST + 'localAssuntosEscrita';
+    if (id) localStorage.setItem(chave, String(id));
+    else localStorage.removeItem(chave);
+    notificarMudanca();
+}
+
+// Papel do idioma no gráfico de Idiomas: 'todos' (qualquer papel),
+// 'principal' ou 'secundario'. Um texto com dois idiomas, ou com dois
+// Principais, conta uma vez em cada um; a soma das barras pode passar do
+// total de textos (o gráfico avisa).
+export const PAPEIS_IDIOMA_ESTATISTICAS = ['todos', 'principal', 'secundario'];
+export const ROTULOS_PAPEL_IDIOMA_ESTATISTICAS = {
+    todos: 'Todos',
+    principal: 'Principal',
+    secundario: 'Secundário',
+};
+
+export function getPapelIdiomaEstatisticas() {
+    const valor = localStorage.getItem(LS_PREFIX_EST + 'papelIdioma');
+    return PAPEIS_IDIOMA_ESTATISTICAS.includes(valor) ? valor : 'todos';
+}
+
+export function definirPapelIdiomaEstatisticas(papel) {
+    localStorage.setItem(
+        LS_PREFIX_EST + 'papelIdioma',
+        PAPEIS_IDIOMA_ESTATISTICAS.includes(papel) ? papel : 'todos',
     );
     notificarMudanca();
 }

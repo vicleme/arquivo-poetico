@@ -59,7 +59,7 @@
                 <input type="hidden" id="p-edit-id" />
                 <div class="md:col-span-2 space-y-4">
                     <div class="grid grid-cols-4 gap-4">
-                        <div class="col-span-2">
+                        <div class="col-span-3">
                             <label class="form-label">Título</label>
                             <input type="text" id="p-titulo" class="font-bold text-lg" required />
                         </div>
@@ -67,17 +67,19 @@
                             <label class="form-label">Sequência</label>
                             <input type="number" id="p-sequencia" />
                         </div>
-                        <div>
-                            <label class="form-label">Idioma</label>
-                            <input
-                                type="text"
-                                id="p-idioma"
-                                list="sugestoes-idioma"
-                                value="pt-BR"
-                            />
-                            <datalist id="sugestoes-idioma"></datalist>
-                        </div>
                     </div>
+
+                    <details class="campo-grupo">
+                        <summary>
+                            Região e Idioma
+                            <span class="campo-grupo-dica"
+                                >(idioma, local onde foi escrito, territorialidade)</span
+                            >
+                        </summary>
+                        <div class="campo-grupo-corpo">
+                            <div id="p-regiao-corpo"></div>
+                        </div>
+                    </details>
 
                     <details class="campo-grupo">
                         <summary>
@@ -189,9 +191,10 @@
 
                     <details class="campo-grupo">
                         <summary>
-                            Época e Contexto
+                            Períodos, Movimento e Inspiração
                             <span class="campo-grupo-dica"
-                                >(época retratada, período histórico, contexto)</span
+                                >(período biográfico, período histórico, movimento/escola,
+                                inspiração)</span
                             >
                         </summary>
                         <div class="campo-grupo-corpo">
@@ -314,7 +317,7 @@
                                 <span
                                     class="font-normal normal-case text-gray-400 dark:text-slate-500"
                                     >(o momento histórico, não pessoal, que o poema retrata —
-                                    coexiste com a Época Retratada acima)</span
+                                    coexiste com o Período Biográfico Retratado acima)</span
                                 ></label
                             >
                             <input
@@ -1083,6 +1086,13 @@
                                 id="p-hiperacionante"
                                 class="text-sm h-20 border-amber-300 dark:border-amber-700"
                             ></textarea>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>Temas e Assuntos</summary>
+                        <div class="campo-grupo-corpo">
+                            <div id="p-temas-corpo"></div>
                         </div>
                     </details>
 

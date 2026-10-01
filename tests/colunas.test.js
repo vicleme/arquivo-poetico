@@ -249,11 +249,13 @@ describe('moverColuna', () => {
     beforeEach(resetar);
 
     it('"up" troca de posição com o vizinho anterior', () => {
-        // ordem padrão (início): idioma, dataEscrita, dataPublicacao, epocaRetratada, periodoHistoricoId, movimentosEscolas, contextoHistorico, notas, autoria, envios, reconhecimentos, autoavaliacao, autoclassificacao, estrutura, elos...
+        // ordem padrão (início): idioma, localEscrita, territorialidade, dataEscrita, dataPublicacao, epocaRetratada, periodoHistoricoId, movimentosEscolas, contextoHistorico, notas, autoria, envios, reconhecimentos, autoavaliacao, autoclassificacao, estrutura, elos...
         moverColuna('poemas', 'notas', 'up');
         const estado = JSON.parse(localStorage.getItem(LS_PREFIX + 'poemas'));
-        assert.deepEqual(estado.ordem.slice(0, 14), [
+        assert.deepEqual(estado.ordem.slice(0, 16), [
             'idioma',
+            'localEscrita',
+            'territorialidade',
             'dataEscrita',
             'dataPublicacao',
             'epocaRetratada',
@@ -273,7 +275,7 @@ describe('moverColuna', () => {
     it('"down" troca de posição com o vizinho seguinte', () => {
         moverColuna('poemas', 'idioma', 'down');
         const estado = JSON.parse(localStorage.getItem(LS_PREFIX + 'poemas'));
-        assert.deepEqual(estado.ordem.slice(0, 2), ['dataEscrita', 'idioma']);
+        assert.deepEqual(estado.ordem.slice(0, 2), ['localEscrita', 'idioma']);
     });
 
     it('mover a primeira coluna pra "up" não faz nada (já está no topo)', () => {

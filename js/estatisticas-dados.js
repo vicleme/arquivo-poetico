@@ -4,10 +4,20 @@
 // ============================================================
 
 import { db, cadeiaAncestraisGrupo } from './db.js';
-import { anoDeDataParcial, paresGrupoPessoa, tokenizar, SINALIZACOES_CATEGORIAS } from './utils.js';
+import {
+    anoDeDataParcial,
+    paresGrupoPessoa,
+    tokenizar,
+    SINALIZACOES_CATEGORIAS,
+    contarTextosPorAssunto,
+    assuntosComPapel,
+    nomesTemasPorPapel,
+} from './utils.js';
 import {
     getTiposEtiquetaSelecionados,
     getModoGraficoPessoas,
+    getPapelTemaEstatisticas,
+    getPapelAssuntoEstatisticas,
     getGruposFiltroPessoas,
     textoEntraNoFiltroEstatisticas,
     TIPOS_ETIQUETA,
@@ -358,6 +368,12 @@ function todosOsTextos() {
     return [...poemasContados(), ...prosasContadas()];
 }
 
+// Textos que entram nas Estatísticas agora (corpus, tipo, autor e período já
+// aplicados). Os gráficos de Local e Idioma partem daqui.
+export function textosDasEstatisticas() {
+    return todosOsTextos();
+}
+
 // ─── Agregações ─────────────────────────────────────────────
 
 export function contarPorAno() {
@@ -499,7 +515,12 @@ export function agregarPorTema(tipos = getTiposEtiquetaSelecionados()) {
     const categoriaDoLabel = {};
     todosOsTextos().forEach((t) => {
         tiposAUsar.forEach((tipoKey) => {
-            listaDeCampo(t[SINALIZACOES_CATEGORIAS[tipoKey]]).forEach((tag) => {
+            // 'tema' respeita o seletor "Papel do tema"; as demais categorias não.
+            const tags =
+                tipoKey === 'tema'
+                    ? temasDoTexto(t)
+                    : listaDeCampo(t[SINALIZACOES_CATEGORIAS[tipoKey]]);
+            tags.forEach((tag) => {
                 contagem[tag] = (contagem[tag] || 0) + 1;
                 if (!categoriaDoLabel[tag]) categoriaDoLabel[tag] = tipoKey;
             });
@@ -559,7 +580,10 @@ export function agregarPorPessoa(opcoes = {}) {
                 const gruposEfetivos = (pessoa.grupoIds || []).flatMap((g) =>
                     cadeiaAncestraisGrupo(db, g),
                 );
-                if (setGrupoFiltro.size && !gruposEfetivos.some((g) => setGrupoFiltro.has(String(g)))) {
+                if (
+                    setGrupoFiltro.size &&
+                    !gruposEfetivos.some((g) => setGrupoFiltro.has(String(g)))
+                ) {
                     return;
                 }
                 contagem[pessoa.nome] = (contagem[pessoa.nome] || 0) + 1;
@@ -602,13 +626,52 @@ export function agregarPorGeneroPessoa() {
     return { labels: ordenado.map((o) => o[0]), data: ordenado.map((o) => o[1]) };
 }
 
+// Assuntos agrupam Temas (db.assuntos — ver utils.js): cada texto conta
+// uma vez por Assunto a que pertence (mesma convenção de
+// contarTextosPorAssunto), por isso a soma das barras pode passar do
+// total de textos quando um texto cai em mais de um Assunto. Sem
+// Top N nem drill-down temporal (poucas categorias, mesmo padrão de
+// agregarPorGeneroPessoa acima) — Assunto sem nenhum texto ainda fica
+// de fora do gráfico (nada pra desenhar).
+//
+// `papel` recorta pelo papel efetivo do Assunto no texto (seletor "Papel do
+// assunto"): 'todos' (padrão, qualquer papel, como sempre), 'principal',
+// 'secundario' ou 'semPapel' (Indefinido). Nos papéis específicos o texto só
+// conta no Assunto se o papel efetivo dele ali for aquele.
+export function agregarPorAssunto(papel = getPapelAssuntoEstatisticas()) {
+    const contagem =
+        papel === 'todos'
+            ? contarTextosPorAssunto(todosOsTextos(), db.assuntos, db.temas)
+            : contarTextosPorAssuntoNoPapel(papel);
+    const ordenado = [...contagem.entries()]
+        .map(([id, n]) => [db.assuntos.find((a) => a.id === id)?.nome || '', n])
+        .filter(([nome, n]) => nome && n > 0)
+        .sort((a, b) => b[1] - a[1]);
+    return { labels: ordenado.map((o) => o[0]), data: ordenado.map((o) => o[1]) };
+}
+
+function contarTextosPorAssuntoNoPapel(papel) {
+    const alvo = papel === 'semPapel' ? '' : papel;
+    const contagem = new Map((db.assuntos || []).map((a) => [a.id, 0]));
+    todosOsTextos().forEach((texto) => {
+        assuntosComPapel(texto, db.assuntos, db.temas).forEach((a) => {
+            if (a.papel === alvo) contagem.set(a.id, (contagem.get(a.id) || 0) + 1);
+        });
+    });
+    return contagem;
+}
+
 function anoDoTexto(texto) {
     const ano = parseInt(anoDeDataParcial(texto?.dataEscrita) ?? texto?.ano);
     return Number.isFinite(ano) && ano > 0 ? String(ano) : null;
 }
 
-function temasDoTexto(texto) {
-    return listaDeCampo(texto?.sinalizacoesTema);
+// Temas do texto para as Estatísticas, já recortados pelo seletor "Papel
+// do tema" (padrão 'todos' = o espelho inteiro, como sempre). Nos papéis
+// específicos usa `texto.temas` (por id) via nomesTemasPorPapel.
+function temasDoTexto(texto, papel = getPapelTemaEstatisticas()) {
+    if (papel === 'todos') return listaDeCampo(texto?.sinalizacoesTema);
+    return nomesTemasPorPapel(texto, db.temas, papel === 'semPapel' ? '' : papel);
 }
 
 function pessoasDoTexto(texto) {
@@ -798,7 +861,9 @@ export function anosDistintosPorPessoa() {
             (porPessoa[pessoa] ||= new Set()).add(ano);
         });
     });
-    return Object.fromEntries(Object.entries(porPessoa).map(([pessoa, anos]) => [pessoa, anos.size]));
+    return Object.fromEntries(
+        Object.entries(porPessoa).map(([pessoa, anos]) => [pessoa, anos.size]),
+    );
 }
 
 // Filtra `labels` pelo mapa { label: nº de anos distintos } acima,
@@ -808,7 +873,6 @@ export function filtrarPorAnosDistintos(labels, mapaAnos, minimo) {
     if (!minimo) return labels;
     return labels.filter((l) => (mapaAnos[l] || 0) >= minimo);
 }
-
 
 export function coocorrenciaTemasPessoas({ temas = [], pessoas = [] } = {}) {
     const matriz = [];

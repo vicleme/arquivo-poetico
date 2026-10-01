@@ -116,7 +116,7 @@ No item:
 
 ### Sinalizações (8 categorias, cada uma string por vírgula)
 
-`sinalizacoesTradicao`, `sinalizacoesEstilo`, `sinalizacoesTema`, `sinalizacoesRelacao`, `sinalizacoesSensibilidade`, `sinalizacoesTom`, `sinalizacoesDominioImagetico` (vocabulário/imagética de um domínio de conhecimento que o texto usa como registro — ex.: Astrologia, Mitologia — diferente de Intertextualidade, que é diálogo com um artefato externo específico), `sinalizacoesOutros` (balde temporário pra tags sem categoria própria).
+`sinalizacoesTradicao`, `sinalizacoesEstilo`, `sinalizacoesTema`, `sinalizacoesTerritorialidade` (lugares específicos citados no texto: país, cidade, bairro, rio; diferente de Tema, que é o assunto amplo; desde a etapa 1 de Locais é **espelho derivado** de `territorialidade`, ver `db.locais`), `sinalizacoesRelacao`, `sinalizacoesSensibilidade`, `sinalizacoesTom`, `sinalizacoesDominioImagetico` (vocabulário/imagética de um domínio de conhecimento que o texto usa como registro — ex.: Astrologia, Mitologia — diferente de Intertextualidade, que é diálogo com um artefato externo específico), `sinalizacoesOutros` (balde temporário pra tags sem categoria própria).
 
 ### Status
 
@@ -141,8 +141,28 @@ Status editorial (Inédito/Esgotado/Domínio público/Reeditado) existe só em `
 
 ### Outros campos simples
 
-- `idioma`: string (padrão `"pt-BR"`), datalist de sugestão (`IDIOMAS_SUGERIDOS` + o que já está salvo).
+- `idiomas: [{ idioma, papel, dialetos }]`: **fonte da verdade** (30/09/2026). `papel` é `'principal'` ou `'secundario'` e vale **por idioma**, não pela posição: um texto meio a meio tem dois Principais. Havendo algum idioma, há sempre ao menos um Principal (`normalizarIdiomas` promove o primeiro se faltar); texto sem nenhum idioma é permitido (`[]`). `dialetos` é uma **lista** de textos livres, opcional, que pertence ao idioma (um diálogo entre falantes de regiões diferentes tem mais de um); repetido (sem caixa nem acento) é juntado, mantendo a primeira grafia. Dado antigo com `dialeto` (texto único) vira `dialetos: [dialeto]` em `normalizarIdiomas`/`migrarIdioma`. Idioma repetido é juntado somando os dialetos. Texto novo começa com `pt-BR` Principal.
+- `idioma`: string, **espelho derivado** de `idiomas` (só os nomes, Principais primeiro, separados por vírgula; vazio se não há idioma), mantido para a busca `idioma:`, a coluna, `.md`, `.csv` e as Estatísticas lerem o campo de sempre. Nunca é editado à mão: `idiomasParaSalvar` (`forms.js`) grava os dois juntos e `migrarIdioma` (`db.js`) refaz o espelho a partir de `idiomas`. Dado antigo (só `idioma`) vira um Principal, sem dialeto, na migração; quem lê passa por `idiomasDoItem` (`utils.js`), que faz a mesma leitura sem precisar da migração (pacotes de texto e backups antigos).
+- Sugestões: `IDIOMAS_SUGERIDOS` mais o que já está salvo (`extrairIdiomasUnicos`); dialetos já usados por idioma em `extrairDialetosUnicos`, sem semente fixa.
 - `conteudoSensivel`: booleano, derivado (não é mais tag em Sinalizações).
+
+## Assuntos (`db.assuntos`)
+
+Cadastro que agrupa Temas. Só a forma atual; o porquê está em `decisoes.md`.
+
+- `{ id, nome, notas, temaIds: [id, ...] }` — `temaIds` são ids do cadastro `db.temas` (fase 3); o nome mora só lá, então renomear um Tema não mexe em nenhum Assunto. Formato antigo `temas: [nome, ...]` só existe em dado não migrado: `sincronizarTemas` (load e `importarDB`) o converte com `migrarAssuntosParaIds` e apaga o campo. `nomesTemasDoAssunto(assunto, db.temas)` (utils.js) resolve os nomes. Instalação nova nasce com uma amostra (ver "Seed de Temas e Assuntos" abaixo); instalação existente e backup importado, não.
+- Um Tema pode estar em vários Assuntos (N:N). Comparação por nome sem diferenciar caixa nem acento (`chaveTema`, utils.js).
+- Poema/Prosa **não** guardam Assunto: é derivado dos Temas do texto (`assuntosDoTexto`, utils.js). Excluir um Assunto não mexe em nenhum texto.
+- `migrarAssuntos` (db.js) normaliza no load e em `importarDB`.
+- Atributo derivado (fase 2): prefixo de busca `assunto:`, coluna `assuntos` nas tabelas, selo no modal de leitura, exportação .md/.csv, gráfico em Estatísticas. Nada disso é campo gravado no texto.
+- Botão "Baixar .md" da aba (`js/exportar-assuntos.js`): exporta o cadastro inteiro (Assuntos+Temas e Temas sem assunto) num formato simples, pra colar numa IA.
+
+### Seed de Temas e Assuntos
+
+- `semearTemasEAssuntos()` (`db.js`) devolve `{ temas, assuntos }`: 9 Assuntos e 44 Temas, ids gerados na hora. Roda **só quando não há nada salvo no navegador** (`_instalacaoNova`, checado antes de o `db` ser montado). Não roda para acervo existente (mesmo com `db.temas` vazio) nem em `importarDB` (backup sem `temas` recebe `[]`).
+- Registros comuns: sem flag `embutido`, sem migração aditiva. Renomear, editar e excluir valem, e o que a pessoa exclui não volta.
+- "Machismo" está em dois Assuntos (Corpo, gênero e sexualidade; Discriminação) de propósito, para mostrar o N:N. Lugares (ex.: Brasil) ficam de fora: são da Territorialidade.
+- Rótulo do papel indefinido na interface: **"Indefinido"** (`ROTULOS_PAPEL_TEMA['']`). O valor gravado continua `''`, e o prefixo de busca continua `temasempapel:`.
 
 ## Livros / Coletâneas / Partes / Seções
 
@@ -192,5 +212,46 @@ Ao contrário de Conexões, é entidade própria: `db.escansoes` (uma por poema 
 
 Não é schema de dado, é o mapa cadastro → colunas. Cada coluna declara em `campos` as chaves do registro que consome (`coluna(cabecalho, campos, valor)`); `tests/exportar-csv.test.js` compara essas chaves com o `dados = {...}` de `forms.js` (Poema, Prosa e Autor) e falha se um campo novo do cadastro ficar sem coluna. Campo novo no cadastro = uma `coluna(...)` nova (ou entrada em `CAMPOS_TEXTO_IGNORADOS`, com o porquê).
 
-- Poema/Prosa (`colunasTexto(tipo)`, entrada = `montarRegistro`): 75 colunas. Poema tem `n_versos`/`n_estrofes`, `anotacoes_marginais`, `descricao_visual`; Prosa tem `n_linhas`/`n_paragrafos`, `genero`, `publicado`. Datas em `_ano/_mes/_dia`; Sinalizações uma coluna por categoria de `SINALIZACOES_CATEGORIAS` (`sinal_*`); listas de objetos (elos, ecos, intertextualidade, envios...) uma entrada de texto por objeto, separadas por `" | "`.
+- Poema/Prosa (`colunasTexto(tipo)`, entrada = `montarRegistro`): 89 colunas (`idioma_principal`, `idioma_secundario`, `dialetos`, `local_escrita` e `local_escrita_caminho` vêm logo depois de `idioma`, e `territorialidade_caminho` logo depois das `sinal_*`; `idioma` e `sinal_territorialidade` seguem com o espelho de nomes; `assunto_principal` e `assunto_secundario` vêm logo depois de `assuntos`; `tema_principal` e `tema_secundario`, dos Temas por papel, logo depois das `sinal_*`; `sinal_tema` segue com todos os Temas). Poema tem `n_versos`/`n_estrofes`, `anotacoes_marginais`, `descricao_visual`; Prosa tem `n_linhas`/`n_paragrafos`, `genero`, `publicado`. Datas em `_ano/_mes/_dia`; Sinalizações uma coluna por categoria de `SINALIZACOES_CATEGORIAS` (`sinal_*`); listas de objetos (elos, ecos, intertextualidade, envios...) uma entrada de texto por objeto, separadas por `" | "`.
 - Autor (`COLUNAS_AUTOR`, entrada = `itensDaSelecaoAutores`): 33 colunas, `derivados` no fim.
+
+## `db.temas` — cadastro de Tema (fase 1)
+
+`{ id, nome, notas, naoIguais? }`. `naoIguais` (opcional) é a lista de ids de Temas que a pessoa marcou como "não são iguais" a este, para o painel de duplicatas não sugerir o par de novo; a marca vale se estiver em qualquer um dos dois registros, e a mesclagem a remapeia (ver `decisoes.md`). Mantido em sincronia com o que existe nos textos: `sincronizarTemas(db)` (`js/temas.js`) cria um registro para todo Tema em uso em `sinalizacoesTema` (Poema/Prosa) ou listado em `db.assuntos[].temas`; roda no load, no `importarDB` e a cada `save()`. Nunca apaga nem renomeia registro existente. O Assunto lista Temas **por id** (`temaIds`, fase 3). Comparação sempre por `chaveTema` (sem caixa/acento).
+
+### Tema no texto (Poema/Prosa) — fase 2
+
+- `temas: [{ temaId, papel }]` é a **fonte da verdade**. `papel`: `'principal'`, `'secundario'` ou `''` (sem papel definido — é o que a migração grava). Na exportação (`montarRegistro`) cada entrada ganha `nome`, porque o id não vale em outro acervo; a Importação Aditiva casa/cria o Tema pelo nome e mantém o papel.
+- `sinalizacoesTema` continua existindo como **espelho derivado**: nomes do cadastro separados por vírgula, principal → secundário → sem papel. Existe para busca (`tema:`), badges, exportações, estatísticas e Assuntos seguirem lendo o campo de sempre. Vírgula não pode existir em nome de Tema (`limparNomeTema`).
+- `reconciliarTemasDoTexto` (`js/temas.js`, roda em todo `sincronizarTemas`: load, `importarDB`, `save()`): sem `temas` → migra do espelho (papel vazio); `temas` e espelho com os mesmos Temas → mantém os `temas` e normaliza o espelho; divergem → **o espelho vence** e os `temas` são refeitos preservando o papel de quem ficou. Isso cobre quem ainda escreve só o espelho (edição em massa, Localizar e Substituir, JSON antigo). Ids que não existem no cadastro são descartados.
+- Editor: grupo "Temas e Assuntos" nos modais de Poema e Prosa (`renderTemasPoema/Prosa`, `editor.js`). O estado é `{ nome, papel }` por tabela; ids só são resolvidos ao salvar (`resolverTemasEditados` via `temasParaSalvar` em `forms.js`), então cancelar não cria Tema. Os Assuntos mostrados são derivados dos Temas, cada um com um seletor de papel (Automático, Sem papel definido, Principal, Secundário). Tema saiu do bloco Sinalizações do modal (`ocultoNoModal` em `SINAL_CATEGORIAS`).
+
+### Papel do Assunto no texto (`assuntosPapel`)
+
+- `assuntosPapel: [{ assuntoId, papel }]` guarda **só as sobrescritas** que a pessoa fixou. `papel`: `'principal'`, `'secundario'` ou `''` (fixar "sem papel definido" de propósito vale; a presença da entrada é o que marca "fixado"). Sem entrada, o Assunto segue o Tema.
+- Regra (decisão do Victor): se o texto elenca um Tema como principal ou secundário, os Assuntos desse Tema herdam o papel por padrão; a pessoa pode fixar outro papel para um Assunto naquele texto (Tema principal com Assunto secundário, ou o contrário). Com vários Temas do texto no mesmo Assunto, vale o papel mais forte (principal, depois secundário, depois sem papel).
+- Cálculo em `utils.js`: `assuntosComPapel(item, assuntos, temas)` devolve `{ id, nome, papel, papelAuto, fixado }` (ordem: principal, secundário, sem papel; dentro do papel, ordem do cadastro). Derivados: `textoAssuntosComPapel`, `nomesAssuntosPorPapel`. `podarSobrescritasAssunto` descarta sobrescrita de Assunto excluído ou sem Tema no texto (roda ao salvar em `temasParaSalvar`, `forms.js`, e a cada render do editor). Sobrescrita órfã que sobrar no dado é ignorada na leitura.
+- Exportação JSON (`montarRegistro`): cada entrada ganha `nome` do Assunto (o id não vale em outro acervo). Importação Aditiva casa o Assunto do destino pelo nome (sem caixa nem acento), descarta o que não existe e grava `assuntosPapel` sempre reescrito; JSON antigo vira `[]`.
+
+## `db.locais`: cadastro de Local (etapa 1, 30/09/2026)
+
+`{ id, nome, tipo, pertenceA: [id, ...], notas }`. Código em `js/locais.js`; funções puras sobre o `dbRef`.
+
+- `tipo`: texto livre com sugestões (`TIPOS_LOCAL_PADRAO`: País, Estado, Região, Cidade, Bairro, Logradouro, Edificação, Estação, Rede ou sistema, Corpo d'água) e memória dos tipos já usados (`tiposDeLocalSugeridos`). Vazio é válido (é como a migração cria).
+- `pertenceA`: **lista de ids, vários pais**. O primeiro é o pai principal e define o caminho canônico (`caminhoDoLocal`, `rotuloCaminhoLocal`); os demais são vínculos adicionais e só entram nas agregações. Ex.: Estação Lapa = `[Lapa, Metrô de São Paulo]`. Ciclo é bloqueado ao editar (`criaCiclo`) e desfeito no load/import (`sincronizarLocais`).
+- Identidade: nome + tipo + pai. São Paulo cidade e São Paulo estado coexistem; dois "Centro" de cidades diferentes também. Duplicata = mesmo nome e tipo com algum pai em comum (ou os dois sem pai). Vírgula não pode existir no nome (é o separador do espelho).
+
+### Local no texto (Poema/Prosa)
+
+- `territorialidade: [id, ...]`: lugares citados, **fonte da verdade**. Grava só o que a pessoa marcou; ancestrais são sempre calculados. "Citado diretamente" é dado exato; "locais do Brasil" é o Local mais todos os descendentes, cada texto uma vez só (`contarTextosPorLocal`: `diretos` e `agregados`).
+- `sinalizacoesTerritorialidade`: **espelho derivado** (nomes na ordem, sem repetir por chave), mantido para badges, exportações e estatísticas que já liam o campo. Mesma regra do Tema: `reconciliarLocaisDoTexto` roda em todo `sincronizarLocais` (load, `importarDB`, `save()`). Sem `territorialidade` (dado antigo) migra do espelho; ids e espelho com os mesmos nomes mantêm os ids (é o que preserva São Paulo cidade x estado); divergem, **o espelho vence** e os ids são refeitos, mantendo os que ainda batem pelo nome. Espelho vazio com ids significa "a pessoa limpou a etiqueta". Nome do espelho sem Local ganha um Local novo (sem tipo e sem pai), na grafia mais frequente. A busca `territorialidade:` **não lê mais o espelho**: lê `_buscaTerritorialidade` (Locais citados e todos os ancestrais, cada um como nome e "nome (tipo)"), montado em `decorarCamposBusca` a partir dos ids; `territorialidadedireta:` lê só os citados, e `localescrita:`/`localescritadireta:` fazem o mesmo para `localEscrita`. Texto sem ids, só com o espelho, cai nos nomes do espelho.
+- `localEscrita: id | null`: onde o texto foi redigido, um só. Sem espelho. Id inexistente vira `null`. `contarTextosPorLocalEscrita` conta com a mesma agregação.
+- Os modais de Poema/Prosa ainda não editam esses campos por id. `locaisParaSalvar` (`forms.js`) carrega `territorialidade` e `localEscrita` do texto anterior, porque o submit substitui o texto inteiro e apagaria `localEscrita`.
+
+### Operações do cadastro (`locais.js`)
+
+`criarLocal`, `editarLocal` (nome, tipo, notas, pais; valida tudo antes; renomear atualiza o espelho dos textos), `mesclarLocais` (textos, local de escrita e filhos passam ao destino; os outros pais da origem viram pais do destino se não fecharem ciclo; recusa destino dentro da origem), `excluirLocal` (sai dos textos; os filhos herdam os pais do excluído, a cadeia não se rompe). `mesclarLocais` e `excluirLocal` devolvem `desfazer`. `impactoDoLocal` lista textos que citam, textos escritos no Local e filhos.
+
+### Exportação e importação
+
+`montarRegistro` (`exportar.js`) troca `territorialidade` e `localEscrita` por `{ localId, nome, tipo }` e acrescenta `locaisHierarquia`: cada Local do texto e todos os ancestrais, com `pertenceA` em ids de origem. A Importação Aditiva (`importarLocaisDoTexto`) recria de baixo para cima casando por nome + tipo + pai, adota um Local do mesmo nome e tipo que esteja sem pai, e nunca duplica. JSON antigo (sem `locaisHierarquia`) zera os ids e o espelho é migrado no `save()`. O backup completo (`importarDB`) leva `db.locais` inteiro.

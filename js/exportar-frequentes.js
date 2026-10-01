@@ -398,6 +398,7 @@ function opcoesDeCampo() {
         tradicao: 'Tradição',
         estilo: 'Estilo',
         tema: 'Tema',
+        territorialidade: 'Territorialidade',
         relacao: 'Relação',
         sensibilidade: 'Sensibilidade',
         tom: 'Tom',

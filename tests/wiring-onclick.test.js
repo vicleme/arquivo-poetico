@@ -154,14 +154,11 @@ export function extrairChamadasDeHandlers(fonte, { js = false } = {}) {
     const nomes = new Set();
     let texto = js ? removerComentarios(fonte) : fonte;
     texto = removerInterpolacoes(texto);
-    const attr = new RegExp(
-        `\\bon(?:${EVENTOS.join('|')})\\s*=\\s*(?:"([^"]*)"|'([^']*)')`,
-        'g',
-    );
+    const attr = new RegExp(`\\bon(?:${EVENTOS.join('|')})\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'g');
     let a;
     while ((a = attr.exec(texto))) {
         // Descarta identificadores colados no marcador (nome montado).
-        const corpo = (a[1] ?? a[2]).replace(/[\w$]*\u0001[\w$]*/g, ' ');
+        const corpo = (a[1] ?? a[2]).replace(new RegExp(`[\\w$]*${MARCADOR}[\\w$]*`, 'g'), ' ');
         const chamada = /(?<![\w$.])(?<!new\s)([A-Za-z_$][\w$]*)\s*\(/g;
         let m;
         while ((m = chamada.exec(corpo))) {

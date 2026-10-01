@@ -28,8 +28,16 @@ import {
     getIncluirTerceiros,
     definirIncluirTerceiros,
     getModoTerceiros,
+    agregarPorAssunto,
     definirModoTerceiros,
     getModoGraficoPessoas,
+    getPapelTemaEstatisticas,
+    definirPapelTemaEstatisticas,
+    getPapelAssuntoEstatisticas,
+    definirPapelAssuntoEstatisticas,
+    agregarPorTema,
+    agregarTemaPorAno,
+    anosDistintosPorTema,
     definirModoGraficoPessoas,
     getGruposFiltroPessoas,
     toggleGrupoFiltroPessoas,
@@ -60,6 +68,7 @@ function resetarDb() {
     db.pessoas = [];
     db.grupos = [];
     db.autores = [];
+    db.assuntos = [];
     localStorage.clear(); // zera tipos/modo/grupo-filtro/ocultos salvos por um teste anterior
 }
 
@@ -252,7 +261,7 @@ describe('contarPorTema', () => {
         assert.deepEqual(contarPorTema(), { labels: [], data: [], categorias: [] });
     });
 
-    it('combina as 8 categorias de Sinalizações na mesma contagem, por padrão (nenhum tipo salvo em preferências)', () => {
+    it('combina as 9 categorias de Sinalizações na mesma contagem, por padrão (nenhum tipo salvo em preferências)', () => {
         db.poemas = [
             { sinalizacoesEstilo: 'Concretista', sinalizacoesTema: 'mar' },
             { sinalizacoesRelacao: '∞ Pedrictor', sinalizacoesTom: 'mar' },
@@ -303,8 +312,8 @@ describe('contarPorTema', () => {
 describe('getTiposEtiquetaSelecionados / toggleTipoEtiqueta (preferência persistida)', () => {
     beforeEach(resetarDb);
 
-    it('sem nada salvo, retorna as 8 categorias (equivalente ao combinado de antes)', () => {
-        assert.equal(getTiposEtiquetaSelecionados().length, 8);
+    it('sem nada salvo, retorna as 9 categorias (equivalente ao combinado de antes)', () => {
+        assert.equal(getTiposEtiquetaSelecionados().length, 9);
     });
 
     it('toggleTipoEtiqueta(tipo, false) tira o tipo da seleção salva', () => {
@@ -316,7 +325,7 @@ describe('getTiposEtiquetaSelecionados / toggleTipoEtiqueta (preferência persis
         const TODOS = getTiposEtiquetaSelecionados();
         TODOS.forEach((t) => (t === TODOS[0] ? null : toggleTipoEtiqueta(t, false)));
         toggleTipoEtiqueta(TODOS[0], false);
-        assert.equal(getTiposEtiquetaSelecionados().length, 8);
+        assert.equal(getTiposEtiquetaSelecionados().length, 9);
     });
 });
 
@@ -686,6 +695,43 @@ describe('palavrasMaisFrequentes', () => {
 
 // ─── resumoGeral ─────────────────────────────────────────────────
 
+describe('agregarPorAssunto', () => {
+    beforeEach(resetarDb);
+
+    it('conta um texto uma vez por Assunto a que pertence (via Temas)', () => {
+        db.assuntos = [
+            { id: 1, nome: 'Sociedade', temas: ['Machismo', 'Polarização'] },
+            { id: 2, nome: 'Gênero', temas: ['machismo'] },
+        ];
+        db.poemas = [
+            { sinalizacoesTema: 'Machismo' },
+            { sinalizacoesTema: 'Polarização' },
+            { sinalizacoesTema: 'Outro' },
+        ];
+        const { labels, data } = agregarPorAssunto();
+        assert.deepEqual(labels, ['Sociedade', 'Gênero']);
+        assert.deepEqual(data, [2, 1]);
+    });
+
+    it('Assunto sem nenhum texto fica de fora do gráfico', () => {
+        db.assuntos = [{ id: 1, nome: 'Vazio', temas: ['Nada'] }];
+        db.poemas = [{ sinalizacoesTema: 'Outro' }];
+        assert.deepEqual(agregarPorAssunto(), { labels: [], data: [] });
+    });
+
+    it('sem Assuntos cadastrados, devolve listas vazias', () => {
+        db.poemas = [{ sinalizacoesTema: 'Machismo' }];
+        assert.deepEqual(agregarPorAssunto(), { labels: [], data: [] });
+    });
+
+    it('soma Poemas e Prosas juntos', () => {
+        db.assuntos = [{ id: 1, nome: 'Sociedade', temas: ['Machismo'] }];
+        db.poemas = [{ sinalizacoesTema: 'Machismo' }];
+        db.prosas = [{ sinalizacoesTema: 'Machismo' }];
+        assert.deepEqual(agregarPorAssunto(), { labels: ['Sociedade'], data: [2] });
+    });
+});
+
 describe('resumoLinguagem', () => {
     beforeEach(resetarDb);
 
@@ -1054,11 +1100,14 @@ describe('agregarTemaPorAno / agregarPessoaPorAno / coocorrenciaTemasPessoas', (
         db.pessoas = [{ id: 1, nome: 'Dalton', grupoIds: [11] }];
         db.poemas = [{ sinalizacoesTema: 'mar', pessoas: [{ pessoaId: 1, papeis: [] }] }];
         const { coocorrenciaTemasGrupos } = await import('../js/estatisticas-dados.js');
-        assert.deepEqual(coocorrenciaTemasGrupos({ temas: ['mar'], grupos: ['Filhos', 'Família'] }), {
-            grupos: ['Filhos', 'Família'],
-            temas: ['mar'],
-            valores: [[1], [1]],
-        });
+        assert.deepEqual(
+            coocorrenciaTemasGrupos({ temas: ['mar'], grupos: ['Filhos', 'Família'] }),
+            {
+                grupos: ['Filhos', 'Família'],
+                temas: ['mar'],
+                valores: [[1], [1]],
+            },
+        );
     });
 });
 
@@ -1225,5 +1274,159 @@ describe('colunas da matriz de coocorrência', () => {
         assert.deepEqual(getTemasColunasSelecionados(), ['Amor', 'Morte', 'Cidade']);
         limparTemasColunas();
         assert.deepEqual(getTemasColunasSelecionados(), []);
+    });
+});
+
+describe('Papel do tema nas Estatísticas', () => {
+    beforeEach(() => {
+        resetarDb();
+        db.temas = [
+            { id: 1, nome: 'Amor', notas: '' },
+            { id: 2, nome: 'Machismo', notas: '' },
+            { id: 3, nome: 'Brasil', notas: '' },
+        ];
+        db.poemas = [
+            {
+                ano: 2020,
+                sinalizacoesTema: 'Amor, Machismo, Brasil',
+                temas: [
+                    { temaId: 1, papel: 'principal' },
+                    { temaId: 2, papel: 'secundario' },
+                    { temaId: 3, papel: '' },
+                ],
+            },
+            {
+                ano: 2021,
+                sinalizacoesTema: 'Machismo, Amor',
+                temas: [
+                    { temaId: 2, papel: 'principal' },
+                    { temaId: 1, papel: 'secundario' },
+                ],
+            },
+        ];
+        db.prosas = [];
+        definirPapelTemaEstatisticas('todos');
+    });
+    afterEach(() => definirPapelTemaEstatisticas('todos'));
+
+    it('padrão é "todos" e valor inválido cai em "todos"', () => {
+        assert.equal(getPapelTemaEstatisticas(), 'todos');
+        definirPapelTemaEstatisticas('xyz');
+        assert.equal(getPapelTemaEstatisticas(), 'todos');
+    });
+
+    it('"todos" conta qualquer papel', () => {
+        const { labels, data } = agregarPorTema(['tema']);
+        assert.deepEqual(Object.fromEntries(labels.map((l, i) => [l, data[i]])), {
+            Amor: 2,
+            Machismo: 2,
+            Brasil: 1,
+        });
+    });
+
+    it('principal, secundário e sem papel recortam a contagem', () => {
+        const contar = (papel) => {
+            definirPapelTemaEstatisticas(papel);
+            const { labels, data } = agregarPorTema(['tema']);
+            return Object.fromEntries(labels.map((l, i) => [l, data[i]]));
+        };
+        assert.deepEqual(contar('principal'), { Amor: 1, Machismo: 1 });
+        assert.deepEqual(contar('secundario'), { Machismo: 1, Amor: 1 });
+        assert.deepEqual(contar('semPapel'), { Brasil: 1 });
+    });
+
+    it('vale também pro "ao longo do tempo" e pros anos distintos', () => {
+        definirPapelTemaEstatisticas('principal');
+        assert.deepEqual(agregarTemaPorAno('Amor'), { labels: ['2020'], data: [1] });
+        assert.deepEqual(anosDistintosPorTema(), { Amor: 1, Machismo: 1 });
+    });
+
+    it('não afeta as outras categorias de etiqueta', () => {
+        db.poemas[0].sinalizacoesTom = 'Ironia';
+        definirPapelTemaEstatisticas('semPapel');
+        const { labels } = agregarPorTema(['tom']);
+        assert.deepEqual(labels, ['Ironia']);
+    });
+});
+
+describe('Papel do assunto nas Estatísticas', () => {
+    const porNome = () => {
+        const { labels, data } = agregarPorAssunto();
+        return Object.fromEntries(labels.map((l, i) => [l, data[i]]));
+    };
+
+    beforeEach(() => {
+        resetarDb();
+        db.temas = [
+            { id: 1, nome: 'Amor', notas: '' },
+            { id: 2, nome: 'Machismo', notas: '' },
+            { id: 3, nome: 'Brasil', notas: '' },
+        ];
+        db.assuntos = [
+            { id: 10, nome: 'Vida emocional', notas: '', temaIds: [1] },
+            { id: 11, nome: 'Sociedade', notas: '', temaIds: [2, 3] },
+        ];
+        // Poema 1: Amor principal, Machismo secundário, Brasil indefinido.
+        //   Vida emocional herda principal; Sociedade herda o mais forte (secundário).
+        // Poema 2: Machismo principal, Amor secundário.
+        //   Sociedade principal; Vida emocional secundário.
+        db.poemas = [
+            {
+                ano: 2020,
+                sinalizacoesTema: 'Amor, Machismo, Brasil',
+                temas: [
+                    { temaId: 1, papel: 'principal' },
+                    { temaId: 2, papel: 'secundario' },
+                    { temaId: 3, papel: '' },
+                ],
+            },
+            {
+                ano: 2021,
+                sinalizacoesTema: 'Machismo, Amor',
+                temas: [
+                    { temaId: 2, papel: 'principal' },
+                    { temaId: 1, papel: 'secundario' },
+                ],
+            },
+        ];
+        db.prosas = [];
+        definirPapelAssuntoEstatisticas('todos');
+    });
+    afterEach(() => definirPapelAssuntoEstatisticas('todos'));
+
+    it('padrão é "todos" e valor inválido cai em "todos"', () => {
+        assert.equal(getPapelAssuntoEstatisticas(), 'todos');
+        definirPapelAssuntoEstatisticas('xyz');
+        assert.equal(getPapelAssuntoEstatisticas(), 'todos');
+    });
+
+    it('"todos" conta qualquer papel, como sempre', () => {
+        assert.deepEqual(porNome(), { 'Vida emocional': 2, Sociedade: 2 });
+    });
+
+    it('principal, secundário e indefinido recortam pelo papel efetivo do Assunto', () => {
+        const contar = (papel) => {
+            definirPapelAssuntoEstatisticas(papel);
+            return porNome();
+        };
+        assert.deepEqual(contar('principal'), { 'Vida emocional': 1, Sociedade: 1 });
+        assert.deepEqual(contar('secundario'), { 'Vida emocional': 1, Sociedade: 1 });
+        assert.deepEqual(contar('semPapel'), {});
+    });
+
+    it('papel fixado no texto vale no recorte (sobrescreve o herdado do Tema)', () => {
+        db.poemas[0].assuntosPapel = [{ assuntoId: 11, papel: '' }];
+        definirPapelAssuntoEstatisticas('semPapel');
+        assert.deepEqual(porNome(), { Sociedade: 1 });
+        definirPapelAssuntoEstatisticas('secundario');
+        assert.deepEqual(porNome(), { 'Vida emocional': 1 });
+    });
+
+    it('a escolha é independente da do Tema', () => {
+        definirPapelTemaEstatisticas('principal');
+        assert.equal(getPapelAssuntoEstatisticas(), 'todos');
+        definirPapelAssuntoEstatisticas('secundario');
+        assert.equal(getPapelTemaEstatisticas(), 'principal');
+        definirPapelTemaEstatisticas('todos');
     });
 });

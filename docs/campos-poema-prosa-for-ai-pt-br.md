@@ -31,10 +31,21 @@ Consulte o doc dedicado sempre que a tarefa realmente depender de acertar
 essa distinção.
 
 - **Sinalizações** (`sinalizacoesTradicao`, `sinalizacoesEstilo`,
-  `sinalizacoesTema`, `sinalizacoesRelacao`, `sinalizacoesSensibilidade`,
+  `sinalizacoesTema`, `sinalizacoesTerritorialidade`,
+  `sinalizacoesRelacao`, `sinalizacoesSensibilidade`,
   `sinalizacoesTom`, `sinalizacoesDominioImagetico`,
-  `sinalizacoesOutros`) — 8 campos de etiquetas em texto livre, cada um
-  uma categoria diferente. Ver `etiquetas-sinalizacoes-for-ai.md`.
+  `sinalizacoesOutros`) — 9 campos de etiquetas em texto livre, cada um
+  uma categoria diferente. Dois deles, `sinalizacoesTema` e
+  `sinalizacoesTerritorialidade`, são espelhos derivados e não se digitam
+  mais no grupo de etiquetas. Ver `etiquetas-sinalizacoes-for-ai.md`.
+- **Temas** (`temas`: lista de `{ temaId, papel, nome }`, na exportação) —
+  os temas do texto por id, com `papel` `principal`, `secundario` ou vazio
+  (sem papel definido). O campo `sinalizacoesTema` é um espelho derivado
+  (nomes separados por vírgula, principal primeiro); não o edite sozinho.
+- **Papel do Assunto** (`assuntosPapel`: lista de `{ assuntoId, papel, nome }`,
+  na exportação) — só as sobrescritas. O Assunto herda o papel dos Temas do
+  texto; a entrada existe quando a pessoa fixou outro papel para aquele Assunto
+  no texto. Sem entrada, siga o papel dos Temas.
 - **Transtextualidade e Referências** (`intertextualidade`,
   `hipertextualidade`, `referenciasExternas`) — diálogo com obras e fatos
   externos ao acervo. Ver `transtextualidade-referencias-for-ai.md`.
@@ -54,8 +65,60 @@ essa distinção.
   cor de fundo em trecho ou em faixa de largura total, comentários
   `<!-- -->` invisíveis na Visualização/exportação mas visíveis no `.md`
   bruto).
-- **`idioma`**: string livre com sugestão de autocomplete, padrão
-  `"pt-BR"`.
+- **`idiomas`**: lista de `{ idioma, papel, dialetos }`. `papel` é
+  `"principal"` ou `"secundario"` e vale para cada idioma, então um texto
+  meio a meio tem dois Principais. Se a lista não está vazia, ao menos um
+  item é Principal. `dialetos` é uma lista, opcional, de variedades do idioma em texto
+  livre (por exemplo `["rioplatense"]`; mais de uma quando o texto mistura
+  variedades, como um diálogo entre falantes de regiões diferentes). Lista vazia significa texto sem
+  idioma definido.
+- **`idioma`**: espelho derivado de `idiomas`, uma string só com os nomes
+  (Principais primeiro, separados por vírgula). Não se edita sozinho; a
+  fonte da verdade é `idiomas`.
+
+## Lugares: onde o texto foi escrito e o que ele cita
+
+Os lugares vêm de um cadastro hierárquico, `db.locais`
+(`{ id, nome, tipo, pertenceA, notas }`). `tipo` é texto livre com
+sugestões (País, Estado, Região, Cidade, Bairro, Logradouro, Edificação,
+Estação, Rede ou sistema, Corpo d'água) e pode ficar vazio. `pertenceA` é
+uma **lista de ids de pais**: um lugar pode estar dentro de mais de um (a
+Estação Lapa está no bairro Lapa e na rede Metrô de São Paulo). O primeiro
+pai é o principal e define o caminho canônico; os outros só entram nas
+agregações. O nome sozinho não identifica o lugar: São Paulo (Cidade) e São
+Paulo (Estado) são dois registros, então leia sempre `nome` junto de `tipo`.
+
+Num registro exportado de Poema ou Prosa, estes campos são trocados por
+objetos legíveis, porque o id não vale em outro acervo:
+
+- **`territorialidade`**: lista de `{ localId, nome, tipo }`, os lugares que
+  o texto **cita**, exatamente como a pessoa marcou. Os ancestrais nunca
+  ficam aqui: se o texto marca Lapa, o Brasil não está nesta lista.
+- **`localEscrita`**: um `{ localId, nome, tipo }` ou `null`, onde o texto
+  foi **escrito**. Só um por texto (para escrita em trânsito existe um
+  lugar do tipo "Viagem" que pertence a uma região). `null` significa não
+  informado, não "lugar nenhum".
+- **`locaisHierarquia`**: lista de `{ localId, nome, tipo, pertenceA }` com
+  cada lugar acima (citados e local de escrita) **mais todos os seus
+  ancestrais**. `pertenceA` lista os `localId` dos pais na mesma lista,
+  pai principal primeiro. Use para responder "dentro do Brasil"; não
+  deduza a hierarquia pelos nomes.
+
+Como ler:
+
+- **Citado diretamente x com o que está dentro.** "Citado diretamente"
+  conta só os lugares marcados no texto. "Com o que está dentro" conta o
+  lugar mais todos os descendentes, cada texto uma vez por lugar: um texto
+  que cita Santos e Lapa conta uma vez para o Brasil, e a soma das barras
+  pode passar do número de textos. Diga qual dos dois você usou.
+- **Local de escrita não é o que o texto cita.** Um poema escrito em
+  Santos sobre Lisboa tem `localEscrita` Santos e `territorialidade` Lisboa.
+- **Territorialidade não é Tema.** Tema é o assunto amplo; um lugar citado
+  no texto vai em `territorialidade`. Ver `etiquetas-sinalizacoes-for-ai.md`.
+- **`sinalizacoesTerritorialidade`** é um espelho derivado: só os nomes,
+  sem tipo nem hierarquia. Não o edite nem o use para distinguir lugares
+  de mesmo nome; use `territorialidade`.
+- Uma exportação antiga, sem `locaisHierarquia`, só tem os nomes do espelho.
 
 ## Onde o texto mora (hierarquia e coletâneas)
 
@@ -68,7 +131,7 @@ essa distinção.
   Coletâneas onde esse texto aparece **listado** (pode estar listado em
   mais de um), sem que isso mude onde ele vive estruturalmente na árvore.
 
-## Datas e época retratada
+## Datas, períodos, movimento e inspiração
 
 - **`dataEscrita`** / **`dataPublicacao`**: datas parciais (dia/mês/ano,
   qualquer parte pode faltar), com uma flag `exata` em `dataEscrita`
@@ -84,7 +147,23 @@ essa distinção.
   "marcado como Não Aplicável", diferente de "ainda não categorizado"
   (campo inteiro `null`). Não confunda os dois: um texto sem
   `epocaRetratada` não foi avaliado; um texto com `na: true` foi avaliado
-  e a resposta foi "não se aplica".
+  e a resposta foi "não se aplica". Na interface e nas exportações o
+  rótulo é **Período Biográfico Retratado** (o nome interno `epocas`/
+  `epocaRetratada` foi mantido por compatibilidade): é o período da vida
+  da pessoa (ex.: uma fase de um relacionamento), não o momento histórico.
+- **`periodoHistoricoId`**: **Período Histórico Retratado** — o momento
+  histórico (não pessoal) que o texto retrata (ex.: Ditadura Militar,
+  Pandemia de Covid-19). Id único que aponta pro cadastro central
+  `db.periodosHistoricos`; coexiste com `epocaRetratada`, os dois podem
+  estar preenchidos ao mesmo tempo. Vazio (`null`) = não informado.
+- **`movimentosEscolasIds`**: **Movimento/Escola** — array de ids (0 a N)
+  do cadastro central `db.movimentosEscolas` (ex.: Romantismo, Simbolismo,
+  Modernismo). Um texto pode não se encaixar em nenhum ou caber em mais
+  de um.
+- **`contextoHistorico`**: rótulo **Inspiração** — texto livre sobre o que
+  inspirou o texto (um gatilho pontual, uma circunstância específica). O
+  nome interno é legado (`contextoHistorico`); o conteúdo NÃO é contexto
+  histórico, é inspiração. Não confunda com `periodoHistoricoId`.
 
 ## Intratextualidade — Elos e Ecos
 

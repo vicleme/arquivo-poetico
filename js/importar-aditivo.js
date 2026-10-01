@@ -23,7 +23,33 @@
 //      remapeamento (mapaIds em memória) + escrita atômica.
 // ============================================================
 
-import { gerarId, CORES_GRUPO_PADRAO, TIPOS_NOME_LITERARIO } from './utils.js';
+import {
+    gerarId,
+    CORES_GRUPO_PADRAO,
+    TIPOS_NOME_LITERARIO,
+    chaveTema,
+    podarSobrescritasAssunto,
+} from './utils.js';
+import { resolverTemasEditados } from './temas.js';
+import { importarLocaisDoTexto } from './locais.js';
+
+// Sobrescritas de papel do Assunto vindas do JSON → [{ assuntoId, papel }] do
+// acervo de destino (ver a chamada, em aplicarImportacaoAditiva).
+function assuntosPapelImportados(dbRef, itemOrigem) {
+    const porNome = new Map((dbRef.assuntos || []).map((a) => [chaveTema(a.nome), a]));
+    const candidatas = (Array.isArray(itemOrigem?.assuntosPapel) ? itemOrigem.assuntosPapel : [])
+        .map((e) => ({ assuntoId: porNome.get(chaveTema(e?.nome))?.id, papel: e?.papel }))
+        .filter((e) => e.assuntoId != null);
+    return podarSobrescritasAssunto(
+        (Array.isArray(itemOrigem?.temas) ? itemOrigem.temas : []).map((t) => ({
+            nome: t?.nome,
+            papel: t?.papel,
+        })),
+        candidatas,
+        dbRef.assuntos,
+        dbRef.temas,
+    );
+}
 
 // Referência (campo do relatório) → coleção de `db` que ela resolve.
 const COLECAO_POR_CAMPO = {
@@ -465,6 +491,32 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
         if (!itemOrigem) return;
         const novoId = gerarId();
         const novoItem = remontarItem(itemOrigem, novoId, rel.referencias);
+        // Tema por id (fase 2): o id de origem não vale aqui; casa/cria o
+        // Tema pelo NOME (a `nome` que montarRegistro grava) e mantém o
+        // papel. JSON antigo (sem `temas`) cai no espelho `sinalizacoesTema`,
+        // que a reconciliação de temas.js migra no save().
+        if (Array.isArray(itemOrigem.temas)) {
+            const { temas, espelho } = resolverTemasEditados(
+                dbRef,
+                itemOrigem.temas.map((t) => ({ nome: t?.nome, papel: t?.papel })),
+            );
+            novoItem.temas = temas;
+            novoItem.sinalizacoesTema = espelho;
+        }
+        // Papel do Assunto fixado no texto de origem: o id de origem não vale
+        // aqui, então casa o Assunto do destino pelo NOME (sem caixa/acento) e
+        // descarta o que não existe. JSON antigo (sem `assuntosPapel`) vira [].
+        // Sempre reescreve: `remontarItem` pode ter copiado os ids de origem.
+        novoItem.assuntosPapel = assuntosPapelImportados(dbRef, itemOrigem);
+        // Territorialidade e local de escrita: os ids de origem não valem
+        // aqui. Com a hierarquia no JSON, casa/cria os Locais por nome +
+        // tipo + pai; sem ela (JSON antigo), zera os ids e o espelho
+        // `sinalizacoesTerritorialidade` é migrado no save().
+        const locaisImportados = importarLocaisDoTexto(dbRef, itemOrigem);
+        delete novoItem.locaisHierarquia;
+        novoItem.territorialidade = locaisImportados ? locaisImportados.ids : [];
+        novoItem.localEscrita = locaisImportados ? locaisImportados.localEscrita : null;
+        if (locaisImportados) novoItem.sinalizacoesTerritorialidade = locaisImportados.espelho;
         registrarNomesLiterariosUsados(dbRef, novoItem);
         (rel.tipo === 'poemas' ? novosPoemas : novasProsas).push(novoItem);
 

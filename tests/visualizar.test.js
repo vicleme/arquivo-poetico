@@ -376,3 +376,69 @@ describe('renderVisualizacaoHtml — Intertextualidade com link e nota (campos n
         assert.match(html, /<strong>Citação:<\/strong> Trecho antigo<\/li>/);
     });
 });
+
+describe('renderVisualizacaoHtml — Períodos, Movimento/Escola e Inspiração (nomenclatura atual)', () => {
+    beforeEach(() => {
+        db.epocas = [{ id: 7, nome: 'Namoro', autorId: 1 }];
+        db.periodosHistoricos = [{ id: 3, nome: 'Ditadura Militar Brasileira' }];
+        db.movimentosEscolas = [
+            { id: 11, nome: 'Modernismo' },
+            { id: 12, nome: 'Simbolismo' },
+        ];
+    });
+
+    it('chama o campo de Período Biográfico Retratado, não mais "Época retratada"', () => {
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: 'x',
+            epocaRetratada: { epocaId: 7, inicio: { ano: 2019 }, fim: { ano: 2021 } },
+        };
+        const html = renderVisualizacaoHtml(item);
+        assert.match(html, /Período Biográfico Retratado/);
+        assert.doesNotMatch(html, /Época retratada/i);
+        assert.match(html, /Namoro/);
+    });
+
+    it('mostra o Período Histórico Retratado quando preenchido', () => {
+        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x', periodoHistoricoId: 3 };
+        const html = renderVisualizacaoHtml(item);
+        assert.match(html, /Período Histórico Retratado/);
+        assert.match(html, /Ditadura Militar Brasileira/);
+    });
+
+    it('mostra Movimento/Escola (0 a N) separados por vírgula', () => {
+        const item = {
+            id: 1,
+            tipo: 'prosa',
+            titulo: 'T',
+            texto: 'x',
+            movimentosEscolasIds: [11, 12],
+        };
+        const html = renderVisualizacaoHtml(item);
+        assert.match(html, /Movimento\/Escola/);
+        assert.match(html, /Modernismo, Simbolismo/);
+    });
+
+    it('omite Período Histórico e Movimento/Escola quando vazios', () => {
+        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x', movimentosEscolasIds: [] };
+        const html = renderVisualizacaoHtml(item);
+        assert.doesNotMatch(html, /Período Histórico Retratado/);
+        assert.doesNotMatch(html, /Movimento\/Escola/);
+    });
+
+    it('chama o campo contextoHistorico de Inspiração, não mais "Contexto Histórico/Pessoal"', () => {
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: 'x',
+            contextoHistorico: 'Uma conversa no ponto de ônibus.',
+        };
+        const html = renderVisualizacaoHtml(item);
+        assert.match(html, />Inspiração</);
+        assert.match(html, /Uma conversa no ponto de ônibus\./);
+        assert.doesNotMatch(html, /Contexto Histórico/);
+    });
+});

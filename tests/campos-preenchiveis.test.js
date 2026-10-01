@@ -19,7 +19,7 @@ describe('campos-preenchiveis: lista', () => {
         assert.equal(new Set(chaves).size, chaves.length);
         CAMPOS_PREENCHIVEIS.forEach((c) => {
             assert.ok(c.rotulo);
-            assert.ok(['texto', 'booleano', 'opcoes'].includes(c.tipo));
+            assert.ok(['texto', 'booleano', 'opcoes', 'local'].includes(c.tipo));
             assert.equal(typeof c.ler, 'function');
             assert.equal(typeof c.gravar, 'function');
             if (c.tipo === 'opcoes') assert.ok(Array.isArray(c.opcoes) && c.opcoes.length);
@@ -171,5 +171,73 @@ describe('aplicar e limpar', () => {
         assert.equal(item.pendencia, 'revisar métrica');
         aplicarLimpeza([item], campo('pendencia'));
         assert.equal(item.pendencia, '');
+    });
+});
+
+describe('campo "localEscrita" (Preencher campo em massa)', () => {
+    const c = () => campo('localEscrita');
+
+    it('existe, é do tipo local e lê/grava o id sem virar string', () => {
+        assert.ok(c());
+        assert.equal(c().tipo, 'local');
+        const item = {};
+        assert.equal(c().ler(item), null);
+        c().gravar(item, 1700000000001);
+        assert.strictEqual(item.localEscrita, 1700000000001);
+        assert.strictEqual(c().ler(item), 1700000000001);
+    });
+
+    it('planeja: vazios mudam, o mesmo Local conta como já igual, outro é mantido', () => {
+        const itens = [{ id: 1 }, { id: 2, localEscrita: 7 }, { id: 3, localEscrita: 8 }];
+        const r = planejarPreenchimento(itens, c(), 7);
+        assert.deepEqual(
+            r.alterar.map((i) => i.id),
+            [1],
+        );
+        assert.equal(r.jaIguais, 1);
+        assert.equal(r.jaPreenchidos, 1);
+    });
+
+    it('compara id numérico com id em texto (backup antigo) como o mesmo Local', () => {
+        const r = planejarPreenchimento([{ id: 1, localEscrita: '7' }], c(), 7);
+        assert.equal(r.jaIguais, 1);
+        assert.equal(r.alterar.length, 0);
+    });
+
+    it('com sobrescrever, troca o Local que já estava', () => {
+        const itens = [
+            { id: 1, localEscrita: 8 },
+            { id: 2, localEscrita: 7 },
+        ];
+        const r = planejarPreenchimento(itens, c(), 7, { sobrescrever: true });
+        assert.deepEqual(
+            r.alterar.map((i) => i.id),
+            [1],
+        );
+        assert.equal(r.jaIguais, 1);
+        aplicarPreenchimento(r.alterar, c(), 7);
+        assert.strictEqual(itens[0].localEscrita, 7);
+    });
+
+    it('valor null (Local a criar): ninguém é "já igual"; só vazios mudam sem sobrescrever', () => {
+        const itens = [{ id: 1 }, { id: 2, localEscrita: 8 }];
+        const r = planejarPreenchimento(itens, c(), null);
+        assert.deepEqual(
+            r.alterar.map((i) => i.id),
+            [1],
+        );
+        assert.equal(r.jaIguais, 0);
+        assert.equal(r.jaPreenchidos, 1);
+        const r2 = planejarPreenchimento(itens, c(), null, { sobrescrever: true });
+        assert.equal(r2.alterar.length, 2);
+    });
+
+    it('limpar volta a null e ignora quem já está vazio', () => {
+        const itens = [{ id: 1, localEscrita: 7 }, { id: 2 }, { id: 3, localEscrita: null }];
+        const r = planejarLimpeza(itens, c());
+        assert.equal(r.alterar.length, 1);
+        assert.equal(r.jaVazios, 2);
+        aplicarLimpeza(r.alterar, c());
+        assert.strictEqual(itens[0].localEscrita, null);
     });
 });

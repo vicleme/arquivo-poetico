@@ -28,7 +28,9 @@ function renderOcultos(chave, labels, totalAntesDoCorte) {
     const ocultos = getOcultosGrafico(chave);
     const campoMinimo = campoMinimoAparicoes(chave, totalAntesDoCorte, labels.length);
     if (!labels.length)
-        return campoMinimo + '<p class="text-[11px] text-gray-400 px-1">Nada para ocultar ainda.</p>';
+        return (
+            campoMinimo + '<p class="text-[11px] text-gray-400 px-1">Nada para ocultar ainda.</p>'
+        );
     const restaurar = ocultos.size
         ? `<button type="button" onclick="restaurarOcultosGrafico('${chave}')" class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline block mb-1.5">Mostrar todos (${ocultos.size})</button>`
         : '';
@@ -48,7 +50,10 @@ function renderGrafico(id, base, chave, cor) {
     const cortado = filtrarPorIntervalo(base, getMinimoAparicoes(chave) || '', '');
     const visivel = filtrarOcultos(cortado, getOcultosGrafico(chave));
     criarBarChart(id, visivel.labels, visivel.data, cor);
-    montarPainel('painel-ocultos-' + chave, renderOcultos(chave, cortado.labels, base.labels.length));
+    montarPainel(
+        'painel-ocultos-' + chave,
+        renderOcultos(chave, cortado.labels, base.labels.length),
+    );
 }
 
 function renderTabelaSazonalidade(anos) {

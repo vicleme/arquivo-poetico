@@ -31,11 +31,20 @@ dedicated doc whenever the task actually depends on getting that
 distinction right.
 
 - **Sinalizações** ("Signalings" — `sinalizacoesTradicao`,
-  `sinalizacoesEstilo`, `sinalizacoesTema`, `sinalizacoesRelacao`,
-  `sinalizacoesSensibilidade`, `sinalizacoesTom`,
-  `sinalizacoesDominioImagetico`, `sinalizacoesOutros`) — 8 free-text tag
-  fields, each a different category. See
-  `etiquetas-sinalizacoes-for-ai.md`.
+  `sinalizacoesEstilo`, `sinalizacoesTema`, `sinalizacoesTerritorialidade`,
+  `sinalizacoesRelacao`, `sinalizacoesSensibilidade`, `sinalizacoesTom`,
+  `sinalizacoesDominioImagetico`, `sinalizacoesOutros`) — 9 free-text tag
+  fields, each a different category. Two of them, `sinalizacoesTema` and
+  `sinalizacoesTerritorialidade`, are derived mirrors and are no longer
+  typed in the tag group. See `etiquetas-sinalizacoes-for-ai.md`.
+- **Temas** (`temas`: list of `{ temaId, papel, nome }` in exports) — the
+  text's themes by id, with `papel` `principal`, `secundario`, or empty
+  (no role defined). `sinalizacoesTema` is a derived mirror (comma-separated
+  names, principal first); do not edit it on its own.
+- **Subject role** (`assuntosPapel`: list of `{ assuntoId, papel, nome }` in
+  exports) — overrides only. A Subject inherits the role of the text's Themes;
+  an entry exists when the person pinned a different role for that Subject in
+  that text. With no entry, follow the Themes' role.
 - **Transtextualidade e Referências** ("Transtextuality and References" —
   `intertextualidade`, `hipertextualidade`, `referenciasExternas`) —
   dialogue with works and facts external to the archive. See
@@ -56,8 +65,64 @@ distinction right.
   color, background color on a snippet or a full-width band, `<!-- -->`
   comments invisible in the reading view/exports but visible in the raw
   `.md`).
-- **`idioma`** ("language"): free-text string with autocomplete
-  suggestions, defaults to `"pt-BR"`.
+- **`idiomas`** ("languages"): list of `{ idioma, papel, dialetos }`
+  ("language", "role", "dialects"). `papel` is `"principal"` or
+  `"secundario"` (primary or secondary) and belongs to each language, so a
+  text that is half in one language and half in another has two primary
+  ones. If the list is not empty, at least one entry is primary. `dialetos`
+  is an optional list of free-text varieties of that language (for example
+  `["rioplatense"]`; more than one when the text mixes varieties, such as a
+  dialogue between speakers from different regions). An empty list means the text has no language set.
+- **`idioma`**: derived mirror of `idiomas`, a string with only the language
+  names (primary ones first, comma-separated). Do not edit it on its own;
+  `idiomas` is the source of truth.
+
+## Places: where the text was written and what it cites
+
+Places come from a hierarchical registry, `db.locais`
+(`{ id, nome, tipo, pertenceA, notas }`). `tipo` is free text with
+suggestions (País, Estado, Região, Cidade, Bairro, Logradouro, Edificação,
+Estação, Rede ou sistema, Corpo d'água) and may be empty. `pertenceA` is a
+**list of parent ids**: a place can sit inside more than one (Estação Lapa
+is inside both the Lapa neighborhood and the Metrô de São Paulo network).
+The first parent is the main one and defines the canonical path; the others
+only count when aggregating. A name alone does not identify a place: São
+Paulo (Cidade) and São Paulo (Estado) are two records, so always read
+`nome` together with `tipo`.
+
+In an exported Poem or Prose record these fields are replaced by readable
+objects, because ids mean nothing in another archive:
+
+- **`territorialidade`** ("territoriality"): list of
+  `{ localId, nome, tipo }`, the places the text **cites**, exactly as the
+  person marked them. Ancestors are never stored here: if the text marks
+  Lapa, Brasil is not in this list.
+- **`localEscrita`** ("place of writing"): one `{ localId, nome, tipo }` or
+  `null`, where the text was **written**. Only one per text (for writing in
+  transit there is a place of type "Viagem" that belongs to a region).
+  `null` means unset, not "nowhere".
+- **`locaisHierarquia`** ("place hierarchy"): list of
+  `{ localId, nome, tipo, pertenceA }` with every place above (cited and
+  place of writing) **plus all their ancestors**. `pertenceA` lists parent
+  `localId`s in the same list, main parent first. Use it to resolve
+  "inside Brazil" questions; do not infer the hierarchy from names.
+
+How to read them:
+
+- **Cited directly vs. including what is inside.** "Cited directly" counts
+  only the places marked on the text. "Including what is inside" counts a
+  place plus every descendant, each text once per place, so a text that
+  cites Santos and Lapa counts once for Brasil, and the sum of bars can
+  exceed the number of texts. Say which one you used.
+- **Place of writing is not what the text cites.** A poem written in Santos
+  about Lisbon has `localEscrita` Santos and `territorialidade` Lisbon.
+- **Territorialidade is not Tema.** Tema is the broad subject; a place
+  named in the text goes in `territorialidade`. See
+  `etiquetas-sinalizacoes-for-ai.md`.
+- **`sinalizacoesTerritorialidade`** is a derived mirror: place names only,
+  without type or hierarchy. Do not edit it and do not use it to tell
+  same-named places apart; use `territorialidade`.
+- An old export without `locaisHierarquia` only has the mirror names.
 
 ## Where the text lives (hierarchy and collections)
 
@@ -72,7 +137,7 @@ distinction right.
   (it can be listed in more than one), without changing where it
   structurally lives in the tree.
 
-## Dates and depicted era
+## Dates, periods, movement and inspiration
 
 - **`dataEscrita`** ("date written") / **`dataPublicacao`** ("first
   publication date"): partial dates (day/month/year, any part can be
@@ -90,6 +155,25 @@ distinction right.
   from "not yet categorized" (the whole field is `null`). Don't confuse
   the two: a text with no `epocaRetratada` hasn't been assessed; a text
   with `na: true` has been assessed and the answer was "doesn't apply".
+  In the UI and exports the label is **Período Biográfico Retratado**
+  (Depicted Biographical Period; the internal name `epocas`/
+  `epocaRetratada` is kept for compatibility): it is a period of the
+  person's own life (e.g. a phase of a relationship), not a historical
+  moment.
+- **`periodoHistoricoId`** (**Período Histórico Retratado**, Depicted
+  Historical Period): the historical (non-personal) moment the text
+  depicts (e.g. military dictatorship, Covid-19 pandemic). A single id
+  pointing to the central registry `db.periodosHistoricos`; it coexists
+  with `epocaRetratada` (both can be filled at once). Empty (`null`) =
+  not informed.
+- **`movimentosEscolasIds`** (**Movimento/Escola**, Movement/School): an
+  array of ids (0 to N) from the central registry `db.movimentosEscolas`
+  (e.g. Romanticism, Symbolism, Modernism). A text may fit none or more
+  than one.
+- **`contextoHistorico`** (label **Inspiração**, Inspiration): free text
+  about what inspired the text (a specific trigger or circumstance). The
+  internal name is legacy; the content is NOT historical context, it is
+  inspiration. Don't confuse it with `periodoHistoricoId`.
 
 ## Intratextuality — Elos (Links) and Ecos (Echoes)
 

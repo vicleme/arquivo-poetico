@@ -12,6 +12,22 @@ import {
     nivelGrupo,
 } from './db.js';
 import {
+    opcoesLocaisParaCampo,
+    localDoTextoDigitado,
+    entradaDeLocal,
+    rotuloLocal,
+    rotuloCaminhoLocal,
+    limparNomeLocal,
+    nomesTerritorialidade,
+} from './locais.js';
+import {
+    resumoTemas,
+    assuntosComPapelDeEntradas,
+    podarSobrescritasAssunto,
+    normalizarPapelTema,
+    ROTULOS_PAPEL_TEMA,
+    chaveTema,
+    temasDoTexto,
     extrairSinalizacoesUnicas,
     extrairGenerosUnicos,
     extrairValoresUnicosDeAnotacoes,
@@ -50,6 +66,13 @@ import {
     formatarAutoclassificacaoTexto,
     IDIOMAS_SUGERIDOS,
     extrairCirculosLiterariosUnicos,
+    ROTULOS_PAPEL_IDIOMA,
+    PAPEIS_IDIOMA,
+    normalizarIdiomas,
+    normalizarDialetos,
+    normalizarPapelIdioma,
+    idiomasDoItem,
+    extrairDialetosUnicos,
 } from './utils.js';
 
 // ─── Estado local ─────────────────────────────────────────────
@@ -481,6 +504,35 @@ export function resetManifestosMovimento() {
 export function carregarManifestosMovimento(v) {
     grupoManifestosMovimento.carregar(v);
 }
+// Temas de um Assunto (db.assuntos[].temas) — mesma fábrica de array de
+// nomes dos campos do Movimento/Escola acima. O Tema não tem cadastro
+// próprio (é a etiqueta de `sinalizacoesTema`), então aqui o chip é só
+// o nome; a sugestão do input vem dos temas já usados nos textos (ver
+// atualizarDatalistTemasAssunto).
+const grupoTemasAssunto = criarGrupoDeTagsArray({
+    inputId: 'as-tema-input',
+    containerId: 'as-temas-container',
+    hiddenInputId: 'as-temas',
+    corClasse: 'bg-emerald-700',
+    nomeFuncaoRemover: 'removerTemaAssunto',
+    nomeFuncaoEditar: 'editarTemaAssunto',
+});
+export function adicionarTemaAssunto(v) {
+    grupoTemasAssunto.adicionar(v);
+}
+export function removerTemaAssunto(v) {
+    grupoTemasAssunto.remover(v);
+}
+export function editarTemaAssunto(v) {
+    grupoTemasAssunto.editar(v);
+}
+export function resetTemasAssunto() {
+    grupoTemasAssunto.reset();
+}
+export function carregarTemasAssunto(v) {
+    grupoTemasAssunto.carregar(v);
+}
+
 export function resetTodosOsGruposDeMovimento() {
     resetValoresMovimento();
     resetTemasMovimento();
@@ -518,10 +570,30 @@ const SINAL_CATEGORIAS = [
     },
     {
         chave: 'Tema',
-        cor: 'bg-emerald-600',
-        corBotao: 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300',
+        // Tema não é mais campo do bloco Sinalizações: virou o grupo
+        // "Temas e Assuntos" (por id, com papel) — ver renderTemasPoema.
+        // A categoria continua aqui só pra manter as funções/módulos e o
+        // espelho `sinalizacoesTema` funcionando (busca, badges, cores).
+        ocultoNoModal: true,
+        cor: 'bg-orange-600',
+        corBotao: 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300',
         rotulo: 'Tema',
         placeholder: 'Nova etiqueta de tema...',
+    },
+    // "Territorialidade": lugares específicos citados no texto (país,
+    // cidade, bairro, rio). Diferente de Tema (assunto amplo) e de
+    // Domínio Imagético (vocabulário de um campo de conhecimento).
+    {
+        chave: 'Territorialidade',
+        // Como o Tema, deixou o bloco Sinalizações: vive no grupo "Região e
+        // Idioma" (por id, puxando do cadastro de Locais) — ver
+        // renderRegiaoPoema. A categoria segue aqui só para o espelho
+        // `sinalizacoesTerritorialidade` (busca, badges, cores, exportações).
+        ocultoNoModal: true,
+        cor: 'bg-emerald-600',
+        corBotao: 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300',
+        rotulo: 'Territorialidade',
+        placeholder: 'Nova etiqueta de lugar...',
     },
     {
         chave: 'Relacao',
@@ -639,9 +711,9 @@ function criarBlocoSinalizacaoHTML(
 // Monta o corpo inteiro do bloco "Sinalizações" (todas as categorias de
 // SINAL_CATEGORIAS, na ordem de exibição).
 function criarBlocosSinalizacoesHTML(opcoes) {
-    return SINAL_CATEGORIAS.map((categoria) => criarBlocoSinalizacaoHTML(categoria, opcoes)).join(
-        '\n',
-    );
+    return SINAL_CATEGORIAS.filter((categoria) => !categoria.ocultoNoModal)
+        .map((categoria) => criarBlocoSinalizacaoHTML(categoria, opcoes))
+        .join('\n');
 }
 
 // Poema: o <datalist> de sugestão de cada categoria já existe
@@ -3329,7 +3401,7 @@ export function atualizarDatalist() {
     });
     // Datalist "sugestoes-sinais" (sem categoria): usada pelo painel de
     // exportação seletiva (exp-temas-incluir/excluir), que filtra pelas
-    // 8 categorias combinadas (ver correspondeFiltro em exportar.js) —
+    // 9 categorias combinadas (ver correspondeFiltro em exportar.js) —
     // por isso a sugestão também precisa vir combinada, não só de Estilo.
     const datalistCombinada = document.getElementById('sugestoes-sinais');
     if (datalistCombinada) {
@@ -3354,6 +3426,7 @@ export function atualizarDatalist() {
     atualizarDatalistMovimentosEscolas();
     atualizarDatalistRegiaoOrigemMovimento();
     atualizarDatalistRegiaoPeriodoHistorico();
+    atualizarDatalistTemasAssunto();
     atualizarDatalistCirculoLiterarioAutor();
     atualizarDatalistLinguasEscritaAutor();
 }
@@ -3402,6 +3475,20 @@ export function atualizarDatalistPeriodoHistorico() {
     });
 }
 
+// Sugestões do input de Temas do modal de Assunto: os temas já usados em
+// Poemas + Prosas (mesma fonte de atualizarDatalist, categoria Tema),
+// sem repetir variações que só diferem em caixa/acento (resumoTemas
+// escolhe a grafia mais usada). Datalist dentro do modal carregado sob
+// demanda — chamada também ao abrir/inicializar o modal, não só no load.
+export function atualizarDatalistTemasAssunto() {
+    const datalist = document.getElementById('sugestoes-temas-assunto');
+    if (!datalist) return;
+    const nomes = resumoTemas([...db.poemas, ...(db.prosas || [])], db.assuntos, db.temas)
+        .map((t) => t.nome)
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    datalist.innerHTML = nomes.map((v) => `<option value="${escapeHtml(v)}">`).join('');
+}
+
 // Idioma (item 9) — Poemas + Prosas juntos, mesmo motivo de somar as
 // duas fontes em atualizarDatalist (Sinalizações) — um idioma digitado
 // numa prosa deve sugerir numa próxima edição de poema e vice-versa.
@@ -3412,7 +3499,7 @@ export function atualizarDatalistPeriodoHistorico() {
 export function atualizarDatalistIdioma() {
     const todos = [...db.poemas, ...(db.prosas || [])];
     const valores = extrairIdiomasUnicos(todos);
-    ['sugestoes-idioma', 'sugestoes-idioma-prosa'].forEach((id) => {
+    ['p-idiomas-sugestoes', 'pr-idiomas-sugestoes'].forEach((id) => {
         const datalist = document.getElementById(id);
         if (datalist) {
             datalist.innerHTML = valores.map((v) => `<option value="${escapeHtml(v)}">`).join('');
@@ -3667,6 +3754,19 @@ export function renderizarSinalTema(tabela) {
     grupoSinal('Tema', tabela).renderizar();
 }
 
+export function adicionarSinalTerritorialidade(tabela, valor = null) {
+    grupoSinal('Territorialidade', tabela).adicionar(valor);
+}
+export function removerSinalTerritorialidade(tabela, tag) {
+    grupoSinal('Territorialidade', tabela).remover(tag);
+}
+export function editarSinalTerritorialidade(tabela, tag) {
+    grupoSinal('Territorialidade', tabela).editar(tag);
+}
+export function renderizarSinalTerritorialidade(tabela) {
+    grupoSinal('Territorialidade', tabela).renderizar();
+}
+
 export function adicionarSinalRelacao(tabela, valor = null) {
     grupoSinal('Relacao', tabela).adicionar(valor);
 }
@@ -3740,6 +3840,7 @@ const funcoesSinal = {
     Tradicao: adicionarSinalTradicao,
     Estilo: adicionarSinalEstilo,
     Tema: adicionarSinalTema,
+    Territorialidade: adicionarSinalTerritorialidade,
     Relacao: adicionarSinalRelacao,
     Sensibilidade: adicionarSinalSensibilidade,
     Tom: adicionarSinalTom,
@@ -3761,6 +3862,594 @@ export function carregarSinalizacoes(tabela, item) {
     SINAL_CATEGORIAS.forEach(({ chave }) => {
         grupoSinal(chave, tabela).carregar(item[`sinalizacoes${chave}`] || '');
     });
+}
+
+// ─── Temas e Assuntos (Tema por id, com papel) ──────────────────
+// Grupo próprio nos modais de Poema e Prosa (fora do bloco Sinalizações).
+// O estado é uma lista de { nome, papel } por tabela; os ids só são
+// resolvidos ao salvar (resolverTemasEditados, temas.js), então cancelar
+// a edição não cria Tema no cadastro. Os Assuntos mostrados são derivados
+// dos temas (somente leitura) — o mesmo cálculo de assuntosDoTexto.
+const PREFIXO_TEMAS_TEXTO = { poemas: 'p', prosas: 'pr' };
+const temasTexto = { poemas: [], prosas: [] };
+// Sobrescritas do papel do Assunto neste texto: [{ assuntoId, papel }]. Só
+// existe entrada quando a pessoa fixou; sem entrada o Assunto segue o Tema.
+const assuntosPapelTexto = { poemas: [], prosas: [] };
+
+function prefixoTemasTexto(tabela) {
+    const prefixo = PREFIXO_TEMAS_TEXTO[tabela];
+    if (!prefixo) throw new Error(`Tabela desconhecida em temas do texto: ${tabela}`);
+    return prefixo;
+}
+
+// O CSS global dá `width: 100%` e margem inferior a todo select; sem `w-auto`
+// o select de papel ocupava a linha inteira e espremia o campo de texto do
+// Tema. `mb-0` tira a margem pra alinhar com o botão "+" e com o chip.
+const CLASSE_SELECT_PAPEL_TEMA =
+    'text-xs w-auto shrink-0 mb-0 [&>option]:text-black dark:[&>option]:text-white';
+const CLASSE_SELECT_PAPEL_TEMA_CHIP = CLASSE_SELECT_PAPEL_TEMA;
+
+function opcoesPapelTemaHTML(selecionado) {
+    return ['', 'principal', 'secundario']
+        .map(
+            (papel) =>
+                `<option value="${papel}"${papel === selecionado ? ' selected' : ''}>${ROTULOS_PAPEL_TEMA[papel]}</option>`,
+        )
+        .join('');
+}
+
+export function criarGrupoTemasHTML(prefixo, tabela) {
+    return `
+                            <p class="text-xs text-gray-500 dark:text-slate-400 mb-2">
+                                O que o texto aborda. O papel diz o peso do tema no texto:
+                                principal, secundário ou indefinido. Os Assuntos
+                                vêm dos temas (cadastro de Assuntos) e herdam o papel deles,
+                                mas você pode fixar outro papel para um Assunto neste texto.
+                            </p>
+                            <div class="mb-2">
+                                <input
+                                    type="text"
+                                    id="${prefixo}-tema-input"
+                                    list="${prefixo}-temas-sugestoes"
+                                    class="text-sm w-full"
+                                    placeholder="Tema novo ou já cadastrado..."
+                                />
+                            </div>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-xs text-gray-500 dark:text-slate-400">Papel:</span>
+                                <select id="${prefixo}-tema-papel" class="${CLASSE_SELECT_PAPEL_TEMA}">${opcoesPapelTemaHTML('')}</select>
+                                <button
+                                    type="button"
+                                    onclick="adicionarTemaTexto('${tabela}')"
+                                    class="bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 px-3 py-1 rounded text-xs font-bold"
+                                    title="Adicionar tema"
+                                >
+                                    + Adicionar
+                                </button>
+                            </div>
+                            <div
+                                id="${prefixo}-temas-container"
+                                class="flex flex-col gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <datalist id="${prefixo}-temas-sugestoes"></datalist>
+                            <input type="hidden" id="${prefixo}-temas-json" />
+                            <label class="form-label mt-3">Assuntos <span class="font-normal normal-case text-gray-400 dark:text-slate-500">(derivados dos temas; o papel segue o do tema, a menos que você fixe)</span></label>
+                            <div id="${prefixo}-temas-assuntos" class="flex flex-col min-h-[24px]"></div>`;
+}
+
+function preencherDatalistTemasTexto(prefixo) {
+    const datalist = document.getElementById(`${prefixo}-temas-sugestoes`);
+    if (!datalist) return;
+    const nomes = (db.temas || []).map((t) => t.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    datalist.innerHTML = nomes.map((v) => `<option value="${escapeHtml(v)}">`).join('');
+}
+
+function renderizarTemasTexto(tabela) {
+    const prefixo = prefixoTemasTexto(tabela);
+    const lista = temasTexto[tabela];
+    const container = document.getElementById(`${prefixo}-temas-container`);
+    if (container) {
+        container.innerHTML = lista.length
+            ? lista
+                  .map(
+                      (t, i) => `
+            <div class="flex flex-col items-start gap-1 py-1.5 border-b border-gray-200 dark:border-slate-700 last:border-b-0">
+                <span class="bg-orange-600 text-white text-[10px] px-2 py-1 rounded-full max-w-full break-words">${escapeHtml(t.nome)}</span>
+                <div class="flex items-center gap-2">
+                    <select class="${CLASSE_SELECT_PAPEL_TEMA_CHIP}" onchange="mudarPapelTemaTexto('${tabela}', ${i}, this.value)">${opcoesPapelTemaHTML(t.papel)}</select>
+                    <button type="button" onclick="removerTemaTexto('${tabela}', ${i})" class="text-red-500 hover:text-red-700 font-bold" title="Remover">×</button>
+                </div>
+            </div>`,
+                  )
+                  .join('')
+            : '';
+    }
+    // Sobrescrita de Assunto que deixou de se aplicar (Tema removido, Assunto
+    // excluído) some junto: não fica esperando o Tema voltar.
+    assuntosPapelTexto[tabela] = podarSobrescritasAssunto(
+        lista,
+        assuntosPapelTexto[tabela],
+        db.assuntos,
+        db.temas,
+    ).map((e) => ({ assuntoId: String(e.assuntoId), papel: e.papel }));
+    const alvoAssuntos = document.getElementById(`${prefixo}-temas-assuntos`);
+    if (alvoAssuntos) {
+        const assuntosDoTexto = assuntosComPapelDeEntradas(
+            lista,
+            assuntosPapelTexto[tabela],
+            db.assuntos,
+            db.temas,
+        );
+        alvoAssuntos.innerHTML = assuntosDoTexto.length
+            ? assuntosDoTexto
+                  .map((a) => {
+                      const rotuloAuto = `Automático (${ROTULOS_PAPEL_TEMA[a.papelAuto]})`;
+                      const valor = a.fixado ? a.papel : 'auto';
+                      const opcoes = [
+                          ['auto', rotuloAuto],
+                          ['', ROTULOS_PAPEL_TEMA['']],
+                          ['principal', ROTULOS_PAPEL_TEMA.principal],
+                          ['secundario', ROTULOS_PAPEL_TEMA.secundario],
+                      ]
+                          .map(
+                              ([v, r]) =>
+                                  `<option value="${v}"${v === valor ? ' selected' : ''}>${escapeHtml(r)}</option>`,
+                          )
+                          .join('');
+                      return `
+            <div class="flex flex-col items-start gap-1 py-1.5 border-b border-gray-200 dark:border-slate-700 last:border-b-0">
+                <span class="bg-emerald-700 text-white text-[10px] px-2 py-1 rounded-full max-w-full break-words">${escapeHtml(a.nome)}</span>
+                <select data-valor="${escapeHtml(valor)}" class="${CLASSE_SELECT_PAPEL_TEMA_CHIP}" onchange="mudarPapelAssuntoTexto('${tabela}', '${escapeHtml(String(a.id))}', this.value)">${opcoes}</select>
+                ${a.fixado ? '<span class="text-[10px] text-gray-500 dark:text-slate-400">(fixado)</span>' : ''}
+            </div>`;
+                  })
+                  .join('')
+            : '<span class="text-xs text-gray-400 dark:text-slate-500">Nenhum (os temas acima não estão em nenhum Assunto)</span>';
+        // Força o valor pelo DOM: a opção "sem papel" tem value vazio e alguns
+        // motores ignoram o `selected` das outras nesse caso.
+        alvoAssuntos.querySelectorAll('select[data-valor]').forEach((sel) => {
+            sel.value = sel.dataset.valor;
+        });
+    }
+    const oculto = document.getElementById(`${prefixo}-temas-json`);
+    if (oculto) {
+        oculto.value = JSON.stringify({ temas: lista, assuntosPapel: assuntosPapelTexto[tabela] });
+        // Avisa o rastreador de alterações do formulário (só escuta input/change).
+        oculto.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+
+// Aceita vários nomes separados por vírgula (vírgula não cabe num nome de
+// Tema: é o separador do espelho sinalizacoesTema). Tema que já está na
+// lista só troca de papel.
+export function adicionarTemaTexto(tabela, valor = null) {
+    const prefixo = prefixoTemasTexto(tabela);
+    const input = document.getElementById(`${prefixo}-tema-input`);
+    const seletor = document.getElementById(`${prefixo}-tema-papel`);
+    const papel = normalizarPapelTema(seletor?.value);
+    String(valor ?? input?.value ?? '')
+        .split(',')
+        .map((n) => n.replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .forEach((nome) => {
+            const existente = temasTexto[tabela].find((t) => chaveTema(t.nome) === chaveTema(nome));
+            if (existente) existente.papel = papel;
+            else temasTexto[tabela].push({ nome, papel });
+        });
+    if (input) input.value = '';
+    renderizarTemasTexto(tabela);
+}
+export function removerTemaTexto(tabela, indice) {
+    temasTexto[tabela].splice(Number(indice), 1);
+    renderizarTemasTexto(tabela);
+}
+export function mudarPapelTemaTexto(tabela, indice, papel) {
+    const alvo = temasTexto[tabela][Number(indice)];
+    if (!alvo) return;
+    alvo.papel = normalizarPapelTema(papel);
+    renderizarTemasTexto(tabela);
+}
+// Fixa o papel de um Assunto neste texto; 'auto' volta a seguir os Temas.
+export function mudarPapelAssuntoTexto(tabela, assuntoId, papel) {
+    const chave = String(assuntoId);
+    const resto = assuntosPapelTexto[tabela].filter((e) => e.assuntoId !== chave);
+    if (papel !== 'auto') {
+        resto.push({ assuntoId: chave, papel: normalizarPapelTema(papel) });
+    }
+    assuntosPapelTexto[tabela] = resto;
+    renderizarTemasTexto(tabela);
+}
+// Sobrescritas atuais ([{ assuntoId, papel }]), pra forms.js podar e gravar.
+export function obterAssuntosPapelTexto(tabela) {
+    return assuntosPapelTexto[tabela].map((e) => ({ ...e }));
+}
+// Cópia da lista atual ({ nome, papel }), pra forms.js resolver os ids.
+export function obterTemasTexto(tabela) {
+    return temasTexto[tabela].map((t) => ({ ...t }));
+}
+export function resetTemasTexto(tabela) {
+    temasTexto[tabela] = [];
+    assuntosPapelTexto[tabela] = [];
+    preencherDatalistTemasTexto(prefixoTemasTexto(tabela));
+    renderizarTemasTexto(tabela);
+}
+export function carregarTemasTexto(tabela, item) {
+    const porId = new Map((db.temas || []).map((t) => [String(t.id), t.nome]));
+    temasTexto[tabela] = Array.isArray(item?.temas)
+        ? item.temas
+              .map((e) => ({
+                  nome: porId.get(String(e?.temaId)),
+                  papel: normalizarPapelTema(e?.papel),
+              }))
+              .filter((e) => e.nome)
+        : temasDoTexto(item).map((nome) => ({ nome, papel: '' }));
+    assuntosPapelTexto[tabela] = (Array.isArray(item?.assuntosPapel) ? item.assuntosPapel : []).map(
+        (e) => ({ assuntoId: String(e?.assuntoId), papel: normalizarPapelTema(e?.papel) }),
+    );
+    preencherDatalistTemasTexto(prefixoTemasTexto(tabela));
+    renderizarTemasTexto(tabela);
+}
+
+export function renderTemasPoema() {
+    const container = document.getElementById('p-temas-corpo');
+    if (!container) return;
+    container.innerHTML = criarGrupoTemasHTML('p', 'poemas');
+}
+export function renderTemasProsa() {
+    const container = document.getElementById('pr-temas-corpo');
+    if (!container) return;
+    container.innerHTML = criarGrupoTemasHTML('pr', 'prosas');
+}
+
+// ─── Região e Idioma (Territorialidade e Local onde foi escrito) ──
+// Grupo próprio nos modais de Poema e Prosa. O Idioma é o campo de sempre
+// (HTML estático dos modais); aqui vivem os dois campos que puxam do cadastro
+// de Locais. O estado são entradas { id, nome }: `id` para Local já
+// cadastrado, null para nome digitado que ainda não existe. Os Locais novos
+// só são criados ao salvar (resolverLocaisEditados, locais.js), então
+// cancelar o modal não suja o cadastro.
+const PREFIXO_LOCAIS_TEXTO = { poemas: 'p', prosas: 'pr' };
+const territorialidadeTexto = { poemas: [], prosas: [] };
+const localEscritaTexto = { poemas: null, prosas: null };
+
+function prefixoLocaisTexto(tabela) {
+    const prefixo = PREFIXO_LOCAIS_TEXTO[tabela];
+    if (!prefixo) throw new Error(`Tabela desconhecida em locais do texto: ${tabela}`);
+    return prefixo;
+}
+
+const BOTAO_LOCAL_TEXTO =
+    'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-3 py-1 rounded text-xs font-bold shrink-0';
+
+export function criarGrupoRegiaoHTML(prefixo, tabela) {
+    return `
+                            <div class="mb-4">
+                                <label class="form-label">Idioma <span class="font-normal normal-case text-gray-400 dark:text-slate-500">(mais de um é possível; sempre ao menos um Principal)</span></label>
+                                <div class="flex items-center gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="${prefixo}-idioma-input"
+                                        list="${prefixo}-idiomas-sugestoes"
+                                        class="text-sm flex-1 mb-0"
+                                        placeholder="Idioma (vírgula separa vários)..."
+                                    />
+                                    <button type="button" onclick="adicionarIdiomaTexto('${tabela}')" class="${BOTAO_LOCAL_TEXTO}" title="Adicionar idioma">+ Adicionar</button>
+                                </div>
+                                <div id="${prefixo}-idiomas-container" class="flex flex-col gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"></div>
+                                <datalist id="${prefixo}-idiomas-sugestoes"></datalist>
+                                <input type="hidden" id="${prefixo}-idiomas-json" />
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label">Local onde foi escrito <span class="font-normal normal-case text-gray-400 dark:text-slate-500">(um só; para escrita em trânsito, use um Local como “Viagem”)</span></label>
+                                <div class="flex items-center gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="${prefixo}-local-escrita-input"
+                                        list="${prefixo}-locais-sugestoes"
+                                        class="text-sm flex-1 mb-0"
+                                        placeholder="Local já cadastrado ou novo..."
+                                    />
+                                    <button type="button" onclick="definirLocalEscritaTexto('${tabela}')" class="${BOTAO_LOCAL_TEXTO}" title="Definir o local onde foi escrito">Definir</button>
+                                </div>
+                                <div id="${prefixo}-local-escrita-container" class="min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"></div>
+                            </div>
+                            <div>
+                                <label class="form-label">Territorialidade <span class="font-normal normal-case text-gray-400 dark:text-slate-500">(lugares que o texto cita)</span></label>
+                                <div class="flex items-center gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="${prefixo}-territorialidade-input"
+                                        list="${prefixo}-locais-sugestoes"
+                                        class="text-sm flex-1 mb-0"
+                                        placeholder="Local já cadastrado ou novo (vírgula separa vários)..."
+                                    />
+                                    <button type="button" onclick="adicionarTerritorialidadeTexto('${tabela}')" class="${BOTAO_LOCAL_TEXTO}" title="Adicionar local citado">+ Adicionar</button>
+                                </div>
+                                <div id="${prefixo}-territorialidade-container" class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"></div>
+                            </div>
+                            <datalist id="${prefixo}-locais-sugestoes"></datalist>
+                            <input type="hidden" id="${prefixo}-locais-json" />`;
+}
+
+function preencherDatalistLocaisTexto(prefixo) {
+    const datalist = document.getElementById(`${prefixo}-locais-sugestoes`);
+    if (!datalist) return;
+    datalist.innerHTML = opcoesLocaisParaCampo(db)
+        .map((o) => `<option value="${escapeHtml(o.valor)}" label="${escapeHtml(o.caminho)}">`)
+        .join('');
+}
+
+// Entrada { id, nome } para o que a pessoa digitou: Local do cadastro se o
+// texto o designa, senão um nome novo (id null).
+function entradaDeTextoLocal(texto) {
+    const nome = limparNomeLocal(texto);
+    if (!nome) return null;
+    const id = localDoTextoDigitado(db, nome);
+    return id != null ? entradaDeLocal(db, id) : { id: null, nome };
+}
+
+function rotuloEntradaLocal(entrada) {
+    return entrada.id != null ? rotuloLocal(db, entrada.id) || entrada.nome : entrada.nome;
+}
+
+function chipLocalTexto(entrada, onclickRemover) {
+    const novo = entrada.id == null;
+    const caminho = novo ? 'Local novo: será criado ao salvar' : rotuloCaminhoLocal(db, entrada.id);
+    return `<span class="bg-emerald-600 text-white text-[10px] px-2 py-1 rounded-full max-w-full break-words inline-flex items-center gap-1" title="${escapeHtml(caminho)}">${escapeHtml(rotuloEntradaLocal(entrada))}${novo ? ' <em class="opacity-80">(novo)</em>' : ''}<button type="button" onclick="${onclickRemover}" class="font-bold hover:text-red-200" title="Remover">×</button></span>`;
+}
+
+function renderizarLocaisTexto(tabela) {
+    const prefixo = prefixoLocaisTexto(tabela);
+    const lista = territorialidadeTexto[tabela];
+    const escrita = localEscritaTexto[tabela];
+    const contTerr = document.getElementById(`${prefixo}-territorialidade-container`);
+    if (contTerr) {
+        contTerr.innerHTML = lista
+            .map((e, i) => chipLocalTexto(e, `removerTerritorialidadeTexto('${tabela}', ${i})`))
+            .join('');
+    }
+    const contEscrita = document.getElementById(`${prefixo}-local-escrita-container`);
+    if (contEscrita) {
+        contEscrita.innerHTML = escrita
+            ? chipLocalTexto(escrita, `limparLocalEscritaTexto('${tabela}')`)
+            : '';
+    }
+    const oculto = document.getElementById(`${prefixo}-locais-json`);
+    if (oculto) {
+        oculto.value = JSON.stringify({ territorialidade: lista, escrita });
+        // Avisa o rastreador de alterações do formulário (só escuta input/change).
+        oculto.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+}
+
+// Vírgula não cabe num nome de Local (é o separador do espelho), então
+// separa vários de uma vez. Repetido (mesmo Local, ou mesmo nome novo) é ignorado.
+export function adicionarTerritorialidadeTexto(tabela, valor = null) {
+    const prefixo = prefixoLocaisTexto(tabela);
+    const input = document.getElementById(`${prefixo}-territorialidade-input`);
+    String(valor ?? input?.value ?? '')
+        .split(',')
+        .map(entradaDeTextoLocal)
+        .filter(Boolean)
+        .forEach((entrada) => {
+            const repetido = territorialidadeTexto[tabela].some((e) =>
+                entrada.id != null
+                    ? String(e.id) === String(entrada.id)
+                    : e.id == null && chaveTema(e.nome) === chaveTema(entrada.nome),
+            );
+            if (!repetido) territorialidadeTexto[tabela].push(entrada);
+        });
+    if (input) input.value = '';
+    renderizarLocaisTexto(tabela);
+}
+export function removerTerritorialidadeTexto(tabela, indice) {
+    territorialidadeTexto[tabela].splice(Number(indice), 1);
+    renderizarLocaisTexto(tabela);
+}
+// Um só por texto: definir de novo troca o anterior. A vírgula é tirada pelo
+// limparNomeLocal, então "Santos, SP" vira um Local só, como no cadastro.
+export function definirLocalEscritaTexto(tabela, valor = null) {
+    const prefixo = prefixoLocaisTexto(tabela);
+    const input = document.getElementById(`${prefixo}-local-escrita-input`);
+    const entrada = entradaDeTextoLocal(valor ?? input?.value ?? '');
+    if (entrada) localEscritaTexto[tabela] = entrada;
+    if (input) input.value = '';
+    renderizarLocaisTexto(tabela);
+}
+export function limparLocalEscritaTexto(tabela) {
+    localEscritaTexto[tabela] = null;
+    renderizarLocaisTexto(tabela);
+}
+// Estado atual ({ territorialidade: [{ id, nome }], escrita }), para forms.js
+// resolver os ids ao salvar.
+export function obterLocaisTexto(tabela) {
+    return {
+        territorialidade: territorialidadeTexto[tabela].map((e) => ({ ...e })),
+        escrita: localEscritaTexto[tabela] ? { ...localEscritaTexto[tabela] } : null,
+    };
+}
+export function resetLocaisTexto(tabela) {
+    territorialidadeTexto[tabela] = [];
+    localEscritaTexto[tabela] = null;
+    preencherDatalistLocaisTexto(prefixoLocaisTexto(tabela));
+    renderizarLocaisTexto(tabela);
+}
+export function carregarLocaisTexto(tabela, item) {
+    const ids = Array.isArray(item?.territorialidade) ? item.territorialidade : null;
+    territorialidadeTexto[tabela] = ids
+        ? ids.map((id) => entradaDeLocal(db, id)).filter(Boolean)
+        : nomesTerritorialidade(item).map(entradaDeTextoLocal).filter(Boolean);
+    localEscritaTexto[tabela] = entradaDeLocal(db, item?.localEscrita);
+    preencherDatalistLocaisTexto(prefixoLocaisTexto(tabela));
+    renderizarLocaisTexto(tabela);
+}
+
+// ─── Idiomas do texto (papel por idioma + dialetos) ──────────────
+// Estado: [{ idioma, papel, dialetos }], a mesma forma gravada no texto
+// (`idiomas`). O papel vale por idioma, então mais de um pode ser Principal.
+// Havendo algum idioma, há sempre ao menos um Principal: tirar ou rebaixar o
+// único Principal promove o próximo da lista. Texto sem nenhum idioma é
+// permitido (a pessoa pode remover todos). Um texto novo começa com pt-BR.
+const idiomaPadraoTexto = () => [{ idioma: 'pt-BR', papel: 'principal', dialetos: [] }];
+const idiomasTexto = { poemas: idiomaPadraoTexto(), prosas: idiomaPadraoTexto() };
+
+function sincronizarIdiomasOculto(tabela) {
+    const oculto = document.getElementById(`${prefixoLocaisTexto(tabela)}-idiomas-json`);
+    if (!oculto) return;
+    oculto.value = JSON.stringify(idiomasTexto[tabela]);
+    // Avisa o rastreador de alterações do formulário (só escuta input/change).
+    oculto.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function preencherDatalistIdiomasTexto(prefixo) {
+    const datalist = document.getElementById(`${prefixo}-idiomas-sugestoes`);
+    if (!datalist) return;
+    const todos = [...db.poemas, ...(db.prosas || [])];
+    datalist.innerHTML = extrairIdiomasUnicos(todos)
+        .map((v) => `<option value="${escapeHtml(v)}">`)
+        .join('');
+}
+
+function linhaIdiomaTexto(entrada, indice, tabela, prefixo, todos) {
+    const dialetos = extrairDialetosUnicos(todos, entrada.idioma);
+    const idDialetos = `${prefixo}-dialetos-${indice}`;
+    const opcoesPapel = PAPEIS_IDIOMA.map(
+        (papel) =>
+            `<option value="${papel}"${entrada.papel === papel ? ' selected' : ''}>${ROTULOS_PAPEL_IDIOMA[papel]}</option>`,
+    ).join('');
+    const chipsDialetos = entrada.dialetos
+        .map(
+            (d, j) =>
+                `<span class="bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 text-[11px] px-2 py-1 rounded-full font-bold break-words max-w-full flex items-center gap-1">${escapeHtml(d)}<button type="button" onclick="removerDialetoIdiomaTexto('${tabela}', ${indice}, ${j})" class="hover:text-red-500" title="Remover dialeto" aria-label="Remover dialeto ${escapeHtml(d)}">×</button></span>`,
+        )
+        .join('');
+    return `<div class="flex flex-col gap-1">
+        <div class="flex flex-wrap items-center gap-2">
+            <span class="bg-emerald-600 text-white text-[11px] px-2 py-1 rounded-full font-bold break-words max-w-full">${escapeHtml(entrada.idioma)}</span>
+            <select class="text-xs mb-0 w-auto" aria-label="Papel do idioma ${escapeHtml(entrada.idioma)}" onchange="definirPapelIdiomaTexto('${tabela}', ${indice}, this.value)">${opcoesPapel}</select>
+            <button type="button" onclick="removerIdiomaTexto('${tabela}', ${indice})" class="font-bold text-gray-500 hover:text-red-500 px-1" title="Remover idioma">×</button>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 pl-3">
+            ${chipsDialetos}
+            <input type="text" id="${prefixo}-dialeto-input-${indice}" list="${idDialetos}" class="text-xs flex-1 mb-0 min-w-[10rem]" placeholder="Dialeto ou variedade (vírgula separa vários)" aria-label="Adicionar dialeto de ${escapeHtml(entrada.idioma)}" onchange="adicionarDialetoIdiomaTexto('${tabela}', ${indice}, this.value)" onkeydown="if (event.key === 'Enter') { event.preventDefault(); adicionarDialetoIdiomaTexto('${tabela}', ${indice}, this.value); }" />
+            <datalist id="${idDialetos}">${dialetos.map((d) => `<option value="${escapeHtml(d)}">`).join('')}</datalist>
+        </div>
+    </div>`;
+}
+
+function renderizarIdiomasTexto(tabela, focarDialetoDe = null) {
+    const prefixo = prefixoLocaisTexto(tabela);
+    preencherDatalistIdiomasTexto(prefixo);
+    const container = document.getElementById(`${prefixo}-idiomas-container`);
+    if (container) {
+        const todos = [...db.poemas, ...(db.prosas || [])];
+        container.innerHTML = idiomasTexto[tabela]
+            .map((e, i) => linhaIdiomaTexto(e, i, tabela, prefixo, todos))
+            .join('');
+    }
+    sincronizarIdiomasOculto(tabela);
+    // Depois de adicionar um dialeto o campo é refeito; devolve o foco a ele
+    // para a pessoa poder digitar o próximo sem clicar de novo.
+    if (focarDialetoDe != null) {
+        document.getElementById(`${prefixo}-dialeto-input-${focarDialetoDe}`)?.focus();
+    }
+}
+
+// Vírgula separa vários de uma vez. Repetido (mesmo idioma, sem diferenciar
+// caixa nem acento) é ignorado. O primeiro idioma de um texto vazio entra
+// como Principal; os seguintes, como Secundário.
+export function adicionarIdiomaTexto(tabela, valor = null) {
+    const prefixo = prefixoLocaisTexto(tabela);
+    const input = document.getElementById(`${prefixo}-idioma-input`);
+    const lista = idiomasTexto[tabela].map((e) => ({ ...e }));
+    String(valor ?? input?.value ?? '')
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .forEach((idioma) => {
+            if (lista.some((e) => chaveTema(e.idioma) === chaveTema(idioma))) return;
+            lista.push({ idioma, papel: lista.length ? 'secundario' : 'principal', dialetos: [] });
+        });
+    idiomasTexto[tabela] = normalizarIdiomas(lista);
+    if (input) input.value = '';
+    renderizarIdiomasTexto(tabela);
+}
+export function removerIdiomaTexto(tabela, indice) {
+    const lista = idiomasTexto[tabela].map((e) => ({ ...e }));
+    lista.splice(Number(indice), 1);
+    idiomasTexto[tabela] = normalizarIdiomas(lista); // promove o primeiro se faltar Principal
+    renderizarIdiomasTexto(tabela);
+}
+// Rebaixar o único Principal promove o próximo da lista (o seguinte, ou o
+// primeiro se era o último). Se for o único idioma, continua Principal.
+export function definirPapelIdiomaTexto(tabela, indice, papel) {
+    const i = Number(indice);
+    const lista = idiomasTexto[tabela].map((e) => ({ ...e }));
+    if (!lista[i]) return;
+    lista[i].papel = normalizarPapelIdioma(papel);
+    if (!lista.some((e) => e.papel === 'principal')) {
+        const ordem = [...lista.keys()]
+            .filter((j) => j > i)
+            .concat([...lista.keys()].filter((j) => j < i));
+        lista[ordem.length ? ordem[0] : i].papel = 'principal';
+    }
+    idiomasTexto[tabela] = lista;
+    renderizarIdiomasTexto(tabela);
+}
+// Vírgula separa vários de uma vez; repetido (sem diferenciar caixa nem
+// acento) é ignorado. O campo é refeito e recebe o foco de volta.
+export function adicionarDialetoIdiomaTexto(tabela, indice, valor) {
+    const i = Number(indice);
+    const lista = idiomasTexto[tabela].map((e) => ({ ...e, dialetos: [...e.dialetos] }));
+    if (!lista[i]) return;
+    const novos = String(valor ?? '')
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+    if (!novos.length) return;
+    lista[i].dialetos = normalizarDialetos(lista[i].dialetos, novos);
+    idiomasTexto[tabela] = lista;
+    renderizarIdiomasTexto(tabela, i);
+}
+export function removerDialetoIdiomaTexto(tabela, indice, posicao) {
+    const i = Number(indice);
+    const lista = idiomasTexto[tabela].map((e) => ({ ...e, dialetos: [...e.dialetos] }));
+    if (!lista[i]) return;
+    lista[i].dialetos.splice(Number(posicao), 1);
+    idiomasTexto[tabela] = lista;
+    renderizarIdiomasTexto(tabela, i);
+}
+// Estado atual, limpo, para forms.js gravar (`idiomas` e o espelho `idioma`).
+// Um dialeto digitado e ainda não confirmado (sem Enter nem sair do campo)
+// entra junto, para não se perder ao salvar.
+export function obterIdiomasTexto(tabela) {
+    const prefixo = prefixoLocaisTexto(tabela);
+    const lista = idiomasTexto[tabela].map((e, i) => {
+        const pendente = document.getElementById(`${prefixo}-dialeto-input-${i}`)?.value ?? '';
+        return { ...e, dialetos: normalizarDialetos(e.dialetos, pendente.split(',')) };
+    });
+    return normalizarIdiomas(lista);
+}
+export function resetIdiomasTexto(tabela) {
+    idiomasTexto[tabela] = idiomaPadraoTexto();
+    renderizarIdiomasTexto(tabela);
+}
+export function carregarIdiomasTexto(tabela, item) {
+    idiomasTexto[tabela] = idiomasDoItem(item).map((e) => ({ ...e }));
+    renderizarIdiomasTexto(tabela);
+}
+
+export function renderRegiaoPoema() {
+    const container = document.getElementById('p-regiao-corpo');
+    if (!container) return;
+    container.innerHTML = criarGrupoRegiaoHTML('p', 'poemas');
+    renderizarIdiomasTexto('poemas');
+}
+export function renderRegiaoProsa() {
+    const container = document.getElementById('pr-regiao-corpo');
+    if (!container) return;
+    container.innerHTML = criarGrupoRegiaoHTML('pr', 'prosas');
+    renderizarIdiomasTexto('prosas');
 }
 
 // ─── Pessoas ─────────────────────────────────────────────────
@@ -3855,7 +4544,7 @@ export function obterGruposDiretos(tabela) {
 // Mesmo espírito de criarGrupoDeGruposDiretos acima (array de id,
 // autocomplete por nome, cria com confirmação se não existir) —
 // generalizada aqui pra servir aos TRÊS lugares que referenciam
-// db.movimentosEscolas: Poema, Prosa (dentro de "Época e Contexto") e
+// db.movimentosEscolas: Poema, Prosa (dentro de "Períodos, Movimento e Inspiração") e
 // Autor (4º grupo do modal, ver decisoes.md). "tabela" cobre também
 // 'autores', não só 'poemas'/'prosas' como no resto do arquivo.
 function criarGrupoDeMovimentosEscolas({ tabela, inputId, containerId, nomeFuncaoRemover }) {
@@ -4528,6 +5217,8 @@ export function initEditor() {
     // dependa dos inputs/containers de cada categoria já existirem no
     // DOM.
     renderSinalizacoesPoema();
+    renderTemasPoema();
+    renderRegiaoPoema();
 
     const textarea = document.getElementById('p-texto');
     const toolbar = document.querySelector('.bg-slate-50.border-slate-200');
@@ -4624,6 +5315,32 @@ export function initEditor() {
     // nesse campo lançava TypeError em vez de adicionar a tag). Não pego
     // pelo teste estático de consistência porque esse mapa não é um dos
     // 4 lugares que ele cobre (ver sinalizacoes-consistencia.test.js).
+    // Enter no input do grupo Temas e Assuntos (Poema).
+    document.getElementById('p-tema-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarTemaTexto('poemas');
+        }
+    });
+    // Enter nos inputs do grupo Região e Idioma (Poema).
+    document.getElementById('p-idioma-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarIdiomaTexto('poemas');
+        }
+    });
+    document.getElementById('p-territorialidade-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarTerritorialidadeTexto('poemas');
+        }
+    });
+    document.getElementById('p-local-escrita-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            definirLocalEscritaTexto('poemas');
+        }
+    });
     SINAL_CATEGORIAS.forEach(({ chave }) => {
         const input = document.getElementById(`p-sinal-${slugDom(chave)}-input`);
         if (input) {
@@ -4729,6 +5446,32 @@ export function initEditor() {
 // diretamente pelo init do modal-prosa em main.js, sem depender do
 // modal-poema ter carregado antes.
 export function initEditorProsa() {
+    // Enter no input do grupo Temas e Assuntos (Prosa).
+    document.getElementById('pr-tema-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarTemaTexto('prosas');
+        }
+    });
+    // Enter nos inputs do grupo Região e Idioma (Prosa).
+    document.getElementById('pr-idioma-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarIdiomaTexto('prosas');
+        }
+    });
+    document.getElementById('pr-territorialidade-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarTerritorialidadeTexto('prosas');
+        }
+    });
+    document.getElementById('pr-local-escrita-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            definirLocalEscritaTexto('prosas');
+        }
+    });
     // Enter nos inputs de tags de Sinalizações (Prosa) — mesmo padrão do
     // Poema em initEditor(), via funcoesSinal[chave]('prosas') (mesmo
     // mapa único; mesmo bug do "DominioImagetico" faltando, corrigido

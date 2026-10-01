@@ -13,6 +13,7 @@
 // ============================================================
 
 import { db } from './db.js';
+import { locaisParaExportar } from './locais.js';
 import { exportarColetaneaResolvida } from './coletaneas.js';
 import {
     escapeHtml,
@@ -294,6 +295,23 @@ export function montarRegistro(tipo, item) {
         pessoas: (item.pessoas || []).map((p) => ({
             ...p,
             nome: db.pessoas.find((x) => x.id == p.pessoaId)?.nome || '',
+        })),
+        // Tema por id (fase 2): o nome viaja junto, porque o id não vale em
+        // outro acervo — a Importação Aditiva casa/cria o Tema pelo nome.
+        temas: (item.temas || []).map((t) => ({
+            ...t,
+            nome: db.temas.find((x) => x.id == t.temaId)?.nome || '',
+        })),
+        // Papel do Assunto fixado neste texto: o nome também viaja (o id do
+        // Assunto não vale em outro acervo; a importação casa pelo nome).
+        // Territorialidade e local de escrita: os ids não valem em outro
+        // acervo, então cada texto leva nome, tipo e a hierarquia completa
+        // (Locais citados, local de escrita e todos os ancestrais); a
+        // Importação Aditiva recria o que faltar.
+        ...locaisParaExportar(db, item),
+        assuntosPapel: (item.assuntosPapel || []).map((a) => ({
+            ...a,
+            nome: db.assuntos.find((x) => x.id == a.assuntoId)?.nome || '',
         })),
         autoria: (item.autoria || []).map((a) => ({
             ...a,

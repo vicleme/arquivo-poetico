@@ -10,13 +10,13 @@ cada uma quer dizer.
 ## O que o campo é (e o que não é)
 
 Não existe um campo único de "etiquetas". "Sinalizações" é o nome do
-**grupo**, mas por trás dele há **8 campos independentes**, um por
+**grupo**, mas por trás dele há **9 campos independentes**, um por
 categoria, cada um uma lista de tags em **texto livre** (não uma lista
 fechada de opções pré-definidas — quem cataloga digita a etiqueta que
 quiser, com autocompletar sugerindo o que já foi usado antes na mesma
 categoria, pra evitar variantes da mesma ideia).
 
-Cada um desses 8 campos é, de fato, uma **lista** — aceita quantas
+Cada um desses 9 campos é, de fato, uma **lista** — aceita quantas
 etiquetas fizerem sentido para o texto, não um valor único por categoria.
 Isso importa para uma decisão recorrente: quando o texto carrega duas
 coisas percebidas ao mesmo tempo (duas tradições, dois temas, duas
@@ -31,13 +31,16 @@ trecho, esperançoso — duas sensações reais, mas distintas, não uma coisa
 só), etiquetas separadas mantêm a lista mais útil para filtrar e cruzar
 dados depois.
 
-Os 8 campos, na ordem em que aparecem no editor:
+Os 9 campos (dois deles, `sinalizacoesTema` e
+`sinalizacoesTerritorialidade`, são espelhos derivados e não se digitam
+mais no grupo de etiquetas do editor; ver as notas de categoria abaixo):
 
 | Campo (chave)                  | Rótulo            |
 | ------------------------------ | ----------------- |
 | `sinalizacoesTradicao`         | Tradição          |
 | `sinalizacoesEstilo`           | Estilo            |
 | `sinalizacoesTema`             | Tema              |
+| `sinalizacoesTerritorialidade` | Territorialidade  |
 | `sinalizacoesRelacao`          | Relação           |
 | `sinalizacoesSensibilidade`    | Sensibilidade     |
 | `sinalizacoesTom`              | Tom               |
@@ -48,7 +51,7 @@ Uma exportação "flat" combina tudo numa string única (`sinalizacoesCombinadas
 para busca geral e estatísticas simples — mas essa versão combinada **perde
 a categoria** de cada tag. Sempre que a tarefa depender de saber a que
 categoria uma etiqueta pertence (ex.: "quais são os temas mais comuns" vs.
-"quais são os recursos de estilo mais comuns"), use os 8 campos separados,
+"quais são os recursos de estilo mais comuns"), use os 9 campos separados,
 não a string combinada.
 
 ## O que cada categoria significa
@@ -67,6 +70,15 @@ não a string combinada.
   **causa concreta**, não o efeito emocional — uma etiqueta como "Crise
   existencial cíclica" é mais vaga do que nomear o evento ou situação
   concreta que gera essa sensação.
+- **Territorialidade** (categoria nova, 2026-09-29; desde 2026-09-30 não
+  se digita mais neste grupo, o campo é um espelho derivado da lista de
+  lugares `territorialidade`, ver `campos-poema-prosa-for-ai-pt-br.md`):
+  lugares específicos citados no texto — um país, uma cidade, um bairro, um rio. Diferente de
+  Tema, que é o assunto amplo (um poema pode ter "Brasil" como Tema, no
+  sentido de nação/identidade, sem citar nenhum lugar específico; um poema
+  que cita "Copacabana" ou "rio Amazonas" usa Territorialidade). Também
+  diferente de Domínio Imagético, que é vocabulário tomado de um campo de
+  conhecimento, não um lugar.
 - **Relação**: nomeia uma relação ou vínculo específico retratado no
   texto — pode ser o nome de uma dinâmica entre duas pessoas específicas
   (o acervo já usa etiquetas desse tipo, cunhadas pelo autor para nomear

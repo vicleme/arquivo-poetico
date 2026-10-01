@@ -44,6 +44,12 @@ import {
     aplicarLimpeza,
 } from './campos-preenchiveis.js';
 import {
+    garantirLocalPorNome,
+    limparNomeLocal,
+    localDoTextoDigitado,
+    opcoesLocaisParaCampo,
+} from './locais.js';
+import {
     TIPOS_PERIODO_MASSA,
     rotuloTipoPeriodoMassa,
     nomesCadastroPeriodoMassa,
@@ -528,6 +534,14 @@ function campoPreencherSelecionado(tabela) {
 // Fonte no editor), pra o painel de Prosas também sugerir o que já foi
 // usado nos poemas.
 function opcoesSugestoes(campo) {
+    if (campo.tipo === 'local') {
+        return opcoesLocaisParaCampo(db)
+            .map(
+                (o) =>
+                    `<option value="${escapeHtml(o.valor)}" label="${escapeHtml(o.caminho)}"></option>`,
+            )
+            .join('');
+    }
     if (!campo.sugestoes) return '';
     return campo
         .sugestoes([...db.poemas, ...db.prosas])
@@ -554,12 +568,13 @@ function montarValorPreencher(tabela) {
             ${campo.opcoes.map((o) => `<option value="${escapeHtml(o.valor)}">${escapeHtml(o.rotulo)}</option>`).join('')}
         </select>`;
     } else {
+        const comSugestoes = !!campo.sugestoes || campo.tipo === 'local';
         area.innerHTML = `${rotulo}<input type="text" id="${ids.valor}"
-            ${campo.sugestoes ? `list="${ids.sugestoes}"` : ''}
+            ${comSugestoes ? `list="${ids.sugestoes}"` : ''}
             placeholder="${escapeHtml(campo.placeholder || '')}"
             class="text-xs p-2 min-w-[220px] mb-0"
             onkeydown="aoEnterAplicar(event, () => aplicarPreenchimentoEmMassa('${tabela}'))" />
-            ${campo.sugestoes ? `<datalist id="${ids.sugestoes}">${opcoesSugestoes(campo)}</datalist>` : ''}`;
+            ${comSugestoes ? `<datalist id="${ids.sugestoes}">${opcoesSugestoes(campo)}</datalist>` : ''}`;
     }
     // Booleano sempre define o valor em todos os selecionados, então
     // "sobrescrever" só faz sentido pra campo de texto.
@@ -633,13 +648,25 @@ export function aplicarPreenchimentoEmMassa(tabela) {
     const campo = campoPreencherSelecionado(tabela);
     if (!campo) return;
     const valor = lerValorPreencher(tabela, campo);
-    if (campo.tipo === 'texto' && !valor) {
+    const ehLocal = campo.tipo === 'local';
+    if ((campo.tipo === 'texto' || ehLocal) && !valor) {
         return mostrarAviso(`Digite o valor de "${campo.rotulo}" (ou use "Limpar campo").`);
     }
+    // Local: o que foi digitado vira o id do cadastro. Nome que ainda não
+    // existe só é criado ao confirmar (cancelar não suja o cadastro, como
+    // no modal); até lá o plano usa null = "Local a criar".
+    const nomeLocal = ehLocal ? limparNomeLocal(valor) : '';
+    if (ehLocal && !nomeLocal) {
+        return mostrarAviso(`Digite o valor de "${campo.rotulo}" (ou use "Limpar campo").`);
+    }
+    const idLocal = ehLocal ? localDoTextoDigitado(db, nomeLocal) : null;
+    const localNovo = ehLocal && idLocal == null;
+    const valorPlano = ehLocal ? idLocal : valor;
+
     const ids = idsPreencher(c);
     const sobrescrever = !!document.getElementById(ids.sobrescrever)?.checked;
     const itens = itensSelecionados(tabela);
-    const { alterar, jaPreenchidos, jaIguais } = planejarPreenchimento(itens, campo, valor, {
+    const { alterar, jaPreenchidos, jaIguais } = planejarPreenchimento(itens, campo, valorPlano, {
         sobrescrever,
     });
 
@@ -658,7 +685,7 @@ export function aplicarPreenchimentoEmMassa(tabela) {
     const oQue =
         campo.tipo === 'booleano'
             ? `${valor ? 'marcar' : 'desmarcar'} "${campo.rotulo}"`
-            : `definir "${valor}" em "${campo.rotulo}"`;
+            : `definir "${ehLocal ? nomeLocal : valor}" em "${campo.rotulo}"`;
     const mantidos = [];
     if (jaPreenchidos) {
         mantidos.push(
@@ -671,14 +698,18 @@ export function aplicarPreenchimentoEmMassa(tabela) {
     abrirModalConfirmacao({
         titulo: `Preencher ${campo.rotulo.toLowerCase()}`,
         rotulo: 'Ação em massa',
-        mensagem: `Isso vai ${oQue} em ${n} ${c.singular}${n !== 1 ? 's' : ''}.${mantidos.length ? ` Pulados: ${mantidos.join('; ')}.` : ''}`,
+        mensagem: `Isso vai ${oQue} em ${n} ${c.singular}${n !== 1 ? 's' : ''}.${localNovo ? ` "${nomeLocal}" ainda não existe no cadastro de Locais e será criado (sem tipo e sem pai; dá para completar na aba Locais).` : ''}${mantidos.length ? ` Pulados: ${mantidos.join('; ')}.` : ''}`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#2563eb',
         // Sobrescrever é destrutivo: só foca o Confirmar quando a ação
         // é aditiva (mesmo critério de aplicarDataEmMassa).
         focarConfirmar: !sobrescrever || campo.tipo === 'booleano',
         onConfirmar: () => {
-            aplicarPreenchimento(alterar, campo, valor);
+            aplicarPreenchimento(
+                alterar,
+                campo,
+                ehLocal ? (localNovo ? garantirLocalPorNome(db, nomeLocal) : idLocal) : valor,
+            );
             c.selecao.clear();
             save();
         },

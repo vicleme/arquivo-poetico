@@ -26,10 +26,13 @@ import {
     renderEpocas,
     renderPeriodosHistoricos,
     renderMovimentosEscolas,
+    renderAssuntos,
+    renderTemas,
     renderSonoridade,
     renderEstruturaTextual,
     renderMoldes,
 } from './render-listas.js';
+import { renderLocais } from './ui-locais.js';
 import { popularSeletorEstrutura, renderEstrutura } from './render-estrutura.js';
 
 export function renderLists() {
@@ -42,6 +45,9 @@ export function renderLists() {
     renderEpocas();
     renderPeriodosHistoricos();
     renderMovimentosEscolas();
+    renderAssuntos();
+    renderLocais();
+    renderTemas();
     renderSonoridade();
     renderEstruturaTextual();
     renderMoldes();

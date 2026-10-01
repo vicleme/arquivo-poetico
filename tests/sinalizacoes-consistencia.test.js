@@ -73,6 +73,9 @@ function extrairObjetoChaves(texto, marcador) {
     return chaves;
 }
 
+// Categorias com `ocultoNoModal: true` em SINAL_CATEGORIAS (editor.js).
+const CATEGORIAS_OCULTAS_NO_MODAL = new Set(['Tema', 'Territorialidade']);
+
 describe('consistência das categorias de Sinalizações entre editor/utils/celulas-tabela/HTML', () => {
     const editorJs = fs.readFileSync(path.join(RAIZ, 'js/editor.js'), 'utf8');
     const utilsJs = fs.readFileSync(path.join(RAIZ, 'js/utils.js'), 'utf8');
@@ -132,9 +135,16 @@ describe('consistência das categorias de Sinalizações entre editor/utils/celu
         });
 
         it(`"${chave}" tem os 4 datalists de sugestão (index.html/modais)`, () => {
+            // Tema saiu do bloco Sinalizações dos modais (virou o grupo
+            // "Temas e Assuntos", com datalist próprio `p-/pr-temas-sugestoes`):
+            // o datalist "-prosa" que renderSinalizacoesProsa gerava não
+            // existe mais pra ele. Os três estáticos de index.html seguem
+            // valendo (edição em massa).
             const idsEsperados = [
                 `sugestoes-sinais-${slug}`,
-                `sugestoes-sinais-${slug}-prosa`,
+                ...(CATEGORIAS_OCULTAS_NO_MODAL.has(chave)
+                    ? []
+                    : [`sugestoes-sinais-${slug}-prosa`]),
                 `sugestoes-sinais-${slug}-bulk`,
                 `sugestoes-sinais-${slug}-bulk-prosa`,
             ];

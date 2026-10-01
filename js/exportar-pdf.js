@@ -696,7 +696,7 @@ export function gerarPdfExportacao(itens) {
 
             // Espaço ANTES do título. Sem isso, um "### Título" que vem
             // colado direto no campo anterior no Markdown de origem (ex.:
-            // "- **Autoria:** ...\n### Contexto Histórico/Pessoal...", sem
+            // "- **Autoria:** ...\n### Inspiração...", sem
             // linha em branco entre os dois — ver itemParaMarkdownDepoisDoTexto
             // em exportar-md.js) não ganhava respiro nenhum: só existia
             // espaço DEPOIS do título (+4 no fim desta função), nunca antes.

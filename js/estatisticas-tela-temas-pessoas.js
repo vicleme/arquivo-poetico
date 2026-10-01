@@ -2,6 +2,7 @@ import {
     agregarPorTema,
     agregarPorPessoa,
     agregarPorGeneroPessoa,
+    agregarPorAssunto,
     agregarTemasPorAno,
     agregarPessoasPorAno,
     coocorrenciaTemasPessoas,
@@ -15,6 +16,12 @@ import {
 } from './estatisticas-dados.js';
 import {
     getModoGraficoPessoas,
+    getPapelTemaEstatisticas,
+    PAPEIS_TEMA_ESTATISTICAS,
+    ROTULOS_PAPEL_TEMA_ESTATISTICAS,
+    getPapelAssuntoEstatisticas,
+    PAPEIS_ASSUNTO_ESTATISTICAS,
+    ROTULOS_PAPEL_ASSUNTO_ESTATISTICAS,
     getGruposFiltroPessoas,
     getOcultosGrafico,
     filtrarOcultos,
@@ -56,11 +63,13 @@ import { db } from './db.js';
 // for o modo escolhido pra essa chave — a chamadora nunca precisa saber
 // da preferência de ordem. Busca é ao vivo via filtrarItensOcultos
 // (estatisticas-tela-comum.js), sem re-render.
-function seletorOcultos(chave, labels, totalAntesDoCorte) {
+export function seletorOcultos(chave, labels, totalAntesDoCorte) {
     const ocultos = getOcultosGrafico(chave);
     const campoMinimo = campoMinimoAparicoes(chave, totalAntesDoCorte, labels.length);
     if (!labels.length)
-        return campoMinimo + '<p class="text-[11px] text-gray-400 px-1">Nada para ocultar ainda.</p>';
+        return (
+            campoMinimo + '<p class="text-[11px] text-gray-400 px-1">Nada para ocultar ainda.</p>'
+        );
     const ordem = getOrdemOcultos(chave);
     const labelsOrdenados =
         ordem === 'alfabetica' ? [...labels].sort((a, b) => a.localeCompare(b, 'pt-BR')) : labels;
@@ -83,6 +92,39 @@ function seletorOcultos(chave, labels, totalAntesDoCorte) {
             )
             .join('')
     );
+}
+
+// Seletor "Papel do tema" acima do gráfico de Temas. Vale pra tudo que lê
+// Tema nesta tela (barras, "ao longo do tempo", total de ocorrências, anos
+// distintos e cruzamento com Pessoas e Grupos). A escolha persiste, então
+// o painel diz sempre qual papel está ativo.
+function seletorPapelTema() {
+    const atual = getPapelTemaEstatisticas();
+    const botoes = PAPEIS_TEMA_ESTATISTICAS.map(
+        (v) =>
+            `<button type="button" onclick="definirPapelTemaEstatisticas('${v}')" class="px-2 py-0.5 rounded text-[11px] font-semibold ${atual === v ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'}">${ROTULOS_PAPEL_TEMA_ESTATISTICAS[v]}</button>`,
+    ).join('');
+    const aviso =
+        atual === 'todos'
+            ? ''
+            : `<p class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">Contando só temas com papel: ${escapeHtml(ROTULOS_PAPEL_TEMA_ESTATISTICAS[atual])}.</p>`;
+    return `<div class="flex items-center gap-1 flex-wrap"><span class="text-[11px] text-gray-500 dark:text-slate-400 mr-1">Papel do tema:</span>${botoes}</div>${aviso}`;
+}
+
+// Seletor "Papel do assunto" acima do gráfico de Assuntos. Conta pelo papel
+// efetivo do Assunto no texto (herdado do Tema, ou fixado na mão). A escolha
+// persiste, então o painel diz sempre qual papel está ativo.
+function seletorPapelAssunto() {
+    const atual = getPapelAssuntoEstatisticas();
+    const botoes = PAPEIS_ASSUNTO_ESTATISTICAS.map(
+        (v) =>
+            `<button type="button" onclick="definirPapelAssuntoEstatisticas('${v}')" class="px-2 py-0.5 rounded text-[11px] font-semibold ${atual === v ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'}">${ROTULOS_PAPEL_ASSUNTO_ESTATISTICAS[v]}</button>`,
+    ).join('');
+    const aviso =
+        atual === 'todos'
+            ? ''
+            : `<p class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">Contando só assuntos com papel: ${escapeHtml(ROTULOS_PAPEL_ASSUNTO_ESTATISTICAS[atual])}.</p>`;
+    return `<div class="flex items-center gap-1 flex-wrap"><span class="text-[11px] text-gray-500 dark:text-slate-400 mr-1">Papel do assunto:</span>${botoes}</div>${aviso}`;
 }
 
 function seletorModoPessoas() {
@@ -159,7 +201,9 @@ function seletorOcultosGrupos(chave, labels, totalAntesDoCorte) {
     const ocultos = getOcultosGrafico(chave);
     const campoMinimo = campoMinimoAparicoes(chave, totalAntesDoCorte, labels.length);
     if (!labels.length)
-        return campoMinimo + '<p class="text-[11px] text-gray-400 px-1">Nada para ocultar ainda.</p>';
+        return (
+            campoMinimo + '<p class="text-[11px] text-gray-400 px-1">Nada para ocultar ainda.</p>'
+        );
     const busca =
         '<input type="text" placeholder="Buscar..." oninput="filtrarItensOcultos(this)" class="w-full mb-1.5 px-1.5 py-0.5 text-[11px] rounded border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 placeholder-gray-400" />';
     const restaurar = ocultos.size
@@ -318,7 +362,8 @@ function seletorColunasCoocorrencia(temasDisponiveis, totalAntesDoCorte) {
 // colunas da matriz em vez de barras; um tema abaixo do mínimo some
 // dali também. Pedido do Victor, 27/09/2026.
 function temasAcimaDoMinimo() {
-    return filtrarPorIntervalo(agregarPorTema(['tema']), getMinimoAparicoes('temas') || '', '').labels;
+    return filtrarPorIntervalo(agregarPorTema(['tema']), getMinimoAparicoes('temas') || '', '')
+        .labels;
 }
 
 function renderCoocorrencia() {
@@ -467,6 +512,7 @@ export function renderTemasPessoas() {
         navegarParaLista(modoGrafico === 'grupo' ? 'grupo:' : 'pessoa:', label, tipoDestino()),
     );
     montarPainel('painel-modo-pessoas', seletorModoPessoas());
+    montarPainel('painel-papel-tema', seletorPapelTema());
     montarPainel(
         'painel-grupo-pessoas',
         modoGrafico === 'pessoa'
@@ -476,8 +522,16 @@ export function renderTemasPessoas() {
     montarPainel(
         'painel-ocultos-pessoas',
         modoGrafico === 'grupo'
-            ? seletorOcultosGrupos(chaveOcultosPessoas, pessoasCortados.labels, pessoasBase.labels.length)
-            : seletorOcultos(chaveOcultosPessoas, pessoasCortados.labels, pessoasBase.labels.length),
+            ? seletorOcultosGrupos(
+                  chaveOcultosPessoas,
+                  pessoasCortados.labels,
+                  pessoasBase.labels.length,
+              )
+            : seletorOcultos(
+                  chaveOcultosPessoas,
+                  pessoasCortados.labels,
+                  pessoasBase.labels.length,
+              ),
     );
     // "Gênero das pessoas retratadas" (pedido do Victor, 27/09/2026):
     // agrupa pelo valor literal de Gênero (agregarPorGeneroPessoa, já
@@ -489,9 +543,41 @@ export function renderTemasPessoas() {
     // e sem drill-down por enquanto: a navegação atual só sabe filtrar
     // por tema/pessoa/grupo isolados, não por "Autor + Gênero" combinados.
     const generosBase = agregarPorGeneroPessoa();
-    const generosCortados = filtrarPorIntervalo(generosBase, getMinimoAparicoes('generos-pessoa') || '', '');
+    const generosCortados = filtrarPorIntervalo(
+        generosBase,
+        getMinimoAparicoes('generos-pessoa') || '',
+        '',
+    );
     const generos = filtrarOcultos(generosCortados, getOcultosGrafico('generos-pessoa'));
     criarBarChart('grafico-generos-pessoa', generos.labels, generos.data, '#8b5cf6', total);
+
+    // Assuntos (Cadastros → Assunto): mesmo padrão simples do gráfico de
+    // Gênero acima (sem Top N, sem drill-down temporal) — a contagem já
+    // vem sem categorias de contagem zero (agregarPorAssunto).
+    const assuntosBase = agregarPorAssunto();
+    const assuntosCortados = filtrarPorIntervalo(
+        assuntosBase,
+        getMinimoAparicoes('assuntos') || '',
+        '',
+    );
+    const assuntos = filtrarOcultos(assuntosCortados, getOcultosGrafico('assuntos'));
+    criarBarChart('grafico-assuntos', assuntos.labels, assuntos.data, '#059669', total);
+    montarPainel(
+        'painel-ocultos-assuntos',
+        seletorOcultos('assuntos', assuntosCortados.labels, assuntosBase.labels.length),
+    );
+    // O clique na barra abre a lista com o mesmo recorte do gráfico: com um
+    // papel escolhido, usa o prefixo daquele papel (assuntoprincipal: etc.).
+    const prefixoAssunto =
+        {
+            principal: 'assuntoprincipal:',
+            secundario: 'assuntosecundario:',
+            semPapel: 'assuntoindefinido:',
+        }[getPapelAssuntoEstatisticas()] || 'assunto:';
+    bindDrillDownBarra('grafico-assuntos', (label) =>
+        navegarParaLista(prefixoAssunto, label, tipoDestino()),
+    );
+    montarPainel('painel-papel-assunto', seletorPapelAssunto());
     montarPainel(
         'painel-ocultos-generos-pessoa',
         seletorOcultos('generos-pessoa', generosCortados.labels, generosBase.labels.length),

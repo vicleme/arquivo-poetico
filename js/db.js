@@ -15,7 +15,12 @@ import {
     fecharAviso,
     gerarId,
     CORES_GRUPO_PADRAO,
+    chaveTema,
+    idiomasDoItem,
+    espelhoDeIdiomas,
 } from './utils.js';
+import { sincronizarTemas } from './temas.js';
+import { sincronizarLocais } from './locais.js';
 import {
     salvarCapa,
     deletarCapa,
@@ -566,6 +571,118 @@ function SEED_MOVIMENTOS_ESCOLAS() {
     }));
 }
 
+// ─── Seed de Temas e Assuntos ───────────────────────────────────
+// Amostra pra quem abre o app pela primeira vez ver e entender a proposta
+// (pedido do Victor, 30/09/2026): 9 Assuntos amplos agrupando ~44 Temas
+// de alcance geral (recorte da lista do próprio Victor, tirando o que é
+// pessoal ou de contexto/geração). "Machismo" está em dois Assuntos de
+// propósito, pra mostrar o N:N. Lugares ficam de fora: são da
+// Territorialidade (Sinalizações), não do Tema.
+//
+// Diferente de Movimento/Escola e Períodos Históricos, aqui NÃO há flag
+// `embutido` nem migração aditiva: os registros são comuns (renomear,
+// editar e excluir valem, e o que a pessoa exclui não volta). O seed só
+// roda em instalação nova (sem nada salvo no navegador); instalação
+// existente e backup importado nunca o recebem.
+const DADOS_SEED_ASSUNTOS_E_TEMAS = [
+    [
+        'Identidade e Autoconhecimento',
+        [
+            'Autorrepresentação',
+            'Mudança pessoal',
+            'Pertencimento',
+            'Multiplicidade identitária',
+            'Busca pela verdade/autenticidade',
+        ],
+    ],
+    [
+        'Vida emocional',
+        [
+            'Resiliência emocional',
+            'Aceitação da imperfeição',
+            'Autoacolhimento',
+            'Esgotamento/burnout',
+            'Escapismo',
+            'Ruminação mental',
+        ],
+    ],
+    [
+        'Relações e vínculos',
+        [
+            'Confiança interpessoal',
+            'Empatia social',
+            'Cuidado interpessoal',
+            'Isolamento',
+            'Paixão/desejo romântico',
+            'Impermanência amorosa',
+        ],
+    ],
+    [
+        'Tempo, memória e perda',
+        ['Luto/Finitude', 'Saudade', 'Despedida', 'Memória', 'Efemeridade', 'Cotidiano'],
+    ],
+    [
+        'Sociedade e política',
+        [
+            'Crítica político-social',
+            'Desigualdade social/Pobreza',
+            'Violência',
+            'Polarização',
+            'Sistema educacional',
+        ],
+    ],
+    [
+        'Corpo, gênero e sexualidade',
+        ['Machismo', 'Pressão estética', 'Autonomia corporal', 'Corporeidade', 'Objetificação'],
+    ],
+    ['Discriminação', ['Machismo', 'LGBTfobia', 'Culpabilização da vítima']],
+    [
+        'Modernidade, tecnologia e consumo',
+        [
+            'Modernidade líquida',
+            'Tecnologia',
+            'Descartabilidade/Consumismo',
+            'Crítica ao materialismo',
+            'Infodemia',
+        ],
+    ],
+    [
+        'Arte, cultura e escrita',
+        [
+            'Crítica Cultural',
+            'Literatura/Escrita terapêutica',
+            'Função social da arte',
+            'Contracultura',
+        ],
+    ],
+];
+
+// Expande os dados acima em `{ temas, assuntos }` com ids gerados na hora
+// (cada instalação ganha ids próprios). Um Tema em vários Assuntos vira um
+// só registro, casado por `chaveTema` (sem caixa/acento).
+export function semearTemasEAssuntos() {
+    const temas = [];
+    const idPorChave = new Map();
+    const assuntos = DADOS_SEED_ASSUNTOS_E_TEMAS.map(([nome, nomesTemas]) => ({
+        id: gerarId(),
+        nome,
+        notas: '',
+        temaIds: nomesTemas.map((nomeTema) => {
+            const chave = chaveTema(nomeTema);
+            if (!idPorChave.has(chave)) {
+                const id = gerarId();
+                idPorChave.set(chave, id);
+                temas.push({ id, nome: nomeTema, notas: '' });
+            }
+            return idPorChave.get(chave);
+        }),
+    }));
+    return { temas, assuntos };
+}
+
+// Instalação nova = nada salvo ainda no navegador (ver semearTemasEAssuntos).
+const _instalacaoNova = !JSON.parse(localStorage.getItem(DB_KEY));
+
 export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     livros: [],
     partes: [],
@@ -608,6 +725,26 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // que a pessoa mexe no cadastro (mesmo raciocínio de qualquer
     // migração idempotente aqui)
     movimentosEscolas: SEED_MOVIMENTOS_ESCOLAS(),
+    // cadastro central de Assunto ({ id, nome, notas, temaIds: [id, ...] }) —
+    // agrupa Temas do cadastro `db.temas` por ID (o nome mora só lá), e um
+    // Tema pode estar em mais de um Assunto (N:N). O Assunto de um texto
+    // não é gravado nele, é derivado dos Temas dele (assuntosDoTexto em
+    // utils.js), então o cadastro não tem vínculo a limpar na exclusão.
+    // Instalação nova recebe uma amostra (semearTemasEAssuntos, logo após
+    // este objeto); instalação existente e backup importado, nunca.
+    assuntos: [],
+    // cadastro central de Tema ({ id, nome, notas }) — ver temas.js. O
+    // texto guarda `temas: [{ temaId, papel }]` (fonte da verdade) e o
+    // espelho `sinalizacoesTema`; o cadastro é mantido em sincronia
+    // (sincronizarTemas), que também migra Assunto de nomes para ids.
+    temas: [],
+    // cadastro central de Local ({ id, nome, tipo, pertenceA: [id, ...],
+    // notas }), ver locais.js. `pertenceA` é uma lista (vários pais; o
+    // primeiro é o principal). O texto guarda `territorialidade: [id]`
+    // (lugares citados; o espelho `sinalizacoesTerritorialidade` continua)
+    // e `localEscrita: id | null`. Mantido em sincronia por
+    // `sincronizarLocais`, que migra as etiquetas antigas de Territorialidade.
+    locais: [],
     // Análise de escansão/métrica/rimas de um poema (aba Sonoridade).
     // Um poema pode ter no máximo uma escansão vinculada (não é histórico
     // de versões) — ver getEscansaoDoPoema. Bloco 1 (dados + tabela) cobre
@@ -694,6 +831,8 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     moldes: [],
 };
 
+if (_instalacaoNova) Object.assign(db, semearTemasEAssuntos());
+
 // Garante que dados importados de versões antigas tenham os campos novos
 if (!db.coletaneas) db.coletaneas = [];
 if (!db.pessoas) db.pessoas = [];
@@ -708,6 +847,9 @@ if (!db.periodosHistoricosOcultos) db.periodosHistoricosOcultos = [];
 // única vez (idempotente: só entra quando a chave nem existe).
 if (!db.movimentosEscolas) db.movimentosEscolas = SEED_MOVIMENTOS_ESCOLAS();
 if (!db.movimentosEscolasOcultos) db.movimentosEscolasOcultos = [];
+if (!db.assuntos) db.assuntos = [];
+if (!db.temas) db.temas = [];
+if (!db.locais) db.locais = [];
 if (!db.escansoes) db.escansoes = [];
 if (!db.estruturasTextuais) db.estruturasTextuais = [];
 if (!db.templatesEstrutura) db.templatesEstrutura = [];
@@ -1192,9 +1334,19 @@ migrarPessoasParaCadastro(db);
 // Tradução do item 4, mas ganha idioma junto).
 // Idempotente: só toca item sem `idioma` (não sobrescreve valor já
 // preenchido, seja o padrão ou uma escolha manual).
+//
+// Idiomas em lista (30/09/2026): `idiomas: [{ idioma, papel, dialetos }]` passou a
+// ser a fonte da verdade (vários idiomas, cada um com papel Principal ou
+// Secundário e dialetos opcionais, uma lista). `idioma` (string) continua como espelho
+// derivado, só com os nomes. A migração cria `idiomas` a partir do `idioma`
+// antigo (um idioma Principal, sem dialetos) e, onde `idiomas` já existe,
+// normaliza a lista (um `dialeto` de texto único vira `dialetos: [dialeto]`)
+// e refaz o espelho. Idempotente.
 export function migrarIdioma(itens) {
     itens.forEach((item) => {
-        if (item.idioma === undefined) item.idioma = 'pt-BR';
+        if (item.idioma === undefined && !Array.isArray(item.idiomas)) item.idioma = 'pt-BR';
+        item.idiomas = idiomasDoItem(item);
+        item.idioma = espelhoDeIdiomas(item.idiomas);
     });
 }
 migrarIdioma(db.poemas);
@@ -1590,7 +1742,14 @@ export function obterOuCriarPeriodoHistoricoPorNome(nome) {
     if (!nomeLimpo) return null;
     let periodo = db.periodosHistoricos.find((p) => p.nome === nomeLimpo);
     if (!periodo) {
-        periodo = { id: gerarId(), nome: nomeLimpo, notas: '', regiao: '', inicio: null, fim: null };
+        periodo = {
+            id: gerarId(),
+            nome: nomeLimpo,
+            notas: '',
+            regiao: '',
+            inicio: null,
+            fim: null,
+        };
         db.periodosHistoricos.push(periodo);
     }
     return periodo;
@@ -1632,9 +1791,7 @@ export function migrarPeriodosHistoricosEmbutidos(periodosHistoricos, ocultos = 
 
     DADOS_SEED_PERIODOS_HISTORICOS.forEach((modelo) => {
         if (ocultos.includes(modelo.nome)) return;
-        const jaExiste = periodosHistoricos.some(
-            (p) => p.embutido && p.nome === modelo.nome,
-        );
+        const jaExiste = periodosHistoricos.some((p) => p.embutido && p.nome === modelo.nome);
         if (jaExiste) return;
         periodosHistoricos.push({
             id: gerarId(),
@@ -1780,6 +1937,50 @@ export function migrarMovimentosEscolasEmbutidos(movimentosEscolas, ocultos = []
     });
 }
 migrarMovimentosEscolasEmbutidos(db.movimentosEscolas, db.movimentosEscolasOcultos);
+
+// Assunto: normaliza o formato (nome em texto, `notas` em texto e, se o
+// Assunto ainda vier no formato antigo, `temas` como lista de nomes sem
+// vazio nem repetição por caixa/acento) — cobre backup importado à mão,
+// edição manual do JSON e qualquer versão futura que acrescente campo.
+// O formato atual guarda ids em `temaIds`; a conversão dos nomes antigos
+// em ids precisa do cadastro de Temas e por isso acontece em
+// `sincronizarTemas` (temas.js), logo depois desta função. Idempotente;
+// nunca apaga um Assunto. Roda no load e no importarDB (ver o aviso em
+// manutencao/licoes-de-sessao.md sobre migração que fica só num dos dois
+// lugares).
+export function migrarAssuntos(assuntos) {
+    (assuntos || []).forEach((a) => {
+        a.nome = String(a.nome ?? '').trim();
+        a.notas = typeof a.notas === 'string' ? a.notas : '';
+        if (!Array.isArray(a.temas)) return;
+        const vistos = new Set();
+        a.temas = a.temas
+            .map((t) => String(t ?? '').trim())
+            .filter((t) => {
+                const chave = chaveTema(t);
+                if (!chave || vistos.has(chave)) return false;
+                vistos.add(chave);
+                return true;
+            });
+    });
+}
+migrarAssuntos(db.assuntos);
+sincronizarTemas(db);
+sincronizarLocais(db);
+
+// Acrescenta o Tema `temaId` ao Assunto `assuntoId` (usado pela aba
+// Temas). Não troca nem remove nada; devolve true só se de fato
+// acrescentou — false quando o Assunto ou o Tema não existem ou o Assunto
+// já tem esse Tema.
+export function adicionarTemaAoAssunto(dbRef, assuntoId, temaId) {
+    const assunto = (dbRef.assuntos || []).find((a) => a.id == assuntoId);
+    const tema = (dbRef.temas || []).find((t) => t.id == temaId);
+    if (!assunto || !tema) return false;
+    if (!Array.isArray(assunto.temaIds)) assunto.temaIds = [];
+    if (assunto.temaIds.some((id) => id == tema.id)) return false;
+    assunto.temaIds.push(tema.id);
+    return true;
+}
 
 // Migração defensiva do outro lado da relação N:N: Autor, Poema e Prosa
 // criados antes deste campo existir ficam com `movimentosEscolasIds`
@@ -1975,6 +2176,9 @@ export function save() {
     sortProsas(db.prosas, db.livros, db.partes, db.secoes);
     sortElementos(db.elementos, db);
 
+    sincronizarTemas(db);
+    sincronizarLocais(db);
+
     try {
         localStorage.setItem(DB_KEY, JSON.stringify(db));
     } catch (err) {
@@ -2029,6 +2233,12 @@ export async function importarDB(novoDb) {
     // como está, porque array vazio é truthy em JS.
     db.movimentosEscolas = novoDb.movimentosEscolas || SEED_MOVIMENTOS_ESCOLAS();
     db.movimentosEscolasOcultos = novoDb.movimentosEscolasOcultos || [];
+    db.assuntos = novoDb.assuntos || [];
+    migrarAssuntos(db.assuntos);
+    db.temas = novoDb.temas || [];
+    sincronizarTemas(db);
+    db.locais = novoDb.locais || [];
+    sincronizarLocais(db);
     db.escansoes = novoDb.escansoes || [];
     migrarRegistroTomSonoridade(db.escansoes);
     db.estruturasTextuais = novoDb.estruturasTextuais || [];
@@ -2210,6 +2420,9 @@ const ROTULOS_COL = {
     epocas: 'Período Biográfico',
     periodosHistoricos: 'Período Histórico',
     movimentosEscolas: 'Movimento/Escola',
+    assuntos: 'Assunto',
+    temas: 'Tema',
+    locais: 'Local',
     escansoes: 'Escansão',
     estruturasTextuais: 'Progressão Morfofuncional',
     templatesEstrutura: 'Template de Progressão',

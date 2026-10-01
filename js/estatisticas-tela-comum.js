@@ -2,6 +2,7 @@
 // estatisticas-tela-comum.js — componentes visuais compartilhados.
 // ============================================================
 
+import { abrirPorAtalho } from './faixa-origem.js';
 import { escapeHtml } from './utils.js';
 import {
     getFiltrosCompartilhados,
@@ -241,7 +242,6 @@ export function criarMultiLineChart(canvasId, labels, series) {
     });
 }
 
-
 export function renderFiltrosCompartilhados() {
     const container = document.querySelectorAll('.est-filtros-compartilhados');
     if (!container.length) return;
@@ -310,16 +310,41 @@ export function renderFiltrosCompartilhados() {
 // então `valor` não precisa de escape de aspas/onclick aqui.
 export function navegarParaLista(prefixo, valor, tipo, ano = null) {
     const ehProsa = tipo === 'prosa';
-    window.abrirAba?.(ehProsa ? 'prosas' : 'poemas');
-    if (prefixo) {
-        const consulta = prefixo + String(valor ?? '');
-        if (ehProsa) window.setFiltroProsas?.(consulta);
-        else window.setFiltroPoemas?.(consulta);
-    }
-    if (ano != null) {
-        if (ehProsa) window.setFiltroDataRapidoProsasEscrita?.(String(ano));
-        else window.setFiltroDataRapidoPoemasEscrita?.(String(ano));
-    }
+    const destino = ehProsa ? 'prosas' : 'poemas';
+    const consulta = prefixo ? prefixo + String(valor ?? '') : '';
+    const partes = [];
+    if (consulta) partes.push(consulta);
+    if (ano != null) partes.push(`ano ${ano}`);
+    abrirPorAtalho({
+        destino,
+        descricao: `Filtrando por ${partes.join(' · ') || 'Estatísticas'}`,
+        controles: [`busca-${destino}`],
+        aplicar: () => {
+            if (prefixo) {
+                if (ehProsa) window.setFiltroProsas?.(consulta);
+                else window.setFiltroPoemas?.(consulta);
+                const caixa = document.getElementById(`busca-${destino}`);
+                if (caixa) caixa.value = consulta;
+            }
+            if (ano != null) {
+                if (ehProsa) window.setFiltroDataRapidoProsasEscrita?.(String(ano));
+                else window.setFiltroDataRapidoPoemasEscrita?.(String(ano));
+            }
+        },
+        limpar: () => {
+            if (prefixo) {
+                if (ehProsa) window.setFiltroProsas?.('');
+                else window.setFiltroPoemas?.('');
+                const caixa = document.getElementById(`busca-${destino}`);
+                if (caixa) caixa.value = '';
+            }
+            // Texto vazio zera o filtro de data (parseFiltroDataRapido).
+            if (ano != null) {
+                if (ehProsa) window.setFiltroDataRapidoProsasEscrita?.('');
+                else window.setFiltroDataRapidoPoemasEscrita?.('');
+            }
+        },
+    });
 }
 
 // Corpus/Tipo compartilhados definem se o drill-down abre em Poemas ou

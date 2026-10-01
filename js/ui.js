@@ -6,6 +6,9 @@
 import { db } from './db.js';
 import {
     resetSinalizacoes,
+    resetTemasTexto,
+    resetLocaisTexto,
+    resetIdiomasTexto,
     resetPessoas,
     resetAutoria,
     resetEnvios,
@@ -25,6 +28,8 @@ import {
     renderAutoclassificacao,
     resetMovimentosEscolasDiretos,
     resetTodosOsGruposDeMovimento,
+    resetTemasAssunto,
+    atualizarDatalistTemasAssunto,
 } from './editor.js';
 import {
     extrairFasesUnicas,
@@ -87,6 +92,9 @@ export const GRUPOS_NAV = [
         id: 'cadastros',
         rotulo: 'Cadastros',
         abas: [
+            { id: 'temas', rotulo: 'Temas' },
+            { id: 'assuntos', rotulo: 'Assuntos' },
+            { id: 'locais', rotulo: 'Locais' },
             { id: 'pessoas', rotulo: 'Pessoas' },
             { id: 'grupos', rotulo: 'Grupos' },
             { id: 'epocas', rotulo: 'Período Biográfico' },
@@ -119,6 +127,7 @@ export const GRUPOS_NAV = [
             { id: 'estatisticas', rotulo: 'Visão geral' },
             { id: 'estatisticas-producao', rotulo: 'Produção' },
             { id: 'estatisticas-temas-pessoas', rotulo: 'Temas e pessoas' },
+            { id: 'estatisticas-local-idioma', rotulo: 'Local e idioma' },
             { id: 'estatisticas-linguagem', rotulo: 'Linguagem' },
         ],
     },
@@ -847,6 +856,7 @@ export async function prepararNovo(tipo) {
         epoca: 'ep-edit-id',
         'periodo-historico': 'ph-edit-id',
         'movimento-escola': 'me-edit-id',
+        assunto: 'as-edit-id',
     };
 
     const idField = document.getElementById(idFields[tipo]);
@@ -858,6 +868,9 @@ export async function prepararNovo(tipo) {
 
     if (tipo === 'poema') {
         resetSinalizacoes('poemas');
+        resetTemasTexto('poemas');
+        resetLocaisTexto('poemas');
+        resetIdiomasTexto('poemas');
         resetPessoas('poemas');
         resetAutoria('poemas');
         resetEnvios('poemas');
@@ -898,6 +911,9 @@ export async function prepararNovo(tipo) {
         // Prosa (gênero) precisa de import dinâmico (evita ciclo de
         // importação, editor → ui não existe).
         resetSinalizacoes('prosas');
+        resetTemasTexto('prosas');
+        resetLocaisTexto('prosas');
+        resetIdiomasTexto('prosas');
         resetPessoas('prosas');
         resetAutoria('prosas');
         resetEnvios('prosas');
@@ -979,6 +995,14 @@ export async function prepararNovo(tipo) {
         resetTodosOsGruposDeMovimento();
     }
 
+    if (tipo === 'assunto') {
+        // Os chips de Temas vivem em estado próprio (closure de
+        // criarGrupoDeTagsArray), fora do form.reset() nativo — mesmo
+        // motivo do bloco 'movimento-escola' acima.
+        resetTemasAssunto();
+        atualizarDatalistTemasAssunto();
+    }
+
     if (tipo === 'grupo') {
         // Import dinâmico pra evitar ciclo (forms → ui já existe, ver
         // resetPessoas('prosas') acima pelo mesmo motivo). Sem cor marcada
@@ -1006,6 +1030,8 @@ export async function prepararNovo(tipo) {
 
     const title = document.getElementById(`modal-${tipo}-titulo`);
     if (title) title.innerText = `Novo(a) ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
+    if (title && tipo === 'assunto') title.innerText = 'Cadastrar Assunto';
+    if (title && tipo === 'tema') title.innerText = 'Cadastrar Tema';
 
     toggleModal(`modal-${tipo}`);
 }

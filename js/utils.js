@@ -2502,6 +2502,19 @@ const CAMPOS_ATRIBUTO = {
     tradicao: 'sinalizacoesTradicao',
     estilo: 'sinalizacoesEstilo',
     tema: 'sinalizacoesTema',
+    // Tema por papel (item.temas[].papel — ver temasComPapel): `tema:` segue
+    // achando o Tema em qualquer papel; estes três restringem a um papel.
+    temaprincipal: '_buscaTemaPrincipal',
+    temasecundario: '_buscaTemaSecundario',
+    temasempapel: '_buscaTemaSemPapel',
+    // Territorialidade e Local onde foi escrito são hierárquicos (ver
+    // buscaTerritorialidadeDoTexto em locais.js): `territorialidade:Brasil`
+    // acha também o que está DENTRO do Brasil, e "São Paulo (Cidade)"
+    // distingue homônimos. `...direta:` restringe ao Local exato.
+    territorialidade: '_buscaTerritorialidade',
+    territorialidadedireta: '_buscaTerritorialidadeDireta',
+    localescrita: '_buscaLocalEscrita',
+    localescritadireta: '_buscaLocalEscritaDireta',
     relacao: 'sinalizacoesRelacao',
     tom: 'sinalizacoesTom',
     // Diferente de sensivel: (abaixo), que busca no parágrafo descritivo
@@ -2524,10 +2537,27 @@ const CAMPOS_ATRIBUTO = {
     // campo simplesmente não existe, então o prefixo não acha nada lá.
     genero: 'genero',
     idioma: 'idioma',
+    // Idioma por papel (item.idiomas[].papel — ver idiomasDoItem): `idioma:`
+    // segue achando em qualquer papel pelo espelho; estes restringem ao
+    // papel. `dialeto:` busca o dialeto (com o idioma a que ele pertence).
+    idiomaprincipal: '_buscaIdiomaPrincipal',
+    idiomasecundario: '_buscaIdiomaSecundario',
+    dialeto: '_buscaDialeto',
     epoca: '_buscaEpoca',
     periodohistorico: '_buscaPeriodoHistorico',
     movimento: '_buscaMovimentosEscolas',
     escola: '_buscaMovimentosEscolas',
+    // Assunto derivado dos Temas do texto (ver assuntosDoTexto) — não é
+    // campo gravado, mas o mesmo padrão dos outros _busca* decorados.
+    assunto: '_buscaAssuntos',
+    // Assunto por papel efetivo no texto (herdado do Tema, ou fixado na mão —
+    // ver assuntosComPapel): `assunto:` segue achando em qualquer papel;
+    // estes restringem a um papel. `assuntosempapel` é aceito como sinônimo
+    // de `assuntoindefinido`, pra combinar com `temasempapel:`.
+    assuntoprincipal: '_buscaAssuntoPrincipal',
+    assuntosecundario: '_buscaAssuntoSecundario',
+    assuntoindefinido: '_buscaAssuntoIndefinido',
+    assuntosempapel: '_buscaAssuntoIndefinido',
     autor: '_buscaAutoria',
     envio: '_buscaEnvios',
     nota: 'notas',
@@ -2584,6 +2614,13 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     sinalizacoesTradicao: 'tradicao',
     sinalizacoesEstilo: 'estilo',
     sinalizacoesTema: 'tema',
+    _buscaTemaPrincipal: 'temaprincipal',
+    _buscaTemaSecundario: 'temasecundario',
+    _buscaTemaSemPapel: 'temasempapel',
+    _buscaTerritorialidade: 'territorialidade',
+    _buscaTerritorialidadeDireta: 'territorialidadedireta',
+    _buscaLocalEscrita: 'localescrita',
+    _buscaLocalEscritaDireta: 'localescritadireta',
     sinalizacoesRelacao: 'relacao',
     sinalizacoesTom: 'tom',
     sinalizacoesSensibilidade: 'sensibilidade',
@@ -2594,9 +2631,16 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaGrupos: 'grupo',
     genero: 'genero',
     idioma: 'idioma',
+    _buscaIdiomaPrincipal: 'idiomaprincipal',
+    _buscaIdiomaSecundario: 'idiomasecundario',
+    _buscaDialeto: 'dialeto',
     _buscaEpoca: 'epoca',
     _buscaPeriodoHistorico: 'periodohistorico',
     _buscaMovimentosEscolas: 'movimento',
+    _buscaAssuntos: 'assunto',
+    _buscaAssuntoPrincipal: 'assuntoprincipal',
+    _buscaAssuntoSecundario: 'assuntosecundario',
+    _buscaAssuntoIndefinido: 'assuntoindefinido',
     _buscaAutoria: 'autor',
     _buscaEnvios: 'envio',
     notas: 'nota',
@@ -2774,6 +2818,7 @@ export function filtrarTextos(lista, query, opts = opcoesBuscaPadrao()) {
                 item._buscaPapeis,
                 item._buscaEpoca,
                 item._buscaPeriodoHistorico,
+                item._buscaAssuntos,
                 item.genero,
                 item.notas,
                 item._livros,
@@ -2899,6 +2944,7 @@ export const SINALIZACOES_CATEGORIAS = {
     tradicao: 'sinalizacoesTradicao',
     estilo: 'sinalizacoesEstilo',
     tema: 'sinalizacoesTema',
+    territorialidade: 'sinalizacoesTerritorialidade',
     relacao: 'sinalizacoesRelacao',
     sensibilidade: 'sinalizacoesSensibilidade',
     tom: 'sinalizacoesTom',
@@ -2935,6 +2981,7 @@ const ROTULOS_SINALIZACOES = {
     tradicao: 'Tradição',
     estilo: 'Estilo',
     tema: 'Tema',
+    territorialidade: 'Territorialidade',
     relacao: 'Relação',
     sensibilidade: 'Sensibilidade',
     tom: 'Tom',
@@ -2946,13 +2993,317 @@ const ROTULOS_SINALIZACOES = {
 // SINALIZACOES_CATEGORIAS — pra exibição/exportação agrupada por categoria
 // (visualizar.js, exportar-md.js), em vez da string única e achatada de
 // sinalizacoesCombinadas(). Categorias vazias não entram na lista.
-export function sinalizacoesAgrupadas(item) {
+export function sinalizacoesAgrupadas(item, temasCadastro, textosProntos = {}) {
+    // Com o cadastro de Temas à mão, o Tema sai com o papel entre parênteses
+    // ("Amor (secundário), Brasil"); sem ele (ou em texto antigo, sem
+    // `temas`), sai como sempre, a lista de nomes do espelho.
+    const temaComPapel = temasCadastro ? textoTemasComPapel(item, temasCadastro) : '';
     return Object.entries(SINALIZACOES_CATEGORIAS)
         .map(([categoria, campo]) => ({
             rotulo: ROTULOS_SINALIZACOES[categoria],
-            valor: item[campo],
+            valor:
+                categoria === 'tema' && temaComPapel
+                    ? temaComPapel
+                    : textosProntos[categoria] || item[campo],
         }))
         .filter((bloco) => bloco.valor);
+}
+
+// ─── Assuntos (agrupam Temas) ──────────────────────────────────────────
+// Cadastro `db.assuntos` ({ id, nome, notas, temas: [nome, ...] }): um
+// Assunto agrupa Temas, e um Tema pode pertencer a mais de um Assunto
+// (relação N:N, decisão do Victor). O Tema NÃO é entidade com id — é a
+// etiqueta de texto livre de `sinalizacoesTema` — então a ligação é por
+// NOME, comparado sem diferenciar caixa nem acento (mesma normalização
+// da busca). O Assunto de um texto nunca é gravado nele: é derivado dos
+// Temas do texto (assuntosDoTexto), no mesmo espírito do domínio
+// público, que é derivado do óbito do Autor. Assim, reorganizar um
+// Assunto reflete em todos os textos sem migração.
+
+// Chave de comparação de um Tema/nome de Assunto.
+export function chaveTema(nome) {
+    return normalizarBusca(String(nome ?? '').trim());
+}
+
+// Temas de um texto como lista de nomes, na ordem digitada. Aceita a
+// forma real (string "a, b, c") e array, como extrairSinalizacoesUnicas.
+export function temasDoTexto(item) {
+    const valor = item?.sinalizacoesTema;
+    if (!valor) return [];
+    const lista = Array.isArray(valor) ? valor : String(valor).split(',');
+    const vistos = new Set();
+    const saida = [];
+    lista.forEach((t) => {
+        const nome = String(t).trim();
+        const chave = chaveTema(nome);
+        if (nome && !vistos.has(chave)) {
+            vistos.add(chave);
+            saida.push(nome);
+        }
+    });
+    return saida;
+}
+
+// ─── Tema do texto por id, com papel (fase 2) ──────────────────────────
+// O texto passa a guardar `temas: [{ temaId, papel }]` (fonte da verdade;
+// ver temas.js). `papel` é 'principal', 'secundario' ou '' (sem papel
+// definido, o que a migração dos textos antigos grava). `sinalizacoesTema`
+// segue existindo como ESPELHO derivado (nomes separados por vírgula,
+// principal → secundário → sem papel), pra busca, badges, exportações e
+// estatísticas continuarem lendo o mesmo campo de sempre.
+export const PAPEIS_TEMA = ['principal', 'secundario'];
+export const ROTULOS_PAPEL_TEMA = {
+    '': 'Indefinido',
+    principal: 'Principal',
+    secundario: 'Secundário',
+};
+export function normalizarPapelTema(papel) {
+    return PAPEIS_TEMA.includes(papel) ? papel : '';
+}
+const ORDEM_PAPEL_TEMA = { principal: 0, secundario: 1, '': 2 };
+// entradas: [{ nome, papel }] → "nome, nome, ..." (estável dentro do papel)
+export function espelhoDeTemas(entradas) {
+    return (entradas || [])
+        .map((e, i) => ({ e, i }))
+        .sort(
+            (a, b) =>
+                ORDEM_PAPEL_TEMA[normalizarPapelTema(a.e.papel)] -
+                    ORDEM_PAPEL_TEMA[normalizarPapelTema(b.e.papel)] || a.i - b.i,
+        )
+        .map((x) => x.e.nome)
+        .join(', ');
+}
+
+// Temas do texto como [{ temaId, nome, papel }] na ordem do espelho
+// (principal → secundário → sem papel). Precisa do cadastro (`db.temas`)
+// pra resolver o nome do id. Texto sem `temas` (dado antigo, ainda não
+// reconciliado) devolve os nomes do espelho, todos "sem papel definido".
+export function temasComPapel(item, temasCadastro) {
+    if (!Array.isArray(item?.temas)) {
+        return temasDoTexto(item).map((nome) => ({ temaId: null, nome, papel: '' }));
+    }
+    const porId = new Map((temasCadastro || []).map((t) => [String(t.id), t.nome]));
+    return item.temas
+        .map((e, i) => ({
+            i,
+            temaId: e?.temaId,
+            nome: porId.get(String(e?.temaId)) || '',
+            papel: normalizarPapelTema(e?.papel),
+        }))
+        .filter((e) => e.nome)
+        .sort((a, b) => ORDEM_PAPEL_TEMA[a.papel] - ORDEM_PAPEL_TEMA[b.papel] || a.i - b.i)
+        .map(({ temaId, nome, papel }) => ({ temaId, nome, papel }));
+}
+
+// Rótulo curto do papel, em minúsculas, pra ir entre parênteses.
+export const ROTULOS_PAPEL_TEMA_CURTO = { principal: 'principal', secundario: 'secundário' };
+
+// "Amor (secundário), Machismo (principal), Brasil": o papel só aparece
+// quando definido. Vazio se o texto não tem Tema.
+export function textoTemasComPapel(item, temasCadastro) {
+    return temasComPapel(item, temasCadastro)
+        .map((e) => (e.papel ? `${e.nome} (${ROTULOS_PAPEL_TEMA_CURTO[e.papel]})` : e.nome))
+        .join(', ');
+}
+
+// Nomes dos Temas do texto num papel ('principal' | 'secundario' | '').
+export function nomesTemasPorPapel(item, temasCadastro, papel) {
+    const alvo = normalizarPapelTema(papel);
+    return temasComPapel(item, temasCadastro)
+        .filter((e) => e.papel === alvo)
+        .map((e) => e.nome);
+}
+
+// ─── Assunto por id (fase 3) ────────────────────────────────────────────
+// `assunto.temaIds` guarda ids do cadastro de Temas (fonte da verdade).
+// Renomear um Tema não mexe em nenhum Assunto: o nome mora só em
+// `db.temas`. Formato antigo (`assunto.temas`, lista de nomes) só existe
+// até a migração (`sincronizarTemas`), e continua aceito aqui pra dado
+// ainda não migrado.
+// Nomes dos Temas de um Assunto, resolvidos pelo cadastro.
+export function nomesTemasDoAssunto(assunto, temasCadastro) {
+    if (Array.isArray(assunto?.temaIds)) {
+        const porId = new Map((temasCadastro || []).map((t) => [String(t.id), t.nome]));
+        return assunto.temaIds.map((id) => porId.get(String(id))).filter(Boolean);
+    }
+    return Array.isArray(assunto?.temas) ? assunto.temas : [];
+}
+
+// Assuntos (objetos do cadastro) a que um texto pertence: todo Assunto
+// que lista ao menos um dos Temas do texto. Ordem = ordem do cadastro,
+// sem repetir Assunto, mesmo que vários temas do texto caiam nele.
+export function assuntosDoTexto(item, assuntos, temasCadastro) {
+    const chaves = new Set(temasDoTexto(item).map(chaveTema));
+    if (chaves.size === 0) return [];
+    return (assuntos || []).filter((a) =>
+        nomesTemasDoAssunto(a, temasCadastro).some((t) => chaves.has(chaveTema(t))),
+    );
+}
+
+// ─── Papel do Assunto no texto ─────────────────────────────────────────
+// Regra do Victor: se um texto elenca um Tema como principal ou secundário,
+// os Assuntos desse Tema são puxados com o MESMO papel por padrão, mas a
+// pessoa pode fixar outro papel pra um Assunto naquele texto (Tema principal
+// com Assunto secundário, ou o contrário). O texto guarda só as
+// sobrescritas, em `item.assuntosPapel: [{ assuntoId, papel }]`; o papel
+// automático é sempre recalculado dos Temas. `papel` '' ("sem papel
+// definido") fixado de propósito vale como sobrescrita, por isso a
+// presença da entrada (e não o valor) é que marca o Assunto como fixado.
+
+// Papel mais forte de uma lista: principal > secundário > sem papel.
+export function papelMaisForte(papeis) {
+    let melhor = '';
+    for (const p of papeis || []) {
+        const papel = normalizarPapelTema(p);
+        if (ORDEM_PAPEL_TEMA[papel] < ORDEM_PAPEL_TEMA[melhor || '']) melhor = papel;
+    }
+    return melhor;
+}
+
+// Assuntos do texto como [{ id, nome, papel, papelAuto, fixado }], em ordem
+// principal → secundário → sem papel (estável: dentro do papel, ordem do
+// cadastro). `papelAuto` vem dos Temas; `papel` é o efetivo (sobrescrita
+// fixada ou o automático). Sobrescrita de Assunto que não se aplica ao
+// texto (excluído, ou sem nenhum Tema do texto) é ignorada.
+export function assuntosComPapel(item, assuntos, temasCadastro) {
+    return assuntosComPapelDeEntradas(
+        temasComPapel(item, temasCadastro),
+        item?.assuntosPapel,
+        assuntos,
+        temasCadastro,
+    );
+}
+
+// Mesmo cálculo, a partir de entradas [{ nome, papel }] (o editor trabalha
+// por nome: o Tema recém-digitado ainda não está no cadastro) e das
+// sobrescritas [{ assuntoId, papel }].
+export function assuntosComPapelDeEntradas(entradas, sobrescritas, assuntos, temasCadastro) {
+    if (!entradas || entradas.length === 0) return [];
+    const papelPorChave = new Map();
+    entradas.forEach((t) => {
+        const chave = chaveTema(t.nome);
+        const anterior = papelPorChave.get(chave);
+        papelPorChave.set(
+            chave,
+            anterior === undefined
+                ? normalizarPapelTema(t.papel)
+                : papelMaisForte([anterior, t.papel]),
+        );
+    });
+    const fixadas = new Map(
+        (Array.isArray(sobrescritas) ? sobrescritas : []).map((e) => [
+            String(e?.assuntoId),
+            normalizarPapelTema(e?.papel),
+        ]),
+    );
+    const saida = [];
+    (assuntos || []).forEach((a, i) => {
+        const papeis = nomesTemasDoAssunto(a, temasCadastro)
+            .map((nome) => papelPorChave.get(chaveTema(nome)))
+            .filter((p) => p !== undefined);
+        if (papeis.length === 0) return;
+        const papelAuto = papelMaisForte(papeis);
+        const fixado = fixadas.has(String(a.id));
+        saida.push({
+            i,
+            id: a.id,
+            nome: a.nome,
+            papelAuto,
+            fixado,
+            papel: fixado ? fixadas.get(String(a.id)) : papelAuto,
+        });
+    });
+    return saida
+        .sort((a, b) => ORDEM_PAPEL_TEMA[a.papel] - ORDEM_PAPEL_TEMA[b.papel] || a.i - b.i)
+        .map(({ id, nome, papel, papelAuto, fixado }) => ({ id, nome, papel, papelAuto, fixado }));
+}
+
+// "Amor (secundário), Brasil": papel efetivo entre parênteses só quando definido.
+export function textoAssuntosComPapel(item, assuntos, temasCadastro) {
+    return assuntosComPapel(item, assuntos, temasCadastro)
+        .map((e) => (e.papel ? `${e.nome} (${ROTULOS_PAPEL_TEMA_CURTO[e.papel]})` : e.nome))
+        .join(', ');
+}
+
+// Nomes dos Assuntos do texto num papel efetivo ('principal' | 'secundario' | '').
+export function nomesAssuntosPorPapel(item, assuntos, temasCadastro, papel) {
+    const alvo = normalizarPapelTema(papel);
+    return assuntosComPapel(item, assuntos, temasCadastro)
+        .filter((e) => e.papel === alvo)
+        .map((e) => e.nome);
+}
+
+// Poda as sobrescritas a gravar: só ficam as de Assuntos que existem e que
+// ainda se aplicam aos Temas do texto (entradas: [{ nome, papel }]). O id
+// sai como o do cadastro; papel inválido (ex.: 'auto') é descartado.
+export function podarSobrescritasAssunto(entradas, sobrescritas, assuntos, temasCadastro) {
+    const aplicaveis = new Map(
+        assuntosComPapelDeEntradas(entradas, [], assuntos, temasCadastro).map((a) => [
+            String(a.id),
+            a.id,
+        ]),
+    );
+    const vistos = new Set();
+    const saida = [];
+    (sobrescritas || []).forEach((e) => {
+        const chave = String(e?.assuntoId);
+        const papel = e?.papel;
+        if (!aplicaveis.has(chave) || vistos.has(chave)) return;
+        if (papel !== '' && !PAPEIS_TEMA.includes(papel)) return;
+        vistos.add(chave);
+        saida.push({ assuntoId: aplicaveis.get(chave), papel });
+    });
+    return saida;
+}
+
+// Uma linha por Tema em uso nos textos: { nome, contagem, assuntoIds }.
+// `nome` é a grafia mais frequente (empate: a primeira vista) entre as
+// variações que só diferem em caixa/acento; `contagem` = nº de textos
+// com o Tema; `assuntoIds` = Assuntos que o listam. Ordem: mais usados
+// primeiro, depois alfabética. Base do painel "Temas sem Assunto".
+export function resumoTemas(textos, assuntos, temasCadastro) {
+    const porChave = new Map();
+    (textos || []).forEach((t) => {
+        temasDoTexto(t).forEach((nome) => {
+            const chave = chaveTema(nome);
+            let reg = porChave.get(chave);
+            if (!reg) {
+                reg = { grafias: new Map(), contagem: 0 };
+                porChave.set(chave, reg);
+            }
+            reg.contagem += 1;
+            reg.grafias.set(nome, (reg.grafias.get(nome) || 0) + 1);
+        });
+    });
+    return [...porChave.entries()]
+        .map(([chave, reg]) => {
+            const nome = [...reg.grafias.entries()].sort((a, b) => b[1] - a[1])[0][0];
+            const assuntoIds = (assuntos || [])
+                .filter((a) =>
+                    nomesTemasDoAssunto(a, temasCadastro).some((tema) => chaveTema(tema) === chave),
+                )
+                .map((a) => a.id);
+            return { nome, contagem: reg.contagem, assuntoIds };
+        })
+        .sort((a, b) => b.contagem - a.contagem || a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+// Temas em uso que nenhum Assunto lista ainda.
+export function temasSemAssunto(textos, assuntos, temasCadastro) {
+    return resumoTemas(textos, assuntos, temasCadastro).filter((t) => t.assuntoIds.length === 0);
+}
+
+// Nº de textos (Poemas + Prosas passados em `textos`) em cada Assunto:
+// um texto conta uma vez por Assunto a que pertence (por isso a soma
+// pode passar do total de textos, já que o Tema pode estar em vários).
+export function contarTextosPorAssunto(textos, assuntos, temasCadastro) {
+    const contagem = new Map((assuntos || []).map((a) => [a.id, 0]));
+    (textos || []).forEach((t) => {
+        assuntosDoTexto(t, assuntos, temasCadastro).forEach((a) => {
+            contagem.set(a.id, (contagem.get(a.id) || 0) + 1);
+        });
+    });
+    return contagem;
 }
 
 // ─── Campos contáveis (item 3 do plano de melhorias de busca) ──────────
@@ -3158,9 +3509,144 @@ export const IDIOMAS_SUGERIDOS = ['pt-BR', 'en', 'es', 'fr', 'it', 'de'];
 export function extrairIdiomasUnicos(itens) {
     const idiomas = new Set(IDIOMAS_SUGERIDOS);
     itens.forEach((item) => {
-        if (item.idioma) idiomas.add(item.idioma);
+        idiomasDoItem(item).forEach((e) => idiomas.add(e.idioma));
     });
     return Array.from(idiomas).sort();
+}
+
+// ─── Idiomas do texto, com papel e dialeto ─────────────────────────────
+// O texto guarda `idiomas: [{ idioma, papel, dialetos }]` (fonte da verdade).
+// `papel` é 'principal' ou 'secundario' e vale POR IDIOMA, não pela posição
+// na lista: um texto "meio a meio" tem dois Principais. Havendo algum idioma,
+// há sempre ao menos um Principal. `dialetos` é uma lista de textos livres,
+// opcional, e pertence àquele idioma (por isso não é um campo solto do
+// texto): um diálogo entre pessoas de regiões diferentes tem mais de um.
+// Dado antigo, com `dialeto` (um texto só), vira uma lista de um item.
+// `idioma` (string) segue existindo como ESPELHO derivado, só com os nomes
+// (Principais primeiro, separados por vírgula), para a busca, a coluna e as
+// exportações lerem o campo de sempre. Um texto sem nenhum idioma é permitido.
+export const PAPEIS_IDIOMA = ['principal', 'secundario'];
+export const ROTULOS_PAPEL_IDIOMA = { principal: 'Principal', secundario: 'Secundário' };
+export function normalizarPapelIdioma(papel) {
+    return PAPEIS_IDIOMA.includes(papel) ? papel : 'secundario';
+}
+
+// Limpa uma lista de dialetos: tira vazios e junta repetidos (sem diferenciar
+// caixa nem acento), mantendo a primeira grafia e a ordem. Aceita a lista
+// nova (`dialetos`) e o texto antigo (`dialeto`).
+export function normalizarDialetos(...fontes) {
+    const vistos = new Set();
+    const saida = [];
+    fontes.forEach((fonte) => {
+        (Array.isArray(fonte) ? fonte : [fonte]).forEach((d) => {
+            const dialeto = String(d ?? '').trim();
+            const chave = chaveTema(dialeto);
+            if (!chave || vistos.has(chave)) return;
+            vistos.add(chave);
+            saida.push(dialeto);
+        });
+    });
+    return saida;
+}
+
+// Limpa uma lista de idiomas: tira vazios, junta repetidos (mesmo idioma sem
+// diferenciar caixa nem acento; vale o Principal e os dialetos de todas as
+// repetições, somados) e garante um Principal quando a lista não está vazia.
+// `preferir` (índice já na lista limpa) diz quem é promovido se faltar
+// Principal; sem ele, é o primeiro da lista.
+export function normalizarIdiomas(lista, preferir = 0) {
+    const porChave = new Map();
+    (Array.isArray(lista) ? lista : []).forEach((e) => {
+        const idioma = String(e?.idioma ?? '').trim();
+        if (!idioma) return;
+        const chave = chaveTema(idioma);
+        const papel = normalizarPapelIdioma(e?.papel);
+        const dialetos = normalizarDialetos(e?.dialetos, e?.dialeto);
+        const atual = porChave.get(chave);
+        if (!atual) {
+            porChave.set(chave, { idioma, papel, dialetos });
+            return;
+        }
+        if (papel === 'principal') atual.papel = 'principal';
+        atual.dialetos = normalizarDialetos(atual.dialetos, dialetos);
+    });
+    const saida = Array.from(porChave.values());
+    if (saida.length && !saida.some((e) => e.papel === 'principal')) {
+        saida[preferir >= 0 && preferir < saida.length ? preferir : 0].papel = 'principal';
+    }
+    return saida;
+}
+
+// Idiomas de um texto como lista normalizada. Lê `idiomas`; sem ele (dado de
+// antes desta mudança, backup antigo, pacote de texto), o `idioma` antigo vira
+// um idioma Principal só, sem dialetos.
+export function idiomasDoItem(item) {
+    if (Array.isArray(item?.idiomas)) return normalizarIdiomas(item.idiomas);
+    const antigo = String(item?.idioma ?? '').trim();
+    return antigo ? [{ idioma: antigo, papel: 'principal', dialetos: [] }] : [];
+}
+
+// Textos de busca do idioma: nomes por papel (Principal/Secundário) e
+// dialetos, cada um com o idioma a que pertence ("rioplatense (Espanhol)").
+export function nomesIdiomasPorPapel(item, papel) {
+    return idiomasDoItem(item)
+        .filter((e) => e.papel === papel)
+        .map((e) => e.idioma);
+}
+
+export function dialetosDoItem(item) {
+    return idiomasDoItem(item).flatMap((e) => e.dialetos.map((d) => `${d} (${e.idioma})`));
+}
+
+// Idiomas do texto para ler (md, Visualização, coluna): Principais primeiro,
+// cada um com papel e dialetos entre parênteses ("pt-BR (principal; dialetos:
+// paulistano, gaúcho), Inglês (secundário)"). Um idioma só, Principal e sem
+// dialeto, sai como sempre, só o nome.
+export function textoIdiomasComPapel(item) {
+    const lista = idiomasDoItem(item);
+    if (!lista.length) return '';
+    if (lista.length === 1 && lista[0].papel === 'principal' && !lista[0].dialetos.length) {
+        return lista[0].idioma;
+    }
+    const ordenados = [
+        ...lista.filter((e) => e.papel === 'principal'),
+        ...lista.filter((e) => e.papel !== 'principal'),
+    ];
+    return ordenados
+        .map((e) => {
+            const partes = [ROTULOS_PAPEL_IDIOMA[e.papel].toLowerCase()];
+            if (e.dialetos.length) {
+                partes.push(
+                    `${e.dialetos.length > 1 ? 'dialetos' : 'dialeto'}: ${e.dialetos.join(', ')}`,
+                );
+            }
+            return `${e.idioma} (${partes.join('; ')})`;
+        })
+        .join(', ');
+}
+
+// Espelho `idioma`: nomes, Principais primeiro (estável dentro do papel).
+export function espelhoDeIdiomas(lista) {
+    const limpa = normalizarIdiomas(lista);
+    return [
+        ...limpa.filter((e) => e.papel === 'principal'),
+        ...limpa.filter((e) => e.papel !== 'principal'),
+    ]
+        .map((e) => e.idioma)
+        .join(', ');
+}
+
+// Dialetos já usados para um idioma no acervo (sem diferenciar caixa nem
+// acento no idioma), para sugerir ao lado do chip. Sem semente fixa.
+export function extrairDialetosUnicos(itens, idioma) {
+    const chave = chaveTema(idioma);
+    const dialetos = new Set();
+    (itens || []).forEach((item) => {
+        idiomasDoItem(item).forEach((e) => {
+            if (chaveTema(e.idioma) === chave) e.dialetos.forEach((d) => dialetos.add(d));
+        });
+    });
+    return Array.from(dialetos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
 // ─── Fonte do texto ────────────────────────────────────────────

@@ -9,7 +9,7 @@
 //     autores...) vai numa célula só, valores separados por " | ";
 //     lista de objetos (envios, elos...) vira uma entrada de texto
 //     por objeto, também separadas por " | ";
-//   - nomes resolvidos, nunca ids (autor, livro, pessoa, época): o id
+//   - nomes resolvidos, nunca ids (autor, livro, pessoa, período biográfico): o id
 //     só existe dentro do acervo de origem. Só a coluna `id` do próprio
 //     registro fica, como chave;
 //   - o corpo do texto sai como TEXTO PURO: marcação de formatação
@@ -40,7 +40,21 @@ import {
     tokenizar,
     nomePeriodoHistorico,
     nomesMovimentosEscolas,
+    assuntosDoTexto,
+    nomesAssuntosPorPapel,
+    nomesTemasPorPapel,
+    nomesIdiomasPorPapel,
+    dialetosDoItem,
 } from './utils.js';
+import { territorialidadeDoTexto, caminhoCompletoLocal, caminhoDoLocal } from './locais.js';
+
+// Local onde o texto foi escrito, para as colunas do CSV ('' sem Local ou se
+// o Local não existe mais).
+const localEscritaNome = (banco, item) => caminhoDoLocal(banco, item.localEscrita)[0]?.nome || '';
+const localEscritaCaminho = (banco, item) =>
+    caminhoDoLocal(banco, item.localEscrita).length
+        ? caminhoCompletoLocal(banco, item.localEscrita)
+        : '';
 
 export const SEPARADOR_LISTA = ' | ';
 const BOM = '\uFEFF';
@@ -234,6 +248,22 @@ export function colunasTexto(tipo) {
         coluna('n_palavras', [], (r, ctx) => ctx.texto.palavras),
         coluna('status', ['status'], (r) => r.status),
         coluna('idioma', ['idioma'], (r) => r.idioma),
+        // Idioma por papel e dialetos (idiomas do texto, utils.js): `idioma`
+        // acima segue com o espelho (todos os nomes, Principais primeiro).
+        // Cada dialeto sai com o idioma a que pertence ("paulistano (pt-BR)").
+        coluna('idioma_principal', ['idiomas'], (r) =>
+            juntar(nomesIdiomasPorPapel(r, 'principal')),
+        ),
+        coluna('idioma_secundario', ['idiomas'], (r) =>
+            juntar(nomesIdiomasPorPapel(r, 'secundario')),
+        ),
+        coluna('dialetos', ['idiomas'], (r) => juntar(dialetosDoItem(r))),
+        // Local onde foi escrito (um só), com o caminho completo do mais alto
+        // até ele ("Brasil › São Paulo › Lapa").
+        coluna('local_escrita', ['localEscrita'], (r, ctx) => localEscritaNome(ctx.banco, r)),
+        coluna('local_escrita_caminho', ['localEscrita'], (r, ctx) =>
+            localEscritaCaminho(ctx.banco, r),
+        ),
         ...(ehPoema
             ? []
             : [
@@ -312,12 +342,12 @@ export function colunasTexto(tipo) {
             return juntar((r.gruposDiretosResolvidos || []).map(rotulo));
         }),
 
-        // Época retratada
-        coluna('epoca', ['epocaRetratada'], (r) => r.epocaRetratada?.nomeEpoca || ''),
-        coluna('epoca_recorte', [], (r) => r.epocaRetratada?.recorte || ''),
-        coluna('epoca_nao_se_aplica', [], (r) => vazioSeNulo(r.epocaRetratada?.na)),
-        ...colunasData('epoca_inicio', [], (r) => r.epocaRetratada?.inicio),
-        ...colunasData('epoca_fim', [], (r) => r.epocaRetratada?.fim),
+        // Período Biográfico Retratado (campo interno: epocaRetratada)
+        coluna('periodo_biografico', ['epocaRetratada'], (r) => r.epocaRetratada?.nomeEpoca || ''),
+        coluna('periodo_biografico_recorte', [], (r) => r.epocaRetratada?.recorte || ''),
+        coluna('periodo_biografico_nao_se_aplica', [], (r) => vazioSeNulo(r.epocaRetratada?.na)),
+        ...colunasData('periodo_biografico_inicio', [], (r) => r.epocaRetratada?.inicio),
+        ...colunasData('periodo_biografico_fim', [], (r) => r.epocaRetratada?.fim),
 
         // Período Histórico retratado (sem recorte de data, campo solto)
         coluna('periodo_historico', ['periodoHistoricoId'], (r, ctx) =>
@@ -329,9 +359,44 @@ export function colunasTexto(tipo) {
             juntar(nomesMovimentosEscolas(r.movimentosEscolasIds, ctx.banco.movimentosEscolas)),
         ),
 
+        // Assunto: derivado dos Temas do texto (assuntosDoTexto, utils.js),
+        // não um campo gravado — sem entrada em `campos` (nada pra marcar
+        // como preenchido: sempre segue os Temas).
+        coluna('assuntos', [], (r, ctx) =>
+            juntar(assuntosDoTexto(r, ctx.banco.assuntos, ctx.banco.temas).map((a) => a.nome)),
+        ),
+        // Papel do Assunto no texto (herdado dos Temas, ou fixado pela pessoa
+        // em `assuntosPapel`): `assuntos` acima lista todos; estas duas
+        // separam os que têm papel efetivo definido.
+        coluna('assunto_principal', [], (r, ctx) =>
+            juntar(nomesAssuntosPorPapel(r, ctx.banco.assuntos, ctx.banco.temas, 'principal')),
+        ),
+        coluna('assunto_secundario', [], (r, ctx) =>
+            juntar(nomesAssuntosPorPapel(r, ctx.banco.assuntos, ctx.banco.temas, 'secundario')),
+        ),
+
         // Sinalizações: uma coluna por categoria
         ...Object.entries(SINALIZACOES_CATEGORIAS).map(([chave, campo]) =>
             coluna(nomeSinal(chave), [campo], (r) => virgulasParaLista(r[campo])),
+        ),
+        // Territorialidade com o caminho de cada Local, do mais alto até ele
+        // (`sinal_territorialidade` acima segue com só os nomes).
+        coluna('territorialidade_caminho', ['territorialidade'], (r, ctx) =>
+            juntar(
+                territorialidadeDoTexto(ctx.banco, r).map((id) =>
+                    caminhoCompletoLocal(ctx.banco, id),
+                ),
+            ),
+        ),
+        // Tema por papel: `sinal_tema` acima continua com TODOS os Temas; estas
+        // duas separam os que têm papel definido (Tema "sem papel" só
+        // aparece em `sinal_tema`). Vêm do `temas` do texto (ver
+        // nomesTemasPorPapel, utils.js), por isso sem campo próprio em `campos`.
+        coluna('tema_principal', [], (r, ctx) =>
+            juntar(nomesTemasPorPapel(r, ctx.banco.temas, 'principal')),
+        ),
+        coluna('tema_secundario', [], (r, ctx) =>
+            juntar(nomesTemasPorPapel(r, ctx.banco.temas, 'secundario')),
         ),
 
         // Relações com outros textos e com o mundo
@@ -399,7 +464,8 @@ export function colunasTexto(tipo) {
 
         // Notas e contexto
         coluna('notas', ['notas'], (r) => r.notas),
-        coluna('contexto_historico', ['contextoHistorico'], (r) => r.contextoHistorico),
+        // Inspiração (campo interno: contextoHistorico)
+        coluna('inspiracao', ['contextoHistorico'], (r) => r.contextoHistorico),
         coluna('ocultacao', ['ocultacao'], (r) => r.ocultacao),
         coluna('conteudo_sensivel', ['conteudoSensivel'], (r) => r.conteudoSensivel),
         coluna(

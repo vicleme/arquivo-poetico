@@ -3,6 +3,7 @@
 //           funções globais que o HTML chama via onclick="..."
 // ============================================================
 
+import { abrirPorAtalho } from './faixa-origem.js';
 import {
     exportarJSON,
     importarDB,
@@ -95,6 +96,12 @@ import {
     verTextosPessoa,
     verTextosEpoca,
     verTextosPeriodoHistorico,
+    verTextosAssunto,
+    verTextosTema,
+    renderTemas,
+    definirBuscaTemas,
+    filtrarTemasSemAssunto,
+    baixarAssuntosMd,
     verTextosMovimentoEscola,
     verTextosAutor,
     verAutoresMovimentoEscola,
@@ -274,6 +281,8 @@ import {
     filtrarItensOcultos,
     toggleSelecaoTemporal,
     definirOrdemTemporal,
+    definirPapelTemaEstatisticas,
+    definirPapelAssuntoEstatisticas,
     definirFiltrosCompartilhados,
     limparFiltrosCompartilhados,
 } from './estatisticas.js';
@@ -290,6 +299,9 @@ import {
     adicionarSinalTema,
     removerSinalTema,
     editarSinalTema,
+    adicionarSinalTerritorialidade,
+    removerSinalTerritorialidade,
+    editarSinalTerritorialidade,
     adicionarSinalRelacao,
     removerSinalRelacao,
     editarSinalRelacao,
@@ -363,6 +375,9 @@ import {
     removerValorMovimento,
     editarValorMovimento,
     adicionarTemaMovimento,
+    adicionarTemaAssunto,
+    removerTemaAssunto,
+    editarTemaAssunto,
     removerTemaMovimento,
     editarTemaMovimento,
     adicionarTecnicaMovimento,
@@ -426,6 +441,21 @@ import {
     editarLoja,
     cancelarEdicaoLoja,
     renderSinalizacoesProsa,
+    renderTemasProsa,
+    adicionarTemaTexto,
+    renderRegiaoProsa,
+    adicionarTerritorialidadeTexto,
+    removerTerritorialidadeTexto,
+    definirLocalEscritaTexto,
+    limparLocalEscritaTexto,
+    adicionarIdiomaTexto,
+    removerIdiomaTexto,
+    definirPapelIdiomaTexto,
+    adicionarDialetoIdiomaTexto,
+    removerDialetoIdiomaTexto,
+    removerTemaTexto,
+    mudarPapelTemaTexto,
+    mudarPapelAssuntoTexto,
     definirAutoclassificacao,
     limparAutoclassificacao,
 } from './editor.js';
@@ -456,6 +486,16 @@ import {
     editarEpoca,
     initFormPeriodoHistorico,
     editarPeriodoHistorico,
+    initFormAssunto,
+    editarAssunto,
+    initFormTema,
+    editarTema,
+    excluirTema,
+    excluirTemasSemTextoComConfirmacao,
+    mesclarDuplicataComConfirmacao,
+    marcarNaoIguaisComAviso,
+    excluirTodosAssuntosComConfirmacao,
+    atribuirTemaDoPainel,
     initFormMovimentoEscola,
     editarMovimentoEscola,
     initFormMesclar,
@@ -511,6 +551,16 @@ import {
     initFormColParte,
     initFormColItem,
 } from './coletaneas.js';
+import {
+    renderLocais,
+    initFormLocal,
+    novoLocal,
+    novoSublocal,
+    editarLocalNaTela,
+    excluirLocalComAviso,
+    verTextosLocal,
+    alternarColapsoLocal,
+} from './ui-locais.js';
 
 // ─── Registro dos modais (carregamento lazy via fetch) ───────
 // Cada modal só é buscado em modais/<arquivo> e inicializado
@@ -539,6 +589,8 @@ registrarModal(
         // renderSinalizacoesProsa em editor.js) antes de initFormProsa —
         // mesmo motivo do renderSinalizacoesPoema em initEditor.
         renderSinalizacoesProsa();
+        renderTemasProsa();
+        renderRegiaoProsa();
         initFormProsa();
         // Wiring de Enter dos campos de Prosa (item 4 do plano de
         // manutenibilidade): antes vivia dentro de initEditor(), então só
@@ -554,6 +606,9 @@ registrarModal('modal-grupo', 'modal-grupo.html', initFormGrupo);
 registrarModal('modal-autor', 'modal-autor.html', initFormAutor);
 registrarModal('modal-epoca', 'modal-epoca.html', initFormEpoca);
 registrarModal('modal-periodo-historico', 'modal-periodo-historico.html', initFormPeriodoHistorico);
+registrarModal('modal-assunto', 'modal-assunto.html', initFormAssunto);
+registrarModal('modal-tema', 'modal-tema.html', initFormTema);
+registrarModal('modal-local', 'modal-local.html', initFormLocal);
 registrarModal('modal-movimento-escola', 'modal-movimento-escola.html', initFormMovimentoEscola);
 registrarModal('modal-sonoridade', 'modal-sonoridade.html', initFormSonoridade);
 registrarModal('modal-molde', 'modal-molde.html', initFormMolde);
@@ -630,6 +685,40 @@ const ACOES_LISTA = {
     'ver-autor': (el) => abrirVisualizacaoAutor(Number(el.dataset.id)),
     'editar-epoca': (el) => editarEpoca(Number(el.dataset.id)),
     'editar-periodo-historico': (el) => editarPeriodoHistorico(Number(el.dataset.id)),
+    'editar-assunto': (el) => editarAssunto(Number(el.dataset.id)),
+    'ver-textos-assunto': (el) => verTextosAssunto(Number(el.dataset.id)),
+    'editar-tema': (el) => editarTema(Number(el.dataset.id)),
+    'ver-textos-tema': (el) => verTextosTema(Number(el.dataset.id)),
+    'excluir-tema': (el) => excluirTema(Number(el.dataset.id)),
+    'editar-local': (el) => editarLocalNaTela(Number(el.dataset.id)),
+    'novo-sublocal': (el) => novoSublocal(Number(el.dataset.id)),
+    'excluir-local': (el) => excluirLocalComAviso(Number(el.dataset.id)),
+    'ver-textos-local': (el) => verTextosLocal(Number(el.dataset.id)),
+    'toggle-local-colapso': (el) => alternarColapsoLocal(Number(el.dataset.id)),
+    'mesclar-duplicata': (el) =>
+        mesclarDuplicataComConfirmacao(Number(el.dataset.manter), Number(el.dataset.remover)),
+    'nao-sao-iguais': (el) => marcarNaoIguaisComAviso(Number(el.dataset.a), Number(el.dataset.b)),
+    // Assunto → Tema: abre a aba Temas já filtrada pelo nome clicado.
+    'ir-para-tema': (el) =>
+        abrirPorAtalho({
+            destino: 'temas',
+            descricao: `Filtrando temas por “${el.dataset.nome}”`,
+            controles: ['busca-temas', 'filtro-temas-sem-assunto'],
+            aplicar: () => definirBuscaTemas(el.dataset.nome),
+            limpar: () => definirBuscaTemas(''),
+        }),
+    'ir-para-temas-sem-assunto': () =>
+        abrirPorAtalho({
+            destino: 'temas',
+            descricao: 'Mostrando só temas sem assunto',
+            controles: ['busca-temas', 'filtro-temas-sem-assunto'],
+            aplicar: () => filtrarTemasSemAssunto(),
+            limpar: () => {
+                const semAssunto = document.getElementById('filtro-temas-sem-assunto');
+                if (semAssunto) semAssunto.checked = false;
+                definirBuscaTemas('');
+            },
+        }),
     'editar-movimento-escola': (el) => editarMovimentoEscola(Number(el.dataset.id)),
     'ver-movimento-escola': (el) => abrirVisualizacaoMovimentoEscola(Number(el.dataset.id)),
     'editar-sonoridade': (el) => editarSonoridade(Number(el.dataset.id)),
@@ -947,9 +1036,25 @@ window.editarSinalTradicao = editarSinalTradicao;
 window.adicionarSinalEstilo = adicionarSinalEstilo;
 window.removerSinalEstilo = removerSinalEstilo;
 window.editarSinalEstilo = editarSinalEstilo;
+window.adicionarTemaTexto = adicionarTemaTexto;
+window.adicionarTerritorialidadeTexto = adicionarTerritorialidadeTexto;
+window.removerTerritorialidadeTexto = removerTerritorialidadeTexto;
+window.definirLocalEscritaTexto = definirLocalEscritaTexto;
+window.limparLocalEscritaTexto = limparLocalEscritaTexto;
+window.adicionarIdiomaTexto = adicionarIdiomaTexto;
+window.removerIdiomaTexto = removerIdiomaTexto;
+window.definirPapelIdiomaTexto = definirPapelIdiomaTexto;
+window.adicionarDialetoIdiomaTexto = adicionarDialetoIdiomaTexto;
+window.removerDialetoIdiomaTexto = removerDialetoIdiomaTexto;
+window.removerTemaTexto = removerTemaTexto;
+window.mudarPapelTemaTexto = mudarPapelTemaTexto;
+window.mudarPapelAssuntoTexto = mudarPapelAssuntoTexto;
 window.adicionarSinalTema = adicionarSinalTema;
 window.removerSinalTema = removerSinalTema;
 window.editarSinalTema = editarSinalTema;
+window.adicionarSinalTerritorialidade = adicionarSinalTerritorialidade;
+window.removerSinalTerritorialidade = removerSinalTerritorialidade;
+window.editarSinalTerritorialidade = editarSinalTerritorialidade;
 window.adicionarSinalRelacao = adicionarSinalRelacao;
 window.removerSinalRelacao = removerSinalRelacao;
 window.editarSinalRelacao = editarSinalRelacao;
@@ -1019,6 +1124,16 @@ window.adicionarValorMovimento = adicionarValorMovimento;
 window.removerValorMovimento = removerValorMovimento;
 window.editarValorMovimento = editarValorMovimento;
 window.adicionarTemaMovimento = adicionarTemaMovimento;
+window.adicionarTemaAssunto = adicionarTemaAssunto;
+window.removerTemaAssunto = removerTemaAssunto;
+window.editarTemaAssunto = editarTemaAssunto;
+window.atribuirTemaDoPainel = atribuirTemaDoPainel;
+window.renderTemas = renderTemas;
+window.renderLocais = renderLocais;
+window.novoLocal = novoLocal;
+window.baixarAssuntosMd = baixarAssuntosMd;
+window.excluirTemasSemTexto = excluirTemasSemTextoComConfirmacao;
+window.excluirTodosAssuntos = excluirTodosAssuntosComConfirmacao;
 window.removerTemaMovimento = removerTemaMovimento;
 window.editarTemaMovimento = editarTemaMovimento;
 window.adicionarTecnicaMovimento = adicionarTecnicaMovimento;
@@ -1278,6 +1393,8 @@ window.definirMinimoAnos = definirMinimoAnos;
 window.filtrarItensOcultos = filtrarItensOcultos;
 window.toggleSelecaoTemporal = toggleSelecaoTemporal;
 window.definirOrdemTemporal = definirOrdemTemporal;
+window.definirPapelTemaEstatisticas = definirPapelTemaEstatisticas;
+window.definirPapelAssuntoEstatisticas = definirPapelAssuntoEstatisticas;
 window.definirFiltrosCompartilhados = definirFiltrosCompartilhados;
 window.limparFiltrosCompartilhados = limparFiltrosCompartilhados;
 window.renderConexoes = renderConexoes;

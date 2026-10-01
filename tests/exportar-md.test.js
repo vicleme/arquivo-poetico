@@ -765,3 +765,53 @@ describe('legendaCorParaMarkdown (cor/fundo/fonte perdidos na conversão para Ma
         assert.ok(!md.includes('no trecho'));
     });
 });
+
+describe('gerarMarkdownExportacao — Períodos, Movimento/Escola e Inspiração (nomenclatura atual)', () => {
+    beforeEach(() => {
+        resetarDb();
+        db.epocas = [{ id: 7, nome: 'Namoro', autorId: 1 }];
+        db.periodosHistoricos = [{ id: 3, nome: 'Pandemia de Covid-19' }];
+        db.movimentosEscolas = [{ id: 11, nome: 'Modernismo' }];
+    });
+
+    it('usa "Período Biográfico Retratado" e nunca "Época retratada"', () => {
+        db.poemas = [
+            {
+                id: 1,
+                titulo: 'T',
+                texto: 'x',
+                epocaRetratada: { epocaId: 7, inicio: { ano: 2019 }, fim: { ano: 2021 } },
+            },
+        ];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(md, /\*\*Período Biográfico Retratado:\*\* .*Namoro/);
+        assert.doesNotMatch(md, /Época retratada/i);
+    });
+
+    it('inclui Período Histórico Retratado e Movimento/Escola', () => {
+        db.poemas = [
+            { id: 1, titulo: 'T', texto: 'x', periodoHistoricoId: 3, movimentosEscolasIds: [11] },
+        ];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(md, /\*\*Período Histórico Retratado:\*\* Pandemia de Covid-19/);
+        assert.match(md, /\*\*Movimento\/Escola:\*\* Modernismo/);
+    });
+
+    it('exporta contextoHistorico sob o título Inspiração', () => {
+        db.poemas = [{ id: 1, titulo: 'T', texto: 'x', contextoHistorico: 'Uma caminhada.' }];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(md, /### Inspiração\s+Uma caminhada\./);
+        assert.doesNotMatch(md, /Contexto Histórico/);
+    });
+
+    it('Campos Preenchidos conta o Período Histórico como campo', () => {
+        const vazio = contarCamposPreenchidos({ id: 1, titulo: 'T', texto: 'x' });
+        const comPeriodo = contarCamposPreenchidos({
+            id: 1,
+            titulo: 'T',
+            texto: 'x',
+            periodoHistoricoId: 3,
+        });
+        assert.equal(comPeriodo, vazio + 1);
+    });
+});

@@ -406,7 +406,11 @@ describe('Grupos — exclusão com cascata em gruposDiretos (DOM real via happy-
         document.querySelector('#avisos-toast button')?.click();
 
         assert.equal(db.grupos.length, 2);
-        assert.equal(db.grupos.find((g) => g.id == 11).paiId, 10, 'Desfazer deveria restaurar o paiId original');
+        assert.equal(
+            db.grupos.find((g) => g.id == 11).paiId,
+            10,
+            'Desfazer deveria restaurar o paiId original',
+        );
     });
 });
 
@@ -435,13 +439,21 @@ describe('Autores — exclusão em cascata sobre Grupos/Épocas (DOM real via ha
         db.autores.length = 0;
         document.getElementById('modal-confirmar-exclusao')?.remove();
         document.getElementById('avisos-toast')?.remove();
-        document.querySelectorAll('main > [data-action="excluir-item"]').forEach((el) => el.remove());
+        document
+            .querySelectorAll('main > [data-action="excluir-item"]')
+            .forEach((el) => el.remove());
     });
 
     it('mensagem de confirmação avisa quantos Grupos/Períodos Biográficos serão apagados junto', () => {
         db.autores.push({ id: 1, nome: 'Victor Leme', sobre: '' });
         db.grupos.push({ id: 10, nome: 'Família', cor: 'rose', autorId: 1, paiId: null });
-        db.epocas.push({ id: 20, nome: 'Corte de contato', contextoRelacao: '', notas: '', autorId: 1 });
+        db.epocas.push({
+            id: 20,
+            nome: 'Corte de contato',
+            contextoRelacao: '',
+            notas: '',
+            autorId: 1,
+        });
 
         botaoExcluirAutor(1).click();
 
@@ -453,7 +465,13 @@ describe('Autores — exclusão em cascata sobre Grupos/Épocas (DOM real via ha
     it('confirmar a exclusão do Autor apaga os Grupos/Épocas dele e desvincula Pessoa/Poema/Prosa', () => {
         db.autores.push({ id: 1, nome: 'Victor Leme', sobre: '' });
         db.grupos.push({ id: 10, nome: 'Família', cor: 'rose', autorId: 1, paiId: null });
-        db.epocas.push({ id: 20, nome: 'Corte de contato', contextoRelacao: '', notas: '', autorId: 1 });
+        db.epocas.push({
+            id: 20,
+            nome: 'Corte de contato',
+            contextoRelacao: '',
+            notas: '',
+            autorId: 1,
+        });
         db.pessoas.push({ id: 100, nome: 'Ana', grupoIds: [10] });
         db.poemas.push({
             id: 200,

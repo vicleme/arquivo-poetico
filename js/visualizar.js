@@ -30,8 +30,12 @@ import {
 import {
     formatarDataParcial,
     formatarEpocaRetratada,
+    nomePeriodoHistorico,
+    nomesMovimentosEscolas,
     estaPublicado,
     sinalizacoesAgrupadas,
+    textoIdiomasComPapel,
+    textoAssuntosComPapel,
     agruparIntertextualidadePorTipo,
     corpoEntradaHipertextualidade,
     escapeHtml,
@@ -41,6 +45,7 @@ import {
     autoclassificacaoValida,
     linhasFonteTexto,
 } from './utils.js';
+import { textoLocalEscrita, textoTerritorialidadeComCaminho } from './locais.js';
 
 // tipo/id do item atualmente aberto no modal — os botões de Baixar do
 // próprio modal usam esse estado em vez de data-attributes, já que o
@@ -154,6 +159,8 @@ export function renderVisualizacaoHtml(item) {
     const ctx = item.contexto || {};
     const caminho = [ctx.livro, ctx.parte, ctx.secao].filter(Boolean).join(' → ');
     html += linhaMetaHtml('Localização', caminho || null);
+    html += linhaMetaHtml('Idioma', textoIdiomasComPapel(item) || null);
+    html += linhaMetaHtml('Local onde foi escrito', textoLocalEscrita(db, item) || null);
 
     if (item.status) {
         const info = INFO_STATUS[item.status] || { emoji: '⚪', titulo: item.status };
@@ -171,16 +178,36 @@ export function renderVisualizacaoHtml(item) {
     }
     if (item.epocaRetratada) {
         html += linhaMetaHtml(
-            'Época retratada',
+            'Período Biográfico Retratado',
             formatarEpocaRetratada(item.epocaRetratada, db.epocas),
         );
+    }
+    if (item.periodoHistoricoId) {
+        html += linhaMetaHtml(
+            'Período Histórico Retratado',
+            nomePeriodoHistorico(item.periodoHistoricoId, db.periodosHistoricos),
+        );
+    }
+    if (item.movimentosEscolasIds?.length) {
+        html += linhaMetaHtml(
+            'Movimento/Escola',
+            nomesMovimentosEscolas(item.movimentosEscolasIds, db.movimentosEscolas).join(', '),
+        );
+    }
+    // Assunto é derivado dos Temas do texto (assuntosDoTexto, utils.js),
+    // não um campo gravado — mesmo padrão de Movimento/Escola acima.
+    const assuntosTexto = textoAssuntosComPapel(item, db.assuntos, db.temas);
+    if (assuntosTexto) {
+        html += linhaMetaHtml('Assunto', assuntosTexto);
     }
     html += linhaMetaHtml('Pessoas', textoPessoas(item));
     html += linhaMetaHtml('Grupos', textoGrupos(item));
     // Uma linha por categoria preenchida, em vez da linha única
     // "Sinalizações" achatada — mesmo padrão de itemParaMarkdown
     // (exportar-md.js), via sinalizacoesAgrupadas() (utils.js).
-    sinalizacoesAgrupadas(item).forEach(({ rotulo, valor }) => {
+    sinalizacoesAgrupadas(item, db.temas, {
+        territorialidade: textoTerritorialidadeComCaminho(db, item),
+    }).forEach(({ rotulo, valor }) => {
         html += linhaMetaHtml(rotulo, valor);
     });
     if (item.genero) html += linhaMetaHtml('Gênero', item.genero);
@@ -197,7 +224,7 @@ export function renderVisualizacaoHtml(item) {
         html += linhaMetaHtml(rotulo, valor);
     });
     html += blocoTextoHtml('Descrição Visual', item.descricaoVisual);
-    html += blocoTextoHtml('Contexto Histórico/Pessoal', item.contextoHistorico);
+    html += blocoTextoHtml('Inspiração', item.contextoHistorico);
     html += blocoTextoHtml('Ocultação', item.ocultacao);
 
     html += listaIntertextualidadeHtml('Intertextualidade', item.intertextualidade);

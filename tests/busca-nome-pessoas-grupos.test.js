@@ -15,11 +15,10 @@ document.body.innerHTML = `
 `;
 
 const { db } = await import('../js/db.js');
-const { renderPessoas, renderGrupos, setFiltroNomeGrupos, toggleColapsoGrupo } =
+const { renderGrupos, setFiltroNomeGrupos, toggleColapsoGrupo } =
     await import('../js/render-listas.js');
-const { setFiltroNomePessoas, setFiltroAutorPessoas, setVisibilidadePessoas } = await import(
-    '../js/pessoas-acoes.js'
-);
+const { setFiltroNomePessoas, setFiltroAutorPessoas, setVisibilidadePessoas } =
+    await import('../js/pessoas-acoes.js');
 
 const nomes = (idLista) =>
     [...document.querySelectorAll(`#${idLista} h4`)].map((h) => h.textContent.trim());
@@ -77,10 +76,10 @@ describe('Grupos — busca por nome', () => {
 
     it('mostra o grupo que bate junto do pai, sem os que não batem', () => {
         setFiltroNomeGrupos('irmaos');
-        assert.deepEqual(nomes('lista-grupos').map((n) => n.replace('↳', '').trim()), [
-            'Família',
-            'Irmãos',
-        ]);
+        assert.deepEqual(
+            nomes('lista-grupos').map((n) => n.replace('↳', '').trim()),
+            ['Família', 'Irmãos'],
+        );
     });
 
     it('ignora o recolhimento manual do pai enquanto há busca', () => {

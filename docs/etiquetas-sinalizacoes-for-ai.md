@@ -10,13 +10,13 @@ right category, without mixing up what each one means.
 ## What the field is (and isn't)
 
 There is no single "tags" field. "Sinalizações" is the name of the
-**group**, but behind it there are **8 independent fields**, one per
+**group**, but behind it there are **9 independent fields**, one per
 category, each a list of tags in **free text** (not a closed list of
 pre-defined options — whoever catalogs types the tag they want, with
 autocomplete suggesting whatever has already been used in that same
 category, to avoid variants of the same idea).
 
-Each of these 8 fields is, in fact, a **list** — it accepts as many tags
+Each of these 9 fields is, in fact, a **list** — it accepts as many tags
 as make sense for the text, not a single value per category. This matters
 for a recurring decision: when a text carries two things perceived at
 once (two traditions, two themes, two Tone impressions), the default is
@@ -30,13 +30,16 @@ that is melancholic _and_, in a different passage, hopeful — two real but
 distinct impressions, not one single thing), separate tags keep the list
 more useful for filtering and cross-referencing later.
 
-The 8 fields, in the order they appear in the editor:
+The 9 fields (two of them, `sinalizacoesTema` and
+`sinalizacoesTerritorialidade`, are derived mirrors and are no longer typed
+in the editor's tag group; see the category notes below):
 
 | Field (key)                    | Label                              |
 | ------------------------------ | ---------------------------------- |
 | `sinalizacoesTradicao`         | Tradição (Tradition)               |
 | `sinalizacoesEstilo`           | Estilo (Style)                     |
 | `sinalizacoesTema`             | Tema (Theme)                       |
+| `sinalizacoesTerritorialidade` | Territorialidade (Territoriality)  |
 | `sinalizacoesRelacao`          | Relação (Relation)                 |
 | `sinalizacoesSensibilidade`    | Sensibilidade (Sensitivity)        |
 | `sinalizacoesTom`              | Tom (Tone)                         |
@@ -48,7 +51,7 @@ A "flat" export combines everything into a single string
 that combined version **loses each tag's category**. Whenever a task
 depends on knowing which category a tag belongs to (e.g., "what are the
 most common themes" vs. "what are the most common style devices"), use
-the 8 separate fields, not the combined string.
+the 9 separate fields, not the combined string.
 
 ## What each category means
 
@@ -68,6 +71,15 @@ the 8 separate fields, not the combined string.
   in the archive is to name the **concrete cause**, not the emotional
   effect — a tag like "Cyclical existential crisis" is vaguer than naming
   the concrete event or situation that produces that feeling.
+- **Territorialidade (Territoriality)** (new category, 2026-09-29; since
+  2026-09-30 it is no longer typed in this group, the field is a derived
+  mirror of the `territorialidade` place list, see
+  `campos-poema-prosa-for-ai.md`): specific places named in the text — a country, a city, a neighborhood, a
+  river. Different from Tema, which is the broad subject (e.g., a poem can
+  have "Brazil" as its Tema in the sense of nation/identity without naming
+  any specific place; a poem that names "Copacabana" or "the Amazon River"
+  uses Territorialidade instead). Also different from Domínio Imagético,
+  which is vocabulary borrowed from a knowledge domain, not a place.
 - **Relação (Relation)**: names a specific relationship or bond portrayed
   in the text — it can be the name of a dynamic between two specific
   people (the archive already uses tags of this kind, coined by the

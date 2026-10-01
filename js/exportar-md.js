@@ -18,6 +18,8 @@ import {
     estaPublicado,
     sinalizacoesCombinadas,
     sinalizacoesAgrupadas,
+    textoIdiomasComPapel,
+    textoAssuntosComPapel,
     agruparIntertextualidadePorTipo,
     corpoEntradaHipertextualidade,
     rotuloElo,
@@ -33,6 +35,7 @@ import {
 } from './utils.js';
 import { db } from './db.js';
 import { blocosExtrasMarkdown } from './download-abrangente.js';
+import { textoLocalEscrita, textoTerritorialidadeComCaminho } from './locais.js';
 
 export const INFO_STATUS = {
     publicado: { emoji: '🟢', titulo: 'Publicado' },
@@ -249,6 +252,7 @@ function verificacoesDeCampos(item) {
         !!item.dataEscrita,
         !!item.dataPublicacao,
         !!item.epocaRetratada,
+        !!item.periodoHistoricoId,
         Array.isArray(item.movimentosEscolasIds) && item.movimentosEscolasIds.length > 0,
         !!textoPessoas(item),
         !!textoGrupos(item),
@@ -415,7 +419,8 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
     const ctx = item.contexto || {};
     const caminho = [ctx.livro, ctx.parte, ctx.secao].filter(Boolean).join(' → ');
     md += linhaMeta('Localização', caminho || null);
-    md += linhaMeta('Idioma', item.idioma || null);
+    md += linhaMeta('Idioma', textoIdiomasComPapel(item) || null);
+    md += linhaMeta('Local onde foi escrito', textoLocalEscrita(db, item) || null);
 
     if (item.status) {
         const info = INFO_STATUS[item.status] || { emoji: '⚪', titulo: item.status };
@@ -432,7 +437,10 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
         md += linhaMeta('Primeira publicação', formatarDataParcial(item.dataPublicacao));
     }
     if (item.epocaRetratada) {
-        md += linhaMeta('Época retratada', formatarEpocaRetratada(item.epocaRetratada, db.epocas));
+        md += linhaMeta(
+            'Período Biográfico Retratado',
+            formatarEpocaRetratada(item.epocaRetratada, db.epocas),
+        );
     }
     if (item.periodoHistoricoId) {
         md += linhaMeta(
@@ -446,12 +454,20 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
             nomesMovimentosEscolas(item.movimentosEscolasIds, db.movimentosEscolas).join(', '),
         );
     }
+    // Assunto é derivado dos Temas do texto (assuntosDoTexto, utils.js),
+    // não um campo gravado.
+    const assuntosMd = textoAssuntosComPapel(item, db.assuntos, db.temas);
+    if (assuntosMd) {
+        md += linhaMeta('Assunto', assuntosMd);
+    }
     md += linhaMeta('Pessoas', textoPessoas(item));
     md += linhaMeta('Grupos', textoGrupos(item));
     // Uma linha por categoria preenchida (Tradição, Estilo, Tema...), em vez
     // da linha única "Sinalizações" que achatava tudo junto — mesmo padrão
     // de visualizar.js, via sinalizacoesAgrupadas() (utils.js).
-    sinalizacoesAgrupadas(item).forEach(({ rotulo, valor }) => {
+    sinalizacoesAgrupadas(item, db.temas, {
+        territorialidade: textoTerritorialidadeComCaminho(db, item),
+    }).forEach(({ rotulo, valor }) => {
         md += linhaMeta(rotulo, valor);
     });
     if (item.genero) md += linhaMeta('Gênero', item.genero);
@@ -473,7 +489,7 @@ function itemParaMarkdownDepoisDoTexto(item) {
         md += linhaMeta(rotulo, valor);
     });
     md += blocoTexto('Descrição Visual', item.descricaoVisual);
-    md += blocoTexto('Contexto Histórico/Pessoal', item.contextoHistorico);
+    md += blocoTexto('Inspiração', item.contextoHistorico);
     md += blocoTexto('Ocultação', item.ocultacao);
 
     if (Array.isArray(item.intertextualidade) && item.intertextualidade.length) {

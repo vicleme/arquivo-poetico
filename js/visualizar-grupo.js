@@ -43,7 +43,6 @@ export function renderVisualizacaoGrupoHtml(
     grupo,
     { nomeAutor = '', nomeGrupoPai = '', pessoas = [], subgrupos = [] } = {},
 ) {
-    const g = grupo || {};
     let html = '';
 
     html += linhaMetaHtml('Autor', nomeAutor);

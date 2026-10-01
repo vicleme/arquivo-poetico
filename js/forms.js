@@ -2,9 +2,13 @@
 // forms.js — Submit handlers e funções de edição por entidade
 // ============================================================
 
+import { resolverTemasEditados } from './temas.js';
+import { impactoDoLocal, mesclarLocais, resolverLocaisEditados } from './locais.js';
+import { renderLocais, destinosDeMesclagemDeLocal } from './ui-locais.js';
 import {
     db,
     save,
+    adicionarTemaAoAssunto,
     obterOuCriarEpocaPorNome,
     obterOuCriarPeriodoHistoricoPorNome,
     obterGrupoPaiValido,
@@ -79,6 +83,10 @@ import {
     calcularOpcoesPeMetrico,
     calcularTamanhoVersoForcadoPorPe,
     ehGrafiaAntiga,
+    chaveTema,
+    nomesTemasDoAssunto,
+    podarSobrescritasAssunto,
+    espelhoDeIdiomas,
 } from './utils.js';
 
 // Rastreadores de alterações não salvas dos formulários de texto longo
@@ -106,6 +114,16 @@ import {
     obterPessoas,
     resetSinalizacoes,
     carregarSinalizacoes,
+    resetTemasTexto,
+    carregarTemasTexto,
+    obterLocaisTexto,
+    resetLocaisTexto,
+    carregarLocaisTexto,
+    obterIdiomasTexto,
+    resetIdiomasTexto,
+    carregarIdiomasTexto,
+    obterTemasTexto,
+    obterAssuntosPapelTexto,
     resetPessoas,
     carregarGruposDiretos,
     obterGruposDiretos,
@@ -141,6 +159,9 @@ import {
     carregarLinguasEscritaAutor,
     carregarValoresMovimento,
     carregarTemasMovimento,
+    adicionarTemaAssunto,
+    carregarTemasAssunto,
+    atualizarDatalistTemasAssunto,
     carregarTecnicasMovimento,
     carregarTiposComposicaoMovimento,
     carregarLemasMovimento,
@@ -180,6 +201,7 @@ import {
     renderEpocas,
     renderPeriodosHistoricos,
     renderMovimentosEscolas,
+    renderTemas,
     renderMoldes,
 } from './render-listas.js';
 import {
@@ -205,6 +227,19 @@ import {
     definirCallbackAbrirPoema,
 } from './editor-molde.js';
 import { validarJsonSonoridade } from './importar-sonoridade.js';
+import {
+    renomearTema,
+    podeExcluirTema,
+    excluirTemaDoCadastro,
+    assuntosDoTema,
+    garantirTema,
+    mesclarTemas,
+    marcarTemasNaoIguais,
+    impactoDoTema,
+    resumoExclusaoTemasSemTexto,
+    excluirTemasSemTexto,
+    excluirTodosAssuntos,
+} from './temas.js';
 import { baixarMolde } from './ui-molde-json.js';
 
 // Lê o par Livro/Seção de texto livre dos campos de Migração (Cortado
@@ -261,6 +296,42 @@ function renderColetaneasInfo(containerId, refTipo, refId) {
 }
 
 // ─── Livro ───────────────────────────────────────────────────
+
+// Temas do texto (fase 2): resolve os nomes do grupo "Temas e Assuntos"
+// em ids (criando no cadastro o Tema que ainda não existe) e devolve os
+// dois campos a gravar — `temas` (fonte da verdade) e o espelho
+// `sinalizacoesTema` (ver temas.js).
+//
+// Papel do Assunto: grava só as sobrescritas (`assuntosPapel`) que ainda se
+// aplicam aos Temas do texto; sem sobrescrita, lista vazia (o papel segue
+// os Temas). A poda roda depois de resolver os ids, já com o cadastro atualizado.
+export function temasParaSalvar(tabela) {
+    const entradas = obterTemasTexto(tabela);
+    const { temas, espelho } = resolverTemasEditados(db, entradas);
+    const assuntosPapel = podarSobrescritasAssunto(
+        entradas,
+        obterAssuntosPapelTexto(tabela),
+        db.assuntos,
+        db.temas,
+    );
+    return { temas, sinalizacoesTema: espelho, assuntosPapel };
+}
+
+// Locais do texto, lidos do grupo "Região e Idioma" do modal: Territorialidade
+// (ids, mais o espelho por nomes que a busca e as exportações leem) e o Local
+// onde foi escrito. Nome digitado que ainda não existe vira Local novo aqui,
+// ao salvar (sem tipo e sem pai, para organizar na aba Locais).
+export function locaisParaSalvar(tabela) {
+    return resolverLocaisEditados(db, obterLocaisTexto(tabela));
+}
+
+// Idiomas do texto, lidos do grupo "Região e Idioma" do modal: a lista com
+// papel e dialetos (fonte da verdade) e o espelho `idioma` (só os nomes,
+// Principais primeiro) que a busca, a coluna e as exportações leem.
+export function idiomasParaSalvar(tabela) {
+    const idiomas = obterIdiomasTexto(tabela);
+    return { idiomas, idioma: espelhoDeIdiomas(idiomas) };
+}
 
 export function initFormLivro() {
     const form = document.getElementById('form-livro');
@@ -1264,6 +1335,252 @@ export async function editarMovimentoEscola(id) {
     toggleModal('modal-movimento-escola');
 }
 
+// ─── Assunto ─────────────────────────────────────────────────────
+// Cadastro central (db.assuntos) que agrupa Temas — um Tema pode estar
+// em vários Assuntos (ver o bloco de Assuntos em utils.js). Nenhum texto
+// guarda o Assunto: ele é derivado dos Temas do texto, então salvar,
+// editar ou excluir um Assunto nunca mexe em Poema/Prosa. Sem mesclar
+// (diferente de Pessoa/Época): dois Assuntos com o mesmo nome não fazem
+// sentido, então o nome duplicado é recusado em vez de oferecer mescla.
+
+export function initFormAssunto() {
+    const form = document.getElementById('form-assunto');
+    if (!form) return;
+
+    // Modal carregado sob demanda: o datalist só existe agora.
+    atualizarDatalistTemasAssunto();
+
+    // Enter no input de Tema adiciona o chip (sem enviar o formulário) —
+    // mesmo padrão dos chips do modal de Autor.
+    document.getElementById('as-tema-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarTemaAssunto();
+        }
+    });
+
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const id = document.getElementById('as-edit-id').value;
+        const nome = document.getElementById('as-nome').value.trim();
+        const notas = document.getElementById('as-notas').value.trim();
+        // Um tema digitado e ainda não confirmado com "+"/Enter entra
+        // junto — senão o texto some em silêncio ao salvar.
+        adicionarTemaAssunto();
+        let temas;
+        try {
+            temas = JSON.parse(document.getElementById('as-temas').value || '[]');
+        } catch {
+            temas = [];
+        }
+
+        if (!nome) return mostrarAviso('Dê um nome ao assunto.');
+        const duplicata = db.assuntos.find(
+            (x) => chaveTema(x.nome) === chaveTema(nome) && x.id != id,
+        );
+        if (duplicata) {
+            return mostrarAviso(`Já existe um Assunto chamado "${duplicata.nome}".`);
+        }
+
+        // O Assunto guarda ids: cada nome digitado vira o id do Tema do
+        // cadastro (criado aqui se ainda não existe).
+        const temaIds = [];
+        temas.forEach((nomeTema) => {
+            const temaId = garantirTema(db, nomeTema);
+            if (temaId != null && !temaIds.includes(temaId)) temaIds.push(temaId);
+        });
+        const dados = { id: id ? parseInt(id) : gerarId(), nome, notas, temaIds };
+        if (id) {
+            const idx = db.assuntos.findIndex((x) => x.id == id);
+            if (idx !== -1) db.assuntos[idx] = dados;
+            else db.assuntos.push(dados);
+        } else db.assuntos.push(dados);
+        save();
+        toggleModal('modal-assunto');
+    };
+}
+
+// ─── Tema (cadastro central — ver temas.js) ─────────────────────
+export function initFormTema() {
+    const form = document.getElementById('form-tema');
+    if (!form) return;
+
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        const id = document.getElementById('te-edit-id').value;
+        const nome = document.getElementById('te-nome').value.trim();
+        const notas = document.getElementById('te-notas').value.trim();
+        if (!nome) return mostrarAviso('Dê um nome ao tema.');
+
+        if (id) {
+            const tema = db.temas.find((t) => t.id == id);
+            if (!tema) return;
+            const r = renomearTema(db, id, nome);
+            if (!r.ok) {
+                return mostrarAviso(
+                    r.motivo === 'duplicado'
+                        ? `Já existe um Tema chamado "${r.existente.nome}". Para juntar os dois, use Mesclar no cartão do tema.`
+                        : 'Não foi possível renomear o tema.',
+                );
+            }
+            tema.notas = notas;
+            if (r.textos > 0) {
+                mostrarAviso(
+                    `Tema renomeado em ${r.textos} texto${r.textos !== 1 ? 's' : ''}.`,
+                    'sucesso',
+                );
+            }
+        } else {
+            const duplicata = db.temas.find((t) => chaveTema(t.nome) === chaveTema(nome));
+            if (duplicata) return mostrarAviso(`Já existe um Tema chamado "${duplicata.nome}".`);
+            db.temas.push({ id: gerarId(), nome, notas });
+        }
+        save();
+        toggleModal('modal-tema');
+    };
+}
+
+export async function editarTema(id) {
+    const tema = db.temas.find((t) => t.id == id);
+    if (!tema) return;
+    await garantirModal('modal-tema');
+    document.getElementById('te-edit-id').value = tema.id;
+    document.getElementById('te-nome').value = tema.nome;
+    document.getElementById('te-notas').value = tema.notas || '';
+    document.getElementById('modal-tema-titulo').innerText = 'Editar Tema';
+    toggleModal('modal-tema');
+}
+
+// Exclui do cadastro só Tema que nenhum texto usa (ver podeExcluirTema);
+// com texto, avisa quantos e não faz nada. "Desfazer" devolve o registro
+// (com as notas) e o nome às listas dos Assuntos de onde saiu.
+export function excluirTema(id) {
+    const tema = db.temas.find((t) => t.id == id);
+    if (!tema) return;
+    const pode = podeExcluirTema(db, id);
+    if (!pode.ok) {
+        return mostrarAviso(
+            `"${tema.nome}" está em ${pode.textos} texto${pode.textos !== 1 ? 's' : ''}. Tire o tema dos textos (ou renomeie) antes de excluir.`,
+        );
+    }
+    const assuntoIds = assuntosDoTema(db, tema.nome).map((a) => a.id);
+    const { removido } = excluirTemaDoCadastro(db, id);
+    save();
+    mostrarAvisoComAcao(`Tema "${removido.nome}" excluído`, 'Desfazer', () => {
+        db.temas.push(removido);
+        assuntoIds.forEach((aid) => adicionarTemaAoAssunto(db, aid, removido.id));
+        save();
+    });
+}
+
+// "Excluir temas sem texto" (aba Temas): tira do cadastro todo Tema que
+// nenhum texto usa e mantém os que estão em uso. Confirma antes, dizendo
+// quantos saem e quantos ficam; "Desfazer" devolve tudo (notas e lugar nos
+// Assuntos incluídos). Nunca mexe nos textos.
+export function excluirTemasSemTextoComConfirmacao() {
+    const { excluir, manter } = resumoExclusaoTemasSemTexto(db);
+    if (excluir === 0) {
+        return mostrarAviso(
+            manter === 0
+                ? 'Não há temas cadastrados.'
+                : 'Todos os temas estão em uso em algum texto, então nenhum foi excluído.',
+        );
+    }
+    const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+    const ficam =
+        manter > 0
+            ? ` ${plural(manter, 'tema fica', 'temas ficam')}, porque algum texto o${manter === 1 ? '' : 's'} usa.`
+            : '';
+    abrirModalConfirmacao({
+        titulo: `Excluir ${plural(excluir, 'tema sem texto', 'temas sem texto')}?`,
+        rotulo: 'Temas',
+        mensagem: `Nenhum texto usa ${excluir === 1 ? 'este tema' : 'estes temas'}, então nenhum texto é alterado.${ficam} Você terá alguns segundos para desfazer.`,
+        textoConfirmar: 'Excluir',
+        corConfirmar: '#dc2626',
+        onConfirmar: () => {
+            const r = excluirTemasSemTexto(db);
+            if (!r.excluidos) return;
+            save();
+            mostrarAvisoComAcao(
+                `${plural(r.excluidos, 'tema excluído', 'temas excluídos')}`,
+                'Desfazer',
+                () => {
+                    r.desfazer();
+                    save();
+                },
+            );
+        },
+    });
+}
+
+// "Excluir todos os assuntos" (aba Assuntos): esvazia o cadastro de
+// Assuntos. Nenhum texto e nenhum Tema é alterado (os Temas só passam a
+// ficar sem assunto). "Desfazer" devolve todos.
+export function excluirTodosAssuntosComConfirmacao() {
+    const total = (db.assuntos || []).length;
+    if (total === 0) return mostrarAviso('Não há assuntos cadastrados.');
+    const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+    abrirModalConfirmacao({
+        titulo: `Excluir ${total === 1 ? 'o único assunto' : `todos os ${total} assuntos`}?`,
+        rotulo: 'Assuntos',
+        mensagem: `Os temas e os textos não são alterados: o assunto de um texto é sempre derivado dos temas dele. Você terá alguns segundos para desfazer.`,
+        textoConfirmar: 'Excluir',
+        corConfirmar: '#dc2626',
+        onConfirmar: () => {
+            const r = excluirTodosAssuntos(db);
+            if (!r.excluidos) return;
+            save();
+            mostrarAvisoComAcao(
+                plural(r.excluidos, 'assunto excluído', 'assuntos excluídos'),
+                'Desfazer',
+                () => {
+                    r.desfazer();
+                    save();
+                },
+            );
+        },
+    });
+}
+
+export async function editarAssunto(id) {
+    const as = db.assuntos.find((x) => x.id == id);
+    if (!as) return;
+    await garantirModal('modal-assunto');
+    document.getElementById('as-edit-id').value = as.id;
+    document.getElementById('as-nome').value = as.nome;
+    document.getElementById('as-notas').value = as.notas || '';
+    carregarTemasAssunto(nomesTemasDoAssunto(as, db.temas));
+    atualizarDatalistTemasAssunto();
+    document.getElementById('modal-assunto-titulo').innerText = 'Editar Assunto';
+    toggleModal('modal-assunto');
+}
+
+// "Atribuir a um Assunto" do painel "Temas sem Assunto": acrescenta o
+// Tema ao Assunto escolhido, sem abrir o modal — pensado pra classificar
+// dezenas de temas soltos de uma vez. Devolve true se acrescentou.
+export function atribuirTemaAAssunto(nomeTema, assuntoId) {
+    const tema = db.temas.find((t) => chaveTema(t.nome) === chaveTema(nomeTema));
+    if (!tema || !adicionarTemaAoAssunto(db, assuntoId, tema.id)) return false;
+    save();
+    return true;
+}
+
+// Handler do select do painel (onchange inline, gerado em
+// renderTemasSemAssunto): lê o tema do data-tema e o Assunto do valor.
+// O save() re-renderiza a lista (evento db:saved), então o tema sai do
+// painel e aparece no card do Assunto.
+export function atribuirTemaDoPainel(select) {
+    const assuntoId = Number(select.value);
+    const tema = select.dataset.tema;
+    if (!assuntoId || !tema) return;
+    const assunto = db.assuntos.find((a) => a.id == assuntoId);
+    if (atribuirTemaAAssunto(tema, assuntoId)) {
+        mostrarAviso(`"${tema}" agora está em "${assunto.nome}".`, 'sucesso');
+    } else {
+        select.value = '';
+    }
+}
+
 // ─── Mesclar (Pessoa/Época/Período Histórico) ───────────────────
 // Modal genérico (modal-mesclar.html), reaproveitado pelas duas abas de
 // gestão que têm o mesmo risco de duplicata por nome — renomear uma
@@ -1304,6 +1621,25 @@ const RENDER_MESCLAR = {
         mesclar: (origemId, destinoId) => mesclarMovimentosEscolas(db, origemId, destinoId),
         rerender: renderMovimentosEscolas,
     },
+    // Tema: além dos textos, a mesclagem passa os Assuntos do Tema de
+    // origem para o de destino (ver mesclarTemas em temas.js).
+    temas: {
+        rotulo: 'Tema',
+        desfazivel: true,
+        impacto: (id) => impactoDoTema(db, id),
+        mesclar: (origemId, destinoId) => mesclarTemas(db, origemId, destinoId),
+        rerender: renderTemas,
+    },
+    // Local: textos (citados e local de escrita) e locais filhos passam ao
+    // destino; o destino nunca pode ser quem pertence à origem (ver
+    // destinosDeMesclagemDeLocal e mesclarLocais em locais.js).
+    locais: {
+        rotulo: 'Local',
+        desfazivel: true,
+        impacto: (id) => impactoDoLocal(db, id),
+        mesclar: (origemId, destinoId) => mesclarLocais(db, origemId, destinoId),
+        rerender: renderLocais,
+    },
 };
 
 export function initFormMesclar() {
@@ -1332,35 +1668,109 @@ export function initFormMesclar() {
         const impacto = cfg.impacto(origemId);
         const autoresCount = impacto.autoresIds?.length || 0;
         const pessoasCount = impacto.pessoasIds?.length || 0;
+        const assuntosCount = impacto.assuntosIds?.length || 0;
         const textosCount = impacto.poemasIds.length + impacto.prosasIds.length;
-        const total = autoresCount + pessoasCount + textosCount;
+        const total = autoresCount + pessoasCount + textosCount + assuntosCount;
         const partes = [];
         if (autoresCount) partes.push(`${autoresCount} autor${autoresCount !== 1 ? 'es' : ''}`);
         if (pessoasCount) partes.push(`${pessoasCount} pessoa${pessoasCount !== 1 ? 's' : ''}`);
         if (textosCount) partes.push(`${textosCount} texto${textosCount !== 1 ? 's' : ''}`);
+        if (assuntosCount) {
+            partes.push(`${assuntosCount} assunto${assuntosCount !== 1 ? 's' : ''}`);
+        }
         const resumoImpacto = partes.join(' e ');
 
         // Fecha o modal de escolha antes de abrir o de confirmação — os
         // dois usam a mesma tecla Esc/foco-trap (ver modais.js), então
         // empilhar os dois ao mesmo tempo confundiria qual fecha primeiro.
         toggleModal('modal-mesclar');
+        const aviso = cfg.desfazivel
+            ? 'Você terá alguns segundos para desfazer.'
+            : 'Essa ação não pode ser desfeita.';
         abrirModalConfirmacao({
             titulo: `${origem.nome} → ${destino.nome}`,
             rotulo: `Mesclar ${cfg.rotulo}`,
             mensagem:
                 total > 0
-                    ? `${resumoImpacto} que ${total !== 1 ? 'referenciam' : 'referencia'} "${origem.nome}" ${total !== 1 ? 'passam' : 'passa'} a referenciar "${destino.nome}". "${origem.nome}" será removido(a) do cadastro. Essa ação não pode ser desfeita.`
-                    : `"${origem.nome}" será removido(a) do cadastro. Essa ação não pode ser desfeita.`,
+                    ? `${resumoImpacto} que ${total !== 1 ? 'referenciam' : 'referencia'} "${origem.nome}" ${total !== 1 ? 'passam' : 'passa'} a referenciar "${destino.nome}". "${origem.nome}" será removido(a) do cadastro. ${aviso}`
+                    : `"${origem.nome}" será removido(a) do cadastro. ${aviso}`,
             textoConfirmar: 'Mesclar',
             corConfirmar: '#d97706',
             onConfirmar: () => {
-                cfg.mesclar(origemId, destinoId);
+                const r = cfg.mesclar(origemId, destinoId);
                 save();
                 cfg.rerender();
+                if (typeof r?.desfazer === 'function') {
+                    mostrarAvisoComAcao(
+                        `Mesclado: "${origem.nome}" → "${destino.nome}"`,
+                        'Desfazer',
+                        () => {
+                            r.desfazer();
+                            save();
+                            cfg.rerender();
+                        },
+                    );
+                    return;
+                }
                 mostrarAviso(`Mesclado: "${origem.nome}" → "${destino.nome}"`, 'sucesso');
             },
         });
     };
+}
+
+// Painel "Possíveis duplicatas" (aba Temas): junta `removerId` em
+// `manterId` pelo mesmo caminho da mesclagem comum, com confirmação que diz
+// o impacto e Desfazer.
+export function mesclarDuplicataComConfirmacao(manterId, removerId) {
+    const manter = (db.temas || []).find((t) => t.id == manterId);
+    const remover = (db.temas || []).find((t) => t.id == removerId);
+    if (!manter || !remover) return;
+    const impacto = impactoDoTema(db, removerId);
+    const textos = impacto.poemasIds.length + impacto.prosasIds.length;
+    const assuntos = impacto.assuntosIds?.length || 0;
+    const partes = [];
+    if (textos) partes.push(`${textos} texto${textos !== 1 ? 's' : ''}`);
+    if (assuntos) partes.push(`${assuntos} assunto${assuntos !== 1 ? 's' : ''}`);
+    const total = textos + assuntos;
+    const impactoTexto =
+        total > 0
+            ? `${partes.join(' e ')} que ${total !== 1 ? 'referenciam' : 'referencia'} "${remover.nome}" ${total !== 1 ? 'passam' : 'passa'} a referenciar "${manter.nome}". `
+            : '';
+    abrirModalConfirmacao({
+        titulo: `${remover.nome} → ${manter.nome}`,
+        rotulo: 'Mesclar Tema',
+        mensagem: `${impactoTexto}"${remover.nome}" será removido do cadastro. Você terá alguns segundos para desfazer.`,
+        textoConfirmar: 'Mesclar',
+        corConfirmar: '#d97706',
+        onConfirmar: () => {
+            const r = mesclarTemas(db, removerId, manterId);
+            if (!r.ok) return;
+            save();
+            renderTemas();
+            mostrarAvisoComAcao(
+                `Mesclado: "${remover.nome}" → "${manter.nome}"`,
+                'Desfazer',
+                () => {
+                    r.desfazer();
+                    save();
+                    renderTemas();
+                },
+            );
+        },
+    });
+}
+
+// "Não são iguais": o par deixa de ser sugerido. Desfazer traz de volta.
+export function marcarNaoIguaisComAviso(idA, idB) {
+    const r = marcarTemasNaoIguais(db, idA, idB);
+    if (!r.ok) return;
+    save();
+    renderTemas();
+    mostrarAvisoComAcao('Par marcado como diferente', 'Desfazer', () => {
+        r.desfazer();
+        save();
+        renderTemas();
+    });
 }
 
 // ─── Sonoridade (Escansão) ──────────────────────────────────────
@@ -2853,10 +3263,13 @@ export async function abrirModalMesclar(tipo, origemId) {
     // já vêm filtradas, em vez de deixar o usuário escolher um destino
     // que a mesclagem recusaria silenciosamente.
     const escopadoPorAutor = tipo === 'grupos' || tipo === 'epocas';
-    const outras = (db[tipo] || [])
-        .filter((x) => x.id != origemId)
-        .filter((x) => (escopadoPorAutor ? x.autorId == origem.autorId : true))
-        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    const outras =
+        tipo === 'locais'
+            ? destinosDeMesclagemDeLocal(origemId).map((d) => ({ id: d.id, nome: d.rotulo }))
+            : (db[tipo] || [])
+                  .filter((x) => x.id != origemId)
+                  .filter((x) => (escopadoPorAutor ? x.autorId == origem.autorId : true))
+                  .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     if (outras.length === 0) {
         mostrarAviso(
             escopadoPorAutor
@@ -3166,7 +3579,9 @@ export function initFormPoema() {
         const epocaFim = lerDataParcial('p-epoca-fim');
 
         if (violaOrdemDeDatas(epocaInicio, epocaFim)) {
-            return mostrarAviso('O "Até" da Época Retratada não pode ser anterior ao "De".');
+            return mostrarAviso(
+                'O "Até" do Período Biográfico Retratado não pode ser anterior ao "De".',
+            );
         }
 
         // Época pertence a um Autor desde 27/09/2026 — usa o primeiro
@@ -3213,7 +3628,7 @@ export function initFormPoema() {
             paiTipo,
             paiId,
             sequencia: seqOuNull(document.getElementById('p-sequencia').value),
-            idioma: document.getElementById('p-idioma').value.trim() || 'pt-BR',
+            ...idiomasParaSalvar('poemas'),
             dataEscrita,
             dataPublicacao,
             ano: dataEscrita?.ano || '', // mantido por compatibilidade (ordenação/estatísticas/exportação)
@@ -3227,7 +3642,8 @@ export function initFormPoema() {
             notas: document.getElementById('p-notas').value,
             sinalizacoesTradicao: document.getElementById('p-sinal-tradicao').value,
             sinalizacoesEstilo: document.getElementById('p-sinal-estilo').value,
-            sinalizacoesTema: document.getElementById('p-sinal-tema').value,
+            ...temasParaSalvar('poemas'),
+            ...locaisParaSalvar('poemas'),
             sinalizacoesRelacao: document.getElementById('p-sinal-relacao').value,
             sinalizacoesSensibilidade: document.getElementById('p-sinal-sensibilidade').value,
             sinalizacoesTom: document.getElementById('p-sinal-tom').value,
@@ -3324,6 +3740,9 @@ export function initFormPoema() {
         rastreadorPoema.marcarLimpo();
         toggleModal('modal-poema');
         resetSinalizacoes('poemas');
+        resetTemasTexto('poemas');
+        resetLocaisTexto('poemas');
+        resetIdiomasTexto('poemas');
         resetPessoas('poemas');
         resetGruposDiretos('poemas');
         resetAutoria('poemas');
@@ -3338,7 +3757,6 @@ const MAPA_POEMA = {
     titulo: 'p-titulo',
     texto: 'p-texto',
     sequencia: 'p-sequencia',
-    idioma: ['p-idioma', 'pt-BR'],
     notas: 'p-notas',
     autoavaliacao: 'p-autoavaliacao',
     autoclassificacao: ['p-autoclassificacao', 0],
@@ -3428,6 +3846,9 @@ export async function editarPoema(id) {
     setM('p-livros', p.livrosIds || []);
 
     carregarSinalizacoes('poemas', p);
+    carregarTemasTexto('poemas', p);
+    carregarLocaisTexto('poemas', p);
+    carregarIdiomasTexto('poemas', p);
     carregarPessoas('poemas', p.pessoas);
     carregarGruposDiretos('poemas', p.gruposDiretos);
     carregarAutoria('poemas', p.autoria);
@@ -3512,7 +3933,9 @@ export function initFormProsa() {
         const epocaFim = lerDataParcial('pr-epoca-fim');
 
         if (violaOrdemDeDatas(epocaInicio, epocaFim)) {
-            return mostrarAviso('O "Até" da Época Retratada não pode ser anterior ao "De".');
+            return mostrarAviso(
+                'O "Até" do Período Biográfico Retratado não pode ser anterior ao "De".',
+            );
         }
 
         // Mesmo critério de initFormPoema acima.
@@ -3547,7 +3970,7 @@ export function initFormProsa() {
             titulo: document.getElementById('pr-titulo').value,
             texto: document.getElementById('pr-texto').value,
             sequencia: seqOuNull(document.getElementById('pr-sequencia').value),
-            idioma: document.getElementById('pr-idioma').value.trim() || 'pt-BR',
+            ...idiomasParaSalvar('prosas'),
             dataEscrita,
             dataPublicacao,
             ano: dataEscrita?.ano || '', // mantido por compatibilidade (ordenação/estatísticas/exportação)
@@ -3563,7 +3986,8 @@ export function initFormProsa() {
             notas: document.getElementById('pr-notas').value,
             sinalizacoesTradicao: document.getElementById('pr-sinal-tradicao').value,
             sinalizacoesEstilo: document.getElementById('pr-sinal-estilo').value,
-            sinalizacoesTema: document.getElementById('pr-sinal-tema').value,
+            ...temasParaSalvar('prosas'),
+            ...locaisParaSalvar('prosas'),
             sinalizacoesRelacao: document.getElementById('pr-sinal-relacao').value,
             sinalizacoesSensibilidade: document.getElementById('pr-sinal-sensibilidade').value,
             sinalizacoesTom: document.getElementById('pr-sinal-tom').value,
@@ -3653,6 +4077,9 @@ export function initFormProsa() {
         rastreadorProsa.marcarLimpo();
         toggleModal('modal-prosa');
         resetSinalizacoes('prosas');
+        resetTemasTexto('prosas');
+        resetLocaisTexto('prosas');
+        resetIdiomasTexto('prosas');
         resetPessoas('prosas');
         resetGruposDiretos('prosas');
         resetAutoria('prosas');
@@ -3674,7 +4101,6 @@ const MAPA_PROSA = {
     titulo: 'pr-titulo',
     texto: 'pr-texto',
     sequencia: ['pr-sequencia', 0],
-    idioma: ['pr-idioma', 'pt-BR'],
     notas: 'pr-notas',
     autoavaliacao: 'pr-autoavaliacao',
     autoclassificacao: ['pr-autoclassificacao', 0],
@@ -3765,6 +4191,9 @@ export async function editarProsa(id) {
     sincronizarFiltroDestino('pr-destino-filtro', 'pr-destino', destinoStr);
 
     carregarSinalizacoes('prosas', pr);
+    carregarTemasTexto('prosas', pr);
+    carregarLocaisTexto('prosas', pr);
+    carregarIdiomasTexto('prosas', pr);
     carregarPessoas('prosas', pr.pessoas);
     carregarGruposDiretos('prosas', pr.gruposDiretos);
     carregarAutoria('prosas', pr.autoria);

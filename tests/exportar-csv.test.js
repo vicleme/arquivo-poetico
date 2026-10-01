@@ -316,10 +316,21 @@ describe('CSV de Poemas', () => {
         );
         assert.deepEqual([l.publicacao_ano, l.publicacao_mes, l.publicacao_dia], ['2024', '', '']);
         assert.deepEqual(
-            [l.epoca_inicio_ano, l.epoca_inicio_mes, l.epoca_inicio_dia],
+            [
+                l.periodo_biografico_inicio_ano,
+                l.periodo_biografico_inicio_mes,
+                l.periodo_biografico_inicio_dia,
+            ],
             ['2010', '2', ''],
         );
-        assert.deepEqual([l.epoca_fim_ano, l.epoca_fim_mes, l.epoca_fim_dia], ['2012', '', '']);
+        assert.deepEqual(
+            [
+                l.periodo_biografico_fim_ano,
+                l.periodo_biografico_fim_mes,
+                l.periodo_biografico_fim_dia,
+            ],
+            ['2012', '', ''],
+        );
     });
 
     it('autoria e pessoas: nomes na coluna simples, detalhe na outra', () => {
@@ -343,6 +354,12 @@ describe('CSV de Poemas', () => {
         assert.equal(l.sinal_estilo, '');
     });
 
+    it('Tema por papel: texto sem `temas` (dado antigo) deixa as colunas vazias', () => {
+        const l = linhaDoPoema(100);
+        assert.equal(l.tema_principal, '');
+        assert.equal(l.tema_secundario, '');
+    });
+
     it('elos e ecos apontam pro título do texto; alvo excluído não quebra', () => {
         const l = linhaDoPoema(100);
         assert.equal(l.elos, 'Reescrita de: Conto, "vizinho" (v2) | Díptico com: (texto excluído)');
@@ -362,9 +379,9 @@ describe('CSV de Poemas', () => {
 
     it('época, migração e fonte', () => {
         const l = linhaDoPoema(100);
-        assert.equal(l.epoca, 'Adolescência');
-        assert.equal(l.epoca_recorte, 'momento');
-        assert.equal(l.epoca_nao_se_aplica, 'false');
+        assert.equal(l.periodo_biografico, 'Adolescência');
+        assert.equal(l.periodo_biografico_recorte, 'momento');
+        assert.equal(l.periodo_biografico_nao_se_aplica, 'false');
         assert.equal(l.cortado_de_livro, 'Livro Velho');
         assert.equal(l.cortado_de_secao, 'Sec Velha');
         assert.equal(l.lancado_em_livro, '');

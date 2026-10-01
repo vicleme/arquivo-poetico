@@ -36,6 +36,9 @@ import {
     SINALIZACOES_CATEGORIAS,
     renderCoracoesHtml,
     OPCOES_GRAFIA,
+    temasComPapel,
+    assuntosComPapel,
+    ROTULOS_PAPEL_TEMA_CURTO,
 } from './utils.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
 import { renderCheckboxDownloadAbrangenteAcoes } from './download-abrangente.js';
@@ -118,14 +121,15 @@ export function badgesEtiquetas(
 // Coluna "Etiquetas": mesmo tratamento por cor que a coluna Grupos já
 // tem (cada badge com a cor do que ele representa), só que aqui a cor é
 // fixa por categoria (SINALIZACOES_CATEGORIAS), não cadastrável pelo
-// Victor como a cor de Grupo — são 8 categorias fechadas, não entidades
+// Victor como a cor de Grupo — são 9 categorias fechadas, não entidades
 // com registro próprio. Mesmo espírito das cores fixas já usadas em
 // Elos (ciano) e Referências (fuchsia): cor comunica o "tipo" da tag
 // só de bater o olho, sem abrir o item.
 const CORES_CATEGORIA_SINALIZACAO = {
     tradicao: 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300',
     estilo: 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300',
-    tema: 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300',
+    tema: 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300',
+    territorialidade: 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300',
     relacao: 'bg-pink-100 dark:bg-pink-900 text-pink-700 dark:text-pink-300',
     sensibilidade: 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300',
     tom: 'bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300',
@@ -133,14 +137,30 @@ const CORES_CATEGORIA_SINALIZACAO = {
     outros: 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300',
 };
 
-// Percorre as 8 categorias em vez de usar sinalizacoesCombinadas (que
+// Badge de um Tema com o papel dele: marcador visível só quando há papel
+// (★ principal, ☆ secundário); o title diz "Nome (papel)".
+const MARCADOR_PAPEL_TEMA = { principal: '★', secundario: '☆' };
+function badgeTemaComPapel({ nome, papel }, corClasse) {
+    const marcador = MARCADOR_PAPEL_TEMA[papel] || '';
+    const title = papel ? `${nome} (${ROTULOS_PAPEL_TEMA_CURTO[papel]})` : nome;
+    return `<span title="${escapeHtml(title)}" class="text-[9px] ${corClasse} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(nome)}${marcador ? ` <span class="font-bold">${marcador}</span>` : ''}</span>`;
+}
+
+// Percorre as 9 categorias em vez de usar sinalizacoesCombinadas (que
 // achata tudo numa string só, perdendo de qual campo cada tag veio) —
 // aqui a categoria de origem de cada tag é o que decide a cor do badge.
-export function badgesEtiquetasPorCategoria(item) {
+// `semTema: true` tira os Temas das Etiquetas (a tabela tem coluna própria).
+export function badgesEtiquetasPorCategoria(item, { semTema = false } = {}) {
     const badges = Object.entries(SINALIZACOES_CATEGORIAS).flatMap(([categoria, campo]) => {
         const valor = item[campo];
         if (!valor) return [];
+        if (semTema && categoria === 'tema') return [];
         const corClasse = CORES_CATEGORIA_SINALIZACAO[categoria];
+        // Tema com papel: o badge ganha um marcador (★ principal, ☆ secundário)
+        // e o papel por extenso no title. Texto sem `temas` cai no caminho comum.
+        if (categoria === 'tema' && Array.isArray(item.temas)) {
+            return temasComPapel(item, db.temas).map((e) => badgeTemaComPapel(e, corClasse));
+        }
         return valor
             .split(',')
             .map((t) => t.trim())
@@ -153,6 +173,32 @@ export function badgesEtiquetasPorCategoria(item) {
     return badges.length
         ? badges.join('')
         : '<span class="text-gray-300 dark:text-slate-600">—</span>';
+}
+
+// Coluna "Tema" (Poemas e Prosas): um selo por Tema, com ★ (principal) ou ☆
+// (secundário) e o papel por extenso no title. Sem Tema, traço.
+export function badgesTemas(item) {
+    const corClasse = CORES_CATEGORIA_SINALIZACAO.tema;
+    const lista = temasComPapel(item, db.temas);
+    return lista.length
+        ? lista.map((e) => badgeTemaComPapel(e, corClasse)).join('')
+        : '<span class="text-gray-300 dark:text-slate-600">—</span>';
+}
+
+// Coluna "Assunto": Assuntos derivados dos Temas, cada um com o papel
+// efetivo (★/☆). Papel fixado pela pessoa neste texto vem avisado no title.
+export function badgesAssuntos(item) {
+    const lista = assuntosComPapel(item, db.assuntos, db.temas);
+    if (!lista.length) return '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    const cor = 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300';
+    return lista
+        .map((a) => {
+            const marcador = MARCADOR_PAPEL_TEMA[a.papel] || '';
+            const base = a.papel ? `${a.nome} (${ROTULOS_PAPEL_TEMA_CURTO[a.papel]})` : a.nome;
+            const title = a.fixado ? `${base} — papel fixado neste texto` : base;
+            return `<span title="${escapeHtml(title)}" class="text-[9px] ${cor} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(a.nome)}${marcador ? ` <span class="font-bold">${marcador}</span>` : ''}</span>`;
+        })
+        .join('');
 }
 
 // Coluna de Pessoas: pessoas é array de objeto {pessoaId, papeis} —
@@ -543,6 +589,8 @@ function iconeOrdenacao(ativo, direcao) {
 const COLUNA_CAMPO_BUSCA = {
     poemas: {
         titulo: 'titulo',
+        idioma: 'idioma',
+        movimentosEscolas: '_buscaMovimentosEscolas',
         pessoas: '_buscaPessoas',
         grupos: '_buscaGrupos',
         intertextualidade: '_buscaIntertexto',
@@ -552,7 +600,10 @@ const COLUNA_CAMPO_BUSCA = {
         anotacoesMarginais: '_buscaAnotacoes',
         descricaoVisual: 'descricaoVisual',
         contextoHistorico: 'contextoHistorico',
+        localEscrita: '_buscaLocalEscrita',
+        territorialidade: '_buscaTerritorialidade',
         etiquetas: '_buscaSinalizacoes',
+        temas: 'sinalizacoesTema',
         notas: 'notas',
         ocultacao: 'ocultacao',
         conteudoSensivel: 'conteudoSensivel',
@@ -571,6 +622,7 @@ const COLUNA_CAMPO_BUSCA = {
         autoavaliacao: 'autoavaliacao',
         epocaRetratada: '_buscaEpoca',
         periodoHistoricoId: '_buscaPeriodoHistorico',
+        assuntos: '_buscaAssuntos',
         fonte: '_buscaFonte',
         grafia: '_buscaGrafia',
         // ID do Sistema (ver comentário em CAMPOS_ATRIBUTO, utils.js) —
@@ -580,10 +632,13 @@ const COLUNA_CAMPO_BUSCA = {
     },
     prosas: {
         titulo: 'titulo',
+        idioma: 'idioma',
+        movimentosEscolas: '_buscaMovimentosEscolas',
         pessoas: '_buscaPessoas',
         grupos: '_buscaGrupos',
         genero: 'genero',
         etiquetas: '_buscaSinalizacoes',
+        temas: 'sinalizacoesTema',
         notas: 'notas',
         autoria: '_buscaAutoria',
         envios: '_buscaEnvios',
@@ -598,6 +653,8 @@ const COLUNA_CAMPO_BUSCA = {
         anexos: '_buscaAnexos',
         anexosNotaGeral: 'anexosNotaGeral',
         contextoHistorico: 'contextoHistorico',
+        localEscrita: '_buscaLocalEscrita',
+        territorialidade: '_buscaTerritorialidade',
         ocultacao: 'ocultacao',
         conteudoSensivel: 'conteudoSensivel',
         vocabularioHiperacionante: 'vocabularioHiperacionante',
@@ -611,6 +668,7 @@ const COLUNA_CAMPO_BUSCA = {
         referenciasExternas: '_buscaReferenciasExternas',
         epocaRetratada: '_buscaEpoca',
         periodoHistoricoId: '_buscaPeriodoHistorico',
+        assuntos: '_buscaAssuntos',
         fonte: '_buscaFonte',
         grafia: '_buscaGrafia',
         idSistema: 'id',
