@@ -203,6 +203,255 @@ export function reconciliarTemasDoTexto(dbRef, item) {
     return mudou;
 }
 
+// ─── Temas em lote (barra de seleção de Poemas e Prosas) ───────────────
+// Lógica pura do botão "Temas" da edição em massa: adiciona/remove vários
+// Temas de uma vez nos textos selecionados, pela fonte da verdade
+// (`item.temas`, por id) e já regrava o espelho `sinalizacoesTema`. Entra
+// com papel "indefinido" (como Pessoa entra sem papéis na edição em massa);
+// quem quiser principal/secundário ajusta no modal do texto. Não pede
+// confirmação nem salva: quem chama decide.
+
+// "amor, Saudade ,, amor" → ['amor', 'Saudade']: nomes limpos, sem
+// repetição (por chave, sem caixa/acento), na ordem digitada.
+export function nomesDeTemasDigitados(texto) {
+    const vistos = new Set();
+    const saida = [];
+    String(texto ?? '')
+        .split(',')
+        .forEach((parte) => {
+            const nome = limparNomeTema(parte);
+            const chave = chaveTema(nome);
+            if (!chave || vistos.has(chave)) return;
+            vistos.add(chave);
+            saida.push(nome);
+        });
+    return saida;
+}
+
+// Opções do datalist do campo "vários temas separados por vírgula". O
+// navegador compara o texto INTEIRO do campo com cada opção, então cada
+// sugestão carrega o que a pessoa já digitou antes da última vírgula
+// ("amor, sa" → "amor, Saudade"). Não sugere o que já está no campo.
+export function sugestoesDeTemasEncadeadas(texto, nomesCadastro) {
+    const bruto = String(texto ?? '');
+    const i = bruto.lastIndexOf(',');
+    const antes = i === -1 ? '' : bruto.slice(0, i + 1);
+    const fragmento = i === -1 ? bruto : bruto.slice(i + 1);
+    let prefixo = antes;
+    if (antes) {
+        const espaco = fragmento.match(/^\s*/)[0];
+        prefixo += espaco === '' && fragmento.trim() === '' ? ' ' : espaco;
+    }
+    const jaDigitados = new Set(nomesDeTemasDigitados(antes).map(chaveTema));
+    return (nomesCadastro || [])
+        .filter((nome) => !jaDigitados.has(chaveTema(nome)))
+        .map((nome) => `${prefixo}${nome}`);
+}
+
+function gravarTemasNoTexto(dbRef, item, temas) {
+    item.temas = temas;
+    item.sinalizacoesTema = espelhoDeTemas(
+        temas.map((e) => ({ nome: nomeDoTemaPorId(dbRef, e.temaId), papel: e.papel })),
+    );
+}
+
+// Nomes de `nomes` que ainda não têm registro no cadastro (por chave).
+export function temasInexistentes(dbRef, nomes) {
+    const conhecidos = new Set((dbRef.temas || []).map((t) => chaveTema(t.nome)));
+    return (nomes || []).filter((n) => !conhecidos.has(chaveTema(n)));
+}
+
+// Adiciona os Temas `nomes` a cada item de `itens` (criando no cadastro o
+// que ainda não existe). Quem já tinha o Tema não muda (papel preservado).
+// Devolve `{ textos, vinculos, criados }`: textos alterados, vínculos novos
+// e Temas novos no cadastro.
+export function adicionarTemasAosTextos(dbRef, itens, nomes) {
+    const antes = (dbRef.temas || []).length;
+    const ids = [];
+    (nomes || []).forEach((nome) => {
+        const id = garantirTema(dbRef, nome);
+        if (id != null) ids.push(id);
+    });
+    const criados = (dbRef.temas || []).length - antes;
+    let textos = 0;
+    let vinculos = 0;
+    (itens || []).forEach((item) => {
+        reconciliarTemasDoTexto(dbRef, item);
+        const temas = [...item.temas];
+        let novos = 0;
+        ids.forEach((id) => {
+            if (temas.some((e) => String(e.temaId) === String(id))) return;
+            temas.push({ temaId: id, papel: '' });
+            novos += 1;
+        });
+        if (!novos) return;
+        gravarTemasNoTexto(dbRef, item, temas);
+        textos += 1;
+        vinculos += novos;
+    });
+    return { textos, vinculos, criados };
+}
+
+// Tira os Temas `nomes` de cada item de `itens`. Nunca cria Tema e nunca o
+// exclui do cadastro (isso é na aba Temas). Devolve `{ textos, vinculos,
+// desconhecidos }`: `desconhecidos` são os nomes sem registro no cadastro.
+export function removerTemasDosTextos(dbRef, itens, nomes) {
+    const desconhecidos = temasInexistentes(dbRef, nomes);
+    const chaves = new Set((nomes || []).map(chaveTema));
+    const ids = new Set(
+        (dbRef.temas || []).filter((t) => chaves.has(chaveTema(t.nome))).map((t) => String(t.id)),
+    );
+    let textos = 0;
+    let vinculos = 0;
+    if (ids.size) {
+        (itens || []).forEach((item) => {
+            reconciliarTemasDoTexto(dbRef, item);
+            const temas = item.temas.filter((e) => !ids.has(String(e.temaId)));
+            const tirados = item.temas.length - temas.length;
+            if (!tirados) return;
+            gravarTemasNoTexto(dbRef, item, temas);
+            textos += 1;
+            vinculos += tirados;
+        });
+    }
+    return { textos, vinculos, desconhecidos };
+}
+
+// ─── Assunto do Tema, pelo modal do texto ───────────────────────────────
+// No modal de Poema/Prosa a pessoa pode ligar um Tema a um Assunto (existente
+// ou novo) sem sair do texto. A ligação é do TEMA no cadastro (vale para
+// todos os textos com esse Tema), não do texto. Fica como lista de
+// pendências `[{ temaChave, assuntoId, nome }]` (`assuntoId` null = Assunto
+// novo) e só vira cadastro ao salvar o texto (`aplicarAssuntosPendentes`),
+// então cancelar o modal não suja nada. Funções puras, sem DOM nem save().
+
+export const PREFIXO_TEMA_TEMPORARIO = 'tmp:';
+export const PREFIXO_ASSUNTO_NOVO = 'novo:';
+
+// Id de um Assunto que ainda não existe no cadastro (só vive no modal).
+export function assuntoEhNovo(id) {
+    return String(id).startsWith(PREFIXO_ASSUNTO_NOVO);
+}
+
+export function limparNomeAssunto(nome) {
+    return String(nome ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function acharTemaPorChave(dbRef, chave) {
+    return (dbRef.temas || []).find((t) => chaveTema(t.nome) === chave);
+}
+
+// Tenta ligar o Tema `temaNome` ao Assunto `nomeAssunto`. Nome que já existe no
+// cadastro (sem caixa/acento) liga ao existente; senão marca um Assunto novo.
+// Devolve `{ resultado, pendentes, assunto? }`; `resultado`: 'ok' | 'vazio' |
+// 'ja-esta' (o cadastro já tem a ligação) | 'repetido' (já está pendente).
+// Não altera `pendentes`: devolve a lista nova.
+export function adicionarAssuntoPendente(dbRef, pendentes, temaNome, nomeAssunto) {
+    const lista = Array.isArray(pendentes) ? pendentes : [];
+    const nome = limparNomeAssunto(nomeAssunto);
+    const temaChave = chaveTema(temaNome);
+    if (!nome || !temaChave) return { resultado: 'vazio', pendentes: lista };
+    const existente = (dbRef.assuntos || []).find((a) => chaveTema(a.nome) === chaveTema(nome));
+    const tema = acharTemaPorChave(dbRef, temaChave);
+    if (
+        existente &&
+        tema &&
+        (existente.temaIds || []).some((id) => String(id) === String(tema.id))
+    ) {
+        return { resultado: 'ja-esta', pendentes: lista, assunto: existente };
+    }
+    const assuntoId = existente ? existente.id : null;
+    const nomeFinal = existente ? existente.nome : nome;
+    const chaveAssunto = chaveTema(nomeFinal);
+    const repetido = lista.some(
+        (p) => p.temaChave === temaChave && chaveTema(p.nome) === chaveAssunto,
+    );
+    if (repetido) return { resultado: 'repetido', pendentes: lista };
+    return {
+        resultado: 'ok',
+        pendentes: [...lista, { temaChave, assuntoId, nome: nomeFinal }],
+        assunto: { id: assuntoId, nome: nomeFinal },
+    };
+}
+
+// Mantém só as pendências de Temas que ainda estão na lista do texto
+// (`entradas`: [{ nome, papel }]): tirar o Tema do texto descarta as dele.
+export function podarAssuntosPendentes(entradas, pendentes) {
+    const chaves = new Set((entradas || []).map((e) => chaveTema(e.nome)));
+    return (Array.isArray(pendentes) ? pendentes : []).filter((p) => chaves.has(p.temaChave));
+}
+
+// Cadastro "como ficará depois de salvar", só para o modal exibir: devolve
+// cópias de `assuntos` e `temas` com as pendências aplicadas. Tema que ainda
+// não existe ganha id temporário (`tmp:`) e Assunto novo ganha id `novo:`;
+// nenhum dos dois vai para o cadastro de verdade.
+export function sobreporAssuntosPendentes(dbRef, entradas, pendentes) {
+    const temas = (dbRef.temas || []).map((t) => ({ ...t }));
+    const assuntos = (dbRef.assuntos || []).map((a) => ({
+        ...a,
+        temaIds: Array.isArray(a.temaIds) ? [...a.temaIds] : a.temaIds,
+    }));
+    const idDoTema = (chave, nome) => {
+        const achado = temas.find((t) => chaveTema(t.nome) === chave);
+        if (achado) return achado.id;
+        const id = `${PREFIXO_TEMA_TEMPORARIO}${chave}`;
+        temas.push({ id, nome, notas: '' });
+        return id;
+    };
+    const nomeDaEntrada = new Map((entradas || []).map((e) => [chaveTema(e.nome), e.nome]));
+    podarAssuntosPendentes(entradas, pendentes).forEach((p) => {
+        const temaId = idDoTema(p.temaChave, nomeDaEntrada.get(p.temaChave));
+        let assunto =
+            p.assuntoId != null
+                ? assuntos.find((a) => String(a.id) === String(p.assuntoId))
+                : assuntos.find((a) => chaveTema(a.nome) === chaveTema(p.nome));
+        if (!assunto && p.assuntoId != null) return; // Assunto excluído nesse meio tempo
+        if (!assunto) {
+            assunto = {
+                id: `${PREFIXO_ASSUNTO_NOVO}${chaveTema(p.nome)}`,
+                nome: p.nome,
+                notas: '',
+                temaIds: [],
+            };
+            assuntos.push(assunto);
+        }
+        if (!assunto.temaIds.some((id) => String(id) === String(temaId)))
+            assunto.temaIds.push(temaId);
+    });
+    return { assuntos, temas };
+}
+
+// Grava as pendências no cadastro. Chamar DEPOIS de `resolverTemasEditados`
+// (o Tema já existe). Assunto novo é criado (ou reaproveitado, se o nome
+// passou a existir); Assunto existente que sumiu do cadastro é ignorado.
+// Devolve `{ criados, vinculos }`.
+export function aplicarAssuntosPendentes(dbRef, entradas, pendentes) {
+    if (!Array.isArray(dbRef.assuntos)) dbRef.assuntos = [];
+    let criados = 0;
+    let vinculos = 0;
+    podarAssuntosPendentes(entradas, pendentes).forEach((p) => {
+        const tema = acharTemaPorChave(dbRef, p.temaChave);
+        if (!tema) return;
+        let assunto =
+            p.assuntoId != null
+                ? dbRef.assuntos.find((a) => String(a.id) === String(p.assuntoId))
+                : dbRef.assuntos.find((a) => chaveTema(a.nome) === chaveTema(p.nome));
+        if (!assunto && p.assuntoId != null) return;
+        if (!assunto) {
+            assunto = { id: gerarId(), nome: p.nome, notas: '', temaIds: [] };
+            dbRef.assuntos.push(assunto);
+            criados += 1;
+        }
+        if (!Array.isArray(assunto.temaIds)) assunto.temaIds = [];
+        if (assunto.temaIds.some((id) => String(id) === String(tema.id))) return;
+        assunto.temaIds.push(tema.id);
+        vinculos += 1;
+    });
+    return { criados, vinculos };
+}
+
 // Nº de textos (Poemas + Prosas) que têm o Tema, por `chaveTema`.
 export function contarTextosPorTema(dbRef) {
     const contagem = new Map();

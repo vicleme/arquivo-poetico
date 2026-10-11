@@ -1,15 +1,15 @@
-# Tags (Sinalizações): how to interpret this field
+# Tags (Etiquetas): how to interpret this field
 
 This document doesn't ask for any task — it explains the logic behind the
-archive's tags (called "Sinalizações" — Flags/Signalings — in the
-interface), so that an AI receiving exported data reads each tag under the
+archive's tags (called "Etiquetas" in the interface; formerly "Sinalizações", a name that
+still appears in the field keys, such as `sinalizacoesEstilo`), so that an AI receiving exported data reads each tag under the
 right category, without mixing up what each one means.
 
 ---
 
 ## What the field is (and isn't)
 
-There is no single "tags" field. "Sinalizações" is the name of the
+There is no single "tags" field. "Etiquetas" is the name of the
 **group**, but behind it there are **9 independent fields**, one per
 category, each a list of tags in **free text** (not a closed list of
 pre-defined options — whoever catalogs types the tag they want, with

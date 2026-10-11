@@ -28,9 +28,13 @@ import {
     valorBateTermo,
     formatarDataParcial,
     situacaoDominioPublico,
-    nomesMovimentosEscolas,
 } from './utils.js';
 import { db } from './db.js';
+import {
+    nomesDeBuscaDasCorrentes,
+    posturasDasCorrentes,
+    programasDasCorrentes,
+} from './correntes-hierarquia.js';
 
 // Prefixo digitado (sem acento, minúsculo) → chave no objeto "decorado"
 // devolvido por decorarAutorParaBusca abaixo.
@@ -58,6 +62,13 @@ export const CAMPOS_ATRIBUTO_AUTOR = {
     instituicao: 'instituicoes',
     ocupacao: 'ocupacoes',
     movimento: 'movimentosEscolas',
+    escola: 'movimentosEscolas',
+    movimentodireto: 'movimentosEscolasDireto',
+    escoladireta: 'movimentosEscolasDireto',
+    // Postura estética e Programa efetivos (com a herança do pai) das
+    // correntes do autor.
+    postura: 'posturas',
+    programa: 'programas',
     premio: 'premios',
     obra: 'obras',
     circulo: 'circulo',
@@ -94,6 +105,8 @@ export const PREFIXOS_CANONICOS_AUTOR = [
     'instituicao',
     'ocupacao',
     'movimento',
+    'postura',
+    'programa',
     'premio',
     'obra',
     'circulo',
@@ -186,10 +199,21 @@ export function decorarAutorParaBusca(autor) {
         ocupacoes: nomesDe(autor.ocupacoes).join(', '),
         // Nome resolvido via cadastro central (db.movimentosEscolas) — o
         // Autor só guarda os ids, mesmo padrão de Poema/Prosa.
-        movimentosEscolas: nomesMovimentosEscolas(
-            autor.movimentosEscolasIds,
+        // Hierárquico, como em Poema/Prosa: o Autor ligado a uma geração
+        // também acha pela corrente-mãe. `movimentodireto:` só o exato.
+        movimentosEscolas: nomesDeBuscaDasCorrentes(
             db.movimentosEscolas,
+            autor.movimentosEscolasIds,
+            { comAncestrais: true },
         ).join(', '),
+        movimentosEscolasDireto: nomesDeBuscaDasCorrentes(
+            db.movimentosEscolas,
+            autor.movimentosEscolasIds,
+        ).join(', '),
+        posturas: posturasDasCorrentes(db.movimentosEscolas, autor.movimentosEscolasIds).join(', '),
+        programas: programasDasCorrentes(db.movimentosEscolas, autor.movimentosEscolasIds).join(
+            ', ',
+        ),
         premios: nomesComAno(autor.premios).join(', '),
         obras: nomesComAno(autor.obras).join(', '),
         circulo: nomesDe(autor.circulo).join(', '),

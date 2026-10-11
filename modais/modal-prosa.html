@@ -190,7 +190,7 @@
                         <summary>
                             Períodos, Movimento e Inspiração
                             <span class="campo-grupo-dica"
-                                >(período biográfico, período histórico, movimento/escola,
+                                >(período biográfico, período histórico, corrente literária,
                                 inspiração)</span
                             >
                         </summary>
@@ -327,7 +327,7 @@
                             <datalist id="sugestoes-periodo-historico-nome-prosa"></datalist>
 
                             <label class="form-label mt-3"
-                                >Movimento/Escola
+                                >Corrente literária
                                 <span
                                     class="font-normal normal-case text-gray-400 dark:text-slate-500"
                                     >(0 a N — um texto pode não se encaixar bem em nenhum, ou caber
@@ -340,7 +340,7 @@
                                     id="pr-movimento-escola-input"
                                     list="sugestoes-movimentos-escolas-prosa"
                                     class="text-sm flex-1"
-                                    placeholder="Nome do movimento/escola..."
+                                    placeholder="Nome da corrente literária..."
                                 />
                                 <datalist id="sugestoes-movimentos-escolas-prosa"></datalist>
                                 <button
@@ -621,9 +621,41 @@
                     </details>
 
                     <details class="campo-grupo">
-                        <summary>Sinalizações</summary>
+                        <summary>Etiquetas</summary>
                         <div class="campo-grupo-corpo">
                             <div id="pr-sinalizacoes-corpo"></div>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>Personagens</summary>
+                        <div class="campo-grupo-corpo">
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-personagem-input"
+                                    list="pr-sugestoes-personagens"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome do personagem..."
+                                    autocomplete="off"
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarPersonagem('prosas')"
+                                    class="bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <datalist id="pr-sugestoes-personagens"></datalist>
+                            <div
+                                id="pr-personagens-container"
+                                class="flex flex-col gap-2 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <p class="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5">
+                                Identidade, vida e características do personagem ficam na aba
+                                Personagens. Aqui fica só a relação dele com este texto.
+                            </p>
                         </div>
                     </details>
 
@@ -982,6 +1014,11 @@
                                     Cancelar
                                 </button>
                             </div>
+                            <div
+                                id="pr-eco-ancoras"
+                                data-eco-ancoras-tabela="prosas"
+                                class="hidden mb-2"
+                            ></div>
                             <input
                                 type="text"
                                 id="pr-eco-texto"

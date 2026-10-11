@@ -332,6 +332,42 @@ html.dark .campo-grupo > .campo-grupo-corpo {
     border-top-color: #1e293b;
 }
 
+/* --- Explicação recolhível dentro de um campo (ex.: modal de Corrente literária) ---
+   <details class="campo-ajuda"><summary>Rótulo</summary><ul>...</ul></details>
+   Fica fechada por padrão: quem já conhece as opções não rola pelo texto
+   todas as vezes, e quem precisa abre com um clique. */
+.campo-ajuda {
+    margin-top: 0.5rem;
+}
+.campo-ajuda > summary {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.65rem;
+    color: #2563eb;
+}
+.campo-ajuda > summary::-webkit-details-marker {
+    display: none;
+}
+.campo-ajuda > summary::before {
+    content: '▸';
+    display: inline-block;
+    font-size: 0.6rem;
+    transition: transform 0.15s;
+}
+.campo-ajuda[open] > summary::before {
+    transform: rotate(90deg);
+}
+.campo-ajuda > summary:hover {
+    text-decoration: underline;
+}
+html.dark .campo-ajuda > summary {
+    color: #60a5fa;
+}
+
 /* --- Autoclassificação (corações — ver renderCoracoesHtml em utils.js) ---
    Cada coração é uma pilha de 2 camadas (fundo vazio + preenchimento
    recortado por largura em %, pra dar o passo de meio coração sem precisar

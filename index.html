@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Arquivo Poético - Sistema Integral</title>
+        <title>Arquivo Poético</title>
         <script>
             // Aplica o tema ANTES do primeiro paint, pra não piscar claro e
             // depois escurecer (o resto da lógica de tema mora em js/theme.js).
@@ -341,7 +341,14 @@
                                 onclick="abrirAba('grupos')"
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
-                                Grupos
+                                Grupos (Pessoas)
+                            </button>
+                            <button
+                                id="btn-personagens"
+                                onclick="abrirAba('personagens')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Personagens
                             </button>
                             <button
                                 id="btn-epocas"
@@ -362,7 +369,7 @@
                                 onclick="abrirAba('movimentos-escolas')"
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
-                                Movimento/Escola
+                                Correntes literárias
                             </button>
                         </div>
                     </div>
@@ -472,11 +479,32 @@
                                 Produção
                             </button>
                             <button
-                                id="btn-estatisticas-temas-pessoas"
-                                onclick="abrirAba('estatisticas-temas-pessoas')"
+                                id="btn-estatisticas-temas-assuntos"
+                                onclick="abrirAba('estatisticas-temas-assuntos')"
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
-                                Temas e pessoas
+                                Temas e Assuntos
+                            </button>
+                            <button
+                                id="btn-estatisticas-pessoas-grupos"
+                                onclick="abrirAba('estatisticas-pessoas-grupos')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Pessoas e Grupos
+                            </button>
+                            <button
+                                id="btn-estatisticas-personagens"
+                                onclick="abrirAba('estatisticas-personagens')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Personagens
+                            </button>
+                            <button
+                                id="btn-estatisticas-cruzamentos"
+                                onclick="abrirAba('estatisticas-cruzamentos')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Cruzamentos
                             </button>
                             <button
                                 id="btn-estatisticas-local-idioma"
@@ -484,6 +512,13 @@
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
                                 Local e idioma
+                            </button>
+                            <button
+                                id="btn-estatisticas-correntes"
+                                onclick="abrirAba('estatisticas-correntes')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Correntes literárias
                             </button>
                             <button
                                 id="btn-estatisticas-linguagem"
@@ -560,6 +595,13 @@
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
                                 Exportações Frequentes
+                            </button>
+                            <button
+                                id="btn-backup-recuperacao"
+                                onclick="abrirAba('backup-recuperacao')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Backup e recuperação
                             </button>
                         </div>
                     </div>
@@ -834,6 +876,86 @@
                             </button>
                         </div>
                     </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Definir orientação</label
+                        >
+                        <div class="flex gap-1">
+                            <input
+                                type="text"
+                                id="pessoas-massa-orientacao"
+                                list="sugestoes-orientacao-pessoas-massa"
+                                placeholder="Ex: Heterossexual..."
+                                style="width: 9rem; margin-bottom: 0"
+                            />
+                            <datalist id="sugestoes-orientacao-pessoas-massa"></datalist>
+                            <button
+                                type="button"
+                                onclick="aplicarOrientacaoEmMassaPessoas()"
+                                class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                                Aplicar
+                            </button>
+                            <button
+                                type="button"
+                                onclick="limparOrientacaoEmMassaPessoas()"
+                                title="Apagar a Orientação das pessoas selecionadas"
+                                class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                            >
+                                Limpar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Definir identidade cis/trans</label
+                        >
+                        <div class="flex gap-1">
+                            <select
+                                id="pessoas-massa-identidade-cis-trans"
+                                style="width: auto; margin-bottom: 0"
+                            >
+                                <option value="">Escolher...</option>
+                                <option value="__limpar__">Não documentado (apagar)</option>
+                                <option value="Cisgênero">Cisgênero</option>
+                                <option value="Transgênero">Transgênero</option>
+                                <option value="Não se aplica">Não se aplica</option>
+                            </select>
+                            <button
+                                type="button"
+                                onclick="aplicarIdentidadeCisTransEmMassaPessoas()"
+                                class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                                Aplicar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Definir cor/raça</label
+                        >
+                        <div class="flex gap-1">
+                            <select
+                                id="pessoas-massa-cor-raca"
+                                style="width: auto; margin-bottom: 0"
+                            >
+                                <option value="">Escolher...</option>
+                                <option value="__limpar__">Não documentado (apagar)</option>
+                                <option value="Branca">Branca</option>
+                                <option value="Preta">Preta</option>
+                                <option value="Parda">Parda</option>
+                                <option value="Amarela">Amarela</option>
+                                <option value="Indígena">Indígena</option>
+                            </select>
+                            <button
+                                type="button"
+                                onclick="aplicarCorRacaEmMassaPessoas()"
+                                class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                                Aplicar
+                            </button>
+                        </div>
+                    </div>
                     <button
                         type="button"
                         onclick="ocultarSelecaoPessoas()"
@@ -850,6 +972,14 @@
                     </button>
                     <button
                         type="button"
+                        onclick="inverterSelecaoPessoas()"
+                        title="Marca o que não está marcado e desmarca o que está marcado, entre os itens que a tela mostra agora"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Inverter seleção
+                    </button>
+                    <button
+                        type="button"
                         onclick="limparSelecaoPessoas()"
                         class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
                     >
@@ -862,7 +992,7 @@
 
             <section id="grupos" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-semibold">Grupos</h2>
+                    <h2 class="text-xl font-semibold">Grupos (Pessoas)</h2>
                     <button
                         onclick="prepararNovo('grupo')"
                         class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
@@ -1024,6 +1154,12 @@
                                 <code>classe:</code> <code>grau:</code> <code>instituicao:</code>
                                 <code>ocupacao:</code> <code>sobre:</code>
                             </li>
+                            <li>
+                                <code>movimento:</code> <code>escola:</code> Corrente literária do
+                                autor, incluindo a que a contém. <code>postura:</code>
+                                <code>programa:</code> Postura estética e Programa das correntes
+                                dele, com a herança do pai.
+                            </li>
                         </ul>
                     </div>
                     <div>
@@ -1074,6 +1210,14 @@
                         class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
                     >
                         Baixar .md
+                    </button>
+                    <button
+                        type="button"
+                        onclick="inverterSelecaoAutores()"
+                        title="Marca o que não está marcado e desmarca o que está marcado, entre os itens que a tela mostra agora"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Inverter seleção
                     </button>
                     <button
                         type="button"
@@ -1140,7 +1284,7 @@
 
             <section id="movimentos-escolas" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-semibold">Movimento/Escola</h2>
+                    <h2 class="text-xl font-semibold">Correntes literárias</h2>
                     <div class="flex items-center gap-3">
                         <select
                             id="ordenacao-movimentos-escolas"
@@ -1154,15 +1298,12 @@
                             onclick="prepararNovo('movimento-escola')"
                             class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
                         >
-                            Novo Movimento/Escola
+                            Nova corrente literária
                         </button>
                     </div>
                 </div>
                 <div id="filtros-periodo-movimentosEscolas"></div>
-                <div
-                    id="lista-movimentos-escolas"
-                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
-                ></div>
+                <div id="lista-movimentos-escolas" class="grid grid-cols-1 gap-4"></div>
             </section>
 
             <section id="temas" class="tab-content">
@@ -1187,7 +1328,9 @@
                 <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
                     Os temas que aparecem nos seus textos. Renomear aqui muda o nome em todos os
                     textos e assuntos. Dois temas que dizem a mesma coisa podem ser juntados com
-                    Mesclar. Um tema pode pertencer a mais de um assunto.
+                    Mesclar. Um tema pode pertencer a mais de um assunto. Em "Só sem assunto", o
+                    tema que ganha um assunto continua na lista, marcado, até você clicar em
+                    "Atualizar lista".
                 </p>
                 <div class="flex flex-wrap items-center gap-3 mb-3">
                     <input
@@ -1208,6 +1351,15 @@
                         />
                         Só sem assunto
                     </label>
+                    <button
+                        type="button"
+                        id="atualizar-temas-sem-assunto"
+                        onclick="atualizarListaSemAssunto()"
+                        title="Refaz a lista: tira os temas que já ganharam assunto e mostra os que ficaram sem"
+                        class="hidden text-xs border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                    >
+                        Atualizar lista
+                    </button>
                     <select
                         id="ordem-temas"
                         onchange="renderTemas()"
@@ -1258,6 +1410,61 @@
                 </p>
                 <div id="lista-assuntos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                 <div id="temas-sem-assunto" class="mt-6"></div>
+            </section>
+
+            <section id="personagens" class="tab-content">
+                <div class="flex justify-between items-center mb-6 gap-3 flex-wrap">
+                    <h2 class="text-xl font-semibold">Personagens</h2>
+                    <button
+                        onclick="novoPersonagem()"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                    >
+                        Novo Personagem
+                    </button>
+                </div>
+                <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
+                    Só quem foi criado ou reinterpretado por você: o Personagem existe uma vez e
+                    aparece em quantos textos for. Aqui ficam o que é dele (identidade, vida,
+                    características); o papel dele em cada texto é marcado no próprio poema ou
+                    prosa.
+                </p>
+                <div class="flex flex-wrap items-center gap-3 mb-3">
+                    <input
+                        type="search"
+                        id="busca-personagens"
+                        oninput="renderPersonagens()"
+                        placeholder="Buscar por nome, identidade ou característica..."
+                        aria-label="Buscar personagem"
+                        class="text-sm"
+                        style="width: 20rem; margin-bottom: 0"
+                    />
+                    <select
+                        id="filtro-origem-personagens"
+                        onchange="renderPersonagens()"
+                        aria-label="Filtrar personagens por origem"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="todos">Todas as origens</option>
+                        <option value="Criado">Criados</option>
+                        <option value="Reinterpretado">Reinterpretados</option>
+                        <option value="sem-origem">Sem origem</option>
+                    </select>
+                    <select
+                        id="filtro-uso-personagens"
+                        onchange="renderPersonagens()"
+                        aria-label="Filtrar personagens por uso nos textos"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="todos">Todos</option>
+                        <option value="com-textos">Com textos</option>
+                        <option value="sem-textos">Sem textos</option>
+                    </select>
+                    <span
+                        id="resumo-personagens"
+                        class="text-[11px] text-gray-400 dark:text-slate-500"
+                    ></span>
+                </div>
+                <div id="lista-personagens" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
             </section>
 
             <section id="locais" class="tab-content">
@@ -1498,6 +1705,20 @@
                                 acha o tema em qualquer papel).
                             </li>
                             <li>
+                                <code>personagemvoz:</code> <code>personageminterlocutor:</code>
+                                <code>personagemaparicao:</code> <code>personagemmencao:</code>
+                                <code>personagemalusao:</code> — Personagem por papel no texto
+                                (<code>personagem:</code> acha o personagem em qualquer papel).
+                            </li>
+                            <li>
+                                <code>personagemprotagonista:</code>
+                                <code>personagemsecundario:</code>
+                                <code>personagemsemcentralidade:</code> — Personagem por
+                                centralidade (a "sem centralidade" é só a ainda não preenchida; quem
+                                só tem Menção ou Alusão não entra em nenhuma). Todos aceitam o nome
+                                ou <code>*</code> (ex.: <code>personagemvoz:*</code>).
+                            </li>
+                            <li>
                                 <code>assuntoprincipal:</code> <code>assuntosecundario:</code>
                                 <code>assuntoindefinido:</code> — Assunto por papel no texto (<code
                                     >assunto:</code
@@ -1511,6 +1732,27 @@
                                 <code>territorialidade:"São Paulo (Cidade)"</code> distingue
                                 homônimos). Com <code>territorialidadedireta:</code> e
                                 <code>localescritadireta:</code>, só o Local exato.
+                            </li>
+                            <li>
+                                <code>dataescrita:</code> <code>datapublicacao:</code> — texto da
+                                data (<code>dataescrita:2020</code>). Com <code>*</code>, separam
+                                quem tem a data de quem não tem (<code>-dataescrita:*</code> = sem
+                                data de escrita); o filtro De/Até continua à parte e exclui quem não
+                                tem data.
+                            </li>
+                            <li>
+                                <code>movimento:</code> <code>escola:</code> Corrente literária
+                                ligada ao texto, incluindo a que a contém (<code
+                                    >movimento:Romantismo</code
+                                >
+                                acha também o texto ligado a uma geração ou vertente dele). Com
+                                <code>movimentodireto:</code>, só a corrente exata.
+                            </li>
+                            <li>
+                                <code>postura:</code> <code>programa:</code> Postura estética e
+                                Programa das correntes do texto, com a herança do pai
+                                (<code>postura:inovadora</code>,
+                                <code>programa:"não se aplica"</code>).
                             </li>
                             <li>
                                 <code>idiomaprincipal:</code> <code>idiomasecundario:</code> Idioma
@@ -1918,7 +2160,6 @@
                     >
                         <option value="sinalizacoesTradicao">Tradição</option>
                         <option value="sinalizacoesEstilo">Estilo</option>
-                        <option value="sinalizacoesTema">Tema</option>
                         <option value="sinalizacoesTerritorialidade">Territorialidade</option>
                         <option value="sinalizacoesRelacao">Relação</option>
                         <option value="sinalizacoesSensibilidade">Sensibilidade</option>
@@ -1929,8 +2170,8 @@
                     <input
                         type="text"
                         id="bulk-sinal-input"
-                        list="sugestoes-sinais-estilo-bulk"
-                        placeholder="Sinalização..."
+                        list="sugestoes-sinais-tradicao-bulk"
+                        placeholder="Etiqueta..."
                         class="flex-1 min-w-[160px] mb-0"
                         onkeydown="aoEnterAplicar(event, () => aplicarSinalEmMassa('poemas'))"
                     />
@@ -1945,6 +2186,17 @@
                         class="bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         − Remover
+                    </button>
+                    <button
+                        type="button"
+                        onclick="
+                            prepararPainelTemasMassa('poemas');
+                            togglePainel('painel-temas-massa', this);
+                        "
+                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        title="Adiciona ou remove vários temas de uma vez nos textos selecionados"
+                    >
+                        🎯 Temas ▾
                     </button>
                     <button
                         type="button"
@@ -2023,6 +2275,13 @@
                         🗑 Excluir selecionados
                     </button>
                     <button
+                        onclick="inverterSelecao('poemas')"
+                        title="Marca o que não está marcado e desmarca o que está marcado, entre os itens que a tela mostra agora"
+                        class="text-xs text-gray-500 dark:text-slate-400 underline whitespace-nowrap"
+                    >
+                        Inverter seleção
+                    </button>
+                    <button
                         onclick="limparSelecao('poemas')"
                         class="text-xs text-gray-500 dark:text-slate-400 underline whitespace-nowrap"
                     >
@@ -2033,6 +2292,51 @@
                         id="painel-preencher-massa"
                         class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
                     ></div>
+
+                    <div
+                        id="painel-temas-massa"
+                        class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
+                    >
+                        <div class="flex-1 min-w-[240px]">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                                >Temas (separe vários por vírgula)</label
+                            >
+                            <input
+                                type="text"
+                                id="bulk-tema-input"
+                                list="sugestoes-temas-bulk"
+                                placeholder="ex.: saudade, amor não correspondido"
+                                autocomplete="off"
+                                class="w-full text-xs p-2 mb-0"
+                                oninput="atualizarSugestoesTemasMassa('poemas')"
+                                onkeydown="
+                                    aoEnterAplicar(event, () => aplicarTemaEmMassa('poemas'))
+                                "
+                            />
+                            <datalist id="sugestoes-temas-bulk"></datalist>
+                        </div>
+                        <button
+                            type="button"
+                            onclick="aplicarTemaEmMassa('poemas')"
+                            class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        >
+                            + Adicionar aos selecionados
+                        </button>
+                        <button
+                            type="button"
+                            onclick="removerTemaEmMassa('poemas')"
+                            class="bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        >
+                            − Remover dos selecionados
+                        </button>
+                        <p class="text-[10px] text-gray-400 dark:text-slate-500 w-full">
+                            Tema que ainda não existe é criado no cadastro. Quem já tem o tema não
+                            muda (o papel principal/secundário é mantido); os novos entram como
+                            "indefinido", e você ajusta no modal do poema. Remover tira só o
+                            vínculo: o tema continua na aba Temas.
+                        </p>
+                    </div>
 
                     <div
                         id="painel-periodos-massa"
@@ -2313,6 +2617,20 @@
                                 acha o tema em qualquer papel).
                             </li>
                             <li>
+                                <code>personagemvoz:</code> <code>personageminterlocutor:</code>
+                                <code>personagemaparicao:</code> <code>personagemmencao:</code>
+                                <code>personagemalusao:</code> — Personagem por papel no texto
+                                (<code>personagem:</code> acha o personagem em qualquer papel).
+                            </li>
+                            <li>
+                                <code>personagemprotagonista:</code>
+                                <code>personagemsecundario:</code>
+                                <code>personagemsemcentralidade:</code> — Personagem por
+                                centralidade (a "sem centralidade" é só a ainda não preenchida; quem
+                                só tem Menção ou Alusão não entra em nenhuma). Todos aceitam o nome
+                                ou <code>*</code> (ex.: <code>personagemvoz:*</code>).
+                            </li>
+                            <li>
                                 <code>assuntoprincipal:</code> <code>assuntosecundario:</code>
                                 <code>assuntoindefinido:</code> — Assunto por papel no texto (<code
                                     >assunto:</code
@@ -2326,6 +2644,27 @@
                                 <code>territorialidade:"São Paulo (Cidade)"</code> distingue
                                 homônimos). Com <code>territorialidadedireta:</code> e
                                 <code>localescritadireta:</code>, só o Local exato.
+                            </li>
+                            <li>
+                                <code>dataescrita:</code> <code>datapublicacao:</code> — texto da
+                                data (<code>dataescrita:2020</code>). Com <code>*</code>, separam
+                                quem tem a data de quem não tem (<code>-dataescrita:*</code> = sem
+                                data de escrita); o filtro De/Até continua à parte e exclui quem não
+                                tem data.
+                            </li>
+                            <li>
+                                <code>movimento:</code> <code>escola:</code> Corrente literária
+                                ligada ao texto, incluindo a que a contém (<code
+                                    >movimento:Romantismo</code
+                                >
+                                acha também o texto ligado a uma geração ou vertente dele). Com
+                                <code>movimentodireto:</code>, só a corrente exata.
+                            </li>
+                            <li>
+                                <code>postura:</code> <code>programa:</code> Postura estética e
+                                Programa das correntes do texto, com a herança do pai
+                                (<code>postura:inovadora</code>,
+                                <code>programa:"não se aplica"</code>).
                             </li>
                             <li>
                                 <code>idiomaprincipal:</code> <code>idiomasecundario:</code> Idioma
@@ -2647,7 +2986,6 @@
                     >
                         <option value="sinalizacoesTradicao">Tradição</option>
                         <option value="sinalizacoesEstilo">Estilo</option>
-                        <option value="sinalizacoesTema">Tema</option>
                         <option value="sinalizacoesTerritorialidade">Territorialidade</option>
                         <option value="sinalizacoesRelacao">Relação</option>
                         <option value="sinalizacoesSensibilidade">Sensibilidade</option>
@@ -2658,8 +2996,8 @@
                     <input
                         type="text"
                         id="bulk-sinal-input-prosa"
-                        list="sugestoes-sinais-estilo-bulk-prosa"
-                        placeholder="Sinalização..."
+                        list="sugestoes-sinais-tradicao-bulk-prosa"
+                        placeholder="Etiqueta..."
                         class="flex-1 min-w-[160px] mb-0"
                         onkeydown="aoEnterAplicar(event, () => aplicarSinalEmMassa('prosas'))"
                     />
@@ -2694,6 +3032,17 @@
                         class="bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         − Remover
+                    </button>
+                    <button
+                        type="button"
+                        onclick="
+                            prepararPainelTemasMassa('prosas');
+                            togglePainel('painel-temas-massa-prosa', this);
+                        "
+                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        title="Adiciona ou remove vários temas de uma vez nos textos selecionados"
+                    >
+                        🎯 Temas ▾
                     </button>
                     <button
                         type="button"
@@ -2760,6 +3109,13 @@
                         🗑 Excluir selecionadas
                     </button>
                     <button
+                        onclick="inverterSelecao('prosas')"
+                        title="Marca o que não está marcado e desmarca o que está marcado, entre os itens que a tela mostra agora"
+                        class="text-xs text-gray-500 dark:text-slate-400 underline whitespace-nowrap"
+                    >
+                        Inverter seleção
+                    </button>
+                    <button
                         onclick="limparSelecao('prosas')"
                         class="text-xs text-gray-500 dark:text-slate-400 underline whitespace-nowrap"
                     >
@@ -2770,6 +3126,51 @@
                         id="painel-preencher-massa-prosa"
                         class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
                     ></div>
+
+                    <div
+                        id="painel-temas-massa-prosa"
+                        class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
+                    >
+                        <div class="flex-1 min-w-[240px]">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                                >Temas (separe vários por vírgula)</label
+                            >
+                            <input
+                                type="text"
+                                id="bulk-tema-input-prosa"
+                                list="sugestoes-temas-bulk-prosa"
+                                placeholder="ex.: saudade, amor não correspondido"
+                                autocomplete="off"
+                                class="w-full text-xs p-2 mb-0"
+                                oninput="atualizarSugestoesTemasMassa('prosas')"
+                                onkeydown="
+                                    aoEnterAplicar(event, () => aplicarTemaEmMassa('prosas'))
+                                "
+                            />
+                            <datalist id="sugestoes-temas-bulk-prosa"></datalist>
+                        </div>
+                        <button
+                            type="button"
+                            onclick="aplicarTemaEmMassa('prosas')"
+                            class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        >
+                            + Adicionar aos selecionados
+                        </button>
+                        <button
+                            type="button"
+                            onclick="removerTemaEmMassa('prosas')"
+                            class="bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        >
+                            − Remover dos selecionados
+                        </button>
+                        <p class="text-[10px] text-gray-400 dark:text-slate-500 w-full">
+                            Tema que ainda não existe é criado no cadastro. Quem já tem o tema não
+                            muda (o papel principal/secundário é mantido); os novos entram como
+                            "indefinido", e você ajusta no modal da prosa. Remover tira só o
+                            vínculo: o tema continua na aba Temas.
+                        </p>
+                    </div>
 
                     <div
                         id="painel-periodos-massa-prosa"
@@ -3513,7 +3914,7 @@
                             />
                         </div>
                         <div>
-                            <label class="form-label">Incluir só com tema (Sinalizações)</label>
+                            <label class="form-label">Incluir só com tema</label>
                             <input
                                 type="text"
                                 id="exp-temas-incluir"
@@ -3524,7 +3925,7 @@
                     </div>
 
                     <div>
-                        <label class="form-label">Excluir se tiver o tema (Sinalizações)</label>
+                        <label class="form-label">Excluir se tiver o tema</label>
                         <input
                             type="text"
                             id="exp-temas-excluir"
@@ -3691,6 +4092,19 @@
                         >
                             Baixar .docx seletivo
                         </button>
+                        <label
+                            class="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 whitespace-nowrap px-1"
+                            title="Gênero, orientação, cis/trans e cor/raça de cada Pessoa vão nos JSON por texto (seletivo, seleção, item avulso, tudo flat e templates). Desligada, saem sem esses campos. O backup completo nunca omite."
+                        >
+                            <input
+                                type="checkbox"
+                                class="dados-pessoais-check"
+                                checked
+                                style="width: auto; margin: 0"
+                                onchange="toggleIncluirDadosPessoais(this.checked)"
+                            />
+                            Incluir dados pessoais das Pessoas nos JSON
+                        </label>
                         <span
                             id="exp-resultado"
                             class="text-xs text-gray-500 dark:text-slate-400"
@@ -3748,19 +4162,121 @@
                         </div>
                     </div>
 
-                    <!-- Separador + backups automáticos (rede de segurança, não substitui o manual) -->
+                    <!-- Os retratos automáticos e o "Esvaziar o acervo" moraram aqui;
+                     agora ficam na aba Backup e recuperação (menu Dados). -->
                     <div class="pt-4 border-t border-dashed border-gray-200 dark:border-slate-700">
+                        <p class="text-xs text-gray-400 dark:text-slate-500">
+                            Procurando os backups automáticos ou o botão de esvaziar o acervo? Estão
+                            em
+                            <button
+                                type="button"
+                                onclick="abrirAba('backup-recuperacao')"
+                                class="text-blue-600 dark:text-blue-400 hover:underline font-bold"
+                            >
+                                Dados &rsaquo; Backup e recuperação</button
+                            >.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="backup-recuperacao" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold">Backup e recuperação</h2>
+                </div>
+                <p class="text-xs text-gray-400 dark:text-slate-500 mb-4">
+                    A cópia que sai do navegador é o "Baixar JSON" do cabeçalho. Aqui ficam a rede
+                    de segurança que o app mantém sozinho e o botão de recomeçar do zero.
+                </p>
+
+                <div
+                    id="backup-completo"
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-3 mb-4"
+                >
+                    <p class="text-xs text-gray-400 dark:text-slate-500">
+                        <strong class="text-gray-600 dark:text-slate-300">Backup completo</strong>
+                        Baixa dois arquivos com a mesma data no nome: o
+                        <strong>acervo</strong> (com as capas), que se restaura pelo "Importar JSON"
+                        do cabeçalho, e os <strong>extras</strong>, com as preferências (tema,
+                        colunas, filtros, templates de exportação e outras) e as Versões
+                        Alternativas, que o JSON do acervo não leva. Use antes de limpar os dados do
+                        navegador. O navegador pode pedir permissão para baixar dois arquivos.
+                    </p>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button
+                            type="button"
+                            id="btn-backup-completo"
+                            onclick="baixarBackupCompleto()"
+                            class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 dark:hover:bg-green-500 transition text-sm font-medium"
+                        >
+                            Baixar backup completo
+                        </button>
+                        <button
+                            type="button"
+                            id="btn-baixar-extras"
+                            onclick="baixarSoExtras()"
+                            class="border border-green-600 dark:border-green-500 text-green-700 dark:text-green-300 px-4 py-2 rounded-md hover:bg-green-50 dark:hover:bg-green-950 transition text-sm font-medium"
+                        >
+                            Baixar só os extras
+                        </button>
+                        <input
+                            type="file"
+                            id="arquivo-restaurar-extras"
+                            accept=".json,application/json"
+                            class="hidden"
+                            onchange="restaurarExtrasArquivo(event)"
+                        />
+                        <button
+                            type="button"
+                            id="btn-restaurar-extras"
+                            onclick="document.getElementById('arquivo-restaurar-extras').click()"
+                            class="border border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 px-4 py-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-950 transition text-sm font-medium"
+                        >
+                            Restaurar extras
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 dark:text-slate-500">
+                        Depois de limpar o navegador: abra o app, use "Importar JSON" com o arquivo
+                        do acervo e "Restaurar extras" com o arquivo de extras.
+                    </p>
+                </div>
+
+                <div
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-4"
+                >
+                    <div>
                         <p class="text-xs text-gray-400 dark:text-slate-500 mb-3">
                             <strong class="text-gray-600 dark:text-slate-300"
                                 >Backups automáticos</strong
                             >
                             — o app tira um retrato do acervo sozinho a cada poucas horas de uso e
                             guarda os últimos 10 aqui no navegador (IndexedDB). Não substitui o
-                            "Baixar JSON" acima (essa é a única cópia que sai do navegador), mas
-                            ajuda a recuperar uma versão de horas/dias atrás se algo der errado numa
-                            edição.
+                            "Baixar JSON" do cabeçalho (essa é a única cópia que sai do navegador),
+                            mas ajuda a recuperar uma versão de horas/dias atrás se algo der errado
+                            numa edição.
                         </p>
                         <div id="lista-snapshots" class="space-y-1.5 text-xs"></div>
+                    </div>
+
+                    <!-- Zona de risco: recomeçar do zero (Fase 13). O modal pede o que
+                     apagar, baixa um backup e só libera o botão depois de digitar a palavra. -->
+                    <div
+                        id="zona-de-risco"
+                        class="pt-4 mt-2 border-t border-dashed border-red-300 dark:border-red-900"
+                    >
+                        <p class="text-xs text-gray-500 dark:text-slate-400 mb-3">
+                            <strong class="text-red-700 dark:text-red-400">Zona de risco</strong>
+                            Quer recomeçar do zero? Você escolhe o que apagar (dados, preferências,
+                            cadastros pré-prontos), vê o resumo e o app baixa um backup antes.
+                        </p>
+                        <button
+                            type="button"
+                            id="btn-esvaziar-acervo"
+                            onclick="abrirModalEsvaziarAcervo()"
+                            class="border border-red-600 dark:border-red-500 text-red-600 dark:text-red-400 px-4 py-2 rounded-md hover:bg-red-50 dark:hover:bg-red-950 transition text-sm font-medium"
+                        >
+                            Esvaziar o acervo...
+                        </button>
                     </div>
                 </div>
             </section>
@@ -4045,47 +4561,94 @@
                 </div>
             </section>
 
-            <section id="estatisticas-temas-pessoas" class="tab-content">
+            <section id="estatisticas-temas-assuntos" class="tab-content">
                 <div class="mb-5">
-                    <h2 class="text-xl font-semibold">Temas e pessoas</h2>
+                    <h2 class="text-xl font-semibold">Temas e Assuntos</h2>
                     <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                        Sobre o que e sobre quem os textos tratam — e como essas ocorrências se
-                        distribuem no tempo.
+                        Sobre o que os textos tratam — e como essas ocorrências se distribuem no
+                        tempo.
                     </p>
                 </div>
                 <div class="est-filtros-compartilhados mb-6"></div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div
-                        class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
-                    >
-                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
-                            <div>
-                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
-                                    Temas mais frequentes
-                                </h3>
-                                <p class="text-[10px] text-gray-400 mt-1">
-                                    Número de textos que possuem cada tema.
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onclick="togglePainel('painel-ocultos-temas', this)"
-                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                <div
+                    class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                >
+                    <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                        <div>
+                            <h3
+                                id="titulo-temas-assuntos"
+                                class="text-sm font-bold text-gray-600 dark:text-slate-300"
                             >
-                                🚫 Ocultar ▾
-                            </button>
+                                Temas mais frequentes
+                            </h3>
+                            <p id="texto-temas-assuntos" class="text-[10px] text-gray-400 mt-1">
+                                Número de textos que possuem cada tema, dividido pelo papel do tema
+                                no texto.
+                            </p>
                         </div>
-                        <div id="painel-papel-tema" class="mb-3"></div>
-                        <div
-                            id="painel-ocultos-temas"
-                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
-                        ></div>
-                        <canvas id="grafico-temas" height="220"></canvas>
+                        <div id="painel-modo-temas-assuntos" class="flex gap-1"></div>
                     </div>
-
+                    <button
+                        type="button"
+                        onclick="togglePainel('painel-ocultos-temas-assuntos', this)"
+                        class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px] mb-2"
+                    >
+                        🚫 Ocultar ▾
+                    </button>
                     <div
-                        class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                        id="painel-ocultos-temas-assuntos"
+                        class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
+                    ></div>
+                    <canvas id="grafico-temas-assuntos" height="220"></canvas>
+                </div>
+
+                <div
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mt-6"
+                >
+                    <div class="flex justify-between items-center mb-3 gap-3 flex-wrap">
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Tema ao longo do tempo
+                            </h3>
+                            <p
+                                id="est-tema-temporal-legenda"
+                                class="text-[10px] text-gray-400 mt-1"
+                            >
+                                Selecione um ou mais temas abaixo para comparar a presença deles por
+                                ano.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onclick="togglePainel('painel-temporal-temas', this)"
+                            class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                        >
+                            🏷️ Selecionar temas ▾
+                        </button>
+                    </div>
+                    <div id="painel-papel-tema-tempo" class="mb-3"></div>
+                    <div
+                        id="painel-temporal-temas"
+                        class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg max-h-48 overflow-y-auto"
+                    ></div>
+                    <canvas id="grafico-tema-tempo" height="220"></canvas>
+                </div>
+            </section>
+
+            <section id="estatisticas-pessoas-grupos" class="tab-content">
+                <div class="mb-5">
+                    <h2 class="text-xl font-semibold">Pessoas e Grupos</h2>
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        Sobre quem os textos tratam — e como essas ocorrências se distribuem no
+                        tempo.
+                    </p>
+                </div>
+                <div class="est-filtros-compartilhados mb-6"></div>
+
+                <div class="grid grid-cols-1 gap-6">
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
                     >
                         <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
                             <div>
@@ -4093,11 +4656,16 @@
                                     Pessoas mais mencionadas
                                 </h3>
                                 <p class="text-[10px] text-gray-400 mt-1">
-                                    Número de textos em que cada pessoa está registrada.
+                                    Número de textos em que cada pessoa está registrada; em "Por
+                                    gênero", de aparições de pessoas de cada Gênero.
                                 </p>
                             </div>
                             <div id="painel-modo-pessoas" class="flex gap-1"></div>
                         </div>
+                        <div
+                            id="painel-cistrans-pessoas"
+                            class="mb-2 flex items-center flex-wrap gap-1"
+                        ></div>
                         <button
                             type="button"
                             onclick="togglePainel('painel-grupo-pessoas', this)"
@@ -4107,6 +4675,17 @@
                         </button>
                         <div
                             id="painel-grupo-pessoas"
+                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
+                        ></div>
+                        <button
+                            type="button"
+                            onclick="togglePainel('painel-genero-pessoas', this)"
+                            class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px] mb-2"
+                        >
+                            ⚧ Gênero ▾
+                        </button>
+                        <div
+                            id="painel-genero-pessoas"
                             class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
                         ></div>
                         <button
@@ -4127,147 +4706,65 @@
                 <div
                     class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mt-6"
                 >
-                    <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                    <div class="flex justify-between items-center mb-3 gap-3 flex-wrap">
                         <div>
                             <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
-                                Gênero das pessoas retratadas
+                                Pessoa ao longo do tempo
                             </h3>
-                            <p class="text-[10px] text-gray-400 mt-1">
-                                Número de vezes que pessoas de cada Gênero (campo livre do cadastro
-                                de Pessoa) aparecem em textos — use o filtro de Autor acima para ver
-                                o recorte de um autor específico.
+                            <p
+                                id="est-pessoa-temporal-legenda"
+                                class="text-[10px] text-gray-400 mt-1"
+                            >
+                                Selecione uma ou mais pessoas abaixo e, se quiser, restrinja a
+                                análise aos grupos selecionados.
                             </p>
                         </div>
                         <button
                             type="button"
-                            onclick="togglePainel('painel-ocultos-generos-pessoa', this)"
+                            onclick="togglePainel('painel-temporal-pessoas', this)"
                             class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
                         >
-                            🚫 Ocultar ▾
+                            🙋 Selecionar pessoas ▾
                         </button>
                     </div>
                     <div
-                        id="painel-ocultos-generos-pessoa"
+                        id="painel-temporal-pessoas"
+                        class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg max-h-48 overflow-y-auto"
+                    ></div>
+                    <button
+                        type="button"
+                        onclick="togglePainel('painel-grupo-pessoa-tempo', this)"
+                        class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px] mb-2"
+                    >
+                        👥 Filtrar por grupo ▾
+                    </button>
+                    <div
+                        id="painel-grupo-pessoa-tempo"
                         class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
                     ></div>
-                    <canvas id="grafico-generos-pessoa" height="220"></canvas>
+                    <canvas id="grafico-pessoa-tempo" height="220"></canvas>
                 </div>
+            </section>
+
+            <section id="estatisticas-cruzamentos" class="tab-content">
+                <div class="mb-5">
+                    <h2 class="text-xl font-semibold">Cruzamentos</h2>
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        Quais temas aparecem junto com quais pessoas ou grupos nos mesmos textos.
+                    </p>
+                </div>
+                <div class="est-filtros-compartilhados mb-6"></div>
 
                 <div
-                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mt-6"
-                >
-                    <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
-                        <div>
-                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
-                                Assuntos
-                            </h3>
-                            <p class="text-[10px] text-gray-400 mt-1">
-                                Textos por Assunto (Cadastros → Assunto), derivado dos Temas que
-                                cada texto tem — um texto com temas de mais de um Assunto conta em
-                                cada um.
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            onclick="togglePainel('painel-ocultos-assuntos', this)"
-                            class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
-                        >
-                            🚫 Ocultar ▾
-                        </button>
-                    </div>
-                    <div id="painel-papel-assunto" class="mb-3"></div>
-                    <div
-                        id="painel-ocultos-assuntos"
-                        class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
-                    ></div>
-                    <canvas id="grafico-assuntos" height="220"></canvas>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                    <div
-                        class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
-                    >
-                        <div class="flex justify-between items-center mb-3 gap-3 flex-wrap">
-                            <div>
-                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
-                                    Tema ao longo do tempo
-                                </h3>
-                                <p
-                                    id="est-tema-temporal-legenda"
-                                    class="text-[10px] text-gray-400 mt-1"
-                                >
-                                    Selecione um ou mais temas abaixo para comparar a presença deles
-                                    por ano.
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onclick="togglePainel('painel-temporal-temas', this)"
-                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
-                            >
-                                🏷️ Selecionar temas ▾
-                            </button>
-                        </div>
-                        <div
-                            id="painel-temporal-temas"
-                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg max-h-48 overflow-y-auto"
-                        ></div>
-                        <canvas id="grafico-tema-tempo" height="220"></canvas>
-                    </div>
-
-                    <div
-                        class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
-                    >
-                        <div class="flex justify-between items-center mb-3 gap-3 flex-wrap">
-                            <div>
-                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
-                                    Pessoa ao longo do tempo
-                                </h3>
-                                <p
-                                    id="est-pessoa-temporal-legenda"
-                                    class="text-[10px] text-gray-400 mt-1"
-                                >
-                                    Selecione uma ou mais pessoas abaixo e, se quiser, restrinja a
-                                    análise aos grupos selecionados.
-                                </p>
-                            </div>
-                            <button
-                                type="button"
-                                onclick="togglePainel('painel-temporal-pessoas', this)"
-                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
-                            >
-                                🙋 Selecionar pessoas ▾
-                            </button>
-                        </div>
-                        <div
-                            id="painel-temporal-pessoas"
-                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg max-h-48 overflow-y-auto"
-                        ></div>
-                        <button
-                            type="button"
-                            onclick="togglePainel('painel-grupo-pessoa-tempo', this)"
-                            class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px] mb-2"
-                        >
-                            👥 Filtrar por grupo ▾
-                        </button>
-                        <div
-                            id="painel-grupo-pessoa-tempo"
-                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
-                        ></div>
-                        <canvas id="grafico-pessoa-tempo" height="220"></canvas>
-                    </div>
-                </div>
-
-                <div
-                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mt-6"
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
                 >
                     <div class="flex justify-between items-center mb-3 gap-3 flex-wrap">
                         <div>
                             <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
-                                Relações
+                                Temas × pessoas e grupos
                             </h3>
                             <p class="text-[10px] text-gray-400 mt-1">
-                                Cruze temas com pessoas ou com grupos.
+                                Cruze temas com pessoas, com grupos ou com personagens.
                             </p>
                         </div>
                         <select
@@ -4277,10 +4774,148 @@
                         >
                             <option value="pessoas">Temas × pessoas</option>
                             <option value="grupos">Temas × grupos</option>
+                            <option value="personagens">Temas × personagens</option>
                         </select>
                     </div>
+                    <div id="painel-papel-tema-cruzamentos" class="mb-3"></div>
                     <div id="painel-colunas-coocorrencia"></div>
                     <div id="tabela-coocorrencia"></div>
+                </div>
+            </section>
+
+            <section id="estatisticas-personagens" class="tab-content">
+                <div class="mb-5">
+                    <h2 class="text-xl font-semibold">Personagens</h2>
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        Quem aparece nos textos, em que papel e com que centralidade, e quais
+                        Personagens sustentam mais Ecos. Para cruzar Personagem com Tema, use a aba
+                        Cruzamentos.
+                    </p>
+                </div>
+                <div class="est-filtros-compartilhados mb-6"></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Textos por Personagem
+                                </h3>
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Quantos textos têm cada Personagem, em qualquer papel. Clique
+                                    numa barra para abrir a lista.
+                                </p>
+                                <p
+                                    id="est-personagens-contexto"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                ></p>
+                            </div>
+                            <button
+                                type="button"
+                                onclick="togglePainel('painel-ocultos-personagens', this)"
+                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                            >
+                                🚫 Ocultar ▾
+                            </button>
+                        </div>
+                        <div
+                            id="painel-ocultos-personagens"
+                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
+                        ></div>
+                        <canvas id="grafico-personagens-textos" height="220"></canvas>
+                    </div>
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Papéis
+                                </h3>
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Textos em que algum Personagem é Voz, Interlocutor, Aparição,
+                                    Menção ou Alusão. Clique numa barra para abrir a lista.
+                                </p>
+                                <p
+                                    id="est-personagens-papeis-contexto"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                ></p>
+                            </div>
+                        </div>
+                        <canvas id="grafico-personagens-papeis" height="220"></canvas>
+                    </div>
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Centralidade
+                                </h3>
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Textos com Personagem Protagonista, Secundário ou ainda sem
+                                    centralidade.
+                                </p>
+                                <p
+                                    id="est-personagens-centralidade-contexto"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                ></p>
+                            </div>
+                        </div>
+                        <canvas id="grafico-personagens-centralidade" height="220"></canvas>
+                    </div>
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Personagens por texto
+                                </h3>
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Quantos Personagens cada texto tem.
+                                </p>
+                                <p
+                                    id="est-personagens-por-texto-contexto"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                ></p>
+                            </div>
+                        </div>
+                        <canvas id="grafico-personagens-por-texto" height="220"></canvas>
+                    </div>
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="flex justify-between items-center mb-3 gap-2 flex-wrap">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Personagens que sustentam mais Ecos
+                                </h3>
+                                <p class="text-[10px] text-gray-400 mt-1">
+                                    Ecos do tipo "Personagem em comum", contados por Personagem
+                                    âncora.
+                                </p>
+                                <p
+                                    id="est-personagens-ecos-contexto"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                ></p>
+                            </div>
+                            <button
+                                type="button"
+                                onclick="togglePainel('painel-ocultos-personagens-ecos', this)"
+                                class="font-semibold text-blue-600 dark:text-blue-400 hover:underline text-[11px]"
+                            >
+                                🚫 Ocultar ▾
+                            </button>
+                        </div>
+                        <div
+                            id="painel-ocultos-personagens-ecos"
+                            class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
+                        ></div>
+                        <canvas id="grafico-personagens-ecos" height="220"></canvas>
+                    </div>
                 </div>
             </section>
 
@@ -4420,6 +5055,75 @@
                             class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
                         ></div>
                         <canvas id="grafico-idiomas" height="220"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <section id="estatisticas-correntes" class="tab-content">
+                <div class="mb-5">
+                    <h2 class="text-xl font-semibold">Correntes literárias</h2>
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        Postura estética e Programa das correntes a que os textos estão ligados (uma
+                        divisão sem valor próprio vale pelo do pai). Clique numa barra ou numa
+                        célula para abrir a lista de textos.
+                    </p>
+                </div>
+                <div class="est-filtros-compartilhados mb-6"></div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="mb-3">
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Postura estética
+                            </h3>
+                            <p class="text-[10px] text-gray-400 mt-1">
+                                Textos por atitude da corrente diante da tradição anterior, na época
+                                em que ela surgiu. "Não se aplica" fica fora das barras e do total;
+                                "Sem classificação" reúne os textos cujas correntes ainda não têm
+                                postura.
+                            </p>
+                            <p
+                                id="est-correntes-postura-contexto"
+                                class="text-[10px] text-gray-400 mt-1"
+                            ></p>
+                        </div>
+                        <canvas id="grafico-correntes-postura" height="220"></canvas>
+                    </div>
+
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="mb-3">
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Programa
+                            </h3>
+                            <p class="text-[10px] text-gray-400 mt-1">
+                                Textos por forma de organização da corrente (Escola, Movimento,
+                                Vanguarda, Grupo/Círculo, Tendência). Mesmas regras de total da
+                                Postura.
+                            </p>
+                            <p
+                                id="est-correntes-programa-contexto"
+                                class="text-[10px] text-gray-400 mt-1"
+                            ></p>
+                        </div>
+                        <canvas id="grafico-correntes-programa" height="220"></canvas>
+                    </div>
+
+                    <div
+                        class="md:col-span-2 min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="mb-3">
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Programa × Postura
+                            </h3>
+                            <p class="text-[10px] text-gray-400 mt-1">
+                                Como os dois eixos se combinam nos textos do recorte.
+                            </p>
+                        </div>
+                        <div id="tabela-correntes-cruzamento"></div>
                     </div>
                 </div>
             </section>

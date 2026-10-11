@@ -182,6 +182,25 @@ export async function deletarCapa(id) {
 }
 
 /**
+ * Apaga TODAS as capas do IndexedDB (Fase 13, etapa 13c: "Esvaziar o acervo").
+ * Usa clear() no object store em vez de deleteDatabase: o banco não fica
+ * bloqueado por outra aba com a conexão aberta, e o schema continua pronto
+ * para a próxima capa. Diferente de deletarCapa, NÃO silencia o erro: quem
+ * chama precisa saber que as imagens ficaram.
+ * @returns {Promise<void>}
+ */
+export async function limparTodasCapas() {
+    const idb = await abrirDB();
+    return new Promise((resolve, reject) => {
+        const tx = idb.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = (e) => reject(e.target.error);
+        tx.onabort = (e) => reject(e.target.error);
+    });
+}
+
+/**
  * Libera um object URL criado por lerCapa(), evitando vazamento de memória.
  * Chame quando o elemento <img> for removido do DOM.
  * @param {string|null} url
@@ -209,6 +228,25 @@ export async function base64ParaBlob(dataUrl) {
     // base64 na mão, e funciona em qualquer navegador atual.
     const resposta = await fetch(dataUrl);
     return resposta.blob();
+}
+
+/**
+ * Quantas capas há no IndexedDB (só a contagem, sem ler as imagens).
+ * Usado pelo resumo de "Esvaziar o acervo". Devolve 0 se o IndexedDB
+ * não estiver disponível.
+ * @returns {Promise<number>}
+ */
+export async function contarCapas() {
+    try {
+        const idb = await abrirDB();
+        return await new Promise((resolve, reject) => {
+            const req = idb.transaction(STORE, 'readonly').objectStore(STORE).count();
+            req.onsuccess = (e) => resolve(e.target.result || 0);
+            req.onerror = (e) => reject(e.target.error);
+        });
+    } catch {
+        return 0;
+    }
 }
 
 /**

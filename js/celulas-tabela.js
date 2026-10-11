@@ -22,6 +22,12 @@
 
 import { db } from './db.js';
 import {
+    ROTULOS_CENTRALIDADE_PERSONAGEM,
+    normalizarCentralidadePersonagem,
+    normalizarPapeisPersonagem,
+} from './personagens.js';
+import { rotuloEco } from './ancora-eco.js';
+import {
     formatarDataParcial,
     nomeEpoca,
     escapeHtml,
@@ -39,6 +45,7 @@ import {
     temasComPapel,
     assuntosComPapel,
     ROTULOS_PAPEL_TEMA_CURTO,
+    rotuloSelecaoEmLote,
 } from './utils.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
 import { renderCheckboxDownloadAbrangenteAcoes } from './download-abrangente.js';
@@ -139,11 +146,23 @@ const CORES_CATEGORIA_SINALIZACAO = {
 
 // Badge de um Tema com o papel dele: marcador visível só quando há papel
 // (★ principal, ☆ secundário); o title diz "Nome (papel)".
+// O marcador é maior que o texto do badge (9px deixava ★ e ☆ quase iguais) e
+// ganha cor própria, independente da cor da categoria: principal em dourado
+// forte (preenchido + cor chamativa), secundário em cinza (vazado + cor
+// apagada) — assim o papel se lê pela forma E pela cor.
 const MARCADOR_PAPEL_TEMA = { principal: '★', secundario: '☆' };
+const CLASSE_MARCADOR_PAPEL_TEMA = {
+    principal: 'text-amber-500 dark:text-amber-300 font-bold',
+    secundario: 'text-gray-400 dark:text-slate-400',
+};
+function marcadorPapelHtml(papel) {
+    const marcador = MARCADOR_PAPEL_TEMA[papel];
+    if (!marcador) return '';
+    return ` <span class="text-[13px] leading-none align-[-1px] ${CLASSE_MARCADOR_PAPEL_TEMA[papel]}">${marcador}</span>`;
+}
 function badgeTemaComPapel({ nome, papel }, corClasse) {
-    const marcador = MARCADOR_PAPEL_TEMA[papel] || '';
     const title = papel ? `${nome} (${ROTULOS_PAPEL_TEMA_CURTO[papel]})` : nome;
-    return `<span title="${escapeHtml(title)}" class="text-[9px] ${corClasse} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(nome)}${marcador ? ` <span class="font-bold">${marcador}</span>` : ''}</span>`;
+    return `<span title="${escapeHtml(title)}" class="text-[9px] ${corClasse} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(nome)}${marcadorPapelHtml(papel)}</span>`;
 }
 
 // Percorre as 9 categorias em vez de usar sinalizacoesCombinadas (que
@@ -193,10 +212,9 @@ export function badgesAssuntos(item) {
     const cor = 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300';
     return lista
         .map((a) => {
-            const marcador = MARCADOR_PAPEL_TEMA[a.papel] || '';
             const base = a.papel ? `${a.nome} (${ROTULOS_PAPEL_TEMA_CURTO[a.papel]})` : a.nome;
             const title = a.fixado ? `${base} — papel fixado neste texto` : base;
-            return `<span title="${escapeHtml(title)}" class="text-[9px] ${cor} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(a.nome)}${marcador ? ` <span class="font-bold">${marcador}</span>` : ''}</span>`;
+            return `<span title="${escapeHtml(title)}" class="text-[9px] ${cor} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(a.nome)}${marcadorPapelHtml(a.papel)}</span>`;
         })
         .join('');
 }
@@ -232,6 +250,42 @@ export function badgesPessoas(pessoas) {
             return `<span title="${escapeHtml(title)}" class="text-[9px] bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(nome)}${iniciais ? ` <span class="text-black dark:text-white font-medium">${iniciais}</span>` : ''}</span>`;
         })
         .join('');
+}
+
+// Coluna de Personagens: um chip por vínculo (nome do cadastro db.personagens),
+// com as iniciais dos papéis (Vo/In/Ap/Me/Al) e, na centralidade, o mesmo ★ (protagonista) e ☆
+// (secundário) do papel de Tema. Personagem só com Menção/Alusão não tem
+// centralidade (não se aplica), então fica sem marcador. O title traz tudo por
+// extenso: "Nome (Papéis; centralidade)". Personagem sem cadastro não gera chip.
+const INICIAIS_PAPEL_PERSONAGEM = {
+    Voz: 'Vo',
+    Interlocutor: 'In',
+    Aparição: 'Ap',
+    Menção: 'Me',
+    Alusão: 'Al',
+};
+export function badgesPersonagens(item) {
+    const vazio = '<span class="text-gray-300 dark:text-slate-600">—</span>';
+    if (!Array.isArray(item?.personagens) || !item.personagens.length) return vazio;
+    const chips = item.personagens
+        .map((e) => {
+            const nome = db.personagens?.find((x) => x.id == e.personagemId)?.nome;
+            if (!nome) return '';
+            const papeis = normalizarPapeisPersonagem(e.papeis);
+            const centralidade = normalizarCentralidadePersonagem(e.centralidade, papeis);
+            const iniciais = papeis.map((p) => INICIAIS_PAPEL_PERSONAGEM[p]).join('·');
+            const partes = [];
+            if (papeis.length) partes.push(papeis.join(', '));
+            if (centralidade)
+                partes.push(ROTULOS_CENTRALIDADE_PERSONAGEM[centralidade].toLowerCase());
+            const title = partes.length ? `${nome} (${partes.join('; ')})` : nome;
+            const marcador = marcadorPapelHtml(
+                centralidade === 'protagonista' ? 'principal' : centralidade ? 'secundario' : '',
+            );
+            return `<span title="${escapeHtml(title)}" class="text-[9px] bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(nome)}${iniciais ? ` <span class="text-black dark:text-white font-medium">${escapeHtml(iniciais)}</span>` : ''}${marcador}</span>`;
+        })
+        .join('');
+    return chips || vazio;
 }
 
 // Coluna de Grupos: um badge por par (Grupo, Pessoa) — ver paresGrupoPessoa
@@ -463,7 +517,8 @@ export function rotuloEntradaElo(entrada) {
     return entrada.relacao ? rotuloElo(entrada.relacao, entrada.direcao) : '';
 }
 export function rotuloEntradaEco(entrada) {
-    return entrada.tipo || '';
+    // Com âncora: "Personagem em comum (Iara, Tomás +1)" (F11-D6).
+    return rotuloEco(db, entrada, 2);
 }
 
 export function trechoNota(notas) {
@@ -505,8 +560,20 @@ export function celulaCamposPreenchidos(item) {
 // `tabela` ('poemas'|'prosas') e `idsPagina` (ids dos itens exibidos na
 // página atual, na ordem da lista filtrada) são opcionais — sem eles, o
 // botão "Selecionar estes N" não é renderizado (ver chamadas em
-// render-listas.js pra quem passa os dois).
-export function montarPaginacao(totalItens, paginaAtual, acaoPagina, tabela, idsPagina) {
+// render-listas.js pra quem passa os dois). `idsRestantes` (ids da lista
+// filtrada que NÃO estão na página atual) e `selecao` (o Set da aba) são
+// opcionais: com eles, o botão "Selecionar restantes (M)" aparece e os dois
+// botões alternam (viram "Desselecionar ..." quando o lote já está todo
+// selecionado).
+export function montarPaginacao(
+    totalItens,
+    paginaAtual,
+    acaoPagina,
+    tabela,
+    idsPagina,
+    idsRestantes = [],
+    selecao = new Set(),
+) {
     if (totalItens === 0) return '';
 
     const porPagina = itensPorPagina === Infinity ? totalItens : itensPorPagina;
@@ -525,23 +592,33 @@ export function montarPaginacao(totalItens, paginaAtual, acaoPagina, tabela, ids
             </select>
         </label>`;
 
-    // Só aparece com mais de 1 página: com página única (ou "Todos"
+    // Só aparecem com mais de 1 página: com página única (ou "Todos"
     // escolhido no seletor), selecionar a página inteira e selecionar tudo
     // seriam a mesma ação — o checkbox do cabeçalho já cobre esse caso.
-    // Sempre aditivo (mesmo espírito do checkbox de cabeçalho e do
-    // shift-click); "substituir" fica de graça na combinação já existente
-    // Limpar seleção → Selecionar esta página, sem precisar de um segundo
-    // controle aqui — decisão registrada na conversa de projeto.
+    // Os dois alternam: clicar de novo num lote já todo selecionado desmarca
+    // só aquele lote (o que fica de fora da seleção continua como estava).
+    // "Restantes" = o que a lista filtrada tem fora da página na tela (ids
+    // não vão no atributo: o handler recalcula a partir da lista visível).
+    // A classe comum e o data-sel-lote deixam atualizarBotoesSelecaoEmLote
+    // (selecao-massa.js) reescrever o rótulo sem re-renderizar a tabela.
+    const classeBotaoSel =
+        'px-2 py-1 border border-gray-300 dark:border-slate-600 rounded hover:bg-gray-50 dark:hover:bg-slate-700';
     const botaoSelecionarPagina =
         totalPaginas > 1 && tabela && idsPagina && idsPagina.length
-            ? `<button data-action="selecionar-pagina-${tabela}" data-ids="${idsPagina.join(',')}"
-                class="px-2 py-1 border border-gray-300 dark:border-slate-600 rounded hover:bg-gray-50 dark:hover:bg-slate-700">Selecionar estes ${idsPagina.length}</button>`
+            ? `<button data-action="selecionar-pagina-${tabela}" data-sel-lote="pagina" data-ids="${idsPagina.join(',')}"
+                class="${classeBotaoSel}">${rotuloSelecaoEmLote('pagina', idsPagina, selecao)}</button>`
+            : '';
+    const botaoSelecionarRestantes =
+        totalPaginas > 1 && tabela && idsPagina && idsPagina.length && idsRestantes.length
+            ? `<button data-action="selecionar-restantes-${tabela}" data-sel-lote="restantes" data-ids="${idsPagina.join(',')}"
+                class="${classeBotaoSel}">${rotuloSelecaoEmLote('restantes', idsRestantes, selecao)}</button>`
             : '';
 
     const meio = `
         <span class="flex items-center gap-2 text-xs text-gray-400 dark:text-slate-500">
             ${inicio}–${fim} de ${totalItens}
             ${botaoSelecionarPagina}
+            ${botaoSelecionarRestantes}
         </span>`;
 
     const navegacao =
@@ -575,9 +652,13 @@ function iconeOrdenacao(ativo, direcao) {
 // Coluna → campo do item decorado usado pela busca (ver decorarCamposBusca
 // acima e CAMPOS_ATRIBUTO em utils.js), uma por tabela. Só entram aqui as
 // colunas que têm um prefixo "campo:" correspondente — em Poemas, Status
-// e Datas ficam de fora de propósito: já têm filtro estruturado próprio
-// (dropdown/painel de data). Em Prosas, Datas e Vínculo (posição estrutural, não um campo
-// de texto único) ficam de fora pelo mesmo motivo das Datas de Poemas.
+// fica de fora de propósito: já tem filtro estruturado próprio (dropdown).
+// Em Prosas, Vínculo (posição estrutural, não um campo de texto único)
+// fica de fora pelo mesmo motivo.
+// Data de escrita e Data de publicação já ficaram de fora por terem o
+// painel De/Até; entraram depois que ganharam os prefixos "dataescrita:" e
+// "datapublicacao:" (`*` / `-*` separam quem tem e quem não tem a data). A
+// lupa é só atalho: o filtro De/Até continua à parte, no painel dedicado.
 // Época Retratada entrou (item 3) apesar de ter filtro estruturado de
 // data próprio — mesmo assim, com nome agora resolvido via cadastro
 // central (_buscaEpoca), faz sentido ter a lupa de atalho pro prefixo
@@ -591,8 +672,13 @@ const COLUNA_CAMPO_BUSCA = {
         titulo: 'titulo',
         idioma: 'idioma',
         movimentosEscolas: '_buscaMovimentosEscolas',
+        posturaEstetica: '_buscaPosturas',
+        programa: '_buscaProgramas',
         pessoas: '_buscaPessoas',
+        personagens: '_buscaPersonagens',
         grupos: '_buscaGrupos',
+        dataEscrita: '_buscaDataEscrita',
+        dataPublicacao: '_buscaDataPublicacao',
         intertextualidade: '_buscaIntertexto',
         hipertextualidade: '_buscaHipertexto',
         anexos: '_buscaAnexos',
@@ -634,8 +720,13 @@ const COLUNA_CAMPO_BUSCA = {
         titulo: 'titulo',
         idioma: 'idioma',
         movimentosEscolas: '_buscaMovimentosEscolas',
+        posturaEstetica: '_buscaPosturas',
+        programa: '_buscaProgramas',
         pessoas: '_buscaPessoas',
+        personagens: '_buscaPersonagens',
         grupos: '_buscaGrupos',
+        dataEscrita: '_buscaDataEscrita',
+        dataPublicacao: '_buscaDataPublicacao',
         genero: 'genero',
         etiquetas: '_buscaSinalizacoes',
         temas: 'sinalizacoesTema',

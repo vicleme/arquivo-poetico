@@ -29,6 +29,8 @@ import {
     formaOcultadoPorGenero,
     formaReexibidoPorGenero,
     normalizarBusca,
+    IDENTIDADES_CIS_TRANS,
+    CORES_RACA_AUTOR,
 } from './utils.js';
 import { renderPessoas } from './render-listas.js';
 
@@ -135,9 +137,34 @@ export function getQtdOcultasPessoas() {
     return _porFiltrosAtuais(db.pessoas).filter((p) => p.oculto).length;
 }
 
-export function toggleSelecaoPessoa(id, checked) {
+// Âncora do último checkbox clicado — usada pelo shift-click pra estender
+// a seleção ao intervalo entre ele e o anterior (mesmo padrão de
+// toggleSelecao em selecao-massa.js, Poemas e Prosas). O intervalo é o
+// que está entre as duas linhas na lista visível (ordem alfabética,
+// já recortada pelos filtros e pela visibilidade). null = nenhum clique
+// ainda; se a âncora saiu da lista visível (filtro mudou), cai pro
+// clique simples.
+let ultimoCheckPessoa = null;
+
+export function toggleSelecaoPessoa(id, checked, shiftKey = false) {
+    if (shiftKey && ultimoCheckPessoa !== null && ultimoCheckPessoa !== id) {
+        const visiveis = getListaVisivelPessoas().map((p) => p.id);
+        const iAncora = visiveis.indexOf(ultimoCheckPessoa);
+        const iAtual = visiveis.indexOf(id);
+        if (iAncora !== -1 && iAtual !== -1) {
+            const [ini, fim] = iAncora < iAtual ? [iAncora, iAtual] : [iAtual, iAncora];
+            visiveis.slice(ini, fim + 1).forEach((pid) => {
+                if (checked) selecaoPessoas.add(pid);
+                else selecaoPessoas.delete(pid);
+            });
+            ultimoCheckPessoa = id;
+            renderPessoas();
+            return;
+        }
+    }
     if (checked) selecaoPessoas.add(id);
     else selecaoPessoas.delete(id);
+    ultimoCheckPessoa = id;
     renderPessoas();
 }
 
@@ -153,6 +180,16 @@ export function toggleSelecaoTodosPessoas(checked) {
 
 export function limparSelecaoPessoas() {
     selecaoPessoas.clear();
+    renderPessoas();
+}
+
+// Inverte a seleção das pessoas que a tela mostra agora (busca, filtros e
+// ocultas já recortados); quem está fora da lista visível não é tocado.
+export function inverterSelecaoPessoas() {
+    getListaVisivelPessoas().forEach(({ id }) => {
+        if (selecaoPessoas.has(id)) selecaoPessoas.delete(id);
+        else selecaoPessoas.add(id);
+    });
     renderPessoas();
 }
 
@@ -272,6 +309,130 @@ export function aplicarGeneroEmMassaPessoas() {
             anteriores.forEach(({ id, genero: generoAnterior }) => {
                 const alvo = db.pessoas.find((x) => x.id === id);
                 if (alvo) alvo.genero = generoAnterior;
+            });
+            save();
+        },
+    );
+}
+
+// Identidade cis/trans e Cor/Raça são listas fechadas (ver
+// IDENTIDADES_CIS_TRANS e CORES_RACA_AUTOR em utils.js) e valor único por
+// Pessoa, então aplicar em massa SUBSTITUI o valor (como o Gênero acima)
+// e guarda o anterior de cada alterada pra "Desfazer" do lote. A opção
+// "Não documentado (apagar)" do select (valor LIMPAR_CAMPO_MASSA) apaga o
+// campo: vazio quer dizer "não documentado", nunca um valor padrão. Select
+// em branco não faz nada. `rotulo` entra nas mensagens.
+const LIMPAR_CAMPO_MASSA = '__limpar__';
+
+function aplicarCampoListaFechadaEmMassaPessoas(campo, idSelect, validos, rotulo) {
+    const sel = document.getElementById(idSelect);
+    const escolha = sel?.value || '';
+    if (!escolha || selecaoPessoas.size === 0) return;
+    const limpar = escolha === LIMPAR_CAMPO_MASSA;
+    if (!limpar && !validos.includes(escolha)) return;
+    const novo = limpar ? '' : escolha;
+
+    const anteriores = [];
+    db.pessoas.forEach((p) => {
+        if (!selecaoPessoas.has(p.id)) return;
+        if ((p[campo] || '') === novo) return;
+        anteriores.push({ id: p.id, valor: p[campo] || '' });
+        p[campo] = novo;
+    });
+
+    if (anteriores.length === 0) {
+        mostrarAviso(
+            limpar
+                ? `Nenhuma das pessoas selecionadas tinha ${rotulo} definido.`
+                : `Todas as pessoas selecionadas já tinham ${rotulo} "${novo}".`,
+            'info',
+        );
+        return;
+    }
+    if (sel) sel.value = '';
+    save();
+    const n = anteriores.length;
+    const pessoas = `${n} pessoa${n !== 1 ? 's' : ''}`;
+    mostrarAvisoComAcao(
+        limpar
+            ? `${rotulo} apagado de ${pessoas}.`
+            : `${rotulo} definido como "${novo}" em ${pessoas}.`,
+        'Desfazer',
+        () => {
+            anteriores.forEach(({ id, valor }) => {
+                const alvo = db.pessoas.find((x) => x.id === id);
+                if (alvo) alvo[campo] = valor;
+            });
+            save();
+        },
+    );
+}
+
+export function aplicarIdentidadeCisTransEmMassaPessoas() {
+    aplicarCampoListaFechadaEmMassaPessoas(
+        'identidadeCisTrans',
+        'pessoas-massa-identidade-cis-trans',
+        IDENTIDADES_CIS_TRANS,
+        'Identidade cis/trans',
+    );
+}
+
+export function aplicarCorRacaEmMassaPessoas() {
+    aplicarCampoListaFechadaEmMassaPessoas(
+        'corRaca',
+        'pessoas-massa-cor-raca',
+        CORES_RACA_AUTOR,
+        'Cor/Raça',
+    );
+}
+
+// Orientação é texto livre com sugestão (como o Gênero), então aplicar em
+// massa SUBSTITUI o valor de cada selecionada e guarda o anterior pra
+// "Desfazer". Campo em branco não faz nada; limparOrientacaoEmMassaPessoas
+// apaga o campo (vazio = "não documentado").
+export function aplicarOrientacaoEmMassaPessoas() {
+    const input = document.getElementById('pessoas-massa-orientacao');
+    const orientacao = input?.value.trim() || '';
+    if (!orientacao || selecaoPessoas.size === 0) return;
+    trocarOrientacaoEmMassaPessoas(orientacao, input);
+}
+
+export function limparOrientacaoEmMassaPessoas() {
+    if (selecaoPessoas.size === 0) return;
+    trocarOrientacaoEmMassaPessoas('', document.getElementById('pessoas-massa-orientacao'));
+}
+
+function trocarOrientacaoEmMassaPessoas(novo, input) {
+    const anteriores = [];
+    db.pessoas.forEach((p) => {
+        if (!selecaoPessoas.has(p.id)) return;
+        if ((p.orientacao || '').trim() === novo) return;
+        anteriores.push({ id: p.id, valor: p.orientacao || '' });
+        p.orientacao = novo;
+    });
+
+    if (anteriores.length === 0) {
+        mostrarAviso(
+            novo
+                ? 'Todas as pessoas selecionadas já tinham essa Orientação.'
+                : 'Nenhuma das pessoas selecionadas tinha Orientação definida.',
+            'info',
+        );
+        return;
+    }
+    if (input) input.value = '';
+    save();
+    const n = anteriores.length;
+    const pessoas = `${n} pessoa${n !== 1 ? 's' : ''}`;
+    mostrarAvisoComAcao(
+        novo
+            ? `Orientação definida como "${novo}" em ${pessoas}.`
+            : `Orientação apagada de ${pessoas}.`,
+        'Desfazer',
+        () => {
+            anteriores.forEach(({ id, valor }) => {
+                const alvo = db.pessoas.find((x) => x.id === id);
+                if (alvo) alvo.orientacao = valor;
             });
             save();
         },

@@ -154,7 +154,7 @@ export function autorParaMarkdown(item) {
                 .join(', '),
         ),
         linha(
-            'Movimento/Escola',
+            'Corrente literária',
             nomesMovimentosEscolas(item.movimentosEscolasIds, db.movimentosEscolas).join(', '),
         ),
         linha('Prêmios', listaTextoComAno(listaComAno(item.premios))),

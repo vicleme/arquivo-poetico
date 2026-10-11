@@ -7,6 +7,8 @@ import { abrirPorAtalho } from './faixa-origem.js';
 import {
     exportarJSON,
     importarDB,
+    db,
+    save,
     deleteItem,
     getUltimoBackup,
     getUsoStorage,
@@ -36,6 +38,10 @@ import {
     selecionarTodasColunas,
     desmarcarTodasColunas,
     resetarColunas,
+    aplicarPadraoColunas,
+    usarArmazenamentoPadroes,
+    salvarPadraoColunasUI,
+    excluirPadraoColunasUI,
     filtrarColunas,
 } from './colunas.js';
 import {
@@ -64,6 +70,10 @@ import {
     sincronizarCheckboxesComEstadoSalvo,
 } from './download-abrangente.js';
 import { exportarEscansao } from './exportar-sonoridade.js';
+import {
+    toggleIncluirDadosPessoais,
+    sincronizarChecksDadosPessoaisComEstadoSalvo,
+} from './pessoas-viagem.js';
 import {
     abrirVisualizacaoSonoridade,
     baixarDoModalVisualizacaoSonoridade,
@@ -101,6 +111,7 @@ import {
     renderTemas,
     definirBuscaTemas,
     filtrarTemasSemAssunto,
+    atualizarListaSemAssunto,
     baixarAssuntosMd,
     verTextosMovimentoEscola,
     verTextosAutor,
@@ -140,6 +151,7 @@ import {
     definirOrdenacaoEpocas,
     definirOrdenacaoPeriodosHistoricos,
     setFiltroPeriodo,
+    limparFiltrosCorrentes,
     toggleColapsoGrupo,
     setFiltroAutorGrupos,
     setFiltroNomeGrupos,
@@ -152,6 +164,7 @@ import {
     toggleSelecaoAutor,
     toggleSelecaoTodosAutores,
     limparSelecaoAutores,
+    inverterSelecaoAutores,
     exportarSelecaoAutoresJson,
     exportarSelecaoAutoresCsv,
     exportarSelecaoAutoresMarkdown,
@@ -163,10 +176,15 @@ import {
     toggleSelecaoPessoa,
     toggleSelecaoTodosPessoas,
     limparSelecaoPessoas,
+    inverterSelecaoPessoas,
     aplicarGrupoEmMassaPessoas,
     aplicarAutorEmMassaPessoas,
     aplicarGeneroEmMassaPessoas,
     limparGeneroEmMassaPessoas,
+    aplicarIdentidadeCisTransEmMassaPessoas,
+    aplicarCorRacaEmMassaPessoas,
+    aplicarOrientacaoEmMassaPessoas,
+    limparOrientacaoEmMassaPessoas,
     setVisibilidadePessoas,
     toggleOcultarPessoa,
     ocultarSelecaoPessoas,
@@ -176,7 +194,9 @@ import {
     toggleSelecao,
     toggleSelecaoTodos,
     selecionarPagina,
+    selecionarRestantes,
     limparSelecao,
+    inverterSelecao,
     excluirSelecao,
     exportarSelecaoAtualJson,
     exportarSelecaoAtualCsv,
@@ -187,6 +207,10 @@ import {
     removerPessoaEmMassa,
     aplicarSinalEmMassa,
     removerSinalEmMassa,
+    aplicarTemaEmMassa,
+    removerTemaEmMassa,
+    prepararPainelTemasMassa,
+    atualizarSugestoesTemasMassa,
     atualizarListaSinalBulk,
     aplicarDataEmMassa,
     limparDataEmMassa,
@@ -243,6 +267,17 @@ import {
     cancelarImportacaoAditiva,
 } from './ui-importar-aditivo.js';
 import {
+    abrirModalEsvaziarAcervo,
+    atualizarModalEsvaziarAcervo,
+    confirmarEsvaziarAcervo,
+} from './ui-esvaziar-acervo.js';
+import { mostrarAvisoPosEsvaziar, ouvirEsvaziamentoDeOutraAba } from './apagar-acervo.js';
+import {
+    baixarBackupCompleto,
+    baixarSoExtras,
+    restaurarExtrasArquivo,
+} from './ui-extras-backup.js';
+import {
     selecionarPacoteBiblioteca,
     fecharDetalhePacoteBiblioteca,
     usarPacoteBiblioteca as confirmarUsoPacoteBiblioteca,
@@ -271,6 +306,12 @@ import {
     renderEstatisticas,
     toggleTipoEtiqueta,
     definirModoGraficoPessoas,
+    definirConsiderarCisTrans,
+    toggleGeneroFiltroPessoas,
+    limparGenerosFiltroPessoas,
+    toggleIdentidadeFiltroPessoas,
+    limparIdentidadesFiltroPessoas,
+    definirModoTemasAssuntos,
     definirModoTerceiros,
     toggleGrupoFiltroPessoas,
     toggleOcultoItem,
@@ -456,6 +497,10 @@ import {
     removerTemaTexto,
     mudarPapelTemaTexto,
     mudarPapelAssuntoTexto,
+    abrirAssuntoTemaTexto,
+    fecharAssuntoTemaTexto,
+    adicionarAssuntoTemaTexto,
+    desfazerAssuntoPendenteTexto,
     definirAutoclassificacao,
     limparAutoclassificacao,
 } from './editor.js';
@@ -561,6 +606,15 @@ import {
     verTextosLocal,
     alternarColapsoLocal,
 } from './ui-locais.js';
+import {
+    editarPersonagem,
+    initFormPersonagem,
+    novoPersonagem,
+    renderPersonagens,
+    verTextosPersonagem,
+} from './ui-personagens.js';
+import { adicionarPersonagem } from './grupo-personagens.js';
+import { abrirSugestaoEcos, initSugestaoEcos } from './ui-sugestao-ecos.js';
 
 // ─── Registro dos modais (carregamento lazy via fetch) ───────
 // Cada modal só é buscado em modais/<arquivo> e inicializado
@@ -609,6 +663,8 @@ registrarModal('modal-periodo-historico', 'modal-periodo-historico.html', initFo
 registrarModal('modal-assunto', 'modal-assunto.html', initFormAssunto);
 registrarModal('modal-tema', 'modal-tema.html', initFormTema);
 registrarModal('modal-local', 'modal-local.html', initFormLocal);
+registrarModal('modal-personagem', 'modal-personagem.html', initFormPersonagem);
+registrarModal('modal-sugestao-ecos', 'modal-sugestao-ecos.html', initSugestaoEcos);
 registrarModal('modal-movimento-escola', 'modal-movimento-escola.html', initFormMovimentoEscola);
 registrarModal('modal-sonoridade', 'modal-sonoridade.html', initFormSonoridade);
 registrarModal('modal-molde', 'modal-molde.html', initFormMolde);
@@ -623,6 +679,8 @@ registrarModal(
 registrarModal('modal-template-estrutura', 'modal-template-estrutura.html', () => {});
 registrarModal('modal-mesclar', 'modal-mesclar.html', initFormMesclar);
 registrarModal('modal-modo-aprendizado', 'modal-modo-aprendizado.html', initModoAprendizado);
+// Sem init: o conteúdo é redesenhado a cada abertura (ui-esvaziar-acervo.js).
+registrarModal('modal-esvaziar-acervo', 'modal-esvaziar-acervo.html', () => {});
 registrarModal('modal-central-ajuda', 'modal-central-ajuda.html', initCentralAjuda);
 registrarModal('modal-col-parte', 'modal-col-parte.html', initFormColParte);
 registrarModal('modal-col-item', 'modal-col-item.html', initFormColItem);
@@ -677,6 +735,9 @@ const ACOES_LISTA = {
     'ver-textos-autor': (el) => verTextosAutor(Number(el.dataset.id)),
     'ver-autores-movimento-escola': (el) => verAutoresMovimentoEscola(Number(el.dataset.id)),
     'editar-pessoa': (el) => editarPessoa(Number(el.dataset.id)),
+    'editar-personagem': (el) => editarPersonagem(Number(el.dataset.id)),
+    'ver-textos-personagem': (el) => verTextosPersonagem(Number(el.dataset.id)),
+    'sugerir-ecos': (el) => abrirSugestaoEcos(el.dataset.especie, Number(el.dataset.id)),
     'editar-grupo': (el) => editarGrupo(Number(el.dataset.id)),
     'ver-grupo': (el) => abrirVisualizacaoGrupo(Number(el.dataset.id)),
     'novo-subgrupo': (el) => prepararNovoSubgrupo(Number(el.dataset.id)),
@@ -756,9 +817,9 @@ const ACOES_LISTA = {
         toggleSelecao('poemas', el.checked, Number(el.dataset.id), e?.shiftKey),
     'toggle-prosa': (el, e) =>
         toggleSelecao('prosas', el.checked, Number(el.dataset.id), e?.shiftKey),
-    'toggle-autor': (el) => toggleSelecaoAutor(Number(el.dataset.id), el.checked),
+    'toggle-autor': (el, e) => toggleSelecaoAutor(Number(el.dataset.id), el.checked, e?.shiftKey),
     'toggle-todos-autores': (el) => toggleSelecaoTodosAutores(el.checked),
-    'toggle-pessoa': (el) => toggleSelecaoPessoa(Number(el.dataset.id), el.checked),
+    'toggle-pessoa': (el, e) => toggleSelecaoPessoa(Number(el.dataset.id), el.checked, e?.shiftKey),
     'toggle-todos-pessoas': (el) => toggleSelecaoTodosPessoas(el.checked),
     'toggle-ocultar-pessoa': (el) => toggleOcultarPessoa(Number(el.dataset.id)),
     'toggle-ocultar-grupo': (el) => toggleOcultarGrupo(Number(el.dataset.id)),
@@ -768,6 +829,10 @@ const ACOES_LISTA = {
         selecionarPagina('poemas', el.dataset.ids.split(',').map(Number)),
     'selecionar-pagina-prosas': (el) =>
         selecionarPagina('prosas', el.dataset.ids.split(',').map(Number)),
+    'selecionar-restantes-poemas': (el) =>
+        selecionarRestantes('poemas', el.dataset.ids.split(',').map(Number)),
+    'selecionar-restantes-prosas': (el) =>
+        selecionarRestantes('prosas', el.dataset.ids.split(',').map(Number)),
     'baixar-diagrama-ecos': (el) => baixarDiagramaEcos(el),
 };
 
@@ -778,10 +843,27 @@ document.querySelector('main')?.addEventListener('click', (e) => {
     if (acao) acao(alvo, e);
 });
 
+// Padrões de colunas salvos pela pessoa (seletor "Colunas") moram em
+// `db.padroesColunas`, não no localStorage: assim vão no backup JSON, nos
+// snapshots e voltam na restauração. Registrado antes do primeiro render.
+usarArmazenamentoPadroes({
+    ler: (tabela) => db.padroesColunas?.[tabela] ?? [],
+    gravar: (tabela, lista) => {
+        db.padroesColunas = { ...db.padroesColunas, [tabela]: lista };
+        save();
+    },
+});
+
 // ─── Inicialização ───────────────────────────────────────────
 // Note que initEditor/initFormX não são mais chamados aqui — eles
 // rodam sob demanda, depois que o fetch do modal correspondente
 // resolve (ver registrarModal acima e modais.js).
+
+// Esvaziar o acervo em outra aba (Fase 13, etapa 13c): esta aba ainda tem o db
+// antigo na memória e, se gravasse, traria tudo de volta. O ouvinte trava o
+// salvamento e recarrega. Registrado já no carregamento do módulo, antes de
+// qualquer await, para não haver janela em que a mensagem se perca.
+ouvirEsvaziamentoDeOutraAba({ avisar: (texto) => mostrarAviso(texto, 'info') });
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Migra imagens/capas salvas no formato antigo (base64 dentro do db)
@@ -805,6 +887,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // atualizado a cada abertura — visualizar.js — e o outro por ser
     // remontado via innerHTML a cada render — celulas-tabela.js).
     sincronizarCheckboxesComEstadoSalvo();
+    sincronizarChecksDadosPessoaisComEstadoSalvo();
 
     // Lembra a última escolha de "incluir capas" no backup (padrão: marcado,
     // já que o botão "Baixar JSON" é o backup "de verdade" — melhor pecar
@@ -812,6 +895,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const chkCapas = document.getElementById('chk-incluir-capas');
     const prefCapas = localStorage.getItem('arquivoPoetico_incluirCapasBackup');
     if (chkCapas && prefCapas !== null) chkCapas.checked = prefCapas === 'true';
+
+    // Resultado do "Esvaziar o acervo" que acabou de recarregar a página.
+    mostrarAvisoPosEsvaziar((texto) => mostrarAviso(texto, 'sucesso'));
 
     // Por último: só abre sozinho se a pessoa nunca marcou "não exibir
     // novamente" — depois do resto da tela já estar montada, senão o
@@ -991,6 +1077,12 @@ window.importarSonoridadeDeArquivo = importarSonoridadeDeArquivo;
 window.processarArquivoImportacaoAditiva = processarArquivoImportacaoAditiva;
 window.definirDecisaoReferenciaAditiva = definirDecisaoReferenciaAditiva;
 window.aplicarImportacaoAditivaClick = aplicarImportacaoAditivaClick;
+window.abrirModalEsvaziarAcervo = abrirModalEsvaziarAcervo;
+window.atualizarModalEsvaziarAcervo = atualizarModalEsvaziarAcervo;
+window.confirmarEsvaziarAcervo = confirmarEsvaziarAcervo;
+window.baixarBackupCompleto = baixarBackupCompleto;
+window.baixarSoExtras = baixarSoExtras;
+window.restaurarExtrasArquivo = restaurarExtrasArquivo;
 window.cancelarImportacaoAditiva = cancelarImportacaoAditiva;
 window.selecionarPacoteBiblioteca = selecionarPacoteBiblioteca;
 window.fecharDetalhePacoteBiblioteca = fecharDetalhePacoteBiblioteca;
@@ -1049,6 +1141,10 @@ window.removerDialetoIdiomaTexto = removerDialetoIdiomaTexto;
 window.removerTemaTexto = removerTemaTexto;
 window.mudarPapelTemaTexto = mudarPapelTemaTexto;
 window.mudarPapelAssuntoTexto = mudarPapelAssuntoTexto;
+window.abrirAssuntoTemaTexto = abrirAssuntoTemaTexto;
+window.fecharAssuntoTemaTexto = fecharAssuntoTemaTexto;
+window.adicionarAssuntoTemaTexto = adicionarAssuntoTemaTexto;
+window.desfazerAssuntoPendenteTexto = desfazerAssuntoPendenteTexto;
 window.adicionarSinalTema = adicionarSinalTema;
 window.removerSinalTema = removerSinalTema;
 window.editarSinalTema = editarSinalTema;
@@ -1071,6 +1167,7 @@ window.adicionarSinalOutros = adicionarSinalOutros;
 window.removerSinalOutros = removerSinalOutros;
 window.editarSinalOutros = editarSinalOutros;
 window.adicionarPessoa = adicionarPessoa;
+window.adicionarPersonagem = (tabela) => adicionarPersonagem(tabela);
 window.removerPessoa = removerPessoa;
 window.alternarPapelPessoa = alternarPapelPessoa;
 window.alternarDropdownPapelPessoa = alternarDropdownPapelPessoa;
@@ -1129,7 +1226,10 @@ window.removerTemaAssunto = removerTemaAssunto;
 window.editarTemaAssunto = editarTemaAssunto;
 window.atribuirTemaDoPainel = atribuirTemaDoPainel;
 window.renderTemas = renderTemas;
+window.atualizarListaSemAssunto = atualizarListaSemAssunto;
 window.renderLocais = renderLocais;
+window.renderPersonagens = renderPersonagens;
+window.novoPersonagem = novoPersonagem;
 window.novoLocal = novoLocal;
 window.baixarAssuntosMd = baixarAssuntosMd;
 window.excluirTemasSemTexto = excluirTemasSemTextoComConfirmacao;
@@ -1207,6 +1307,7 @@ window.setFiltroSonoridade = debounce(setFiltroSonoridade, 200);
 window.setFiltroAutores = debounce(setFiltroAutores, 200);
 window.setOpcaoBuscaAutores = (chave, chk) => setOpcaoBuscaAutores(chave, chk.checked);
 window.limparSelecaoAutores = limparSelecaoAutores;
+window.inverterSelecaoAutores = inverterSelecaoAutores;
 window.exportarSelecaoAutoresJson = exportarSelecaoAutoresJson;
 window.exportarSelecaoAutoresCsv = exportarSelecaoAutoresCsv;
 window.exportarSelecaoAutoresMarkdown = exportarSelecaoAutoresMarkdown;
@@ -1216,10 +1317,15 @@ window.setFiltroNomePessoas = setFiltroNomePessoas;
 window.setFiltroAutorPessoas = setFiltroAutorPessoas;
 window.setFiltroGrupoPessoas = setFiltroGrupoPessoas;
 window.limparSelecaoPessoas = limparSelecaoPessoas;
+window.inverterSelecaoPessoas = inverterSelecaoPessoas;
 window.aplicarGrupoEmMassaPessoas = aplicarGrupoEmMassaPessoas;
 window.aplicarAutorEmMassaPessoas = aplicarAutorEmMassaPessoas;
 window.aplicarGeneroEmMassaPessoas = aplicarGeneroEmMassaPessoas;
 window.limparGeneroEmMassaPessoas = limparGeneroEmMassaPessoas;
+window.aplicarIdentidadeCisTransEmMassaPessoas = aplicarIdentidadeCisTransEmMassaPessoas;
+window.aplicarCorRacaEmMassaPessoas = aplicarCorRacaEmMassaPessoas;
+window.aplicarOrientacaoEmMassaPessoas = aplicarOrientacaoEmMassaPessoas;
+window.limparOrientacaoEmMassaPessoas = limparOrientacaoEmMassaPessoas;
 window.setVisibilidadePessoas = setVisibilidadePessoas;
 window.ocultarSelecaoPessoas = ocultarSelecaoPessoas;
 window.reexibirSelecaoPessoas = reexibirSelecaoPessoas;
@@ -1298,6 +1404,7 @@ window.definirOrdenacaoMovimentosEscolas = definirOrdenacaoMovimentosEscolas;
 window.definirOrdenacaoEpocas = definirOrdenacaoEpocas;
 window.definirOrdenacaoPeriodosHistoricos = definirOrdenacaoPeriodosHistoricos;
 window.setFiltroPeriodo = setFiltroPeriodo;
+window.limparFiltrosCorrentes = limparFiltrosCorrentes;
 window.setStatusProsas = setStatusProsas;
 window.setItensPorPagina = setItensPorPagina;
 window.togglePainel = togglePainel;
@@ -1306,6 +1413,9 @@ window.moverColuna = moverColuna;
 window.selecionarTodasColunas = selecionarTodasColunas;
 window.desmarcarTodasColunas = desmarcarTodasColunas;
 window.resetarColunas = resetarColunas;
+window.aplicarPadraoColunas = aplicarPadraoColunas;
+window.salvarPadraoColunasUI = salvarPadraoColunasUI;
+window.excluirPadraoColunasUI = excluirPadraoColunasUI;
 window.filtrarColunas = filtrarColunas;
 window.adicionarColunaContagem = adicionarColunaContagem;
 window.removerColunaContagem = removerColunaContagem;
@@ -1316,6 +1426,7 @@ window.toggleAcaoColuna = toggleAcaoColuna;
 window.setFormatoBaixarColuna = setFormatoBaixarColuna;
 window.resetarAcoesColuna = resetarAcoesColuna;
 window.toggleDownloadAbrangente = toggleDownloadAbrangente;
+window.toggleIncluirDadosPessoais = toggleIncluirDadosPessoais;
 window.baixarDoModalVisualizacao = baixarDoModalVisualizacao;
 window.editarAutorDoVisualizador = editarAutorDoVisualizador;
 window.editarMovimentoEscolaDoVisualizador = editarMovimentoEscolaDoVisualizador;
@@ -1344,6 +1455,7 @@ window.aplicarSugestaoEpocaProsa = aplicarSugestaoEpocaProsa;
 // migrarmos index.html).
 window.toggleSelecaoTodos = toggleSelecaoTodos;
 window.limparSelecao = limparSelecao;
+window.inverterSelecao = inverterSelecao;
 window.excluirSelecao = excluirSelecao;
 window.exportarSelecaoAtualJson = exportarSelecaoAtualJson;
 window.exportarSelecaoAtualCsv = exportarSelecaoAtualCsv;
@@ -1355,6 +1467,10 @@ window.aplicarPessoaEmMassa = aplicarPessoaEmMassa;
 window.removerPessoaEmMassa = removerPessoaEmMassa;
 window.aplicarSinalEmMassa = aplicarSinalEmMassa;
 window.removerSinalEmMassa = removerSinalEmMassa;
+window.aplicarTemaEmMassa = aplicarTemaEmMassa;
+window.removerTemaEmMassa = removerTemaEmMassa;
+window.prepararPainelTemasMassa = prepararPainelTemasMassa;
+window.atualizarSugestoesTemasMassa = atualizarSugestoesTemasMassa;
 window.atualizarListaSinalBulk = atualizarListaSinalBulk;
 window.aplicarDataEmMassa = aplicarDataEmMassa;
 window.limparDataEmMassa = limparDataEmMassa;
@@ -1383,6 +1499,12 @@ window.executarExportacaoSeletivaDocx = executarExportacaoSeletivaDocx;
 window.renderEstatisticas = renderEstatisticas;
 window.toggleTipoEtiqueta = toggleTipoEtiqueta;
 window.definirModoGraficoPessoas = definirModoGraficoPessoas;
+window.definirConsiderarCisTrans = definirConsiderarCisTrans;
+window.toggleGeneroFiltroPessoas = toggleGeneroFiltroPessoas;
+window.limparGenerosFiltroPessoas = limparGenerosFiltroPessoas;
+window.toggleIdentidadeFiltroPessoas = toggleIdentidadeFiltroPessoas;
+window.limparIdentidadesFiltroPessoas = limparIdentidadesFiltroPessoas;
+window.definirModoTemasAssuntos = definirModoTemasAssuntos;
 window.definirModoTerceiros = definirModoTerceiros;
 window.toggleGrupoFiltroPessoas = toggleGrupoFiltroPessoas;
 window.toggleOcultoItem = toggleOcultoItem;

@@ -424,6 +424,7 @@ describe('tela Local e idioma', () => {
             constructor(canvas, cfg) {
                 this.canvas = canvas;
                 this.data = cfg.data;
+                this.options = cfg.options;
                 graficos[canvas.id] = this;
             }
             destroy() {}
@@ -455,6 +456,31 @@ describe('tela Local e idioma', () => {
         ].forEach((id) => assert.ok(graficos[id], id));
         assert.equal(graficos['grafico-local-territorialidade'].data.labels[0], 'Estação Lapa');
         assert.deepEqual(graficos['grafico-idiomas'].data.labels, ['pt-BR', 'Inglês']);
+    });
+
+    it('Local com apelido: a barra traz o apelido e o tooltip, o nome completo com o tipo', () => {
+        L.editarLocal(db, 6, { apelido: 'Lapa (metrô)' });
+        renderLocalIdioma();
+        const g = graficos['grafico-local-territorialidade'];
+        const i = g.data.labels.indexOf('Lapa (metrô)');
+        assert.ok(i >= 0, 'o rótulo da barra é o apelido');
+        const title = g.options.plugins.tooltip.callbacks.title;
+        assert.equal(title([{ label: 'Lapa (metrô)' }]), 'Estação Lapa (Estação)');
+        // quem aparece pelo nome não muda de título
+        assert.equal(title([{ label: 'Brasil' }]), 'Brasil');
+    });
+
+    it('sem nenhum apelido, o tooltip não ganha título próprio', () => {
+        renderLocalIdioma();
+        const cb = graficos['grafico-local-territorialidade'].options.plugins.tooltip.callbacks;
+        assert.equal(cb.title, undefined);
+    });
+
+    it('o seletor de Assuntos por local de escrita põe o nome completo na dica da opção', () => {
+        L.editarLocal(db, 8, { apelido: 'Ponta' });
+        renderLocalIdioma();
+        const html = document.getElementById('painel-local-assuntos-escrita').innerHTML;
+        assert.match(html, /title="Ponta da Praia \(Bairro\)"[^>]*>Ponta \(/);
     });
 
     it('todos os ids que a tela usa existem no index.html', () => {

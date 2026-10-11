@@ -4,6 +4,7 @@
 // ============================================================
 
 import { db } from './db.js';
+import { resetPersonagens } from './grupo-personagens.js';
 import {
     resetSinalizacoes,
     resetTemasTexto,
@@ -16,6 +17,7 @@ import {
     atualizarDatalist,
     atualizarDatalistRegiaoPeriodoHistorico,
     atualizarDatalistRegiaoOrigemMovimento,
+    preencherOpcoesPaiCorrente,
     atualizarDatalistsAutor,
     resetIntertextualidade,
     resetAnexos,
@@ -37,6 +39,7 @@ import {
     extrairGenerosAutorUnicos,
     extrairGenerosPessoasUnicos,
     extrairOrientacoesUnicas,
+    extrairOrientacoesPessoasUnicas,
     extrairReligioesUnicas,
     extrairInstituicoesUnicas,
     extrairNomesLojasUnicos,
@@ -96,10 +99,11 @@ export const GRUPOS_NAV = [
             { id: 'assuntos', rotulo: 'Assuntos' },
             { id: 'locais', rotulo: 'Locais' },
             { id: 'pessoas', rotulo: 'Pessoas' },
-            { id: 'grupos', rotulo: 'Grupos' },
+            { id: 'grupos', rotulo: 'Grupos (Pessoas)' },
+            { id: 'personagens', rotulo: 'Personagens' },
             { id: 'epocas', rotulo: 'Período Biográfico' },
             { id: 'periodos-historicos', rotulo: 'Período Histórico' },
-            { id: 'movimentos-escolas', rotulo: 'Movimento/Escola' },
+            { id: 'movimentos-escolas', rotulo: 'Correntes literárias' },
         ],
     },
     {
@@ -126,8 +130,12 @@ export const GRUPOS_NAV = [
         abas: [
             { id: 'estatisticas', rotulo: 'Visão geral' },
             { id: 'estatisticas-producao', rotulo: 'Produção' },
-            { id: 'estatisticas-temas-pessoas', rotulo: 'Temas e pessoas' },
+            { id: 'estatisticas-temas-assuntos', rotulo: 'Temas e Assuntos' },
+            { id: 'estatisticas-pessoas-grupos', rotulo: 'Pessoas e Grupos' },
+            { id: 'estatisticas-personagens', rotulo: 'Personagens' },
+            { id: 'estatisticas-cruzamentos', rotulo: 'Cruzamentos' },
             { id: 'estatisticas-local-idioma', rotulo: 'Local e idioma' },
+            { id: 'estatisticas-correntes', rotulo: 'Correntes literárias' },
             { id: 'estatisticas-linguagem', rotulo: 'Linguagem' },
         ],
     },
@@ -144,6 +152,7 @@ export const GRUPOS_NAV = [
             { id: 'importacao-aditiva', rotulo: 'Importação' },
             { id: 'exportar-filtrado', rotulo: 'Exportação Geral' },
             { id: 'exportacoes-frequentes', rotulo: 'Exportações Frequentes' },
+            { id: 'backup-recuperacao', rotulo: 'Backup e recuperação' },
         ],
     },
 ];
@@ -526,6 +535,18 @@ export function renderDropdowns() {
             .join('');
     }
 
+    // 0.066. Sugestões de "Orientação" da Pessoa (modal) e do input "Definir
+    // orientação" da barra em massa (fica sempre na página, por isso datalist
+    // própria, igual ao Gênero acima).
+    ['sugestoes-orientacao-pessoa', 'sugestoes-orientacao-pessoas-massa'].forEach((idLista) => {
+        const lista = document.getElementById(idLista);
+        if (lista) {
+            lista.innerHTML = extrairOrientacoesPessoasUnicas(db.pessoas)
+                .map((o) => `<option value="${escapeHtml(o)}">`)
+                .join('');
+        }
+    });
+
     // 0.07. Sugestões de "Religião" e "Instituições frequentadas" do
     // Autor — mesmo padrão acima: Religião soma semente fixa + o que já
     // existe no acervo; Instituições só vem do acervo (nome de instituição não tem teto
@@ -731,7 +752,7 @@ export function renderDropdowns() {
     // Agrupado por Autor (cabeçalho de seção) e, dentro de cada Autor,
     // por "família" (um grupo de nível 1 e toda a sua descendência, em
     // pré-ordem alfabética, indentada por nível com "↳") — mesma lógica
-    // de `seletorGrupos` em estatisticas-tela-temas-pessoas.js e de
+    // de `seletorGrupos` em estatisticas-tela-pessoas.js e de
     // `cartoesDaFamilia`/`renderGrupos` em render-listas.js. Antes disto
     // a lista era só `db.grupos` cru ordenado por nome, sem Autor nem
     // nível — o mesmo problema real já corrigido nos outros dois lugares
@@ -857,13 +878,17 @@ export async function prepararNovo(tipo) {
         'periodo-historico': 'ph-edit-id',
         'movimento-escola': 'me-edit-id',
         assunto: 'as-edit-id',
+        tema: 'te-edit-id',
     };
 
     const idField = document.getElementById(idFields[tipo]);
     if (idField) idField.value = '';
 
     if (tipo === 'periodo-historico') atualizarDatalistRegiaoPeriodoHistorico();
-    if (tipo === 'movimento-escola') atualizarDatalistRegiaoOrigemMovimento();
+    if (tipo === 'movimento-escola') {
+        atualizarDatalistRegiaoOrigemMovimento();
+        preencherOpcoesPaiCorrente();
+    }
     if (tipo === 'autor') atualizarDatalistsAutor();
 
     if (tipo === 'poema') {
@@ -871,6 +896,7 @@ export async function prepararNovo(tipo) {
         resetTemasTexto('poemas');
         resetLocaisTexto('poemas');
         resetIdiomasTexto('poemas');
+        resetPersonagens('poemas');
         resetPessoas('poemas');
         resetAutoria('poemas');
         resetEnvios('poemas');
@@ -914,6 +940,7 @@ export async function prepararNovo(tipo) {
         resetTemasTexto('prosas');
         resetLocaisTexto('prosas');
         resetIdiomasTexto('prosas');
+        resetPersonagens('prosas');
         resetPessoas('prosas');
         resetAutoria('prosas');
         resetEnvios('prosas');
@@ -993,6 +1020,13 @@ export async function prepararNovo(tipo) {
         // vivem em estado próprio (closure de criarGrupoDeTagsArray),
         // fora do form.reset() nativo.
         resetTodosOsGruposDeMovimento();
+        // Os grupos colapsáveis (<details>) também não são resetados pelo
+        // form.reset(): fecha todos à mão, como no bloco 'autor' acima.
+        document
+            .querySelectorAll('#modal-movimento-escola details[data-grupo-corrente]')
+            .forEach((d) => {
+                d.open = false;
+            });
     }
 
     if (tipo === 'assunto') {
@@ -1031,6 +1065,7 @@ export async function prepararNovo(tipo) {
     const title = document.getElementById(`modal-${tipo}-titulo`);
     if (title) title.innerText = `Novo(a) ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
     if (title && tipo === 'assunto') title.innerText = 'Cadastrar Assunto';
+    if (title && tipo === 'movimento-escola') title.innerText = 'Nova Corrente literária';
     if (title && tipo === 'tema') title.innerText = 'Cadastrar Tema';
 
     toggleModal(`modal-${tipo}`);

@@ -359,7 +359,7 @@ describe('colunas da tabela de Poemas', () => {
         );
     });
 
-    it('Idioma, Local de escrita, Territorialidade e Movimento/Escola têm a lupa no cabeçalho, com o prefixo certo', () => {
+    it('Idioma, Local de escrita, Territorialidade e Corrente literária têm a lupa no cabeçalho, com o prefixo certo', () => {
         db.poemas.push({ id: 1, titulo: 'A' });
         ['idioma', 'localEscrita', 'territorialidade', 'movimentosEscolas'].forEach((k) =>
             toggleColuna('poemas', k, true),
@@ -369,7 +369,7 @@ describe('colunas da tabela de Poemas', () => {
             Idioma: 'idioma:',
             'Local de escrita': 'localescrita:',
             Territorialidade: 'territorialidade:',
-            'Movimento/Escola': 'movimento:',
+            'Corrente literária': 'movimento:',
         };
         const ths = Array.from(document.querySelectorAll('#cabecalho-poemas th'));
         Object.entries(esperado).forEach(([rotulo, prefixo]) => {
@@ -379,6 +379,28 @@ describe('colunas da tabela de Poemas', () => {
                 th.querySelector(`[title="Buscar por ${prefixo}"]`),
                 `lupa de ${rotulo} deveria buscar por ${prefixo}`,
             );
+        });
+    });
+
+    it('Data de escrita e Data de publicação têm a lupa, em Poemas e em Prosas', async () => {
+        const { montarCabecalho } = await import('../js/celulas-tabela.js');
+        const esperado = {
+            'Data de escrita': 'dataescrita:',
+            'Data de publicação': 'datapublicacao:',
+        };
+        ['poemas', 'prosas'].forEach((tabela) => {
+            ['dataEscrita', 'dataPublicacao'].forEach((k) => toggleColuna(tabela, k, true));
+            const tr = document.createElement('tr');
+            tr.innerHTML = montarCabecalho(tabela, '', '');
+            const ths = Array.from(tr.querySelectorAll('th'));
+            Object.entries(esperado).forEach(([rotulo, prefixo]) => {
+                const th = ths.find((x) => x.textContent.includes(rotulo));
+                assert.ok(th, `${tabela}: coluna ${rotulo}`);
+                assert.ok(
+                    th.querySelector(`[title="Buscar por ${prefixo}"]`),
+                    `${tabela}: lupa de ${rotulo} deveria buscar por ${prefixo}`,
+                );
+            });
         });
     });
 });

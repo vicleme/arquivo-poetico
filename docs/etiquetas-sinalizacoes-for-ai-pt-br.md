@@ -1,7 +1,8 @@
-# Etiquetas (Sinalizações): como interpretar esse campo
+# Etiquetas: como interpretar esse campo
 
 Este documento não pede nenhuma tarefa — explica a lógica das etiquetas do
-acervo (chamadas "Sinalizações" na interface), para que uma IA que receba
+acervo (chamadas "Etiquetas" na interface; antes, "Sinalizações", nome que ainda
+aparece nas chaves dos campos, como `sinalizacoesEstilo`), para que uma IA que receba
 dados exportados leia as tags pela categoria certa, sem misturar o que
 cada uma quer dizer.
 
@@ -9,7 +10,7 @@ cada uma quer dizer.
 
 ## O que o campo é (e o que não é)
 
-Não existe um campo único de "etiquetas". "Sinalizações" é o nome do
+Não existe um campo único de "etiquetas". "Etiquetas" é o nome do
 **grupo**, mas por trás dele há **9 campos independentes**, um por
 categoria, cada um uma lista de tags em **texto livre** (não uma lista
 fechada de opções pré-definidas — quem cataloga digita a etiqueta que

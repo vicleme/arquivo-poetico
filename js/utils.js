@@ -877,11 +877,15 @@ function _modalExclusaoTeclado(e) {
 // modais.js). Marca "sujo" em qualquer 'input'/'change' real dentro
 // do formulário. Preencher campos via JS (.value = x, .checked = x,
 // opt.selected = x, como fazem editarPoema/editarProsa/prepararNovo)
-// NÃO dispara esses eventos — só interação de fato do usuário marca
-// sujo, então não é preciso "limpar" manualmente ao abrir o modal.
-// Precisa limpar manualmente só depois de um salvamento bem-sucedido
-// (o form continua com os mesmos valores que o usuário digitou, então
-// nenhum evento novo dispara pra avisar que agora está tudo salvo).
+// não dispara esses eventos, mas os campos ocultos sincronizados por
+// código (temas, locais, idiomas, chips de personagem...) disparam
+// 'input'/'change' de propósito pra avisar edições reais — e também o
+// fazem quando o próprio carregamento do item os sincroniza. Por isso
+// toggleModal (modais.js) chama marcarLimpo() ao ABRIR o modal: o que
+// existe no form nesse instante é o estado inicial, não edição.
+// Também precisa limpar depois de um salvamento bem-sucedido (o form
+// continua com os mesmos valores que o usuário digitou, então nenhum
+// evento novo dispara pra avisar que agora está tudo salvo).
 export function criarRastreadorDeAlteracoes() {
     let sujo = false;
 
@@ -1093,6 +1097,75 @@ export function extrairNomesLojasUnicos(livros) {
     return Array.from(nomes).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
+// ─── Situação editorial (Livro e Coletânea) ───────────────────
+// Coletânea é um Livro com `tipo: 'Coletânea'` (ver coletaneas.js), então
+// o campo vive em db.livros e cobre os dois. Valores:
+//   'em-circulacao'    — à venda / disponível (padrão de livro novo)
+//   'esgotado'         — acabou no mercado (decisão do mercado)
+//   'fora-de-catalogo' — o autor retirou de venda (decisão do autor)
+//   'reeditado'        — substituído por uma nova edição (detalhes na nota)
+//   ''                 — não especificado (livro ainda não classificado;
+//                        é também o que um livro antigo, sem o campo, vale)
+// Companheiros opcionais: `situacaoDesde` (data parcial dia/mês/ano, mesmo
+// molde da data de publicação) e `situacaoNota` (texto livre: o motivo, a
+// nova edição, a mudança de editora...).
+export const SITUACOES_EDITORIAIS = [
+    { valor: 'em-circulacao', rotulo: 'Em circulação', foraDeCirculacao: false },
+    { valor: 'esgotado', rotulo: 'Esgotado', foraDeCirculacao: true },
+    { valor: 'fora-de-catalogo', rotulo: 'Fora de catálogo', foraDeCirculacao: true },
+    { valor: 'reeditado', rotulo: 'Reeditado', foraDeCirculacao: true },
+    { valor: '', rotulo: 'Não especificado', foraDeCirculacao: false },
+];
+
+// Valor desconhecido ou ausente (livro antigo, backup de outra versão)
+// cai em '' (não especificado) em vez de quebrar a renderização.
+export function situacaoEditorialDoLivro(livro) {
+    const v = livro?.situacaoEditorial;
+    return SITUACOES_EDITORIAIS.some((s) => s.valor === v) ? v : '';
+}
+
+export function rotuloSituacaoEditorial(valor) {
+    return SITUACOES_EDITORIAIS.find((s) => s.valor === valor)?.rotulo || '';
+}
+
+// Esgotado, fora de catálogo e reeditado: os links de compra (Lojas) podem
+// já não funcionar — usado pro aviso no card.
+export function livroForaDeCirculacao(livro) {
+    const v = situacaoEditorialDoLivro(livro);
+    return SITUACOES_EDITORIAIS.find((s) => s.valor === v)?.foraDeCirculacao === true;
+}
+
+// Texto curto da situação ("Esgotado desde 03/2024"), ou '' quando o livro
+// não foi classificado. Reaproveitado pelo selo do card e pela aba
+// Coletâneas.
+export function textoSituacaoEditorial(livro) {
+    const v = situacaoEditorialDoLivro(livro);
+    if (!v) return '';
+    const base = rotuloSituacaoEditorial(v);
+    const desde = livro.situacaoDesde ? formatarDataParcial(livro.situacaoDesde) : '';
+    return desde && desde !== '—' ? `${base} desde ${desde}` : base;
+}
+
+const CLASSES_SELO_SITUACAO = {
+    'em-circulacao':
+        'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+    esgotado:
+        'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+    'fora-de-catalogo':
+        'bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+    reeditado:
+        'bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800',
+};
+
+// Selo (HTML) pro card do livro. Vazio quando não especificado, pra livro
+// ainda não classificado não ganhar ruído. A nota vira tooltip.
+export function htmlSeloSituacaoEditorial(livro) {
+    const v = situacaoEditorialDoLivro(livro);
+    if (!v) return '';
+    const nota = livro.situacaoNota ? ` title="${escapeHtml(livro.situacaoNota)}"` : '';
+    return `<span data-situacao-editorial="${v}"${nota} class="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${CLASSES_SELO_SITUACAO[v]}">${escapeHtml(textoSituacaoEditorial(livro))}</span>`;
+}
+
 // Recebe o array db.autores e retorna todas as Nacionalidades já
 // usadas, sem repetição e ordenadas — mesmo padrão de
 // extrairFasesUnicas/extrairNomesLojasUnicos acima, texto livre com
@@ -1173,6 +1246,109 @@ export const ORIENTACOES_SUGERIDAS = [
 // Amarela/Indígena). Sem "Não informado" própria, mesmo motivo de
 // SEXOS_AUTOR acima — o `<select>` já nasce com opção vazia.
 export const CORES_RACA_AUTOR = ['Branca', 'Preta', 'Parda', 'Amarela', 'Indígena'];
+
+// Postura estética do Movimento/Escola: a atitude dele diante da tradição
+// anterior, NA ÉPOCA EM QUE SURGIU (o Modernismo foi ruptura em 1922 e hoje é
+// cânone; o campo registra o primeiro momento). Lista fechada, na ordem do
+// grau de afastamento da tradição; a Eclética não é um ponto dessa escala e
+// "Não se aplica" fecha a lista (movimento sem tradição anterior a que
+// responder, ou guarda-chuva sem postura comum). Vazio = não documentado,
+// diferente de "Não se aplica", que é uma decisão.
+export const POSTURAS_ESTETICAS = [
+    'Tradicional',
+    'Restauradora',
+    'Reformista',
+    'Inovadora',
+    'Iconoclasta',
+    'Eclética',
+    'Não se aplica',
+];
+
+export const DESCRICOES_POSTURA_ESTETICA = {
+    Tradicional: 'segue as formas, os valores e os modelos vigentes.',
+    Restauradora:
+        'reage ao que veio antes e retoma modelos anteriores (a forma, a ordem, a Antiguidade).',
+    Reformista: 'renova por dentro, sem abandonar o quadro da tradição.',
+    Inovadora: 'abandona as regras herdadas em nome do novo, sem programa de ruptura radical.',
+    Iconoclasta:
+        'rompe com a tradição por programa, em geral com manifesto e experimentação radical.',
+    Eclética: 'mistura e cita estilos de várias épocas, sem tomar partido de uma tradição.',
+    'Não se aplica':
+        'não há tradição anterior a que responder, ou reúne posturas distintas demais para uma só.',
+};
+
+// Nomes antigos (03/10/2026, mesmo dia): trocados para não colidir com os
+// conjuntos históricos Modernismo e Vanguardas. Backups e instalações que já
+// gravaram o nome antigo são migrados por migrarMovimentosEscolas (db.js).
+export const POSTURAS_ESTETICAS_RENOMEADAS = {
+    Modernista: 'Inovadora',
+    Vanguardista: 'Iconoclasta',
+};
+
+// Grupos colapsáveis do modal de Corrente literária (modal-movimento-escola.html,
+// `<details data-grupo-corrente="...">`): quais têm ALGO preenchido na corrente
+// dada. editarMovimentoEscola (forms.js) abre sozinhos só esses e deixa fechados
+// os vazios, como no modal de Autor. Função pura, sem DOM.
+export function correnteGruposComDados(corrente) {
+    const m = corrente || {};
+    const tem = (v) =>
+        Array.isArray(v) ? v.length > 0 : typeof v === 'string' ? v.trim() !== '' : !!v;
+    const temData = (d) => !!d && Object.values(d).some(tem);
+    return {
+        hierarquia:
+            m.paiId != null && m.paiId !== '' ? true : [m.divisao, m.generoDivisao].some(tem),
+        classificacao: [m.programa, m.posturaEstetica].some(tem),
+        origem: tem(m.regiaoOrigem) || temData(m.inicio) || temData(m.fim),
+        caracteristicas: [
+            m.valores,
+            m.temas,
+            m.tecnicas,
+            m.tiposComposicao,
+            m.lemas,
+            m.manifestos,
+        ].some(tem),
+        notas: tem(m.notas),
+    };
+}
+
+// Valor válido ou '' (nada é inferido).
+export function normalizarPosturaEstetica(valor) {
+    return POSTURAS_ESTETICAS.includes(valor) ? valor : '';
+}
+
+// Programa do Movimento/Escola: como a corrente se organiza e se apresenta.
+// Eixo independente da Postura estética (uma Escola pode ser Restauradora e
+// uma Vanguarda quase sempre é Iconoclasta, mas não por definição). Lista
+// fechada; vazio = ainda não preenchido ou não documentado, diferente de
+// "Não se aplica", que é uma decisão. "Tendência" (03/10/2026) é para rótulos
+// que a crítica criou depois, sem unidade estética nem organizacional
+// (Pré-Modernismo, Pós-modernismo, Literatura Contemporânea); "Não se aplica"
+// fica para o que não tem programa nenhum a descrever.
+export const PROGRAMAS_MOVIMENTO = [
+    'Escola',
+    'Movimento',
+    'Vanguarda',
+    'Grupo/Círculo',
+    'Tendência',
+    'Não se aplica',
+];
+
+export const DESCRICOES_PROGRAMA_MOVIMENTO = {
+    Escola: 'corrente com doutrina estética própria, em geral com mestres e seguidores reconhecidos.',
+    Movimento:
+        'corrente ampla e pouco formal, que reúne muitos autores em torno de uma sensibilidade ou de um contexto comum.',
+    Vanguarda:
+        'corrente autoconsciente, que se define por manifestos e pela intenção de ir à frente da arte do seu tempo.',
+    'Grupo/Círculo':
+        'núcleo pequeno, ligado por convívio, por uma revista ou por publicações em comum.',
+    Tendência:
+        'orientação difusa, sem organização nem unidade estética definida, reconhecida e nomeada depois pela crítica.',
+    'Não se aplica': 'não há programa a descrever, ou o conceito não cabe nesta corrente.',
+};
+
+export function normalizarProgramaMovimento(valor) {
+    return PROGRAMAS_MOVIMENTO.includes(valor) ? valor : '';
+}
 
 // extrairGenerosAutorUnicos/extrairOrientacoesUnicas: mesmo padrão de
 // extrairIdiomasUnicos (utils.js) — semente (GENEROS_SUGERIDOS/
@@ -1259,6 +1435,17 @@ export function extrairOrientacoesUnicas(autores) {
     (autores || []).forEach((a) => {
         if (a.orientacaoSexual && a.orientacaoSexual.trim())
             orientacoes.add(a.orientacaoSexual.trim());
+    });
+    return Array.from(orientacoes).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// Mesma ideia de extrairOrientacoesUnicas, lendo `orientacao` das Pessoas
+// (semente fixa + o que já foi digitado no cadastro de Pessoas).
+export function extrairOrientacoesPessoasUnicas(pessoas) {
+    const orientacoes = new Set(ORIENTACOES_SUGERIDAS);
+    (pessoas || []).forEach((p) => {
+        if (typeof p.orientacao === 'string' && p.orientacao.trim())
+            orientacoes.add(p.orientacao.trim());
     });
     return Array.from(orientacoes).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
@@ -2116,12 +2303,22 @@ export const MODOS_PERIODO_SEM_DATA = ['todos', 'com-data', 'sem-data'];
  */
 export function filtrarPeriodosPorData(
     itens,
-    { intervalo, modoData = 'todos', movimento = false } = {},
+    { intervalo, modoData = 'todos', movimento = false, periodoEfetivo = null } = {},
 ) {
     const faixaFiltro = faixaDeFiltro(intervalo);
     return itens.filter((it) => {
         const faixa = faixaDePeriodo(it, { movimento });
-        if (!faixa) return modoData !== 'com-data';
+        if (!faixa) {
+            // "Só com data" e "Só sem data" olham o que está gravado no próprio
+            // item. No intervalo De/Até, `periodoEfetivo(it)` pode dizer que o
+            // período de outro registro vale para ele (a divisão sem data usa a
+            // do pai, nas Correntes literárias); sem isso, ou sem data em lugar
+            // nenhum, o item sem data continua visível (modo "todos").
+            if (modoData !== 'todos') return modoData === 'sem-data';
+            if (!faixaFiltro || !periodoEfetivo) return true;
+            const herdada = faixaDePeriodo(periodoEfetivo(it), { movimento });
+            return !herdada || (herdada[0] <= faixaFiltro[1] && herdada[1] >= faixaFiltro[0]);
+        }
         if (modoData === 'sem-data') return false;
         if (!faixaFiltro) return true;
         return faixa[0] <= faixaFiltro[1] && faixa[1] >= faixaFiltro[0];
@@ -2533,6 +2730,23 @@ const CAMPOS_ATRIBUTO = {
     pessoa: '_buscaPessoas',
     papel: '_buscaPapeis',
     grupo: '_buscaGrupos',
+    // Personagens do texto (nome vem do cadastro db.personagens, ver
+    // decorarCamposBusca em render-listas.js) — `personagem:"Capitu"`.
+    personagem: '_buscaPersonagens',
+    // Personagem por papel no vínculo (ver nomesPersonagensPorPapel em
+    // personagens.js): `personagem:` segue achando em qualquer papel; estes
+    // restringem a um. O mesmo Personagem pode estar em mais de um papel.
+    personagemvoz: '_buscaPersonagemVoz',
+    personageminterlocutor: '_buscaPersonagemInterlocutor',
+    personagemaparicao: '_buscaPersonagemAparicao',
+    personagemmencao: '_buscaPersonagemMencao',
+    personagemalusao: '_buscaPersonagemAlusao',
+    // Personagem por centralidade (ver nomesPersonagensPorCentralidade):
+    // `semcentralidade` é só onde a centralidade se aplica e não foi
+    // preenchida (Menção/Alusão sozinhas não entram em nenhuma das três).
+    personagemprotagonista: '_buscaPersonagemProtagonista',
+    personagemsecundario: '_buscaPersonagemSecundario',
+    personagemsemcentralidade: '_buscaPersonagemSemCentralidade',
     // Só se aplica a Prosa (ver extrairGenerosUnicos) — em Poema, o
     // campo simplesmente não existe, então o prefixo não acha nada lá.
     genero: 'genero',
@@ -2543,10 +2757,26 @@ const CAMPOS_ATRIBUTO = {
     idiomaprincipal: '_buscaIdiomaPrincipal',
     idiomasecundario: '_buscaIdiomaSecundario',
     dialeto: '_buscaDialeto',
+    // Datas de escrita e de publicação (texto formatado — ver
+    // decorarCamposBusca): `dataescrita:*` / `-dataescrita:*` separam quem
+    // tem e quem não tem a data; `dataescrita:2020` acha pelo texto da data.
+    dataescrita: '_buscaDataEscrita',
+    datapublicacao: '_buscaDataPublicacao',
     epoca: '_buscaEpoca',
     periodohistorico: '_buscaPeriodoHistorico',
+    // Hierárquicos (ver nomesDeBuscaDasCorrentes): `movimento:Romantismo` acha
+    // também o que está em uma geração ou vertente dele. `...direto:`
+    // restringe ao que foi ligado diretamente àquela corrente.
     movimento: '_buscaMovimentosEscolas',
     escola: '_buscaMovimentosEscolas',
+    movimentodireto: '_buscaMovimentosEscolasDireto',
+    escoladireta: '_buscaMovimentosEscolasDireto',
+    // Postura estética e Programa das correntes ligadas ao texto, com a
+    // herança do pai (`postura:inovadora`, `programa:"não se aplica"`).
+    // Ficam fora da busca sem prefixo: "Movimento" ou "Escola" soltos
+    // casariam com quase tudo.
+    postura: '_buscaPosturas',
+    programa: '_buscaProgramas',
     // Assunto derivado dos Temas do texto (ver assuntosDoTexto) — não é
     // campo gravado, mas o mesmo padrão dos outros _busca* decorados.
     assunto: '_buscaAssuntos',
@@ -2629,14 +2859,28 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaPessoas: 'pessoa',
     _buscaPapeis: 'papel',
     _buscaGrupos: 'grupo',
+    _buscaPersonagens: 'personagem',
+    _buscaPersonagemVoz: 'personagemvoz',
+    _buscaPersonagemInterlocutor: 'personageminterlocutor',
+    _buscaPersonagemAparicao: 'personagemaparicao',
+    _buscaPersonagemMencao: 'personagemmencao',
+    _buscaPersonagemAlusao: 'personagemalusao',
+    _buscaPersonagemProtagonista: 'personagemprotagonista',
+    _buscaPersonagemSecundario: 'personagemsecundario',
+    _buscaPersonagemSemCentralidade: 'personagemsemcentralidade',
     genero: 'genero',
     idioma: 'idioma',
     _buscaIdiomaPrincipal: 'idiomaprincipal',
     _buscaIdiomaSecundario: 'idiomasecundario',
     _buscaDialeto: 'dialeto',
+    _buscaDataEscrita: 'dataescrita',
+    _buscaDataPublicacao: 'datapublicacao',
     _buscaEpoca: 'epoca',
     _buscaPeriodoHistorico: 'periodohistorico',
     _buscaMovimentosEscolas: 'movimento',
+    _buscaMovimentosEscolasDireto: 'movimentodireto',
+    _buscaPosturas: 'postura',
+    _buscaProgramas: 'programa',
     _buscaAssuntos: 'assunto',
     _buscaAssuntoPrincipal: 'assuntoprincipal',
     _buscaAssuntoSecundario: 'assuntosecundario',
@@ -2816,6 +3060,7 @@ export function filtrarTextos(lista, query, opts = opcoesBuscaPadrao()) {
                 item._buscaAutoria,
                 item._buscaGrupos,
                 item._buscaPapeis,
+                item._buscaPersonagens,
                 item._buscaEpoca,
                 item._buscaPeriodoHistorico,
                 item._buscaAssuntos,
@@ -3130,14 +3375,62 @@ export function nomesTemasDoAssunto(assunto, temasCadastro) {
 }
 
 // Assuntos (objetos do cadastro) a que um texto pertence: todo Assunto
-// que lista ao menos um dos Temas do texto. Ordem = ordem do cadastro,
-// sem repetir Assunto, mesmo que vários temas do texto caiam nele.
+// que lista ao menos um dos Temas do texto, menos os que a pessoa marcou
+// como "não se aplica a este texto" (`item.assuntosExcluidos`, ver abaixo).
+// Ordem = ordem do cadastro, sem repetir Assunto, mesmo que vários temas
+// do texto caiam nele.
 export function assuntosDoTexto(item, assuntos, temasCadastro) {
     const chaves = new Set(temasDoTexto(item).map(chaveTema));
     if (chaves.size === 0) return [];
-    return (assuntos || []).filter((a) =>
-        nomesTemasDoAssunto(a, temasCadastro).some((t) => chaves.has(chaveTema(t))),
+    const excluidos = idsAssuntosExcluidos(item?.assuntosExcluidos);
+    return (assuntos || []).filter(
+        (a) =>
+            !excluidos.has(String(a.id)) &&
+            nomesTemasDoAssunto(a, temasCadastro).some((t) => chaves.has(chaveTema(t))),
     );
+}
+
+// ─── Exceção de Assunto no texto ───────────────────────────────────────
+// Um Tema pode estar em mais de um Assunto (N:N), mas num texto específico
+// só um deles faz sentido (ex.: "Retrato de caráter" em "Identidade e
+// autoconhecimento" e em "Vínculos e relações"). O Assunto segue derivado
+// dos Temas; o texto guarda só a lista dos Assuntos que a pessoa tirou dele,
+// em `item.assuntosExcluidos: [assuntoId, ...]` (mesmo espírito de
+// `assuntosPapel`: só a exceção, nunca o Assunto inteiro). Excluído some das
+// tabelas, da busca, das Estatísticas e das exportações; só o modal do texto
+// continua mostrando, riscado e com "Restaurar".
+
+// Conjunto de ids (como string) a partir da lista gravada. Tolera dado
+// ausente ou malformado.
+export function idsAssuntosExcluidos(lista) {
+    return new Set(
+        (Array.isArray(lista) ? lista : [])
+            .map((e) => (e && typeof e === 'object' ? e.assuntoId : e))
+            .filter((id) => id !== undefined && id !== null && id !== '')
+            .map(String),
+    );
+}
+
+// Poda as exceções a gravar: só ficam as de Assuntos que existem e que ainda
+// se aplicam aos Temas do texto (entradas: [{ nome, papel }]). Tirou o Tema
+// do texto, ou o Tema deixou de levar ao Assunto: a exceção some junto, não
+// fica esperando (decisão do Victor, igual às sobrescritas de papel). Devolve
+// ids como no cadastro, sem repetir.
+export function podarExcecoesAssunto(entradas, excluidos, assuntos, temasCadastro) {
+    const aplicaveis = new Map(
+        assuntosComPapelDeEntradas(entradas, [], assuntos, temasCadastro).map((a) => [
+            String(a.id),
+            a.id,
+        ]),
+    );
+    const vistos = new Set();
+    const saida = [];
+    idsAssuntosExcluidos(excluidos).forEach((chave) => {
+        if (!aplicaveis.has(chave) || vistos.has(chave)) return;
+        vistos.add(chave);
+        saida.push(aplicaveis.get(chave));
+    });
+    return saida;
 }
 
 // ─── Papel do Assunto no texto ─────────────────────────────────────────
@@ -3171,14 +3464,26 @@ export function assuntosComPapel(item, assuntos, temasCadastro) {
         item?.assuntosPapel,
         assuntos,
         temasCadastro,
+        item?.assuntosExcluidos,
     );
 }
 
 // Mesmo cálculo, a partir de entradas [{ nome, papel }] (o editor trabalha
 // por nome: o Tema recém-digitado ainda não está no cadastro) e das
-// sobrescritas [{ assuntoId, papel }].
-export function assuntosComPapelDeEntradas(entradas, sobrescritas, assuntos, temasCadastro) {
+// sobrescritas [{ assuntoId, papel }]. `excluidos` é a lista de Assuntos
+// marcados como "não se aplica a este texto": ficam de fora, a menos que
+// `{ incluirExcluidos: true }` (o modal os mostra riscados, com
+// `excluido: true`, papel '' e sem sobrescrita).
+export function assuntosComPapelDeEntradas(
+    entradas,
+    sobrescritas,
+    assuntos,
+    temasCadastro,
+    excluidos = [],
+    { incluirExcluidos = false } = {},
+) {
     if (!entradas || entradas.length === 0) return [];
+    const ids = idsAssuntosExcluidos(excluidos);
     const papelPorChave = new Map();
     entradas.forEach((t) => {
         const chave = chaveTema(t.nome);
@@ -3203,6 +3508,20 @@ export function assuntosComPapelDeEntradas(entradas, sobrescritas, assuntos, tem
             .filter((p) => p !== undefined);
         if (papeis.length === 0) return;
         const papelAuto = papelMaisForte(papeis);
+        if (ids.has(String(a.id))) {
+            if (incluirExcluidos) {
+                saida.push({
+                    i,
+                    id: a.id,
+                    nome: a.nome,
+                    papelAuto,
+                    fixado: false,
+                    papel: '',
+                    excluido: true,
+                });
+            }
+            return;
+        }
         const fixado = fixadas.has(String(a.id));
         saida.push({
             i,
@@ -3211,11 +3530,21 @@ export function assuntosComPapelDeEntradas(entradas, sobrescritas, assuntos, tem
             papelAuto,
             fixado,
             papel: fixado ? fixadas.get(String(a.id)) : papelAuto,
+            excluido: false,
         });
     });
+    // Excluídos vão para o fim (depois de principal, secundário e sem papel).
+    const ordem = (e) => (e.excluido ? 99 : ORDEM_PAPEL_TEMA[e.papel]);
     return saida
-        .sort((a, b) => ORDEM_PAPEL_TEMA[a.papel] - ORDEM_PAPEL_TEMA[b.papel] || a.i - b.i)
-        .map(({ id, nome, papel, papelAuto, fixado }) => ({ id, nome, papel, papelAuto, fixado }));
+        .sort((a, b) => ordem(a) - ordem(b) || a.i - b.i)
+        .map(({ id, nome, papel, papelAuto, fixado, excluido }) => ({
+            id,
+            nome,
+            papel,
+            papelAuto,
+            fixado,
+            excluido,
+        }));
 }
 
 // "Amor (secundário), Brasil": papel efetivo entre parênteses só quando definido.
@@ -3320,6 +3649,7 @@ export function contarTextosPorAssunto(textos, assuntos, temasCadastro) {
 // ignoram.
 export const CAMPOS_CONTAVEIS = {
     pessoas: { label: 'Pessoas', contar: (item) => (item.pessoas || []).length },
+    personagens: { label: 'Personagens', contar: (item) => (item.personagens || []).length },
     grupos: {
         label: 'Grupos',
         contar: (item, db) => {
@@ -3359,7 +3689,7 @@ export const CAMPOS_CONTAVEIS = {
         contar: (item) => (item.reconhecimentos || []).length,
     },
     etiquetas: {
-        label: 'Etiquetas (Sinalizações)',
+        label: 'Etiquetas',
         contar: (item) =>
             (sinalizacoesCombinadas(item) || '')
                 .split(',')
@@ -3852,6 +4182,7 @@ export function extrairPremiosUnicos(itens) {
 // abaixo) — Eco continua sendo o par de Elo dentro de Intratextualidade.
 export const TIPOS_ECO = [
     'Personagem em comum',
+    'Pessoa em comum',
     'Imagem central compartilhada',
     'Aceno a',
     'Outro',
@@ -4963,4 +5294,22 @@ export function tokenizar(texto) {
             .normalize('NFC')
             .match(/[a-zà-úçãõâêîôû]+/g) || []
     );
+}
+
+// Botões "Selecionar estes N" / "Selecionar restantes (M)" da barra de
+// paginação de Poemas/Prosas. Cada um alterna: se todos os ids do lote já
+// estão na seleção, o clique desmarca o lote (e o rótulo vira "Desselecionar
+// ..."); senão, marca o que falta. `todosSelecionados` e `rotuloSelecaoEmLote`
+// são compartilhados entre o render da paginação (celulas-tabela.js) e a
+// atualização do rótulo após marcar/desmarcar uma linha à mão
+// (selecao-massa.js), pra o texto do botão nunca divergir do que o clique faz.
+export function todosSelecionados(ids, selecao) {
+    return ids.length > 0 && ids.every((id) => selecao.has(id));
+}
+
+export function rotuloSelecaoEmLote(tipo, ids, selecao) {
+    const verbo = todosSelecionados(ids, selecao) ? 'Desselecionar' : 'Selecionar';
+    return tipo === 'restantes'
+        ? `${verbo} restantes (${ids.length})`
+        : `${verbo} estes ${ids.length}`;
 }

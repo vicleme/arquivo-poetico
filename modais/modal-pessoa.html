@@ -72,6 +72,44 @@
                     <datalist id="sugestoes-genero-pessoa"></datalist>
                 </div>
                 <div>
+                    <label class="form-label">Orientação</label>
+                    <input
+                        type="text"
+                        id="ps-orientacao"
+                        list="sugestoes-orientacao-pessoa"
+                        placeholder="Ex: Heterossexual, Homossexual, Bissexual..."
+                    />
+                    <datalist id="sugestoes-orientacao-pessoa"></datalist>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                        Preencha só onde a pessoa se declara. Vazio quer dizer não documentado, não
+                        &quot;heterossexual&quot;.
+                    </p>
+                </div>
+                <div>
+                    <label class="form-label">Identidade cis/trans</label>
+                    <select id="ps-identidade-cis-trans">
+                        <option value="">Não documentado</option>
+                        <option value="Cisgênero">Cisgênero</option>
+                        <option value="Transgênero">Transgênero</option>
+                        <option value="Não se aplica">Não se aplica</option>
+                    </select>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                        Preencha só onde a pessoa se declara ou a biografia documenta. Vazio quer
+                        dizer não documentado, não &quot;cisgênero&quot;.
+                    </p>
+                </div>
+                <div>
+                    <label class="form-label">Cor/Raça</label>
+                    <select id="ps-cor-raca">
+                        <option value="">Não documentado</option>
+                        <option value="Branca">Branca</option>
+                        <option value="Preta">Preta</option>
+                        <option value="Parda">Parda</option>
+                        <option value="Amarela">Amarela</option>
+                        <option value="Indígena">Indígena</option>
+                    </select>
+                </div>
+                <div>
                     <label class="form-label">Grupos</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
                         Quem essa pessoa é na sua vida, constante entre poemas — para criar um grupo

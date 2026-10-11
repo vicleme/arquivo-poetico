@@ -1059,6 +1059,9 @@ describe('agregarTemaPorAno / agregarPessoaPorAno / coocorrenciaTemasPessoas', (
             pessoas: ['Ana'],
             temas: ['mar'],
             valores: [[2]],
+            textosPorTema: [2],
+            textosPorLinha: [2],
+            totalTextos: 2,
         });
     });
 
@@ -1088,6 +1091,9 @@ describe('agregarTemaPorAno / agregarPessoaPorAno / coocorrenciaTemasPessoas', (
                 grupos: ['Amigos', 'Família'],
                 temas: ['mar'],
                 valores: [[2], [2]],
+                textosPorTema: [2],
+                textosPorLinha: [2, 2],
+                totalTextos: 2,
             },
         );
     });
@@ -1106,6 +1112,9 @@ describe('agregarTemaPorAno / agregarPessoaPorAno / coocorrenciaTemasPessoas', (
                 grupos: ['Filhos', 'Família'],
                 temas: ['mar'],
                 valores: [[1], [1]],
+                textosPorTema: [1],
+                textosPorLinha: [1, 1],
+                totalTextos: 1,
             },
         );
     });

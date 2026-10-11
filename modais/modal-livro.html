@@ -175,6 +175,63 @@
                     <label class="form-label">ISBN-10</label>
                     <input type="text" id="l-isbn-10" placeholder="Ex: 65-00-00000-0" />
                 </div>
+                <div
+                    class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4"
+                >
+                    <div class="md:col-span-2">
+                        <label class="form-label">Situação editorial</label>
+                        <select id="l-situacao-editorial">
+                            <option value="em-circulacao" selected>Em circulação</option>
+                            <option value="esgotado">Esgotado</option>
+                            <option value="fora-de-catalogo">Fora de catálogo</option>
+                            <option value="reeditado">Reeditado</option>
+                            <option value="">Não especificado</option>
+                        </select>
+                        <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                            Esgotado = acabou no mercado. Fora de catálogo = você retirou de venda.
+                        </p>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="form-label">Desde quando</label>
+                        <div class="grid grid-cols-3 gap-1">
+                            <input
+                                type="number"
+                                id="l-situacao-desde-dia"
+                                placeholder="Dia"
+                                min="1"
+                                max="31"
+                                title="Dia"
+                            />
+                            <input
+                                type="number"
+                                id="l-situacao-desde-mes"
+                                placeholder="Mês"
+                                min="1"
+                                max="12"
+                                title="Mês"
+                            />
+                            <input
+                                type="number"
+                                id="l-situacao-desde-ano"
+                                placeholder="Ano"
+                                min="1"
+                                max="2100"
+                                title="Ano"
+                            />
+                        </div>
+                        <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                            Opcional. Preencha só o que souber.
+                        </p>
+                    </div>
+                    <div class="md:col-span-4">
+                        <label class="form-label">Nota sobre a situação</label>
+                        <input
+                            type="text"
+                            id="l-situacao-nota"
+                            placeholder="Motivo ou o que aconteceu (reedição, mudança de editora, retirada...)"
+                        />
+                    </div>
+                </div>
                 <div class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
                     <label class="form-label"
                         >Onde comprar

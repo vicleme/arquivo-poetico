@@ -16,6 +16,7 @@ import {
     relatorioProntoParaAplicar,
     aplicarImportacaoAditiva,
 } from './importar-aditivo.js';
+import { alvosSoltosPorItem } from './alvos-conceitos.js';
 
 const ROTULO_CAMPO_REF = {
     pessoas: 'Pessoa',
@@ -144,6 +145,50 @@ function renderItemImportacao(rel, idx) {
     </div>`;
 }
 
+// Aviso da prévia (F11-D9): Elos e Ecos cujo texto-alvo não está no arquivo,
+// nem no acervo (por duplicata casada ou por título igual) são soltos na
+// importação. Aqui ainda dá para cancelar e exportar de novo com o alvo.
+function plural(n, singular, pluralForma) {
+    return `${n} ${n === 1 ? singular : pluralForma}`;
+}
+
+function frasePerdas(soltos) {
+    const partes = [];
+    if (soltos.ecos.length) partes.push(plural(soltos.ecos.length, 'Eco', 'Ecos'));
+    if (soltos.elos.length) partes.push(plural(soltos.elos.length, 'Elo', 'Elos'));
+    const total = soltos.ecos.length + soltos.elos.length;
+    const verbo = total === 1 ? 'aponta' : 'apontam';
+    const fim = total === 1 ? 'será solto' : 'serão soltos';
+    return `${partes.join(' e ')} ${verbo} para textos que não estão no arquivo nem no acervo e ${fim}`;
+}
+
+function titulosDosSoltos(soltos) {
+    const unicos = [
+        ...new Set(
+            [...soltos.ecos, ...soltos.elos].map((s) => s.titulo || '(sem título no arquivo)'),
+        ),
+    ];
+    const mostrados = unicos.slice(0, 5).map((t) => `"${t}"`);
+    if (unicos.length > 5) mostrados.push(`e mais ${unicos.length - 5}`);
+    return mostrados.join(', ');
+}
+
+function renderAvisoLigacoesSoltas(itensOrigem, soltosPorItem) {
+    const linhas = itensOrigem
+        .map((rel, idx) => ({ rel, soltos: soltosPorItem[idx] }))
+        .filter(({ soltos }) => soltos && soltos.ecos.length + soltos.elos.length > 0)
+        .map(
+            ({ rel, soltos }) =>
+                `<li><span class="font-medium">${escapeHtml(rel.titulo)}:</span> ${escapeHtml(frasePerdas(soltos))} (${escapeHtml(titulosDosSoltos(soltos))}).</li>`,
+        );
+    if (!linhas.length) return '';
+    return `<div class="border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 rounded-md p-2 mb-3 text-xs text-amber-800 dark:text-amber-300">
+        <div class="font-bold mb-1">⚠️ Ligações que serão soltas</div>
+        <ul class="list-disc ml-4">${linhas.join('')}</ul>
+        <p class="mt-1">O Eco solto leva junto a nota e a âncora. Para manter, cancele e exporte de novo incluindo o texto que falta.</p>
+    </div>`;
+}
+
 function renderPreviewImportacaoAditiva() {
     const container = document.getElementById('importacao-aditiva-preview');
     const acoes = document.getElementById('importacao-aditiva-acoes');
@@ -187,7 +232,12 @@ function renderPreviewImportacaoAditiva() {
         })
         .join('');
 
-    container.innerHTML = resumoHtml + listaHtml;
+    const avisoHtml = renderAvisoLigacoesSoltas(
+        itensOrigem,
+        alvosSoltosPorItem(_payloadAtual, _relatorioAtual, db),
+    );
+
+    container.innerHTML = resumoHtml + avisoHtml + listaHtml;
 
     if (acoes) acoes.classList.remove('hidden');
     const botaoAplicar = document.getElementById('btn-aplicar-importacao-aditiva');
@@ -291,6 +341,13 @@ export async function aplicarImportacaoAditivaClick() {
     let mensagem = partes.length ? `Importado: ${partes.join(' + ')}.` : 'Nada novo foi importado.';
     if (resultado.duplicatasPuladas) {
         mensagem += ` ${resultado.duplicatasPuladas} tratada(s) como duplicata e não importada(s).`;
+    }
+    const soltos = resultado.soltos || { elos: 0, ecos: 0 };
+    if (soltos.elos || soltos.ecos) {
+        const lista = [];
+        if (soltos.ecos) lista.push(plural(soltos.ecos, 'Eco', 'Ecos'));
+        if (soltos.elos) lista.push(plural(soltos.elos, 'Elo', 'Elos'));
+        mensagem += ` ${lista.join(' e ')} sem texto-alvo ${soltos.ecos + soltos.elos === 1 ? 'foi solto' : 'foram soltos'}.`;
     }
     mostrarAviso(mensagem, 'sucesso');
 

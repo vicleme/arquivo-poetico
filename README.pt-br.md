@@ -119,8 +119,8 @@ npm run format:check   # prettier --check .
 │   │                            Poema/Prosa, pra quem for ler dados exportados
 │   │                            sem abrir o código
 │   ├── etiquetas-sinalizacoes-for-ai.md / etiquetas-sinalizacoes-for-ai-pt-br.md
-│   │                          → Lógica das etiquetas do acervo ("Sinalizações"
-│   │                            na interface) — que categoria cada uma
+│   │                          → Lógica das etiquetas do acervo ("Etiquetas"
+│   │                            na interface; antes "Sinalizações") — que categoria cada uma
 │   │                            representa
 │   ├── export-to-ia.md / export-to-ia-pt-br.md
 │   │                          → Formato aninhado vs. flat na exportação do
@@ -133,6 +133,11 @@ npm run format:check   # prettier --check .
 │   ├── pessoas-papeis-for-ai.md / pessoas-papeis-for-ai-pt-br.md
 │   │                          → Lógica do campo `pessoas` de Poemas/Prosas —
 │   │                            papéis atribuídos a cada pessoa citada
+│   ├── personagens-for-ai.md / personagens-for-ai-pt-br.md
+│   │                          → Lógica do campo `personagens` em
+│   │                            Poemas/Prosas e do cadastro de
+│   │                            Personagem (papéis, centralidade,
+│   │                            relação com texto e livro)
 │   ├── scansion-for-ai.md / scansion-for-ai-pt-br.md
 │   │                          → Instrui uma IA a escandir um poema colado
 │   │                            (grade silábica, tônicas, pares de rima e os 7
@@ -182,6 +187,13 @@ npm run format:check   # prettier --check .
 │   ├── autobackup.js         → Snapshots automáticos do acervo no
 │   │                           IndexedDB (rede de segurança além do
 │   │                           "Baixar JSON" manual — não substitui)
+│   ├── inventario-armazenamento.js → Inventário de tudo que o app guarda no
+│   │                           navegador, classificado (dado / preferência)
+│   ├── esvaziar-acervo.js    → Lógica pura do "Esvaziar o acervo": o que cada
+│   │                           caixa tira, resumo, plano de armazenamento
+│   ├── ui-esvaziar-acervo.js → A janela: resumo, backup, retrato, palavra
+│   ├── apagar-acervo.js      → O apagar efetivo: grava o acervo esvaziado,
+│   │                           capas, chaves, avisa outras abas e recarrega
 │   ├── forms.js              → Submit/edição de Livro, Parte, Seção, Poema,
 │   │                           Prosa, Elemento, Pessoa, Grupo, Autor, Época
 │   │                           (inclui o fluxo de Mesclar Pessoa/Época e a
@@ -234,7 +246,7 @@ npm run format:check   # prettier --check .
 │   │                           Exportação): os 6 downloads fixos (Backup,
 │   │                           Aninhado, Flat e Filtrado em JSON/MD) com nome
 │   │                           de arquivo configurável, mais templates de
-│   │                           filtro salvos (Pessoa/Sinalização por
+│   │                           filtro salvos (Pessoa/Etiqueta por
 │   │                           categoria/Gênero, combináveis com "E" lógico).
 │   │                           Baixar em lote gera um único `.zip` (JSZip) ou
 │   │                           downloads separados, à escolha da pessoa
@@ -311,10 +323,10 @@ npm run format:check   # prettier --check .
   agora** (une os dois, movendo vínculos), **Salvar mesmo assim** (mantém
   os dois separados) ou **Cancelar**. Veja `docs/pessoas-papeis-for-ai-pt-br.md`
   para a lógica completa dos papéis atribuídos a cada Pessoa.
-- **Tags e pessoas**: sinalizações (temas) e "dedicado a / sobre quem" como
+- **Tags e pessoas**: etiquetas (por categoria) e "dedicado a / sobre quem" como
   etiquetas reutilizáveis, com sugestão por `<datalist>`. Veja
   `docs/etiquetas-sinalizacoes-for-ai-pt-br.md` para a lógica completa de
-  cada categoria de sinalização.
+  cada categoria de etiqueta.
 - **Épocas**: cadastro próprio (nome, contexto da relação, notas) que um
   Poema/Prosa pode referenciar em "Época Retratada", com início/fim (datas
   parciais) e `recorte` — "momento" (só o evento) ou "repercussão" (o efeito
@@ -415,7 +427,7 @@ npm run format:check   # prettier --check .
   `{data}`/`{hora}`), pra sempre substituir o mesmo arquivo na pasta local.
   "Templates" são filtros salvos
   e reutilizáveis: qualquer combinação de critérios (Pessoa dedicada,
-  qualquer categoria de Sinalização — tratadas separadamente, então
+  qualquer categoria de Etiqueta — tratadas separadamente, então
   "Tecnologia" em Domínio Imagético não se confunde com "Tecnologia" em
   Tema — ou Gênero de Prosa), combináveis com "E" lógico, com formatos
   (JSON/MD) e nome de arquivo próprios (tokens `{nome}`/`{formato}` além dos
@@ -457,6 +469,21 @@ npm run format:check   # prettier --check .
   "download abrangente") acompanham automaticamente, sem exigir decisão —
   não são referência, só registros dependurados no id do Poema, remapeados
   junto na Fase 4.
+- **Esvaziar o acervo** ("Zona de risco" em "Dados" › "Backup e recuperação",
+  Fase 13): recomeçar do zero escolhendo entre três caixas independentes —
+  _Dados_ (textos, livros e todos os cadastros criados por você, imagens de
+  capa, Versões Alternativas e os padrões de colunas salvos, que moram dentro
+  do acervo), _Preferências_ (tudo que só existe como configuração de tela:
+  tema, colunas, itens por página, filtros, templates de exportação) e
+  _Cadastros pré-prontos_ (Períodos Históricos, Movimentos/Escolas e Templates
+  de progressão; os que algum texto usa só saem junto com os Dados). Um
+  resumo mostra o que sai; a confirmação baixa um backup, tira um retrato
+  forçado e só habilita o botão depois de digitar `ESVAZIAR`. Os retratos
+  automáticos nunca são tocados. A chave do acervo é regravada, nunca
+  removida, então a recarga não semeia de volta os Assuntos e Temas de
+  exemplo. As outras abas abertas são avisadas (`BroadcastChannel`), travam o
+  salvamento e recarregam. Lógica em `js/esvaziar-acervo.js`, janela em
+  `js/ui-esvaziar-acervo.js`, apagar efetivo em `js/apagar-acervo.js`.
 - **Colunas configuráveis** (Poemas/Prosas): escolha quais colunas aparecem
   e em que ordem, salvo por tabela no navegador; ID/Título e Ações são
   fixas. Cabeçalhos de Poemas são clicáveis para ordenar (por estrutura,
@@ -639,7 +666,7 @@ e **nunca sai no JSON exportado**.
 Um poema/prosa entra na lista de revisão quando **qualquer uma** das
 condições abaixo é verdadeira:
 
-1. Tem, em Sinalizações, alguma das tags configuráveis em "Tags de filtro" —
+1. Tem, em Etiquetas, alguma das tags configuráveis em "Tags de filtro" —
    a lista já vem com `Conteúdo sensível` como única tag padrão (cobre
    Prosa, que não tem os campos dedicados abaixo). É totalmente editável:
    pode adicionar, remover ou até esvaziar, e a escolha fica salva no

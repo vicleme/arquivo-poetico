@@ -39,7 +39,7 @@ import {
 } from './db.js';
 
 export const TIPOS_PERIODO_MASSA = [
-    { chave: 'movimento', rotulo: 'Movimento/Escola' },
+    { chave: 'movimento', rotulo: 'Corrente literária' },
     { chave: 'epoca', rotulo: 'Período Biográfico' },
     { chave: 'periodoHistorico', rotulo: 'Período Histórico' },
 ];

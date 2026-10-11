@@ -118,8 +118,8 @@ npm run format:check   # prettier --check .
 │   │                            record, for reading exported data without
 │   │                            opening the code
 │   ├── etiquetas-sinalizacoes-for-ai.md / etiquetas-sinalizacoes-for-ai-pt-br.md
-│   │                          → Logic of the archive's tags ("Sinalizações"
-│   │                            in the UI) — which category each one
+│   │                          → Logic of the archive's tags ("Etiquetas"
+│   │                            in the UI; formerly "Sinalizações") — which category each one
 │   │                            represents
 │   ├── export-to-ia.md / export-to-ia-pt-br.md
 │   │                          → Nested vs. flat export format for use with
@@ -131,6 +131,11 @@ npm run format:check   # prettier --check .
 │   ├── pessoas-papeis-for-ai.md / pessoas-papeis-for-ai-pt-br.md
 │   │                          → Logic of the `pessoas` field on Poems/Prose
 │   │                            — roles assigned to each mentioned person
+│   ├── personagens-for-ai.md / personagens-for-ai-pt-br.md
+│   │                          → Logic of the `personagens` field on
+│   │                            Poems/Prose and of the Character
+│   │                            registry (roles, centrality, relation to
+│   │                            text and book)
 │   ├── scansion-for-ai.md / scansion-for-ai-pt-br.md
 │   │                          → Instructs an AI to scan a pasted poem
 │   │                            (syllable grid, stresses, rhyme pairs, and
@@ -181,6 +186,13 @@ npm run format:check   # prettier --check .
 │   ├── autobackup.js         → Automatic snapshots of the collection in
 │   │                           IndexedDB (safety net alongside the manual
 │   │                           "Download JSON" — doesn't replace it)
+│   ├── inventario-armazenamento.js → Inventory of everything the app stores in
+│   │                           the browser, classified (data / preference)
+│   ├── esvaziar-acervo.js    → Pure logic of "Empty the collection": what each
+│   │                           box removes, summary, storage plan
+│   ├── ui-esvaziar-acervo.js → The modal: summary, backup, snapshot, word gate
+│   ├── apagar-acervo.js      → The actual erase: writes the emptied collection,
+│   │                           covers, keys, warns other tabs, reloads
 │   ├── forms.js              → Submit/edit Book, Part, Section, Poem,
 │   │                           Prose, Element, Person, Group, Author, Era
 │   │                           (includes the Merge Person/Era flow and the
@@ -460,6 +472,21 @@ npm run format:check   # prettier --check .
   "comprehensive download") come along automatically, no decision required —
   they aren't a reference, just records hanging off the Poem's id, remapped
   along with it in Phase 4.
+- **Empty the collection** ("Danger zone" in "Dados" › "Backup e recuperação",
+  Phase 13): start over from zero, choosing among three independent boxes —
+  _Data_ (texts, books and every registry created by the user, cover images,
+  Alternate Versions and the saved column patterns, which live inside the
+  collection), _Preferences_ (everything stored only as a screen setting:
+  theme, columns, items per page, filters, export templates) and _Factory
+  registries_ (Historical Periods, Movements/Schools and progression Templates;
+  those used by some text only leave together with Data). A summary shows what
+  goes; the confirmation downloads a backup, takes a forced snapshot, and only
+  enables the button after typing `ESVAZIAR`. The automatic snapshots are never
+  touched. The collection key is rewritten, never removed, so a reload does not
+  seed the sample Subjects and Themes back. Other open tabs are warned
+  (`BroadcastChannel`), lock their saves and reload. Logic in
+  `js/esvaziar-acervo.js`, modal in `js/ui-esvaziar-acervo.js`, the actual
+  erase in `js/apagar-acervo.js`.
 - **Configurable columns** (Poems/Prose): choose which columns show and in
   what order, saved per table in the browser; ID/Title and Actions are
   fixed. Poem table headers are clickable to sort (by structure, date,

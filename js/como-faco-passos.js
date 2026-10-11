@@ -141,6 +141,21 @@ export const TAREFAS_COMO_FACO = [
             },
         ],
     },
+    {
+        id: 'esvaziar-acervo',
+        titulo: 'Recomeçar do zero (esvaziar o acervo)',
+        descricao:
+            'Fica na aba Backup e recuperação, no menu Dados, em uma área marcada como Zona de risco. A janela pede o que apagar (dados, preferências, cadastros pré-prontos), mostra um resumo do que sai, baixa um backup e só libera o botão depois que você digita ESVAZIAR.',
+        passos: [
+            {
+                id: 'cf-esvaziar-1',
+                titulo: 'Abra a Zona de risco',
+                texto: 'Este botão abre a janela de esvaziar. Nada é apagado ao abri-la: você marca o que apagar, confere o resumo e só depois confirma.',
+                aba: 'backup-recuperacao',
+                seletor: '#btn-esvaziar-acervo',
+            },
+        ],
+    },
 ];
 
 // Tarefa por id, ou null se o id não existir (ex.: renomeado sem

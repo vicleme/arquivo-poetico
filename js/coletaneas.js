@@ -4,7 +4,7 @@
 // ============================================================
 
 import { db, save } from './db.js';
-import { abrirModalExclusao, gerarId, escapeHtml } from './utils.js';
+import { abrirModalExclusao, gerarId, escapeHtml, textoSituacaoEditorial } from './utils.js';
 import { salvarCapa, deletarCapa } from './capas.js';
 import { toggleModal, garantirModal } from './ui.js';
 
@@ -125,7 +125,7 @@ function renderListaColetaneas() {
             </div>
             <div style="font-size:10px; margin-top:2px;
                         color:${ativa ? '#185FA5' : 'var(--color-text-tertiary)'};">
-                SEQ ${col.sequencia || '—'} · ${totalItens} iten${totalItens !== 1 ? 's' : ''}
+                SEQ ${col.sequencia || '—'} · ${totalItens} iten${totalItens !== 1 ? 's' : ''}${textoSituacaoEditorial(col) ? ` · ${escapeHtml(textoSituacaoEditorial(col))}` : ''}
             </div>
         </div>`;
         })
@@ -154,7 +154,7 @@ function renderEditorColetanea(livroId) {
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
             <div>
                 <div style="font-size:16px; font-weight:500; color:var(--color-text-primary);">${escapeHtml(col.titulo)}</div>
-                <div style="font-size:11px; color:var(--color-text-tertiary); margin-top:2px;">Coletânea · SEQ ${col.sequencia || '—'}</div>
+                <div style="font-size:11px; color:var(--color-text-tertiary); margin-top:2px;">Coletânea · SEQ ${col.sequencia || '—'}${textoSituacaoEditorial(col) ? ` · ${escapeHtml(textoSituacaoEditorial(col))}` : ''}</div>
             </div>
             <button onclick="prepararNovaParte(${livroId})"
                     style="font-size:12px; padding:6px 14px; border:0.5px solid #185FA5;

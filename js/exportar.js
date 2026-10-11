@@ -12,8 +12,12 @@
 //   uma IA — não tem relação com esta filtragem por atributos.
 // ============================================================
 
+import { ecosParaExportar } from './ancora-eco.js';
+import { comAlvoTitulo } from './alvos-conceitos.js';
 import { db } from './db.js';
 import { locaisParaExportar } from './locais.js';
+import { personagensParaExportar } from './personagens.js';
+import { fichaPessoaParaExportar, avisoDadosPessoaisOmitidos } from './pessoas-viagem.js';
 import { exportarColetaneaResolvida } from './coletaneas.js';
 import {
     escapeHtml,
@@ -21,6 +25,7 @@ import {
     estaPublicado,
     sinalizacoesCombinadas,
     nomesPessoas,
+    idsAssuntosExcluidos,
 } from './utils.js';
 import { baixarMarkdown } from './exportar-md.js';
 import { baixarPdf } from './exportar-pdf.js';
@@ -292,10 +297,16 @@ export function montarRegistro(tipo, item) {
         ...item,
         tipo,
         contexto: resolverContexto(item),
-        pessoas: (item.pessoas || []).map((p) => ({
-            ...p,
-            nome: db.pessoas.find((x) => x.id == p.pessoaId)?.nome || '',
-        })),
+        // Pessoa: além do nome, leva a ficha (gênero, cis/trans, cor/raça) do
+        // cadastro; a Importação Aditiva casa pelo nome e só preenche o vazio.
+        pessoas: (item.pessoas || []).map((p) => {
+            const cadastro = db.pessoas.find((x) => x.id == p.pessoaId);
+            return {
+                ...p,
+                nome: cadastro?.nome || '',
+                ...fichaPessoaParaExportar(cadastro),
+            };
+        }),
         // Tema por id (fase 2): o nome viaja junto, porque o id não vale em
         // outro acervo — a Importação Aditiva casa/cria o Tema pelo nome.
         temas: (item.temas || []).map((t) => ({
@@ -309,9 +320,33 @@ export function montarRegistro(tipo, item) {
         // (Locais citados, local de escrita e todos os ancestrais); a
         // Importação Aditiva recria o que faltar.
         ...locaisParaExportar(db, item),
+        // Personagem: o id não vale em outro acervo, então cada vínculo leva nome
+        // e origem; a Importação Aditiva casa/cria o Personagem pelo nome.
+        ...personagensParaExportar(db, item),
+        // Âncora do Eco (F11-D6): cada âncora leva o nome, porque o id não vale
+        // em outro acervo. Eco sem âncora passa como estava.
+        // Elo e Eco levam também o título do texto-alvo (F11-D9), para a
+        // Importação Aditiva achar o alvo fora do lote.
+        ...(item.conceitos
+            ? {
+                  conceitos: {
+                      ...item.conceitos,
+                      ...(Array.isArray(item.conceitos.elos)
+                          ? { elos: comAlvoTitulo(db, item.conceitos.elos) }
+                          : {}),
+                      ecos: comAlvoTitulo(db, ecosParaExportar(db, item.conceitos.ecos)),
+                  },
+              }
+            : {}),
         assuntosPapel: (item.assuntosPapel || []).map((a) => ({
             ...a,
             nome: db.assuntos.find((x) => x.id == a.assuntoId)?.nome || '',
+        })),
+        // Assuntos tirados deste texto ("não se aplica"): o id não vale em outro
+        // acervo, então viaja com o nome (a Importação Aditiva casa pelo nome).
+        assuntosExcluidos: [...idsAssuntosExcluidos(item.assuntosExcluidos)].map((id) => ({
+            assuntoId: id,
+            nome: db.assuntos.find((x) => x.id == id)?.nome || '',
         })),
         autoria: (item.autoria || []).map((a) => ({
             ...a,
@@ -414,7 +449,9 @@ export function executarExportacaoSeletiva() {
 
     const span = document.getElementById('exp-resultado');
     if (span) {
-        span.innerText = `${itens.length} item(ns) + ${coletaneas.length} coletânea(s) exportado(s).`;
+        span.innerText =
+            `${itens.length} item(ns) + ${coletaneas.length} coletânea(s) exportado(s). ` +
+            avisoDadosPessoaisOmitidos(itens);
     }
 }
 
@@ -487,6 +524,8 @@ export function exportarSelecaoJson(tipo, ids) {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }, 100);
+    const aviso = avisoDadosPessoaisOmitidos(itens);
+    if (aviso) mostrarAviso(aviso);
 }
 
 // .csv (formato largo, ver exportar-csv.js). Monta os registros direto de
@@ -599,6 +638,8 @@ export async function exportarItem(tipo, id, formato) {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }, 100);
+        const aviso = avisoDadosPessoaisOmitidos(itens);
+        if (aviso) mostrarAviso(aviso);
         return;
     }
 
@@ -750,7 +791,9 @@ export function exportarTudoFlatJson() {
 
     const span = document.getElementById('exp-resultado');
     if (span) {
-        span.innerText = `Acervo inteiro exportado em JSON flat (${itens.length} texto(s) + ${coletaneas.length} coletânea(s)).`;
+        span.innerText =
+            `Acervo inteiro exportado em JSON flat (${itens.length} texto(s) + ${coletaneas.length} coletânea(s)). ` +
+            avisoDadosPessoaisOmitidos(itens);
     }
 }
 

@@ -30,7 +30,7 @@ alike but aren't the same thing, special cases, derived fields. Check the
 dedicated doc whenever the task actually depends on getting that
 distinction right.
 
-- **Sinalizações** ("Signalings" — `sinalizacoesTradicao`,
+- **Etiquetas** (formerly "Sinalizações"; keys `sinalizacoesTradicao`,
   `sinalizacoesEstilo`, `sinalizacoesTema`, `sinalizacoesTerritorialidade`,
   `sinalizacoesRelacao`, `sinalizacoesSensibilidade`, `sinalizacoesTom`,
   `sinalizacoesDominioImagetico`, `sinalizacoesOutros`) — 9 free-text tag
@@ -45,6 +45,12 @@ distinction right.
   exports) — overrides only. A Subject inherits the role of the text's Themes;
   an entry exists when the person pinned a different role for that Subject in
   that text. With no entry, follow the Themes' role.
+- **Subject exceptions** (`assuntosExcluidos`: list of `{ assuntoId, nome }` in
+  exports) — Subjects the person removed from this one text ("does not apply to
+  this text"), even though one of its Themes belongs to them. A Theme can sit
+  in several Subjects, but a given text may fit only one. The Subject stays in
+  the registry and the Theme stays in the text; only this text stops counting
+  under that Subject. Treat a Subject listed here as absent from the text.
 - **Transtextualidade e Referências** ("Transtextuality and References" —
   `intertextualidade`, `hipertextualidade`, `referenciasExternas`) —
   dialogue with works and facts external to the archive. See
@@ -52,6 +58,10 @@ distinction right.
 - **Pessoas** ("People" — `pessoas`, and how it differs from `autoria`
   and `gruposDiretos`) — links to registered people and the roles they
   play in the text. See `pessoas-papeis-for-ai.md`.
+- **Personagens** ("Characters" — `personagens`) — links to registered
+  Characters (what the author created or reinterpreted), with roles,
+  centrality and relation tags for the text. Not the same as Pessoas or
+  References. See `personagens-for-ai.md`.
 - **Sonoridade** ("Sonority"/prosody) — not a Poem/Prose field, it's a
   separate tab/entity (`db.escansoes`, one record per poem). See
   `sonoridade-for-ai.md` to interpret already-filled data, or
@@ -146,7 +156,9 @@ How to read them:
   earlier than `dataEscrita`.
 - **`ano`** ("year"): a copy of `dataEscrita.ano`, kept only for
   compatibility with older sorting/stats/export code — don't edit it
-  directly, it's derived from `dataEscrita`.
+  directly, it's derived from `dataEscrita`. Older texts that only had
+  `ano` get `dataEscrita: { ano, exata: false }` on load
+  (`migrarAnoParaDataEscrita`).
 - **`epocaRetratada`** ("depicted era"): the time span the text depicts
   (not when it was written) — `{ epocaId, inicio, fim, recorte, na }`.
   Points to the central registry `db.epocas`. `recorte` ("cut/scope") is
@@ -166,7 +178,7 @@ How to read them:
   pointing to the central registry `db.periodosHistoricos`; it coexists
   with `epocaRetratada` (both can be filled at once). Empty (`null`) =
   not informed.
-- **`movimentosEscolasIds`** (**Movimento/Escola**, Movement/School): an
+- **`movimentosEscolasIds`** (**Corrente literária**, Literary current (formerly Movimento/Escola)): an
   array of ids (0 to N) from the central registry `db.movimentosEscolas`
   (e.g. Romanticism, Symbolism, Modernism). A text may fit none or more
   than one.
@@ -180,16 +192,35 @@ How to read them:
 Links to other texts in the archive itself, by id (`conceitos.elos`,
 `conceitos.ecos`):
 
-- **Elos** ("Links", bilateral): `{ id, poemaId, relacao, direcao,
-texto }`. `relacao` ("relation") comes from a closed list (Reescrita —
-  Rewrite, Continuidade — Continuation, Tradução — Translation, Variação
-  — Variation, Versão — Version, Resposta — Response, Díptico — Diptych,
-  Outro — Other). `direcao` ("direction") is `"origem"` (the older/base
-  text) or `"destino"` (the derived/newer text).
-- **Ecos** ("Echoes", always one-directional, newer → older): just
-  `{ id, poemaId, tipo, texto }`, no `direcao`. `tipo` comes from a
-  closed list (Personagem em comum — Shared character, Imagem central
-  compartilhada — Shared central image, Aceno a — Nod to, Outro — Other).
+- **Elos** ("Links", bilateral): `{ id, relacao, direcao, texto }`, where
+  `id` is the **target text's** id (there is no `poemaId`). `relacao`
+  ("relation") comes from a closed list (Reescrita — Rewrite, Continuidade
+  — Continuation, Tradução — Translation, Variação — Variation, Versão —
+  Version, Resposta — Response, Díptico — Diptych, Outro — Other).
+  `direcao` ("direction") is `"origem"` (the older/base text) or
+  `"destino"` (the derived/newer text).
+- **Ecos** ("Echoes", always one-directional, newer → older): `{ id, tipo,
+texto, ancoras? }`, no `direcao`, where `id` is the target text's id.
+  `tipo` comes from a closed list (Personagem em comum — Shared character,
+  Pessoa em comum — Shared person, Imagem central compartilhada — Shared
+  central image, Aceno a — Nod to, Outro — Other).
+- **`ancoras`** ("anchors", optional, Eco only): a list of `{ especie, id
+}`, who sustains the link. `especie` is `"personagem"` or `"pessoa"`, and
+  the `tipo` decides which is valid: "Personagem em comum" only accepts
+  character anchors, "Pessoa em comum" only person anchors, and the other
+  types have no anchor. In the export each anchor also carries `nome`,
+  because the id doesn't hold in another archive. An Eco without `ancoras`
+  is valid (the link exists, the author just didn't record who sustains
+  it). **The same Character or Person being present in two texts does not
+  create an Eco**: the anchor only documents the reason for an Eco the
+  author already decided to create. If a link is later removed from one of
+  the texts, the anchor stays on the Eco with a warning, so check both
+  texts before stating the figure is still in both.
+- **`alvoTitulo`** ("target title"): in the export, each Elo and Eco also
+  carries the target text's title, because the `id` only holds in the
+  source archive. To identify the target in an exported file, use
+  `alvoTitulo`, not `id`. If `alvoTitulo` is missing, the target wasn't
+  found or the file is old.
 
 **Watch out for a name collision**: this `ecos` (`conceitos.ecos`, a link
 between archive texts) has no relation to `es.ecos` in the Sonoridade
@@ -296,8 +327,8 @@ process:
 
 ## Summary for practical use
 
-1. If the task involves Sinalizações, Transtextualidade/Referências,
-   Pessoas/Papéis, or Sonoridade, use the dedicated doc — this file only
+1. If the task involves Etiquetas, Transtextualidade/Referências,
+   Pessoas/Papéis, Personagens, or Sonoridade, use the dedicated doc — this file only
    summarizes those groups enough for you to know they exist.
 2. Don't confuse `conceitos.ecos` (link between archive texts,
    Intratextuality) with Sonoridade's `es.ecos` (sound echoes) — same

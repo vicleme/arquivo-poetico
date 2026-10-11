@@ -151,7 +151,23 @@ export function definirOrdemTemporal(chave, ordem) {
     notificarMudanca();
 }
 
-// ─── Papel do Tema (aba Temas e pessoas) ───────────────────────────
+// ─── Gráfico de Temas e Assuntos: modo (por tema / por assunto) ────
+// Mesmo componente de botões do "Por pessoa / Por grupo". Guardado entre sessões.
+export function getModoTemasAssuntos() {
+    return localStorage.getItem(LS_PREFIX_EST + 'modoTemasAssuntos') === 'assunto'
+        ? 'assunto'
+        : 'tema';
+}
+
+export function definirModoTemasAssuntos(modo) {
+    localStorage.setItem(
+        LS_PREFIX_EST + 'modoTemasAssuntos',
+        modo === 'assunto' ? 'assunto' : 'tema',
+    );
+    notificarMudanca();
+}
+
+// ─── Papel do Tema (aba Temas e Assuntos) ───────────────────────────
 // Recorta os Temas contados nas Estatísticas por papel no texto: 'todos'
 // (padrão: qualquer papel, comportamento de sempre), 'principal',
 // 'secundario' ou 'semPapel'. A escolha persiste no navegador; por isso a
@@ -178,7 +194,8 @@ export function definirPapelTemaEstatisticas(papel) {
     notificarMudanca();
 }
 
-// ─── Papel do Assunto (aba Temas e pessoas) ────────────────────────
+// ─── Papel do Assunto (hoje sem controle na tela: o gráfico de Temas e Assuntos
+// mostra os três papéis empilhados; a função de dados ainda aceita o recorte) ─ ────────────────────────
 // Mesmo recorte do Tema, mas para o gráfico de Assuntos, com o papel
 // efetivo do Assunto no texto (herdado do Tema, ou fixado na mão). Valores
 // iguais aos do Tema; a escolha persiste no navegador em chave própria,
@@ -274,20 +291,39 @@ export function definirPapelIdiomaEstatisticas(papel) {
     notificarMudanca();
 }
 
-// ─── Gráfico de Pessoas: modo (por pessoa / por grupo) + filtro ────
+// ─── Gráfico de Pessoas: modo (por pessoa / por grupo / por gênero) + filtros ────
+
+const MODOS_GRAFICO_PESSOAS = ['pessoa', 'grupo', 'genero'];
 
 export function getModoGraficoPessoas() {
     const valor = localStorage.getItem(LS_PREFIX_EST + 'modoPessoas');
-    return valor === 'grupo' ? 'grupo' : 'pessoa';
+    return MODOS_GRAFICO_PESSOAS.includes(valor) ? valor : 'pessoa';
 }
 
 export function definirModoGraficoPessoas(modo) {
-    localStorage.setItem(LS_PREFIX_EST + 'modoPessoas', modo === 'grupo' ? 'grupo' : 'pessoa');
+    localStorage.setItem(
+        LS_PREFIX_EST + 'modoPessoas',
+        MODOS_GRAFICO_PESSOAS.includes(modo) ? modo : 'pessoa',
+    );
     notificarMudanca();
 }
 
-// Filtro por Grupo só se aplica no modo "por pessoa" (restringe às
-// pessoas que pertencem a algum dos grupos marcados); vazio = sem
+// Botão "Considerar cis/trans" (Fase 1, F1-D3): desligado por padrão. Às
+// vezes a análise deve levar em conta a identidade cis/trans da Pessoa, às
+// vezes ignorá-la de propósito. Ligado, o modo "Por gênero" combina Gênero
+// e identidade em cada barra e o modo "Por pessoa" ganha o filtro de
+// identidade. Guardado entre sessões, como as outras preferências da aba.
+export function getConsiderarCisTrans() {
+    return localStorage.getItem(LS_PREFIX_EST + 'considerarCisTrans') === '1';
+}
+
+export function definirConsiderarCisTrans(ativo) {
+    localStorage.setItem(LS_PREFIX_EST + 'considerarCisTrans', ativo ? '1' : '0');
+    notificarMudanca();
+}
+
+// Filtro por Grupo se aplica nos modos "por pessoa" e "por gênero"
+// (restringe às pessoas que pertencem a algum dos grupos marcados); vazio = sem
 // filtro, mostra todo mundo — mesmo critério de "sem limite" já usado
 // em filtrarPorIntervalo (min/max vazios = sem limite naquele lado).
 export function getGruposFiltroPessoas() {
@@ -313,6 +349,51 @@ export function limparGruposFiltroPessoas() {
     notificarMudanca();
 }
 
+// Filtro por Gênero do modo "Por pessoa" (Fase 1, etapa 1c). Mesmo padrão do
+// filtro de Grupo: vazio = sem restrição; os valores marcados valem por OU
+// entre si e por E com o filtro de Grupo e o de identidade. O que se guarda
+// é a CHAVE normalizada do gênero (sem caixa nem acento, via chaveTema),
+// para "mulher" e "Mulher" serem o mesmo item do filtro; a barra do modo
+// "Por gênero" continua literal. A chave especial de "sem gênero" vive em
+// estatisticas-dados.js (CHAVE_SEM_GENERO).
+export function getGenerosFiltroPessoas() {
+    const salvo = lerJSON('generosFiltroPessoas', []);
+    return Array.isArray(salvo) ? salvo.map(String) : [];
+}
+
+export function toggleGeneroFiltroPessoas(chave, ativo) {
+    const atuais = new Set(getGenerosFiltroPessoas());
+    if (ativo) atuais.add(String(chave));
+    else atuais.delete(String(chave));
+    salvarJSON('generosFiltroPessoas', Array.from(atuais));
+    notificarMudanca();
+}
+
+export function limparGenerosFiltroPessoas() {
+    salvarJSON('generosFiltroPessoas', []);
+    notificarMudanca();
+}
+
+// Filtro por identidade cis/trans: só aparece e só vale com o botão
+// "Considerar cis/trans" ligado (a tela e a agregação conferem isso).
+export function getIdentidadesFiltroPessoas() {
+    const salvo = lerJSON('identidadesFiltroPessoas', []);
+    return Array.isArray(salvo) ? salvo.map(String) : [];
+}
+
+export function toggleIdentidadeFiltroPessoas(valor, ativo) {
+    const atuais = new Set(getIdentidadesFiltroPessoas());
+    if (ativo) atuais.add(String(valor));
+    else atuais.delete(String(valor));
+    salvarJSON('identidadesFiltroPessoas', Array.from(atuais));
+    notificarMudanca();
+}
+
+export function limparIdentidadesFiltroPessoas() {
+    salvarJSON('identidadesFiltroPessoas', []);
+    notificarMudanca();
+}
+
 // ─── Colunas da matriz de coocorrência ─────────────────────────
 // A seleção de colunas é apenas visual: não altera o corpus nem o N da análise.
 export function getModoColunasCoocorrencia() {
@@ -325,6 +406,18 @@ export function definirModoColunasCoocorrencia(modo) {
         LS_PREFIX_EST + 'modoColunasCoocorrencia',
         modo === 'selecionar' ? 'selecionar' : 'todos',
     );
+    notificarMudanca();
+}
+
+// Lista de temas da matriz recolhida/aberta: só guarda se o painel está
+// aberto (padrão), pra quem já terminou de selecionar poder ver só o
+// resultado. Não mexe na seleção nem no modo de colunas.
+export function getPainelColunasCoocorrenciaAberto() {
+    return localStorage.getItem(LS_PREFIX_EST + 'painelColunasCoocorrenciaAberto') !== '0';
+}
+
+export function definirPainelColunasCoocorrenciaAberto(aberto) {
+    localStorage.setItem(LS_PREFIX_EST + 'painelColunasCoocorrenciaAberto', aberto ? '1' : '0');
     notificarMudanca();
 }
 
@@ -374,7 +467,7 @@ export function definirOrdemColunasCoocorrencia(ordem) {
 // gráfico de Pessoas não tem nada a ver com ocultar "2020" no de Ano,
 // mas o mecanismo (checkbox por item, persistido, sem reconfigurar
 // toda vez que a aba reabre) é o mesmo nos quatro. `chave` é uma de
-// 'ano' | 'livro' | 'temas' | 'pessoas-pessoa' | 'pessoas-grupo' —
+// 'ano' | 'livro' | 'temas' | 'pessoas-pessoa' | 'pessoas-grupo' | 'pessoas-genero' —
 // Pessoas usa uma lista por modo, já que os rótulos mudam de nome de
 // pessoa pra nome de grupo entre um modo e outro.
 

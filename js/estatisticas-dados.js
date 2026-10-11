@@ -12,6 +12,10 @@ import {
     contarTextosPorAssunto,
     assuntosComPapel,
     nomesTemasPorPapel,
+    temasComPapel,
+    papelMaisForte,
+    chaveTema,
+    IDENTIDADES_CIS_TRANS,
 } from './utils.js';
 import {
     getTiposEtiquetaSelecionados,
@@ -538,6 +542,68 @@ export function contarPorTema(top = 12, tipos = getTiposEtiquetaSelecionados()) 
     return topN(agregarPorTema(tipos), top);
 }
 
+// Rótulos e chaves especiais do modo "Por gênero" (Fase 1, etapa 1c).
+// "(Sem gênero definido)" agrupa quem não tem nada cadastrado em Gênero;
+// "(Identidade não documentada)" agrupa quem tem `identidadeCisTrans`
+// vazio — vazio é "não documentado", nunca "cisgênero" por omissão. As
+// CHAVES são o que o filtro guarda (o rótulo pode mudar sem quebrar a
+// preferência salva).
+export const SEM_GENERO_DEFINIDO = '(Sem gênero definido)';
+export const SEM_IDENTIDADE_DOCUMENTADA = '(Identidade não documentada)';
+export const CHAVE_SEM_GENERO = '__sem_genero__';
+export const CHAVE_SEM_IDENTIDADE = '__sem_identidade__';
+
+// Gênero é campo livre ("mulher" e "Mulher" são dois valores literais). A
+// BARRA continua literal, como era no antigo cartão de gênero; o FILTRO
+// compara pela chave normalizada (sem caixa nem acento), então as
+// variações viram um item só. A lista do filtro mostra a grafia mais usada.
+export function chaveGeneroPessoa(pessoa) {
+    const genero = (pessoa?.genero || '').trim();
+    return genero ? chaveTema(genero) : CHAVE_SEM_GENERO;
+}
+
+export function chaveIdentidadePessoa(pessoa) {
+    return IDENTIDADES_CIS_TRANS.includes(pessoa?.identidadeCisTrans)
+        ? pessoa.identidadeCisTrans
+        : CHAVE_SEM_IDENTIDADE;
+}
+
+// Rótulo da barra do modo "Por gênero": o Gênero literal; com cis/trans
+// ligado, "Gênero, Identidade" (ex.: "Mulher, Transgênero").
+export function rotuloGeneroPessoa(pessoa, considerarCisTrans = false) {
+    const genero = (pessoa?.genero || '').trim() || SEM_GENERO_DEFINIDO;
+    if (!considerarCisTrans) return genero;
+    const identidade = IDENTIDADES_CIS_TRANS.includes(pessoa?.identidadeCisTrans)
+        ? pessoa.identidadeCisTrans
+        : SEM_IDENTIDADE_DOCUMENTADA;
+    return `${genero}, ${identidade}`;
+}
+
+// Opções do filtro de Gênero: uma por chave normalizada, com a grafia mais
+// usada como rótulo e a quantidade de PESSOAS cadastradas (não de
+// aparições) que ela cobre. "(Sem gênero definido)" só entra se existir
+// alguém assim. Ordem: mais pessoas primeiro, depois alfabética.
+export function opcoesFiltroGenero(pessoas = db.pessoas) {
+    const porChave = new Map();
+    (pessoas || []).forEach((p) => {
+        const chave = chaveGeneroPessoa(p);
+        const grafia = chave === CHAVE_SEM_GENERO ? SEM_GENERO_DEFINIDO : p.genero.trim();
+        const item = porChave.get(chave) || { chave, grafias: new Map(), pessoas: 0 };
+        item.pessoas += 1;
+        item.grafias.set(grafia, (item.grafias.get(grafia) || 0) + 1);
+        porChave.set(chave, item);
+    });
+    return [...porChave.values()]
+        .map((item) => ({
+            chave: item.chave,
+            rotulo: [...item.grafias.entries()].sort(
+                (a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'),
+            )[0][0],
+            pessoas: item.pessoas,
+        }))
+        .sort((a, b) => b.pessoas - a.pessoas || a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
+}
+
 // Agregação completa (sem corte de Top N) do gráfico de Pessoas.
 // `opcoes.modo`: 'pessoa' (padrão) conta por Pessoa — cada uma das
 // pessoas do item.pessoas, opcionalmente restrita às que pertencem a
@@ -545,20 +611,38 @@ export function contarPorTema(top = 12, tipos = getTiposEtiquetaSelecionados()) 
 // conta por Grupo, via paresGrupoPessoa (utils.js) — mesma convenção já
 // usada ali: uma pessoa em mais de um grupo gera um par por grupo, não
 // uma linha combinada, então um item com 2 pessoas do mesmo grupo soma
-// 2 pro grupo (uma dedicatória por pessoa envolvida).
+// 2 pro grupo (uma dedicatória por pessoa envolvida); 'genero' conta por
+// Gênero da Pessoa (ver rotuloGeneroPessoa), também por aparição.
 // Exclusivo das Estatísticas (pedido do Victor, 27/09/2026): um subgrupo
 // também "repica" a contagem pro(s) grupo(s) acima dele na hierarquia,
 // via cadeiaAncestraisGrupo (db.js) — tanto no modo 'grupo' (a barra do
 // grupo maior soma quem está só no subgrupo) quanto no filtro por Grupo
-// do modo 'pessoa' (marcar o grupo maior já traz quem está só no
-// subgrupo, sem precisar marcar os dois). Fora daqui — atribuição de
+// dos modos 'pessoa' e 'genero' (marcar o grupo maior já traz quem está
+// só no subgrupo, sem precisar marcar os dois). Fora daqui — atribuição de
 // Grupo à Pessoa, badges/exportação do poema/prosa (paresGrupoPessoa em
 // utils.js) — o subgrupo continua contando só como ele mesmo, de
 // propósito: ali é a Pessoa quem decide o que sinalizar.
+//
+// Fase 1, etapa 1c — opções novas, todas EXPLÍCITAS (sem cair no estado
+// salvo, ao contrário de `modo` e `grupoIds`): a linha do tempo de Pessoa
+// chama esta função sem elas e só ganha o filtro de gênero depois, com a
+// 1c estável (plano da fase).
+//   `generos`: chaves (chaveGeneroPessoa) — só modo 'pessoa'; vazio = todos.
+//   `identidades`: valores de IDENTIDADES_CIS_TRANS ou CHAVE_SEM_IDENTIDADE —
+//     só modo 'pessoa' E só com `considerarCisTrans`; vazio = todas.
+//   `considerarCisTrans`: no modo 'genero' combina Gênero e identidade na barra.
+// Os filtros combinam por E (grupo, gênero e identidade); dentro de cada um,
+// por OU. No modo 'grupo' o filtro de gênero não se aplica.
 export function agregarPorPessoa(opcoes = {}) {
-    const modo =
-        opcoes.modo === 'grupo' || opcoes.modo === 'pessoa' ? opcoes.modo : getModoGraficoPessoas();
+    const modo = ['grupo', 'pessoa', 'genero'].includes(opcoes.modo)
+        ? opcoes.modo
+        : getModoGraficoPessoas();
     const grupoIds = opcoes.grupoIds || getGruposFiltroPessoas();
+    const considerarCisTrans = opcoes.considerarCisTrans === true;
+    const setGenero = new Set(modo === 'pessoa' ? (opcoes.generos || []).map(String) : []);
+    const setIdentidade = new Set(
+        modo === 'pessoa' && considerarCisTrans ? (opcoes.identidades || []).map(String) : [],
+    );
 
     const contagem = {};
     if (modo === 'grupo') {
@@ -586,7 +670,15 @@ export function agregarPorPessoa(opcoes = {}) {
                 ) {
                     return;
                 }
-                contagem[pessoa.nome] = (contagem[pessoa.nome] || 0) + 1;
+                if (setGenero.size && !setGenero.has(chaveGeneroPessoa(pessoa))) return;
+                if (setIdentidade.size && !setIdentidade.has(chaveIdentidadePessoa(pessoa))) {
+                    return;
+                }
+                const rotulo =
+                    modo === 'genero'
+                        ? rotuloGeneroPessoa(pessoa, considerarCisTrans)
+                        : pessoa.nome;
+                contagem[rotulo] = (contagem[rotulo] || 0) + 1;
             });
         });
     }
@@ -598,40 +690,12 @@ export function contarPorPessoa(top = 12, opcoes = {}) {
     return topN(agregarPorPessoa(opcoes), top);
 }
 
-// Gráfico "Gênero das pessoas retratadas" (pedido do Victor,
-// 27/09/2026, motivado pelo gap do filtro de Autor acima): agrupa pelo
-// valor LITERAL de Gênero digitado em cada Pessoa (não pelo símbolo
-// ♀/♂ de simboloGeneroPessoa em utils.js, que é só pro card — aqui,
-// como em extrairGenerosPessoasUnicos, o campo livre continua sendo o
-// dado de verdade, cada variação vira sua própria barra). Mesma
-// contagem por aparição que agregarPorPessoa já usa (uma pessoa citada
-// duas vezes em textos diferentes soma dois pontos pro Gênero dela, não
-// um só) — consistente com o resto da aba e com o corte por mínimo de
-// aparições. "(Sem gênero definido)" agrupa quem não tem nada
-// cadastrado nesse campo.
-const SEM_GENERO_DEFINIDO = '(Sem gênero definido)';
-
-export function agregarPorGeneroPessoa() {
-    const contagem = {};
-    todosOsTextos().forEach((t) => {
-        if (!Array.isArray(t.pessoas)) return;
-        t.pessoas.forEach((p) => {
-            const pessoa = db.pessoas.find((x) => x.id === p.pessoaId);
-            if (!pessoa) return;
-            const genero = (pessoa.genero || '').trim() || SEM_GENERO_DEFINIDO;
-            contagem[genero] = (contagem[genero] || 0) + 1;
-        });
-    });
-    const ordenado = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
-    return { labels: ordenado.map((o) => o[0]), data: ordenado.map((o) => o[1]) };
-}
-
 // Assuntos agrupam Temas (db.assuntos — ver utils.js): cada texto conta
 // uma vez por Assunto a que pertence (mesma convenção de
 // contarTextosPorAssunto), por isso a soma das barras pode passar do
 // total de textos quando um texto cai em mais de um Assunto. Sem
 // Top N nem drill-down temporal (poucas categorias, mesmo padrão de
-// agregarPorGeneroPessoa acima) — Assunto sem nenhum texto ainda fica
+// agregarPorPessoa em modo gênero) — Assunto sem nenhum texto ainda fica
 // de fora do gráfico (nada pra desenhar).
 //
 // `papel` recorta pelo papel efetivo do Assunto no texto (seletor "Papel do
@@ -661,6 +725,69 @@ function contarTextosPorAssuntoNoPapel(papel) {
     return contagem;
 }
 
+// ─── Temas e Assuntos por papel (Fase 1, etapa 1b) ───────────────────
+// Uma barra por Tema (ou por Assunto), dividida pelo papel que ele tem no texto:
+// principal, secundário e indefinido (`semPapel`). O total da barra (a soma dos
+// três) é exatamente o número da antiga barra "Todos": cada texto conta uma vez
+// por Tema/Assunto, no papel efetivo dele naquele texto.
+//
+// Lê `texto.temas` por id (temasComPapel) e os Assuntos derivados
+// (assuntosComPapel), nunca o espelho `sinalizacoesTema`. Se o mesmo Tema vier
+// duas vezes no texto com papéis diferentes, conta uma vez, no papel mais forte
+// (papelMaisForte), a mesma regra que o Assunto já usa.
+//
+// `base`: 'tema' | 'assunto'. Devolve `labels` ordenados pelo total (maior
+// primeiro), um vetor por papel e `data` com o total, para poder reaproveitar
+// filtrarPorIntervalo e filtrarOcultos, que só conhecem `labels` e `data`.
+export const PAPEIS_EMPILHADOS = ['principal', 'secundario', 'semPapel'];
+
+export function agregarPorPapel({ base = 'tema' } = {}) {
+    const contagem = new Map(); // nome -> { principal, secundario, semPapel }
+    const somar = (nome, papel) => {
+        if (!nome) return;
+        if (!contagem.has(nome)) contagem.set(nome, { principal: 0, secundario: 0, semPapel: 0 });
+        contagem.get(nome)[papel === '' ? 'semPapel' : papel] += 1;
+    };
+    todosOsTextos().forEach((texto) => {
+        if (base === 'assunto') {
+            assuntosComPapel(texto, db.assuntos, db.temas).forEach((a) => somar(a.nome, a.papel));
+            return;
+        }
+        const papelPorNome = new Map();
+        temasComPapel(texto, db.temas).forEach((e) => {
+            const anterior = papelPorNome.get(e.nome);
+            papelPorNome.set(
+                e.nome,
+                anterior === undefined ? e.papel : papelMaisForte([anterior, e.papel]),
+            );
+        });
+        papelPorNome.forEach((papel, nome) => somar(nome, papel));
+    });
+    const total = (c) => c.principal + c.secundario + c.semPapel;
+    const ordenado = [...contagem.entries()].sort((a, b) => total(b[1]) - total(a[1]));
+    return {
+        labels: ordenado.map(([nome]) => nome),
+        data: ordenado.map(([, c]) => total(c)),
+        principal: ordenado.map(([, c]) => c.principal),
+        secundario: ordenado.map(([, c]) => c.secundario),
+        semPapel: ordenado.map(([, c]) => c.semPapel),
+    };
+}
+
+// Recorta o resultado de agregarPorPapel para os `labels` pedidos, na ordem
+// pedida (depois de corte por mínimo, ocultos e Top N, feitos sobre `labels`/`data`).
+export function recortarPorPapel(resultado, labels) {
+    const indice = new Map(resultado.labels.map((l, i) => [l, i]));
+    const pegar = (vetor) => labels.map((l) => vetor[indice.get(l)]);
+    return {
+        labels: [...labels],
+        data: pegar(resultado.data),
+        principal: pegar(resultado.principal),
+        secundario: pegar(resultado.secundario),
+        semPapel: pegar(resultado.semPapel),
+    };
+}
+
 function anoDoTexto(texto) {
     const ano = parseInt(anoDeDataParcial(texto?.dataEscrita) ?? texto?.ano);
     return Number.isFinite(ano) && ano > 0 ? String(ano) : null;
@@ -679,6 +806,17 @@ function pessoasDoTexto(texto) {
     return texto.pessoas
         .map((p) => db.pessoas.find((x) => x.id == p.pessoaId)?.nome)
         .filter(Boolean);
+}
+
+// Nomes dos Personagens do texto (qualquer papel), sem repetição por nome.
+function personagensDoTexto(texto) {
+    if (!Array.isArray(texto?.personagens)) return [];
+    const vistos = new Map();
+    texto.personagens.forEach((v) => {
+        const nome = (db.personagens || []).find((x) => x.id == v.personagemId)?.nome;
+        if (nome && !vistos.has(chaveTema(nome))) vistos.set(chaveTema(nome), nome);
+    });
+    return [...vistos.values()];
 }
 
 export function agregarTemaPorAno(tema = '') {
@@ -876,13 +1014,27 @@ export function filtrarPorAnosDistintos(labels, mapaAnos, minimo) {
 
 export function coocorrenciaTemasPessoas({ temas = [], pessoas = [] } = {}) {
     const matriz = [];
+    // Textos DISTINTOS dentro da matriz (Fase 1, etapa 1d): contam um texto
+    // uma vez só, ao contrário da soma das células, que conta pares
+    // texto × tema. Só entram textos com ao menos um tema e ao menos uma
+    // linha da matriz, o mesmo universo das células.
+    const textosTema = {};
+    const textosLinha = {};
+    let totalTextos = 0;
     const temaSet = new Set(temas);
     const pessoaSet = new Set(pessoas);
     todosOsTextos().forEach((texto) => {
         const ts = temasDoTexto(texto).filter((t) => !temaSet.size || temaSet.has(t));
         const ps = pessoasDoTexto(texto).filter((p) => !pessoaSet.size || pessoaSet.has(p));
-        [...new Set(ts)].forEach((tema) => {
-            [...new Set(ps)].forEach((pessoa) => {
+        const tsU = [...new Set(ts)];
+        const psU = [...new Set(ps)];
+        if (tsU.length && psU.length) {
+            totalTextos += 1;
+            tsU.forEach((t) => (textosTema[t] = (textosTema[t] || 0) + 1));
+            psU.forEach((x) => (textosLinha[x] = (textosLinha[x] || 0) + 1));
+        }
+        tsU.forEach((tema) => {
+            psU.forEach((pessoa) => {
                 let linha = matriz.find((x) => x.pessoa === pessoa);
                 if (!linha) {
                     linha = { pessoa, valores: {} };
@@ -904,6 +1056,59 @@ export function coocorrenciaTemasPessoas({ temas = [], pessoas = [] } = {}) {
         pessoas: ordenadas.map((l) => l.pessoa),
         temas: temasPresentes,
         valores: ordenadas.map((l) => temasPresentes.map((t) => l.valores[t] || 0)),
+        textosPorTema: temasPresentes.map((t) => textosTema[t] || 0),
+        textosPorLinha: ordenadas.map((l) => textosLinha[l.pessoa] || 0),
+        totalTextos,
+    };
+}
+
+// Personagem × Tema: textos que têm ao mesmo tempo o Personagem (em qualquer
+// papel) e o Tema. Mesmo formato de coocorrenciaTemasPessoas, com `personagens`
+// no lugar de `pessoas`. O Tema segue o papel escolhido na aba (temasDoTexto).
+export function coocorrenciaTemasPersonagens({ temas = [], personagens = [] } = {}) {
+    const matriz = [];
+    const textosTema = {};
+    const textosLinha = {};
+    let totalTextos = 0;
+    const temaSet = new Set(temas);
+    const personagemSet = new Set(personagens);
+    todosOsTextos().forEach((texto) => {
+        const ts = [...new Set(temasDoTexto(texto))].filter((t) => !temaSet.size || temaSet.has(t));
+        const ps = personagensDoTexto(texto).filter(
+            (p) => !personagemSet.size || personagemSet.has(p),
+        );
+        const psU = [...new Set(ps)];
+        if (ts.length && psU.length) {
+            totalTextos += 1;
+            ts.forEach((t) => (textosTema[t] = (textosTema[t] || 0) + 1));
+            psU.forEach((x) => (textosLinha[x] = (textosLinha[x] || 0) + 1));
+        }
+        ts.forEach((tema) => {
+            ps.forEach((personagem) => {
+                let linha = matriz.find((x) => x.personagem === personagem);
+                if (!linha) {
+                    linha = { personagem, valores: {} };
+                    matriz.push(linha);
+                }
+                linha.valores[tema] = (linha.valores[tema] || 0) + 1;
+            });
+        });
+    });
+    const temasPresentes = temas.length
+        ? temas
+        : [...new Set(matriz.flatMap((l) => Object.keys(l.valores)))];
+    const ordenadas = matriz.sort(
+        (a, b) =>
+            Object.values(b.valores).reduce((s, v) => s + v, 0) -
+            Object.values(a.valores).reduce((s, v) => s + v, 0),
+    );
+    return {
+        personagens: ordenadas.map((l) => l.personagem),
+        temas: temasPresentes,
+        valores: ordenadas.map((l) => temasPresentes.map((t) => l.valores[t] || 0)),
+        textosPorTema: temasPresentes.map((t) => textosTema[t] || 0),
+        textosPorLinha: ordenadas.map((l) => textosLinha[l.personagem] || 0),
+        totalTextos,
     };
 }
 
@@ -911,6 +1116,9 @@ export function coocorrenciaTemasGrupos({ temas = [], grupos = [] } = {}) {
     // Mesmo repique de subgrupo pro(s) grupo(s) acima (cadeiaAncestraisGrupo,
     // db.js) que agregarPorPessoa usa acima — Estatísticas, não exibição.
     const matriz = [];
+    const textosTema = {};
+    const textosLinha = {};
+    let totalTextos = 0;
     const temaSet = new Set(temas);
     const grupoSet = new Set(grupos);
     todosOsTextos().forEach((texto) => {
@@ -924,6 +1132,11 @@ export function coocorrenciaTemasGrupos({ temas = [], grupos = [] } = {}) {
                 ),
             ),
         ].filter((g) => !grupoSet.size || grupoSet.has(g));
+        if (ts.length && gs.length) {
+            totalTextos += 1;
+            ts.forEach((t) => (textosTema[t] = (textosTema[t] || 0) + 1));
+            gs.forEach((x) => (textosLinha[x] = (textosLinha[x] || 0) + 1));
+        }
         ts.forEach((tema) => {
             gs.forEach((grupo) => {
                 let linha = matriz.find((x) => x.grupo === grupo);
@@ -947,6 +1160,9 @@ export function coocorrenciaTemasGrupos({ temas = [], grupos = [] } = {}) {
         grupos: ordenadas.map((l) => l.grupo),
         temas: temasPresentes,
         valores: ordenadas.map((l) => temasPresentes.map((t) => l.valores[t] || 0)),
+        textosPorTema: temasPresentes.map((t) => textosTema[t] || 0),
+        textosPorLinha: ordenadas.map((l) => textosLinha[l.grupo] || 0),
+        totalTextos,
     };
 }
 

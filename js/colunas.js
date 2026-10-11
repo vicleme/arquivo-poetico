@@ -56,8 +56,13 @@ export const DEFINICAO_COLUNAS = {
         },
         // Data de Escrita / Publicação / Época Retratada / Contexto —
         // primeiro bloco do modal, já aberto por padrão.
-        { key: 'dataEscrita', label: 'Escrito em', default: true, sortType: 'data' },
-        { key: 'dataPublicacao', label: 'Publicação', default: true, sortType: 'data' },
+        { key: 'dataEscrita', label: 'Data de escrita', default: true, sortType: 'data' },
+        {
+            key: 'dataPublicacao',
+            label: 'Data de publicação',
+            default: true,
+            sortType: 'data',
+        },
         {
             key: 'epocaRetratada',
             label: 'Período Biográfico Retratado',
@@ -72,7 +77,21 @@ export const DEFINICAO_COLUNAS = {
         },
         {
             key: 'movimentosEscolas',
-            label: 'Movimento/Escola',
+            label: 'Corrente literária',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        // Valores efetivos (com a herança do pai) das correntes ligadas ao
+        // texto: não são campos gravados no texto.
+        {
+            key: 'posturaEstetica',
+            label: 'Postura estética da corrente',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'programa',
+            label: 'Programa da corrente',
             default: false,
             sortType: 'alfabetico',
         },
@@ -169,7 +188,10 @@ export const DEFINICAO_COLUNAS = {
         { key: 'temas', label: 'Tema', default: false, sortType: 'alfabetico' },
         // Derivado dos Temas do texto (db.assuntos) — não é campo gravado.
         { key: 'assuntos', label: 'Assunto', default: false, sortType: 'alfabetico' },
-        { key: 'pessoas', label: 'Pessoas', default: true, sortType: 'alfabetico' },
+        // Personagens do texto (grupo "Personagens" do modal, entre Temas e
+        // Assuntos e Pessoas): nome, iniciais dos papéis e ★/☆ da centralidade.
+        { key: 'personagens', label: 'Personagens', default: false, sortType: 'alfabetico' },
+        { key: 'pessoas', label: 'Pessoas', default: false, sortType: 'alfabetico' },
         { key: 'grupos', label: 'Grupos', default: false, sortType: 'alfabetico' },
         // "Fonte" — último grupo do modal antes de "Status e Pendências"
         // (ver modal-poema.html). 'fonte' mostra o nome da fonte (origem),
@@ -247,8 +269,13 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'alfabetico',
         },
-        { key: 'dataEscrita', label: 'Data', default: true, sortType: 'data' },
-        { key: 'dataPublicacao', label: 'Publicação', default: true, sortType: 'data' },
+        { key: 'dataEscrita', label: 'Data de escrita', default: true, sortType: 'data' },
+        {
+            key: 'dataPublicacao',
+            label: 'Data de publicação',
+            default: true,
+            sortType: 'data',
+        },
         // Item 4: mesmas colunas novas de Poemas, na ordem em que os
         // grupos aparecem no modal de Prosa (ver comentário no topo
         // do arquivo — ordem espelha o modal).
@@ -266,7 +293,21 @@ export const DEFINICAO_COLUNAS = {
         },
         {
             key: 'movimentosEscolas',
-            label: 'Movimento/Escola',
+            label: 'Corrente literária',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        // Valores efetivos (com a herança do pai) das correntes ligadas ao
+        // texto: não são campos gravados no texto.
+        {
+            key: 'posturaEstetica',
+            label: 'Postura estética da corrente',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'programa',
+            label: 'Programa da corrente',
             default: false,
             sortType: 'alfabetico',
         },
@@ -288,7 +329,10 @@ export const DEFINICAO_COLUNAS = {
         { key: 'temas', label: 'Tema', default: false, sortType: 'alfabetico' },
         // Derivado dos Temas do texto (db.assuntos) — não é campo gravado.
         { key: 'assuntos', label: 'Assunto', default: false, sortType: 'alfabetico' },
-        { key: 'pessoas', label: 'Pessoas', default: true, sortType: 'alfabetico' },
+        // Personagens do texto (grupo "Personagens" do modal, entre Temas e
+        // Assuntos e Pessoas): nome, iniciais dos papéis e ★/☆ da centralidade.
+        { key: 'personagens', label: 'Personagens', default: false, sortType: 'alfabetico' },
+        { key: 'pessoas', label: 'Pessoas', default: false, sortType: 'alfabetico' },
         { key: 'grupos', label: 'Grupos', default: false, sortType: 'alfabetico' },
         { key: 'notas', label: 'Notas', default: false, sortType: 'alfabetico' },
         { key: 'autoria', label: 'Autoria', default: false },
@@ -456,6 +500,22 @@ export const DEFINICAO_COLUNAS = {
     ],
 };
 
+// Ordem padrão de fábrica das colunas ligadas por padrão. Só Poemas e Prosas
+// têm uma: Estrutura (Vínculo, em Prosas) vem logo depois de ID/Título, e as
+// datas e o Status depois dela. O resto da lista (as colunas desligadas) segue
+// a ordem de DEFINICAO_COLUNAS, que espelha o modal. Tabelas sem entrada aqui
+// usam a ordem de definição inteira, como sempre.
+const ORDEM_PADRAO_INICIAL = {
+    poemas: ['estrutura', 'dataEscrita', 'dataPublicacao', 'status'],
+    prosas: ['vinculo', 'genero', 'dataEscrita', 'dataPublicacao', 'status'],
+};
+
+function ordemPadrao(tabela) {
+    const todas = DEFINICAO_COLUNAS[tabela].map((c) => c.key);
+    const inicio = (ORDEM_PADRAO_INICIAL[tabela] || []).filter((k) => todas.includes(k));
+    return [...inicio, ...todas.filter((k) => !inicio.includes(k))];
+}
+
 // Lê o estado salvo ({ ordem, ativas }) e sempre devolve algo íntegro:
 // `ordem` contém TODAS as colunas definidas (ativas ou não — a ordem
 // entre as desligadas importa pra quando forem religadas depois), sem
@@ -482,7 +542,7 @@ function lerEstado(tabela) {
         }
     }
 
-    if (!ordem) ordem = [...todasChaves];
+    if (!ordem) ordem = ordemPadrao(tabela);
     if (!ativas) ativas = def.filter((c) => c.default).map((c) => c.key);
 
     // Colunas novas (adicionadas a DEFINICAO_COLUNAS depois de já existir
@@ -549,6 +609,184 @@ export function resetarColunas(tabela) {
     disparaAlteracao(tabela);
 }
 
+// ─── Padrões personalizados ──────────────────────────────────────
+// Cada tabela guarda uma lista de padrões nomeados: { nome, colunas }, onde
+// `colunas` são as colunas ligadas na ordem em que aparecem na tabela. Aplicar
+// um padrão liga exatamente essas colunas, nessa ordem, e deixa as demais
+// desligadas, na ordem em que já estavam.
+//
+// Onde ficam: este módulo não conhece o banco. Quem o carrega registra um
+// armazenamento com `usarArmazenamentoPadroes` (main.js registra o `db`, em
+// `db.padroesColunas`, que vai junto no backup JSON, nos snapshots e na
+// restauração). Sem registro, cai no localStorage (usado nos testes).
+const LS_PREFIX_PADROES = 'arquivoPoetico_colunasPadroes_';
+const TAMANHO_MAX_NOME_PADRAO = 40;
+
+const armazenamentoLocal = {
+    ler(tabela) {
+        try {
+            return JSON.parse(localStorage.getItem(LS_PREFIX_PADROES + tabela) || '[]');
+        } catch {
+            return [];
+        }
+    },
+    gravar(tabela, lista) {
+        localStorage.setItem(LS_PREFIX_PADROES + tabela, JSON.stringify(lista));
+    },
+};
+let armazenamentoPadroes = armazenamentoLocal;
+
+// Registra onde os padrões são guardados ({ ler(tabela) → lista, gravar(tabela,
+// lista) }) e traz pra lá o que a primeira versão do recurso tinha deixado no
+// localStorage do navegador (some de lá depois de copiado; nomes que o novo
+// armazenamento já tem não são sobrescritos).
+export function usarArmazenamentoPadroes(armazenamento) {
+    armazenamentoPadroes = armazenamento || armazenamentoLocal;
+    if (armazenamentoPadroes === armazenamentoLocal) return;
+    for (const tabela of Object.keys(DEFINICAO_COLUNAS)) {
+        let legado;
+        try {
+            legado = armazenamentoLocal.ler(tabela);
+            if (!Array.isArray(legado) || !legado.length) continue;
+        } catch {
+            continue;
+        }
+        const atuais = listarPadroesColunas(tabela);
+        const novos = legado.filter(
+            (p) =>
+                p &&
+                typeof p.nome === 'string' &&
+                Array.isArray(p.colunas) &&
+                !atuais.some((a) => mesmoNomePadrao(a.nome, p.nome)),
+        );
+        if (novos.length) armazenamentoPadroes.gravar(tabela, [...atuais, ...novos]);
+        try {
+            localStorage.removeItem(LS_PREFIX_PADROES + tabela);
+        } catch {
+            // sem acesso ao localStorage: o legado só fica lá, sem efeito
+        }
+    }
+}
+
+function normalizarNomePadrao(nome) {
+    return String(nome ?? '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, TAMANHO_MAX_NOME_PADRAO);
+}
+
+function mesmoNomePadrao(a, b) {
+    return a.toLocaleLowerCase('pt-BR') === b.toLocaleLowerCase('pt-BR');
+}
+
+// Valida e limpa uma lista vinda de fora (db, backup antigo ou editado à mão).
+// Usada também por importarDB, pra um backup mal formado não derrubar o painel.
+export function normalizarPadroesColunas(tabela, lista) {
+    const def = DEFINICAO_COLUNAS[tabela];
+    if (!def || !Array.isArray(lista)) return [];
+    const validas = new Set(def.map((c) => c.key));
+    const vistos = [];
+    const saida = [];
+    for (const p of lista) {
+        if (!p || typeof p.nome !== 'string' || !Array.isArray(p.colunas)) continue;
+        const nome = normalizarNomePadrao(p.nome);
+        if (!nome || vistos.some((v) => mesmoNomePadrao(v, nome))) continue;
+        vistos.push(nome);
+        // chaves que deixaram de existir saem sem quebrar o padrão
+        saida.push({ nome, colunas: [...new Set(p.colunas)].filter((k) => validas.has(k)) });
+    }
+    return saida;
+}
+
+export function listarPadroesColunas(tabela) {
+    if (!DEFINICAO_COLUNAS[tabela]) return [];
+    try {
+        return normalizarPadroesColunas(tabela, armazenamentoPadroes.ler(tabela));
+    } catch {
+        return [];
+    }
+}
+
+function gravarPadroes(tabela, lista) {
+    armazenamentoPadroes.gravar(tabela, lista);
+}
+
+// Guarda as colunas visíveis agora sob o nome dado. Mesmo nome (sem diferenciar
+// caixa) substitui o padrão existente, na mesma posição da lista.
+// Devolve { ok, nome, substituiu } ou { ok: false, motivo }.
+export function salvarPadraoColunas(tabela, nome) {
+    if (!DEFINICAO_COLUNAS[tabela]) return { ok: false, motivo: 'tabela' };
+    const limpo = normalizarNomePadrao(nome);
+    if (!limpo) return { ok: false, motivo: 'nome' };
+
+    const lista = listarPadroesColunas(tabela);
+    const novo = { nome: limpo, colunas: getColunasAtivas(tabela) };
+    const idx = lista.findIndex((p) => mesmoNomePadrao(p.nome, limpo));
+    if (idx >= 0) lista[idx] = novo;
+    else lista.push(novo);
+
+    gravarPadroes(tabela, lista);
+    disparaAlteracao(tabela);
+    return { ok: true, nome: limpo, substituiu: idx >= 0 };
+}
+
+export function existePadraoColunas(tabela, nome) {
+    const limpo = normalizarNomePadrao(nome);
+    return listarPadroesColunas(tabela).some((p) => mesmoNomePadrao(p.nome, limpo));
+}
+
+export function aplicarPadraoColunas(tabela, nome) {
+    if (!DEFINICAO_COLUNAS[tabela]) return false;
+    const padrao = listarPadroesColunas(tabela).find((p) => mesmoNomePadrao(p.nome, nome));
+    if (!padrao) return false;
+
+    const estado = lerEstado(tabela);
+    const resto = estado.ordem.filter((k) => !padrao.colunas.includes(k));
+    salvarEstado(tabela, { ordem: [...padrao.colunas, ...resto], ativas: [...padrao.colunas] });
+    disparaAlteracao(tabela);
+    return true;
+}
+
+export function excluirPadraoColunas(tabela, nome) {
+    if (!DEFINICAO_COLUNAS[tabela]) return false;
+    const lista = listarPadroesColunas(tabela);
+    const restante = lista.filter((p) => !mesmoNomePadrao(p.nome, nome));
+    if (restante.length === lista.length) return false;
+    gravarPadroes(tabela, restante);
+    disparaAlteracao(tabela);
+    return true;
+}
+
+// Nome do padrão que bate com o que está na tela (mesmas colunas, mesma ordem),
+// ou null. É assim que o seletor mostra qual padrão está em uso sem guardar
+// "padrão atual" em lugar nenhum: mexer numa coluna já o desmarca sozinho.
+export function padraoAtivoColunas(tabela) {
+    const atuais = getColunasAtivas(tabela);
+    const achado = listarPadroesColunas(tabela).find(
+        (p) => p.colunas.length === atuais.length && p.colunas.every((k, i) => k === atuais[i]),
+    );
+    return achado ? achado.nome : null;
+}
+
+// Pontas de UI (chamadas pelo painel via window.*, ver main.js).
+export function salvarPadraoColunasUI(tabela) {
+    const nome = normalizarNomePadrao(
+        prompt('Nome do padrão (as colunas e a ordem de agora serão guardadas):') || '',
+    );
+    if (!nome) return;
+    if (
+        existePadraoColunas(tabela, nome) &&
+        !confirm(`Já existe um padrão chamado "${nome}". Substituir pelas colunas de agora?`)
+    )
+        return;
+    salvarPadraoColunas(tabela, nome);
+}
+
+export function excluirPadraoColunasUI(tabela, nome) {
+    if (!nome || !confirm(`Excluir o padrão "${nome}"?`)) return;
+    excluirPadraoColunas(tabela, nome);
+}
+
 // Alterna uma coluna e dispara 'colunas:alteradas' pra quem estiver
 // escutando (render-listas.js) re-renderizar a tabela em questão.
 // Não mexe na ordem — só liga/desliga dentro dela.
@@ -612,7 +850,43 @@ export function renderSeletorColunas(tabela) {
             class="w-full text-[11px] border border-gray-200 dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-slate-200 px-2 py-1.5 mb-1.5 placeholder:text-gray-400 dark:placeholder:text-slate-500">`
             : '';
 
-    // Cabeçalho fixo no topo do painel (busca + ações em massa) — fica
+    const padroes = listarPadroesColunas(tabela);
+    const padraoAtivo = padraoAtivoColunas(tabela);
+    const seletorPadroes = `
+            <div class="flex items-center gap-2 mt-2">
+                ${
+                    padroes.length
+                        ? `<select aria-label="Padrões de colunas salvos"
+                    onchange="aplicarPadraoColunas('${tabela}', this.value)"
+                    class="min-w-0 max-w-[14rem] flex-1 text-[11px] border border-gray-200 dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-slate-200 px-1.5 py-1">
+                    <option value="" ${padraoAtivo ? '' : 'selected'} disabled>Meus padrões…</option>
+                    ${padroes
+                        .map(
+                            (p) =>
+                                `<option value="${escapeHtml(p.nome)}" ${p.nome === padraoAtivo ? 'selected' : ''}>${escapeHtml(p.nome)}</option>`,
+                        )
+                        .join('')}
+                </select>`
+                        : `<span class="text-[10px] text-gray-400 dark:text-slate-500">Nenhum padrão salvo</span>`
+                }
+                <button type="button" onclick="salvarPadraoColunasUI('${tabela}')"
+                    title="Guarda as colunas ligadas agora, na ordem atual, como um padrão que dá pra reaplicar depois"
+                    class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">
+                    Salvar como padrão
+                </button>
+                ${
+                    padraoAtivo
+                        ? `<button type="button" data-nome="${escapeHtml(padraoAtivo)}"
+                    onclick="excluirPadraoColunasUI('${tabela}', this.dataset.nome)"
+                    title="Exclui o padrão em uso (as colunas na tela não mudam)"
+                    class="text-[10px] font-semibold text-red-600 dark:text-red-400 hover:underline whitespace-nowrap">
+                    Excluir padrão
+                </button>`
+                        : ''
+                }
+            </div>`;
+
+    // Cabeçalho fixo no topo do painel (busca + ações em massa + padrões) — fica
     // visível mesmo com a lista rolando por baixo, já que o painel
     // inteiro tem altura limitada (max-h-[55vh] em painel-colunas-*
     // no index.html).
@@ -634,6 +908,7 @@ export function renderSeletorColunas(tabela) {
                     Restaurar padrão
                 </button>
             </div>
+            ${seletorPadroes}
         </div>`;
 
     const nenhumaEncontrada =

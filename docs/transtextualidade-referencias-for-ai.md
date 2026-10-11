@@ -126,10 +126,10 @@ the correct link is `pessoas`, not an entry here.
 
 And, outside this group but often confused with it:
 
-| Field                              | Points to                                                                    |
-| ---------------------------------- | ---------------------------------------------------------------------------- |
-| Links / Echoes (Intratextuality)   | Another poem/prose piece in the archive itself                               |
-| Imagery Domain (Tags/Sinalizações) | Vocabulary/repertoire from a field of knowledge, with no specific work cited |
+| Field                            | Points to                                                                    |
+| -------------------------------- | ---------------------------------------------------------------------------- |
+| Links / Echoes (Intratextuality) | Another poem/prose piece in the archive itself                               |
+| Imagery Domain (Tags/Etiquetas)  | Vocabulary/repertoire from a field of knowledge, with no specific work cited |
 
 ## What this means in practice for an AI reading the data
 

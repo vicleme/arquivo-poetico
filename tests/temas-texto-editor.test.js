@@ -137,6 +137,8 @@ describe('grupo Temas e Assuntos (editor.js, DOM real)', () => {
         assert.deepEqual(JSON.parse(document.getElementById('p-temas-json').value), {
             temas: [{ nome: 'Amor', papel: '' }],
             assuntosPapel: [],
+            assuntosExcluidos: [],
+            assuntosPendentes: [],
         });
     });
 });

@@ -120,10 +120,10 @@ central, o vínculo correto é `pessoas`, não uma entrada aqui.
 
 E, fora deste grupo, mas frequentemente confundidos com ele:
 
-| Campo                            | Aponta para                                                                    |
-| -------------------------------- | ------------------------------------------------------------------------------ |
-| Elos / Ecos (Intratextualidade)  | Outro poema/prosa do próprio acervo                                            |
-| Domínio Imagético (Sinalizações) | Vocabulário/repertório de uma área de conhecimento, sem obra específica citada |
+| Campo                           | Aponta para                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| Elos / Ecos (Intratextualidade) | Outro poema/prosa do próprio acervo                                            |
+| Domínio Imagético (Etiquetas)   | Vocabulário/repertório de uma área de conhecimento, sem obra específica citada |
 
 ## O que isso significa na prática para uma IA lendo os dados
 

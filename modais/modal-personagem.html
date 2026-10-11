@@ -1,0 +1,295 @@
+<div
+    id="modal-personagem"
+    class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-personagem-titulo"
+    tabindex="-1"
+>
+    <div
+        class="bg-white dark:bg-slate-900 rounded-lg w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+    >
+        <div
+            class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0"
+        >
+            <h3 id="modal-personagem-titulo" class="text-2xl font-bold">Cadastrar Personagem</h3>
+            <div class="flex items-center gap-1 ml-4">
+                <button
+                    type="button"
+                    onclick="document.getElementById('form-personagem').requestSubmit()"
+                    title="Salvar (atalho: Ctrl+Enter)"
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors border border-emerald-200 dark:border-emerald-800"
+                    aria-label="Salvar"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        class="w-4 h-4"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                            clip-rule="evenodd"
+                        />
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    onclick="toggleModal('modal-personagem')"
+                    title="Fechar (Esc)"
+                    class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-600 dark:hover:text-slate-300 transition-colors border border-gray-200 dark:border-slate-700"
+                    aria-label="Fechar"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                        class="w-4 h-4"
+                    >
+                        <path
+                            d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+                        />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="overflow-y-auto flex-1 px-8 py-6">
+            <form id="form-personagem" class="grid grid-cols-1 gap-4">
+                <input type="hidden" id="per-edit-id" />
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="form-label">Nome</label>
+                        <input
+                            type="text"
+                            id="per-nome"
+                            required
+                            placeholder="Ex: Capitu, Medusa"
+                        />
+                    </div>
+                    <div>
+                        <label class="form-label">Origem</label>
+                        <select id="per-origem">
+                            <option value="">Não especificada</option>
+                            <option value="Criado">Criado</option>
+                            <option value="Reinterpretado">Reinterpretado</option>
+                        </select>
+                    </div>
+                </div>
+
+                <fieldset class="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                    <legend class="form-label px-1">Identidade</legend>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Mesmos vocabulários do Autor, para poder cruzar o personagem com quem o
+                        escreveu. Vazio = não definido.
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Gênero</label>
+                            <input type="text" id="per-genero" list="per-sugestoes-genero" />
+                            <datalist id="per-sugestoes-genero"></datalist>
+                        </div>
+                        <div>
+                            <label class="form-label">Orientação</label>
+                            <input
+                                type="text"
+                                id="per-orientacao"
+                                list="per-sugestoes-orientacao"
+                            />
+                            <datalist id="per-sugestoes-orientacao"></datalist>
+                        </div>
+                        <div>
+                            <label class="form-label">Identidade cis/trans</label>
+                            <select id="per-identidade-cis-trans"></select>
+                        </div>
+                        <div>
+                            <label class="form-label">Cor/raça</label>
+                            <select id="per-cor-raca"></select>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                    <legend class="form-label px-1">Vida</legend>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Só o ano, e o ano é o da história (não o da escrita). Serve para calcular a
+                        idade do personagem num ano de referência.
+                    </p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Ano de nascimento</label>
+                            <input type="number" id="per-nascimento" min="1" max="2100" />
+                        </div>
+                        <div>
+                            <label class="form-label">Ano de óbito</label>
+                            <input type="number" id="per-obito" min="1" max="2100" />
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                    <legend class="form-label px-1">Características</legend>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        O que é do personagem em si, e não da relação dele com um texto ou livro.
+                        Tags simples: "Ciumenta" e "ciumenta" contam como a mesma.
+                    </p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div data-tags-grupo="personalidade">
+                            <label class="form-label">Personalidade</label>
+                            <div
+                                class="flex flex-wrap gap-1 mb-1"
+                                data-tags-chips
+                                id="per-chips-personalidade"
+                            ></div>
+                            <input
+                                type="text"
+                                data-tags-input
+                                id="per-tag-personalidade"
+                                list="per-sugestoes-personalidade"
+                                placeholder="Ex.: Ciumenta, Leal, Irônica (Enter adiciona)"
+                                autocomplete="off"
+                            />
+                            <datalist id="per-sugestoes-personalidade"></datalist>
+                        </div>
+                        <div data-tags-grupo="valoresCrencas">
+                            <label class="form-label">Valores e crenças</label>
+                            <div
+                                class="flex flex-wrap gap-1 mb-1"
+                                data-tags-chips
+                                id="per-chips-valoresCrencas"
+                            ></div>
+                            <input
+                                type="text"
+                                data-tags-input
+                                id="per-tag-valoresCrencas"
+                                list="per-sugestoes-valoresCrencas"
+                                placeholder="Ex.: Fé, Honra, Liberdade (Enter adiciona)"
+                                autocomplete="off"
+                            />
+                            <datalist id="per-sugestoes-valoresCrencas"></datalist>
+                        </div>
+                        <div data-tags-grupo="desejos">
+                            <label class="form-label">Desejos</label>
+                            <div
+                                class="flex flex-wrap gap-1 mb-1"
+                                data-tags-chips
+                                id="per-chips-desejos"
+                            ></div>
+                            <input
+                                type="text"
+                                data-tags-input
+                                id="per-tag-desejos"
+                                list="per-sugestoes-desejos"
+                                placeholder="Ex.: Reconhecimento, Fuga (Enter adiciona)"
+                                autocomplete="off"
+                            />
+                            <datalist id="per-sugestoes-desejos"></datalist>
+                        </div>
+                        <div data-tags-grupo="medos">
+                            <label class="form-label">Medos</label>
+                            <div
+                                class="flex flex-wrap gap-1 mb-1"
+                                data-tags-chips
+                                id="per-chips-medos"
+                            ></div>
+                            <input
+                                type="text"
+                                data-tags-input
+                                id="per-tag-medos"
+                                list="per-sugestoes-medos"
+                                placeholder="Ex.: Abandono, Solidão (Enter adiciona)"
+                                autocomplete="off"
+                            />
+                            <datalist id="per-sugestoes-medos"></datalist>
+                        </div>
+                        <div data-tags-grupo="tracosFisicos">
+                            <label class="form-label">Traços físicos</label>
+                            <div
+                                class="flex flex-wrap gap-1 mb-1"
+                                data-tags-chips
+                                id="per-chips-tracosFisicos"
+                            ></div>
+                            <input
+                                type="text"
+                                data-tags-input
+                                id="per-tag-tracosFisicos"
+                                list="per-sugestoes-tracosFisicos"
+                                placeholder="Ex.: Cabelos longos, Olhos escuros (Enter adiciona)"
+                                autocomplete="off"
+                            />
+                            <datalist id="per-sugestoes-tracosFisicos"></datalist>
+                        </div>
+                        <div data-tags-grupo="arquetipos">
+                            <label class="form-label">Arquétipos</label>
+                            <div
+                                class="flex flex-wrap gap-1 mb-1"
+                                data-tags-chips
+                                id="per-chips-arquetipos"
+                            ></div>
+                            <input
+                                type="text"
+                                data-tags-input
+                                id="per-tag-arquetipos"
+                                list="per-sugestoes-arquetipos"
+                                placeholder="Ex.: Femme fatale, Órfã (Enter adiciona)"
+                                autocomplete="off"
+                            />
+                            <datalist id="per-sugestoes-arquetipos"></datalist>
+                        </div>
+                        <div data-tags-grupo="backstory">
+                            <label class="form-label">Backstory (tags do passado)</label>
+                            <div
+                                class="flex flex-wrap gap-1 mb-1"
+                                data-tags-chips
+                                id="per-chips-backstory"
+                            ></div>
+                            <input
+                                type="text"
+                                data-tags-input
+                                id="per-tag-backstory"
+                                list="per-sugestoes-backstory"
+                                placeholder="Ex.: Abandono parental, Perda precoce (Enter adiciona)"
+                                autocomplete="off"
+                            />
+                            <datalist id="per-sugestoes-backstory"></datalist>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <label class="form-label">Nota sobre o passado</label>
+                        <textarea
+                            id="per-backstory-nota"
+                            rows="3"
+                            placeholder="O que aconteceu antes da história, em texto corrido"
+                        ></textarea>
+                    </div>
+                </fieldset>
+
+                <fieldset class="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                    <legend class="form-label px-1">Participação por livro</legend>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        O papel do personagem no livro como um todo (coletânea também conta), para o
+                        que não cabe num texto só: o arco de uma personagem costuma se espalhar por
+                        vários poemas. A relação com cada texto fica no modal do próprio texto.
+                    </p>
+                    <div class="flex gap-2 mb-2">
+                        <select id="per-livro-select" class="text-sm flex-1"></select>
+                        <button
+                            type="button"
+                            id="per-livro-adicionar"
+                            class="bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 px-3 rounded text-xs font-bold whitespace-nowrap"
+                        >
+                            Adicionar livro
+                        </button>
+                    </div>
+                    <div id="per-participacoes-container" class="flex flex-col gap-2"></div>
+                    <div id="per-participacoes-datalists"></div>
+                </fieldset>
+
+                <div>
+                    <label class="form-label">Notas</label>
+                    <textarea id="per-notas" rows="3"></textarea>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

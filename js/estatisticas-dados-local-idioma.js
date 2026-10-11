@@ -26,6 +26,13 @@ function contagemDeLocais(campo, textos) {
         : contarTextosPorLocal(db, textos);
 }
 
+// Tooltip e dica: nome completo (com o tipo) de um Local que aparece pelo
+// apelido; '' quando o rótulo já é o nome.
+function nomeCompletoDoApelido(local) {
+    if (!local.apelido) return '';
+    return local.tipo ? `${local.nome} (${local.tipo})` : local.nome;
+}
+
 function localTemTipo(local, tipo) {
     if (!tipo) return true;
     if (tipo === TIPO_LOCAL_SEM_TIPO) return !String(local.tipo ?? '').trim();
@@ -57,12 +64,20 @@ export function agregarPorLocal({
     );
     const linhas = comTexto
         .filter((l) => localTemTipo(l, tipo))
-        .map((l) => ({ id: l.id, label: rotulos.get(String(l.id)), n: n(l) }))
+        .map((l) => ({
+            id: l.id,
+            label: rotulos.get(String(l.id)),
+            n: n(l),
+            nome: nomeCompletoDoApelido(l),
+        }))
         .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label, 'pt-BR'));
     return {
         labels: linhas.map((l) => l.label),
         data: linhas.map((l) => l.n),
         ids: linhas.map((l) => l.id),
+        // em paralelo a `labels`: nome completo (e tipo) de quem aparece pelo
+        // apelido, '' para quem aparece pelo nome. Vira o título do tooltip.
+        nomes: linhas.map((l) => l.nome),
     };
 }
 
@@ -106,6 +121,7 @@ export function locaisDeEscritaParaSelecao() {
             id: String(l.id),
             rotulo: rotulos.get(String(l.id)),
             n: contagem.get(String(l.id)).agregados,
+            nome: nomeCompletoDoApelido(l),
         }))
         .sort((a, b) => b.n - a.n || a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
 }

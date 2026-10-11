@@ -17,6 +17,7 @@
 
 import { garantirModal, toggleModal } from './modais.js';
 import { db } from './db.js';
+import { textoPersonagensComPapel } from './personagens.js';
 import { itensDaSelecao, exportarItem } from './exportar.js';
 import { isDownloadAbrangenteAtivo } from './download-abrangente.js';
 import {
@@ -171,7 +172,10 @@ export function renderVisualizacaoHtml(item) {
 
     if (item.dataEscrita) {
         const aprox = item.dataEscrita.exata ? '' : ' (aproximada)';
-        html += linhaMetaHtml('Escrito em', `${formatarDataParcial(item.dataEscrita)}${aprox}`);
+        html += linhaMetaHtml(
+            'Data de escrita',
+            `${formatarDataParcial(item.dataEscrita)}${aprox}`,
+        );
     }
     if (item.dataPublicacao) {
         html += linhaMetaHtml('Primeira publicação', formatarDataParcial(item.dataPublicacao));
@@ -190,7 +194,7 @@ export function renderVisualizacaoHtml(item) {
     }
     if (item.movimentosEscolasIds?.length) {
         html += linhaMetaHtml(
-            'Movimento/Escola',
+            'Corrente literária',
             nomesMovimentosEscolas(item.movimentosEscolasIds, db.movimentosEscolas).join(', '),
         );
     }
@@ -200,6 +204,7 @@ export function renderVisualizacaoHtml(item) {
     if (assuntosTexto) {
         html += linhaMetaHtml('Assunto', assuntosTexto);
     }
+    html += linhaMetaHtml('Personagens', textoPersonagensComPapel(item, db.personagens) || null);
     html += linhaMetaHtml('Pessoas', textoPessoas(item));
     html += linhaMetaHtml('Grupos', textoGrupos(item));
     // Uma linha por categoria preenchida, em vez da linha única

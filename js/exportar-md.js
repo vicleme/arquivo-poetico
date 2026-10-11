@@ -12,6 +12,7 @@
 // volta pro acervo.
 // ============================================================
 
+import { rotuloEco } from './ancora-eco.js';
 import {
     formatarDataParcial,
     formatarEpocaRetratada,
@@ -36,6 +37,7 @@ import {
 import { db } from './db.js';
 import { blocosExtrasMarkdown } from './download-abrangente.js';
 import { textoLocalEscrita, textoTerritorialidadeComCaminho } from './locais.js';
+import { textoPersonagensComPapel } from './personagens.js';
 
 export const INFO_STATUS = {
     publicado: { emoji: '🟢', titulo: 'Publicado' },
@@ -227,7 +229,7 @@ export function titulosPorIds(lista) {
             const rotulo =
                 entrada.relacao !== undefined
                     ? rotuloElo(entrada.relacao, entrada.direcao)
-                    : entrada.tipo;
+                    : rotuloEco(db, entrada);
             let s = rotulo ? `${rotulo}: ${titulo}` : titulo;
             if (entrada.texto) s += ` (${entrada.texto})`;
             return s;
@@ -431,7 +433,7 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
 
     if (item.dataEscrita) {
         const aprox = item.dataEscrita.exata ? '' : ' (aproximada)';
-        md += linhaMeta('Escrito em', `${formatarDataParcial(item.dataEscrita)}${aprox}`);
+        md += linhaMeta('Data de escrita', `${formatarDataParcial(item.dataEscrita)}${aprox}`);
     }
     if (item.dataPublicacao) {
         md += linhaMeta('Primeira publicação', formatarDataParcial(item.dataPublicacao));
@@ -450,7 +452,7 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
     }
     if (item.movimentosEscolasIds?.length) {
         md += linhaMeta(
-            'Movimento/Escola',
+            'Corrente literária',
             nomesMovimentosEscolas(item.movimentosEscolasIds, db.movimentosEscolas).join(', '),
         );
     }
@@ -460,6 +462,7 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
     if (assuntosMd) {
         md += linhaMeta('Assunto', assuntosMd);
     }
+    md += linhaMeta('Personagens', textoPersonagensComPapel(item, db.personagens) || null);
     md += linhaMeta('Pessoas', textoPessoas(item));
     md += linhaMeta('Grupos', textoGrupos(item));
     // Uma linha por categoria preenchida (Tradição, Estilo, Tema...), em vez

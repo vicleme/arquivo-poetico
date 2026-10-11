@@ -1,6 +1,220 @@
-# Próxima sessão: Arquivo Poético (estado em 30/09/2026, após Estatísticas de Local e Idioma, colunas, `.md`, `.csv` e Visualização de Local e Idioma, busca de Local e Idioma, Idioma em lista, Locais etapa 3 e a faixa Voltar/Limpar filtro)
+# Próxima sessão: Arquivo Poético (estado em 07/10/2026, após a Fase 13 etapa 13c (apagar efetivo); antes, o Backup completo com arquivo de extras e a etapa 13b (modal e botão de esvaziar); antes, a etapa 13a (lógica pura); antes, a etapa 13-0 (inventário); antes, em 06/10/2026, após a etapa 8 (docs `for-ai` de Personagem), que encerra a Fase 11; antes, a etapa 7 (Estatísticas de Personagens); antes, em 05/10/2026, após a etapa 6 (coluna, `.md`, `.csv` e Visualização de Personagem); antes, a etapa 5 (busca por papel e centralidade); antes, a etapa 4b (sugestão de Ecos faltantes); antes, em 04/10/2026, a etapa 4a2 (alvo de Elos e Ecos na importação) e os títulos das abas; antes, Personagens etapa 4a; antes, em 30/09/2026, após Estatísticas de Local e Idioma, colunas, `.md`, `.csv` e Visualização de Local e Idioma, busca de Local e Idioma, Idioma em lista, Locais etapa 3 e a faixa Voltar/Limpar filtro)
 
 Leia este arquivo, depois `manutencao/status.md` (as primeiras entradas: Estatísticas de Local e Idioma, colunas/md/csv/Visualização de Local e Idioma, busca de Local e Idioma, Idioma em lista, Locais etapa 3, faixa Voltar, Locais etapa 2 e etapa 1), `decisoes.md` (última seção, "Local: cadastro hierárquico com vários pais"), `schema.md` (última seção, `db.locais`) e `licoes-de-sessao.md`. O contexto da sessão anterior (Temas e Assuntos) está mais abaixo, sem mudança.
+
+## Fase 1, etapa 1d: totais na matriz de Cruzamentos: pronta (06/10/2026)
+
+Com a 1d, **a Fase 1 está completa no código** (1a, 1b, 1c-0, 1c, 1d). Detalhes em `status.md` e `decisoes.md` (F1-D9).
+
+- **Conferir no navegador (pelo Victor):** Estatísticas › Cruzamentos: em Pessoa × tema, ver a coluna final "Total (soma da linha)" e "Textos com a pessoa", o rodapé "Aparições de pessoas (soma da coluna)" e "Textos com o tema", e o texto de ajuda; em Grupo × tema, ver que **não** há soma da coluna; em Personagem × tema, ver o mesmo da Pessoa; com muitos temas, rolar na horizontal e ver se o rodapé e a coluna final seguem alinhados; modo escuro (borda e negrito do rodapé).
+- **Para o Victor decidir (escolhi sozinho, F1-D9):** "Textos com…" conta só textos que têm ao menos um tema e uma linha da matriz (não bate com a barra do gráfico de Temas se houver texto com tema e sem pessoa); Personagens recebeu o mesmo tratamento das Pessoas; em Grupos a coluna "Total (soma da linha)" existe.
+- **Depois da Fase 1:** Fase 2 e 2b (`plano-central.md`); nada ali depende da conferência.
+
+## Fase 1, etapa 1c: "Por gênero" em Pessoas: pronta (06/10/2026)
+
+Pedido do Victor ("siga implementando a Fase 1"). Detalhes em `status.md` (primeira entrada) e `decisoes.md` (F1-D8, que lista o que decidi sozinho).
+
+- **Conferir no navegador (pelo Victor):** Estatísticas › Pessoas e Grupos: os três botões "Por pessoa | Por grupo | Por gênero"; o cartão de gênero separado não existe mais; em "Por gênero" ver as barras e que clicar nelas não abre nada; ligar "Considerar cis/trans" e ver as barras "Gênero, Identidade"; em "Por pessoa", abrir "⚧ Gênero ▾", marcar um gênero e combinar com "👥 Grupos"; com cis/trans ligado, ver a seção Identidade no mesmo painel; recarregar a página (modo e botão persistem); modo escuro e celular (o botão e a frase ao lado quebram linha?).
+- **Em aberto, para o Victor:** em "Por gênero" o filtro de Grupo vale (decidi eu); a linha do tempo de Pessoa ainda não tem o filtro de gênero (plano: depois, com a 1c estável).
+- **Sobra da 1a:** `js/estatisticas-tela-temas-pessoas.js` (módulo antigo) não é importado por ninguém; pode ser apagado.
+- **Próximo:** etapa **1d** (soma no fim da coluna e total por linha na matriz de Cruzamentos).
+
+## Backup completo e arquivo de extras: pronto (07/10/2026)
+
+Pedido do Victor (limpar os dados do navegador sem perder preferências e Versões Alternativas), feito antes da 13c. Detalhes em `status.md` (primeira entrada) e `decisoes.md` (última seção).
+
+- **O que existe:** `js/extras-backup.js` (lógica pura), `js/ui-extras-backup.js`, card "Backup completo" no topo da aba Backup e recuperação (Baixar backup completo, Baixar só os extras, Restaurar extras) e os testes `tests/extras-backup.test.js` e `tests/ui-extras-backup.test.js`.
+- **Para a 13c e a 13d:** o modal de esvaziar já baixa o arquivo de extras no lugar do `versoes_filtradas_banco.json`. A ajuda (13d) precisa citar o backup completo e a ordem de restauração (Importar JSON, depois Restaurar extras), no FAQ e no passo "Fazer backup do acervo" de "Como faço".
+- **Conferir (pelo Victor), antes de limpar o navegador:** baixar o backup completo; abrir uma janela anônima, importar o JSON do acervo e usar "Restaurar extras"; comparar contagens (poemas, prosas, livros, capas) e ver se tema, colunas e Versões Alternativas voltaram.
+
+## Fase 13 (Esvaziar o acervo): concluída (08/10/2026)
+
+As etapas 13-0 a 13d estão prontas e o Victor conferiu o apagar no navegador. Não há próxima etapa desta fase. Detalhes em `status.md` (primeira entrada) e `decisoes.md`.
+
+- **Pontos a lembrar:** os padrões de colunas salvos são **Dados** (não Preferências), por decisão de 08/10/2026 só documentada, no FAQ e na janela. Quem mexer em `save()` ou em um novo ouvinte de saída de página deve conferir a trava `bloquearSalvamento` (ver 13c).
+- **Limites conhecidos (13c):** `filtrar.html` e `localizar-substituir.html` não têm o ouvinte de outras abas; navegador sem `BroadcastChannel` não avisa as outras abas.
+
+## Fase 13, etapa 13c: apagar efetivo: pronta (07/10/2026)
+
+Detalhes em `status.md` (primeira entrada) e `decisoes.md` (seção da 13c). **Esta etapa apaga de verdade.**
+
+- **O que existe:** `js/apagar-acervo.js` (`executarEsvaziamento`, `ouvirEsvaziamentoDeOutraAba`, `mostrarAvisoPosEsvaziar`), `limparTodasCapas()` em `capas.js`, a trava `bloquearSalvamento()` em `db.js`, `tests/apagar-acervo.test.js` (24 testes). Ligações em `main.js` (ouvinte de outras abas no carregamento do módulo; aviso pós-recarga no `DOMContentLoaded`).
+- **Próximo:** etapa **13d** (Central de Ajuda, README, `manutencao/`: `schema.md` só se algo mudar; nada mudou no formato do acervo).
+- **Conferir (pelo Victor), nesta ordem, com um backup NOVO baixado antes:** (1) só Preferências: tema, colunas e itens por página voltam ao padrão, acervo e capas intactos; (2) só Pré-prontos: os 12 períodos, os 22 movimentos e os templates de fábrica somem (menos os que têm texto usando) e não voltam ao recarregar; (3) só Dados: acervo vazio **sem** Assuntos e Temas de exemplo, capas e Versões Alternativas apagadas, pré-prontos de volta ao estado inicial; (4) as três juntas; (5) **duas abas abertas:** esvaziar em uma e ver a outra avisar e recarregar sozinha, sem regravar nada; (6) o aviso de resultado depois da recarga; (7) restaurar pelo backup e pelo arquivo de extras depois de um apagar de Dados.
+- **Limites conhecidos:** `filtrar.html` e `localizar-substituir.html` são páginas separadas, sem o ouvinte: se uma estiver aberta em outra aba, salvar uma Versão Alternativa lá depois do apagar traz essa versão de volta. Navegador sem `BroadcastChannel` (anterior a 2022) não avisa as outras abas.
+
+## Fase 13, etapa 13b: modal e botão de esvaziar: pronta (07/10/2026)
+
+Pedido do Victor, com F13-D9 e as interpretações da 13a aprovadas. Detalhes em `status.md` (primeira entrada) e `decisoes.md` (última seção). **Nenhum dado é apagado por esta etapa.**
+
+- **O que existe:** aba **Backup e recuperação** (menu Dados) com os retratos automáticos e o bloco "Zona de risco"; `modais/modal-esvaziar-acervo.html`; `js/ui-esvaziar-acervo.js`; `tests/ui-esvaziar-acervo.test.js` (25 testes). Confirmar baixa o backup com capas, o arquivo das Versões Alternativas (se houver) e tira o retrato forçado; falha em qualquer um interrompe.
+- **Ponto de encaixe da 13c:** `confirmarEsvaziarAcervo(deps)` chama `deps.apagar(caixas, resumo)` e espera `{ apagado: true }`. O padrão atual devolve `{ apagado: false }` e a janela avisa que nada foi apagado. A 13c troca esse padrão por: `aplicarEsvaziamento(db, caixas)`, regravar o acervo (`save()`, nunca remover a chave, F13-D9), remover as chaves de `planoArmazenamento(...).localStorageRemover`, limpar o banco de capas (`indexedDBLimpar`) e recarregar a página; decidir o que fazer com outras abas abertas. O retrato (`arquivoPoetico_snapshots`) nunca é limpo.
+- **Cuidado da 13c:** é a etapa sem volta fácil. Exportar um backup novo antes de testar à mão, e testar primeiro só Preferências, depois Pré-prontos, por último Dados.
+- **Próximo:** etapa **13c** (apagar efetivo e recarga); depois 13d (Central de Ajuda, README, `manutencao/`).
+- **Conferir (pelo Victor):** no navegador, a janela no modo escuro e no celular; a trava do botão (palavra errada, sem caixa); os dois downloads seguidos com Dados marcado. Por enquanto nada é apagado de verdade. `npm test` deve mostrar a suíte inteira verde.
+
+## Fase 13, etapa 13a: lógica pura de esvaziar o acervo: pronta (07/10/2026)
+
+Pedido do Victor, com F13-D7 e F13-D8 aprovadas como sugeridas. Detalhes em `status.md` (primeira entrada) e `decisoes.md` (última seção). Nenhum comportamento do app mudou; ainda não há botão.
+
+- **O que existe:** `js/esvaziar-acervo.js` e `tests/esvaziar-acervo.test.js` (37 testes). `resumirEsvaziamento(db, caixas, { capas, versoesFiltradas })` para o modal; `aplicarEsvaziamento(db, caixas)` apaga no `db`; `planoArmazenamento(caixas, Object.keys(localStorage))` lista o que remover fora do `db`; `montarArquivoVersoesFiltradas(texto)` gera o arquivo extra do backup. Caixas são `{ dados, preferencias, preProntos }`.
+- **Regra central:** pré-prontos saem pelo campo `embutido` e o nome vai para `*Ocultos`; só Dados zera os ocultos e deixa a migração recolocar os de fábrica. Quem mexer em `migrar*Embutidos` precisa rodar `tests/esvaziar-acervo.test.js`.
+- **Para o Victor decidir antes da 13c:** F13-D9 (apagar a chave do acervo faria o app semear Assuntos e Temas de exemplo; sugestão: regravar o `db` vazio). Também conferir as interpretações listadas na última seção de `decisoes.md` (edições em itens de fábrica sobrevivem; excluídos de fábrica voltam quando só Dados é apagado).
+- **Próximo:** etapa **13b** (modal e botão na área Dados: caixas, resumo, backup automático com capas mais `versoes_filtradas_banco.json` quando houver versões, retrato forçado, palavra "ESVAZIAR"; `window.x` e `tests/wiring-onclick.test.js`). O apagar efetivo continua sendo a 13c.
+- **Conferir (pelo Victor):** nada no navegador; só rodar `npm test` e ver 2968 verdes.
+
+## Fase 13, etapa 13-0: inventário e teste: pronta (07/10/2026)
+
+Pedido do Victor ("pode começar", com F13-D1 a F13-D6 aprovadas). Detalhes em `status.md` (primeira entrada) e `decisoes.md` (última seção). Nenhum comportamento do app mudou.
+
+- **O que existe:** `js/inventario-armazenamento.js` (classificação de toda chave do `localStorage`, dos 2 bancos do IndexedDB e das chaves do `db`) e `tests/inventario-armazenamento.test.js`, que falha se uma chave nova aparecer sem classificação. Chave nova em qualquer fase futura: acrescentar a linha no inventário.
+- **Para o Victor decidir antes da 13a:** F13-D7 (as Versões Alternativas ficam fora do JSON de backup; sugestão: tratar como Dados e baixar `versoes_filtradas_banco.json` junto) e F13-D8 (`templatesEstrutura` como terceiro cadastro pré-pronto; sugestão: sim).
+- **Próximo:** etapa **13a** (lógica pura em `js/esvaziar-acervo.js`, usando os seletores do inventário). Regra a lembrar: em `periodosHistoricos` e `movimentosEscolas` os de fábrica e os da pessoa moram no mesmo array, separados por `embutido`; apagar pré-prontos precisa registrar nas listas de ocultos, não só filtrar o array.
+- **Conferir (pelo Victor):** nada no navegador; só rodar `npm test` e ver 2931 verdes.
+
+## Fase 1, F1-D7 partes 1 e 2: Pessoa no JSON e chave de dados pessoais: prontas (06/10/2026)
+
+A parte 1 (a Pessoa viaja no JSON e na Importação Aditiva) foi conferida no navegador pelo Victor. A parte 2 é a chave "Incluir dados pessoais das Pessoas nos JSON". Detalhes em `status.md` (duas primeiras entradas) e `decisoes.md` (F1-D7).
+
+- **Conferir no navegador (pelo Victor):** na aba Exportação, o checkbox aparece marcado; desmarcar, exportar um texto com Pessoa em JSON (seletivo, seleção, item avulso e tudo flat) e ver o vínculo sem os três campos e o aviso no resultado; recarregar a página e ver que a escolha ficou; religar e ver os campos de volta; o backup completo continua com tudo.
+- **Próximo:** etapa **1c** ("Por gênero" em Pessoas). Falta, se quiser, aviso também nas Exportações Frequentes e nos templates (a chave já vale lá).
+- **Doc `for-ai` de Pessoas:** já tem a regra "vazio é não documentado"; se a chave estiver desligada os campos simplesmente não existem no arquivo, e o doc pode ganhar uma frase sobre isso.
+
+## Fase 1, etapa 1c-0: identidade e cor/raça na Pessoa: pronta (06/10/2026)
+
+Pedido do Victor ("seguir com a implementação da fase 1"). Detalhes em `status.md` (primeira entrada), `decisoes.md` (F1-D7) e `planejamento/fase-01-estatisticas-temas-pessoas.md`.
+
+- **Conferir no navegador (pelo Victor):** Cadastros › Pessoas › editar uma pessoa; os dois selects "Identidade cis/trans" e "Cor/Raça" (padrão "Não documentado"); salvar, reabrir; a linha pequena no cartão; modo escuro e celular; mesclar duas Pessoas e ver que o destino mantém o que tinha.
+- **F1-D7:** respondida em 06/10/2026 (a Pessoa viaja no JSON; ver a entrada acima).
+- **Próximo:** etapa **1c** ("Por gênero" em Pessoas: alternância Por pessoa | Por grupo | Por gênero, botão \"Considerar cis/trans\", filtro de gênero em Por pessoa; sai o cartão separado de gênero) e depois a **1d** (soma na matriz).
+
+## Personagens, etapa 8: docs `for-ai`: pronta (06/10/2026), Fase 11 concluída
+
+Pedido do Victor ("terminar a fase de Personagem"). Só documentação; nenhum código mudou. Detalhes em `status.md` (primeira entrada) e `decisoes.md` (F11-D14).
+
+- **O que mudou:** `docs/personagens-for-ai.md` e `-pt-br.md` (novos); `campos-poema-prosa-for-ai` (Ecos com `ancoras`, `alvoTitulo` e "Pessoa em comum", `poemaId` corrigido para `id`, Personagens no resumo); `pessoas-papeis-for-ai` (ponteiro para Personagens); `README.md` e `README.pt-br.md`.
+- **Conferir (pelo Victor):** ler `personagens-for-ai-pt-br.md` com o olho de quem vai colar o arquivo numa IA: a regra de que a ordem de `papeis` não indica relevância (decidi sozinho, porque o código sempre reordena); a escolha de **não definir** Voz, Interlocutor e Aparição (o projeto só define Menção e Alusão; se quiser definição, é você quem a dá); a leitura de `centralidade` vazia (indefinida x só Menção/Alusão).
+- **Em aberto, herdado:** Personagens entra ou não em Campos Preenchidos (hoje não entra); filtro por papel do Personagem em Personagem × Tema; gráfico de Personagem ao longo do tempo; "Sugerir Ecos" no modal de Visualização e a regra de ocultar par só com Menção/Alusão (etapa 4b).
+- **Depois, sem data:** vínculo opcional do Personagem reinterpretado com a Referência de origem (F11-D2). É a única parte da Fase 11 que falta.
+
+## Personagens, etapa 7: Estatísticas: pronta (06/10/2026)
+
+Pedido do Victor ("prosseguir"). A sessão anterior caiu antes de entregar arquivos, então a etapa foi refeita do zip original. Detalhes em `status.md` (primeira entrada) e `decisoes.md` (F11-D13, que lista o que decidi sozinho).
+
+- **O que mudou:** aba **Estatísticas › Personagens** (cinco gráficos) e modo "Temas × personagens" na matriz de Cruzamentos. Código em `js/estatisticas-dados-personagens.js`, `js/estatisticas-tela-personagens.js`, `js/estatisticas-dados.js`, `js/estatisticas-tela-cruzamentos.js`, `js/estatisticas.js`, `js/ui.js`, `index.html`. Teste: `tests/estatisticas-personagens.test.js`.
+- **Conferir no navegador (pelo Victor):** menu Estatísticas mostra "Personagens" entre "Pessoas e Grupos" e "Cruzamentos"; os cinco gráficos desenham (Chart.js real, modo escuro, celular); clicar numa barra de Personagem, de papel e de centralidade abre Poemas ou Prosas com a busca e o mesmo número da barra; a barra "Só Menção/Alusão" não abre nada; a linha de contexto dos Ecos diz o total, a soma por âncora e quantos estão sem âncora; "Ocultar" e o mínimo de aparições nos dois gráficos de nomes; em Cruzamentos, escolher "Temas × personagens" e ver a matriz com o painel de colunas de temas.
+- **Em aberto:** Personagem × Tema usa o papel de Tema escolhido na aba, e o Personagem conta em qualquer papel (um filtro por papel do Personagem não existe). Não há gráfico de Personagem ao longo do tempo.
+- **Próximo:** etapa **8** (docs `for-ai`, que ainda não citam `alvoTitulo`, as âncoras do Eco nem as Estatísticas de Personagem).
+
+## Personagens, etapa 6: coluna, exportações e Visualização: pronta (05/10/2026)
+
+Pedido do Victor. Detalhes em `status.md` (primeira entrada) e `decisoes.md` (F11-D12, que lista o que decidi sozinho).
+
+- **O que mudou:** coluna "Personagens" (Poemas e Prosas), linha no `.md` e na Visualização, 8 colunas no `.csv`, "Qtd. Personagens". Código em `js/celulas-tabela.js`, `js/colunas.js`, `js/personagens.js`, `js/exportar-md.js`, `js/visualizar.js`, `js/exportar-csv.js`, `js/utils.js`. Teste: `tests/personagens-colunas-export.test.js`.
+- **Conferir no navegador (pelo Victor):** ligar a coluna em "🧱 Colunas" (Poemas e Prosas) e ver o chip (iniciais, ★/☆, `title`); ordenar; clicar na lupa; abrir a Visualização de um texto com personagem; exportar `.md` e `.csv` e conferir a linha e as colunas; adicionar "Qtd. Personagens" e filtrar `>= 2`.
+- **Decisão em aberto:** Personagens entra ou não em Campos Preenchidos (hoje não entra).
+- **Próximo:** etapa **7** (Estatísticas; Personagem × Tema espera a aba Cruzamentos da Fase 1) ou a **8** (docs `for-ai`).
+
+## Busca de Personagem por papel e centralidade, etapa 5: pronta (05/10/2026)
+
+Pedido do Victor. Detalhes em `status.md` (primeira entrada) e `decisoes.md` (F11-D11).
+
+- **Como funciona:** `personagemvoz:`, `personageminterlocutor:`, `personagemaparicao:`, `personagemmencao:`, `personagemalusao:`, `personagemprotagonista:`, `personagemsecundario:`, `personagemsemcentralidade:`, cada um com nome ou `*`. "Sem centralidade" é só a ainda não preenchida (Menção/Alusão sozinhas não entram em nenhuma).
+- **Código:** `js/personagens.js` (helpers), `js/render-listas.js`, `js/utils.js`, legenda em `index.html`. Teste: `tests/busca-personagem-papel.test.js`.
+- **Conferir no navegador (pelo Victor):** na busca de Poemas ou Prosas, digitar `personagemvoz:*`, `personagemsemcentralidade:*` e `-personagemprotagonista:*`; abrir a legenda "Restringir a um campo" e ver as duas linhas novas; conferir que um texto com o personagem só em Menção não aparece em `personagemsemcentralidade:`.
+- **Próximo:** etapa **6** (colunas, `.md`, `.csv`, Visualização). A 7 (Estatísticas) segue esperando a aba Cruzamentos da Fase 1.
+
+## Sugestão de Ecos faltantes, etapa 4b: pronta (05/10/2026)
+
+O Victor pediu só "prosseguir" na Fase 11; escolhi a 4b por ser a próxima da ordem F11-D8. Detalhes em `status.md` (primeira entrada) e `decisoes.md` (F11-D10, que lista o que decidi sozinho).
+
+- **Como funciona:** botão "Sugerir Ecos" nos cartões de Pessoa e Personagem (dois textos ou mais) abre um modal com os pares sem Eco entre si, direção pelas datas, força pelo papel, 15 por vez; criar grava o Eco na hora, com âncora, e há Desfazer.
+- **Código:** `js/sugestao-ecos.js` (puro), `js/ui-sugestao-ecos.js`, `modais/modal-sugestao-ecos.html`. Testes: `tests/sugestao-ecos.test.js` e `tests/sugestao-ecos-dom.test.js`. Suíte verde (ver `status.md`).
+- **Próximo:** etapa **5** (busca por papel e centralidade) ou a **6** (colunas, `.md`, `.csv`, Visualização). A 7 (Estatísticas) segue esperando a aba Cruzamentos da Fase 1 para Personagem × Tema.
+- **Ignorar par feito (05/10/2026, pedido dele):** por figura, em `db.ecosIgnorados`, com seção "Ignorados" e "Voltar a sugerir". Conferir no navegador: ignorar, fechar e reabrir (continua ignorado); restaurar; ignorar o mesmo par para a Pessoa e para o Personagem (são independentes).
+- **Em aberto, para o Victor decidir:** (b) se a regra "só menção/alusão nos dois lados fica oculto" é a certa; (c) se o botão deve existir também no modal de Visualização. Nada disso foi feito.
+- **Conferir no navegador (pelo Victor):** Cadastros › Personagens e Pessoas: o ícone de eco aparece só em quem está em dois textos ou mais; abrir e ver os pares (o texto mais novo na ponta do "ecoa"); par com texto sem data deve vir com aviso âmbar e dois botões iguais; criar um Eco e abrir o poema/prosa mais novo: grupo Intratextualidade › Ecos mostra "Personagem em comum (Nome)" com o texto antigo; Desfazer tira; criar, fechar e reabrir o modal (o par não volta); muitos pares: "Mostrar mais"; caixa de menção/alusão; modo escuro, celular e Esc. **Não vi o visual com estilo** (o Tailwind da CDN não carrega no meu ambiente).
+
+## Importação Aditiva e alvo de Elos e Ecos, etapa 4a2: pronta (04/10/2026)
+
+Pedido do Victor. Detalhes em `status.md` (primeira entrada), `decisoes.md` (F11-D9) e `schema.md` (Ecos). Respostas dele: sem alvo, **solta o Eco inteiro**; o aviso fica **na prévia**.
+
+- **Resolução do alvo:** texto do lote, duplicata casada, título exato único no acervo (`alvoTitulo`, gravado pela exportação em cada Elo e Eco) e, sem nada disso, a entrada é solta. JSON antigo (sem `alvoTitulo`) só resolve dentro do lote ou por duplicata casada.
+- **Código:** `js/alvos-conceitos.js` (novo), `js/importar-aditivo.js`, `js/ui-importar-aditivo.js`, `js/exportar.js`, `js/exportar-csv.js`. Testes: `tests/importar-aditivo-alvos.test.js` e `tests/importar-aditivo-alvos-dom.test.js`.
+- **Corrigido no caminho:** o `.csv` lia `e.poemaId` nos Elos (o dado grava `id`), então o título do alvo saía vazio; o `schema.md` ainda descrevia o Elo com `poemaId`.
+- **Títulos das abas:** o app agora se chama só "Arquivo Poético"; Versões Alternativas e Localizar e Substituir usam hífen no lugar do travessão.
+- **Próximo:** etapa **4b** (sugestão de Ecos faltantes sob demanda, F11-D7) ou a **5** (busca por papel e centralidade). Desenho da 4b em "Personagens, etapa 4a" abaixo.
+- **Conferir no navegador (pelo Victor):** a aba do navegador dizendo "Arquivo Poético" no app e "Arquivo Poético - ..." nas outras duas (sem travessão); exportar só a Prosa que tem Eco e Elo (individualmente ou numa seleção) e importar num acervo que tem o texto-alvo com o mesmo título: o Eco e o Elo devem ligar nele; importar o mesmo arquivo num acervo sem o alvo: a prévia mostra o bloco âmbar "Ligações que serão soltas" com a contagem e os títulos, e o aviso do resultado diz quantos foram soltos; exportar dois textos que se ecoam e importar juntos: o Eco liga ao id novo; texto com título igual a um existente: trocar a decisão da duplicata (não importar x importar como novo) e ver o aviso da prévia acompanhar; modo escuro e celular (bloco âmbar quebrando linha).
+- **Limite conhecido:** a ligação por título não distingue dois textos de mesmo título no acervo (solta, em vez de chutar); os docs `for-ai` ainda não citam `alvoTitulo` nem as âncoras do Eco (etapa 8).
+
+## Personagens, etapa 4a: pronta (04/10/2026)
+
+Pedido do Victor. Detalhes em `status.md` (primeira entrada), `decisoes.md` (F11-D6, "Refinada em 04/10/2026") e `schema.md` (Ecos).
+
+- **Próximo:** a etapa 4a2 está feita (ver a seção acima); falta a etapa 4b (sugestão de Ecos faltantes sob demanda, F11-D7) ou a 5 (busca por papel e centralidade). O desenho da 4b sugerido: botão no cartão da Pessoa ou do Personagem, com a faixa "Voltar"; o Eco é unidirecional (do mais novo para o mais antigo), então a sugestão propõe a direção pelas datas e pergunta quando faltar data; pessoa em 30 textos gera 435 pares, então precisa de ordenação ou limite; nunca como aviso automático.
+- **Etapa 7 (Estatísticas):** um Eco com duas âncoras conta uma vez para cada uma, então a soma por âncora passa do total de Ecos (explicar na tela); tratar "Personagem em comum sem âncora" como grupo à parte.
+- **Fora do escopo da 4a:** o grafo de Ecos não mostra a âncora; a importação não remapeava o `id` do texto-alvo de Elos e Ecos (defeito anterior à 4a, resolvido na etapa 4a2).
+- **Conferir no navegador (pelo Victor):** abrir uma Prosa, grupo Intratextualidade › Ecos; escolher tipo "Personagem em comum" e o texto-alvo e ver os chips (só quem está nos dois); marcar dois, adicionar o Eco e ver "Personagem em comum (Iara, Tomás)" na lista; editar o Eco e ver as âncoras marcadas; trocar para "Pessoa em comum" com âncoras marcadas e ver a confirmação; tirar um personagem ancorado do texto e ver as três escolhas (testar "Manter com aviso" e ver o ⚠, e "Remover a âncora"); cancelar o modal depois de "Remover a âncora" num Eco de outro texto e ver que nada mudou; excluir um Personagem ancorado e usar Desfazer; mesclar duas Pessoas; exportar `.md`/`.csv` e ver o rótulo; modo escuro e celular.
+
+## Situação editorial de Livro e Coletânea: pronta (03/10/2026)
+
+Pedido do Victor. Detalhes em `status.md` (primeira entrada), `decisoes.md` (última seção) e `schema.md` ("Situação editorial").
+
+- **Conferir no navegador (pelo Victor):** Livros › editar um livro antigo e ver "Não especificado"; Novo Livro e ver "Em circulação" já marcado; escolher Esgotado, preencher mês/ano e nota, salvar e ver o selo no card; num livro com loja cadastrada, ver o aviso âmbar; abrir a aba Coletâneas e ver a situação ao lado do SEQ; modo escuro e celular.
+- **Em aberto:** filtro/coluna/busca por situação; seletor de "nova edição" para Reeditado (hoje vai na nota).
+
+## Correntes literárias: fechado em 03/10/2026 (período, busca, colunas, Estatísticas, modal)
+
+Detalhes em `status.md` e `decisoes.md`. Escolha da divisão nos modais feita (ver `status.md`). **Falta:** Postura/Programa nas exportações dos textos.
+
+- **Conferir no navegador:** Correntes › Novo (título, grupos fechados, toggles de explicação); editar uma corrente e ver abrirem só os grupos com dado; filtro De/Até com 1826–1830 (Romantismo apagado como contexto); colunas novas no painel de colunas de Poemas; Estatísticas › Correntes literárias (Chart.js real, modo escuro, celular).
+
+## Hierarquia das Correntes literárias: etapa 1 pronta (03/10/2026)
+
+Detalhes em `status.md` (primeira entrada) e `decisoes.md` (seção "Divisões de uma corrente").
+
+- **Próximos passos, em ordem:** (1) ~~seed das fases do Romantismo~~ feito em 03/10/2026 (ver `decisoes.md`): o Victor revisa as datas de Portugal (3ª geração 1860-1865 no seed, 1860-1870 no texto dele) e decide se quer vertentes da prosa de Portugal e teatro; (2) ~~filtros e busca que incluem as divisões~~ feito em 03/10/2026 (busca hierárquica, `movimentodireto:`, "Ver" somando as divisões); resta o filtro de período da lista de correntes conhecer a hierarquia; (2b) ~~filtros de Tipo, Região, Programa e Postura na aba~~ feito em 03/10/2026 (valor efetivo, pai como contexto, ver `decisoes.md`), e o Victor confere se prefere pai apagado como contexto ou lista achatada com filtro ativo; (3) coluna, busca e Estatísticas de Postura e Programa, usando a postura efetiva; (4) escolha da divisão nos campos de corrente de Autor, Poema e Prosa, se o campo livre por nome não bastar.
+- **Conferir no navegador:** Cadastros › Correntes literárias › Novo: escolher "Faz parte de", ver Divisão e "Aplica-se a" habilitarem; salvar e ver o card recuado abaixo do pai, com postura e programa herdados; excluir o pai e ver as divisões subirem, com Desfazer.
+
+## Postura estética em Movimento/Escola: pronta (03/10/2026)
+
+Detalhes em `status.md` (primeira entrada), `decisoes.md` e `schema.md` (última seção).
+
+- **Pendente (pedido do Victor em 03/10/2026):** coluna, busca e Estatísticas da postura (e do Programa), a fazer **depois** de decidir como cadastrar fases, gerações e vertentes, porque a leitura "postura efetiva" e a contagem com sublocais dependem da hierarquia. Também falta o Victor revisar uma proposta de Programa para os 22 movimentos de fábrica. Proposta de hierarquia em discussão (ver `decisoes.md`, última seção).
+- **Conferir no navegador:** abrir Cadastros › Correntes literárias (antes Movimento/Escola; o Programa agora tem Tendência e Não se aplica e os 22 vêm preenchidos), editar um movimento, escolher uma postura, salvar e ver no card e em "Ver"; a legenda no modo escuro e no celular.
+
+## Personagens, etapa 1: pronta (03/10/2026)
+
+Detalhes em `status.md` (primeira entrada), `decisoes.md` (F11-D1 a D8) e `schema.md` (`db.personagens`).
+
+- **Suíte 2429/0 (03/10/2026).** Os dois testes antigos que falhavam foram corrigidos: `temas-texto-editor` esperava o campo oculto sem `assuntosExcluidos`, e `assunto-excecao-dom` clicava num `onclick` inline, que o happy-dom não executa (a exceção de Assunto não tem bug; a nota antiga que suspeitava disso está superada). Prettier limpo.
+- **Planejamento:** `planejamento/` agora tem `plano-central.md`, as Fases 1 e 2 e a nova `fase-11-personagens.md`.
+- **Etapa 1b feita (04/10/2026):** identidade, vida e características no dado (sem tela). Ver `status.md`.
+- **Etapa 2 feita (04/10/2026):** aba Personagens em Cadastros, com modal e "Ver textos". Ver `status.md`.
+    - **Conferir no navegador (pelo Victor):** Cadastros › Personagens; Novo Personagem com gênero, orientação, cor/raça, anos, tags (Enter adiciona, × remove, autocomplete do que já existe) e nota do passado; salvar, reabrir e editar; óbito anterior ao nascimento deve ser recusado; busca e filtros; Ver textos num personagem que já esteja ligado a algum poema (a ligação pelo modal do texto já existe desde a 3b); excluir e Desfazer; modo escuro e celular.
+- **Etapa 3b feita (04/10/2026):** grupo Personagens nos modais de Poema e Prosa. Ver `status.md`.
+    - **Conferir no navegador (pelo Victor):** abrir um poema, grupo "Personagens"; digitar um nome existente e ver o cartão; marcar papéis (Menção sozinha desabilita a centralidade); abrir "Relação com este texto" e adicionar tags com Enter e vírgula; salvar, reabrir e ver tudo igual; digitar um nome novo e ver a confirmação; remover o cartão; Novo Poema abre o grupo vazio; o mesmo em Prosa; "Ver textos" na aba Personagens agora encontra o poema; modo escuro e celular.
+- **Etapa 3a feita (04/10/2026):** participação por livro no modal do Personagem. Ver `status.md`.
+    - **Conferir no navegador (pelo Victor):** Cadastros › Personagens › editar um personagem, seção "Participação por livro"; escolher um livro e uma coletânea; adicionar tags (Enter e vírgula); salvar e reabrir; ver a linha "participa de N livros" no cartão e a busca achando o título do livro; excluir um livro e ver a participação sumir, e o Desfazer devolver; modo escuro e celular.
+- **Próximo:** etapa 4, âncora do Eco e "Pessoa em comum" (ou a 5, busca por papel e centralidade). Desenho em `planejamento/fase-11-personagens.md`.
+- **Ponto aberto:** a Fase 11 corre em paralelo à Fase 1 (ainda em andamento). Personagem × Tema, na etapa 7, só faz sentido depois da aba Cruzamentos da Fase 1.
+- **Conferir no navegador (pelo Victor):** nada visível ainda. Só abrir o app, editar e salvar um poema qualquer e ver que nada quebra.
+
+## Seleção por página e estrelas de papel: pronto (01/10/2026)
+
+Pedido do Victor. Detalhes em `status.md` (primeira entrada).
+
+- **Falhas antigas dos dois testes (corrigidas em 03/10/2026, ver a seção de Personagens acima):** `assunto-excecao-dom` clicava num `onclick` inline que o happy-dom não executa (sem bug no app) e `temas-texto-editor` não esperava `assuntosExcluidos: []`.
+- **Conferir no navegador (pelo Victor):** com mais de uma página, clicar "Selecionar estes N" e de novo (desmarca); marcar a página à mão e ver o rótulo virar "Desselecionar"; "Selecionar restantes (M)" com e sem filtro ativo; as estrelas na coluna Tema e Assunto em claro e escuro (★ dourado x ☆ cinza).
+- **Decisão a confirmar:** "restantes" = o que a lista **filtrada** tem fora da página (não o acervo inteiro).
+
+## Exceção de Assunto por texto: pronta (01/10/2026)
+
+Pedido do Victor. Detalhes em `status.md` (primeira entrada), `decisoes.md` e `schema.md` ("Exceção de Assunto no texto").
+
+- **Uso:** no grupo "Temas e Assuntos" do modal, o seletor de cada Assunto ganhou **Não se aplica** (rótulo curto para não alargar o seletor; o Assunto riscado diz "não se aplica a este texto"). O Assunto aparece riscado com **Restaurar**; some das tabelas, busca, Estatísticas e exportações daquele texto.
+- **Regra combinada:** a exceção some junto se o Tema sair do texto ou deixar de levar àquele Assunto.
+- **Pendente de verificação:** `tests/assunto-excecao-dom.test.js` e `tests/assunto-papel.test.js` (DOM real) não rodaram na sessão por falta do happy-dom. Rodar `npm test` completo antes de seguir.
 
 ## Local de escrita em massa: pronto (30/09/2026)
 

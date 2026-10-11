@@ -34,7 +34,16 @@ import {
     escapeHtml,
     mostrarAviso,
     SINALIZACOES_CATEGORIAS,
+    todosSelecionados,
+    rotuloSelecaoEmLote,
 } from './utils.js';
+import {
+    nomesDeTemasDigitados,
+    sugestoesDeTemasEncadeadas,
+    temasInexistentes,
+    adicionarTemasAosTextos,
+    removerTemasDosTextos,
+} from './temas.js';
 import {
     CAMPOS_PREENCHIVEIS,
     obterCampoPreenchivel,
@@ -177,21 +186,74 @@ export function limparSelecao(tabela) {
     c.render();
 }
 
-// Soma os ids da página atual (`idsPagina`, vindos do botão "Selecionar
-// estes N" na barra de paginação — ver montarPaginacao em celulas-tabela.js)
-// à seleção existente. Sempre aditivo, mesmo espírito do checkbox de
-// cabeçalho e do shift-click — não existe um "substituir" próprio aqui de
-// propósito: já dá pra fazer isso com Limpar seleção → Selecionar esta
-// página (2 cliques com peças que já existem), sem precisar de um segundo
-// controle — decisão registrada na conversa de projeto.
+// Inverte a seleção da lista que a tela mostra agora (filtros e busca
+// incluídos): quem estava marcado é desmarcado e quem não estava é
+// marcado. O que está fora da lista visível não é tocado (mesmo recorte de
+// "Selecionar todos"). Serve para aplicar uma ação aos casos de exceção e
+// depois ao restante: marca-se as exceções, aplica, inverte, aplica de novo.
+export function inverterSelecao(tabela) {
+    const c = cfg(tabela);
+    c.getListaVisivel().forEach(({ id }) => {
+        if (c.selecao.has(id)) c.selecao.delete(id);
+        else c.selecao.add(id);
+    });
+    c.render();
+}
+
+// Alterna a seleção dos ids da página atual (`idsPagina`, vindos do botão
+// "Selecionar estes N" na barra de paginação — ver montarPaginacao em
+// celulas-tabela.js): se a página inteira já está selecionada, desmarca só
+// ela; senão soma o que falta à seleção existente (nunca tira o que veio de
+// outras páginas). Pra "substituir" a seleção continua valendo Limpar seleção
+// → Selecionar esta página.
 export function selecionarPagina(tabela, idsPagina) {
     const c = cfg(tabela);
-    idsPagina.forEach((id) => c.selecao.add(id));
+    if (todosSelecionados(idsPagina, c.selecao)) idsPagina.forEach((id) => c.selecao.delete(id));
+    else idsPagina.forEach((id) => c.selecao.add(id));
     c.render();
+}
+
+// Ids da lista filtrada atual que não estão na página exibida (`idsPagina`).
+function idsRestantesDaLista(tabela, idsPagina) {
+    const naPagina = new Set(idsPagina);
+    return cfg(tabela)
+        .getListaVisivel()
+        .map((item) => item.id)
+        .filter((id) => !naPagina.has(id));
+}
+
+// "Selecionar restantes": mesma alternância de selecionarPagina, mas sobre o
+// que a lista filtrada tem fora da página na tela (todas as outras páginas).
+export function selecionarRestantes(tabela, idsPagina) {
+    const c = cfg(tabela);
+    const restantes = idsRestantesDaLista(tabela, idsPagina);
+    if (todosSelecionados(restantes, c.selecao)) restantes.forEach((id) => c.selecao.delete(id));
+    else restantes.forEach((id) => c.selecao.add(id));
+    c.render();
+}
+
+// Reescreve o rótulo dos dois botões da paginação ("Selecionar/Desselecionar
+// estes N" e "... restantes (M)") depois de marcar/desmarcar uma linha à mão,
+// que não re-renderiza a tabela. Sem isso o botão diria "Selecionar" com a
+// página toda já marcada, e o clique desmarcaria.
+function atualizarBotoesSelecaoEmLote(tabela) {
+    const c = cfg(tabela);
+    document.querySelectorAll(`[data-action="selecionar-pagina-${tabela}"]`).forEach((btn) => {
+        btn.textContent = rotuloSelecaoEmLote(
+            'pagina',
+            btn.dataset.ids.split(',').map(Number),
+            c.selecao,
+        );
+    });
+    document.querySelectorAll(`[data-action="selecionar-restantes-${tabela}"]`).forEach((btn) => {
+        const restantes = idsRestantesDaLista(tabela, btn.dataset.ids.split(',').map(Number));
+        btn.textContent = rotuloSelecaoEmLote('restantes', restantes, c.selecao);
+    });
 }
 
 export function atualizarBarraSelecao(tabela) {
     const c = cfg(tabela);
+    atualizarBotoesSelecaoEmLote(tabela);
     const barra = document.getElementById(`barra-acoes-${tabela}`);
     const contador = document.getElementById(`contador-selecao-${tabela}`);
     if (!barra) return;
@@ -331,7 +393,7 @@ export function aplicarSinalEmMassa(tabela) {
     abrirModalConfirmacao({
         titulo: `Marcar "${tag}"`,
         rotulo: 'Ação em massa',
-        mensagem: `Isso vai adicionar a sinalização "${tag}" a ${n} ${rotuloSelecao(tabela, n)}.`,
+        mensagem: `Isso vai adicionar a etiqueta "${tag}" a ${n} ${rotuloSelecao(tabela, n)}.`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#2563eb',
         // Ação aditiva — ver nota em aplicarPessoaEmMassa/abrirModalConfirmacao.
@@ -360,7 +422,7 @@ export function removerSinalEmMassa(tabela) {
     abrirModalConfirmacao({
         titulo: `Remover "${tag}"`,
         rotulo: 'Ação em massa',
-        mensagem: `Isso vai remover a sinalização "${tag}" de ${n} ${rotuloSelecao(tabela, n)}.`,
+        mensagem: `Isso vai remover a etiqueta "${tag}" de ${n} ${rotuloSelecao(tabela, n)}.`,
         textoConfirmar: 'Remover',
         corConfirmar: '#dc2626',
         onConfirmar: () => {
@@ -370,6 +432,133 @@ export function removerSinalEmMassa(tabela) {
             if (input) input.value = '';
             c.selecao.clear();
             save();
+        },
+    });
+}
+
+// ─── Temas em massa ───────────────────────────────────
+// Botão "Temas ▾" da barra: painel com um campo que aceita VÁRIOS temas
+// separados por vírgula, aplicados (ou removidos) numa confirmação só. A
+// escrita é por id, pelo cadastro (ver adicionarTemasAosTextos em
+// temas.js), então um tema novo é criado no cadastro e os papéis que o
+// texto já tinha ficam como estão. Tema NÃO é mais uma categoria das
+// Etiquetas aqui (ver o seletor de categoria da barra).
+const idsTemas = (c) => ({
+    input: `bulk-tema-input${c.sufixoDom}`,
+    sugestoes: `sugestoes-temas-bulk${c.sufixoDom}`,
+});
+
+function nomesTemasCadastrados() {
+    return (db.temas || []).map((t) => t.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// Refaz as sugestões do campo a cada tecla (cada opção leva o que já foi
+// digitado antes da última vírgula); ver sugestoesDeTemasEncadeadas.
+export function atualizarSugestoesTemasMassa(tabela) {
+    const ids = idsTemas(cfg(tabela));
+    const input = document.getElementById(ids.input);
+    const datalist = document.getElementById(ids.sugestoes);
+    if (!input || !datalist) return;
+    datalist.innerHTML = sugestoesDeTemasEncadeadas(input.value, nomesTemasCadastrados())
+        .map((v) => `<option value="${escapeHtml(v)}"></option>`)
+        .join('');
+}
+
+// Chamado ao abrir o painel: o cadastro pode ter mudado desde a última vez.
+export function prepararPainelTemasMassa(tabela) {
+    atualizarSugestoesTemasMassa(tabela);
+}
+
+function listaTemasParaMensagem(nomes) {
+    const entre = nomes.map((n) => `"${n}"`);
+    if (entre.length <= 1) return entre.join('');
+    return `${entre.slice(0, -1).join(', ')} e ${entre[entre.length - 1]}`;
+}
+
+function lerTemasDigitados(tabela) {
+    const ids = idsTemas(cfg(tabela));
+    const input = document.getElementById(ids.input);
+    return { input, nomes: nomesDeTemasDigitados(input?.value) };
+}
+
+export function aplicarTemaEmMassa(tabela) {
+    const c = cfg(tabela);
+    const { input, nomes } = lerTemasDigitados(tabela);
+    if (!nomes.length)
+        return mostrarAviso('Digite ao menos um tema (vários, separados por vírgula).');
+    if (c.selecao.size === 0) return;
+
+    const n = c.selecao.size;
+    const novos = temasInexistentes(db, nomes);
+    const aviso = novos.length
+        ? ` ${novos.length === 1 ? 'O tema' : 'Os temas'} ${listaTemasParaMensagem(novos)} ainda não ${novos.length === 1 ? 'existe' : 'existem'} no cadastro e ser${novos.length === 1 ? 'á criado' : 'ão criados'}.`
+        : '';
+    abrirModalConfirmacao({
+        titulo:
+            nomes.length === 1
+                ? `Adicionar o tema "${nomes[0]}"`
+                : `Adicionar ${nomes.length} temas`,
+        rotulo: 'Ação em massa',
+        mensagem: `Isso vai adicionar ${listaTemasParaMensagem(nomes)} a ${n} ${rotuloSelecao(tabela, n)}. Quem já tem o tema não muda.${aviso}`,
+        textoConfirmar: 'Aplicar',
+        corConfirmar: '#e11d48',
+        // Ação puramente aditiva: foca Confirmar pro Enter encadear.
+        focarConfirmar: true,
+        onConfirmar: () => {
+            const itens = db[tabela].filter((item) => c.selecao.has(item.id));
+            const r = adicionarTemasAosTextos(db, itens, nomes);
+            if (input) input.value = '';
+            c.selecao.clear();
+            save();
+            mostrarAviso(
+                r.vinculos
+                    ? `${r.vinculos} vínculo${r.vinculos !== 1 ? 's' : ''} de tema em ${r.textos} ${r.textos !== 1 ? 'textos' : 'texto'}.`
+                    : 'Todos os selecionados já tinham esses temas.',
+                r.vinculos ? 'sucesso' : 'info',
+            );
+        },
+    });
+}
+
+export function removerTemaEmMassa(tabela) {
+    const c = cfg(tabela);
+    const { input, nomes } = lerTemasDigitados(tabela);
+    if (!nomes.length)
+        return mostrarAviso('Digite ao menos um tema (vários, separados por vírgula).');
+    if (c.selecao.size === 0) return;
+
+    const conhecidos = nomes.filter((nome) => !temasInexistentes(db, [nome]).length);
+    if (!conhecidos.length) {
+        // Nome sem registro no cadastro: nada a remover (e remover nunca cria).
+        if (input) input.value = '';
+        return mostrarAviso(
+            `${nomes.length === 1 ? 'Esse tema não existe' : 'Esses temas não existem'} no cadastro.`,
+            'info',
+        );
+    }
+
+    const n = c.selecao.size;
+    abrirModalConfirmacao({
+        titulo:
+            conhecidos.length === 1
+                ? `Remover o tema "${conhecidos[0]}"`
+                : `Remover ${conhecidos.length} temas`,
+        rotulo: 'Ação em massa',
+        mensagem: `Isso vai remover ${listaTemasParaMensagem(conhecidos)} de ${n} ${rotuloSelecao(tabela, n)}. ${conhecidos.length === 1 ? 'O tema continua' : 'Os temas continuam'} no cadastro (aba Temas).`,
+        textoConfirmar: 'Remover',
+        corConfirmar: '#dc2626',
+        onConfirmar: () => {
+            const itens = db[tabela].filter((item) => c.selecao.has(item.id));
+            const r = removerTemasDosTextos(db, itens, conhecidos);
+            if (input) input.value = '';
+            c.selecao.clear();
+            save();
+            mostrarAviso(
+                r.vinculos
+                    ? `${r.vinculos} vínculo${r.vinculos !== 1 ? 's' : ''} de tema removido${r.vinculos !== 1 ? 's' : ''} de ${r.textos} ${r.textos !== 1 ? 'textos' : 'texto'}.`
+                    : 'Nenhum dos selecionados tinha esses temas.',
+                r.vinculos ? 'sucesso' : 'info',
+            );
         },
     });
 }

@@ -56,9 +56,33 @@ export function getListaVisivelAutores() {
     return filtrarAutores(ordenados, filtroAutores, opcoesBuscaAutores);
 }
 
-export function toggleSelecaoAutor(id, checked) {
+// Âncora do último checkbox clicado, pro shift-click estender a seleção
+// ao intervalo entre ele e este (mesmo padrão de toggleSelecao em
+// selecao-massa.js e de toggleSelecaoPessoa em pessoas-acoes.js). O
+// intervalo é o que está entre as duas linhas na lista visível (ordem
+// alfabética, já recortada pela busca). Se a âncora saiu da lista
+// visível, cai pro clique simples.
+let ultimoCheckAutor = null;
+
+export function toggleSelecaoAutor(id, checked, shiftKey = false) {
+    if (shiftKey && ultimoCheckAutor !== null && ultimoCheckAutor !== id) {
+        const visiveis = getListaVisivelAutores().map((a) => a.id);
+        const iAncora = visiveis.indexOf(ultimoCheckAutor);
+        const iAtual = visiveis.indexOf(id);
+        if (iAncora !== -1 && iAtual !== -1) {
+            const [ini, fim] = iAncora < iAtual ? [iAncora, iAtual] : [iAtual, iAncora];
+            visiveis.slice(ini, fim + 1).forEach((aid) => {
+                if (checked) selecaoAutores.add(aid);
+                else selecaoAutores.delete(aid);
+            });
+            ultimoCheckAutor = id;
+            renderAutores();
+            return;
+        }
+    }
     if (checked) selecaoAutores.add(id);
     else selecaoAutores.delete(id);
+    ultimoCheckAutor = id;
     renderAutores();
 }
 
@@ -74,6 +98,16 @@ export function toggleSelecaoTodosAutores(checked) {
 
 export function limparSelecaoAutores() {
     selecaoAutores.clear();
+    renderAutores();
+}
+
+// Inverte a seleção dos autores que a busca atual mostra; quem está fora
+// da lista visível não é tocado.
+export function inverterSelecaoAutores() {
+    getListaVisivelAutores().forEach(({ id }) => {
+        if (selecaoAutores.has(id)) selecaoAutores.delete(id);
+        else selecaoAutores.add(id);
+    });
     renderAutores();
 }
 

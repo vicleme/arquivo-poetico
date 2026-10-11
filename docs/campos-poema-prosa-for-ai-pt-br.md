@@ -30,7 +30,7 @@ parecem mas não são a mesma coisa, casos especiais, campos derivados.
 Consulte o doc dedicado sempre que a tarefa realmente depender de acertar
 essa distinção.
 
-- **Sinalizações** (`sinalizacoesTradicao`, `sinalizacoesEstilo`,
+- **Etiquetas** (antes "Sinalizações"; chaves `sinalizacoesTradicao`, `sinalizacoesEstilo`,
   `sinalizacoesTema`, `sinalizacoesTerritorialidade`,
   `sinalizacoesRelacao`, `sinalizacoesSensibilidade`,
   `sinalizacoesTom`, `sinalizacoesDominioImagetico`,
@@ -46,12 +46,22 @@ essa distinção.
   na exportação) — só as sobrescritas. O Assunto herda o papel dos Temas do
   texto; a entrada existe quando a pessoa fixou outro papel para aquele Assunto
   no texto. Sem entrada, siga o papel dos Temas.
+- **Exceções de Assunto** (`assuntosExcluidos`: lista de `{ assuntoId, nome }`,
+  na exportação) — Assuntos que a pessoa tirou deste texto ("não se aplica a
+  este texto"), mesmo que um dos Temas dele pertença a eles. Um Tema pode estar
+  em vários Assuntos, mas um texto específico pode caber só em um. O Assunto
+  continua no cadastro e o Tema continua no texto; só este texto deixa de contar
+  naquele Assunto. Trate o Assunto listado aqui como ausente do texto.
 - **Transtextualidade e Referências** (`intertextualidade`,
   `hipertextualidade`, `referenciasExternas`) — diálogo com obras e fatos
   externos ao acervo. Ver `transtextualidade-referencias-for-ai.md`.
 - **Pessoas** (`pessoas`, e como isso se diferencia de `autoria` e
   `gruposDiretos`) — vínculo com pessoas cadastradas e os papéis que elas
   exercem no texto. Ver `pessoas-papeis-for-ai.md`.
+- **Personagens** (`personagens`) — vínculo com Personagens cadastrados (o
+  que o autor criou ou reinterpretou), com papéis, centralidade e tags de
+  relação com o texto. Não se confunde com Pessoas nem com Referências.
+  Ver `personagens-for-ai.md`.
 - **Sonoridade** — não é um campo de Poema/Prosa, é uma aba/entidade à
   parte (`db.escansoes`, um registro por poema). Ver `sonoridade-for-ai.md`
   pra interpretar dados já preenchidos, ou `scansion-for-ai.md` pra pedir
@@ -139,7 +149,8 @@ Como ler:
   `dataPublicacao` for anterior a `dataEscrita`.
 - **`ano`**: cópia de `dataEscrita.ano`, mantida só por compatibilidade
   com ordenação/estatísticas/exportação antigas — não edite direto, é
-  derivado de `dataEscrita`.
+  derivado de `dataEscrita`. Texto antigo que só tinha `ano` ganha
+  `dataEscrita: { ano, exata: false }` na carga (`migrarAnoParaDataEscrita`).
 - **`epocaRetratada`**: intervalo de tempo que o texto retrata (não é
   quando foi escrito) — `{ epocaId, inicio, fim, recorte, na }`. Aponta
   pro cadastro central `db.epocas`. `recorte` é `"momento"` |
@@ -156,7 +167,7 @@ Como ler:
   Pandemia de Covid-19). Id único que aponta pro cadastro central
   `db.periodosHistoricos`; coexiste com `epocaRetratada`, os dois podem
   estar preenchidos ao mesmo tempo. Vazio (`null`) = não informado.
-- **`movimentosEscolasIds`**: **Movimento/Escola** — array de ids (0 a N)
+- **`movimentosEscolasIds`**: **Corrente literária** (antes Movimento/Escola) — array de ids (0 a N)
   do cadastro central `db.movimentosEscolas` (ex.: Romantismo, Simbolismo,
   Modernismo). Um texto pode não se encaixar em nenhum ou caber em mais
   de um.
@@ -170,14 +181,30 @@ Como ler:
 Vínculos com outros textos do próprio acervo, por id (`conceitos.elos`,
 `conceitos.ecos`):
 
-- **Elos** (bilateral): `{ id, poemaId, relacao, direcao, texto }`.
-  `relacao` vem de uma lista fechada (Reescrita, Continuidade, Tradução,
-  Variação, Versão, Resposta, Díptico, Outro). `direcao` é `"origem"`
-  (texto mais antigo/base) ou `"destino"` (texto derivado/mais novo).
-- **Ecos** (sempre unidirecional, do mais novo pro mais antigo): só
-  `{ id, poemaId, tipo, texto }`, sem `direcao`. `tipo` vem de lista
-  fechada (Personagem em comum, Imagem central compartilhada, Aceno a,
-  Outro).
+- **Elos** (bilateral): `{ id, relacao, direcao, texto }`, em que `id` é o
+  do **texto-alvo** (não existe `poemaId`). `relacao` vem de uma lista
+  fechada (Reescrita, Continuidade, Tradução, Variação, Versão, Resposta,
+  Díptico, Outro). `direcao` é `"origem"` (texto mais antigo/base) ou
+  `"destino"` (texto derivado/mais novo).
+- **Ecos** (sempre unidirecional, do mais novo pro mais antigo): `{ id,
+tipo, texto, ancoras? }`, sem `direcao`, em que `id` é o do texto-alvo.
+  `tipo` vem de lista fechada (Personagem em comum, Pessoa em comum,
+  Imagem central compartilhada, Aceno a, Outro).
+- **`ancoras`** (opcional, só em Eco): lista de `{ especie, id }`, quem
+  sustenta a ligação. `especie` é `"personagem"` ou `"pessoa"`, e o `tipo`
+  decide qual vale: "Personagem em comum" só aceita âncoras de personagem,
+  "Pessoa em comum" só de pessoa, e os outros tipos não têm âncora. Na
+  exportação cada âncora leva também `nome`, porque o id não vale em outro
+  acervo. Um Eco sem `ancoras` é válido (a ligação existe, o autor só não
+  registrou quem a sustenta). **Presença do mesmo Personagem ou da mesma
+  Pessoa em dois textos não cria Eco**: a âncora só documenta o motivo de
+  um Eco que o autor já decidiu criar. Se um vínculo sai de um dos textos
+  depois, a âncora continua no Eco com um aviso, então confira nos dois
+  textos antes de afirmar que a figura ainda está nos dois.
+- **`alvoTitulo`**: na exportação, cada Elo e Eco leva também o título do
+  texto-alvo, porque o `id` só vale no acervo de origem. Para identificar o
+  alvo num arquivo exportado, use `alvoTitulo`, não `id`. Se `alvoTitulo`
+  faltar, o alvo não foi encontrado ou o arquivo é antigo.
 
 **Atenção a um nome ambíguo**: este `ecos` (`conceitos.ecos`, vínculo
 entre textos do acervo) não tem nenhuma relação com `es.ecos` do registro
@@ -274,8 +301,8 @@ processo:
 
 ## Resumo para uso prático
 
-1. Se a tarefa envolve Sinalizações, Transtextualidade/Referências,
-   Pessoas/Papéis ou Sonoridade, use o doc dedicado — este arquivo só
+1. Se a tarefa envolve Etiquetas, Transtextualidade/Referências,
+   Pessoas/Papéis, Personagens ou Sonoridade, use o doc dedicado — este arquivo só
    resume esses grupos o suficiente pra você saber que existem.
 2. Não confunda `conceitos.ecos` (vínculo entre textos, Intratextualidade)
    com `es.ecos` de Sonoridade (ecos sonoros) — nomes iguais, campos

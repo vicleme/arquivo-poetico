@@ -143,7 +143,16 @@ export async function toggleModal(id) {
 
     await garantirModal(id);
     const elCarregado = document.getElementById(id);
-    if (elCarregado) abrirEFocar(id, elCarregado);
+    if (elCarregado) {
+        // Abrir é o ponto zero do rastreador: tudo que o formulário recebeu até
+        // aqui (editarPoema/prepararNovo preenchendo campos, resets pós-salvar)
+        // é estado inicial, não edição. Vários campos ocultos (temas, locais,
+        // idiomas, chips de personagem...) disparam 'input'/'change' ao serem
+        // sincronizados — inclusive no carregamento do item —, e sem este
+        // reset abrir e fechar sem mexer em nada pedia confirmação.
+        entrada?.rastreador?.marcarLimpo();
+        abrirEFocar(id, elCarregado);
+    }
 }
 
 // ─── Atalhos de teclado globais ──────────────────────────────

@@ -29,8 +29,8 @@ import {
     navegarParaLista,
     tipoDestino,
     bindDrillDownBarra,
+    seletorOcultos,
 } from './estatisticas-tela-comum.js';
-import { seletorOcultos } from './estatisticas-tela-temas-pessoas.js';
 import { consultaBuscaDoLocal } from './locais.js';
 import { escapeHtml } from './utils.js';
 import { db } from './db.js';
@@ -114,6 +114,10 @@ function renderGraficoLocal(campo, total) {
     const modo = getModoLocalEstatisticas(campo);
     const base = agregarPorLocal({ campo });
     const idPorRotulo = new Map(base.labels.map((l, i) => [l, base.ids[i]]));
+    // Local que aparece pelo apelido mostra o nome completo ao passar o mouse.
+    const titulos = new Map(
+        base.labels.map((l, i) => [l, base.nomes[i]]).filter(([, nome]) => nome),
+    );
     const cortado = filtrarPorIntervalo(base, getMinimoAparicoes(cfg.chaveOcultos) || '', '');
     const visivel = filtrarOcultos(cortado, getOcultosGrafico(cfg.chaveOcultos));
     criarBarChart(
@@ -122,6 +126,7 @@ function renderGraficoLocal(campo, total) {
         visivel.data.slice(0, TOP_LOCAIS),
         cfg.cor,
         total,
+        titulos,
     );
     montarPainel(cfg.painelControles, seletorControlesLocal(campo, cfg));
     montarPainel(
@@ -142,7 +147,7 @@ function seletorLocalAssuntos(opcoes, atual) {
         `<option value="">Todos os textos com local de escrita</option>`,
         ...opcoes.map(
             (o) =>
-                `<option value="${escapeHtml(o.id)}" ${o.id === atual ? 'selected' : ''}>${escapeHtml(o.rotulo)} (${o.n})</option>`,
+                `<option value="${escapeHtml(o.id)}" ${o.id === atual ? 'selected' : ''}${o.nome ? ` title="${escapeHtml(o.nome)}"` : ''}>${escapeHtml(o.rotulo)} (${o.n})</option>`,
         ),
     ].join('');
     return `<div class="flex items-center gap-2 flex-wrap"><span class="text-[11px] text-gray-500 dark:text-slate-400">Escritos em:</span><select onchange="definirLocalAssuntosEscrita(this.value)" style="width:auto;margin:0">${lista}</select></div>`;

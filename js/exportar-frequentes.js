@@ -407,7 +407,7 @@ function opcoesDeCampo() {
     };
     const sinalizacoes = Object.entries(SINALIZACOES_CATEGORIAS).map(([slug, campo]) => ({
         campo,
-        rotulo: `Sinalização: ${rotulosPorCampo[slug] || slug}`,
+        rotulo: `Etiqueta: ${rotulosPorCampo[slug] || slug}`,
     }));
     return [
         { campo: 'pessoa', rotulo: 'Pessoa (dedicado)' },

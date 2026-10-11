@@ -33,6 +33,7 @@ import {
     renderMoldes,
 } from './render-listas.js';
 import { renderLocais } from './ui-locais.js';
+import { renderPersonagens } from './ui-personagens.js';
 import { popularSeletorEstrutura, renderEstrutura } from './render-estrutura.js';
 
 export function renderLists() {
@@ -40,6 +41,7 @@ export function renderLists() {
     renderPartes();
     renderSecoes();
     renderPessoas();
+    renderPersonagens();
     renderGrupos();
     renderAutores();
     renderEpocas();

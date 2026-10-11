@@ -104,6 +104,13 @@ Practical rules for an AI reading this field:
   a fixed characteristic of the person — which groups they belong to —
   independent of the text. It doesn't vary poem to poem, unlike `papeis`,
   which is this specific text's link to that person.
+- **Characters** (`personagens`, a separate field): who the author
+  **created or reinterpreted**, in a separate registry (`db.personagens`),
+  with roles from their own list (Voz, Interlocutor, Aparição, Menção,
+  Alusão). Mind the difference in ordering: in `pessoas` the order of the
+  roles can indicate relevance; in `personagens` the system always
+  reorders the roles into a fixed order, so it indicates **nothing**. See
+  `personagens-for-ai.md`.
 - **"Public figure" under External References**: one of the suggested
   types in the `referenciasExternas` field (see the document on the
   Transtextuality and External References group) is free text, with no
@@ -128,3 +135,11 @@ When processing or commenting on the `pessoas` field of an exported item:
    the link as it is: present, with no role specified.
 4. Don't confuse this with Authorship (single role, different registry)
    or with Groups (a fixed property of the person, not of the text).
+
+5. Each `pessoas` entry in an exported JSON may also carry the registry
+   profile: `genero` (free text), `identidadeCisTrans` (`Cisgênero`,
+   `Transgênero` or `Não se aplica`) and `corRaca` (the Author's closed
+   list). **Empty means "not documented"**, never "cisgender" or "white":
+   do not infer these from the name, the role or the poem's context, and do
+   not use them to characterize the text unless the task asks. These fields
+   do not appear in the `.md`, the `.csv` or the Visualização.

@@ -193,7 +193,7 @@
                         <summary>
                             Períodos, Movimento e Inspiração
                             <span class="campo-grupo-dica"
-                                >(período biográfico, período histórico, movimento/escola,
+                                >(período biográfico, período histórico, corrente literária,
                                 inspiração)</span
                             >
                         </summary>
@@ -330,7 +330,7 @@
                             <datalist id="sugestoes-periodo-historico-nome"></datalist>
 
                             <label class="form-label mt-3"
-                                >Movimento/Escola
+                                >Corrente literária
                                 <span
                                     class="font-normal normal-case text-gray-400 dark:text-slate-500"
                                     >(0 a N — um texto pode não se encaixar bem em nenhum, ou caber
@@ -343,7 +343,7 @@
                                     id="p-movimento-escola-input"
                                     list="sugestoes-movimentos-escolas"
                                     class="text-sm flex-1"
-                                    placeholder="Nome do movimento/escola..."
+                                    placeholder="Nome da corrente literária..."
                                 />
                                 <datalist id="sugestoes-movimentos-escolas"></datalist>
                                 <button
@@ -598,7 +598,7 @@
                                 <select
                                     id="p-elo-relacao"
                                     class="text-xs w-28 flex-shrink-0"
-                                    onchange="onRelacaoEloAlterada()"
+                                    onchange="onRelacaoEloAlterada('poemas')"
                                 ></select>
                                 <select id="p-elo-poema" class="text-xs flex-1"></select>
                                 <button
@@ -612,7 +612,7 @@
                                 <button
                                     type="button"
                                     id="p-elo-btn-cancelar"
-                                    onclick="cancelarEdicaoElo()"
+                                    onclick="cancelarEdicaoElo('poemas')"
                                     class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
                                 >
                                     Cancelar
@@ -626,7 +626,7 @@
                                 <button
                                     type="button"
                                     id="p-elo-direcao-origem"
-                                    onclick="selecionarDirecaoElo('origem')"
+                                    onclick="selecionarDirecaoElo('poemas', 'origem')"
                                     class="elo-direcao-btn text-xs flex-1 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-gray-500 dark:text-slate-400"
                                 >
                                     Origem
@@ -634,7 +634,7 @@
                                 <button
                                     type="button"
                                     id="p-elo-direcao-destino"
-                                    onclick="selecionarDirecaoElo('destino')"
+                                    onclick="selecionarDirecaoElo('poemas', 'destino')"
                                     class="elo-direcao-btn text-xs flex-1 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 text-gray-500 dark:text-slate-400"
                                 >
                                     Destino
@@ -672,12 +672,17 @@
                                 <button
                                     type="button"
                                     id="p-eco-btn-cancelar"
-                                    onclick="cancelarEdicaoEco()"
+                                    onclick="cancelarEdicaoEco('poemas')"
                                     class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
                                 >
                                     Cancelar
                                 </button>
                             </div>
+                            <div
+                                id="p-eco-ancoras"
+                                data-eco-ancoras-tabela="poemas"
+                                class="hidden mb-2"
+                            ></div>
                             <input
                                 type="text"
                                 id="p-eco-texto"
@@ -1097,9 +1102,41 @@
                     </details>
 
                     <details class="campo-grupo">
-                        <summary>Sinalizações</summary>
+                        <summary>Etiquetas</summary>
                         <div class="campo-grupo-corpo">
                             <div id="p-sinalizacoes-corpo"></div>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>Personagens</summary>
+                        <div class="campo-grupo-corpo">
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-personagem-input"
+                                    list="p-sugestoes-personagens"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome do personagem..."
+                                    autocomplete="off"
+                                />
+                                <button
+                                    type="button"
+                                    onclick="adicionarPersonagem('poemas')"
+                                    class="bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <datalist id="p-sugestoes-personagens"></datalist>
+                            <div
+                                id="p-personagens-container"
+                                class="flex flex-col gap-2 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+                            <p class="text-[11px] text-gray-400 dark:text-slate-500 mt-1.5">
+                                Identidade, vida e características do personagem ficam na aba
+                                Personagens. Aqui fica só a relação dele com este texto.
+                            </p>
                         </div>
                     </details>
 

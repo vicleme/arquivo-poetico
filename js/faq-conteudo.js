@@ -28,6 +28,18 @@ export const CATEGORIAS_FAQ = [
                 resposta:
                     'Sim, localStorage e IndexedDB são apagados junto se você limpar os dados de navegação do site. Como não há backend guardando uma cópia em outro lugar, o hábito de baixar o JSON periodicamente é a sua rede de segurança.',
             },
+            {
+                id: 'faq-esvaziar-acervo',
+                pergunta: 'O que o recurso de esvaziar o acervo apaga?',
+                resposta:
+                    'Serve para recomeçar do zero, na aba Backup e recuperação (menu Dados). Você escolhe entre três caixas independentes: Dados (textos, livros e cadastros criados por você, capas, Versões Alternativas e os padrões de colunas salvos), Preferências (tema, colunas visíveis, itens por página, filtros e padrões das Estatísticas, templates de exportação e nomes de arquivo frequentes) e Cadastros pré-prontos (períodos, movimentos e templates que vêm de fábrica; os que algum texto usa só saem junto com os Dados). Nada é apagado antes da confirmação final: o app baixa um backup, tira um retrato de segurança e só libera o botão depois que você digita ESVAZIAR.',
+            },
+            {
+                id: 'faq-esvaziar-depois',
+                pergunta: 'Depois de esvaziar, dá para voltar atrás?',
+                resposta:
+                    'Dá, importando o backup que o app baixou na hora. Os retratos automáticos (os últimos 10, guardados no navegador) nunca são apagados e são a outra volta se o arquivo se perder, mas cada edição nova gasta uma vaga. Dois detalhes: os padrões de colunas salvos moram nos Dados e vão no backup, então só somem junto com eles, e não ao apagar só as Preferências; e, se houver outra aba do app aberta, ela avisa e recarrega sozinha para não trazer o acervo antigo de volta.',
+            },
         ],
     },
     {

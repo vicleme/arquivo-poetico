@@ -148,8 +148,9 @@ describe('legenda de busca no index.html', () => {
         assert.equal(vezes('<code>assuntoindefinido:</code>'), 2);
     });
 
-    it('o gráfico de Assuntos tem o painel do seletor de papel', () => {
+    it('o gráfico de Temas e Assuntos não tem mais seletor de papel (os três papéis vão empilhados)', () => {
         const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-        assert.match(html, /id="painel-papel-assunto"/);
+        assert.ok(!html.includes('painel-papel-assunto'));
+        assert.match(html, /id="grafico-temas-assuntos"/);
     });
 });

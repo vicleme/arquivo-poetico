@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex" />
+        <title>Cifra Mínima</title>
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+        />
+        <style>
+            html {
+                color-scheme: light;
+            }
+            body {
+                margin: 0;
+            }
+            [hidden] {
+                display: none !important;
+            }
+
+            /* Layout: uma coluna estreita, a música no topo, as cifras em lista que abre e fecha, as perguntas no fim. */
+            :root {
+                --bg: #f4f6f8;
+                --surface: #ffffff;
+                --ink: #1a2330;
+                --muted: #5b6776;
+                --line: #d6dce3;
+                --accent: #0b6b6f;
+                --accent-soft: #dff0f0;
+                --chord: #a3410f;
+                --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+                --font-mono:
+                    'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root:not([data-theme='light']) {
+                    --bg: #11171d;
+                    --surface: #19212a;
+                    --ink: #e6ebf0;
+                    --muted: #98a4b2;
+                    --line: #2d3945;
+                    --accent: #5cc4c8;
+                    --accent-soft: #1b3338;
+                    --chord: #f0a06a;
+                    color-scheme: dark;
+                }
+            }
+            :root[data-theme='dark'] {
+                --bg: #11171d;
+                --surface: #19212a;
+                --ink: #e6ebf0;
+                --muted: #98a4b2;
+                --line: #2d3945;
+                --accent: #5cc4c8;
+                --accent-soft: #1b3338;
+                --chord: #f0a06a;
+                color-scheme: dark;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                background: var(--bg);
+                color: var(--ink);
+                font-family: var(--font-body);
+                font-size: 15px;
+                line-height: 1.55;
+            }
+            main {
+                max-width: 760px;
+                margin: 0 auto;
+                padding-inline: 16px;
+                padding-block: 24px 48px;
+                display: grid;
+                gap: 24px;
+            }
+            h1 {
+                font-size: 1.7rem;
+                line-height: 1.2;
+                margin: 0 0 6px;
+                text-wrap: balance;
+            }
+            h2 {
+                font-size: 1.05rem;
+                margin: 0;
+            }
+            p {
+                margin: 0;
+            }
+            .lead {
+                color: var(--muted);
+                max-width: 65ch;
+            }
+            .aviso {
+                font-size: 0.85rem;
+                color: var(--muted);
+                border-left: 3px solid var(--accent);
+                padding-left: 10px;
+                max-width: 65ch;
+            }
+            .card {
+                background: var(--surface);
+                border: 1px solid var(--line);
+                border-radius: 6px;
+                padding: 16px;
+                display: grid;
+                gap: 14px;
+            }
+            .etiqueta {
+                font-size: 0.72rem;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: var(--muted);
+                font-weight: 600;
+            }
+            .campos {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+                gap: 12px;
+            }
+            .campo {
+                display: grid;
+                gap: 4px;
+                min-width: 0;
+            }
+            .campo label {
+                font-size: 0.8rem;
+                color: var(--muted);
+            }
+            .campo .dica {
+                font-size: 0.75rem;
+                color: var(--muted);
+            }
+            input[type='text'],
+            textarea {
+                width: 100%;
+                font: inherit;
+                color: var(--ink);
+                background: var(--bg);
+                border: 1px solid var(--line);
+                border-radius: 4px;
+                padding: 7px 9px;
+            }
+            textarea {
+                resize: vertical;
+                min-height: 5rem;
+            }
+            textarea.mono,
+            .mono {
+                font-family: var(--font-mono);
+                font-size: 0.85rem;
+                line-height: 1.5;
+                white-space: pre;
+                overflow-x: auto;
+            }
+            :focus-visible {
+                outline: 2px solid var(--accent);
+                outline-offset: 2px;
+            }
+            button {
+                font: inherit;
+                cursor: pointer;
+                border-radius: 4px;
+                border: 1px solid var(--line);
+                background: var(--surface);
+                color: var(--ink);
+                padding: 6px 12px;
+            }
+            button:hover {
+                border-color: var(--accent);
+            }
+            button.primario {
+                background: var(--accent);
+                border-color: var(--accent);
+                color: var(--bg);
+                font-weight: 600;
+            }
+            button.perigo {
+                color: var(--chord);
+            }
+            .linha-acoes {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                align-items: center;
+                justify-content: space-between;
+            }
+            details.cifras > summary {
+                list-style: none;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            details.cifras > summary::-webkit-details-marker {
+                display: none;
+            }
+            details.cifras > summary::before,
+            details.cifra > summary::before {
+                content: '+';
+                display: inline-grid;
+                place-items: center;
+                width: 20px;
+                height: 20px;
+                border: 1px solid var(--line);
+                border-radius: 4px;
+                font-family: var(--font-mono);
+                color: var(--accent);
+                flex: none;
+            }
+            details[open] > summary::before {
+                content: '\2212';
+            }
+            details.cifra {
+                border: 1px solid var(--line);
+                border-radius: 6px;
+                background: var(--bg);
+            }
+            details.cifra > summary {
+                list-style: none;
+                cursor: pointer;
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                gap: 4px 10px;
+                padding: 10px 12px;
+            }
+            details.cifra > summary::-webkit-details-marker {
+                display: none;
+            }
+            .rot {
+                font-weight: 600;
+            }
+            .meta {
+                color: var(--muted);
+                font-family: var(--font-mono);
+                font-size: 0.8rem;
+            }
+            .corpo {
+                display: grid;
+                gap: 12px;
+                padding: 4px 12px 14px;
+            }
+            .leitura {
+                background: var(--surface);
+                border: 1px solid var(--line);
+                border-radius: 4px;
+                padding: 12px;
+                overflow-x: auto;
+                max-width: 100%;
+            }
+            .leitura pre {
+                margin: 0;
+                font-family: var(--font-mono);
+                font-size: 0.88rem;
+                line-height: 1.55;
+            }
+            .ac {
+                color: var(--chord);
+                font-weight: 500;
+            }
+            .sec {
+                color: var(--accent);
+                font-weight: 500;
+            }
+            .opcao {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.85rem;
+                color: var(--muted);
+            }
+            .perguntas {
+                display: grid;
+                gap: 14px;
+            }
+            .pergunta {
+                display: grid;
+                gap: 4px;
+            }
+            .pergunta label {
+                font-weight: 500;
+            }
+            .resultado {
+                display: grid;
+                gap: 8px;
+            }
+            .estado {
+                font-size: 0.85rem;
+                color: var(--accent);
+                min-height: 1.3em;
+            }
+            @media (prefers-reduced-motion: no-preference) {
+                button {
+                    transition: border-color 0.15s;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <header>
+                <h1>Cifra Mínima</h1>
+                <p class="lead">
+                    Esta página mostra uma parte do Arquivo Poético, um app pessoal de poemas e
+                    prosas que pode passar a guardar letras de música. A parte mostrada aqui é a
+                    cifra: acordes colados do jeito que aparecem nos sites, guardados junto da
+                    música a que pertencem.
+                </p>
+            </header>
+
+            <p class="aviso">
+                Tudo abaixo é exemplo. A letra é inventada e os acordes são só para testar a tela.
+                Pode editar à vontade, colar uma cifra sua e mexer nos campos. O que você escrever
+                fica só neste navegador. No fim da página há perguntas para responder e copiar.
+            </p>
+
+            <section class="card" aria-labelledby="t-musica">
+                <span class="etiqueta">Música (exemplo)</span>
+                <div class="campos">
+                    <div class="campo">
+                        <label for="musica-titulo">Título</label>
+                        <input type="text" id="musica-titulo" value="Canção de exemplo" />
+                    </div>
+                    <div class="campo">
+                        <label for="musica-autoria">Compositor(a)</label>
+                        <input type="text" id="musica-autoria" value="Autoria fictícia" />
+                    </div>
+                </div>
+                <h2 id="t-musica" hidden>Música</h2>
+
+                <details class="cifras" id="lista-cifras" open>
+                    <summary><h2 id="titulo-cifras">Cifras (0)</h2></summary>
+                    <div style="display: grid; gap: 10px; margin-top: 12px">
+                        <div id="cifras"></div>
+                        <div class="linha-acoes">
+                            <button type="button" class="primario" id="add-cifra">
+                                Adicionar cifra
+                            </button>
+                            <button type="button" id="restaurar">Voltar ao exemplo</button>
+                        </div>
+                    </div>
+                </details>
+            </section>
+
+            <section class="card" aria-labelledby="t-aval">
+                <h2 id="t-aval">Perguntas para quem toca</h2>
+                <p class="lead">
+                    Responda só o que fizer sentido. Cada resposta ajuda a decidir o que entra na
+                    versão real.
+                </p>
+                <div class="perguntas">
+                    <div class="pergunta">
+                        <label for="q-nome">Seu nome (opcional)</label>
+                        <input type="text" id="q-nome" />
+                    </div>
+                    <div class="pergunta">
+                        <label for="q-formato"
+                            >1. Acordes numa linha e letra na linha de baixo é o formato que você
+                            usa e encontra por aí? Algo estranho ao colar?</label
+                        >
+                        <textarea id="q-formato"></textarea>
+                    </div>
+                    <div class="pergunta">
+                        <label for="q-campos"
+                            >2. Faltam campos? Por exemplo afinação, andamento, levada (o ritmo da
+                            mão que toca), tom original da música.</label
+                        >
+                        <textarea id="q-campos"></textarea>
+                    </div>
+                    <div class="pergunta">
+                        <label for="q-tom"
+                            >3. Tom e capotraste estão claros do jeito que aparecem? Para quem está
+                            começando no violão, o que mais ajudaria ver na cifra?</label
+                        >
+                        <textarea id="q-tom"></textarea>
+                    </div>
+                    <div class="pergunta">
+                        <label for="q-destaque"
+                            >4. O destaque de cor nos acordes ajuda ou atrapalha? Ele erra em algum
+                            caso?</label
+                        >
+                        <textarea id="q-destaque"></textarea>
+                    </div>
+                    <div class="pergunta">
+                        <label for="q-versoes"
+                            >5. Que nomes de versão você usa ou gostaria de ter (original,
+                            simplificada, outro tom, com pestana, sem pestana...)?</label
+                        >
+                        <textarea id="q-versoes"></textarea>
+                    </div>
+                    <div class="pergunta">
+                        <label for="q-outro"
+                            >6. Qualquer outra coisa que você viu e não está aqui.</label
+                        >
+                        <textarea id="q-outro"></textarea>
+                    </div>
+                </div>
+                <div class="resultado">
+                    <div class="linha-acoes">
+                        <button type="button" class="primario" id="copiar">
+                            Copiar minhas respostas
+                        </button>
+                        <span class="estado" id="estado" role="status"></span>
+                    </div>
+                    <textarea
+                        id="saida"
+                        class="mono"
+                        rows="6"
+                        readonly
+                        hidden
+                        aria-label="Respostas prontas para copiar"
+                    ></textarea>
+                </div>
+            </section>
+        </main>
+
+        <script>
+            (function () {
+                var CHAVE = 'cifra-minima-v1';
+                var EXEMPLO = [
+                    {
+                        rotulo: 'Original',
+                        tom: 'Am',
+                        capo: '0',
+                        fonte: 'Exemplo inventado, sem fonte real',
+                        texto: '[Intro]\nAm   G   C   F\n\n[Estrofe]\nAm                G\nEsta linha é um exemplo inventado\nC                 F\nSó para ver os acordes no lugar\nAm                G\nO acorde fica sobre a sílaba\nF                 E\nonde a mão troca de posição\n\n[Refrão]\nC        G\nTesta, testa, testa\nAm       F\nUma volta de cada vez\n',
+                        notas: 'Letra inventada para a demonstração.',
+                    },
+                    {
+                        rotulo: 'Simplificada',
+                        tom: 'Am',
+                        capo: '0',
+                        fonte: 'Exemplo inventado, sem fonte real',
+                        texto: '[Estrofe]\nAm                G\nEsta linha é um exemplo inventado\nC                 F\nSó para ver os acordes no lugar\n\n[Refrão]\nC        G\nTesta, testa, testa\nAm       F\nUma volta de cada vez\n',
+                        notas: 'Mesma música, só com os acordes principais.',
+                    },
+                ];
+                var cifras = [];
+                var respostas = {};
+                var destacar = true;
+                var CAMPOS_RESP = [
+                    'q-nome',
+                    'q-formato',
+                    'q-campos',
+                    'q-tom',
+                    'q-destaque',
+                    'q-versoes',
+                    'q-outro',
+                ];
+
+                function ler() {
+                    try {
+                        var bruto = localStorage.getItem(CHAVE);
+                        if (bruto) {
+                            var d = JSON.parse(bruto);
+                            if (d && Array.isArray(d.cifras)) {
+                                cifras = d.cifras;
+                                respostas = d.respostas || {};
+                                if (typeof d.destacar === 'boolean') destacar = d.destacar;
+                                return;
+                            }
+                        }
+                    } catch (e) {}
+                    cifras = JSON.parse(JSON.stringify(EXEMPLO));
+                }
+                function gravar() {
+                    try {
+                        localStorage.setItem(
+                            CHAVE,
+                            JSON.stringify({
+                                cifras: cifras,
+                                respostas: respostas,
+                                destacar: destacar,
+                            }),
+                        );
+                    } catch (e) {}
+                }
+
+                var ACORDE =
+                    /^[A-G][#b]?(?:maj|min|dim|aug|sus|add|m|M)?[0-9]*(?:\([^)]*\))?(?:\/[A-G][#b]?)?$/;
+                function esc(t) {
+                    return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                }
+                function renderTexto(texto) {
+                    return texto
+                        .split('\n')
+                        .map(function (linha) {
+                            var corte = linha.trim();
+                            if (!destacar || !corte) return esc(linha);
+                            if (/^\[[^\]]+\]$/.test(corte))
+                                return '<span class="sec">' + esc(linha) + '</span>';
+                            var fichas = corte.split(/\s+/);
+                            var soAcordes = fichas.every(function (f) {
+                                return ACORDE.test(f);
+                            });
+                            if (!soAcordes) return esc(linha);
+                            return esc(linha).replace(/\S+/g, function (f) {
+                                return '<span class="ac">' + f + '</span>';
+                            });
+                        })
+                        .join('\n');
+                }
+
+                var elLista = document.getElementById('cifras');
+                var elTitulo = document.getElementById('titulo-cifras');
+
+                function resumo(c) {
+                    var partes = [];
+                    if (c.tom) partes.push('tom ' + c.tom);
+                    if (c.capo && c.capo !== '0') partes.push('capotraste na casa ' + c.capo);
+                    return partes.join(' · ') || 'sem tom informado';
+                }
+
+                function campo(id, rotulo, valor, dica) {
+                    var w = document.createElement('div');
+                    w.className = 'campo';
+                    w.innerHTML =
+                        '<label for="' +
+                        id +
+                        '">' +
+                        rotulo +
+                        '</label><input type="text" id="' +
+                        id +
+                        '" value="">' +
+                        (dica ? '<span class="dica">' + dica + '</span>' : '');
+                    w.querySelector('input').value = valor || '';
+                    return w;
+                }
+
+                function montar(c, i, aberta) {
+                    var d = document.createElement('details');
+                    d.className = 'cifra';
+                    d.dataset.i = i;
+                    if (aberta) d.open = true;
+                    var s = document.createElement('summary');
+                    s.innerHTML = '<span class="rot"></span><span class="meta"></span>';
+                    d.appendChild(s);
+                    var corpo = document.createElement('div');
+                    corpo.className = 'corpo';
+                    var grade = document.createElement('div');
+                    grade.className = 'campos';
+                    grade.appendChild(
+                        campo(
+                            'c' + i + '-rotulo',
+                            'Versão (rótulo)',
+                            c.rotulo,
+                            'Ex.: original, simplificada',
+                        ),
+                    );
+                    grade.appendChild(
+                        campo('c' + i + '-tom', 'Tom', c.tom, 'Opcional, como Am ou G'),
+                    );
+                    grade.appendChild(
+                        campo('c' + i + '-capo', 'Capotraste (casa)', c.capo, '0 se não usa'),
+                    );
+                    grade.appendChild(
+                        campo('c' + i + '-fonte', 'Fonte', c.fonte, 'De onde a cifra foi copiada'),
+                    );
+                    corpo.appendChild(grade);
+
+                    var areaWrap = document.createElement('div');
+                    areaWrap.className = 'campo';
+                    areaWrap.innerHTML =
+                        '<label for="c' +
+                        i +
+                        '-texto">Texto da cifra (cole como vem do site)</label><textarea id="c' +
+                        i +
+                        '-texto" class="mono" rows="12" wrap="off" spellcheck="false"></textarea>';
+                    areaWrap.querySelector('textarea').value = c.texto || '';
+                    corpo.appendChild(areaWrap);
+
+                    var opc = document.createElement('label');
+                    opc.className = 'opcao';
+                    opc.innerHTML =
+                        '<input type="checkbox" class="destaque"' +
+                        (destacar ? ' checked' : '') +
+                        '> Destacar acordes (teste automático)';
+                    corpo.appendChild(opc);
+
+                    var leitura = document.createElement('div');
+                    leitura.className = 'leitura';
+                    leitura.innerHTML = '<pre class="pre"></pre>';
+                    corpo.appendChild(leitura);
+
+                    var nw = document.createElement('div');
+                    nw.className = 'campo';
+                    nw.innerHTML =
+                        '<label for="c' +
+                        i +
+                        '-notas">Notas</label><textarea id="c' +
+                        i +
+                        '-notas"></textarea>';
+                    nw.querySelector('textarea').value = c.notas || '';
+                    corpo.appendChild(nw);
+
+                    var acoes = document.createElement('div');
+                    acoes.className = 'linha-acoes';
+                    acoes.innerHTML =
+                        '<button type="button" class="perigo remover">Remover esta cifra</button>';
+                    corpo.appendChild(acoes);
+
+                    d.appendChild(corpo);
+                    atualizarCifra(d, c);
+                    return d;
+                }
+
+                function atualizarCifra(d, c) {
+                    d.querySelector('.rot').textContent = c.rotulo || 'Sem rótulo';
+                    d.querySelector('.meta').textContent = resumo(c);
+                    d.querySelector('.pre').innerHTML = renderTexto(c.texto || '');
+                }
+
+                function desenhar(abrir) {
+                    elLista.innerHTML = '';
+                    cifras.forEach(function (c, i) {
+                        elLista.appendChild(
+                            montar(c, i, abrir === i || (abrir == null && i === 0)),
+                        );
+                    });
+                    elTitulo.textContent = 'Cifras (' + cifras.length + ')';
+                    if (!cifras.length)
+                        elLista.innerHTML =
+                            '<p class="lead">Esta música ainda não tem cifra. Use "Adicionar cifra".</p>';
+                }
+
+                elLista.addEventListener('input', function (e) {
+                    var d = e.target.closest('details.cifra');
+                    if (!d) return;
+                    var i = +d.dataset.i,
+                        c = cifras[i];
+                    var id = e.target.id || '';
+                    var chave = id.replace(/^c\d+-/, '');
+                    if (chave === 'rotulo') c.rotulo = e.target.value;
+                    else if (chave === 'tom') c.tom = e.target.value;
+                    else if (chave === 'capo') c.capo = e.target.value;
+                    else if (chave === 'fonte') c.fonte = e.target.value;
+                    else if (chave === 'texto') c.texto = e.target.value;
+                    else if (chave === 'notas') c.notas = e.target.value;
+                    else return;
+                    atualizarCifra(d, c);
+                    gravar();
+                });
+
+                elLista.addEventListener('change', function (e) {
+                    if (!e.target.classList.contains('destaque')) return;
+                    destacar = e.target.checked;
+                    document.querySelectorAll('details.cifra').forEach(function (d) {
+                        d.querySelector('.destaque').checked = destacar;
+                        atualizarCifra(d, cifras[+d.dataset.i]);
+                    });
+                    gravar();
+                });
+
+                elLista.addEventListener('click', function (e) {
+                    var b = e.target.closest('.remover');
+                    if (!b) return;
+                    if (!b.dataset.confirma) {
+                        b.dataset.confirma = '1';
+                        b.textContent = 'Confirmar remoção';
+                        setTimeout(function () {
+                            if (b.isConnected) {
+                                delete b.dataset.confirma;
+                                b.textContent = 'Remover esta cifra';
+                            }
+                        }, 4000);
+                        return;
+                    }
+                    var i = +b.closest('details.cifra').dataset.i;
+                    cifras.splice(i, 1);
+                    gravar();
+                    desenhar(null);
+                });
+
+                document.getElementById('add-cifra').addEventListener('click', function () {
+                    cifras.push({
+                        rotulo: 'Nova versão',
+                        tom: '',
+                        capo: '0',
+                        fonte: '',
+                        texto: '',
+                        notas: '',
+                    });
+                    gravar();
+                    document.getElementById('lista-cifras').open = true;
+                    desenhar(cifras.length - 1);
+                });
+
+                document.getElementById('restaurar').addEventListener('click', function () {
+                    cifras = JSON.parse(JSON.stringify(EXEMPLO));
+                    gravar();
+                    desenhar(0);
+                });
+
+                ler();
+                CAMPOS_RESP.forEach(function (id) {
+                    var el = document.getElementById(id);
+                    if (respostas[id]) el.value = respostas[id];
+                    el.addEventListener('input', function () {
+                        respostas[id] = el.value;
+                        gravar();
+                    });
+                });
+
+                var PERGUNTAS = {
+                    'q-formato': '1. Formato (acordes acima da letra)',
+                    'q-campos': '2. Campos que faltam',
+                    'q-tom': '3. Tom e capotraste, e o que ajudaria quem está começando',
+                    'q-destaque': '4. Destaque de cor nos acordes',
+                    'q-versoes': '5. Nomes de versão',
+                    'q-outro': '6. Outras observações',
+                };
+                document.getElementById('copiar').addEventListener('click', function () {
+                    var linhas = ['Avaliação da Cifra Mínima'];
+                    var nome = document.getElementById('q-nome').value.trim();
+                    if (nome) linhas.push('Quem avaliou: ' + nome);
+                    Object.keys(PERGUNTAS).forEach(function (id) {
+                        var v = document.getElementById(id).value.trim();
+                        linhas.push('', PERGUNTAS[id], v || '(sem resposta)');
+                    });
+                    var texto = linhas.join('\n');
+                    var saida = document.getElementById('saida');
+                    var estado = document.getElementById('estado');
+                    saida.hidden = false;
+                    saida.value = texto;
+                    function selecionar() {
+                        saida.focus();
+                        saida.select();
+                        estado.textContent = 'Selecione e copie o texto abaixo.';
+                    }
+                    try {
+                        navigator.clipboard.writeText(texto).then(function () {
+                            estado.textContent = 'Copiado. Agora é só colar na conversa.';
+                        }, selecionar);
+                    } catch (e) {
+                        selecionar();
+                    }
+                });
+
+                desenhar(null);
+            })();
+        </script>
+    </body>
+</html>

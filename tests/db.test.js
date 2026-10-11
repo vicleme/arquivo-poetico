@@ -1716,10 +1716,14 @@ describe('mesclarEpocas (datas oficiais do cadastro)', () => {
 describe('migrarMovimentosEscolasEmbutidos (cadastro de Movimento/Escola ganhando novos itens de fábrica, ex.: Tropicalismo)', () => {
     // `db.movimentosEscolas` já passou pelo seed + pela própria migração
     // no momento em que este módulo foi importado, então reflete o
-    // cadastro de fábrica completo e atualizado (22 itens, todos
+    // cadastro de fábrica completo e atualizado (todos
     // `embutido: true`) — usamos esse estado como base pra simular
     // instalações antigas, em vez de reescrever o seed aqui.
     const seedCompleto = () => structuredClone(db.movimentosEscolas);
+    // Tamanho do cadastro de fábrica completo (22 originais + as divisões do
+    // Romantismo). Os testes abaixo tiram só o Tropicalismo, então esperam
+    // este total menos um.
+    const TOTAL_DE_FABRICA = seedCompleto().length;
 
     it('instalação antiga (sem `embutido`, sem Tropicalismo) ganha só o item novo, sem duplicar os demais', () => {
         const antigos = seedCompleto()
@@ -1728,11 +1732,11 @@ describe('migrarMovimentosEscolasEmbutidos (cadastro de Movimento/Escola ganhand
                 delete m.embutido;
                 return m;
             });
-        assert.equal(antigos.length, 21);
+        assert.equal(antigos.length, TOTAL_DE_FABRICA - 1);
 
         migrarMovimentosEscolasEmbutidos(antigos, []);
 
-        assert.equal(antigos.length, 22);
+        assert.equal(antigos.length, TOTAL_DE_FABRICA);
         const porNome = antigos.filter((m) => m.nome === 'Tropicalismo');
         assert.equal(porNome.length, 1);
         assert.equal(porNome[0].embutido, true);
@@ -1748,7 +1752,7 @@ describe('migrarMovimentosEscolasEmbutidos (cadastro de Movimento/Escola ganhand
         });
     });
 
-    it('backfill: marca `embutido: true` por nome nos 21 originais que não tinham a chave', () => {
+    it('backfill: marca `embutido: true` por nome nos originais que não tinham a chave', () => {
         const antigos = seedCompleto()
             .filter((m) => m.nome !== 'Tropicalismo')
             .map((m) => {
@@ -1769,7 +1773,7 @@ describe('migrarMovimentosEscolasEmbutidos (cadastro de Movimento/Escola ganhand
                 return m;
             });
         migrarMovimentosEscolasEmbutidos(antigos, ['Tropicalismo']);
-        assert.equal(antigos.length, 21);
+        assert.equal(antigos.length, TOTAL_DE_FABRICA - 1);
         assert.equal(
             antigos.some((m) => m.nome === 'Tropicalismo'),
             false,
@@ -1779,7 +1783,7 @@ describe('migrarMovimentosEscolasEmbutidos (cadastro de Movimento/Escola ganhand
     it('é idempotente: rodar de novo num cadastro já completo não duplica nada', () => {
         const completos = seedCompleto();
         migrarMovimentosEscolasEmbutidos(completos, []);
-        assert.equal(completos.length, 22);
+        assert.equal(completos.length, TOTAL_DE_FABRICA);
     });
 
     it('não mexe em movimento personalizado do usuário (nome fora do seed)', () => {
@@ -2167,5 +2171,94 @@ describe('migrarRegiaoPeriodoHistorico (campo `regiao` nascendo depois do seed)'
         const vazio = [];
         migrarPeriodosHistoricosEmbutidos(vazio, []);
         vazio.forEach((p) => assert.ok(p.regiao, `"${p.nome}" criado sem regiao`));
+    });
+});
+
+describe('Seed do Romantismo: variantes regionais, gerações e vertentes', () => {
+    const porNome = (n) => db.movimentosEscolas.find((m) => m.nome === n);
+    const filhosDe = (n) => db.movimentosEscolas.filter((m) => m.paiId === porNome(n).id);
+
+    it('Romantismo tem as duas variantes regionais como filhas diretas', () => {
+        assert.deepEqual(
+            filhosDe('Romantismo')
+                .map((m) => m.nome)
+                .sort(),
+            ['Romantismo em Portugal', 'Romantismo no Brasil'],
+        );
+        filhosDe('Romantismo').forEach((m) => assert.equal(m.divisao, 'Variante regional'));
+    });
+
+    it('Brasil: três gerações só de poesia e quatro vertentes só de prosa', () => {
+        const filhos = filhosDe('Romantismo no Brasil');
+        const geracoes = filhos.filter((m) => m.divisao === 'Fase ou geração');
+        const vertentes = filhos.filter((m) => m.divisao === 'Vertente');
+        assert.equal(geracoes.length, 3);
+        assert.equal(vertentes.length, 4);
+        geracoes.forEach((m) => assert.equal(m.generoDivisao, 'Poesia', m.nome));
+        vertentes.forEach((m) => assert.equal(m.generoDivisao, 'Prosa', m.nome));
+    });
+
+    it('Portugal: três gerações para todos os gêneros e quatro vertentes só de prosa', () => {
+        const filhos = filhosDe('Romantismo em Portugal');
+        const geracoes = filhos.filter((m) => m.divisao === 'Fase ou geração');
+        const vertentes = filhos.filter((m) => m.divisao === 'Vertente');
+        assert.equal(filhos.length, 7);
+        assert.equal(geracoes.length, 3);
+        assert.equal(vertentes.length, 4);
+        geracoes.forEach((m) => assert.equal(m.generoDivisao, '', m.nome));
+        vertentes.forEach((m) => assert.equal(m.generoDivisao, 'Prosa', m.nome));
+        assert.deepEqual(vertentes.map((m) => m.nome).sort(), [
+            'Novela passional (Portugal)',
+            'Romance campesino (Portugal)',
+            'Romance de costumes (Portugal)',
+            'Romance histórico (Portugal)',
+        ]);
+    });
+
+    it('as gerações brasileiras se sucedem sem sobrepor e cabem dentro do pai', () => {
+        const pai = porNome('Romantismo no Brasil');
+        const g = [
+            '1ª geração: Indianista (Brasil)',
+            '2ª geração: Ultrarromântica (Brasil)',
+            '3ª geração: Condoreira (Brasil)',
+        ].map((n) => porNome(n));
+        for (let i = 0; i < g.length; i++) {
+            assert.ok(g[i].inicio.ano >= pai.inicio.ano && g[i].fim.ano <= pai.fim.ano, g[i].nome);
+            if (i > 0) assert.ok(g[i].inicio.ano > g[i - 1].fim.ano, g[i].nome);
+        }
+    });
+
+    it('nomes de fábrica são únicos e as divisões herdam Postura e Programa do pai (campos vazios)', () => {
+        const nomes = db.movimentosEscolas.map((m) => m.nome);
+        assert.equal(new Set(nomes).size, nomes.length);
+        db.movimentosEscolas
+            .filter((m) => m.paiId !== null)
+            .forEach((m) => {
+                assert.equal(m.posturaEstetica, '', m.nome);
+                assert.equal(m.programa, '', m.nome);
+            });
+    });
+
+    it('instalação antiga ganha as divisões ligadas ao Romantismo que já existia, sem duplicar o pai', () => {
+        const antiga = db.movimentosEscolas
+            .filter((m) => m.paiId === null)
+            .map((m) => structuredClone(m));
+        const romantismo = antiga.find((m) => m.nome === 'Romantismo');
+        migrarMovimentosEscolasEmbutidos(antiga, []);
+        assert.equal(antiga.filter((m) => m.nome === 'Romantismo').length, 1);
+        const brasil = antiga.find((m) => m.nome === 'Romantismo no Brasil');
+        assert.equal(brasil.paiId, romantismo.id);
+        const g1 = antiga.find((m) => m.nome === '1ª geração: Indianista (Brasil)');
+        assert.equal(g1.paiId, brasil.id);
+    });
+
+    it('se o pai foi excluído de propósito, a divisão nasce como corrente de topo', () => {
+        const semPai = db.movimentosEscolas
+            .filter((m) => m.paiId === null && m.nome !== 'Romantismo')
+            .map((m) => structuredClone(m));
+        migrarMovimentosEscolasEmbutidos(semPai, ['Romantismo']);
+        const brasil = semPai.find((m) => m.nome === 'Romantismo no Brasil');
+        assert.equal(brasil.paiId, null);
+        assert.equal(brasil.divisao, '');
     });
 });

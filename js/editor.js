@@ -23,6 +23,8 @@ import {
 import {
     resumoTemas,
     assuntosComPapelDeEntradas,
+    podarExcecoesAssunto,
+    idsAssuntosExcluidos,
     podarSobrescritasAssunto,
     normalizarPapelTema,
     ROTULOS_PAPEL_TEMA,
@@ -74,6 +76,28 @@ import {
     idiomasDoItem,
     extrairDialetosUnicos,
 } from './utils.js';
+import {
+    adicionarAssuntoPendente,
+    podarAssuntosPendentes,
+    sobreporAssuntosPendentes,
+    assuntoEhNovo,
+    contarTextosPorTema,
+} from './temas.js';
+import {
+    opcoesDePaiDaCorrente,
+    caminhoDaCorrente,
+    sugestoesDeCorrentes,
+} from './correntes-hierarquia.js';
+import {
+    ancorasSelecionadas,
+    confirmarRemocaoVinculo,
+    definirAncoras,
+    limparAncoras,
+    limparPendenciasAncora,
+    repintarAncoras,
+} from './ancora-eco-ui.js';
+import { ancoraAtiva, normalizarAncorasEco, rotuloEco } from './ancora-eco.js';
+import { lerPersonagens } from './grupo-personagens.js';
 
 // ─── Estado local ─────────────────────────────────────────────
 
@@ -1026,6 +1050,7 @@ function criarGrupoDePessoas({
         if (!itens.some((i) => i.pessoaId == pessoaId)) {
             itens.push({ pessoaId, papeis: [] });
             renderizar();
+            if (tabela) repintarAncoras(tabela);
         }
     }
 
@@ -1059,10 +1084,23 @@ function criarGrupoDePessoas({
         });
     }
 
-    function remover(pessoaId) {
+    function tirar(pessoaId) {
         itens = itens.filter((i) => i.pessoaId != pessoaId);
         if (dropdownAberto == pessoaId) dropdownAberto = null;
         renderizar();
+        if (tabela) repintarAncoras(tabela);
+    }
+
+    // Se a pessoa ancora Ecos com este texto, pergunta antes (F11-D6).
+    function remover(pessoaId) {
+        if (!tabela) return tirar(pessoaId);
+        confirmarRemocaoVinculo({
+            tabela,
+            especie: 'pessoa',
+            id: pessoaId,
+            nome: nomeDe(pessoaId),
+            remover: () => tirar(pessoaId),
+        });
     }
 
     // Marcar acrescenta ao fim de `papeis` (= ordem de marcação vira
@@ -1276,7 +1314,7 @@ function criarGrupoDeGruposDiretos({
     // pra estilizar (sem indentação/cabeçalho por Autor, e dois grupos
     // "Família" de Autores diferentes apareceriam idênticos na sugestão),
     // então vira o mesmo padrão já usado em ps-grupos-container (ui.js) e
-    // seletorGrupos (estatisticas-tela-temas-pessoas.js): cabeçalho por
+    // seletorGrupos (estatisticas-tela-pessoas.js): cabeçalho por
     // Autor (só quando há mais de um candidato) + "↳" pro nível > 1, com
     // o pai imediato entre parênteses pra não perder contexto quando o
     // filtro digitado esconde o pai da lista. Fecha ao clicar fora, mesmo
@@ -2662,15 +2700,36 @@ function renderItemEloBilateral(it, tabela) {
 
 function renderItemEco(it, tabela) {
     const item = resolverItemVinculado(it.id);
-    const badge = it.tipo
-        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+    const rotulo = rotuloEco(db, it, 2);
+    const badge = rotulo
+        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(rotulo)}</span>`
+        : '';
+    // Âncora que deixou de valer (um dos textos perdeu o vínculo) fica à vista.
+    const modal = estadoModalAncora(tabela);
+    const desatualizada =
+        item && modal && (it.ancoras || []).some((a) => !ancoraAtiva(modal, item, a));
+    const aviso = desatualizada
+        ? ' <span class="text-amber-600 dark:text-amber-400" title="Uma âncora não está mais nos dois textos">⚠</span>'
         : '';
     const rotuloRemovido = tabela === 'prosas' ? '(texto removido)' : '(poema removido)';
     const titulo = item
         ? escapeHtml(item.titulo)
         : `<span class="italic text-gray-400 dark:text-slate-500">${rotuloRemovido}</span>`;
     const nota = it.texto ? ` — ${escapeHtml(it.texto)}` : '';
-    return `${badge}${titulo}${nota}`;
+    return `${badge}${aviso}${titulo}${nota}`;
+}
+
+// Personagens e pessoas ainda não salvos do texto aberto no modal (o que a
+// âncora precisa para saber quem está nos dois textos).
+function estadoModalAncora(tabela) {
+    const modal = { personagens: [], pessoas: [] };
+    try {
+        modal.personagens = lerPersonagens(tabela);
+        modal.pessoas = grupoPessoas(tabela).obterItens();
+    } catch {
+        return null;
+    }
+    return modal;
 }
 
 const listaElosPoema = criarListaDeEntradas({
@@ -2851,16 +2910,31 @@ export function adicionarEco(tabela) {
     const textoEl = document.getElementById(`${p}-eco-texto`);
     const id = poemaEl?.value ? parseInt(poemaEl.value, 10) : null;
     if (!id) return;
+    const tipo = tipoEl?.value || '';
+    // Âncora é opcional e só existe nos tipos que a aceitam; sem âncora o Eco
+    // fica no formato antigo (sem o campo).
+    const ancoras = normalizarAncorasEco(ancorasSelecionadas(tabela), tipo);
     listaEcos(tabela).salvar({
         id,
-        tipo: tipoEl?.value || '',
+        tipo,
         texto: (textoEl?.value || '').trim(),
+        ...(ancoras.length ? { ancoras } : {}),
     });
+    limparCamposEco(tabela);
+}
+
+function limparCamposEco(tabela) {
+    const p = prefixoDom(tabela);
+    const poemaEl = document.getElementById(`${p}-eco-poema`);
+    const tipoEl = document.getElementById(`${p}-eco-tipo`);
+    const textoEl = document.getElementById(`${p}-eco-texto`);
     if (poemaEl) poemaEl.value = '';
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
+    limparAncoras(tabela);
     atualizarBotaoEco(tabela);
 }
+
 export function editarEco(tabela, indice) {
     const item = listaEcos(tabela).iniciarEdicao(indice);
     const p = prefixoDom(tabela);
@@ -2870,18 +2944,12 @@ export function editarEco(tabela, indice) {
     if (poemaEl) poemaEl.value = item.id ?? '';
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (textoEl) textoEl.value = item.texto || '';
+    definirAncoras(tabela, item.tipo || '', item.ancoras || []);
     atualizarBotaoEco(tabela);
 }
 export function cancelarEdicaoEco(tabela) {
     listaEcos(tabela).cancelarEdicao();
-    const p = prefixoDom(tabela);
-    const poemaEl = document.getElementById(`${p}-eco-poema`);
-    const tipoEl = document.getElementById(`${p}-eco-tipo`);
-    const textoEl = document.getElementById(`${p}-eco-texto`);
-    if (poemaEl) poemaEl.value = '';
-    if (tipoEl) tipoEl.value = '';
-    if (textoEl) textoEl.value = '';
-    atualizarBotaoEco(tabela);
+    limparCamposEco(tabela);
 }
 export function removerEco(tabela, indice) {
     listaEcos(tabela).remover(indice);
@@ -2890,13 +2958,26 @@ export function removerEco(tabela, indice) {
 export function obterEcos(tabela) {
     return listaEcos(tabela).obterItens();
 }
+// Cópia dos Ecos do texto: o modal edita as âncoras (ao tirar um personagem,
+// por exemplo) e cancelar o modal não pode alterar o registro salvo.
 export function carregarEcos(tabela, lista) {
-    listaEcos(tabela).carregar(lista);
+    const copia = (Array.isArray(lista) ? lista : []).map((eco) =>
+        Array.isArray(eco?.ancoras) ? { ...eco, ancoras: eco.ancoras.map((a) => ({ ...a })) } : eco,
+    );
+    listaEcos(tabela).carregar(copia);
+    limparPendenciasAncora(tabela);
+    limparAncoras(tabela);
     atualizarBotaoEco(tabela);
 }
 export function resetEcos(tabela) {
     listaEcos(tabela).reset();
+    limparPendenciasAncora(tabela);
+    limparAncoras(tabela);
     atualizarBotaoEco(tabela);
+}
+// Redesenha a lista de Ecos (as âncoras mudaram por fora, ver ancora-eco-ui.js).
+export function repintarEcos(tabela) {
+    listaEcos(tabela).renderizar();
 }
 
 // ─── Painel de Elos derivados (refinamento do item 1) ───────────
@@ -3875,6 +3956,16 @@ const temasTexto = { poemas: [], prosas: [] };
 // Sobrescritas do papel do Assunto neste texto: [{ assuntoId, papel }]. Só
 // existe entrada quando a pessoa fixou; sem entrada o Assunto segue o Tema.
 const assuntosPapelTexto = { poemas: [], prosas: [] };
+// Assuntos que a pessoa tirou deste texto ("não se aplica"): ids como string.
+// O Tema segue no texto e no Assunto do cadastro; só este texto deixa de
+// pertencer àquele Assunto.
+const assuntosExcluidosTexto = { poemas: [], prosas: [] };
+// Ligações Tema → Assunto feitas neste modal e ainda não gravadas:
+// [{ temaChave, assuntoId (null = Assunto novo), nome }]. Só viram cadastro ao
+// salvar o texto (aplicarAssuntosPendentes, temas.js); cancelar descarta.
+const assuntosPendentesTexto = { poemas: [], prosas: [] };
+// Chave (chaveTema) do Tema que está com o mini-formulário de Assunto aberto.
+const assuntoAbertoTexto = { poemas: null, prosas: null };
 
 function prefixoTemasTexto(tabela) {
     const prefixo = PREFIXO_TEMAS_TEXTO[tabela];
@@ -3901,10 +3992,11 @@ function opcoesPapelTemaHTML(selecionado) {
 export function criarGrupoTemasHTML(prefixo, tabela) {
     return `
                             <p class="text-xs text-gray-500 dark:text-slate-400 mb-2">
-                                O que o texto aborda. O papel diz o peso do tema no texto:
-                                principal, secundário ou indefinido. Os Assuntos
-                                vêm dos temas (cadastro de Assuntos) e herdam o papel deles,
-                                mas você pode fixar outro papel para um Assunto neste texto.
+                                O que o texto aborda. O papel diz o peso do tema no texto. Os Assuntos
+                                vêm dos temas e herdam o papel, mas você pode fixar outro papel
+                                ou marcar "não se aplica a este texto". Use "+ Assunto" abaixo
+                                de um tema para ligá-lo a um assunto (vale para o tema em todos
+                                os textos).
                             </p>
                             <div class="mb-2">
                                 <input
@@ -3932,6 +4024,7 @@ export function criarGrupoTemasHTML(prefixo, tabela) {
                                 class="flex flex-col gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
                             ></div>
                             <datalist id="${prefixo}-temas-sugestoes"></datalist>
+                            <datalist id="${prefixo}-assuntos-sugestoes"></datalist>
                             <input type="hidden" id="${prefixo}-temas-json" />
                             <label class="form-label mt-3">Assuntos <span class="font-normal normal-case text-gray-400 dark:text-slate-500">(derivados dos temas; o papel segue o do tema, a menos que você fixe)</span></label>
                             <div id="${prefixo}-temas-assuntos" class="flex flex-col min-h-[24px]"></div>`;
@@ -3939,9 +4032,64 @@ export function criarGrupoTemasHTML(prefixo, tabela) {
 
 function preencherDatalistTemasTexto(prefixo) {
     const datalist = document.getElementById(`${prefixo}-temas-sugestoes`);
-    if (!datalist) return;
-    const nomes = (db.temas || []).map((t) => t.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    datalist.innerHTML = nomes.map((v) => `<option value="${escapeHtml(v)}">`).join('');
+    if (datalist) {
+        const nomes = (db.temas || [])
+            .map((t) => t.nome)
+            .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        datalist.innerHTML = nomes.map((v) => `<option value="${escapeHtml(v)}">`).join('');
+    }
+    const datalistAssuntos = document.getElementById(`${prefixo}-assuntos-sugestoes`);
+    if (datalistAssuntos) {
+        const nomes = (db.assuntos || [])
+            .map((a) => a.nome)
+            .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        datalistAssuntos.innerHTML = nomes.map((v) => `<option value="${escapeHtml(v)}">`).join('');
+    }
+}
+
+// Linha "Assuntos: ..." de um Tema da lista, mais o link "+ Assunto" e, se
+// aberto, o mini-formulário. Pensado para a coluna estreita do modal (cerca de
+// um terço da largura): tudo empilhado, texto pequeno, sem tabela. Assuntos já
+// gravados em texto simples; os pendentes em verde, itálico, com "×" para
+// desfazer antes de salvar.
+function assuntosDoTemaHTML(tabela, prefixo, indice, tema, contagem) {
+    const chave = chaveTema(tema.nome);
+    const cadastrado = (db.temas || []).find((t) => chaveTema(t.nome) === chave);
+    const doCadastro = cadastrado
+        ? (db.assuntos || []).filter((a) =>
+              (a.temaIds || []).some((id) => String(id) === String(cadastrado.id)),
+          )
+        : [];
+    const pendentes = assuntosPendentesTexto[tabela]
+        .map((p, pi) => ({ p, pi }))
+        .filter(({ p }) => p.temaChave === chave);
+    const partes = [
+        ...doCadastro.map((a) => `<span>${escapeHtml(a.nome)}</span>`),
+        ...pendentes.map(
+            ({ p, pi }) =>
+                `<span class="italic text-emerald-700 dark:text-emerald-400" title="Entra no cadastro ao salvar este texto">${escapeHtml(p.nome)}${p.assuntoId == null ? ' (novo)' : ''}<button type="button" onclick="desfazerAssuntoPendenteTexto('${tabela}', ${pi})" class="ml-0.5 font-bold text-red-500 hover:text-red-700" title="Desfazer">×</button></span>`,
+        ),
+    ];
+    const linha = partes.length
+        ? `Assuntos: ${partes.join(' · ')}`
+        : '<span class="text-amber-600 dark:text-amber-400">Sem assunto ainda</span>';
+    const aberto = assuntoAbertoTexto[tabela] === chave;
+    const formulario = aberto
+        ? `
+                <div class="w-full mt-1 p-2 rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
+                    <input type="text" id="${prefixo}-assunto-input" list="${prefixo}-assuntos-sugestoes" autocomplete="off" class="text-xs w-full mb-1" placeholder="Assunto existente ou novo..." onkeydown="aoEnterAplicar(event, () => adicionarAssuntoTemaTexto('${tabela}', ${indice}))" />
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="adicionarAssuntoTemaTexto('${tabela}', ${indice})" class="bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold">Adicionar</button>
+                        <button type="button" onclick="fecharAssuntoTemaTexto('${tabela}')" class="text-[10px] text-gray-500 dark:text-slate-400 underline">Fechar</button>
+                    </div>
+                    <p class="text-[10px] text-gray-500 dark:text-slate-400 mt-1 leading-snug">Muda o cadastro do tema, então vale para todos os textos com ele (hoje: ${contagem.get(chave) || 0}). Só é gravado ao salvar este texto.</p>
+                </div>`
+        : '';
+    const botao = aberto
+        ? ''
+        : ` <button type="button" onclick="abrirAssuntoTemaTexto('${tabela}', ${indice})" class="font-bold text-emerald-700 dark:text-emerald-400 hover:underline" title="Ligar este tema a um assunto (existente ou novo)">+ Assunto</button>`;
+    return `
+                <div class="w-full text-[10px] leading-snug text-gray-500 dark:text-slate-400 break-words">${linha}${botao}</div>${formulario}`;
 }
 
 function renderizarTemasTexto(tabela) {
@@ -3949,6 +4097,18 @@ function renderizarTemasTexto(tabela) {
     const lista = temasTexto[tabela];
     const container = document.getElementById(`${prefixo}-temas-container`);
     if (container) {
+        // Pendência de Tema que saiu da lista (ou formulário aberto nele) some junto.
+        assuntosPendentesTexto[tabela] = podarAssuntosPendentes(
+            lista,
+            assuntosPendentesTexto[tabela],
+        );
+        if (
+            assuntoAbertoTexto[tabela] &&
+            !lista.some((t) => chaveTema(t.nome) === assuntoAbertoTexto[tabela])
+        ) {
+            assuntoAbertoTexto[tabela] = null;
+        }
+        const contagem = contarTextosPorTema(db);
         container.innerHTML = lista.length
             ? lista
                   .map(
@@ -3958,31 +4118,62 @@ function renderizarTemasTexto(tabela) {
                 <div class="flex items-center gap-2">
                     <select class="${CLASSE_SELECT_PAPEL_TEMA_CHIP}" onchange="mudarPapelTemaTexto('${tabela}', ${i}, this.value)">${opcoesPapelTemaHTML(t.papel)}</select>
                     <button type="button" onclick="removerTemaTexto('${tabela}', ${i})" class="text-red-500 hover:text-red-700 font-bold" title="Remover">×</button>
-                </div>
+                </div>${assuntosDoTemaHTML(tabela, prefixo, i, t, contagem)}
             </div>`,
                   )
                   .join('')
             : '';
     }
+    // O cadastro "como ficará ao salvar": os Assuntos derivados abaixo já
+    // contam as ligações Tema → Assunto pendentes.
+    const sobreposto = sobreporAssuntosPendentes(db, lista, assuntosPendentesTexto[tabela]);
     // Sobrescrita de Assunto que deixou de se aplicar (Tema removido, Assunto
     // excluído) some junto: não fica esperando o Tema voltar.
     assuntosPapelTexto[tabela] = podarSobrescritasAssunto(
         lista,
         assuntosPapelTexto[tabela],
-        db.assuntos,
-        db.temas,
+        sobreposto.assuntos,
+        sobreposto.temas,
     ).map((e) => ({ assuntoId: String(e.assuntoId), papel: e.papel }));
+    // Mesma regra para a exceção "não se aplica": tirou o Tema do texto (ou o
+    // Assunto deixou de existir), a exceção some junto.
+    assuntosExcluidosTexto[tabela] = podarExcecoesAssunto(
+        lista,
+        assuntosExcluidosTexto[tabela],
+        sobreposto.assuntos,
+        sobreposto.temas,
+    ).map(String);
     const alvoAssuntos = document.getElementById(`${prefixo}-temas-assuntos`);
     if (alvoAssuntos) {
         const assuntosDoTexto = assuntosComPapelDeEntradas(
             lista,
             assuntosPapelTexto[tabela],
-            db.assuntos,
-            db.temas,
+            sobreposto.assuntos,
+            sobreposto.temas,
+            assuntosExcluidosTexto[tabela],
+            { incluirExcluidos: true },
         );
         alvoAssuntos.innerHTML = assuntosDoTexto.length
             ? assuntosDoTexto
                   .map((a) => {
+                      if (a.excluido) {
+                          return `
+            <div class="flex flex-col items-start gap-1 py-1.5 border-b border-gray-200 dark:border-slate-700 last:border-b-0" data-assunto-excluido="${escapeHtml(String(a.id))}">
+                <span class="bg-gray-400 dark:bg-slate-600 text-white text-[10px] px-2 py-1 rounded-full max-w-full break-words line-through opacity-70">${escapeHtml(a.nome)}</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] text-gray-500 dark:text-slate-400">não se aplica a este texto</span>
+                    <button type="button" onclick="mudarPapelAssuntoTexto('${tabela}', '${escapeHtml(String(a.id))}', 'auto')" class="text-emerald-700 dark:text-emerald-400 hover:underline text-[10px] font-bold" title="Voltar a incluir este Assunto no texto">Restaurar</button>
+                </div>
+            </div>`;
+                      }
+                      if (assuntoEhNovo(a.id)) {
+                          // Assunto que ainda não existe: sem papel fixável até salvar.
+                          return `
+            <div class="flex flex-col items-start gap-1 py-1.5 border-b border-gray-200 dark:border-slate-700 last:border-b-0">
+                <span class="bg-emerald-700 text-white text-[10px] px-2 py-1 rounded-full max-w-full break-words border border-dashed border-white/70">${escapeHtml(a.nome)}</span>
+                <span class="text-[10px] text-gray-500 dark:text-slate-400">novo, entra ao salvar (papel ${escapeHtml(ROTULOS_PAPEL_TEMA[a.papelAuto].toLowerCase())})</span>
+            </div>`;
+                      }
                       const rotuloAuto = `Automático (${ROTULOS_PAPEL_TEMA[a.papelAuto]})`;
                       const valor = a.fixado ? a.papel : 'auto';
                       const opcoes = [
@@ -3990,6 +4181,7 @@ function renderizarTemasTexto(tabela) {
                           ['', ROTULOS_PAPEL_TEMA['']],
                           ['principal', ROTULOS_PAPEL_TEMA.principal],
                           ['secundario', ROTULOS_PAPEL_TEMA.secundario],
+                          ['excluir', 'Não se aplica'],
                       ]
                           .map(
                               ([v, r]) =>
@@ -4013,7 +4205,12 @@ function renderizarTemasTexto(tabela) {
     }
     const oculto = document.getElementById(`${prefixo}-temas-json`);
     if (oculto) {
-        oculto.value = JSON.stringify({ temas: lista, assuntosPapel: assuntosPapelTexto[tabela] });
+        oculto.value = JSON.stringify({
+            temas: lista,
+            assuntosPapel: assuntosPapelTexto[tabela],
+            assuntosExcluidos: assuntosExcluidosTexto[tabela],
+            assuntosPendentes: assuntosPendentesTexto[tabela],
+        });
         // Avisa o rastreador de alterações do formulário (só escuta input/change).
         oculto.dispatchEvent(new Event('input', { bubbles: true }));
     }
@@ -4049,15 +4246,66 @@ export function mudarPapelTemaTexto(tabela, indice, papel) {
     alvo.papel = normalizarPapelTema(papel);
     renderizarTemasTexto(tabela);
 }
-// Fixa o papel de um Assunto neste texto; 'auto' volta a seguir os Temas.
+// Fixa o papel de um Assunto neste texto; 'auto' volta a seguir os Temas
+// (e restaura um Assunto que estava como "não se aplica"); 'excluir' tira o
+// Assunto deste texto, sem mexer no Tema nem no cadastro.
 export function mudarPapelAssuntoTexto(tabela, assuntoId, papel) {
     const chave = String(assuntoId);
     const resto = assuntosPapelTexto[tabela].filter((e) => e.assuntoId !== chave);
-    if (papel !== 'auto') {
+    const excluidos = assuntosExcluidosTexto[tabela].filter((id) => id !== chave);
+    if (papel === 'excluir') {
+        // Assunto fora do texto não guarda papel fixado: restaurar volta ao automático.
+        excluidos.push(chave);
+    } else if (papel !== 'auto') {
         resto.push({ assuntoId: chave, papel: normalizarPapelTema(papel) });
     }
     assuntosPapelTexto[tabela] = resto;
+    assuntosExcluidosTexto[tabela] = excluidos;
     renderizarTemasTexto(tabela);
+}
+// ─── Ligar Tema a Assunto (cadastro) pelo modal do texto ────────
+export function abrirAssuntoTemaTexto(tabela, indice) {
+    const alvo = temasTexto[tabela][Number(indice)];
+    if (!alvo) return;
+    assuntoAbertoTexto[tabela] = chaveTema(alvo.nome);
+    renderizarTemasTexto(tabela);
+    document.getElementById(`${prefixoTemasTexto(tabela)}-assunto-input`)?.focus();
+}
+export function fecharAssuntoTemaTexto(tabela) {
+    assuntoAbertoTexto[tabela] = null;
+    renderizarTemasTexto(tabela);
+}
+// Marca (sem gravar) a ligação do Tema ao Assunto digitado: nome que já existe
+// liga ao existente, nome novo vira Assunto novo ao salvar. O formulário fica
+// aberto para ligar a mais de um Assunto em seguida.
+export function adicionarAssuntoTemaTexto(tabela, indice) {
+    const prefixo = prefixoTemasTexto(tabela);
+    const alvo = temasTexto[tabela][Number(indice)];
+    if (!alvo) return;
+    const input = document.getElementById(`${prefixo}-assunto-input`);
+    const r = adicionarAssuntoPendente(db, assuntosPendentesTexto[tabela], alvo.nome, input?.value);
+    if (r.resultado === 'vazio') return mostrarAviso('Digite o nome do assunto.');
+    if (r.resultado === 'ja-esta') {
+        return mostrarAviso(`"${alvo.nome}" já está em "${r.assunto.nome}".`, 'info');
+    }
+    if (r.resultado === 'repetido') {
+        return mostrarAviso('Esse assunto já está marcado para este tema.', 'info');
+    }
+    assuntosPendentesTexto[tabela] = r.pendentes;
+    renderizarTemasTexto(tabela);
+    document.getElementById(`${prefixo}-assunto-input`)?.focus();
+}
+export function desfazerAssuntoPendenteTexto(tabela, indice) {
+    assuntosPendentesTexto[tabela].splice(Number(indice), 1);
+    renderizarTemasTexto(tabela);
+}
+// Ligações pendentes, pra forms.js gravar no cadastro ao salvar o texto.
+export function obterAssuntosPendentesTexto(tabela) {
+    return assuntosPendentesTexto[tabela].map((p) => ({ ...p }));
+}
+// Assuntos tirados deste texto (ids), pra forms.js podar e gravar.
+export function obterAssuntosExcluidosTexto(tabela) {
+    return [...assuntosExcluidosTexto[tabela]];
 }
 // Sobrescritas atuais ([{ assuntoId, papel }]), pra forms.js podar e gravar.
 export function obterAssuntosPapelTexto(tabela) {
@@ -4070,6 +4318,9 @@ export function obterTemasTexto(tabela) {
 export function resetTemasTexto(tabela) {
     temasTexto[tabela] = [];
     assuntosPapelTexto[tabela] = [];
+    assuntosExcluidosTexto[tabela] = [];
+    assuntosPendentesTexto[tabela] = [];
+    assuntoAbertoTexto[tabela] = null;
     preencherDatalistTemasTexto(prefixoTemasTexto(tabela));
     renderizarTemasTexto(tabela);
 }
@@ -4086,6 +4337,9 @@ export function carregarTemasTexto(tabela, item) {
     assuntosPapelTexto[tabela] = (Array.isArray(item?.assuntosPapel) ? item.assuntosPapel : []).map(
         (e) => ({ assuntoId: String(e?.assuntoId), papel: normalizarPapelTema(e?.papel) }),
     );
+    assuntosExcluidosTexto[tabela] = [...idsAssuntosExcluidos(item?.assuntosExcluidos)];
+    assuntosPendentesTexto[tabela] = [];
+    assuntoAbertoTexto[tabela] = null;
     preencherDatalistTemasTexto(prefixoTemasTexto(tabela));
     renderizarTemasTexto(tabela);
 }
@@ -4574,9 +4828,9 @@ function criarGrupoDeMovimentosEscolas({ tabela, inputId, containerId, nomeFunca
         }
 
         abrirModalConfirmacao({
-            titulo: `Criar Movimento/Escola "${nome}"?`,
-            rotulo: 'Movimento/Escola novo',
-            mensagem: `"${nome}" ainda não está no cadastro de Movimento/Escola. Criar agora (só com o nome — dá pra completar o resto depois na aba Movimento/Escola)?`,
+            titulo: `Criar corrente literária "${nome}"?`,
+            rotulo: 'Corrente literária nova',
+            mensagem: `"${nome}" ainda não está no cadastro de Correntes literárias. Criar agora (só com o nome, dá pra completar o resto depois na aba Correntes literárias)?`,
             textoConfirmar: 'Criar',
             corConfirmar: '#e11d48',
             onConfirmar: () => {
@@ -4597,9 +4851,9 @@ function criarGrupoDeMovimentosEscolas({ tabela, inputId, containerId, nomeFunca
         container.innerHTML = itens
             .map((id) => {
                 const movimento = movimentoDe(id);
-                const nome = movimento?.nome || '(movimento/escola removido)';
+                const nome = movimento?.nome || '(corrente literária removida)';
                 return `
-            <span class="text-[11px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded-full inline-flex items-center gap-1">
+            <span title="${escapeHtml(movimento ? caminhoDaCorrente(db.movimentosEscolas, id) : nome)}" class="text-[11px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded-full inline-flex items-center gap-1">
                 ${escapeHtml(nome)}
                 <button type="button" data-id="${escapeHtml(String(id))}" onclick="${nomeFuncaoRemover}('${tabela}', this.dataset.id)" class="hover:text-red-600 dark:hover:text-red-400 font-bold ml-1">×</button>
             </span>`;
@@ -4652,20 +4906,23 @@ function grupoMovimentosEscolas(tabela) {
 // Sugestão por nome já cadastrado — mesmo padrão do dropdown de Grupo
 // acima (candidatosPorAutoria), só que alimentando os TRÊS modais.
 export function atualizarDatalistMovimentosEscolas() {
-    const nomes = db.movimentosEscolas
-        .map((m) => m.nome)
-        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    [
-        'sugestoes-movimentos-escolas',
-        'sugestoes-movimentos-escolas-prosa',
-        'sugestoes-movimentos-escolas-autor',
-    ].forEach((id) => {
+    // O valor da opção é o nome (único no cadastro, e é o que o campo casa);
+    // o rótulo situa a divisão na árvore e diz a que gênero ela se aplica.
+    // Em Poema e Prosa, divisão do outro gênero não é sugerida.
+    const datalists = {
+        poemas: 'sugestoes-movimentos-escolas',
+        prosas: 'sugestoes-movimentos-escolas-prosa',
+        autores: 'sugestoes-movimentos-escolas-autor',
+    };
+    Object.entries(datalists).forEach(([tabela, id]) => {
         const datalist = document.getElementById(id);
-        if (datalist) {
-            datalist.innerHTML = nomes
-                .map((nome) => `<option value="${escapeHtml(nome)}">`)
-                .join('');
-        }
+        if (!datalist) return;
+        datalist.innerHTML = sugestoesDeCorrentes(db.movimentosEscolas, tabela)
+            .map(
+                (o) =>
+                    `<option value="${escapeHtml(o.nome)}"${o.rotulo ? ` label="${escapeHtml(o.rotulo)}"` : ''}></option>`,
+            )
+            .join('');
     });
 }
 
@@ -4673,6 +4930,36 @@ export function atualizarDatalistMovimentosEscolas() {
 // próprio cadastro central), não de Poemas/Prosas (mesmo espírito de
 // extrairInstituicoesUnicas, mas sem precisar de split por vírgula
 // porque regiaoOrigem já é um campo simples de texto por registro).
+// Opções do select "Faz parte de" do modal de Corrente literária: todas as
+// correntes menos a que está sendo editada e as divisões dela (não dá para
+// ser filha de si mesma). O rótulo é o caminho completo (Romantismo ›
+// Romantismo no Brasil), em ordem alfabética. `paiId` pré-seleciona.
+export function preencherOpcoesPaiCorrente(idEditando = null, paiId = null) {
+    const select = document.getElementById('me-pai');
+    if (!select) return;
+    const lista = db.movimentosEscolas;
+    const opcoes = opcoesDePaiDaCorrente(lista, idEditando)
+        .map((m) => ({ id: m.id, rotulo: caminhoDaCorrente(lista, m.id) }))
+        .sort((a, b) => a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
+    select.innerHTML =
+        '<option value="">Nenhuma (corrente de topo)</option>' +
+        opcoes.map((o) => `<option value="${o.id}">${escapeHtml(o.rotulo)}</option>`).join('');
+    select.value = paiId != null ? String(paiId) : '';
+    sincronizarCamposDivisaoCorrente();
+}
+
+// Divisão e "Aplica-se a" só valem com pai: sem pai ficam desabilitados e
+// vazios.
+export function sincronizarCamposDivisaoCorrente() {
+    const temPai = Boolean(document.getElementById('me-pai')?.value);
+    ['me-divisao', 'me-genero-divisao'].forEach((idCampo) => {
+        const campo = document.getElementById(idCampo);
+        if (!campo) return;
+        campo.disabled = !temPai;
+        if (!temPai) campo.value = '';
+    });
+}
+
 export function atualizarDatalistRegiaoOrigemMovimento() {
     const regioes = [
         ...new Set(db.movimentosEscolas.map((m) => (m.regiaoOrigem || '').trim()).filter(Boolean)),

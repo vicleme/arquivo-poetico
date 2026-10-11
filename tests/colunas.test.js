@@ -30,6 +30,12 @@ const {
     toggleColuna,
     moverColuna,
     resetarColunas,
+    listarPadroesColunas,
+    salvarPadraoColunas,
+    aplicarPadraoColunas,
+    excluirPadraoColunas,
+    padraoAtivoColunas,
+    renderSeletorColunas,
 } = await import('../js/colunas.js');
 
 // Mesmo prefixo usado internamente em colunas.js (LS_PREFIX, não
@@ -76,18 +82,16 @@ describe('getColunasAtivas (sem nada salvo ainda — estado padrão)', () => {
             'na mesma ordem em que estão definidas',
         () => {
             assert.deepEqual(getColunasAtivas('poemas'), [
+                'estrutura',
                 'dataEscrita',
                 'dataPublicacao',
-                'estrutura',
-                'pessoas',
                 'status',
             ]);
             assert.deepEqual(getColunasAtivas('prosas'), [
-                'dataEscrita',
-                'dataPublicacao',
                 'vinculo',
                 'genero',
-                'pessoas',
+                'dataEscrita',
+                'dataPublicacao',
                 'status',
             ]);
         },
@@ -118,10 +122,9 @@ describe('getColunasAtivas (com estado salvo no localStorage)', () => {
     it('JSON corrompido no localStorage cai pro padrão, sem quebrar', () => {
         localStorage.setItem(LS_PREFIX + 'poemas', '{ isso não é json válido');
         assert.deepEqual(getColunasAtivas('poemas'), [
+            'estrutura',
             'dataEscrita',
             'dataPublicacao',
-            'estrutura',
-            'pessoas',
             'status',
         ]);
     });
@@ -129,10 +132,9 @@ describe('getColunasAtivas (com estado salvo no localStorage)', () => {
     it('JSON válido mas em formato inesperado (sem ordem/ativas como arrays) cai pro padrão', () => {
         localStorage.setItem(LS_PREFIX + 'poemas', JSON.stringify({ outraCoisa: true }));
         assert.deepEqual(getColunasAtivas('poemas'), [
+            'estrutura',
             'dataEscrita',
             'dataPublicacao',
-            'estrutura',
-            'pessoas',
             'status',
         ]);
     });
@@ -207,15 +209,14 @@ describe('toggleColuna', () => {
         assert.equal(isColunaAtiva('poemas', 'status'), false);
     });
 
-    it('ligar uma coluna respeita a ordem de definição, não vai pro fim da lista', () => {
-        toggleColuna('poemas', 'elos', true); // "elos" vem antes de "pessoas"/"status" na ordem padrão
+    it('ligar uma coluna desligada põe ela depois das colunas ligadas de fábrica', () => {
+        toggleColuna('poemas', 'elos', true);
         assert.deepEqual(getColunasAtivas('poemas'), [
+            'estrutura',
             'dataEscrita',
             'dataPublicacao',
-            'estrutura',
-            'elos',
-            'pessoas',
             'status',
+            'elos',
         ]);
     });
 
@@ -249,37 +250,38 @@ describe('moverColuna', () => {
     beforeEach(resetar);
 
     it('"up" troca de posição com o vizinho anterior', () => {
-        // ordem padrão (início): idioma, localEscrita, territorialidade, dataEscrita, dataPublicacao, epocaRetratada, periodoHistoricoId, movimentosEscolas, contextoHistorico, notas, autoria, envios, reconhecimentos, autoavaliacao, autoclassificacao, estrutura, elos...
+        // ordem de fábrica (início): estrutura, dataEscrita, dataPublicacao, status, e depois as demais na ordem de definição (idioma, localEscrita, territorialidade, epocaRetratada...)
         moverColuna('poemas', 'notas', 'up');
         const estado = JSON.parse(localStorage.getItem(LS_PREFIX + 'poemas'));
-        assert.deepEqual(estado.ordem.slice(0, 16), [
+        assert.deepEqual(estado.ordem.slice(0, 17), [
+            'estrutura',
+            'dataEscrita',
+            'dataPublicacao',
+            'status',
             'idioma',
             'localEscrita',
             'territorialidade',
-            'dataEscrita',
-            'dataPublicacao',
             'epocaRetratada',
             'periodoHistoricoId',
             'movimentosEscolas',
+            'posturaEstetica',
+            'programa',
             'notas',
             'contextoHistorico',
             'autoria',
             'envios',
             'reconhecimentos',
-            'autoavaliacao',
-            'autoclassificacao',
-            'estrutura',
         ]);
     });
 
     it('"down" troca de posição com o vizinho seguinte', () => {
-        moverColuna('poemas', 'idioma', 'down');
+        moverColuna('poemas', 'estrutura', 'down');
         const estado = JSON.parse(localStorage.getItem(LS_PREFIX + 'poemas'));
-        assert.deepEqual(estado.ordem.slice(0, 2), ['localEscrita', 'idioma']);
+        assert.deepEqual(estado.ordem.slice(0, 2), ['dataEscrita', 'estrutura']);
     });
 
     it('mover a primeira coluna pra "up" não faz nada (já está no topo)', () => {
-        moverColuna('poemas', 'idioma', 'up');
+        moverColuna('poemas', 'estrutura', 'up');
         const estado = JSON.parse(localStorage.getItem(LS_PREFIX + 'poemas'));
         assert.equal(estado, null, 'nem chega a salvar, porque a posição-alvo é inválida');
     });
@@ -306,13 +308,13 @@ describe('moverColuna', () => {
     });
 
     it('dispara o evento "colunas:alteradas" quando o movimento é válido', () => {
-        moverColuna('poemas', 'estrutura', 'up');
+        moverColuna('poemas', 'dataEscrita', 'up');
         assert.equal(window._eventos.length, 1);
         assert.equal(window._eventos[0].detail.tabela, 'poemas');
     });
 
     it('NÃO dispara evento quando o movimento é inválido (limite, key/tabela inexistente)', () => {
-        moverColuna('poemas', 'idioma', 'up'); // já está no topo
+        moverColuna('poemas', 'estrutura', 'up'); // já está no topo
         moverColuna('poemas', 'coluna-fantasma', 'up');
         moverColuna('tabela-fantasma', 'x', 'up');
         assert.equal(window._eventos.length, 0);
@@ -327,10 +329,9 @@ describe('resetarColunas', () => {
     it('sem nada personalizado, não quebra e mantém o padrão', () => {
         resetarColunas('poemas');
         assert.deepEqual(getColunasAtivas('poemas'), [
+            'estrutura',
             'dataEscrita',
             'dataPublicacao',
-            'estrutura',
-            'pessoas',
             'status',
         ]);
     });
@@ -343,10 +344,9 @@ describe('resetarColunas', () => {
         );
         resetarColunas('poemas');
         assert.deepEqual(getColunasAtivas('poemas'), [
+            'estrutura',
             'dataEscrita',
             'dataPublicacao',
-            'estrutura',
-            'pessoas',
             'status',
         ]);
     });
@@ -371,5 +371,158 @@ describe('resetarColunas', () => {
     it('tabela desconhecida NÃO dispara evento', () => {
         resetarColunas('tabela-fantasma');
         assert.equal(window._eventos.length, 0);
+    });
+});
+
+// ─── Rótulos e padrão de fábrica ───────────────────────────────────
+
+describe('rótulos e ordem de fábrica de Poemas e Prosas', () => {
+    beforeEach(resetar);
+
+    it('as duas tabelas chamam as datas de "Data de escrita" e "Data de publicação"', () => {
+        for (const t of ['poemas', 'prosas']) {
+            const rot = (k) => DEFINICAO_COLUNAS[t].find((c) => c.key === k).label;
+            assert.equal(rot('dataEscrita'), 'Data de escrita');
+            assert.equal(rot('dataPublicacao'), 'Data de publicação');
+        }
+    });
+
+    it('Pessoas não vem ligada por padrão', () => {
+        for (const t of ['poemas', 'prosas']) {
+            assert.equal(DEFINICAO_COLUNAS[t].find((c) => c.key === 'pessoas').default, false);
+            assert.ok(!getColunasAtivas(t).includes('pessoas'));
+        }
+    });
+
+    it('religar Pessoas num acervo sem nada salvo põe a coluna depois das ligadas, na ordem de definição', () => {
+        toggleColuna('poemas', 'pessoas', true);
+        const ativas = getColunasAtivas('poemas');
+        assert.deepEqual(ativas.slice(0, 4), [
+            'estrutura',
+            'dataEscrita',
+            'dataPublicacao',
+            'status',
+        ]);
+        assert.equal(ativas.length, 5);
+    });
+});
+
+// ─── Padrões personalizados ────────────────────────────────────────
+
+describe('padrões personalizados de colunas', () => {
+    beforeEach(resetar);
+
+    it('sem nada salvo, a lista é vazia e nenhum padrão está ativo', () => {
+        assert.deepEqual(listarPadroesColunas('poemas'), []);
+        assert.equal(padraoAtivoColunas('poemas'), null);
+    });
+
+    it('salva as colunas ligadas, na ordem da tela, e aplica de volta depois de mexer', () => {
+        toggleColuna('poemas', 'elos', true);
+        moverColuna('poemas', 'elos', 'up');
+        const antes = getColunasAtivas('poemas');
+        const r = salvarPadraoColunas('poemas', 'Revisão');
+        assert.deepEqual(r, { ok: true, nome: 'Revisão', substituiu: false });
+        assert.deepEqual(listarPadroesColunas('poemas'), [{ nome: 'Revisão', colunas: antes }]);
+
+        resetarColunas('poemas');
+        assert.notDeepEqual(getColunasAtivas('poemas'), antes);
+        assert.equal(aplicarPadraoColunas('poemas', 'Revisão'), true);
+        assert.deepEqual(getColunasAtivas('poemas'), antes);
+        assert.equal(padraoAtivoColunas('poemas'), 'Revisão');
+    });
+
+    it('aplicar mantém todas as colunas na lista (as desligadas ficam depois, ainda religáveis)', () => {
+        salvarPadraoColunas('prosas', 'Enxuto');
+        toggleColuna('prosas', 'genero', false);
+        aplicarPadraoColunas('prosas', 'Enxuto');
+        const todas = DEFINICAO_COLUNAS.prosas.map((c) => c.key).sort();
+        const html = renderSeletorColunas('prosas');
+        for (const k of todas) assert.ok(html.includes(`toggleColuna('prosas', '${k}'`), k);
+    });
+
+    it('mexer em qualquer coluna tira o "padrão ativo"', () => {
+        salvarPadraoColunas('poemas', 'Base');
+        assert.equal(padraoAtivoColunas('poemas'), 'Base');
+        toggleColuna('poemas', 'notas', true);
+        assert.equal(padraoAtivoColunas('poemas'), null);
+        toggleColuna('poemas', 'notas', false);
+        assert.equal(padraoAtivoColunas('poemas'), 'Base');
+    });
+
+    it('mesmo nome (sem diferenciar caixa nem espaços) substitui no mesmo lugar', () => {
+        salvarPadraoColunas('poemas', 'A');
+        salvarPadraoColunas('poemas', 'B');
+        toggleColuna('poemas', 'notas', true);
+        const r = salvarPadraoColunas('poemas', '  a ');
+        assert.deepEqual(r, { ok: true, nome: 'a', substituiu: true });
+        const lista = listarPadroesColunas('poemas');
+        assert.deepEqual(
+            lista.map((p) => p.nome),
+            ['a', 'B'],
+        );
+        assert.ok(lista[0].colunas.includes('notas'));
+    });
+
+    it('nome vazio é recusado e não grava nada', () => {
+        assert.deepEqual(salvarPadraoColunas('poemas', '   '), { ok: false, motivo: 'nome' });
+        assert.deepEqual(listarPadroesColunas('poemas'), []);
+    });
+
+    it('nome longo é cortado em 40 caracteres', () => {
+        const r = salvarPadraoColunas('poemas', 'x'.repeat(80));
+        assert.equal(r.nome.length, 40);
+    });
+
+    it('cada tabela tem a sua lista', () => {
+        salvarPadraoColunas('poemas', 'Só poemas');
+        assert.deepEqual(listarPadroesColunas('prosas'), []);
+        assert.equal(aplicarPadraoColunas('prosas', 'Só poemas'), false);
+    });
+
+    it('excluir tira só o padrão, sem mexer nas colunas da tela', () => {
+        salvarPadraoColunas('poemas', 'Base');
+        const antes = getColunasAtivas('poemas');
+        assert.equal(excluirPadraoColunas('poemas', 'base'), true);
+        assert.deepEqual(listarPadroesColunas('poemas'), []);
+        assert.deepEqual(getColunasAtivas('poemas'), antes);
+        assert.equal(excluirPadraoColunas('poemas', 'base'), false);
+    });
+
+    it('coluna que deixou de existir sai do padrão sem quebrar a aplicação', () => {
+        localStorage.setItem(
+            'arquivoPoetico_colunasPadroes_poemas',
+            JSON.stringify([{ nome: 'Velho', colunas: ['status', 'colunaQueSumiu', 'estrutura'] }]),
+        );
+        assert.equal(aplicarPadraoColunas('poemas', 'Velho'), true);
+        assert.deepEqual(getColunasAtivas('poemas'), ['status', 'estrutura']);
+    });
+
+    it('JSON corrompido na lista de padrões cai pra lista vazia', () => {
+        localStorage.setItem('arquivoPoetico_colunasPadroes_poemas', '{ quebrado');
+        assert.deepEqual(listarPadroesColunas('poemas'), []);
+    });
+
+    it('salvar, aplicar e excluir disparam "colunas:alteradas"; tabela desconhecida não', () => {
+        salvarPadraoColunas('poemas', 'Base');
+        aplicarPadraoColunas('poemas', 'Base');
+        excluirPadraoColunas('poemas', 'Base');
+        assert.deepEqual(
+            window._eventos.map((e) => e.detail.tabela),
+            ['poemas', 'poemas', 'poemas'],
+        );
+        window._eventos = [];
+        assert.deepEqual(salvarPadraoColunas('fantasma', 'X'), { ok: false, motivo: 'tabela' });
+        assert.equal(window._eventos.length, 0);
+    });
+
+    it('o painel mostra o seletor com o padrão em uso selecionado, escapando o nome', () => {
+        assert.ok(renderSeletorColunas('poemas').includes('Nenhum padrão salvo'));
+        salvarPadraoColunas('poemas', 'A <b>"x"</b>');
+        const html = renderSeletorColunas('poemas');
+        assert.ok(html.includes('&lt;b&gt;'));
+        assert.ok(!html.includes('<b>"x"</b>'));
+        assert.ok(html.includes('selected'));
+        assert.ok(html.includes('Excluir padrão'));
     });
 });

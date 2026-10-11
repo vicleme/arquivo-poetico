@@ -8,6 +8,7 @@
 // via preencherCapas).
 // ============================================================
 
+import { nomesDasAncoras } from './ancora-eco.js';
 import {
     db,
     save,
@@ -16,10 +17,31 @@ import {
     calcularImpactoExclusaoAutor,
     calcularImpactoExclusaoEpoca,
     calcularImpactoExclusaoPeriodoHistorico,
-    calcularImpactoExclusaoMovimentoEscola,
     NIVEL_MAXIMO_GRUPO,
 } from './db.js';
 import { baixarAssuntosMarkdown } from './exportar-assuntos.js';
+import {
+    nomesPersonagens,
+    nomesPersonagensPorCentralidade,
+    nomesPersonagensPorPapel,
+} from './personagens.js';
+import {
+    ordenarCorrentesEmArvore,
+    impactoDaCorrente,
+    nomesDeBuscaDasCorrentes,
+    filhosDaCorrente,
+    caminhoDaCorrente,
+    posturaEfetivaDaCorrente,
+    programaEfetivoDaCorrente,
+    filtrarCorrentesPorAtributos,
+    filtroDeAtributosAtivo,
+    opcoesDeRegiaoDasCorrentes,
+    ancestraisForaDe,
+    periodoEfetivoDaCorrente,
+    posturasDasCorrentes,
+    programasDasCorrentes,
+    FILTRO_CORRENTE_VAZIO,
+} from './correntes-hierarquia.js';
 import {
     contarTextosPorTema,
     textosDoTema,
@@ -42,6 +64,9 @@ import {
     nomeEpoca,
     nomePeriodoHistorico,
     nomesMovimentosEscolas,
+    TIPOS_MOVIMENTO_ESCOLA,
+    PROGRAMAS_MOVIMENTO,
+    POSTURAS_ESTETICAS,
     situacaoDominioPublico,
     rotuloDominioPublico,
     ROTULOS_RECORTE_EPOCA,
@@ -54,6 +79,7 @@ import {
     itemFaltaDataParaFiltro,
     parseFiltroDataRapido,
     filtrarPeriodosPorData,
+    periodoTemData,
     itemBateFiltroEpoca,
     itemFaltaEpocaParaFiltro,
     sinalizacoesCombinadas,
@@ -82,6 +108,9 @@ import {
     nomesIdiomasPorPapel,
     textoIdiomasComPapel,
     dialetosDoItem,
+    htmlSeloSituacaoEditorial,
+    livroForaDeCirculacao,
+    rotuloSituacaoEditorial,
 } from './utils.js';
 import {
     buscaTerritorialidadeDoTexto,
@@ -121,6 +150,7 @@ import {
     badgesTemas,
     badgesAssuntos,
     badgesPessoas,
+    badgesPersonagens,
     badgesGrupos,
     badgesAutoria,
     badgesEnvios,
@@ -218,7 +248,9 @@ const ICONE_NOVO_SUBGRUPO = `<svg viewBox="0 0 20 20" fill="none" stroke="curren
 // telas pra abrir modal) de propósito: "Ver textos" não abre um modal de
 // edição, abre a lista de poemas/prosas vinculados a essa Pessoa —
 // reaproveitar o mesmo olho sugeriria a ação errada.
-const ICONE_LISTA_TEXTOS = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M4 5.5h12"/><path d="M4 10h8"/><path d="M4 14.5h10"/></svg>`;
+export const ICONE_LISTA_TEXTOS = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M4 5.5h12"/><path d="M4 10h8"/><path d="M4 14.5h10"/></svg>`;
+// Sugerir Ecos (Pessoa e Personagem): dois arcos que se repetem, como um eco.
+export const ICONE_SUGERIR_ECOS = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><circle cx="5" cy="10" r="1.6"/><path d="M9 6.5a5 5 0 0 1 0 7"/><path d="M12.5 4a8.5 8.5 0 0 1 0 12"/></svg>`;
 
 // Duas cabeças — botão "Ver autores" do card de Movimento/Escola (ver
 // renderMovimentosEscolas/verAutoresMovimentoEscola abaixo). Só
@@ -294,6 +326,13 @@ let statusProsas = 'todos';
 // exportar como const e deixar selecao-massa.js importar e mutar a
 // mesma instância. A leitura (.has, pro checkbox de cada linha) mora
 // aqui; a escrita (toggle/limpar/ações em massa) mora lá.
+// Ids da lista filtrada que não estão na página exibida (base do botão
+// "Selecionar restantes" da paginação).
+function idsForaDaPagina(listaFiltrada, listaPagina) {
+    const naPagina = new Set(listaPagina.map((x) => x.id));
+    return listaFiltrada.map((x) => x.id).filter((id) => !naPagina.has(id));
+}
+
 export const selecaoPoemas = new Set();
 export const selecaoProsas = new Set();
 let filtroLivroPartes = '';
@@ -855,7 +894,9 @@ export function verTextosPeriodoHistorico(id) {
 export function verTextosMovimentoEscola(id) {
     const m = db.movimentosEscolas.find((x) => x.id == id);
     if (!m) return;
-    const { poemasIds, prosasIds } = calcularImpactoExclusaoMovimentoEscola(db, id);
+    // Com as divisões: o pai (Romantismo) abre a lista com os textos das
+    // gerações e vertentes dele, e o prefixo `movimento:` já é hierárquico.
+    const { poemasIds, prosasIds } = impactoDaCorrente(db, id, { comDivisoes: true });
     abrirListaFiltrada('movimento', m.nome, poemasIds, prosasIds);
 }
 
@@ -870,7 +911,7 @@ export function verAutoresMovimentoEscola(id) {
     const consulta = `movimento:"${m.nome}"`;
     abrirPorAtalho({
         destino: 'autores',
-        descricao: `Autores do movimento/escola “${m.nome}”`,
+        descricao: `Autores da corrente literária “${m.nome}”`,
         controles: ['busca-autores'],
         aplicar: () => {
             setFiltroAutores(consulta);
@@ -1141,6 +1182,14 @@ function nomesLivros(p) {
         .join(', ');
 }
 
+// Texto de uma data parcial pra busca: vazio quando não há dia, mês nem ano
+// (mesmo critério de itemFaltaDataParaFiltro em utils.js — hora sozinha não
+// conta como data), pra `campo:*` distinguir "tem data" de "não tem".
+function textoDataParaBusca(dataObj) {
+    if (!dataObj || (!dataObj.dia && !dataObj.mes && !dataObj.ano)) return '';
+    return formatarDataParcial(dataObj);
+}
+
 // Deriva, a partir do vínculo estrutural do item (paiTipo/paiId), os
 // campos auxiliares usados pelo filtro por atributo "livro:"/"parte:"/
 // "secao:" em filtrarTextos (utils.js). extraLivros é usado só pra
@@ -1234,7 +1283,7 @@ export function decorarCamposBusca(item, extraLivros = '') {
             ? item.conceitos.ecos
                   .map(
                       (it) =>
-                          `${it.tipo || ''} ${it.texto || ''} ${resolverTituloPoemaOuProsa(it.id)}`,
+                          `${it.tipo || ''} ${nomesDasAncoras(db, it.ancoras)} ${it.texto || ''} ${resolverTituloPoemaOuProsa(it.id)}`,
                   )
                   .join(' ')
             : '',
@@ -1291,6 +1340,41 @@ export function decorarCamposBusca(item, extraLivros = '') {
                     `${autor.nome} ${nomeLiterario || ''} ${papel || ''}`,
             )
             .join(' '),
+        // Personagens guarda só o id (nome mora em db.personagens — ver
+        // personagens.js); o nome entra na busca geral e no prefixo
+        // "personagem:".
+        _buscaPersonagens: nomesPersonagens(item, db.personagens).join(' '),
+        // Por papel e por centralidade do vínculo (nomesPersonagensPorPapel e
+        // nomesPersonagensPorCentralidade em personagens.js): alimentam
+        // personagemvoz: ... personagemalusao: e personagemprotagonista:,
+        // personagemsecundario:, personagemsemcentralidade:. Vazio quando
+        // ninguém bate, então `prefixo:*` e `-prefixo:*` funcionam.
+        _buscaPersonagemVoz: nomesPersonagensPorPapel(item, db.personagens, 'Voz').join(', '),
+        _buscaPersonagemInterlocutor: nomesPersonagensPorPapel(
+            item,
+            db.personagens,
+            'Interlocutor',
+        ).join(', '),
+        _buscaPersonagemAparicao: nomesPersonagensPorPapel(item, db.personagens, 'Aparição').join(
+            ', ',
+        ),
+        _buscaPersonagemMencao: nomesPersonagensPorPapel(item, db.personagens, 'Menção').join(', '),
+        _buscaPersonagemAlusao: nomesPersonagensPorPapel(item, db.personagens, 'Alusão').join(', '),
+        _buscaPersonagemProtagonista: nomesPersonagensPorCentralidade(
+            item,
+            db.personagens,
+            'protagonista',
+        ).join(', '),
+        _buscaPersonagemSecundario: nomesPersonagensPorCentralidade(
+            item,
+            db.personagens,
+            'secundario',
+        ).join(', '),
+        _buscaPersonagemSemCentralidade: nomesPersonagensPorCentralidade(
+            item,
+            db.personagens,
+            '',
+        ).join(', '),
         // epocaRetratada guarda só epocaId (nome mora no cadastro central
         // db.epocas — ver migrarEpocas em db.js); nome e recorte entram na
         // busca geral e no prefixo "epoca:" (ver CAMPOS_ATRIBUTO em
@@ -1303,6 +1387,14 @@ export function decorarCamposBusca(item, extraLivros = '') {
                   .filter(Boolean)
                   .join(' ')
             : '',
+        // dataEscrita/dataPublicacao são objetos {dia, mes, ano, exata} (não
+        // texto); aqui viram o texto formatado (ex.: "15/03/2020") pros
+        // prefixos "dataescrita:" e "datapublicacao:" (ver CAMPOS_ATRIBUTO
+        // em utils.js). Sem nenhuma parte da data (dia/mês/ano), o campo fica
+        // vazio — é isso que faz `dataescrita:*` e `-dataescrita:*` separarem
+        // quem tem e quem não tem data. O filtro De/Até continua à parte.
+        _buscaDataEscrita: textoDataParaBusca(item.dataEscrita),
+        _buscaDataPublicacao: textoDataParaBusca(item.dataPublicacao),
         // periodoHistoricoId guarda só o id (nome mora no cadastro central
         // db.periodosHistoricos — ver migrarPeriodosHistoricos em db.js);
         // nome entra na busca geral e no prefixo "periodohistorico:" (ver
@@ -1317,10 +1409,27 @@ export function decorarCamposBusca(item, extraLivros = '') {
         // db.js); nomes entram na busca geral e no prefixo "movimento:"
         // (ver CAMPOS_ATRIBUTO em utils.js), mesmo padrão de
         // _buscaPeriodoHistorico acima, só que é N:N (join com espaço).
-        _buscaMovimentosEscolas: nomesMovimentosEscolas(
-            item.movimentosEscolasIds,
+        // Hierárquico (ver nomesDeBuscaDasCorrentes): `movimento:Romantismo`
+        // acha também o texto ligado a uma geração ou vertente dele.
+        // `movimentodireto:` restringe ao que foi ligado diretamente.
+        _buscaMovimentosEscolas: nomesDeBuscaDasCorrentes(
             db.movimentosEscolas,
+            item.movimentosEscolasIds,
+            { comAncestrais: true },
         ).join(' '),
+        _buscaMovimentosEscolasDireto: nomesDeBuscaDasCorrentes(
+            db.movimentosEscolas,
+            item.movimentosEscolasIds,
+        ).join(' '),
+        // Postura estética e Programa efetivos (com a herança do pai) das
+        // correntes ligadas ao texto: `postura:` e `programa:`.
+        _buscaPosturas: posturasDasCorrentes(db.movimentosEscolas, item.movimentosEscolasIds).join(
+            ', ',
+        ),
+        _buscaProgramas: programasDasCorrentes(
+            db.movimentosEscolas,
+            item.movimentosEscolasIds,
+        ).join(', '),
         // Tema por papel (item.temas[].papel — ver nomesTemasPorPapel em
         // utils.js): alimenta os prefixos temaprincipal:, temasecundario: e
         // temasempapel:. `tema:` segue lendo o espelho e acha em qualquer papel.
@@ -1788,6 +1897,39 @@ function celulaLocalEscrita(item) {
     return `<td class="p-4 text-xs ${texto ? 'text-gray-500 dark:text-slate-400' : 'text-gray-300 dark:text-slate-600'}">${texto ? escapeHtml(texto) : '—'}</td>`;
 }
 
+// Células de Postura estética e Programa: os valores efetivos (com a herança do
+// pai) das correntes ligadas ao texto, um selo por valor distinto.
+function celulaAtributoDaCorrente(valores, classes) {
+    return `<td class="p-4">${
+        valores.length
+            ? valores
+                  .map(
+                      (v) =>
+                          `<span class="text-[9px] ${classes} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(v)}</span>`,
+                  )
+                  .join('')
+            : '<span class="text-gray-300 dark:text-slate-600">—</span>'
+    }</td>`;
+}
+
+const CLASSES_SELO_POSTURA =
+    'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300';
+const CLASSES_SELO_PROGRAMA = 'bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300';
+
+function celulaPosturaDaCorrente(item) {
+    return celulaAtributoDaCorrente(
+        posturasDasCorrentes(db.movimentosEscolas, item.movimentosEscolasIds),
+        CLASSES_SELO_POSTURA,
+    );
+}
+
+function celulaProgramaDaCorrente(item) {
+    return celulaAtributoDaCorrente(
+        programasDasCorrentes(db.movimentosEscolas, item.movimentosEscolasIds),
+        CLASSES_SELO_PROGRAMA,
+    );
+}
+
 // Célula da coluna Territorialidade: um selo por Local citado, com o caminho
 // na dica. Texto sem ids (só o espelho de nomes) mostra os nomes do espelho.
 function celulaTerritorialidade(item) {
@@ -1808,6 +1950,12 @@ const COMPARADORES_ORDENACAO = {
     titulo: compararPorTexto((p) => p.titulo),
     idioma: compararPorTexto((p) => p.idioma),
     localEscrita: compararPorTexto((p) => textoLocalEscrita(db, p)),
+    posturaEstetica: compararPorTexto((p) =>
+        posturasDasCorrentes(db.movimentosEscolas, p.movimentosEscolasIds).join(', '),
+    ),
+    programa: compararPorTexto((p) =>
+        programasDasCorrentes(db.movimentosEscolas, p.movimentosEscolasIds).join(', '),
+    ),
     territorialidade: compararPorTexto((p) => textoTerritorialidadeComCaminho(db, p)),
     dataEscrita: compararPorData((p) => p.dataEscrita),
     dataPublicacao: compararPorData((p) => p.dataPublicacao),
@@ -1824,6 +1972,7 @@ const COMPARADORES_ORDENACAO = {
     ),
     status: compararPorStatus,
     pessoas: compararPorTexto((p) => nomesPessoas(p, db.pessoas).join(', ')),
+    personagens: compararPorTexto((p) => nomesPersonagens(p, db.personagens).join(', ')),
     grupos: compararPorTexto((p) =>
         [
             ...paresGrupoPessoa(p, db.pessoas, db.grupos).map(({ grupo }) => grupo.nome),
@@ -2003,6 +2152,16 @@ export function renderLivros() {
             </div>
             <p class="text-xs font-mono text-gray-500 dark:text-slate-400">${escapeHtml(l.siglaOficial) || '---'} | ${l.data ? (typeof l.data === 'string' ? l.data : formatarDataParcial(l.data)) : 'S/D'}${l.dataUltimaEdicao ? ` <span title="Última edição">· ed. ${formatarDataParcial(l.dataUltimaEdicao)}</span>` : ''}</p>
             ${
+                htmlSeloSituacaoEditorial(l)
+                    ? `<div class="mt-2">${htmlSeloSituacaoEditorial(l)}</div>`
+                    : ''
+            }
+            ${
+                l.situacaoNota && htmlSeloSituacaoEditorial(l)
+                    ? `<p class="text-[10px] italic text-gray-500 dark:text-slate-400 mt-1">${escapeHtml(l.situacaoNota)}</p>`
+                    : ''
+            }
+            ${
                 l.isbn13 || l.isbn10
                     ? `<p class="text-[10px] font-mono text-gray-400 dark:text-slate-500 mt-0.5">${[l.isbn13 ? `ISBN-13: ${escapeHtml(l.isbn13)}` : '', l.isbn10 ? `ISBN-10: ${escapeHtml(l.isbn10)}` : ''].filter(Boolean).join(' · ')}</p>`
                     : ''
@@ -2018,6 +2177,13 @@ export function renderLivros() {
                             )
                             .join('')}
                     </div>`
+                    : ''
+            }
+            ${
+                livroForaDeCirculacao(l) &&
+                Array.isArray(l.lojas) &&
+                l.lojas.some((loja) => loja.url)
+                    ? `<p data-aviso-lojas-fora-de-circulacao class="text-[10px] text-amber-700 dark:text-amber-300 mt-1">⚠️ ${escapeHtml(rotuloSituacaoEditorial(l.situacaoEditorial))}: confira se os links de compra ainda funcionam.</p>`
                     : ''
             }
             ${
@@ -2264,11 +2430,15 @@ export function renderPoemas() {
             'pagina-poemas',
             'poemas',
             listaPagina.map((p) => p.id),
+            idsForaDaPagina(listaFiltrada, listaPagina),
+            selecaoPoemas,
         );
 
     const CELULAS_POEMAS = {
         idioma: (p) => celulaIdioma(p),
         localEscrita: (p) => celulaLocalEscrita(p),
+        posturaEstetica: (p) => celulaPosturaDaCorrente(p),
+        programa: (p) => celulaProgramaDaCorrente(p),
         territorialidade: (p) => celulaTerritorialidade(p),
         dataEscrita: (p) => {
             const aproximada = !!(p.dataEscrita && !p.dataEscrita.exata);
@@ -2314,6 +2484,7 @@ export function renderPoemas() {
         dataPublicacao: (p) =>
             `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${p.dataPublicacao ? formatarDataParcial(p.dataPublicacao) : '—'}</td>`,
         pessoas: (p) => `<td class="p-4">${badgesPessoas(p.pessoas)}</td>`,
+        personagens: (p) => `<td class="p-4">${badgesPersonagens(p)}</td>`,
         grupos: (p) => `<td class="p-4">${badgesGrupos(p)}</td>`,
         fonte: (p) => celulaFonte(p),
         grafia: (p) => celulaGrafia(p),
@@ -2615,11 +2786,15 @@ export function renderProsas() {
             'pagina-prosas',
             'prosas',
             listaPaginaPr.map((pr) => pr.id),
+            idsForaDaPagina(listaFiltrada, listaPaginaPr),
+            selecaoProsas,
         );
 
     const CELULAS_PROSAS = {
         idioma: (pr) => celulaIdioma(pr),
         localEscrita: (pr) => celulaLocalEscrita(pr),
+        posturaEstetica: (pr) => celulaPosturaDaCorrente(pr),
+        programa: (pr) => celulaProgramaDaCorrente(pr),
         territorialidade: (pr) => celulaTerritorialidade(pr),
         dataEscrita: (pr) => {
             const aproximada = !!(pr.dataEscrita && !pr.dataEscrita.exata);
@@ -2668,6 +2843,7 @@ export function renderProsas() {
         dataPublicacao: (pr) =>
             `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${pr.dataPublicacao ? formatarDataParcial(pr.dataPublicacao) : '—'}</td>`,
         pessoas: (pr) => `<td class="p-4">${badgesPessoas(pr.pessoas)}</td>`,
+        personagens: (pr) => `<td class="p-4">${badgesPersonagens(pr)}</td>`,
         grupos: (pr) => `<td class="p-4">${badgesGrupos(pr)}</td>`,
         fonte: (pr) => celulaFonte(pr),
         grafia: (pr) => celulaGrafia(pr),
@@ -3043,6 +3219,18 @@ export function renderPessoas() {
                         )
                         .join('')}
                 </div>
+                ${
+                    p.orientacao || p.identidadeCisTrans || p.corRaca
+                        ? `<p class="text-[10px] text-gray-500 dark:text-slate-400 mt-1">${[
+                              p.orientacao,
+                              p.identidadeCisTrans,
+                              p.corRaca,
+                          ]
+                              .filter(Boolean)
+                              .map(escapeHtml)
+                              .join(' · ')}</p>`
+                        : ''
+                }
                 <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
                     aparece em ${totalTextos} texto${totalTextos !== 1 ? 's' : ''}
                 </p>
@@ -3051,6 +3239,11 @@ export function renderPessoas() {
                 ${
                     totalTextos > 0
                         ? `<button data-action="ver-textos-pessoa" data-id="${p.id}" title="Ver textos" aria-label="Ver textos" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_LISTA_TEXTOS}</button>`
+                        : ''
+                }
+                ${
+                    totalTextos > 1
+                        ? `<button data-action="sugerir-ecos" data-especie="pessoa" data-id="${p.id}" title="Sugerir Ecos" aria-label="Sugerir Ecos" class="inline-flex items-center justify-center p-1.5 rounded text-violet-600 dark:text-violet-400 hover:bg-violet-100 dark:hover:bg-violet-900/40">${ICONE_SUGERIR_ECOS}</button>`
                         : ''
                 }
                 <button data-action="editar-pessoa" data-id="${p.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
@@ -4174,7 +4367,18 @@ function cartaoEpoca(ep) {
 const filtrosPeriodo = {
     epocas: { nome: '', autor: '', de: '', ate: '', modo: 'todos' },
     periodosHistoricos: { nome: '', de: '', ate: '', modo: 'todos' },
-    movimentosEscolas: { nome: '', de: '', ate: '', modo: 'todos' },
+    // Tipo, Região, Programa e Postura: '' = todos; FILTRO_CORRENTE_VAZIO =
+    // só os sem valor (ver filtrarCorrentesPorAtributos).
+    movimentosEscolas: {
+        nome: '',
+        de: '',
+        ate: '',
+        modo: 'todos',
+        tipo: '',
+        regiao: '',
+        programa: '',
+        postura: '',
+    },
 };
 
 const RENDER_POR_ABA_PERIODO = {
@@ -4193,6 +4397,11 @@ export function setFiltroPeriodo(aba) {
     f.ate = lerValor('ate').trim();
     f.modo = lerValor('modo') || 'todos';
     if (aba === 'epocas') f.autor = lerValor('autor');
+    if (aba === 'movimentosEscolas') {
+        ['tipo', 'regiao', 'programa', 'postura'].forEach((campo) => {
+            f[campo] = lerValor(campo);
+        });
+    }
     RENDER_POR_ABA_PERIODO[aba]();
 }
 
@@ -4221,10 +4430,35 @@ function garantirControlesFiltroPeriodo(aba) {
                 ? `<select id="fp-epocas-autor" onchange="setFiltroPeriodo('epocas')"
                         style="width: auto; margin-bottom: 0"></select>`
                 : '';
+        // Só em Correntes literárias: Tipo, Região, Programa e Postura. As
+        // opções fixas saem das listas do app; a Região é montada a cada
+        // render (ver popularSelectRegiaoCorrentes), com o que o cadastro usa.
+        const selectAtributo = (sufixo, titulo, vazio, opcoes, rotuloVazio) => `
+            <select id="fp-${aba}-${sufixo}" onchange="setFiltroPeriodo('${aba}')"
+                title="${titulo}" style="width: auto; margin-bottom: 0">
+                <option value="">${vazio}</option>
+                ${opcoes.map((o) => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('')}
+                <option value="${FILTRO_CORRENTE_VAZIO}">${rotuloVazio}</option>
+            </select>`;
+        const seletoresCorrente =
+            aba === 'movimentosEscolas'
+                ? `${selectAtributo('tipo', 'Tipo da corrente', '-- Todos os tipos --', TIPOS_MOVIMENTO_ESCOLA, 'Tipo não especificado')}
+            <select id="fp-movimentosEscolas-regiao" onchange="setFiltroPeriodo('movimentosEscolas')"
+                title="Região de origem (a divisão sem região usa a do pai)" style="width: auto; margin-bottom: 0"></select>
+            ${selectAtributo('programa', 'Programa (a divisão sem programa usa o do pai)', '-- Todos os programas --', PROGRAMAS_MOVIMENTO, 'Programa não preenchido')}
+            ${selectAtributo('postura', 'Postura estética (a divisão sem postura usa a do pai)', '-- Todas as posturas --', POSTURAS_ESTETICAS, 'Postura não preenchida')}`
+                : '';
+        const acoesCorrente =
+            aba === 'movimentosEscolas'
+                ? `<button type="button" id="fp-movimentosEscolas-limpar" onclick="limparFiltrosCorrentes()"
+                class="text-xs text-blue-600 dark:text-blue-400 hover:underline" style="margin-bottom: 0">Limpar filtros</button>
+            <span id="fp-movimentosEscolas-contagem" class="text-xs text-gray-500 dark:text-slate-400" aria-live="polite"></span>`
+                : '';
         container.className = 'flex flex-wrap items-center gap-x-4 gap-y-2 mb-4';
         container.innerHTML = `
             ${campoNome}
             ${seletorAutor}
+            ${seletoresCorrente}
             ${campoTexto('de', 'De')}
             ${campoTexto('ate', 'Até')}
             <select id="fp-${aba}-modo" onchange="setFiltroPeriodo('${aba}')"
@@ -4232,7 +4466,8 @@ function garantirControlesFiltroPeriodo(aba) {
                 <option value="todos">Com e sem data</option>
                 <option value="com-data">Só com data</option>
                 <option value="sem-data">Só sem data</option>
-            </select>`;
+            </select>
+            ${acoesCorrente}`;
         container.dataset.montado = '1';
     }
     // Em "Só sem data" o intervalo não tem o que filtrar: desabilita em vez
@@ -4243,6 +4478,46 @@ function garantirControlesFiltroPeriodo(aba) {
         if (el) el.disabled = somenteSemData;
     });
     if (aba === 'epocas') popularSelectAutores('fp-epocas-autor', '-- Todos os autores --');
+    if (aba === 'movimentosEscolas') popularSelectRegiaoCorrentes();
+}
+
+// Região: um item por lugar usado no cadastro ("Brasil/Portugal" vira Brasil
+// e Portugal). Refeito a cada render para acompanhar cadastros novos; se o
+// lugar escolhido deixou de existir, volta para "Todas".
+function popularSelectRegiaoCorrentes() {
+    const select = document.getElementById('fp-movimentosEscolas-regiao');
+    if (!select) return;
+    const lugares = opcoesDeRegiaoDasCorrentes(db.movimentosEscolas);
+    const atual = filtrosPeriodo.movimentosEscolas.regiao;
+    const valido = !atual || atual === FILTRO_CORRENTE_VAZIO || lugares.includes(atual);
+    if (!valido) filtrosPeriodo.movimentosEscolas.regiao = '';
+    select.innerHTML = `<option value="">-- Todas as regiões --</option>${lugares
+        .map((l) => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`)
+        .join('')}<option value="${FILTRO_CORRENTE_VAZIO}">Sem região</option>`;
+    select.value = filtrosPeriodo.movimentosEscolas.regiao;
+}
+
+// Botão "Limpar filtros" de Correntes literárias: zera nome, período e os
+// quatro atributos de uma vez.
+export function limparFiltrosCorrentes() {
+    const f = filtrosPeriodo.movimentosEscolas;
+    Object.assign(f, {
+        nome: '',
+        de: '',
+        ate: '',
+        modo: 'todos',
+        tipo: '',
+        regiao: '',
+        programa: '',
+        postura: '',
+    });
+    ['nome', 'de', 'ate', 'tipo', 'regiao', 'programa', 'postura'].forEach((sufixo) => {
+        const el = document.getElementById(`fp-movimentosEscolas-${sufixo}`);
+        if (el) el.value = '';
+    });
+    const modo = document.getElementById('fp-movimentosEscolas-modo');
+    if (modo) modo.value = 'todos';
+    renderMovimentosEscolas();
 }
 
 function aplicarFiltroPeriodo(aba, itens, opcoes = {}) {
@@ -4262,7 +4537,14 @@ function aplicarFiltroPeriodo(aba, itens, opcoes = {}) {
 
 function filtroPeriodoAtivo(aba) {
     const f = filtrosPeriodo[aba];
-    return !!(f.nome || f.de || f.ate || f.modo !== 'todos' || f.autor);
+    return !!(
+        f.nome ||
+        f.de ||
+        f.ate ||
+        f.modo !== 'todos' ||
+        f.autor ||
+        filtroDeAtributosAtivo(f)
+    );
 }
 
 // Ordenação escolhível pela pessoa, mesmo padrão de
@@ -4461,35 +4743,89 @@ export function renderMovimentosEscolas() {
 
     garantirControlesFiltroPeriodo('movimentosEscolas');
 
-    const ordenados = aplicarFiltroPeriodo('movimentosEscolas', [...db.movimentosEscolas], {
+    // Divisão sem data própria vale, no De/Até, pelo período do pai.
+    const filtradas = aplicarFiltroPeriodo('movimentosEscolas', [...db.movimentosEscolas], {
         movimento: true,
-    }).sort(compararMovimentosEscolas);
+        periodoEfetivo: (m) =>
+            periodoEfetivoDaCorrente(db.movimentosEscolas, m, (x) =>
+                periodoTemData(x, { movimento: true }),
+            ),
+    });
+    // Em árvore: cada corrente seguida das suas divisões, recuadas. Divisão
+    // cujo pai o filtro tirou da lista entra como corrente de topo (e o card
+    // diz de quem ela faz parte).
+    // Tipo, Região, Programa e Postura leem o valor efetivo (a divisão sem
+    // valor próprio vale pelo do pai). O pai que não passa mas tem divisão
+    // que passa fica na lista só como contexto, apagado, para a árvore não
+    // perder o fio.
+    const { passam } = filtrarCorrentesPorAtributos(
+        db.movimentosEscolas,
+        filtradas,
+        filtrosPeriodo.movimentosEscolas,
+    );
+    // O contexto vale para qualquer filtro (nome, período ou atributos): o pai
+    // que ficou de fora aparece apagado quando alguma divisão dele passa.
+    const contexto = ancestraisForaDe(db.movimentosEscolas, passam);
+    const idsContexto = new Set(contexto.map((m) => String(m.id)));
+    const ordenados = ordenarCorrentesEmArvore([...passam, ...contexto], compararMovimentosEscolas);
 
-    if (ordenados.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">${filtroPeriodoAtivo('movimentosEscolas') ? 'Nenhum movimento/escola encontrado com esse filtro.' : 'Nenhum movimento/escola cadastrado ainda.'}</div>`;
+    const contagem = document.getElementById('fp-movimentosEscolas-contagem');
+    if (contagem) {
+        contagem.textContent = filtroPeriodoAtivo('movimentosEscolas')
+            ? `${passam.length} de ${db.movimentosEscolas.length} correntes`
+            : '';
+    }
+
+    if (passam.length === 0) {
+        container.innerHTML = `<div class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${filtroPeriodoAtivo('movimentosEscolas') ? 'Nenhuma corrente literária encontrada com esse filtro.' : 'Nenhuma corrente literária cadastrada ainda.'}</div>`;
         return;
     }
 
     container.innerHTML = ordenados
-        .map((m) => {
-            const { autoresIds, poemasIds, prosasIds } = calcularImpactoExclusaoMovimentoEscola(
-                db,
-                m.id,
-            );
+        .map(({ m, nivel }) => {
+            const soContexto = idsContexto.has(String(m.id));
+            // O card soma o que está nas divisões (cada item conta uma vez); a
+            // exclusão olha só os vínculos do próprio registro.
+            const temDivisoes = filhosDaCorrente(db.movimentosEscolas, m.id).length > 0;
+            const { autoresIds, poemasIds, prosasIds } = impactoDaCorrente(db, m.id, {
+                comDivisoes: temDivisoes,
+            });
             const total = autoresIds.length + poemasIds.length + prosasIds.length;
             const intervalo = formatarIntervaloMovimentoEscola(m);
+            const programa = programaEfetivoDaCorrente(db.movimentosEscolas, m);
+            const postura = posturaEfetivaDaCorrente(db.movimentosEscolas, m);
+            const paiForaDaLista =
+                m.paiId != null &&
+                nivel === 0 &&
+                caminhoDaCorrente(db.movimentosEscolas, m.paiId) !== '';
             return `
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center${soContexto ? ' opacity-60' : ''}" style="margin-left: ${nivel * 1.5}rem"${nivel > 0 ? ' data-divisao="true"' : ''}${soContexto ? ' data-contexto="true"' : ''}>
             <div class="flex-1 min-w-0">
                 <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(m.nome)}</h4>
                 <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
-                    ${[intervalo !== '—' ? intervalo : null, m.tipo || null, m.regiaoOrigem || null]
+                    ${[
+                        m.divisao || null,
+                        m.generoDivisao || null,
+                        intervalo !== '—' ? intervalo : null,
+                        m.tipo || null,
+                        programa.valor
+                            ? programa.herdadoDe
+                                ? `${programa.valor} (herdado)`
+                                : programa.valor
+                            : null,
+                        postura.valor
+                            ? postura.herdadoDe
+                                ? `${postura.valor} (herdada)`
+                                : postura.valor
+                            : null,
+                        m.regiaoOrigem || null,
+                    ]
                         .filter(Boolean)
                         .map(escapeHtml)
                         .join(' · ')}
                 </p>
                 <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
-                    ${autoresIds.length} autor${autoresIds.length !== 1 ? 'es' : ''}, ${total - autoresIds.length} texto${total - autoresIds.length !== 1 ? 's' : ''}
+                    ${autoresIds.length} autor${autoresIds.length !== 1 ? 'es' : ''}, ${total - autoresIds.length} texto${total - autoresIds.length !== 1 ? 's' : ''}${temDivisoes ? ' (com as divisões)' : ''}${paiForaDaLista ? ` · parte de ${escapeHtml(caminhoDaCorrente(db.movimentosEscolas, m.paiId))}` : ''}${soContexto ? ' · só como contexto (não passa no filtro)' : ''}
                 </p>
             </div>
             <div class="flex gap-3 flex-shrink-0">
@@ -4497,7 +4833,7 @@ export function renderMovimentosEscolas() {
                 <button data-action="ver-autores-movimento-escola" data-id="${m.id}" title="Ver autores" aria-label="Ver autores" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_PESSOAS}</button>
                 <button data-action="ver-textos-movimento-escola" data-id="${m.id}" title="Ver textos" aria-label="Ver textos" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_LISTA_TEXTOS}</button>
                 <button data-action="editar-movimento-escola" data-id="${m.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
-                <button data-action="mesclar-item" data-tipo="movimentosEscolas" data-id="${m.id}" title="Mesclar com outro movimento/escola" aria-label="Mesclar" class="inline-flex items-center justify-center p-1.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">${ICONE_MESCLAR}</button>
+                <button data-action="mesclar-item" data-tipo="movimentosEscolas" data-id="${m.id}" title="Mesclar com outra corrente literária" aria-label="Mesclar" class="inline-flex items-center justify-center p-1.5 rounded text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40">${ICONE_MESCLAR}</button>
                 <button data-action="excluir-item" data-tipo="movimentosEscolas" data-id="${m.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
             </div>
         </div>`;
@@ -4624,6 +4960,7 @@ export function filtrarTemasSemAssunto() {
     if (campo) campo.value = '';
     const semAssunto = document.getElementById('filtro-temas-sem-assunto');
     if (semAssunto) semAssunto.checked = true;
+    triagemSemAssunto = null; // entrada nova na triagem: retrato novo
     renderTemas();
 }
 
@@ -4692,6 +5029,19 @@ function renderDuplicatasTemas() {
         </details>`;
 }
 
+// Triagem do filtro "Só sem assunto": ao ligar o filtro, a lista de Temas
+// sem assunto é congelada (ids). Atribuir um assunto a um tema NÃO o tira
+// da lista na hora (um tema costuma pertencer a mais de um assunto, e
+// sumir obrigaria a caçá-lo de novo): ele fica marcado como atribuído até
+// a pessoa clicar em "Atualizar lista" ou desligar e ligar o filtro.
+// null = filtro desligado ou ainda sem retrato.
+let triagemSemAssunto = null;
+
+export function atualizarListaSemAssunto() {
+    triagemSemAssunto = null;
+    renderTemas();
+}
+
 export function renderTemas() {
     const container = document.getElementById('lista-temas');
     if (!container) return;
@@ -4712,10 +5062,30 @@ export function renderTemas() {
         };
     });
 
+    if (!soSemAssunto) {
+        triagemSemAssunto = null;
+    } else if (!triagemSemAssunto) {
+        triagemSemAssunto = new Set(
+            linhas.filter((l) => l.assuntos.length === 0).map((l) => String(l.tema.id)),
+        );
+    }
+    // Temas que estavam sem assunto no retrato e já ganharam um nesta triagem.
+    const jaAtribuidos = soSemAssunto
+        ? linhas.filter((l) => triagemSemAssunto.has(String(l.tema.id)) && l.assuntos.length > 0)
+              .length
+        : 0;
+    const botaoAtualizar = document.getElementById('atualizar-temas-sem-assunto');
+    if (botaoAtualizar) {
+        botaoAtualizar.classList.toggle('hidden', !soSemAssunto);
+        botaoAtualizar.textContent = jaAtribuidos
+            ? `Atualizar lista (${jaAtribuidos} já atribuído${jaAtribuidos !== 1 ? 's saem' : ' sai'})`
+            : 'Atualizar lista';
+    }
+
     const resumo = document.getElementById('resumo-temas');
     const filtradas = linhas
         .filter((l) => !busca || chaveTema(l.tema.nome).includes(busca))
-        .filter((l) => !soSemAssunto || l.assuntos.length === 0)
+        .filter((l) => !soSemAssunto || triagemSemAssunto.has(String(l.tema.id)))
         .sort((a, b) =>
             ordem === 'usados'
                 ? b.textos - a.textos || a.tema.nome.localeCompare(b.tema.nome, 'pt-BR')
@@ -4723,12 +5093,20 @@ export function renderTemas() {
         );
     if (resumo) {
         const semAssunto = linhas.filter((l) => l.assuntos.length === 0).length;
-        resumo.textContent = `${filtradas.length} de ${linhas.length} tema${linhas.length !== 1 ? 's' : ''} · ${semAssunto} sem assunto`;
+        resumo.textContent = `${filtradas.length} de ${linhas.length} tema${linhas.length !== 1 ? 's' : ''} · ${semAssunto} sem assunto${
+            jaAtribuidos
+                ? ` · ${jaAtribuidos} atribuído${jaAtribuidos !== 1 ? 's' : ''} nesta triagem`
+                : ''
+        }`;
     }
 
     if (filtradas.length === 0) {
         container.innerHTML = `<div class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
-            linhas.length === 0 ? 'Nenhum tema cadastrado ainda.' : 'Nenhum tema bate com o filtro.'
+            linhas.length === 0
+                ? 'Nenhum tema cadastrado ainda.'
+                : soSemAssunto && !busca && triagemSemAssunto.size === 0
+                  ? 'Todos os temas já têm assunto.'
+                  : 'Nenhum tema bate com o filtro.'
         }</div>`;
         return;
     }
@@ -4752,12 +5130,15 @@ export function renderTemas() {
             const nota = t.notas
                 ? `<p class="text-[11px] text-gray-500 dark:text-slate-400 mt-1 line-clamp-2">${escapeHtml(t.notas)}</p>`
                 : '';
+            // Na triagem, tema que já ganhou assunto continua na lista, marcado.
+            const atribuido = soSemAssunto && dele.length > 0;
             return `
-<div class="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-start gap-3">
+<div data-atribuido="${atribuido}" class="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-gray-200 dark:border-slate-700 ${atribuido ? 'border-l-4 border-l-emerald-400 dark:border-l-emerald-500' : ''} shadow-sm flex justify-between items-start gap-3">
     <div class="flex-1 min-w-0">
         <div class="flex flex-wrap items-baseline gap-x-2">
             <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(t.nome)}</h4>
             <span class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">${textos} texto${textos !== 1 ? 's' : ''}</span>
+            ${atribuido ? '<span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">✓ atribuído</span>' : ''}
         </div>
         ${nota}
         <div class="mt-2 flex flex-wrap items-center gap-y-1">${badges}${seletor}</div>

@@ -1,0 +1,169 @@
+<div
+    id="modal-esvaziar-acervo"
+    class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-esvaziar-acervo-titulo"
+    tabindex="-1"
+>
+    <div
+        class="bg-white dark:bg-slate-900 rounded-lg w-full max-w-xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+    >
+        <div
+            class="flex items-center justify-between px-6 pt-5 pb-3 border-b border-gray-100 dark:border-slate-700 flex-shrink-0"
+        >
+            <h3
+                id="modal-esvaziar-acervo-titulo"
+                class="text-xl font-bold text-red-700 dark:text-red-400"
+            >
+                Esvaziar o acervo
+            </h3>
+            <button
+                type="button"
+                onclick="toggleModal('modal-esvaziar-acervo')"
+                title="Fechar (Esc)"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-600 dark:hover:text-slate-300 transition-colors border border-gray-200 dark:border-slate-700 flex-shrink-0 ml-4"
+                aria-label="Fechar"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    class="w-4 h-4"
+                >
+                    <path
+                        d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+                    />
+                </svg>
+            </button>
+        </div>
+
+        <div class="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+            <p class="text-sm text-gray-600 dark:text-slate-300">
+                Escolha o que apagar. As três caixas são independentes e nada é apagado antes de
+                você confirmar no fim desta janela.
+            </p>
+
+            <fieldset class="space-y-3">
+                <legend class="form-label mb-1">O que apagar</legend>
+
+                <label class="flex items-start gap-2 text-sm cursor-pointer">
+                    <input
+                        type="checkbox"
+                        id="esv-chk-dados"
+                        onchange="atualizarModalEsvaziarAcervo()"
+                        style="width: auto; margin-top: 3px"
+                    />
+                    <span>
+                        <strong>Dados</strong>
+                        <span class="block text-xs text-gray-500 dark:text-slate-400">
+                            Textos, livros e todos os cadastros criados por você, as imagens de
+                            capa, as Versões Alternativas e os padrões de colunas salvos.
+                        </span>
+                    </span>
+                </label>
+
+                <label class="flex items-start gap-2 text-sm cursor-pointer">
+                    <input
+                        type="checkbox"
+                        id="esv-chk-preferencias"
+                        onchange="atualizarModalEsvaziarAcervo()"
+                        style="width: auto; margin-top: 3px"
+                    />
+                    <span>
+                        <strong>Preferências</strong>
+                        <span class="block text-xs text-gray-500 dark:text-slate-400">
+                            Tema, colunas, itens por página, filtros e padrões das Estatísticas,
+                            templates de exportação e nomes de arquivo frequentes.
+                        </span>
+                    </span>
+                </label>
+
+                <label class="flex items-start gap-2 text-sm cursor-pointer">
+                    <input
+                        type="checkbox"
+                        id="esv-chk-pre-prontos"
+                        onchange="atualizarModalEsvaziarAcervo()"
+                        style="width: auto; margin-top: 3px"
+                    />
+                    <span>
+                        <strong>Cadastros pré-prontos</strong>
+                        <span class="block text-xs text-gray-500 dark:text-slate-400">
+                            Períodos históricos, Movimentos/Escolas e Templates de progressão que
+                            vêm de fábrica. Os que algum texto usa só saem junto com os Dados.
+                        </span>
+                    </span>
+                </label>
+            </fieldset>
+
+            <div
+                id="esv-resumo"
+                class="rounded-md border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 p-3 text-sm space-y-2"
+                aria-live="polite"
+            ></div>
+
+            <div id="esv-backup" class="space-y-1">
+                <label class="flex items-start gap-2 text-sm cursor-pointer">
+                    <input
+                        type="checkbox"
+                        id="esv-chk-backup"
+                        checked
+                        style="width: auto; margin-top: 3px"
+                    />
+                    <span id="esv-backup-texto"></span>
+                </label>
+                <p id="esv-backup-extra" class="text-xs text-gray-500 dark:text-slate-400"></p>
+            </div>
+
+            <p id="esv-retratos" class="text-xs text-gray-500 dark:text-slate-400">
+                Os retratos automáticos (os últimos 10, guardados neste navegador) nunca são
+                apagados. Eles são a única volta se o backup baixado se perder, mas cada edição nova
+                gasta uma vaga e o retrato de antes de apagar vai sendo empurrado para fora com o
+                tempo.
+            </p>
+
+            <div>
+                <label for="esv-palavra" class="form-label"
+                    >Para liberar o botão, digite <strong>ESVAZIAR</strong></label
+                >
+                <input
+                    type="text"
+                    id="esv-palavra"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                    placeholder="ESVAZIAR"
+                    oninput="atualizarModalEsvaziarAcervo()"
+                />
+            </div>
+
+            <p
+                id="esv-status"
+                class="text-sm text-gray-700 dark:text-slate-200 hidden"
+                role="status"
+                aria-live="polite"
+            ></p>
+        </div>
+
+        <div
+            class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-slate-700 flex-shrink-0"
+        >
+            <button
+                type="button"
+                onclick="toggleModal('modal-esvaziar-acervo')"
+                class="px-4 py-2 rounded-md border border-gray-300 dark:border-slate-600 text-sm text-gray-700 dark:text-slate-200"
+            >
+                Cancelar
+            </button>
+            <button
+                type="button"
+                id="esv-btn-confirmar"
+                onclick="confirmarEsvaziarAcervo()"
+                disabled
+                class="px-4 py-2 rounded-md bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+                Baixar backup e esvaziar
+            </button>
+        </div>
+    </div>
+</div>

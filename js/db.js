@@ -18,9 +18,29 @@ import {
     chaveTema,
     idiomasDoItem,
     espelhoDeIdiomas,
+    normalizarPosturaEstetica,
+    normalizarProgramaMovimento,
+    POSTURAS_ESTETICAS_RENOMEADAS,
+    IDENTIDADES_CIS_TRANS,
+    CORES_RACA_AUTOR,
 } from './utils.js';
 import { sincronizarTemas } from './temas.js';
 import { sincronizarLocais } from './locais.js';
+import {
+    sanearHierarquiaDeCorrentes,
+    criaCicloCorrente,
+    normalizarDivisaoCorrente,
+    normalizarGeneroDivisaoCorrente,
+} from './correntes-hierarquia.js';
+import { sincronizarPersonagens, calcularImpactoExclusaoPersonagem } from './personagens.js';
+import { sincronizarParesIgnorados } from './sugestao-ecos.js';
+import { normalizarPadroesColunas } from './colunas.js';
+import {
+    redirecionarAncora,
+    removerAncoraDoCadastro,
+    restaurarAncoras,
+    sincronizarAncorasEco,
+} from './ancora-eco.js';
 import {
     salvarCapa,
     deletarCapa,
@@ -64,6 +84,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XII', null],
         fim: [null, null, null, 'XIV', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Não se aplica',
+        programa: 'Movimento',
         regiaoOrigem: 'Portugal/Galiza',
         valores: ['tradição oral', 'cortesia', 'amor cortês'],
         temas: ['amor não correspondido', 'saudade', 'amizade', 'zombaria'],
@@ -82,6 +104,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XV', null],
         fim: [null, null, null, 'XV', null],
         tipo: 'Literário',
+        posturaEstetica: 'Reformista',
+        programa: 'Movimento',
         regiaoOrigem: 'Portugal',
         valores: ['racionalidade emergente', 'valorização do indivíduo'],
         temas: ['feitos régios', 'moral cortesã'],
@@ -95,6 +119,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XVI', 1550],
         fim: [null, null, null, 'XVI', null],
         tipo: 'Literário',
+        posturaEstetica: 'Restauradora',
+        programa: 'Escola',
         regiaoOrigem: 'Portugal',
         valores: ['equilíbrio', 'universalismo clássico', 'heroísmo nacional'],
         temas: ['navegação/epopeia', 'amor platônico', 'mitologia'],
@@ -108,6 +134,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XVII', 1640],
         fim: [null, null, null, 'XVII', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Reformista',
+        programa: 'Movimento',
         regiaoOrigem: 'Brasil/Portugal',
         valores: ['conflito fé×razão', 'efemeridade da vida'],
         temas: ['morte', 'pecado e salvação', 'vaidade (vanitas)'],
@@ -126,6 +154,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XVIII', 1760],
         fim: [null, null, null, 'XVIII', null],
         tipo: 'Literário',
+        posturaEstetica: 'Restauradora',
+        programa: 'Escola',
         regiaoOrigem: 'Brasil/Portugal',
         valores: ['simplicidade', 'racionalidade iluminista'],
         temas: ['vida bucólica', 'amor idealizado', 'fuga da cidade'],
@@ -148,6 +178,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XIX', 1830],
         fim: [null, null, null, 'XIX', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Inovadora',
+        programa: 'Movimento',
         regiaoOrigem: 'Brasil/Portugal',
         valores: ['subjetivismo', 'nacionalismo', 'liberdade individual'],
         temas: ['amor idealizado', 'natureza', 'indianismo', 'melancolia'],
@@ -157,10 +189,327 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         manifestos: [],
     },
     {
+        nome: 'Romantismo no Brasil',
+        pai: 'Romantismo',
+        divisao: 'Variante regional',
+        ini: [null, null, 1836, 'XIX', null],
+        fim: [null, null, 1881, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Brasil',
+        valores: ['nacionalismo', 'identidade nacional', 'subjetivismo'],
+        temas: ['natureza', 'indígena como herói', 'pátria', 'amor idealizado', 'abolicionismo'],
+        tecnicas: [],
+        tiposComposicao: ['poema lírico', 'romance-folhetim', 'drama'],
+        lemas: [],
+        manifestos: [
+            'Ensaio sobre a história da literatura do Brasil (Gonçalves de Magalhães, Niterói, 1836)',
+        ],
+        notas: 'Marco inicial: Suspiros Poéticos e Saudades e a revista Niterói (Gonçalves de Magalhães, Paris, 1836). Marco final convencional: 1881, com Memórias Póstumas de Brás Cubas (Machado de Assis) e O Mulato (Aluísio Azevedo). As gerações valem só para a poesia; a prosa se organiza em vertentes temáticas.',
+    },
+    {
+        nome: '1ª geração: Indianista (Brasil)',
+        pai: 'Romantismo no Brasil',
+        divisao: 'Fase ou geração',
+        generoDivisao: 'Poesia',
+        ini: [null, null, 1836, 'XIX', null],
+        fim: [null, null, 1852, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Brasil',
+        valores: ['nacionalismo', 'religiosidade', 'idealização do passado'],
+        temas: ['pátria', 'natureza', 'indígena como herói', 'saudade do exílio'],
+        tecnicas: [],
+        tiposComposicao: ['poema indianista', 'poema épico', 'poema lírico'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Também chamada Nacionalista. Autores de referência: Gonçalves de Magalhães, Gonçalves Dias, Araújo Porto-Alegre.',
+    },
+    {
+        nome: '2ª geração: Ultrarromântica (Brasil)',
+        pai: 'Romantismo no Brasil',
+        divisao: 'Fase ou geração',
+        generoDivisao: 'Poesia',
+        ini: [null, null, 1853, 'XIX', null],
+        fim: [null, null, 1869, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Brasil',
+        valores: ['egocentrismo', 'pessimismo', 'evasão da realidade'],
+        temas: ['morte', 'melancolia', 'amor impossível', 'mulher idealizada'],
+        tecnicas: [],
+        tiposComposicao: ['poema lírico', 'poema narrativo', 'drama'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Também chamada Mal do Século ou Byroniana. Autores de referência: Álvares de Azevedo, Casimiro de Abreu, Fagundes Varela, Junqueira Freire.',
+    },
+    {
+        nome: '3ª geração: Condoreira (Brasil)',
+        pai: 'Romantismo no Brasil',
+        divisao: 'Fase ou geração',
+        generoDivisao: 'Poesia',
+        ini: [null, null, 1870, 'XIX', null],
+        fim: [null, null, 1880, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Brasil',
+        valores: ['liberdade', 'justiça social', 'engajamento político'],
+        temas: [
+            'abolicionismo',
+            'República',
+            'denúncia social',
+            'condor como símbolo de liberdade',
+        ],
+        tecnicas: ['grandiloquência', 'apóstrofe', 'metáfora grandiosa'],
+        tiposComposicao: ['poema social', 'ode', 'poema épico-lírico'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Também chamada Social ou Hugoana (influência de Victor Hugo). Autores de referência: Castro Alves, Tobias Barreto, Pedro Luís. Sousândrade costuma entrar aqui, mas sua obra é singular e começa ultrarromântica; as datas são convenção didática e O Navio Negreiro (1868-69) é anterior a 1870.',
+    },
+    {
+        nome: 'Romance indianista (Brasil)',
+        pai: 'Romantismo no Brasil',
+        divisao: 'Vertente',
+        generoDivisao: 'Prosa',
+        ini: [null, null, 1844, 'XIX', null],
+        fim: [null, null, 1881, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Brasil',
+        valores: ['nacionalismo', 'idealização do indígena'],
+        temas: [
+            'indígena como herói',
+            'natureza exuberante',
+            'encontro entre colonizador e indígena',
+        ],
+        tecnicas: [],
+        tiposComposicao: ['romance'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Autor de referência: José de Alencar (O Guarani, Iracema, Ubirajara). O Guarani às vezes também é lido como romance histórico: as vertentes não são excludentes.',
+    },
+    {
+        nome: 'Romance urbano (Brasil)',
+        pai: 'Romantismo no Brasil',
+        divisao: 'Vertente',
+        generoDivisao: 'Prosa',
+        ini: [null, null, 1844, 'XIX', null],
+        fim: [null, null, 1881, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Brasil',
+        valores: ['costumes burgueses', 'idealização amorosa'],
+        temas: ['bailes', 'casamento', 'intrigas amorosas', 'vida na Corte (Rio de Janeiro)'],
+        tecnicas: [],
+        tiposComposicao: ['romance', 'romance-folhetim'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Também chamado romance de costumes. Autores de referência: Joaquim Manuel de Macedo (A Moreninha, 1844), José de Alencar (Lucíola, Senhora), Manuel Antônio de Almeida (Memórias de um Sargento de Milícias, que se afasta do tom idealizador).',
+    },
+    {
+        nome: 'Romance regionalista (Brasil)',
+        pai: 'Romantismo no Brasil',
+        divisao: 'Vertente',
+        generoDivisao: 'Prosa',
+        ini: [null, null, 1844, 'XIX', null],
+        fim: [null, null, 1881, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Brasil',
+        valores: ['nacionalismo', 'cor local'],
+        temas: ['sertão', 'costumes do interior', 'falares regionais', 'paisagem das províncias'],
+        tecnicas: [],
+        tiposComposicao: ['romance'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Autores de referência: José de Alencar (O Gaúcho, O Sertanejo), Bernardo Guimarães (A Escrava Isaura, O Seminarista), Visconde de Taunay (Inocência), Franklin Távora (O Cabeleira).',
+    },
+    {
+        nome: 'Romance histórico (Brasil)',
+        pai: 'Romantismo no Brasil',
+        divisao: 'Vertente',
+        generoDivisao: 'Prosa',
+        ini: [null, null, 1844, 'XIX', null],
+        fim: [null, null, 1881, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Brasil',
+        valores: ['nacionalismo', 'imaginação romântica'],
+        temas: ['episódios do passado nacional', 'lendas heroicas'],
+        tecnicas: [],
+        tiposComposicao: ['romance'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Autor de referência: José de Alencar (As Minas de Prata, Guerra dos Mascates).',
+    },
+    {
+        nome: 'Romantismo em Portugal',
+        pai: 'Romantismo',
+        divisao: 'Variante regional',
+        ini: [null, null, 1825, 'XIX', null],
+        fim: [null, null, 1865, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Portugal',
+        valores: ['liberalismo', 'nacionalismo', 'subjetivismo'],
+        temas: ['história medieval portuguesa', 'identidade nacional', 'paixão', 'melancolia'],
+        tecnicas: [],
+        tiposComposicao: [
+            'poema lírico-narrativo',
+            'romance histórico',
+            'drama',
+            'novela passional',
+        ],
+        lemas: [],
+        manifestos: [],
+        notas: 'Marco inicial: o poema Camões, de Almeida Garrett (1825). Marco final convencional: a Questão Coimbrã (1865), que abre caminho ao Realismo.',
+    },
+    {
+        nome: '1ª geração: Liberal e nacionalista (Portugal)',
+        pai: 'Romantismo em Portugal',
+        divisao: 'Fase ou geração',
+        ini: [null, null, 1825, 'XIX', null],
+        fim: [null, null, 1840, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Portugal',
+        valores: ['liberalismo', 'nacionalismo', 'resgate do passado'],
+        temas: ['história medieval', 'mitos nacionais', 'identidade portuguesa'],
+        tecnicas: [],
+        tiposComposicao: ['poema lírico-narrativo', 'romance histórico', 'drama histórico'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Autores de referência: Almeida Garrett (Camões; Viagens na Minha Terra), Alexandre Herculano (A Voz do Profeta; Eurico, o Presbítero). Algumas fontes fecham a fase em 1838.',
+    },
+    {
+        nome: '2ª geração: Ultrarromântica (Portugal)',
+        pai: 'Romantismo em Portugal',
+        divisao: 'Fase ou geração',
+        ini: [null, null, 1840, 'XIX', null],
+        fim: [null, null, 1860, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Portugal',
+        valores: ['sentimentalismo exagerado', 'pessimismo'],
+        temas: ['morte', 'melancolia', 'paixão trágica'],
+        tecnicas: [],
+        tiposComposicao: ['poema lírico', 'novela passional', 'melodrama'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Também chamada Mal do Século. Autores de referência: Camilo Castelo Branco (Amor de Perdição), Soares de Passos (O Noivado do Sepulcro).',
+    },
+    {
+        nome: '3ª geração: Renovação romântica (Portugal)',
+        pai: 'Romantismo em Portugal',
+        divisao: 'Fase ou geração',
+        ini: [null, null, 1860, 'XIX', null],
+        fim: [null, null, 1865, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Portugal',
+        valores: ['equilíbrio', 'atenção à realidade social'],
+        temas: ['vida campesina', 'costumes', 'realidade social'],
+        tecnicas: [],
+        tiposComposicao: ['romance campesino', 'poema lírico'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Fase de transição que anuncia o Realismo (também chamada Pré-Realismo). Autores de referência: Júlio Dinis (A Morgada dos Canaviais), João de Deus (Flores do Campo), Tomás Ribeiro. Muitos manuais estendem a fase até c. 1870 (Júlio Dinis morre em 1871).',
+    },
+    {
+        nome: 'Romance histórico (Portugal)',
+        pai: 'Romantismo em Portugal',
+        divisao: 'Vertente',
+        generoDivisao: 'Prosa',
+        ini: [null, null, 1843, 'XIX', null],
+        fim: [null, null, 1865, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Portugal',
+        valores: ['nacionalismo', 'medievalismo', 'rigor histórico'],
+        temas: ['Idade Média portuguesa', 'origens da nação', 'lendas e narrativas'],
+        tecnicas: [],
+        tiposComposicao: ['romance histórico', 'lenda', 'narrativa'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Introduzido por Alexandre Herculano (Eurico, o Presbítero, 1844; Lendas e Narrativas, 1851), sob influência de Walter Scott. Datas aproximadas: o recorte é o da prosa romântica portuguesa, que as fontes fazem começar em torno de 1843.',
+    },
+    {
+        nome: 'Romance de costumes (Portugal)',
+        pai: 'Romantismo em Portugal',
+        divisao: 'Vertente',
+        generoDivisao: 'Prosa',
+        ini: [null, null, 1843, 'XIX', null],
+        fim: [null, null, 1865, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Portugal',
+        valores: ['subjetivismo', 'ironia', 'atualidade'],
+        temas: ['viagem', 'sociedade contemporânea', 'digressão do narrador'],
+        tecnicas: ['digressão', 'conversa com o leitor'],
+        tiposComposicao: ['narrativa de viagem', 'romance-folhetim'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Almeida Garrett, Viagens na Minha Terra (folhetim de 1843 a 1846): narrativa de atualidade, de forma livre, que mistura viagem, digressão e ficção. Obra híbrida, também lida como marco da prosa romântica portuguesa.',
+    },
+    {
+        nome: 'Novela passional (Portugal)',
+        pai: 'Romantismo em Portugal',
+        divisao: 'Vertente',
+        generoDivisao: 'Prosa',
+        ini: [null, null, 1843, 'XIX', null],
+        fim: [null, null, 1865, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Portugal',
+        valores: ['sentimentalismo', 'ultrarromantismo'],
+        temas: ['amor proibido', 'paixão trágica', 'morte'],
+        tecnicas: [],
+        tiposComposicao: ['novela', 'melodrama'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Camilo Castelo Branco, com Amor de Perdição (1862) como obra mais famosa. Corresponde à prosa da 2ª geração (Ultrarromântica).',
+    },
+    {
+        nome: 'Romance campesino (Portugal)',
+        pai: 'Romantismo em Portugal',
+        divisao: 'Vertente',
+        generoDivisao: 'Prosa',
+        ini: [null, null, 1843, 'XIX', null],
+        fim: [null, null, 1865, 'XIX', null],
+        tipo: 'Literário',
+        posturaEstetica: '',
+        programa: '',
+        regiaoOrigem: 'Portugal',
+        valores: ['moralização dos costumes', 'bondade humana', 'equilíbrio'],
+        temas: ['vida na aldeia', 'costumes rurais', 'tipos populares'],
+        tecnicas: [],
+        tiposComposicao: ['romance'],
+        lemas: [],
+        manifestos: [],
+        notas: 'Júlio Dinis (As Pupilas do Senhor Reitor, 1866, em folhetim). É obra de transição para o Realismo e corresponde à prosa da 3ª geração. Como Júlio Dinis publica depois de 1865, o período do pai é só convenção; edite as datas se preferir.',
+    },
+    {
         nome: 'Realismo',
         ini: [null, null, null, 'XIX', 1870],
         fim: [null, null, null, 'XIX', null],
         tipo: 'Literário',
+        posturaEstetica: 'Reformista',
+        programa: 'Movimento',
         regiaoOrigem: 'Brasil/Portugal',
         valores: ['objetividade', 'crítica social'],
         temas: ['adultério', 'hipocrisia burguesa', 'decadência moral'],
@@ -174,6 +523,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XIX', 1880],
         fim: [null, null, null, 'XIX', null],
         tipo: 'Literário',
+        posturaEstetica: 'Reformista',
+        programa: 'Escola',
         regiaoOrigem: 'Brasil/Portugal',
         valores: ['determinismo', 'cientificismo', 'denúncia social'],
         temas: ['exclusão social', 'doença/degeneração', 'instinto'],
@@ -187,6 +538,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XIX', 1880],
         fim: [null, null, null, 'XIX', null],
         tipo: 'Literário',
+        posturaEstetica: 'Restauradora',
+        programa: 'Escola',
         regiaoOrigem: 'Brasil',
         valores: ['impessoalidade', 'culto à forma'],
         temas: ['beleza plástica', 'mitologia clássica', 'o fazer poético'],
@@ -200,6 +553,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XIX', 1890],
         fim: [null, null, null, 'XIX', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Reformista',
+        programa: 'Movimento',
         regiaoOrigem: 'Brasil/Portugal',
         valores: ['musicalidade', 'subjetividade', 'misticismo'],
         temas: ['morte', 'transcendência', 'o inefável'],
@@ -213,6 +568,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1910],
         fim: [null, null, null, 'XX', null],
         tipo: 'Literário',
+        posturaEstetica: 'Reformista',
+        programa: 'Tendência',
         regiaoOrigem: 'Brasil',
         valores: ['crítica social', 'hibridismo estético'],
         temas: ['exclusão/marginalidade', 'sertão e litoral'],
@@ -226,6 +583,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1910],
         fim: [null, null, null, 'XX', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Iconoclasta',
+        programa: 'Vanguarda',
         regiaoOrigem: 'Itália',
         valores: ['culto à velocidade', 'ruptura com o passado'],
         temas: ['guerra', 'tecnologia', 'cidade moderna'],
@@ -239,6 +598,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1910],
         fim: [null, null, null, 'XX', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Iconoclasta',
+        programa: 'Vanguarda',
         regiaoOrigem: 'Alemanha',
         valores: ['subjetividade extrema', 'angústia existencial'],
         temas: ['alienação', 'guerra', 'opressão urbana'],
@@ -252,6 +613,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1910],
         fim: [null, null, null, 'XX', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Iconoclasta',
+        programa: 'Vanguarda',
         regiaoOrigem: 'França',
         valores: ['simultaneidade', 'multiplicidade de perspectivas'],
         temas: ['vida moderna urbana', 'fragmentação da experiência'],
@@ -265,6 +628,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1916],
         fim: [null, null, null, 'XX', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Iconoclasta',
+        programa: 'Vanguarda',
         regiaoOrigem: 'Suíça/Europa',
         valores: ['antiarte', 'acaso', 'negação da lógica'],
         temas: ['absurdo da guerra', 'falência da razão burguesa'],
@@ -278,6 +643,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1922],
         fim: [null, null, null, 'XX', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Inovadora',
+        programa: 'Movimento',
         regiaoOrigem: 'Brasil',
         valores: ['ruptura formal', 'nacionalismo crítico', 'liberdade de expressão'],
         temas: ['identidade nacional', 'cotidiano urbano', 'crítica ao passadismo'],
@@ -291,6 +658,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1924],
         fim: [null, null, null, 'XX', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Iconoclasta',
+        programa: 'Vanguarda',
         regiaoOrigem: 'França',
         valores: ['automatismo psíquico', 'valorização do inconsciente'],
         temas: ['sonho', 'desejo', 'o maravilhoso cotidiano'],
@@ -304,6 +673,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1945],
         fim: [null, null, null, 'XX', null],
         tipo: 'Literário',
+        posturaEstetica: 'Restauradora',
+        programa: 'Grupo/Círculo',
         regiaoOrigem: 'Brasil',
         valores: ['retorno ao rigor formal', 'equilíbrio tradição/modernidade'],
         temas: ['intimismo', 'universalismo'],
@@ -317,6 +688,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1956],
         fim: [null, null, null, 'XX', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Iconoclasta',
+        programa: 'Vanguarda',
         regiaoOrigem: 'Brasil',
         valores: ['síntese', 'economia verbal radical', 'palavra como objeto'],
         temas: ['linguagem e forma como próprio conteúdo'],
@@ -342,6 +715,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1967],
         fim: [null, null, null, 'XX', null],
         tipo: 'Artístico',
+        posturaEstetica: 'Eclética',
+        programa: 'Movimento',
         regiaoOrigem: 'Brasil',
         valores: ['antropofagia cultural', 'mistura de erudito e popular', 'experimentalismo'],
         temas: [
@@ -364,6 +739,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1970],
         fim: [null, null, null, null, null],
         tipo: 'Literário',
+        posturaEstetica: 'Eclética',
+        programa: 'Tendência',
         regiaoOrigem: 'Internacional',
         valores: ['ceticismo às metanarrativas', 'pluralidade de vozes', 'ironia'],
         temas: ['simulacro', 'crise de identidade', 'paródia da tradição'],
@@ -391,6 +768,8 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         ini: [null, null, null, 'XX', 1990],
         fim: [null, null, null, 'XXI', null],
         tipo: 'Literário',
+        posturaEstetica: 'Não se aplica',
+        programa: 'Tendência',
         regiaoOrigem: 'Internacional',
         valores: ['pluralidade', 'hibridismo', 'ausência de escola dominante'],
         temas: ['identidade', 'memória', 'corpo', 'tecnologia e cotidiano digital'],
@@ -435,14 +814,14 @@ const DADOS_SEED_PERIODOS_HISTORICOS = [
         regiao: 'Europa',
         ini: [null, null, 1400],
         fim: [null, null, 1600],
-        notas: 'Movimento cultural e artístico europeu de resgate dos clássicos greco-latinos e do antropocentrismo, entre a Idade Média e a Idade Moderna — datas aproximadas (varia por região). Pano de fundo do Humanismo e do Classicismo/Quinhentismo português (Camões), já cadastrados em Movimento/Escola.',
+        notas: 'Movimento cultural e artístico europeu de resgate dos clássicos greco-latinos e do antropocentrismo, entre a Idade Média e a Idade Moderna — datas aproximadas (varia por região). Pano de fundo do Humanismo e do Classicismo/Quinhentismo português (Camões), já cadastrados em Correntes literárias.',
     },
     {
         nome: 'Iluminismo',
         regiao: 'Europa',
         ini: [null, null, 1715],
         fim: [null, null, 1789],
-        notas: 'Movimento filosófico europeu de valorização da razão e da crítica ao Antigo Regime, do auge no século XVIII até a Revolução Francesa. Pano de fundo do Arcadismo (Neoclassicismo), já cadastrado em Movimento/Escola.',
+        notas: 'Movimento filosófico europeu de valorização da razão e da crítica ao Antigo Regime, do auge no século XVIII até a Revolução Francesa. Pano de fundo do Arcadismo (Neoclassicismo), já cadastrado em Correntes literárias.',
     },
     {
         nome: 'Revolução Industrial (primeira fase)',
@@ -463,7 +842,7 @@ const DADOS_SEED_PERIODOS_HISTORICOS = [
         regiao: 'Europa',
         ini: [null, null, 1871],
         fim: [null, null, 1914],
-        notas: 'Otimismo e efervescência cultural na Europa, entre a Guerra Franco-Prussiana e a Primeira Guerra Mundial — pano de fundo do Parnasianismo e do Simbolismo, já cadastrados em Movimento/Escola.',
+        notas: 'Otimismo e efervescência cultural na Europa, entre a Guerra Franco-Prussiana e a Primeira Guerra Mundial — pano de fundo do Parnasianismo e do Simbolismo, já cadastrados em Correntes literárias.',
     },
     {
         nome: 'Primeira Guerra Mundial',
@@ -477,7 +856,7 @@ const DADOS_SEED_PERIODOS_HISTORICOS = [
         regiao: 'Brasil',
         ini: [11, 2, 1922],
         fim: [18, 2, 1922],
-        notas: 'Theatro Municipal de São Paulo, sessões principais em 13, 15 e 17/02 — marco do início do Modernismo brasileiro, já cadastrado em Movimento/Escola com a mesma âncora de 1922.',
+        notas: 'Theatro Municipal de São Paulo, sessões principais em 13, 15 e 17/02 — marco do início do Modernismo brasileiro, já cadastrado em Correntes literárias com a mesma âncora de 1922.',
     },
     {
         nome: 'Segunda Guerra Mundial',
@@ -552,23 +931,46 @@ function SEED_PERIODOS_HISTORICOS() {
 // import de backup antigo sem o campo), nunca guardada como constante
 // pronta, pra cada instalação ganhar ids próprios (mesmo espírito de
 // qualquer outro dado que passa por gerarId()).
-function SEED_MOVIMENTOS_ESCOLAS() {
-    return DADOS_SEED_MOVIMENTOS_ESCOLAS.map((m) => ({
+const POSTURA_ESTETICA_DO_SEED = new Map(
+    DADOS_SEED_MOVIMENTOS_ESCOLAS.map((m) => [m.nome, m.posturaEstetica || '']),
+);
+
+const PROGRAMA_DO_SEED = new Map(
+    DADOS_SEED_MOVIMENTOS_ESCOLAS.map((m) => [m.nome, m.programa || '']),
+);
+
+// Registro de verdade a partir de uma linha do seed. `pai` (nome, só nas
+// divisões) é resolvido contra `lista`: o pai precisa já estar nela. Sem pai
+// achado (excluído de propósito, por exemplo) a divisão vira corrente de topo.
+function _registroDeMovimentoDoSeed(modelo, lista) {
+    const pai = modelo.pai ? lista.find((m) => m.nome === modelo.pai) : null;
+    return {
         id: gerarId(),
-        nome: m.nome,
+        nome: modelo.nome,
         embutido: true,
-        notas: '',
-        inicio: _dataParcialDoSeed(m.ini),
-        fim: _dataParcialDoSeed(m.fim),
-        tipo: m.tipo,
-        regiaoOrigem: m.regiaoOrigem,
-        valores: [...m.valores],
-        temas: [...m.temas],
-        tecnicas: [...m.tecnicas],
-        tiposComposicao: [...m.tiposComposicao],
-        lemas: [...m.lemas],
-        manifestos: [...m.manifestos],
-    }));
+        notas: modelo.notas || '',
+        inicio: _dataParcialDoSeed(modelo.ini),
+        fim: _dataParcialDoSeed(modelo.fim),
+        tipo: modelo.tipo,
+        posturaEstetica: normalizarPosturaEstetica(modelo.posturaEstetica),
+        programa: normalizarProgramaMovimento(modelo.programa),
+        paiId: pai ? pai.id : null,
+        divisao: pai ? normalizarDivisaoCorrente(modelo.divisao) : '',
+        generoDivisao: pai ? normalizarGeneroDivisaoCorrente(modelo.generoDivisao) : '',
+        regiaoOrigem: modelo.regiaoOrigem,
+        valores: [...modelo.valores],
+        temas: [...modelo.temas],
+        tecnicas: [...modelo.tecnicas],
+        tiposComposicao: [...modelo.tiposComposicao],
+        lemas: [...modelo.lemas],
+        manifestos: [...modelo.manifestos],
+    };
+}
+
+function SEED_MOVIMENTOS_ESCOLAS() {
+    const lista = [];
+    DADOS_SEED_MOVIMENTOS_ESCOLAS.forEach((m) => lista.push(_registroDeMovimentoDoSeed(m, lista)));
+    return lista;
 }
 
 // ─── Seed de Temas e Assuntos ───────────────────────────────────
@@ -745,6 +1147,20 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // e `localEscrita: id | null`. Mantido em sincronia por
     // `sincronizarLocais`, que migra as etiquetas antigas de Territorialidade.
     locais: [],
+    // cadastro central de Personagem ({ id, nome, origem, notas }), ver
+    // personagens.js. Só o que o autor criou ou reinterpretou. O texto guarda
+    // `personagens: [{ personagemId, papeis, centralidade }]`. Mantido em
+    // sincronia por `sincronizarPersonagens` (solta vínculo órfão).
+    personagens: [],
+    // Pares de textos que a pessoa mandou ignorar na sugestão de Ecos
+    // faltantes: [{ especie: 'pessoa'|'personagem', id, chave }], ver
+    // sugestao-ecos.js. Mantido em sincronia por `sincronizarParesIgnorados`.
+    ecosIgnorados: [],
+    // Padrões de colunas que a pessoa salvou nas tabelas (seletor "Colunas"):
+    // { [tabela]: [{ nome, colunas: [chaves, na ordem da tela] }] }. Mora no
+    // db (e não no localStorage, como a escolha atual de colunas) pra ir junto
+    // no backup JSON, nos snapshots e na restauração. Ver colunas.js.
+    padroesColunas: {},
     // Análise de escansão/métrica/rimas de um poema (aba Sonoridade).
     // Um poema pode ter no máximo uma escansão vinculada (não é histórico
     // de versões) — ver getEscansaoDoPoema. Bloco 1 (dados + tabela) cobre
@@ -850,6 +1266,9 @@ if (!db.movimentosEscolasOcultos) db.movimentosEscolasOcultos = [];
 if (!db.assuntos) db.assuntos = [];
 if (!db.temas) db.temas = [];
 if (!db.locais) db.locais = [];
+if (!db.personagens) db.personagens = [];
+if (!db.ecosIgnorados) db.ecosIgnorados = [];
+if (!db.padroesColunas || typeof db.padroesColunas !== 'object') db.padroesColunas = {};
 if (!db.escansoes) db.escansoes = [];
 if (!db.estruturasTextuais) db.estruturasTextuais = [];
 if (!db.templatesEstrutura) db.templatesEstrutura = [];
@@ -1352,6 +1771,36 @@ export function migrarIdioma(itens) {
 migrarIdioma(db.poemas);
 migrarIdioma(db.prosas);
 
+// Migração: `ano` legado → `dataEscrita`. Antes de `dataEscrita` existir, o
+// ano de escrita morava só em `item.ano`; hoje `ano` é uma cópia derivada de
+// `dataEscrita.ano` (ver forms.js), mas os textos antigos ficaram com `ano`
+// e sem data de escrita — a coluna Escrita mostrava o ano, o filtro De/Até e
+// `-dataescrita:*` os tratavam como "sem data", e salvar o texto sem preencher
+// a data apagava o `ano` (ano: dataEscrita?.ano || ''). Aqui o ano vira
+// `dataEscrita: { ano, exata: false }` (só o ano é sabido, então aproximada —
+// mesmo formato que o formulário grava com "exata" desmarcado).
+// Só toca item sem nenhuma parte (dia/mês/ano) em `dataEscrita` e com `ano`
+// inteiro entre 1 e 2100 (mesma faixa do formulário); `ano` com texto ou
+// fora da faixa fica como está. Nunca sobrescreve uma data já preenchida e
+// não mexe em `item.ano`. Idempotente.
+export function migrarAnoParaDataEscrita(itens) {
+    itens.forEach((item) => {
+        const d = item.dataEscrita;
+        if (d && (d.dia || d.mes || d.ano)) return;
+        const bruto = item.ano;
+        const ano =
+            typeof bruto === 'number'
+                ? bruto
+                : typeof bruto === 'string' && /^\d{1,4}$/.test(bruto.trim())
+                  ? Number(bruto.trim())
+                  : NaN;
+        if (!Number.isInteger(ano) || ano < 1 || ano > 2100) return;
+        item.dataEscrita = { ano, exata: false };
+    });
+}
+migrarAnoParaDataEscrita(db.poemas);
+migrarAnoParaDataEscrita(db.prosas);
+
 // Migração: campo `reconhecimentos` — lista de prêmios/menções que um
 // texto recebeu (item 8 do plano de schema), separada de tag solta. Até
 // aqui, "Premiados" era uma tag genérica dentro do balde temporário
@@ -1853,6 +2302,11 @@ export function obterOuCriarMovimentoEscolaPorNome(nome) {
             inicio: { dia: null, mes: null, ano: null, seculo: null, decada: null },
             fim: { dia: null, mes: null, ano: null, seculo: null, decada: null },
             tipo: '',
+            posturaEstetica: '',
+            programa: '',
+            paiId: null,
+            divisao: '',
+            generoDivisao: '',
             regiaoOrigem: '',
             valores: [],
             temas: [],
@@ -1879,6 +2333,22 @@ export function migrarMovimentosEscolas(movimentosEscolas) {
             m.fim = { dia: null, mes: null, ano: null, seculo: null, decada: null };
         if (m.notas === undefined) m.notas = '';
         if (m.tipo === undefined) m.tipo = '';
+        // Campo que nunca existiu no registro: os movimentos de fábrica (casados
+        // por nome, como em migrarMovimentosEscolasEmbutidos) recebem a postura do
+        // seed uma única vez. Depois disso o campo existe e nada é sobrescrito,
+        // nem um vazio que a pessoa tenha deixado de propósito.
+        if (m.posturaEstetica === undefined && m.embutido !== false) {
+            m.posturaEstetica = POSTURA_ESTETICA_DO_SEED.get(m.nome) || '';
+        }
+        m.posturaEstetica = normalizarPosturaEstetica(
+            POSTURAS_ESTETICAS_RENOMEADAS[m.posturaEstetica] ?? m.posturaEstetica,
+        );
+        // Mesmo raciocínio da postura: campo que nunca existiu no registro de
+        // fábrica recebe o Programa do seed uma única vez.
+        if (m.programa === undefined && m.embutido !== false) {
+            m.programa = PROGRAMA_DO_SEED.get(m.nome) || '';
+        }
+        m.programa = normalizarProgramaMovimento(m.programa);
         if (m.regiaoOrigem === undefined) m.regiaoOrigem = '';
         if (!Array.isArray(m.valores)) m.valores = [];
         if (!Array.isArray(m.temas)) m.temas = [];
@@ -1887,6 +2357,8 @@ export function migrarMovimentosEscolas(movimentosEscolas) {
         if (!Array.isArray(m.lemas)) m.lemas = [];
         if (!Array.isArray(m.manifestos)) m.manifestos = [];
     });
+    // Hierarquia (pai, divisão, gênero): campos novos, saneados no conjunto.
+    sanearHierarquiaDeCorrentes(movimentosEscolas);
 }
 migrarMovimentosEscolas(db.movimentosEscolas);
 
@@ -1918,25 +2390,28 @@ export function migrarMovimentosEscolasEmbutidos(movimentosEscolas, ocultos = []
         if (ocultos.includes(modelo.nome)) return;
         const jaExiste = movimentosEscolas.some((m) => m.embutido && m.nome === modelo.nome);
         if (jaExiste) return;
-        movimentosEscolas.push({
-            id: gerarId(),
-            nome: modelo.nome,
-            embutido: true,
-            notas: '',
-            inicio: _dataParcialDoSeed(modelo.ini),
-            fim: _dataParcialDoSeed(modelo.fim),
-            tipo: modelo.tipo,
-            regiaoOrigem: modelo.regiaoOrigem,
-            valores: [...modelo.valores],
-            temas: [...modelo.temas],
-            tecnicas: [...modelo.tecnicas],
-            tiposComposicao: [...modelo.tiposComposicao],
-            lemas: [...modelo.lemas],
-            manifestos: [...modelo.manifestos],
-        });
+        movimentosEscolas.push(_registroDeMovimentoDoSeed(modelo, movimentosEscolas));
     });
 }
 migrarMovimentosEscolasEmbutidos(db.movimentosEscolas, db.movimentosEscolasOcultos);
+
+// Programa de fábrica, uma única vez por acervo (03/10/2026). O campo já
+// existia como '' em quem abriu a versão anterior (migrarMovimentosEscolas
+// normaliza o ausente para ''), então "só preencher o indefinido" nunca
+// alcançaria esses registros. A marca `programaDeFabricaAplicado` separa os
+// dois casos: na primeira vez, os movimentos de fábrica ainda vazios recebem o
+// Programa do seed; depois disso nada é sobrescrito, nem um vazio deixado de
+// propósito. Cadastro da própria pessoa (nome fora do seed) nunca é tocado.
+export function aplicarProgramaDeFabricaUmaVez(banco) {
+    if (banco.programaDeFabricaAplicado === true) return;
+    (banco.movimentosEscolas || []).forEach((m) => {
+        if (m.embutido === false || m.programa) return;
+        const doSeed = PROGRAMA_DO_SEED.get(m.nome);
+        if (doSeed) m.programa = doSeed;
+    });
+    banco.programaDeFabricaAplicado = true;
+}
+aplicarProgramaDeFabricaUmaVez(db);
 
 // Assunto: normaliza o formato (nome em texto, `notas` em texto e, se o
 // Assunto ainda vier no formato antigo, `temas` como lista de nomes sem
@@ -1967,6 +2442,9 @@ export function migrarAssuntos(assuntos) {
 migrarAssuntos(db.assuntos);
 sincronizarTemas(db);
 sincronizarLocais(db);
+sincronizarPersonagens(db);
+sincronizarAncorasEco(db);
+sincronizarParesIgnorados(db);
 
 // Acrescenta o Tema `temaId` ao Assunto `assuntoId` (usado pela aba
 // Temas). Não troca nem remove nada; devolve true só se de fato
@@ -2029,6 +2507,22 @@ export function migrarPessoasOculto(pessoas) {
     });
 }
 migrarPessoasOculto(db.pessoas);
+
+// `identidadeCisTrans` e `corRaca` na Pessoa (Fase 1, etapa 1c-0): as mesmas
+// listas fechadas do Autor (`IDENTIDADES_CIS_TRANS`, `CORES_RACA_AUTOR`).
+// Vazio quer dizer "não documentado", nunca "cisgênero" nem "branca".
+// Idempotente; valor fora da lista vira vazio, e o resto do registro não é
+// tocado.
+export function migrarPessoasIdentidade(pessoas) {
+    (pessoas || []).forEach((p) => {
+        if (!IDENTIDADES_CIS_TRANS.includes(p.identidadeCisTrans)) p.identidadeCisTrans = '';
+        if (!CORES_RACA_AUTOR.includes(p.corRaca)) p.corRaca = '';
+        // `orientacao` é texto livre com sugestão (como no Autor); vazio quer
+        // dizer "não documentado".
+        p.orientacao = typeof p.orientacao === 'string' ? p.orientacao.trim() : '';
+    });
+}
+migrarPessoasIdentidade(db.pessoas);
 
 export function migrarGruposOculto(grupos) {
     (grupos || []).forEach((g) => {
@@ -2166,9 +2660,26 @@ export function sortElementos(elementos, dbRef) {
 
 // ─── API pública ──────────────────────────────────────────────
 
+// Trava de salvamento (Fase 13, etapa 13c). Enquanto "Esvaziar o acervo" apaga,
+// e nas outras abas que recebem o aviso de que o acervo foi esvaziado, nenhum
+// save() pode gravar: um salvamento atrasado regravaria o `db` antigo, que ainda
+// está em memória, por cima do acervo já esvaziado. Só a recarga da página
+// (ou desbloquearSalvamento, se o apagar falhar antes de mexer em algo) a tira.
+let _salvamentoBloqueado = false;
+export function bloquearSalvamento() {
+    _salvamentoBloqueado = true;
+}
+export function desbloquearSalvamento() {
+    _salvamentoBloqueado = false;
+}
+export function salvamentoBloqueado() {
+    return _salvamentoBloqueado;
+}
+
 // Importar renderLists de render.js causaria dependência circular.
 // save() aceiona um CustomEvent que render.js escuta.
 export function save() {
+    if (_salvamentoBloqueado) return;
     sortLivros(db.livros);
     sortPartes(db.partes, db.livros);
     sortSecoes(db.secoes, db.livros, db.partes);
@@ -2178,6 +2689,9 @@ export function save() {
 
     sincronizarTemas(db);
     sincronizarLocais(db);
+    sincronizarPersonagens(db);
+    sincronizarAncorasEco(db);
+    sincronizarParesIgnorados(db);
 
     try {
         localStorage.setItem(DB_KEY, JSON.stringify(db));
@@ -2202,6 +2716,18 @@ export function save() {
     // nem precisa ser esperado (ver autobackup.js).
     tirarSnapshotSeNecessario(db);
     window.dispatchEvent(new CustomEvent('db:saved'));
+}
+
+// Padrões de colunas de um backup: só tabelas conhecidas, só listas bem formadas.
+// Backup antigo (sem a chave) ou mal formado vira `{}`.
+export function limparPadroesColunas(bruto) {
+    const saida = {};
+    if (!bruto || typeof bruto !== 'object' || Array.isArray(bruto)) return saida;
+    for (const tabela of Object.keys(bruto)) {
+        const lista = normalizarPadroesColunas(tabela, bruto[tabela]);
+        if (lista.length) saida[tabela] = lista;
+    }
+    return saida;
 }
 
 export async function importarDB(novoDb) {
@@ -2239,6 +2765,12 @@ export async function importarDB(novoDb) {
     sincronizarTemas(db);
     db.locais = novoDb.locais || [];
     sincronizarLocais(db);
+    db.personagens = novoDb.personagens || [];
+    sincronizarPersonagens(db);
+    db.ecosIgnorados = novoDb.ecosIgnorados || [];
+    db.padroesColunas = limparPadroesColunas(novoDb.padroesColunas);
+    sincronizarAncorasEco(db);
+    sincronizarParesIgnorados(db);
     db.escansoes = novoDb.escansoes || [];
     migrarRegistroTomSonoridade(db.escansoes);
     db.estruturasTextuais = novoDb.estruturasTextuais || [];
@@ -2278,6 +2810,8 @@ export async function importarDB(novoDb) {
     migrarDatasEpoca(db.epocas);
     migrarMovimentosEscolas(db.movimentosEscolas);
     migrarMovimentosEscolasEmbutidos(db.movimentosEscolas, db.movimentosEscolasOcultos);
+    db.programaDeFabricaAplicado = novoDb.programaDeFabricaAplicado === true;
+    aplicarProgramaDeFabricaUmaVez(db);
     migrarMovimentosEscolasIds(db.autores);
     migrarMovimentosEscolasIds(db.poemas);
     migrarMovimentosEscolasIds(db.prosas);
@@ -2293,6 +2827,7 @@ export async function importarDB(novoDb) {
     migrarGruposAutorId(db);
     migrarEpocasAutorId(db);
     migrarPessoasOculto(db.pessoas);
+    migrarPessoasIdentidade(db.pessoas);
     migrarGruposOculto(db.grupos);
 
     // Se o backup foi gerado com "incluir capas" marcado, ele traz um
@@ -2362,14 +2897,19 @@ export async function migrarImagensLegadasParaIndexedDB() {
  *   Livro/Parte/Seção como base64 no próprio JSON (deixa o arquivo maior,
  *   mas o backup fica autocontido — sem isso, um backup restaurado num
  *   navegador zerado perde todas as imagens, só sobra o texto).
+ * @param {string} nomeArquivo — nome do arquivo baixado (o "Backup completo"
+ *   passa um nome com a data, para casar com o arquivo de extras).
  */
-export async function exportarJSON(incluirCapas = false) {
+export async function exportarJSON(
+    incluirCapas = false,
+    nomeArquivo = 'arquivo_poetico_backup.json',
+) {
     const payload = incluirCapas ? { ...db, _capasBase64: await exportarTodasCapasBase64() } : db;
 
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload));
     const a = document.createElement('a');
     a.setAttribute('href', dataStr);
-    a.setAttribute('download', 'arquivo_poetico_backup.json');
+    a.setAttribute('download', nomeArquivo);
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -2419,10 +2959,11 @@ const ROTULOS_COL = {
     autores: 'Autor',
     epocas: 'Período Biográfico',
     periodosHistoricos: 'Período Histórico',
-    movimentosEscolas: 'Movimento/Escola',
+    movimentosEscolas: 'Corrente literária',
     assuntos: 'Assunto',
     temas: 'Tema',
     locais: 'Local',
+    personagens: 'Personagem',
     escansoes: 'Escansão',
     estruturasTextuais: 'Progressão Morfofuncional',
     templatesEstrutura: 'Template de Progressão',
@@ -2645,8 +3186,16 @@ export function mesclarPessoas(dbRef, origemId, destinoId) {
         });
     });
 
+    // A âncora de Eco que apontava para a origem passa para o destino.
+    redirecionarAncora(dbRef, 'pessoa', origemId, destinoId);
+
     destino.grupoIds = [...new Set([...(destino.grupoIds || []), ...(origem.grupoIds || [])])];
     destino.autorIds = [...new Set([...(destino.autorIds || []), ...(origem.autorIds || [])])];
+    // Identidade e cor/raça: o destino nunca é sobrescrito; só preenche o que
+    // estava vazio.
+    ['orientacao', 'identidadeCisTrans', 'corRaca'].forEach((campo) => {
+        if (!destino[campo] && origem[campo]) destino[campo] = origem[campo];
+    });
     dbRef.pessoas = dbRef.pessoas.filter((p) => p.id != origemId);
 }
 
@@ -2774,6 +3323,31 @@ export function mesclarPeriodosHistoricos(dbRef, origemId, destinoId) {
     dbRef.periodosHistoricos = dbRef.periodosHistoricos.filter((p) => p.id != origemId);
 }
 
+// Hierarquia na mesclagem: as divisões da origem passam ao destino (a não ser
+// o próprio destino, que sobe para o pai da origem se era descendente dela). O
+// destino herda pai, divisão e gênero da origem só se não tiver pai e se isso
+// não fechar um ciclo.
+function mesclarHierarquiaDeCorrentes(lista, origem, destino) {
+    if (criaCicloCorrente(lista, origem.id, destino.id)) {
+        destino.paiId = origem.paiId ?? null;
+        if (destino.paiId == null) {
+            destino.divisao = '';
+            destino.generoDivisao = '';
+        }
+    }
+    if (destino.paiId == null && origem.paiId != null && origem.paiId != destino.id) {
+        const cicla = criaCicloCorrente(lista, destino.id, origem.paiId);
+        if (!cicla) {
+            destino.paiId = origem.paiId;
+            destino.divisao = origem.divisao || '';
+            destino.generoDivisao = origem.generoDivisao || '';
+        }
+    }
+    lista.forEach((m) => {
+        if (m.id != destino.id && m.paiId != null && m.paiId == origem.id) m.paiId = destino.id;
+    });
+}
+
 /**
  * Mesmo espírito de mesclarPeriodosHistoricos acima, pro cadastro de
  * Movimento/Escola — mais trabalhoso porque o vínculo é um array dos
@@ -2781,7 +3355,7 @@ export function mesclarPeriodosHistoricos(dbRef, origemId, destinoId) {
  * reatribuir, precisa trocar `origemId` por `destinoId` dentro de cada
  * array (sem duplicar, caso o item já referenciasse os dois
  * separadamente — mesmo cuidado de mesclarPessoas com `papeis`
- * duplicados). Campos escalares (notas/tipo/regiaoOrigem/inicio/fim)
+ * duplicados). Campos escalares (notas/tipo/posturaEstetica/regiaoOrigem/inicio/fim)
  * só entram no destino se estiver vazio; campos de tags (valores,
  * temas, técnicas, tipos de composição, lemas, manifestos) são
  * unidos por Set, sem duplicar.
@@ -2805,7 +3379,11 @@ export function mesclarMovimentosEscolas(dbRef, origemId, destinoId) {
 
     if (!destino.notas && origem.notas) destino.notas = origem.notas;
     if (!destino.tipo && origem.tipo) destino.tipo = origem.tipo;
+    if (!destino.posturaEstetica && origem.posturaEstetica)
+        destino.posturaEstetica = origem.posturaEstetica;
+    if (!destino.programa && origem.programa) destino.programa = origem.programa;
     if (!destino.regiaoOrigem && origem.regiaoOrigem) destino.regiaoOrigem = origem.regiaoOrigem;
+    mesclarHierarquiaDeCorrentes(dbRef.movimentosEscolas, origem, destino);
     const inicioVazio = (d) => !d || (!d.dia && !d.mes && !d.ano && !d.seculo && !d.decada);
     if (inicioVazio(destino.inicio) && !inicioVazio(origem.inicio)) destino.inicio = origem.inicio;
     if (inicioVazio(destino.fim) && !inicioVazio(origem.fim)) destino.fim = origem.fim;
@@ -2888,6 +3466,56 @@ function _removerParaExclusao(col, id) {
                     }
                 }
             });
+        });
+    }
+
+    // Excluir Personagem: mesmo padrão de Pessoa. Guarda cada vínculo removido
+    // (com papéis e centralidade) para o "Desfazer"; sem isso o save() soltaria
+    // os vínculos órfãos e a restauração perderia papéis e centralidade.
+    let vinculosPersonagemRemovidos = [];
+    if (col === 'personagens') {
+        ['poemas', 'prosas'].forEach((itemCol) => {
+            (db[itemCol] || []).forEach((it) => {
+                if (!Array.isArray(it.personagens)) return;
+                for (let i = it.personagens.length - 1; i >= 0; i--) {
+                    if (it.personagens[i].personagemId == id) {
+                        vinculosPersonagemRemovidos.push({
+                            itemCol,
+                            itemId: it.id,
+                            entrada: it.personagens[i],
+                        });
+                        it.personagens.splice(i, 1);
+                    }
+                }
+            });
+        });
+    }
+
+    // Excluir Pessoa ou Personagem: a âncora de Eco não pode apontar para quem
+    // não existe mais, então sai de todos os Ecos (o Eco fica, F11-D6). Guarda
+    // o que saiu (com a posição) para o "Desfazer" devolver.
+    let ancorasEcoRemovidas = [];
+    if (col === 'pessoas') ancorasEcoRemovidas = removerAncoraDoCadastro(db, 'pessoa', id);
+    if (col === 'personagens') {
+        ancorasEcoRemovidas = removerAncoraDoCadastro(db, 'personagem', id);
+    }
+
+    // Excluir Livro (ou Coletânea): a participação de cada Personagem nesse
+    // livro (`personagem.participacoes`) deixa de apontar para ninguém. Guarda
+    // cada uma para o "Desfazer" devolver com as tags.
+    let participacoesPersonagemRemovidas = [];
+    if (col === 'livros') {
+        (db.personagens || []).forEach((p) => {
+            if (!Array.isArray(p.participacoes)) return;
+            for (let i = p.participacoes.length - 1; i >= 0; i--) {
+                if (p.participacoes[i].livroId == id) {
+                    participacoesPersonagemRemovidas.push({
+                        personagemId: p.id,
+                        entrada: p.participacoes[i],
+                    });
+                    p.participacoes.splice(i, 1);
+                }
+            }
         });
     }
 
@@ -3136,6 +3764,27 @@ function _removerParaExclusao(col, id) {
         });
     }
 
+    // Excluir uma corrente com divisões: as divisões sobem para o pai da
+    // excluída (ou viram correntes de topo), como em Locais. Guarda quem
+    // subiu para o Desfazer.
+    const filhosReligados = [];
+    if (col === 'movimentosEscolas') {
+        db.movimentosEscolas.forEach((m) => {
+            if (m.paiId == null || m.paiId != id) return;
+            filhosReligados.push({
+                id: m.id,
+                paiAnterior: m.paiId,
+                divisaoAnterior: m.divisao || '',
+                generoAnterior: m.generoDivisao || '',
+            });
+            m.paiId = item?.paiId ?? null;
+            if (m.paiId == null) {
+                m.divisao = '';
+                m.generoDivisao = '';
+            }
+        });
+    }
+
     // Excluir Template de Progressão: se for embutido (de fábrica),
     // registra o nome em templatesEstruturaOcultos pra
     // migrarTemplatesEstruturaEmbutidos nunca recriar (ver comentário lá) —
@@ -3204,6 +3853,9 @@ function _removerParaExclusao(col, id) {
         partesRemovidas,
         itensRemovidos,
         vinculosPessoaRemovidos,
+        vinculosPersonagemRemovidos,
+        ancorasEcoRemovidas,
+        participacoesPersonagemRemovidas,
         vinculosAutoriaRemovidos,
         vinculosPessoaAutorRemovidos,
         gruposAutorRemovidos,
@@ -3217,6 +3869,7 @@ function _removerParaExclusao(col, id) {
         vinculosEpocaRemovidos,
         vinculosPeriodoHistoricoRemovidos,
         vinculosMovimentoEscolaRemovidos,
+        filhosReligados,
         vinculosMoldeRemovidos,
         capasParaDescartar,
         posicaoRemovida,
@@ -3237,6 +3890,9 @@ function _restaurar(removido) {
         partesRemovidas,
         itensRemovidos,
         vinculosPessoaRemovidos,
+        vinculosPersonagemRemovidos,
+        ancorasEcoRemovidas,
+        participacoesPersonagemRemovidas,
         vinculosAutoriaRemovidos,
         vinculosPessoaAutorRemovidos,
         gruposAutorRemovidos,
@@ -3250,6 +3906,7 @@ function _restaurar(removido) {
         vinculosEpocaRemovidos,
         vinculosPeriodoHistoricoRemovidos,
         vinculosMovimentoEscolaRemovidos,
+        filhosReligados,
         vinculosMoldeRemovidos,
         posicaoRemovida,
         irmaos,
@@ -3282,6 +3939,15 @@ function _restaurar(removido) {
         const it = db[itemCol]?.find((i) => i.id == itemId);
         if (it) (it.pessoas ||= []).push(entrada);
     });
+    (vinculosPersonagemRemovidos || []).forEach(({ itemCol, itemId, entrada }) => {
+        const it = db[itemCol]?.find((i) => i.id == itemId);
+        if (it) (it.personagens ||= []).push(entrada);
+    });
+    (participacoesPersonagemRemovidas || []).forEach(({ personagemId, entrada }) => {
+        const p = db.personagens?.find((x) => x.id == personagemId);
+        if (p) (p.participacoes ||= []).push(entrada);
+    });
+    restaurarAncoras(db, ancorasEcoRemovidas || []);
     (vinculosAutoriaRemovidos || []).forEach(({ itemCol, itemId, entrada }) => {
         const it = db[itemCol]?.find((i) => i.id == itemId);
         if (it) (it.autoria ||= []).push(entrada);
@@ -3327,6 +3993,13 @@ function _restaurar(removido) {
     (vinculosMovimentoEscolaRemovidos || []).forEach(({ itemCol, itemId, movimentoEscolaId }) => {
         const it = db[itemCol]?.find((i) => i.id == itemId);
         if (it) (it.movimentosEscolasIds ||= []).push(movimentoEscolaId);
+    });
+    (filhosReligados || []).forEach(({ id, paiAnterior, divisaoAnterior, generoAnterior }) => {
+        const filho = db.movimentosEscolas?.find((m) => m.id == id);
+        if (!filho) return;
+        filho.paiId = paiAnterior;
+        filho.divisao = divisaoAnterior;
+        filho.generoDivisao = generoAnterior;
     });
     (vinculosMoldeRemovidos || []).forEach(({ moldeId, statusAnterior, poemaIdAnterior }) => {
         const m = db.moldes?.find((i) => i.id == moldeId);
@@ -3429,6 +4102,29 @@ export function deleteItem(col, id, aposConfirmar = null) {
             total > 0
                 ? `Pessoa · deixará de aparecer em ${total} texto${total !== 1 ? 's' : ''}`
                 : 'Pessoa';
+    }
+
+    // Para Personagem, mesmo aviso de Pessoa (o vínculo some, o texto não).
+    if (col === 'personagens') {
+        const { poemasIds, prosasIds } = calcularImpactoExclusaoPersonagem(db, id);
+        const total = poemasIds.length + prosasIds.length;
+        rotulo =
+            total > 0
+                ? `Personagem · deixará de aparecer em ${total} texto${total !== 1 ? 's' : ''}`
+                : 'Personagem';
+    }
+
+    // Para Corrente literária com divisões: avisa que elas sobem para o pai
+    // da excluída (ou viram correntes de topo), sem sumir.
+    if (col === 'movimentosEscolas') {
+        const divisoes = db.movimentosEscolas.filter((m) => m.paiId != null && m.paiId == id);
+        if (divisoes.length > 0) {
+            const destino =
+                item?.paiId != null
+                    ? 'passam a fazer parte da corrente acima'
+                    : 'viram correntes de topo';
+            rotulo = `Corrente literária · ${divisoes.length} divisã${divisoes.length !== 1 ? 'ões' : 'o'} ${destino}`;
+        }
     }
 
     // Para Autor, avisa em quantos poemas/prosas ele vai deixar de

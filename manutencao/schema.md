@@ -12,13 +12,13 @@ O que acontece entre textos do próprio acervo (vínculo por id).
 
 ```json
 "conceitos": {
-  "elos": [{ "id": 123, "poemaId": 456, "relacao": "Reescrita", "direcao": "destino", "texto": "" }],
-  "ecos": [{ "id": 789, "poemaId": 111, "tipo": "Personagem em comum", "texto": "" }]
+  "elos": [{ "id": 456, "relacao": "Reescrita", "direcao": "destino", "texto": "" }],
+  "ecos": [{ "id": 111, "tipo": "Personagem em comum", "texto": "", "ancoras": [{ "especie": "personagem", "id": 10 }] }]
 }
 ```
 
-- **Elos** (bilateral): `relacao` (`RELACOES_ELO` em `utils.js` — Reescrita, Continuidade, Tradução, Variação, Versão, Resposta, Díptico, Outro) + `direcao` (`origem` = texto mais antigo/base, `destino` = texto derivado/mais novo). Rótulo exibido é dinâmico via `rotuloElo()`, não mapa fixo de inverso.
-- **Ecos** (sempre unidirecional, mais novo → mais antigo): só `tipo` (`TIPOS_ECO` em `utils.js` — Personagem em comum, Imagem central compartilhada, Aceno a, Outro), sem `direcao`. Chamado "Referências" antes da reorganização que criou o campo `referenciasExternas` abaixo, de mesmo rótulo mas conceito distinto.
+- **Elos** (bilateral; `id` é o do **texto-alvo**, como no Eco, não há `poemaId` gravado): `relacao` (`RELACOES_ELO` em `utils.js` — Reescrita, Continuidade, Tradução, Variação, Versão, Resposta, Díptico, Outro) + `direcao` (`origem` = texto mais antigo/base, `destino` = texto derivado/mais novo). Rótulo exibido é dinâmico via `rotuloElo()`, não mapa fixo de inverso.
+- **Ecos** (sempre unidirecional, mais novo → mais antigo): `id` é o do **texto-alvo** (não há `poemaId` no Eco gravado), `tipo` (`TIPOS_ECO` em `utils.js` — Personagem em comum, Pessoa em comum, Imagem central compartilhada, Aceno a, Outro), `texto` e, opcional, `ancoras: [{ especie: 'personagem'|'pessoa', id }]` (`js/ancora-eco.js`): quem sustenta a ligação. O tipo define a espécie ("Personagem em comum" só personagens, "Pessoa em comum" só pessoas; os outros tipos não têm âncora); a âncora precisa estar vinculada aos dois textos ao ser escolhida e, se um vínculo sair depois, continua com aviso; Eco sem `ancoras` segue válido (o campo some quando a lista esvazia). No JSON exportado cada âncora leva também `nome`; a importação casa por espécie e nome. Sem `direcao`. No JSON exportado (`montarRegistro`) cada Elo e Eco leva também `alvoTitulo`, o título do texto-alvo, porque o `id` não vale em outro acervo; a Importação Aditiva resolve o alvo pelo lote, pela duplicata casada ou por esse título, e solta a entrada que ficar sem alvo (F11-D9, `js/alvos-conceitos.js`); o campo não persiste no acervo. Chamado "Referências" antes da reorganização que criou o campo `referenciasExternas` abaixo, de mesmo rótulo mas conceito distinto.
 - Alvo de Prosa pode ser Poema ou Prosa (`resolverItemVinculado`/`resolverTituloPoemaOuProsa` resolvem checando os dois arrays — ids nunca colidem, contador global único).
 - Migração `conceitos.referencias` → `conceitos.ecos` é feita por `migrarReferenciasParaEcos` em `db.js`, idempotente, e roda antes de qualquer coisa tocar em `referenciasExternas`.
 
@@ -65,6 +65,7 @@ No item:
 - `souEu` (Autor, opcional, boolean): marca o autor como a própria pessoa dona do acervo. Ao adicionar esse autor a um texto com Fonte vazia, o formulário preenche a Fonte com `Obra própria` (`FONTE_OBRA_PROPRIA`). Só na adição manual do chip: reabrir um texto não mexe na Fonte. Não é importado pela Importação Aditiva nem por pacotes da Biblioteca ("sou eu" é do acervo de quem usa, não de quem exporta).
 - Dados demográficos do Autor, todos opcionais (`modal-autor.html`, constantes em `utils.js`): `sexo` (`SEXOS_AUTOR = ['Feminino', 'Masculino', 'Intersexo']`, lista fechada — Intersexo entra aqui, não em Gênero, por ser característica física, não identidade), `genero` (texto livre + sugestão `GENEROS_SUGERIDOS`, mesmo raciocínio de `IDIOMAS_SUGERIDOS` — lista real sem teto fechado), `orientacaoSexual` (texto livre + sugestão `ORIENTACOES_SUGERIDAS`, Gay/Lésbica como sugestões separadas de um "Homossexual" genérico), `identidadeCisTrans` (`IDENTIDADES_CIS_TRANS = ['Cisgênero', 'Transgênero', 'Não se aplica']`, lista fechada, campo PRÓPRIO — não basta escrever "Mulher trans" no Gênero: a maioria das pessoas trans se descreve simplesmente como "mulher"/"homem", documentar que alguém é trans normalmente vem de pesquisa biográfica à parte, não de como a pessoa se rotula; ver `decisoes.md`), `corRaca` (`CORES_RACA_AUTOR`, lista fechada nos moldes do IBGE — Branca/Preta/Parda/Amarela/Indígena) e `ocupacoes` (string separada por vírgula, mesmo formato de `genero` da Prosa — o quê mais o Autor trabalhava além de escrever, `criarGrupoDeTags` em `editor.js`). Nenhuma das listas fechadas tem opção "Não informado" própria — o campo vazio já é esse estado (mesmo padrão de Grafia); vazio em `identidadeCisTrans` significa "não documentado", não "confirmadamente Cisgênero". `idadeAutor`/`signoDoZodiaco` (`utils.js`) são DERIVADOS de `nascimento`/`obito`, nunca gravados — mesmo espírito de `calcularAnoDominioPublico`: idade para de contar no Óbito pra quem já faleceu (não continua até hoje), fica aproximada (`aproximada: true`) se faltar dia/mês de qualquer um dos lados; signo sempre precisa de dia+mês, sem aproximação possível (`null` se faltar). `grupoSexualGenero` (`utils.js`) é a classificação agregada Cis-heteronormativo/Queer/Não informado, também DERIVADA (de `sexo`+`genero`+`orientacaoSexual`+`identidadeCisTrans`, nunca um campo próprio) — pensada pras Estatísticas; `sexo`/`genero`/`orientacaoSexual` vazios cai em `'nao-informado'` (nunca presume maioria por dado ausente), mas `identidadeCisTrans` vazio NÃO força isso — só "Transgênero"/"Não se aplica" força `'queer'`; vazio ou "Cisgênero" segue a regra normal de comparar Sexo/Gênero (cis é o padrão não-marcado, raramente documentado à toa).
 - Dados sociais do Autor, todos opcionais (`modal-autor.html`, constantes em `utils.js`): `religiao` (texto livre + sugestão `RELIGIOES_SUGERIDAS`, somada ao que já está no acervo — sincretismo é comum, então não é lista fechada), `classeSocial` (`CLASSES_SOCIAIS_AUTOR = ['Escravizado/liberto', 'Livre pobre', 'Artesão/classe média urbana', 'Elite/proprietário de terras']`, lista fechada, sem "Não informado" própria — mesmo padrão de `corRaca`), `neurodivergencias` (string separada por vírgula, `criarGrupoDeTags`, mesmo formato de `ocupacoes`), `condicoesClinicas` (array de `{nome, tipo}`, `tipo` ∈ `DIMENSOES_CONDICAO_CLINICA = ['Física', 'Mental']`, padrão Física — `criarGrupoDeTagsComTipo` em `editor.js`, a mesma fábrica de `nomesLiterarios`; formato legado string "a, b" é aceito ao carregar), `grauAcademico` (`GRAUS_ACADEMICOS_AUTOR`, lista fechada de 9 níveis, de "Sem escolarização formal" a "Pós-doutorado" — mesmo padrão de `corRaca`; valor fora da lista, de quando o campo era texto livre, é preservado ao editar) e `instituicoes` (string separada por vírgula, lista de tags; sugestão vem só do que já foi cadastrado no acervo, `extrairInstituicoesUnicas`). `deficiencias` (array de `{nome, tipo}`, `tipo` ∈ `TIPOS_DEFICIENCIA = ['Física', 'Auditiva', 'Visual', 'Intelectual', 'Mental/psicossocial', 'Múltipla']`, padrão Física — mesma fábrica `criarGrupoDeTagsComTipo`; o `nome` é a deficiência específica, ex. "Cegueira", e o `tipo` a categoria ampla). Neurodivergência, `condicoesClinicas` e `deficiencias` são três campos separados de propósito (variação neurológica / diagnóstico clínico / deficiência); ver `decisoes.md`.
+- **Cadastro de Pessoa** (`db.pessoas`): `{ id, nome, genero, identidadeCisTrans, corRaca, grupoIds, autorIds, oculto }`. `genero` é texto livre com sugestão. `identidadeCisTrans` (`IDENTIDADES_CIS_TRANS`: Cisgênero, Transgênero, Não se aplica) e `corRaca` (`CORES_RACA_AUTOR`: Branca, Preta, Parda, Amarela, Indígena) são as **mesmas listas fechadas do Autor** (Fase 1, etapa 1c-0, F1-D6). **Vazio é \"não documentado\"**, nunca \"cisgênero\" nem \"branca\"; preenche-se só onde a pessoa se declara ou a biografia documenta. `migrarPessoasIdentidade` (`db.js`) roda no carregamento e no `importarDB`: registro antigo ganha `''` e valor fora da lista vira `''`. Na mesclagem (`mesclarPessoas`) o destino nunca é sobrescrito e só preenche o que estava vazio. **Limite assumido:** o cadastro não viaja na exportação por texto nem na Importação Aditiva (o vínculo exportado leva só `pessoaId`, `papeis` e `nome`, e a importação cria a Pessoa só com `nome` e `grupoIds`); isso já valia para `genero`. Os dois campos chegam ao outro lado só pelo backup completo.
 - `gruposDiretos`: array simples de `grupoId`, sem papel — grupo referenciado sem citar nenhuma Pessoa dele em particular. Badge na coluna Grupos aparece junto dos grupos-via-pessoa, sem o parêntese de pessoa.
 
 ### Épocas
@@ -124,7 +125,7 @@ Valores: `incompleto`, `completo`, `publicado`, `migrado`, `descartado`, `privad
 
 - 🔒 `privado` — nunca teve intenção de publicação, sempre restrito a contexto pessoal/íntimo (diferente de `descartado`).
 
-Status editorial (Inédito/Esgotado/Domínio público/Reeditado) existe só em `db.livros`/`db.coletaneas`, nunca em Poema/Prosa.
+Situação editorial (Em circulação/Esgotado/Fora de catálogo/Reeditado) existe só em `db.livros` (que inclui as coletâneas), nunca em Poema/Prosa — ver "Livros / Coletâneas / Partes / Seções" abaixo. (Até 03/10/2026 este parágrafo dizia que o campo já existia; não existia no código.)
 
 ### Fonte do texto (`fonteTexto`)
 
@@ -166,7 +167,24 @@ Cadastro que agrupa Temas. Só a forma atual; o porquê está em `decisoes.md`.
 
 ## Livros / Coletâneas / Partes / Seções
 
-Estrutura hierárquica padrão do acervo — sem mudança de schema registrada aqui além do Status editorial (ver acima).
+Estrutura hierárquica padrão do acervo.
+
+### Situação editorial (Livro e Coletânea)
+
+Coletânea é um Livro com `tipo: 'Coletânea'`, então o campo vive em `db.livros` e cobre as duas.
+
+```json
+"situacaoEditorial": "esgotado",
+"situacaoDesde": { "mes": 3, "ano": 2024 },
+"situacaoNota": "Tiragem acabou; nova edição prevista"
+```
+
+- `situacaoEditorial`: `'em-circulacao'` (padrão de livro **novo**), `'esgotado'` (acabou no mercado), `'fora-de-catalogo'` (o autor retirou de venda), `'reeditado'` (substituído por nova edição; detalhes na nota) ou `''` (não especificado). Livro antigo, sem o campo, vale `''` — o modal o abre como "Não especificado", nunca como "Em circulação".
+- `situacaoDesde`: data parcial `{dia?, mes?, ano?}`, opcional, mesmo molde de `data`. Não pode ser anterior à `data` de primeira publicação (`violaOrdemDeDatas`).
+- `situacaoNota`: texto livre, opcional.
+- Código: `SITUACOES_EDITORIAIS`, `situacaoEditorialDoLivro`, `livroForaDeCirculacao`, `textoSituacaoEditorial`, `htmlSeloSituacaoEditorial` em `utils.js`; modal em `modais/modal-livro.html` (ids `l-situacao-editorial`, `l-situacao-desde-*`, `l-situacao-nota`); salvar/editar em `forms.js` (`initFormLivro`, `MAPA_LIVRO`, `editarLivro`).
+- Aparece: selo e nota no card do livro (`renderLivros`); texto na lista e no cabeçalho da aba Coletâneas; aviso nas Lojas ("confira se os links de compra ainda funcionam") quando esgotado, fora de catálogo ou reeditado e há link de compra. Os exports (`buildNesting`) espalham o objeto do livro, então os três campos saem sem código extra.
+- Não existe (ainda): filtro, coluna ou busca por situação editorial; vínculo estruturado do livro reeditado com a nova edição (hoje a nova edição vai na nota).
 
 ## Aba "Conexões"
 
@@ -212,7 +230,7 @@ Ao contrário de Conexões, é entidade própria: `db.escansoes` (uma por poema 
 
 Não é schema de dado, é o mapa cadastro → colunas. Cada coluna declara em `campos` as chaves do registro que consome (`coluna(cabecalho, campos, valor)`); `tests/exportar-csv.test.js` compara essas chaves com o `dados = {...}` de `forms.js` (Poema, Prosa e Autor) e falha se um campo novo do cadastro ficar sem coluna. Campo novo no cadastro = uma `coluna(...)` nova (ou entrada em `CAMPOS_TEXTO_IGNORADOS`, com o porquê).
 
-- Poema/Prosa (`colunasTexto(tipo)`, entrada = `montarRegistro`): 89 colunas (`idioma_principal`, `idioma_secundario`, `dialetos`, `local_escrita` e `local_escrita_caminho` vêm logo depois de `idioma`, e `territorialidade_caminho` logo depois das `sinal_*`; `idioma` e `sinal_territorialidade` seguem com o espelho de nomes; `assunto_principal` e `assunto_secundario` vêm logo depois de `assuntos`; `tema_principal` e `tema_secundario`, dos Temas por papel, logo depois das `sinal_*`; `sinal_tema` segue com todos os Temas). Poema tem `n_versos`/`n_estrofes`, `anotacoes_marginais`, `descricao_visual`; Prosa tem `n_linhas`/`n_paragrafos`, `genero`, `publicado`. Datas em `_ano/_mes/_dia`; Sinalizações uma coluna por categoria de `SINALIZACOES_CATEGORIAS` (`sinal_*`); listas de objetos (elos, ecos, intertextualidade, envios...) uma entrada de texto por objeto, separadas por `" | "`.
+- Poema/Prosa (`colunasTexto(tipo)`, entrada = `montarRegistro`): 98 colunas (`personagem_voz`, `personagem_interlocutor`, `personagem_aparicao`, `personagem_mencao`, `personagem_alusao`, `personagem_protagonista`, `personagem_secundario` e `personagem_sem_centralidade` vêm logo depois de `personagens` (que segue com todos os nomes); `idioma_principal`, `idioma_secundario`, `dialetos`, `local_escrita` e `local_escrita_caminho` vêm logo depois de `idioma`, e `territorialidade_caminho` logo depois das `sinal_*`; `idioma` e `sinal_territorialidade` seguem com o espelho de nomes; `assunto_principal` e `assunto_secundario` vêm logo depois de `assuntos`; `tema_principal` e `tema_secundario`, dos Temas por papel, logo depois das `sinal_*`; `sinal_tema` segue com todos os Temas). Poema tem `n_versos`/`n_estrofes`, `anotacoes_marginais`, `descricao_visual`; Prosa tem `n_linhas`/`n_paragrafos`, `genero`, `publicado`. Datas em `_ano/_mes/_dia`; Sinalizações uma coluna por categoria de `SINALIZACOES_CATEGORIAS` (`sinal_*`); listas de objetos (elos, ecos, intertextualidade, envios...) uma entrada de texto por objeto, separadas por `" | "`.
 - Autor (`COLUNAS_AUTOR`, entrada = `itensDaSelecaoAutores`): 33 colunas, `derivados` no fim.
 
 ## `db.temas` — cadastro de Tema (fase 1)
@@ -232,6 +250,14 @@ Não é schema de dado, é o mapa cadastro → colunas. Cada coluna declara em `
 - Regra (decisão do Victor): se o texto elenca um Tema como principal ou secundário, os Assuntos desse Tema herdam o papel por padrão; a pessoa pode fixar outro papel para um Assunto naquele texto (Tema principal com Assunto secundário, ou o contrário). Com vários Temas do texto no mesmo Assunto, vale o papel mais forte (principal, depois secundário, depois sem papel).
 - Cálculo em `utils.js`: `assuntosComPapel(item, assuntos, temas)` devolve `{ id, nome, papel, papelAuto, fixado }` (ordem: principal, secundário, sem papel; dentro do papel, ordem do cadastro). Derivados: `textoAssuntosComPapel`, `nomesAssuntosPorPapel`. `podarSobrescritasAssunto` descarta sobrescrita de Assunto excluído ou sem Tema no texto (roda ao salvar em `temasParaSalvar`, `forms.js`, e a cada render do editor). Sobrescrita órfã que sobrar no dado é ignorada na leitura.
 - Exportação JSON (`montarRegistro`): cada entrada ganha `nome` do Assunto (o id não vale em outro acervo). Importação Aditiva casa o Assunto do destino pelo nome (sem caixa nem acento), descarta o que não existe e grava `assuntosPapel` sempre reescrito; JSON antigo vira `[]`.
+
+### Exceção de Assunto no texto (`assuntosExcluidos`, 01/10/2026)
+
+- `assuntosExcluidos: [assuntoId, ...]` no Poema/Prosa guarda os Assuntos que a pessoa tirou **daquele texto** ("Não se aplica a este texto"), mesmo que um Tema do texto pertença a eles. Só a exceção é gravada; o Assunto continua derivado dos Temas (`assuntosDoTexto`). Ausente ou malformado vale como lista vazia; aceita id numérico, texto ou `{ assuntoId }` na leitura (`idsAssuntosExcluidos`, `utils.js`).
+- Lido por `assuntosDoTexto` e `assuntosComPapel`, então tabelas, busca, Estatísticas, `.md`, Visualização e CSV a respeitam sem mudança própria. `assuntosComPapelDeEntradas(entradas, sobrescritas, assuntos, temas, excluidos, { incluirExcluidos })`: só o modal passa `incluirExcluidos: true` e recebe `excluido: true` (papel `''`, sem sobrescrita, no fim da lista).
+- A exceção vence a sobrescrita de papel do mesmo Assunto; o editor também remove a sobrescrita ao excluir.
+- `podarExcecoesAssunto(entradas, excluidos, assuntos, temas)` roda no render do editor e ao salvar (`temasParaSalvar`): descarta exceção de Assunto excluído do cadastro ou sem nenhum Tema do texto. Exceção órfã que sobrar no dado (cadastro mudou depois de salvar) é ignorada na leitura e some no próximo salvar do texto.
+- Exportação JSON: `assuntosExcluidos: [{ assuntoId, nome }]`. Importação Aditiva casa pelo nome, poda contra os Temas do texto importado e sempre reescreve; JSON antigo vira `[]`.
 
 ## `db.locais`: cadastro de Local (etapa 1, 30/09/2026)
 
@@ -255,3 +281,74 @@ Não é schema de dado, é o mapa cadastro → colunas. Cada coluna declara em `
 ### Exportação e importação
 
 `montarRegistro` (`exportar.js`) troca `territorialidade` e `localEscrita` por `{ localId, nome, tipo }` e acrescenta `locaisHierarquia`: cada Local do texto e todos os ancestrais, com `pertenceA` em ids de origem. A Importação Aditiva (`importarLocaisDoTexto`) recria de baixo para cima casando por nome + tipo + pai, adota um Local do mesmo nome e tipo que esteja sem pai, e nunca duplica. JSON antigo (sem `locaisHierarquia`) zera os ids e o espelho é migrado no `save()`. O backup completo (`importarDB`) leva `db.locais` inteiro.
+
+`apelido` (opcional, 06/10/2026): texto curto de exibição para as Estatísticas (ver `status.md`). Ausente quando vazio; igual ao nome (sem caixa/acento) não vale; vírgula vira espaço. A ficha exportada (`locaisParaExportar`) leva `apelido` só quando existe.
+
+## `db.personagens`: cadastro de Personagem (Fase 11, etapa 1, 03/10/2026)
+
+`{ id, nome, origem, notas, genero, orientacao, corRaca, nascimento, obito, caracteristicas, participacoes }`. Código em `js/personagens.js`; funções puras sobre o `dbRef`, sem DOM e sem `save()`.
+
+- Personagem é o que o **autor criou ou reinterpretou**. Quem existe ou existiu de fato é Pessoa; quem já existe fora da obra (figura pública, religiosa, mítica) vive em Intertextualidade/Referências.
+- `origem`: `Criado`, `Reinterpretado` ou `''` (não definida; nada é inferido). O vínculo opcional do Personagem reinterpretado com a Referência de origem fica para etapa própria; campos desconhecidos do registro atravessam intactos.
+- Nome repetido é permitido (dois personagens de obras diferentes); comparação por `chaveTema` (sem caixa/acento).
+
+### Identidade, vida e características (Fase 11, etapa 1b, 04/10/2026)
+
+- **Identidade:** `genero` e `orientacao` são texto livre com sugestão (mesmos vocabulários do Autor: `GENEROS_SUGERIDOS`, `ORIENTACOES_SUGERIDAS`); `corRaca` é a lista fechada do Autor (`CORES_RACA_AUTOR`, valor fora da lista vira `''`). Vazio = não definido, nada é inferido. A finalidade é cruzar o personagem com quem escreveu (as características de personagens femininas mudam conforme o gênero do autor?). Sexo e Identidade cis/trans do Autor ficaram de fora por não terem sido pedidos.
+- **Vida:** `nascimento` e `obito` em data parcial `{dia?, mes?, ano?}` (`null` quando vazia), o mesmo formato do Autor; o formulário vai pedir só o ano. O ano é interno à ficção. `idadeDoPersonagemEm(p, ano)` calcula a idade num ano de referência (nunca contra hoje; `null` se faltar nascimento, se o ano for anterior ao nascimento ou posterior ao óbito), `duracaoDaVidaPersonagem(p)` dá nascimento até óbito e `vidaInvalidaPersonagem(p)` acusa óbito anterior ao nascimento (para o formulário recusar; a normalização não descarta dado).
+- **`caracteristicas`:** o que é do personagem em si, não da relação com um texto ou livro. Sete grupos de **tag** (`GRUPOS_CARACTERISTICAS_PERSONAGEM`: `personalidade`, `valoresCrencas`, `desejos`, `medos`, `tracosFisicos`, `arquetipos`, `backstory`) mais `backstoryNota` (texto livre). `backstory` é tag porque o passado ("Abandono parental") não cabe nos outros seis grupos. Tag simples e sem tipo, para o vocabulário ser compartilhado e comparável: repetição se decide por `chaveTema` (sem caixa/acento) e a primeira grafia digitada fica (`normalizarTagsPersonagem`; aceita array ou `"a, b"`).
+- **Exportação e importação:** o vínculo exportado leva também `genero`, `orientacao`, `corRaca`, `nascimento`, `obito` e `caracteristicas`. A Importação Aditiva cria o personagem novo com tudo e, num existente (casado pelo nome), **só preenche o que estava vazio**: cada campo de identidade, cada data, cada grupo de tag e a nota do passado. O que já estava definido nunca é trocado, e as tags não se somam.
+- **Busca:** o texto ganhou o campo derivado `_buscaPersonagens` (nomes, via `decorarCamposBusca`), usado na busca geral e no prefixo `personagem:"Nome"` (`CAMPOS_ATRIBUTO` em `utils.js`). É o que o "Ver textos" da aba Personagens aplica.
+- **Registro da etapa 1** (sem os campos novos) ganha os vazios em `sincronizarPersonagens`, que continua idempotente.
+
+### Participação por livro (Fase 11, etapa 3a, 04/10/2026)
+
+- `participacoes: [{ livroId, papelNarrativo, funcaoTematica, arco, tropes }]` no cadastro do Personagem, uma por livro (`db.livros`, coletânea inclusa). Os quatro campos são listas de tag, os mesmos de `CAMPOS_RELACAO_PERSONAGEM` (relação com o texto), normalizadas por `normalizarTagsPersonagem`. Uma participação pode existir com todas as listas vazias ("participa deste livro", ainda sem análise).
+- Edita-se só no modal do Personagem. Nada de personagem entra no modal do Livro.
+- Excluir o Livro tira a participação de cada Personagem; o Desfazer devolve (`participacoesPersonagemRemovidas`). `sincronizarPersonagens` solta a participação de livro inexistente, mas só quando o db tem `livros`.
+- Exportação: `participacoes` vai no vínculo do texto como `[{ livroTitulo, papelNarrativo, funcaoTematica, arco, tropes }]`, sem `livroId`. Importação Aditiva casa o livro do destino pelo título (`chaveTema`) e descarta o que não existe; num personagem já cadastrado acrescenta o livro que faltava e só preenche campo de tag vazio. Limite: o personagem só viaja junto de um texto que o cite, então as participações dele só chegam por esse caminho.
+
+### Personagem no texto (Poema/Prosa)
+
+- `personagens: [{ personagemId, papeis: [...], centralidade, papelNarrativo, arco, tropes, funcaoTematica }]`, um vínculo por personagem.
+- `papeis` é uma **lista**, na ordem de presença (`PAPEIS_PERSONAGEM`): Voz, Interlocutor, Aparição, Menção, Alusão. Lista vazia = papel não definido.
+- `centralidade`: `'protagonista'`, `'secundario'` ou `''` (indefinida). Valor único por vínculo. Só se aplica a quem tem presença efetiva (Voz, Interlocutor, Aparição) ou ainda não tem papel marcado; com só Menção e/ou Alusão fica sempre `''`.
+- **Relação com o texto (etapa 3b):** `papelNarrativo`, `arco`, `tropes` e `funcaoTematica` (`CAMPOS_RELACAO_PERSONAGEM`) são listas de tag no vínculo, normalizadas por `normalizarTagsPersonagem` (sem repetição por caixa/acento, primeira grafia fica). Vínculos repetidos juntam as tags em união. Vínculo antigo, sem os campos, ganha listas vazias. A relação por livro (etapa 3a) usará os mesmos quatro campos em `participacoes` no cadastro do Personagem.
+- Presença em dois textos **não cria Eco**. O Eco segue sendo leitura deliberada do autor; o Personagem só poderá ancorá-lo (etapa própria).
+- `sincronizarPersonagens(db)` roda no carregamento, no `save()` e na importação de backup: garante o array, normaliza e solta vínculos órfãos.
+
+### Exclusão, exportação e importação
+
+- Excluir Personagem tira o vínculo de todos os textos e o aviso diz em quantos (`calcularImpactoExclusaoPersonagem`). O "Desfazer" devolve o cadastro e cada vínculo com papéis e centralidade (`vinculosPersonagemRemovidos`).
+- `montarRegistro` acrescenta `nome` e `origem` a cada vínculo (`personagensParaExportar`). A Importação Aditiva casa pelo nome (`importarPersonagensDoTexto`), cria o que falta com a origem do arquivo e só preenche a origem de um existente que a tinha vazia. JSON antigo vira `[]`.
+- O submit dos modais lê o grupo (`obterPersonagens`, `js/grupo-personagens.js`) e grava o vínculo inteiro; o provisório `personagensParaSalvar` foi removido na etapa 3b. Texto não aberto no editor continua intacto, porque só o modal reescreve o texto.
+
+## Postura estética do Movimento/Escola (03/10/2026)
+
+- `posturaEstetica` em cada registro de `db.movimentosEscolas`: a atitude do movimento diante da tradição anterior, **na época em que surgiu** (o Modernismo foi ruptura em 1922 e hoje é cânone; o campo registra o primeiro momento).
+- Lista fechada (`POSTURAS_ESTETICAS`, `utils.js`), na ordem do afastamento da tradição: Tradicional, Restauradora, Reformista, Inovadora, Iconoclasta, Eclética. A Eclética (mistura estilos de várias épocas, pensada para o Pós-modernismo) fica por último por não ser um ponto da escala. `DESCRICOES_POSTURA_ESTETICA` guarda a definição de cada uma, mostrada como legenda no modal.
+- Vazio = ainda não preenchido ou não documentado; **"Não se aplica" é decisão explícita** (movimento sem tradição anterior a que responder, ou que reúne posturas distintas demais para uma só) e o vazio não a substitui. `normalizarPosturaEstetica` devolve `''` para qualquer valor fora da lista. Nas Estatísticas futuras, "Não se aplica" fica fora do denominador e o vazio entra como "sem classificação".
+- Os 22 movimentos de fábrica (`DADOS_SEED_MOVIMENTOS_ESCOLAS`) já trazem a postura, revisada pelo Victor em 03/10/2026: Restauradora (Classicismo, Arcadismo, Parnasianismo, Geração de 45), Reformista (Humanismo, Barroco, Realismo, Naturalismo, Simbolismo, Pré-Modernismo), Inovadora (Romantismo, Modernismo), Iconoclasta (Futurismo, Expressionismo, Cubismo literário, Dadaísmo, Surrealismo, Concretismo), Eclética (Tropicalismo, Pós-modernismo) e Não se aplica (Trovadorismo, Literatura Contemporânea). Instalação ou backup anterior ao campo recebe o valor do seed **uma única vez**, quando a chave não existe (`migrarMovimentosEscolas`); depois disso nada é sobrescrito, nem um vazio deixado de propósito.
+- Mesclar Movimentos: o destino herda a postura só se a dele estiver vazia. Importação aditiva cria o Movimento com `''`.
+- Nomes antigos (`Modernista`, `Vanguardista`), trocados no mesmo dia por **Inovadora** e **Iconoclasta** (colisão com os conjuntos históricos), são migrados em `migrarMovimentosEscolas` (`POSTURAS_ESTETICAS_RENOMEADAS`).
+
+### Hierarquia: `paiId`, `divisao`, `generoDivisao` (03/10/2026)
+
+- Em cada registro de `db.movimentosEscolas`: `paiId` (id da corrente pai ou `null`, um pai só), `divisao` (`DIVISOES_CORRENTE`: Variante regional, Fase ou geração, Vertente; ou `''`) e `generoDivisao` (`'Poesia'`, `'Prosa'` ou `''` = todos). Divisão e gênero só valem com pai; sem pai são `''`.
+- Lógica em `js/correntes-hierarquia.js` (funções puras): `paiDaCorrente`, `filhosDaCorrente`, `descendentesDaCorrente`, `ancestraisDaCorrente`, `caminhoDaCorrente`, `criaCicloCorrente`, `opcoesDePaiDaCorrente`, `posturaEfetivaDaCorrente`, `programaEfetivoDaCorrente` (herança só na leitura), `ordenarCorrentesEmArvore`, `impactoDaCorrente` (com ou sem divisões) e `sanearHierarquiaDeCorrentes`.
+- `migrarMovimentosEscolas` termina chamando `sanearHierarquiaDeCorrentes` (roda no load e no `importarDB`): campo ausente vira `null`/`''`, pai inexistente, próprio ou em ciclo é solto. Os 22 originais de fábrica nascem sem pai; as 16 divisões do Romantismo (2 variantes regionais, 6 gerações, 8 vertentes) nascem com `pai` resolvido por nome (`_registroDeMovimentoDoSeed` em `db.js`): o pai precisa vir antes no seed, e se ele foi excluído de propósito a divisão nasce de topo. Postura e Programa dessas divisões ficam vazios (herdam do pai). O seed aceita `notas`. Backup antigo sem os campos importa normalmente. Os textos e autores continuam ligados por `movimentosEscolasIds`, a qualquer registro (pai ou filho).
+- Exclusão: as divisões sobem para o pai da excluída (`filhosReligados` guarda quem subiu, com divisão e gênero, para o Desfazer). Mesclagem: ver `mesclarHierarquiaDeCorrentes` em `db.js`.
+
+### `programa` (03/10/2026)
+
+- `programa` em cada registro de `db.movimentosEscolas`: como a corrente se organiza e se apresenta. Lista fechada `PROGRAMAS_MOVIMENTO` (`utils.js`): Escola, Movimento, Vanguarda, Grupo/Círculo, Tendência, Não se aplica; `DESCRICOES_PROGRAMA_MOVIMENTO` guarda a legenda do modal; `normalizarProgramaMovimento` devolve `''` fora da lista.
+- Vazio = ainda não preenchido ou não documentado; "Não se aplica" é uma decisão (nada a descrever). **Tendência** = orientação difusa, sem organização nem unidade estética, nomeada depois pela crítica. Os 22 movimentos de fábrica nascem com o Programa aprovado (`DADOS_SEED_MOVIMENTOS_ESCOLAS`, `PROGRAMA_DO_SEED`). `migrarMovimentosEscolas` preenche o indefinido; `aplicarProgramaDeFabricaUmaVez(db)` preenche, uma única vez por acervo (marca `db.programaDeFabricaAplicado`), os de fábrica que já estavam com `''`; depois da marca nada é sobrescrito. Mesclar: o destino herda só se estiver vazio. Aparece no modal, no card e em "Ver"; ainda sem coluna, busca nem Estatísticas.
+- Aparece no modal (select com legenda), no card da lista e na Visualização. Ainda sem coluna, busca nem Estatísticas.
+
+## `db.ecosIgnorados`: pares que a sugestão de Ecos não repete (Fase 11, etapa 4b, 05/10/2026)
+
+Lista de `{ especie, id, chave }`. `especie` é `pessoa` ou `personagem` e `id` é o da figura: o descarte vale só para ela. `chave` é a do par de textos, canônica: as duas chaves de texto (`colecao:id`, com `poemas` ou `prosas`) em ordem alfabética, separadas por `|`. Escrita por `ignorarPar`/`restaurarPar` e limpa por `sincronizarParesIgnorados` (`js/sugestao-ecos.js`) a cada `save()`, na carga e no import de backup: sai entrada de figura ou texto que não existe mais, de par que já tem Eco e duplicata. Viaja no backup JSON; a Importação Aditiva e a exportação por texto não a levam (os ids não valem em outro acervo).
+
+## `db.padroesColunas`: padrões de colunas salvos pela pessoa (06/10/2026)
+
+`{ [tabela]: [{ nome, colunas }] }`, com `tabela` uma chave de `DEFINICAO_COLUNAS` (`poemas`, `prosas`, `sonoridade`, `moldes`, `estrutura-textual`) e `colunas` as chaves ligadas, na ordem da tela. `nome` único por tabela sem diferenciar caixa, até 40 caracteres. Aplicar um padrão liga exatamente essas colunas nessa ordem e deixa as demais desligadas. Chave de coluna que deixou de existir é ignorada na leitura. Vai no backup JSON; `importarDB` passa por `limparPadroesColunas`. Não guarda colunas de contagem nem a coluna Ações (estado próprio, no `localStorage`).

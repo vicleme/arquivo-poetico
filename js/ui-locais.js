@@ -154,6 +154,7 @@ function linhaLocal(l, ctx, { nivel = 0, caminho = false, no = null } = {}) {
             <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(l.nome)}</h4>
                 ${tipoBadge(l)}
+                ${l.apelido ? `<span class="text-[10px] text-gray-500 dark:text-slate-400" title="Nas Estatísticas, este local aparece com o apelido">apelido: ${escapeHtml(l.apelido)}</span>` : ''}
                 <span class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">${contagensHtml(c.diretos, c.agregados, e.diretos, e.agregados)}</span>
                 ${tambem}
             </div>
@@ -232,6 +233,7 @@ export function renderLocais() {
             (l) =>
                 !busca ||
                 chaveTema(l.nome).includes(busca) ||
+                chaveTema(l.apelido).includes(busca) ||
                 chaveTema(l.tipo).includes(busca) ||
                 chaveTema(rotuloCaminhoLocal(db, l.id)).includes(busca),
         )
@@ -351,6 +353,7 @@ export function initFormLocal() {
         const campos = {
             nome: document.getElementById('lo-nome').value,
             tipo: document.getElementById('lo-tipo').value,
+            apelido: document.getElementById('lo-apelido').value,
             notas: document.getElementById('lo-notas').value.trim(),
         };
         const pais = [...paisEditando];
@@ -384,6 +387,7 @@ async function abrirModalLocal({ id = null, paiId = null } = {}) {
     document.getElementById('lo-edit-id').value = local ? local.id : '';
     document.getElementById('lo-nome').value = local ? local.nome : '';
     document.getElementById('lo-tipo').value = local ? local.tipo || '' : '';
+    document.getElementById('lo-apelido').value = local ? local.apelido || '' : '';
     document.getElementById('lo-notas').value = local ? local.notas || '' : '';
     paisEditando = local ? paisDoLocal(db, local.id) : paiId != null ? [paiId] : [];
     renderPaisDoModal();

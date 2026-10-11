@@ -766,7 +766,7 @@ describe('legendaCorParaMarkdown (cor/fundo/fonte perdidos na conversão para Ma
     });
 });
 
-describe('gerarMarkdownExportacao — Períodos, Movimento/Escola e Inspiração (nomenclatura atual)', () => {
+describe('gerarMarkdownExportacao — Períodos, Corrente literária e Inspiração (nomenclatura atual)', () => {
     beforeEach(() => {
         resetarDb();
         db.epocas = [{ id: 7, nome: 'Namoro', autorId: 1 }];
@@ -788,13 +788,13 @@ describe('gerarMarkdownExportacao — Períodos, Movimento/Escola e Inspiração
         assert.doesNotMatch(md, /Época retratada/i);
     });
 
-    it('inclui Período Histórico Retratado e Movimento/Escola', () => {
+    it('inclui Período Histórico Retratado e Corrente literária', () => {
         db.poemas = [
             { id: 1, titulo: 'T', texto: 'x', periodoHistoricoId: 3, movimentosEscolasIds: [11] },
         ];
         const md = gerarMarkdownExportacao(db.poemas);
         assert.match(md, /\*\*Período Histórico Retratado:\*\* Pandemia de Covid-19/);
-        assert.match(md, /\*\*Movimento\/Escola:\*\* Modernismo/);
+        assert.match(md, /\*\*Corrente literária:\*\* Modernismo/);
     });
 
     it('exporta contextoHistorico sob o título Inspiração', () => {

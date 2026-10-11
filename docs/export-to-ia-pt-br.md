@@ -28,12 +28,12 @@ A vantagem aqui é que a hierarquia está explícita na forma do dado — a IA n
 
 Gerado pelo botão **"Baixar JSON filtrado"** na aba Exportação, pela seleção da listagem de Poemas/Prosas ("⬇ JSON" na barra de ações em massa), ou pelo botão **"Exportar selecionados"** na aba Estrutura (esse último numa estrutura própria, sem contexto resolvido — ver seção específica abaixo).
 
-A estrutura é uma lista plana de itens. Cada registro é autossuficiente: traz o texto, o contexto já resolvido como texto legível (nome do Livro, da Parte, da Seção), sinalizações, pessoas, datas. Não há aninhamento — é um array de objetos independentes.
+A estrutura é uma lista plana de itens. Cada registro é autossuficiente: traz o texto, o contexto já resolvido como texto legível (nome do Livro, da Parte, da Seção), etiquetas, pessoas, datas. Não há aninhamento — é um array de objetos independentes.
 
 **Use quando a tarefa é processar os itens individualmente:**
 
 - Escrever um comentário crítico sobre cada poema
-- Sugerir ou corrigir tags/sinalizações de cada texto
+- Sugerir ou corrigir tags/etiquetas de cada texto
 - Traduzir ou adaptar poema a poema
 - Classificar textos por tema, tom ou período
 - Alimentar um pipeline externo que espera registros tabulares

@@ -204,12 +204,12 @@ describe('editor: papel do Assunto no modal (DOM real)', () => {
         return linha.querySelector('select');
     }
 
-    it('cada Assunto ganha um seletor: Automático (papel herdado) + os três papéis', () => {
+    it('cada Assunto ganha um seletor: Automático (papel herdado), os três papéis e "não se aplica"', () => {
         $('p-tema-papel').value = 'principal';
         $('p-tema-input').value = 'Amor';
         E.adicionarTemaTexto('poemas');
         const sel = selectDoAssunto('Vida emocional');
-        assert.deepEqual(opcoes(sel), ['auto', '', 'principal', 'secundario']);
+        assert.deepEqual(opcoes(sel), ['auto', '', 'principal', 'secundario', 'excluir']);
         assert.equal(selecionado(sel), 'auto');
         assert.match(sel.options[0].textContent, /Automático \(Principal\)/);
     });

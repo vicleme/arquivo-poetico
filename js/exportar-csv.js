@@ -30,6 +30,12 @@
 // cadastro sem coluna (ou sem ser marcado como ignorado de propósito).
 // ============================================================
 
+import { rotuloEco } from './ancora-eco.js';
+import {
+    nomesPersonagens,
+    nomesPersonagensPorCentralidade,
+    nomesPersonagensPorPapel,
+} from './personagens.js';
 import {
     SINALIZACOES_CATEGORIAS,
     corpoParaLinhasRicas,
@@ -306,6 +312,33 @@ export function colunasTexto(tipo) {
 
         // Pessoas e grupos
         coluna('pessoas', ['pessoas'], (r, ctx) => juntar(nomesPessoas(r, ctx.banco.pessoas))),
+        coluna('personagens', ['personagens'], (r, ctx) =>
+            juntar(nomesPersonagens(r, ctx.banco.personagens)),
+        ),
+        // Personagem por papel e por centralidade (nomesPersonagensPorPapel e
+        // nomesPersonagensPorCentralidade, personagens.js): as mesmas oito
+        // visões dos prefixos de busca. `personagens` acima segue com todos.
+        // Vêm do `personagens` do texto, por isso sem campo próprio em `campos`.
+        ...[
+            ['personagem_voz', 'Voz'],
+            ['personagem_interlocutor', 'Interlocutor'],
+            ['personagem_aparicao', 'Aparição'],
+            ['personagem_mencao', 'Menção'],
+            ['personagem_alusao', 'Alusão'],
+        ].map(([cab, papel]) =>
+            coluna(cab, [], (r, ctx) =>
+                juntar(nomesPersonagensPorPapel(r, ctx.banco.personagens, papel)),
+            ),
+        ),
+        ...[
+            ['personagem_protagonista', 'protagonista'],
+            ['personagem_secundario', 'secundario'],
+            ['personagem_sem_centralidade', ''],
+        ].map(([cab, valor]) =>
+            coluna(cab, [], (r, ctx) =>
+                juntar(nomesPersonagensPorCentralidade(r, ctx.banco.personagens, valor)),
+            ),
+        ),
         coluna('pessoas_papeis', [], (r, ctx) => {
             const porId = new Map((ctx.banco.pessoas || []).map((p) => [p.id, p.nome]));
             return juntar(
@@ -404,7 +437,7 @@ export function colunasTexto(tipo) {
             juntar(
                 (r.conceitos?.elos || []).map((e) =>
                     comNota(
-                        `${rotuloElo(e.relacao, e.direcao) || e.relacao || 'Elo'}: ${tituloPorId(ctx.banco, e.poemaId)}`,
+                        `${rotuloElo(e.relacao, e.direcao) || e.relacao || 'Elo'}: ${tituloPorId(ctx.banco, e.poemaId ?? e.id)}`,
                         e.texto,
                     ),
                 ),
@@ -413,7 +446,10 @@ export function colunasTexto(tipo) {
         coluna('ecos', [], (r, ctx) =>
             juntar(
                 (r.conceitos?.ecos || []).map((e) =>
-                    comNota(`${e.tipo || 'Eco'}: ${tituloPorId(ctx.banco, e.poemaId)}`, e.texto),
+                    comNota(
+                        `${rotuloEco(ctx.banco, e, 2) || 'Eco'}: ${tituloPorId(ctx.banco, e.poemaId ?? e.id)}`,
+                        e.texto,
+                    ),
                 ),
             ),
         ),

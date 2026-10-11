@@ -24,6 +24,7 @@ document.body.innerHTML = `
 const { db } = await import('../js/db.js');
 const { renderTemas, definirBuscaTemas } = await import('../js/render-listas.js');
 const { initFormTema, editarTema, excluirTema } = await import('../js/forms.js');
+const { prepararNovo } = await import('../js/ui.js');
 const { sincronizarTemas } = await import('../js/temas.js');
 const { nomesTemasDoAssunto } = await import('../js/utils.js');
 
@@ -123,6 +124,22 @@ describe('modal de Tema (DOM real via happy-dom)', () => {
         assert.equal(db.poemas[0].sinalizacoesTema, 'Misoginia, Brasil');
         assert.deepEqual(nomesTemasDoAssunto(db.assuntos[0], db.temas), ['Misoginia']);
         assert.equal(db.temas.find((t) => t.id === id).notas, 'nota nova');
+    });
+
+    it('"Novo tema" depois de "Editar" cria um tema novo, sem sobrescrever o editado', async () => {
+        const original = db.temas.find((t) => t.nome === 'Machismo');
+        await editarTema(original.id);
+        assert.equal($('te-edit-id').value, String(original.id));
+
+        await prepararNovo('tema');
+        assert.equal($('te-edit-id').value, '');
+        assert.equal($('te-nome').value, '');
+        assert.equal($('modal-tema-titulo').innerText, 'Cadastrar Tema');
+
+        $('te-nome').value = 'Saudade';
+        enviar();
+        assert.ok(db.temas.some((t) => t.nome === 'Saudade'));
+        assert.equal(db.temas.find((t) => t.id === original.id).nome, 'Machismo');
     });
 });
 

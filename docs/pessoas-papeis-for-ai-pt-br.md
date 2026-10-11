@@ -103,6 +103,12 @@ Regras práticas para uma IA lendo este campo:
   característica fixa da pessoa — a quais grupos ela pertence —,
   independente do texto. Não varia poema a poema, diferente de `papeis`,
   que é vínculo específico deste texto com essa pessoa.
+- **Personagens** (`personagens`, campo separado): quem o autor **criou ou
+  reinterpretou**, num cadastro à parte (`db.personagens`), com papéis de
+  uma lista própria (Voz, Interlocutor, Aparição, Menção, Alusão). Atenção
+  à diferença de ordem: em `pessoas` a ordem dos papéis pode indicar
+  relevância; em `personagens` o sistema sempre reordena os papéis para uma
+  ordem fixa, então ela **não** indica nada. Ver `personagens-for-ai.md`.
 - **"Pessoa pública" em Referências (Externas)**: um dos tipos sugeridos
   do campo `referenciasExternas` (ver o documento sobre o grupo
   Transtextualidade e Referências) é texto livre, sem `pessoaId` — usado
@@ -127,3 +133,11 @@ Ao processar ou comentar o campo `pessoas` de um item exportado:
    relate o vínculo como está: presente, sem papel especificado.
 4. Não confunda com Autoria (papel único, cadastro diferente) nem com
    Grupos (propriedade fixa da pessoa, não do texto).
+5. Cada entrada de `pessoas` num JSON exportado também pode trazer a ficha
+   do cadastro: `genero` (texto livre), `identidadeCisTrans`
+   (`Cisgênero`, `Transgênero` ou `Não se aplica`) e `corRaca` (lista
+   fechada do Autor). **Vazio quer dizer "não documentado"**, nunca
+   "cisgênero", "cis" nem "branca": não infira esses dados pelo nome, pelo
+   papel ou pelo contexto do poema, e não os use para qualificar o texto
+   sem que a tarefa peça. Esses campos não aparecem no `.md`, no `.csv` nem
+   na Visualização.

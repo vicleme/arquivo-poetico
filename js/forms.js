@@ -2,9 +2,26 @@
 // forms.js — Submit handlers e funções de edição por entidade
 // ============================================================
 
-import { resolverTemasEditados } from './temas.js';
+import { resolverTemasEditados, aplicarAssuntosPendentes } from './temas.js';
 import { impactoDoLocal, mesclarLocais, resolverLocaisEditados } from './locais.js';
 import { renderLocais, destinosDeMesclagemDeLocal } from './ui-locais.js';
+import {
+    carregarPersonagens,
+    iniciarGrupoPersonagens,
+    lerPersonagens,
+    obterPersonagens,
+    resetPersonagens,
+} from './grupo-personagens.js';
+import {
+    aplicarPendenciasAncora,
+    iniciarAncoraEco,
+    registrarProvedorAncora,
+} from './ancora-eco-ui.js';
+import {
+    normalizarDivisaoCorrente,
+    normalizarGeneroDivisaoCorrente,
+    criaCicloCorrente,
+} from './correntes-hierarquia.js';
 import {
     db,
     save,
@@ -61,6 +78,7 @@ import {
     calcularAnoDominioPublico,
     idadeAutor,
     autorGruposComDados,
+    correnteGruposComDados,
     signoDoZodiaco,
     obterSugestaoEpocaPorId,
     nomeEpoca,
@@ -86,7 +104,10 @@ import {
     chaveTema,
     nomesTemasDoAssunto,
     podarSobrescritasAssunto,
+    podarExcecoesAssunto,
     espelhoDeIdiomas,
+    normalizarPosturaEstetica,
+    normalizarProgramaMovimento,
 } from './utils.js';
 
 // Rastreadores de alterações não salvas dos formulários de texto longo
@@ -109,6 +130,8 @@ import {
     atualizarDatalist,
     atualizarDatalistRegiaoPeriodoHistorico,
     atualizarDatalistRegiaoOrigemMovimento,
+    preencherOpcoesPaiCorrente,
+    sincronizarCamposDivisaoCorrente,
     atualizarDatalistsAutor,
     carregarPessoas,
     obterPessoas,
@@ -123,7 +146,9 @@ import {
     resetIdiomasTexto,
     carregarIdiomasTexto,
     obterTemasTexto,
+    obterAssuntosPendentesTexto,
     obterAssuntosPapelTexto,
+    obterAssuntosExcluidosTexto,
     resetPessoas,
     carregarGruposDiretos,
     obterGruposDiretos,
@@ -187,6 +212,7 @@ import {
     obterEcos,
     carregarEcos,
     resetEcos,
+    repintarEcos,
     renderPainelElosDerivados,
     atualizarFiltroSecoesMigracao,
     renderPainelElosDerivadosProsa,
@@ -304,17 +330,37 @@ function renderColetaneasInfo(containerId, refTipo, refId) {
 //
 // Papel do Assunto: grava só as sobrescritas (`assuntosPapel`) que ainda se
 // aplicam aos Temas do texto; sem sobrescrita, lista vazia (o papel segue
-// os Temas). A poda roda depois de resolver os ids, já com o cadastro atualizado.
+// os Temas). Idem para `assuntosExcluidos` (Assuntos marcados como "não se
+// aplica a este texto"). A poda roda depois de resolver os ids, já com o
+// cadastro atualizado.
 export function temasParaSalvar(tabela) {
     const entradas = obterTemasTexto(tabela);
     const { temas, espelho } = resolverTemasEditados(db, entradas);
+    // Ligações Tema → Assunto marcadas no modal: só agora entram no cadastro.
+    const ligadas = aplicarAssuntosPendentes(db, entradas, obterAssuntosPendentesTexto(tabela));
+    if (ligadas.vinculos) {
+        mostrarAviso(
+            `Assuntos atualizados: ${ligadas.vinculos} ligaç${ligadas.vinculos !== 1 ? 'ões' : 'ão'} de tema${
+                ligadas.criados
+                    ? `, ${ligadas.criados} assunto${ligadas.criados !== 1 ? 's novos' : ' novo'}`
+                    : ''
+            }.`,
+            'sucesso',
+        );
+    }
     const assuntosPapel = podarSobrescritasAssunto(
         entradas,
         obterAssuntosPapelTexto(tabela),
         db.assuntos,
         db.temas,
     );
-    return { temas, sinalizacoesTema: espelho, assuntosPapel };
+    const assuntosExcluidos = podarExcecoesAssunto(
+        entradas,
+        obterAssuntosExcluidosTexto(tabela),
+        db.assuntos,
+        db.temas,
+    );
+    return { temas, sinalizacoesTema: espelho, assuntosPapel, assuntosExcluidos };
 }
 
 // Locais do texto, lidos do grupo "Região e Idioma" do modal: Territorialidade
@@ -364,6 +410,13 @@ export function initFormLivro() {
             );
         }
 
+        const situacaoDesde = lerDataParcial('l-situacao-desde');
+        if (violaOrdemDeDatas(dataPublicacao, situacaoDesde)) {
+            return mostrarAviso(
+                'A data da situação editorial não pode ser anterior à Data de Primeira Publicação.',
+            );
+        }
+
         const dados = {
             id: id ? parseInt(id) : gerarId(),
             titulo: document.getElementById('l-titulo').value,
@@ -391,6 +444,9 @@ export function initFormLivro() {
                 .getElementById('l-certificado-direito-autoral')
                 .value.trim(),
             cartaExclusividadeUrl: document.getElementById('l-carta-exclusividade').value.trim(),
+            situacaoEditorial: document.getElementById('l-situacao-editorial').value,
+            situacaoDesde,
+            situacaoNota: document.getElementById('l-situacao-nota').value.trim(),
             lojas: obterLojas(),
             capa: capaFinal,
         };
@@ -431,6 +487,12 @@ const MAPA_LIVRO = {
     fichaCatalograficaUrl: 'l-ficha-catalografica',
     certificadoDireitoAutoralUrl: 'l-certificado-direito-autoral',
     cartaExclusividadeUrl: 'l-carta-exclusividade',
+    // Livro antigo, sem o campo, abre como "Não especificado" ('') — não
+    // como "Em circulação": o padrão de livro NOVO vem do `selected` do
+    // HTML (form.reset()), e afirmar circulação de um livro que nunca foi
+    // classificado seria inventar um dado.
+    situacaoEditorial: ['l-situacao-editorial', ''],
+    situacaoNota: 'l-situacao-nota',
 };
 
 export async function editarLivro(id) {
@@ -442,6 +504,7 @@ export async function editarLivro(id) {
     preencherCampos(l, MAPA_LIVRO);
     preencherDataParcial('l-data', l.data);
     preencherDataParcial('l-ultima-edicao', l.dataUltimaEdicao);
+    preencherDataParcial('l-situacao-desde', l.situacaoDesde);
     carregarLojas(l.lojas || []);
     document.getElementById('l-remover-capa').checked = false;
     document.getElementById('modal-livro-titulo').innerText = 'Editar Livro';
@@ -468,6 +531,9 @@ export function initFormPessoa() {
         const id = document.getElementById('ps-edit-id').value;
         const nome = document.getElementById('ps-nome').value.trim();
         const genero = document.getElementById('ps-genero').value.trim();
+        const orientacao = document.getElementById('ps-orientacao').value.trim();
+        const identidadeCisTrans = document.getElementById('ps-identidade-cis-trans').value;
+        const corRaca = document.getElementById('ps-cor-raca').value;
         const grupoIds = Array.from(
             document.querySelectorAll('#ps-grupos-container input[type="checkbox"]:checked'),
         ).map((el) => parseInt(el.value));
@@ -496,6 +562,9 @@ export function initFormPessoa() {
                 id: id ? parseInt(id) : gerarId(),
                 nome,
                 genero,
+                orientacao,
+                identidadeCisTrans,
+                corRaca,
                 grupoIds,
                 autorIds,
                 oculto: existente?.oculto || false,
@@ -557,6 +626,9 @@ export async function editarPessoa(id) {
     document.getElementById('ps-edit-id').value = p.id;
     document.getElementById('ps-nome').value = p.nome;
     document.getElementById('ps-genero').value = p.genero || '';
+    document.getElementById('ps-orientacao').value = p.orientacao || '';
+    document.getElementById('ps-identidade-cis-trans').value = p.identidadeCisTrans || '';
+    document.getElementById('ps-cor-raca').value = p.corRaca || '';
     document.querySelectorAll('#ps-grupos-container input[type="checkbox"]').forEach((el) => {
         el.checked = (p.grupoIds || []).includes(parseInt(el.value));
     });
@@ -1229,18 +1301,42 @@ export function initFormMovimentoEscola() {
     const form = document.getElementById('form-movimento-escola');
     if (!form) return;
 
+    document.getElementById('me-pai')?.addEventListener('change', sincronizarCamposDivisaoCorrente);
+
     form.onsubmit = (e) => {
         e.preventDefault();
         const id = document.getElementById('me-edit-id').value;
         const nome = document.getElementById('me-nome').value.trim();
         const notas = document.getElementById('me-notas').value.trim();
         const tipo = document.getElementById('me-tipo').value;
+        const posturaEstetica = normalizarPosturaEstetica(
+            document.getElementById('me-postura-estetica').value,
+        );
+        const programa = normalizarProgramaMovimento(document.getElementById('me-programa').value);
+        const paiValor = document.getElementById('me-pai').value;
+        const paiId = paiValor ? Number(paiValor) : null;
+        const divisao =
+            paiId == null
+                ? ''
+                : normalizarDivisaoCorrente(document.getElementById('me-divisao').value);
+        const generoDivisao =
+            paiId == null
+                ? ''
+                : normalizarGeneroDivisaoCorrente(
+                      document.getElementById('me-genero-divisao').value,
+                  );
         const regiaoOrigem = document.getElementById('me-regiao-origem').value.trim();
         const inicio = lerDataParcialMovimento('me-ini');
         const fim = lerDataParcialMovimento('me-fim');
 
         if (violaOrdemDeDatas(inicio, fim)) {
             return mostrarAviso('O "Até" não pode ser anterior ao "De".');
+        }
+
+        if (id && criaCicloCorrente(db.movimentosEscolas, Number(id), paiId)) {
+            return mostrarAviso(
+                'Uma corrente não pode fazer parte de si mesma nem de uma das suas divisões.',
+            );
         }
 
         const valores = JSON.parse(document.getElementById('me-valores').value || '[]');
@@ -1253,13 +1349,22 @@ export function initFormMovimentoEscola() {
         const manifestos = JSON.parse(document.getElementById('me-manifestos').value || '[]');
 
         const gravar = () => {
+            // Parte do registro existente: salvar não pode perder campo que o
+            // modal não edita (`embutido`, por exemplo).
+            const existente = id ? db.movimentosEscolas.find((x) => x.id == id) : null;
             const dados = {
+                ...existente,
                 id: id ? parseInt(id) : gerarId(),
                 nome,
                 notas,
                 inicio,
                 fim,
                 tipo,
+                posturaEstetica,
+                programa,
+                paiId,
+                divisao,
+                generoDivisao,
                 regiaoOrigem,
                 valores,
                 temas,
@@ -1286,10 +1391,10 @@ export function initFormMovimentoEscola() {
         }
 
         abrirModalConfirmacao({
-            titulo: `Já existe um Movimento/Escola chamado "${duplicata.nome}"`,
+            titulo: `Já existe uma corrente literária chamada "${duplicata.nome}"`,
             rotulo: 'Nome duplicado',
             mensagem:
-                'Pode ser o mesmo Movimento/Escola cadastrado duas vezes, ou dois movimentos diferentes de propósito, mesmo nome. O que você quer fazer?',
+                'Pode ser a mesma corrente literária cadastrada duas vezes, ou duas correntes diferentes de propósito, com o mesmo nome. O que você quer fazer?',
             textoConfirmar: 'Mesclar agora',
             corConfirmar: '#d97706',
             acaoSecundaria: {
@@ -1322,6 +1427,15 @@ export async function editarMovimentoEscola(id) {
     document.getElementById('me-nome').value = m.nome;
     document.getElementById('me-notas').value = m.notas || '';
     document.getElementById('me-tipo').value = m.tipo || '';
+    document.getElementById('me-postura-estetica').value = normalizarPosturaEstetica(
+        m.posturaEstetica,
+    );
+    document.getElementById('me-programa').value = normalizarProgramaMovimento(m.programa);
+    preencherOpcoesPaiCorrente(m.id, m.paiId);
+    document.getElementById('me-divisao').value = normalizarDivisaoCorrente(m.divisao);
+    document.getElementById('me-genero-divisao').value = normalizarGeneroDivisaoCorrente(
+        m.generoDivisao,
+    );
     document.getElementById('me-regiao-origem').value = m.regiaoOrigem || '';
     preencherDataParcialMovimento('me-ini', m.inicio);
     preencherDataParcialMovimento('me-fim', m.fim);
@@ -1331,7 +1445,15 @@ export async function editarMovimentoEscola(id) {
     carregarTiposComposicaoMovimento(m.tiposComposicao || []);
     carregarLemasMovimento(m.lemas || []);
     carregarManifestosMovimento(m.manifestos || []);
-    document.getElementById('modal-movimento-escola-titulo').innerText = 'Editar Movimento/Escola';
+    // Grupos colapsáveis: abre só os que já têm algo preenchido.
+    const gruposComDados = correnteGruposComDados(m);
+    document
+        .querySelectorAll('#modal-movimento-escola details[data-grupo-corrente]')
+        .forEach((d) => {
+            d.open = !!gruposComDados[d.dataset.grupoCorrente];
+        });
+    document.getElementById('modal-movimento-escola-titulo').innerText =
+        'Editar Corrente literária';
     toggleModal('modal-movimento-escola');
 }
 
@@ -1616,7 +1738,7 @@ const RENDER_MESCLAR = {
         rerender: renderPeriodosHistoricos,
     },
     movimentosEscolas: {
-        rotulo: 'Movimento/Escola',
+        rotulo: 'Corrente literária',
         impacto: (id) => calcularImpactoExclusaoMovimentoEscola(db, id),
         mesclar: (origemId, destinoId) => mesclarMovimentosEscolas(db, origemId, destinoId),
         rerender: renderMovimentosEscolas,
@@ -3531,11 +3653,29 @@ function preencherFonteTexto(prefixo, fonte) {
     if (selGrafia) selGrafia.value = fonte?.grafia || '';
 }
 
+// A âncora do Eco (ancora-eco-ui.js) precisa saber do que só o editor sabe: o
+// que está no modal ainda sem salvar e qual texto está aberto (F11-D6).
+registrarProvedorAncora({
+    estadoModal: (tabela) => ({
+        personagens: lerPersonagens(tabela),
+        pessoas: obterPessoas(tabela),
+    }),
+    ecosDoModal: (tabela) => obterEcos(tabela),
+    textoId: (tabela) => {
+        const prefixo = tabela === 'poemas' ? 'p' : 'pr';
+        const v = document.getElementById(`${prefixo}-edit-id`)?.value;
+        return v ? parseInt(v, 10) : null;
+    },
+    repintarEcos: (tabela) => repintarEcos(tabela),
+});
+
 export function initFormPoema() {
     const form = document.getElementById('form-poema');
     if (!form) return;
 
     rastreadorPoema.observar(form);
+    iniciarGrupoPersonagens('poemas');
+    iniciarAncoraEco();
 
     form.onsubmit = (e) => {
         e.preventDefault();
@@ -3644,6 +3784,7 @@ export function initFormPoema() {
             sinalizacoesEstilo: document.getElementById('p-sinal-estilo').value,
             ...temasParaSalvar('poemas'),
             ...locaisParaSalvar('poemas'),
+            personagens: obterPersonagens('poemas'),
             sinalizacoesRelacao: document.getElementById('p-sinal-relacao').value,
             sinalizacoesSensibilidade: document.getElementById('p-sinal-sensibilidade').value,
             sinalizacoesTom: document.getElementById('p-sinal-tom').value,
@@ -3714,6 +3855,10 @@ export function initFormPoema() {
             db.poemas.push(dados);
         }
 
+        // Remoções de âncora que atingem Ecos de outros textos (escolhidas no aviso
+        // ao tirar um personagem/pessoa) só valem agora, ao salvar.
+        aplicarPendenciasAncora('poemas');
+
         // Poema avulso (sem destino) não disputa posição com nada
         if (anterior && !mesmoEscopo && anterior.paiTipo && anterior.paiId) {
             fecharEspaco(
@@ -3743,6 +3888,7 @@ export function initFormPoema() {
         resetTemasTexto('poemas');
         resetLocaisTexto('poemas');
         resetIdiomasTexto('poemas');
+        resetPersonagens('poemas');
         resetPessoas('poemas');
         resetGruposDiretos('poemas');
         resetAutoria('poemas');
@@ -3849,6 +3995,7 @@ export async function editarPoema(id) {
     carregarTemasTexto('poemas', p);
     carregarLocaisTexto('poemas', p);
     carregarIdiomasTexto('poemas', p);
+    carregarPersonagens('poemas', p.personagens);
     carregarPessoas('poemas', p.pessoas);
     carregarGruposDiretos('poemas', p.gruposDiretos);
     carregarAutoria('poemas', p.autoria);
@@ -3898,6 +4045,8 @@ export function initFormProsa() {
     if (!form) return;
 
     rastreadorProsa.observar(form);
+    iniciarGrupoPersonagens('prosas');
+    iniciarAncoraEco();
 
     form.onsubmit = (e) => {
         e.preventDefault();
@@ -3988,6 +4137,7 @@ export function initFormProsa() {
             sinalizacoesEstilo: document.getElementById('pr-sinal-estilo').value,
             ...temasParaSalvar('prosas'),
             ...locaisParaSalvar('prosas'),
+            personagens: obterPersonagens('prosas'),
             sinalizacoesRelacao: document.getElementById('pr-sinal-relacao').value,
             sinalizacoesSensibilidade: document.getElementById('pr-sinal-sensibilidade').value,
             sinalizacoesTom: document.getElementById('pr-sinal-tom').value,
@@ -4058,6 +4208,8 @@ export function initFormProsa() {
             db.prosas.push(dados);
         }
 
+        aplicarPendenciasAncora('prosas');
+
         if (anterior && !mesmoEscopo && anterior.paiTipo && anterior.paiId) {
             fecharEspaco(
                 getIrmaosPorEscopo(db, anterior.paiTipo, anterior.paiId),
@@ -4080,6 +4232,7 @@ export function initFormProsa() {
         resetTemasTexto('prosas');
         resetLocaisTexto('prosas');
         resetIdiomasTexto('prosas');
+        resetPersonagens('prosas');
         resetPessoas('prosas');
         resetGruposDiretos('prosas');
         resetAutoria('prosas');
@@ -4194,6 +4347,7 @@ export async function editarProsa(id) {
     carregarTemasTexto('prosas', pr);
     carregarLocaisTexto('prosas', pr);
     carregarIdiomasTexto('prosas', pr);
+    carregarPersonagens('prosas', pr.personagens);
     carregarPessoas('prosas', pr.pessoas);
     carregarGruposDiretos('prosas', pr.gruposDiretos);
     carregarAutoria('prosas', pr.autoria);

@@ -29,9 +29,14 @@ import {
     TIPOS_NOME_LITERARIO,
     chaveTema,
     podarSobrescritasAssunto,
+    podarExcecoesAssunto,
 } from './utils.js';
 import { resolverTemasEditados } from './temas.js';
 import { importarLocaisDoTexto } from './locais.js';
+import { importarPersonagensDoTexto } from './personagens.js';
+import { completarPessoaComFicha } from './pessoas-viagem.js';
+import { ecosImportados } from './ancora-eco.js';
+import { montarContextoAlvos, remapearAlvosDoConceitos } from './alvos-conceitos.js';
 
 // Sobrescritas de papel do Assunto vindas do JSON → [{ assuntoId, papel }] do
 // acervo de destino (ver a chamada, em aplicarImportacaoAditiva).
@@ -46,6 +51,27 @@ function assuntosPapelImportados(dbRef, itemOrigem) {
             papel: t?.papel,
         })),
         candidatas,
+        dbRef.assuntos,
+        dbRef.temas,
+    );
+}
+
+// Assuntos tirados do texto ("não se aplica") vindos do JSON → ids do acervo
+// de destino, casando pelo nome (sem caixa/acento) e podando o que não se
+// aplica aos Temas do texto importado. JSON antigo (sem o campo) vira [].
+function assuntosExcluidosImportados(dbRef, itemOrigem) {
+    const porNome = new Map((dbRef.assuntos || []).map((a) => [chaveTema(a.nome), a]));
+    const candidatos = (
+        Array.isArray(itemOrigem?.assuntosExcluidos) ? itemOrigem.assuntosExcluidos : []
+    )
+        .map((e) => porNome.get(chaveTema(e?.nome))?.id)
+        .filter((id) => id != null);
+    return podarExcecoesAssunto(
+        (Array.isArray(itemOrigem?.temas) ? itemOrigem.temas : []).map((t) => ({
+            nome: t?.nome,
+            papel: t?.papel,
+        })),
+        candidatos,
         dbRef.assuntos,
         dbRef.temas,
     );
@@ -284,7 +310,15 @@ function metadadosAutorDoPayload(payload, idOrigem, nome) {
 
 function criarEntidade(campo, nome, dbRef, extra = null) {
     const id = gerarId();
-    if (campo === 'pessoas') dbRef.pessoas.push({ id, nome, grupoIds: [] });
+    if (campo === 'pessoas')
+        dbRef.pessoas.push({
+            id,
+            nome,
+            grupoIds: [],
+            genero: '',
+            identidadeCisTrans: '',
+            corRaca: '',
+        });
     else if (campo === 'grupos') dbRef.grupos.push({ id, nome, cor: CORES_GRUPO_PADRAO });
     else if (campo === 'autores') {
         const autor = { id, nome, sobre: extra?.sobre ?? '' };
@@ -319,6 +353,11 @@ function criarEntidade(campo, nome, dbRef, extra = null) {
             inicio: { dia: null, mes: null, ano: null, seculo: null, decada: null },
             fim: { dia: null, mes: null, ano: null, seculo: null, decada: null },
             tipo: '',
+            posturaEstetica: '',
+            programa: '',
+            paiId: null,
+            divisao: '',
+            generoDivisao: '',
             regiaoOrigem: '',
             valores: [],
             temas: [],
@@ -449,6 +488,12 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
         movimentosEscolas: {},
     };
 
+    // Alvo de Elos e Ecos (F11-D9): id de origem → id novo de cada texto criado
+    // no lote, preenchido no loop e usado na passada final, quando todos já
+    // têm id (um texto pode ecoar outro que ainda não foi remontado).
+    const mapaNovosIds = new Map();
+    const contextoAlvos = montarContextoAlvos(relatorio, dbRef);
+
     const novosPoemas = [];
     const novasProsas = [];
     const novasEscansoes = [];
@@ -464,11 +509,27 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
             return;
         }
 
+        // Ficha da Pessoa (F1-D7): o destino, criado ou casado, só preenche o
+        // que estava vazio. JSON antigo (sem os campos) não muda nada.
+        const itemDaRef = porIdOrigem.get(rel.idOrigem);
+        const completarPessoa = (r, destinoId) => {
+            if (r.campo !== 'pessoas' || !itemDaRef) return;
+            const vinculo = (itemDaRef.pessoas || []).find(
+                (p) => String(p?.pessoaId) === String(r.valorOrigem.idOrigem),
+            );
+            if (!vinculo) return;
+            completarPessoaComFicha(
+                dbRef.pessoas.find((p) => p.id == destinoId),
+                vinculo,
+            );
+        };
+
         rel.referencias.forEach((r) => {
             if (r.campo === 'duplicataTitulo') return;
             const colecao = COLECAO_POR_CAMPO[r.campo];
             if (r.decisao === 'casar') {
                 r._destinoFinal = r.entidadeDestinoId;
+                completarPessoa(r, r._destinoFinal);
                 return;
             }
             let destinoId = mapaCriados[colecao][r.valorOrigem.idOrigem];
@@ -485,11 +546,13 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
                 mapaCriados[colecao][r.valorOrigem.idOrigem] = destinoId;
             }
             r._destinoFinal = destinoId;
+            completarPessoa(r, destinoId);
         });
 
         const itemOrigem = porIdOrigem.get(rel.idOrigem);
         if (!itemOrigem) return;
         const novoId = gerarId();
+        mapaNovosIds.set(String(rel.idOrigem), novoId);
         const novoItem = remontarItem(itemOrigem, novoId, rel.referencias);
         // Tema por id (fase 2): o id de origem não vale aqui; casa/cria o
         // Tema pelo NOME (a `nome` que montarRegistro grava) e mantém o
@@ -508,6 +571,8 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
         // descarta o que não existe. JSON antigo (sem `assuntosPapel`) vira [].
         // Sempre reescreve: `remontarItem` pode ter copiado os ids de origem.
         novoItem.assuntosPapel = assuntosPapelImportados(dbRef, itemOrigem);
+        // Idem para a exceção "não se aplica a este texto": ids de origem não valem.
+        novoItem.assuntosExcluidos = assuntosExcluidosImportados(dbRef, itemOrigem);
         // Territorialidade e local de escrita: os ids de origem não valem
         // aqui. Com a hierarquia no JSON, casa/cria os Locais por nome +
         // tipo + pai; sem ela (JSON antigo), zera os ids e o espelho
@@ -517,6 +582,17 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
         novoItem.territorialidade = locaisImportados ? locaisImportados.ids : [];
         novoItem.localEscrita = locaisImportados ? locaisImportados.localEscrita : null;
         if (locaisImportados) novoItem.sinalizacoesTerritorialidade = locaisImportados.espelho;
+        // Personagem: casa/cria pelo NOME (o id de origem não vale aqui). JSON
+        // antigo, sem `personagens`, vira [].
+        novoItem.personagens = importarPersonagensDoTexto(dbRef, itemOrigem);
+        // Âncora do Eco: recasa pelo nome com o que já existe (depois dos vínculos
+        // do texto acima, que são quem cria Pessoa/Personagem). Nunca cria ninguém.
+        if (novoItem.conceitos && Array.isArray(novoItem.conceitos.ecos)) {
+            novoItem.conceitos = {
+                ...novoItem.conceitos,
+                ecos: ecosImportados(dbRef, novoItem.conceitos.ecos),
+            };
+        }
         registrarNomesLiterariosUsados(dbRef, novoItem);
         (rel.tipo === 'poemas' ? novosPoemas : novasProsas).push(novoItem);
 
@@ -538,6 +614,18 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
         }
     });
 
+    // Segunda passada: com o lote inteiro já com id novo, reescreve o alvo de
+    // cada Elo e Eco. Sem alvo (fora do lote, sem duplicata casada e sem título
+    // igual no acervo), a entrada é solta; a prévia já avisou quantas.
+    const soltos = { elos: 0, ecos: 0 };
+    [...novosPoemas, ...novasProsas].forEach((novoItem) => {
+        if (!novoItem.conceitos) return;
+        const r = remapearAlvosDoConceitos(novoItem.conceitos, contextoAlvos, mapaNovosIds);
+        novoItem.conceitos = r.conceitos;
+        soltos.elos += r.soltos.elos;
+        soltos.ecos += r.soltos.ecos;
+    });
+
     // Só no fim: um único push por coleção, seguido de um único save().
     dbRef.poemas.push(...novosPoemas);
     dbRef.prosas.push(...novasProsas);
@@ -554,5 +642,6 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
             estruturasTextuais: novasEstruturasTextuais.length,
         },
         duplicatasPuladas,
+        soltos,
     };
 }

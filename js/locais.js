@@ -1,7 +1,12 @@
 // locais.js: cadastro central de Local (db.locais).
 //
-// Local: `{ id, nome, tipo, pertenceA: [id, ...], notas }`.
+// Local: `{ id, nome, tipo, pertenceA: [id, ...], notas, apelido? }`.
 //
+// - `apelido` é opcional (um só, texto curto) e vale só para EXIBIÇÃO nas
+//   Estatísticas, onde o nome longo estoura o gráfico: com apelido, a barra
+//   e o seletor trazem o apelido no lugar do nome. Em todo o resto (cadastro,
+//   modais, `.md`, Visualização, exportação) o nome segue mandando. Também é
+//   termo de busca (`territorialidade:Sampa`). Sem apelido a chave nem existe.
 // - `tipo` é texto livre (País, Estado, Cidade, Bairro, Estação...), com
 //   sugestões em TIPOS_LOCAL_PADRAO e memória dos tipos já usados.
 // - `pertenceA` é uma LISTA de ids (vários pais). O primeiro é o pai
@@ -49,6 +54,13 @@ export function limparNomeLocal(nome) {
         .replace(/,/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+}
+
+// Apelido de exibição: mesma limpeza do nome; igual ao nome (sem caixa/acento)
+// não é apelido, vira ''.
+export function limparApelidoLocal(apelido, nome = '') {
+    const limpo = limparNomeLocal(apelido);
+    return chaveTema(limpo) === chaveTema(nome) ? '' : limpo;
 }
 
 export function limparTipoLocal(tipo) {
@@ -383,6 +395,9 @@ export function sincronizarLocais(dbRef) {
         l.nome = limparNomeLocal(l.nome);
         l.tipo = limparTipoLocal(l.tipo);
         l.notas = typeof l.notas === 'string' ? l.notas : '';
+        const apelido = limparApelidoLocal(l.apelido, l.nome);
+        if (apelido) l.apelido = apelido;
+        else delete l.apelido;
     });
     dbRef.locais.forEach((l) => {
         l.pertenceA = Array.isArray(l.pertenceA) ? l.pertenceA : [];
@@ -484,12 +499,15 @@ export function contarTextosPorLocalEscrita(dbRef, textos) {
     return contarPorSeletor(dbRef, (t) => (t.localEscrita != null ? [t.localEscrita] : []), textos);
 }
 
-// Rótulos distintos para uma lista de Locais num gráfico (rótulo curto do
-// modal; se dois ainda colidirem, ganham o tipo e o pai principal). Devolve
+// Rótulos distintos para uma lista de Locais num gráfico (o apelido, se houver;
+// senão o rótulo curto do modal; se dois ainda colidirem, ganham o tipo e o pai principal). Devolve
 // Map(String(id) → rótulo). Rótulo repetido quebraria o "ocultar" e o clique
 // na barra, que se orientam pelo texto do rótulo.
 export function rotulosUnicosDeLocais(dbRef, ids) {
-    const base = new Map(ids.map((id) => [String(id), rotuloLocal(dbRef, id)]));
+    // Com apelido, o gráfico traz o apelido no lugar do nome (ver cabeçalho).
+    const base = new Map(
+        ids.map((id) => [String(id), achar(dbRef, id)?.apelido || rotuloLocal(dbRef, id)]),
+    );
     const repeticoes = new Map();
     base.forEach((rotulo) => repeticoes.set(rotulo, (repeticoes.get(rotulo) || 0) + 1));
     const usados = new Set();
@@ -500,7 +518,7 @@ export function rotulosUnicosDeLocais(dbRef, ids) {
             const local = achar(dbRef, k);
             const pai = paisDoLocal(dbRef, k)[0];
             const nomePai = pai == null ? '' : achar(dbRef, pai)?.nome;
-            final = `${local.nome} (${local.tipo || 'sem tipo'}${nomePai ? `, em ${nomePai}` : ''})`;
+            final = `${local.apelido || local.nome} (${local.tipo || 'sem tipo'}${nomePai ? `, em ${nomePai}` : ''})`;
         }
         let candidato = final;
         for (let n = 2; usados.has(candidato); n += 1) candidato = `${final} #${n}`;
@@ -521,7 +539,10 @@ export function rotulosUnicosDeLocais(dbRef, ids) {
 function termosDeBuscaDoLocal(local) {
     const nome = String(local.nome ?? '').trim();
     if (!nome) return [];
-    return [nome, `${nome} (${local.tipo || 'sem tipo'})`];
+    const termos = [nome, `${nome} (${local.tipo || 'sem tipo'})`];
+    const apelido = String(local.apelido ?? '').trim();
+    if (apelido) termos.push(apelido);
+    return termos;
 }
 
 // Termos de busca de uma lista de ids, sem repetição. Com `ancestrais`,
@@ -584,7 +605,7 @@ function localIgual(dbRef, { nome, tipo, pais }, ignorarId = null) {
 
 // Cria um Local. Recusa nome vazio, pai inexistente e duplicata
 // (mesmo nome + tipo + pai). Devolve `{ ok, id?, motivo?, existente? }`.
-export function criarLocal(dbRef, { nome, tipo = '', pais = [], notas = '' } = {}) {
+export function criarLocal(dbRef, { nome, tipo = '', pais = [], notas = '', apelido = '' } = {}) {
     const nomeLimpo = limparNomeLocal(nome);
     if (!chaveTema(nomeLimpo)) return { ok: false, motivo: 'vazio' };
     if (!Array.isArray(dbRef.locais)) dbRef.locais = [];
@@ -596,17 +617,20 @@ export function criarLocal(dbRef, { nome, tipo = '', pais = [], notas = '' } = {
     const igual = localIgual(dbRef, { nome: nomeLimpo, tipo: tipoLimpo, pais: paisValidos });
     if (igual) return { ok: false, motivo: 'duplicado', existente: igual };
     const id = gerarId();
-    dbRef.locais.push({
+    const novo = {
         id,
         nome: nomeLimpo,
         tipo: tipoLimpo,
         pertenceA: paisValidos,
         notas: typeof notas === 'string' ? notas : '',
-    });
+    };
+    const apelidoLimpo = limparApelidoLocal(apelido, nomeLimpo);
+    if (apelidoLimpo) novo.apelido = apelidoLimpo;
+    dbRef.locais.push(novo);
     return { ok: true, id };
 }
 
-// Edita nome, tipo, notas e/ou pais (`pais`, lista ordenada; o primeiro é
+// Edita nome, tipo, apelido, notas e/ou pais (`pais`, lista ordenada; o primeiro é
 // o principal) do Local. Valida tudo antes de mudar qualquer coisa.
 // Recusa: inexistente, vazio, duplicado, pai-inexistente, ciclo. Renomear
 // atualiza o espelho dos textos que citam o Local. Devolve
@@ -625,6 +649,9 @@ export function editarLocal(dbRef, id, campos = {}) {
     if (igual) return { ok: false, motivo: 'duplicado', existente: igual };
 
     const nomeMudou = local.nome !== nome;
+    const apelido = limparApelidoLocal('apelido' in campos ? campos.apelido : local.apelido, nome);
+    if (apelido) local.apelido = apelido;
+    else delete local.apelido;
     local.nome = nome;
     local.tipo = tipo;
     local.pertenceA = pais;
@@ -742,6 +769,12 @@ export function mesclarLocais(dbRef, origemId, destinoId) {
     });
     destino.pertenceA = novosPais;
 
+    // Sem apelido no destino, ele fica com o da origem (o apelido não se perde).
+    if (!destino.apelido && origem.apelido) {
+        const apelido = limparApelidoLocal(origem.apelido, destino.nome);
+        if (apelido) destino.apelido = apelido;
+    }
+
     const notaOrigem = String(origem.notas || '').trim();
     if (notaOrigem && !String(destino.notas || '').includes(notaOrigem)) {
         destino.notas = destino.notas ? `${destino.notas}\n\n${notaOrigem}` : notaOrigem;
@@ -809,7 +842,12 @@ export function locaisParaExportar(dbRef, item) {
     });
     const ficha = (id) => {
         const l = achar(dbRef, id);
-        return { localId: l.id, nome: l.nome, tipo: l.tipo || '' };
+        return {
+            localId: l.id,
+            nome: l.nome,
+            tipo: l.tipo || '',
+            ...(l.apelido ? { apelido: l.apelido } : {}),
+        };
     };
     return {
         territorialidade: citados.map(ficha),
@@ -859,9 +897,12 @@ export function importarLocaisDoTexto(dbRef, itemOrigem) {
                           !paisDoLocal(dbRef, l.id).length,
                   )
                 : null);
+        const apelido = limparApelidoLocal(h.apelido, nome);
         let id;
         if (existente) {
             id = existente.id;
+            // o apelido do acervo de destino nunca é trocado; só preenche se faltava
+            if (apelido && !existente.apelido) existente.apelido = apelido;
             // traz pais novos sem criar ciclo
             const novos = pais.filter(
                 (p) =>
@@ -870,7 +911,14 @@ export function importarLocaisDoTexto(dbRef, itemOrigem) {
             if (novos.length) existente.pertenceA = [...existente.pertenceA, ...novos];
         } else {
             id = gerarId();
-            dbRef.locais.push({ id, nome, tipo, pertenceA: semRepetir(pais), notas: '' });
+            dbRef.locais.push({
+                id,
+                nome,
+                tipo,
+                pertenceA: semRepetir(pais),
+                notas: '',
+                ...(apelido ? { apelido } : {}),
+            });
         }
         destinoDe.set(k, id);
         return id;

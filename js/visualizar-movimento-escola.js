@@ -11,9 +11,17 @@
 // ============================================================
 
 import { garantirModal, toggleModal } from './modais.js';
-import { db, calcularImpactoExclusaoMovimentoEscola } from './db.js';
+import { db } from './db.js';
 import { editarMovimentoEscola } from './forms.js';
 import { escapeHtml, formatarIntervaloMovimentoEscola } from './utils.js';
+import {
+    caminhoDaCorrente,
+    filhosDaCorrente,
+    impactoDaCorrente,
+    paiDaCorrente,
+    posturaEfetivaDaCorrente,
+    programaEfetivoDaCorrente,
+} from './correntes-hierarquia.js';
 
 // id do Movimento/Escola atualmente aberto — mesmo padrão de
 // autorAtualId em visualizar-autor.js.
@@ -51,11 +59,18 @@ function linhaChipsHtml(rotulo, itens, cor) {
         .join('')}</div>`;
 }
 
+// "Escola" ou, quando vem do pai, "Escola (herdado de Romantismo)".
+function textoComHerdeiro(efetivo, proprio) {
+    if (!efetivo) return proprio || '';
+    if (!efetivo.valor) return '';
+    return efetivo.herdadoDe ? `${efetivo.valor} (herdado de ${efetivo.herdadoDe})` : efetivo.valor;
+}
+
 // Parte pura: recebe o Movimento/Escola e os itens vinculados
 // (já resolvidos pra nome), devolve HTML.
 export function renderVisualizacaoMovimentoEscolaHtml(
     movimento,
-    { autores = [], poemas = [], prosas = [] } = {},
+    { autores = [], poemas = [], prosas = [], pai = '', divisoes = [], programa, postura } = {},
 ) {
     const m = movimento || {};
     let html = '';
@@ -63,6 +78,11 @@ export function renderVisualizacaoMovimentoEscolaHtml(
     const intervalo = formatarIntervaloMovimentoEscola(m);
     html += linhaMetaHtml('Período', intervalo !== '—' ? intervalo : '');
     html += linhaMetaHtml('Tipo', m.tipo);
+    html += linhaMetaHtml('Faz parte de', pai);
+    html += linhaMetaHtml('Divisão', m.divisao);
+    html += linhaMetaHtml('Aplica-se a', m.generoDivisao);
+    html += linhaMetaHtml('Programa', textoComHerdeiro(programa, m.programa));
+    html += linhaMetaHtml('Postura estética', textoComHerdeiro(postura, m.posturaEstetica));
     html += linhaMetaHtml('Região de origem', m.regiaoOrigem);
 
     if (m.notas) {
@@ -85,9 +105,22 @@ export function renderVisualizacaoMovimentoEscolaHtml(
             linhaChipsHtml('Manifestos', m.manifestos, 'bg-rose-600'),
     );
 
-    html += secaoHtml(`Autores (${autores.length})`, listaNomesHtml(autores));
-    html += secaoHtml(`Poemas (${poemas.length})`, listaNomesHtml(poemas));
-    html += secaoHtml(`Prosas (${prosas.length})`, listaNomesHtml(prosas));
+    html += secaoHtml(
+        `Divisões (${divisoes.length})`,
+        listaNomesHtml(
+            divisoes.map((d) =>
+                [d.nome, [d.divisao, d.generoDivisao].filter(Boolean).join(', ')]
+                    .filter(Boolean)
+                    .join(' · '),
+            ),
+        ),
+    );
+    // Com divisões, as três listas somam o que está ligado a elas (cada item
+    // uma vez); o rótulo avisa, para o total bater com o card da lista.
+    const sufixo = divisoes.length ? ', com as divisões' : '';
+    html += secaoHtml(`Autores (${autores.length}${sufixo})`, listaNomesHtml(autores));
+    html += secaoHtml(`Poemas (${poemas.length}${sufixo})`, listaNomesHtml(poemas));
+    html += secaoHtml(`Prosas (${prosas.length}${sufixo})`, listaNomesHtml(prosas));
 
     if (!autores.length && !poemas.length && !prosas.length) {
         html +=
@@ -104,10 +137,9 @@ export async function abrirVisualizacaoMovimentoEscola(id) {
 
     await garantirModal('modal-visualizar-movimento-escola');
 
-    const { autoresIds, poemasIds, prosasIds } = calcularImpactoExclusaoMovimentoEscola(
-        db,
-        movimento.id,
-    );
+    const { autoresIds, poemasIds, prosasIds } = impactoDaCorrente(db, movimento.id, {
+        comDivisoes: true,
+    });
     const autores = autoresIds
         .map((idAutor) => db.autores.find((a) => a.id == idAutor)?.nome)
         .filter(Boolean);
@@ -123,10 +155,19 @@ export async function abrirVisualizacaoMovimentoEscola(id) {
 
     const conteudo = document.getElementById('visualizar-movimento-escola-conteudo');
     if (conteudo) {
+        const lista = db.movimentosEscolas;
         conteudo.innerHTML = renderVisualizacaoMovimentoEscolaHtml(movimento, {
             autores,
             poemas,
             prosas,
+            pai: paiDaCorrente(lista, movimento.id)
+                ? caminhoDaCorrente(lista, paiDaCorrente(lista, movimento.id).id)
+                : '',
+            divisoes: filhosDaCorrente(lista, movimento.id)
+                .slice()
+                .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+            programa: programaEfetivoDaCorrente(lista, movimento),
+            postura: posturaEfetivaDaCorrente(lista, movimento),
         });
     }
 

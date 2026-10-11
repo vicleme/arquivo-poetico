@@ -377,7 +377,7 @@ describe('renderVisualizacaoHtml — Intertextualidade com link e nota (campos n
     });
 });
 
-describe('renderVisualizacaoHtml — Períodos, Movimento/Escola e Inspiração (nomenclatura atual)', () => {
+describe('renderVisualizacaoHtml — Períodos, Corrente literária e Inspiração (nomenclatura atual)', () => {
     beforeEach(() => {
         db.epocas = [{ id: 7, nome: 'Namoro', autorId: 1 }];
         db.periodosHistoricos = [{ id: 3, nome: 'Ditadura Militar Brasileira' }];
@@ -408,7 +408,7 @@ describe('renderVisualizacaoHtml — Períodos, Movimento/Escola e Inspiração 
         assert.match(html, /Ditadura Militar Brasileira/);
     });
 
-    it('mostra Movimento/Escola (0 a N) separados por vírgula', () => {
+    it('mostra Corrente literária (0 a N) separados por vírgula', () => {
         const item = {
             id: 1,
             tipo: 'prosa',
@@ -417,15 +417,15 @@ describe('renderVisualizacaoHtml — Períodos, Movimento/Escola e Inspiração 
             movimentosEscolasIds: [11, 12],
         };
         const html = renderVisualizacaoHtml(item);
-        assert.match(html, /Movimento\/Escola/);
+        assert.match(html, /Corrente literária/);
         assert.match(html, /Modernismo, Simbolismo/);
     });
 
-    it('omite Período Histórico e Movimento/Escola quando vazios', () => {
+    it('omite Período Histórico e Corrente literária quando vazios', () => {
         const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x', movimentosEscolasIds: [] };
         const html = renderVisualizacaoHtml(item);
         assert.doesNotMatch(html, /Período Histórico Retratado/);
-        assert.doesNotMatch(html, /Movimento\/Escola/);
+        assert.doesNotMatch(html, /Corrente literária/);
     });
 
     it('chama o campo contextoHistorico de Inspiração, não mais "Contexto Histórico/Pessoal"', () => {
