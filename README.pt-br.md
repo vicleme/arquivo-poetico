@@ -712,6 +712,12 @@ leitura do contexto de acordo.
 
 ---
 
+## Desenvolvimento
+
+Desenvolvido por Victor Leme, apoiado pelo [Claude](https://www.anthropic.com/claude)
+(Anthropic), um modelo de linguagem, em trabalho conjunto. A autoria e a
+responsabilidade pelo projeto são do autor.
+
 ## Licença
 
 O código-fonte da aplicação está sob licença MIT — veja [LICENSE](LICENSE).

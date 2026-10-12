@@ -712,6 +712,12 @@ adjusts context reading accordingly.
 
 ---
 
+## Development
+
+Developed by Victor Leme, assisted by [Claude](https://www.anthropic.com/claude)
+(Anthropic), a language model, in a joint effort. Authorship and responsibility
+for the project are the author's.
+
 ## License
 
 The application's source code is MIT-licensed — see [LICENSE](LICENSE). The
