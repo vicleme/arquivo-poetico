@@ -5,21 +5,26 @@ archive's tags (called "Etiquetas" in the interface; formerly "Sinalizações", 
 still appears in the field keys, such as `sinalizacoesEstilo`), so that an AI receiving exported data reads each tag under the
 right category, without mixing up what each one means.
 
+**Tema (Theme) and Territorialidade (Territoriality) are no longer part of the
+tags.** Each now has its own field (`temas`; `territorialidade` and
+`localEscrita`), described in `campos-poema-prosa-for-ai.md`. See "What left
+the tags" below.
+
 ---
 
 ## What the field is (and isn't)
 
 There is no single "tags" field. "Etiquetas" is the name of the
-**group**, but behind it there are **9 independent fields**, one per
+**group**, but behind it there are **7 independent fields**, one per
 category, each a list of tags in **free text** (not a closed list of
 pre-defined options — whoever catalogs types the tag they want, with
 autocomplete suggesting whatever has already been used in that same
 category, to avoid variants of the same idea).
 
-Each of these 9 fields is, in fact, a **list** — it accepts as many tags
+Each of these 7 fields is, in fact, a **list** — it accepts as many tags
 as make sense for the text, not a single value per category. This matters
 for a recurring decision: when a text carries two things perceived at
-once (two traditions, two themes, two Tone impressions), the default is
+once (two traditions, two style devices, two Tone impressions), the default is
 to record each as its own tag in the list — not merge the two into one
 composite label. It's only worth merging into a single label when the
 combination is itself an indivisible feeling or idea, one that isn't the
@@ -30,16 +35,12 @@ that is melancholic _and_, in a different passage, hopeful — two real but
 distinct impressions, not one single thing), separate tags keep the list
 more useful for filtering and cross-referencing later.
 
-The 9 fields (two of them, `sinalizacoesTema` and
-`sinalizacoesTerritorialidade`, are derived mirrors and are no longer typed
-in the editor's tag group; see the category notes below):
+The 7 fields:
 
 | Field (key)                    | Label                              |
 | ------------------------------ | ---------------------------------- |
 | `sinalizacoesTradicao`         | Tradição (Tradition)               |
 | `sinalizacoesEstilo`           | Estilo (Style)                     |
-| `sinalizacoesTema`             | Tema (Theme)                       |
-| `sinalizacoesTerritorialidade` | Territorialidade (Territoriality)  |
 | `sinalizacoesRelacao`          | Relação (Relation)                 |
 | `sinalizacoesSensibilidade`    | Sensibilidade (Sensitivity)        |
 | `sinalizacoesTom`              | Tom (Tone)                         |
@@ -48,10 +49,44 @@ in the editor's tag group; see the category notes below):
 
 A "flat" export combines everything into a single string
 (`sinalizacoesCombinadas`) for general search and simple statistics — but
-that combined version **loses each tag's category**. Whenever a task
-depends on knowing which category a tag belongs to (e.g., "what are the
-most common themes" vs. "what are the most common style devices"), use
-the 9 separate fields, not the combined string.
+that combined version **loses each tag's category** (and may still carry the
+mirrors of Tema and Territorialidade, which are not tags; see below).
+Whenever a task depends on knowing which category a tag belongs to (e.g.,
+"what are the most common tones" vs. "what are the most common style
+devices"), use the 7 separate fields, not the combined string.
+
+## What left the tags: Tema and Territorialidade
+
+Tema (Theme) and Territorialidade (Territoriality) used to be tag
+categories. They are now **fields of their own**, with a registry and a
+structure that a free-text tag doesn't have. Don't look for them among the
+tags, and don't propose tags of those kinds:
+
+- **Tema (Theme)** → `temas`: a list of `{ temaId, papel, nome }`, where
+  `papel` is `principal`, `secundario` or empty, linked to the Themes
+  registry (which in turn are grouped into Assuntos, Subjects). It is the
+  central subject of the text. When naming or reviewing themes, the
+  criterion already adopted in the archive applies: name the **concrete
+  cause**, not the emotional effect — "Cyclical existential crisis" is
+  vaguer than the event or situation that produces that feeling. A text
+  about Brazil as nation/identity has "Brazil" as its Theme without naming
+  any place.
+- **Territorialidade (Territoriality)** → `territorialidade`: a list of the
+  places the text **names** (a country, a city, a neighborhood, a river),
+  linked to the hierarchical Places registry. The place where the text was
+  **written** is a separate field, `localEscrita`, and the exported
+  hierarchy is in `locaisHierarquia`. A poem that names "Copacabana" or "the
+  Amazon River" uses Territorialidade; one that deals with Brazil as a
+  subject, without naming a specific place, uses Tema. Also different from
+  Domínio Imagético, which is vocabulary borrowed from a knowledge domain,
+  not a place.
+
+`sinalizacoesTema` and `sinalizacoesTerritorialidade` may still show up in
+exported data, but only as **derived mirrors** of those fields
+(comma-separated names, with no role, type or hierarchy). They are not tags,
+are not edited, and shouldn't be read as tags: use `temas` and
+`territorialidade`. An older export, from before the dedicated fields, may
+have only the mirror.
 
 ## What each category means
 
@@ -66,20 +101,6 @@ the 9 separate fields, not the combined string.
   when read upside down, "Paronomásia por espaçamento" /"Paronomasia by
   spacing" for a space that isolates a shared root between two words). It
   tends to name the technique, not the effect.
-- **Tema (Theme)**: the central subject or content of the text (e.g.,
-  "Brazil"). When reviewing tag consistency, the criterion already adopted
-  in the archive is to name the **concrete cause**, not the emotional
-  effect — a tag like "Cyclical existential crisis" is vaguer than naming
-  the concrete event or situation that produces that feeling.
-- **Territorialidade (Territoriality)** (new category, 2026-09-29; since
-  2026-09-30 it is no longer typed in this group, the field is a derived
-  mirror of the `territorialidade` place list, see
-  `campos-poema-prosa-for-ai.md`): specific places named in the text — a country, a city, a neighborhood, a
-  river. Different from Tema, which is the broad subject (e.g., a poem can
-  have "Brazil" as its Tema in the sense of nation/identity without naming
-  any specific place; a poem that names "Copacabana" or "the Amazon River"
-  uses Territorialidade instead). Also different from Domínio Imagético,
-  which is vocabulary borrowed from a knowledge domain, not a place.
 - **Relação (Relation)**: names a specific relationship or bond portrayed
   in the text — it can be the name of a dynamic between two specific
   people (the archive already uses tags of this kind, coined by the
@@ -131,7 +152,7 @@ the 9 separate fields, not the combined string.
 3. When suggesting new tags, prefer reusing one already used in the same
    category (avoid variants of the same idea), and name the concrete
    cause rather than the emotional effect, following the criterion already
-   adopted in the archive for Theme.
+   adopted in the archive for Themes.
 4. Don't confuse Sensitivity (a categorizable tag) with the derived
    "sensitive content" flag (presence of a paragraph in
    `conteudoSensivel`) — they are different things that shouldn't be

@@ -1307,6 +1307,7 @@ export function correnteGruposComDados(corrente) {
             m.lemas,
             m.manifestos,
         ].some(tem),
+        fontes: tem(m.fontes),
         notas: tem(m.notas),
     };
 }
@@ -1792,13 +1793,16 @@ export function preencherDataParcialSeVazio(prefixo, dataObj) {
 
 export function formatarDataParcial(dataObj) {
     if (!dataObj) return '—';
-    const { dia, mes, ano, hora, minuto } = dataObj;
+    const { dia, mes, ano, hora, minuto, aprox } = dataObj;
     let partes = '';
     if (dia || mes || ano) {
         partes = [dia, mes, ano]
             .filter(Boolean)
             .map((v, i) => (i < 2 ? String(v).padStart(2, '0') : v))
             .join('/');
+        // "c." (circa, Período Histórico): aparece só quando a data é só o
+        // ano ("c. 1760"); com dia ou mês a marca fica guardada, mas calada.
+        if (aprox && ano && !dia && !mes) partes = `c. ${partes}`;
     }
     if (hora != null) {
         const h = String(hora).padStart(2, '0');
@@ -1960,6 +1964,23 @@ export function nomeEpoca(epoca, epocasCadastro = []) {
     return epoca.nome || '';
 }
 
+// Período Biográfico oculto (`oculto: true` em db.epocas): o texto continua
+// ligado a ele, mas o nome não aparece em telas e exportações. Em vez de deixar
+// a célula vazia (que pareceria "texto sem período"), mostra este rótulo.
+export const ROTULO_PERIODO_OCULTO = '(período oculto)';
+
+// Versão de EXIBIÇÃO de nomeEpoca: período oculto vira ROTULO_PERIODO_OCULTO,
+// a menos que a pessoa tenha pedido para ver as ocultas ("Mostrar ocultas",
+// só em memória). Telas de edição (que precisam do nome real para casar o
+// período) seguem usando nomeEpoca.
+export function nomeEpocaExibivel(epoca, epocasCadastro = [], { incluirOcultas = false } = {}) {
+    if (epoca?.epocaId && !incluirOcultas) {
+        const periodo = epocasCadastro.find((e) => e.id == epoca.epocaId);
+        if (periodo?.oculto) return ROTULO_PERIODO_OCULTO;
+    }
+    return nomeEpoca(epoca, epocasCadastro);
+}
+
 // Resolve o `periodoHistoricoId` solto do Poema/Prosa (campo simples,
 // sem sub-objeto — diferente de epocaRetratada, ver comentário em
 // calcularImpactoExclusaoPeriodoHistorico em db.js) pro nome cadastrado
@@ -1969,27 +1990,42 @@ export function nomePeriodoHistorico(periodoHistoricoId, periodosHistoricosCadas
     return periodosHistoricosCadastro.find((p) => p.id == periodoHistoricoId)?.nome || '';
 }
 
-// Resolve epocaRetratada.epocaId pro Contexto do relacionamento
-// cadastrado (db.epocas.contextoRelacao, ex. "Pedro e Victor" — ver
-// modal-epoca.html). Dado ainda não migrado (schema antigo, sem
-// epocaId) não tem cadastro pra resolver, então não tem contexto.
-// Mesmo critério defensivo de nomeEpoca.
-export function contextoRelacaoEpoca(epoca, epocasCadastro = []) {
-    if (!epoca?.epocaId) return '';
-    return epocasCadastro.find((e) => e.id == epoca.epocaId)?.contextoRelacao || '';
+// Bloco 2e: o texto pode retratar vários Períodos Históricos
+// (`periodosHistoricosIds`, lista de ids, sem período principal e sem ordem
+// que signifique algo). Devolve os ids do texto sem repetir. Tolera dado
+// ainda não migrado (`periodoHistoricoId` único) e, com `cadastro`, tira
+// id que não existe mais.
+export function periodosHistoricosIdsDoItem(item, cadastro = null) {
+    if (!item) return [];
+    const bruto = Array.isArray(item.periodosHistoricosIds)
+        ? item.periodosHistoricosIds
+        : item.periodoHistoricoId != null && item.periodoHistoricoId !== ''
+          ? [item.periodoHistoricoId]
+          : [];
+    const vistos = new Set();
+    return bruto.filter((id) => {
+        if (id == null || id === '') return false;
+        if (cadastro && !cadastro.some((p) => p.id == id)) return false;
+        const k = String(id);
+        if (vistos.has(k)) return false;
+        vistos.add(k);
+        return true;
+    });
 }
 
-export function formatarEpocaRetratada(epoca, epocasCadastro = []) {
+// Nomes (sem caminho) dos Períodos Históricos do texto, na ordem da lista.
+export function nomesPeriodosHistoricosDoItem(item, periodosHistoricosCadastro = []) {
+    return periodosHistoricosIdsDoItem(item, periodosHistoricosCadastro)
+        .map((id) => nomePeriodoHistorico(id, periodosHistoricosCadastro))
+        .filter(Boolean);
+}
+
+export function formatarEpocaRetratada(epoca, epocasCadastro = [], opcoes = {}) {
     if (!epoca) return '—';
-    const nome = nomeEpoca(epoca, epocasCadastro);
-    // Contexto do relacionamento entra na frente, separado por "•"
-    // (mesmo padrão pedido pro badge da coluna, só que aqui sempre
-    // visível — na exportação/Visualização não há espaço de tabela
-    // pra restringir, nem hover pra esconder atrás). Ex.: "Pedro e
-    // Victor • Namoro (2019 – 2021)".
-    const contexto = contextoRelacaoEpoca(epoca, epocasCadastro);
-    const prefixo = contexto ? `${contexto} • ` : '';
-    if (epoca.na) return nome ? `${prefixo}${nome} (N/A)` : 'N/A';
+    // Período oculto: o nome vira ROTULO_PERIODO_OCULTO (ver nomeEpocaExibivel);
+    // as datas e o recorte descrevem o texto e seguem aparecendo.
+    const nome = nomeEpocaExibivel(epoca, epocasCadastro, opcoes);
+    if (epoca.na) return nome ? `${nome} (N/A)` : 'N/A';
     const ini = formatarDataParcial(epoca.inicio);
     const fim = formatarDataParcial(epoca.fim);
     const intervalo =
@@ -2014,20 +2050,12 @@ export function formatarEpocaRetratada(epoca, epocasCadastro = []) {
             : '';
     if (nome) {
         return (
-            prefixo +
             (intervalo ? `${nome}${posRepercussao} (${intervalo})` : `${nome}${posRepercussao}`) +
             recorte
         );
     }
-    // Sem nome, o contexto (se houver) fica sozinho — caso raro, época
-    // sem nome só existe em dado legado não migrado, que também não
-    // teria epocaId pra resolver contexto, então `prefixo` é sempre ''
-    // aqui na prática; mantido por simetria caso o schema mude.
-    return (
-        prefixo +
-        (intervalo ? `${intervalo}${posRepercussao}` : posRepercussao ? 'e pós' : '—') +
-        recorte
-    );
+    // Sem nome: época sem nome só existe em dado legado não migrado.
+    return (intervalo ? `${intervalo}${posRepercussao}` : posRepercussao ? 'e pós' : '—') + recorte;
 }
 
 // Só o intervalo textual de Época Retratada, sem o nome do período —
@@ -2763,7 +2791,24 @@ const CAMPOS_ATRIBUTO = {
     dataescrita: '_buscaDataEscrita',
     datapublicacao: '_buscaDataPublicacao',
     epoca: '_buscaEpoca',
+    // Bloco 3: campos do Período Biográfico (cadastro db.epocas) do texto.
+    // Só por prefixo, fora da busca sem prefixo ("Afetiva" ou "Amizade"
+    // soltos casariam com muita coisa). `pessoaperiodo:` é a pessoa ligada
+    // ao período (o `pessoa:` já é a do próprio texto); pessoa oculta não
+    // entra. `natureza:` acha a Natureza das relações do período (Familiar,
+    // Amizade, Romance...); `vinculo:` acha os vínculos delas (os dois lados,
+    // como "Responsável por" e "Filho ou filha de"); relação com pessoa oculta
+    // não entra em nenhum dos dois.
+    esfera: '_buscaEsferas',
+    categoria: '_buscaCategorias',
+    natureza: '_buscaNaturezas',
+    vinculo: '_buscaVinculos',
+    pessoaperiodo: '_buscaPessoasPeriodo',
+    // Hierárquico (ver periodos-historicos-hierarquia.js): `periodohistorico:"Nova
+    // República"` acha também o texto ligado a um período de dentro dela.
+    // `periodohistoricodireto:` restringe ao período exato.
     periodohistorico: '_buscaPeriodoHistorico',
+    periodohistoricodireto: '_buscaPeriodoHistoricoDireto',
     // Hierárquicos (ver nomesDeBuscaDasCorrentes): `movimento:Romantismo` acha
     // também o que está em uma geração ou vertente dele. `...direto:`
     // restringe ao que foi ligado diretamente àquela corrente.
@@ -2876,7 +2921,13 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaDataEscrita: 'dataescrita',
     _buscaDataPublicacao: 'datapublicacao',
     _buscaEpoca: 'epoca',
+    _buscaEsferas: 'esfera',
+    _buscaCategorias: 'categoria',
+    _buscaNaturezas: 'natureza',
+    _buscaVinculos: 'vinculo',
+    _buscaPessoasPeriodo: 'pessoaperiodo',
     _buscaPeriodoHistorico: 'periodohistorico',
+    _buscaPeriodoHistoricoDireto: 'periodohistoricodireto',
     _buscaMovimentosEscolas: 'movimento',
     _buscaMovimentosEscolasDireto: 'movimentodireto',
     _buscaPosturas: 'postura',
@@ -2954,12 +3005,22 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
 // Autores passa a sua própria (ver busca-autores.js), pra os dois não se
 // misturarem: um prefixo que não existe no mapa recebido vira termo
 // solto, como sempre foi.
+// Escapa um valor para ir entre aspas numa consulta de busca: `"` vira `\"` e
+// `\` vira `\\`. Sem isso, um nome como `"Na verdade, tem sim"` quebraria a
+// frase exata. Quem monta `prefixo:"nome"` por código deve usar isto.
+export function escaparAspasBusca(valor) {
+    return String(valor).replace(/[\\"]/g, '\\$&');
+}
+
 export function parseConsultaBusca(query, mapaCampos = CAMPOS_ATRIBUTO) {
     // Cada match é, opcionalmente, um prefixo "campo:" seguido de uma
     // frase entre aspas ou uma palavra solta, com "-" opcional na frente
     // pra excluir — assim "frase exata" e "campo:"frase exata"" mantêm
     // os espaços de dentro em vez de serem quebrados palavra por palavra.
-    const matches = query.trim().match(/-?(?:[a-zA-Zà-úÀ-Ú]+:)?"[^"]*"|-?\S+/g) || [];
+    // Dentro das aspas, `\"` é uma aspa literal e `\\` uma barra literal (ver
+    // escaparAspasBusca); só aí a barra é especial.
+    const matches =
+        query.trim().match(/-?(?:[a-zA-Zà-úÀ-Ú]+:)?"(?:\\[\s\S]|[^"\\])*"|-?\S+/g) || [];
 
     const termosExcluir = [];
     const gruposIncluir = [];
@@ -2986,7 +3047,7 @@ export function parseConsultaBusca(query, mapaCampos = CAMPOS_ATRIBUTO) {
 
         let termo = resto;
         if (termo.startsWith('"') && termo.endsWith('"') && termo.length >= 2) {
-            termo = termo.slice(1, -1); // tira as aspas, mantém os espaços de dentro
+            termo = termo.slice(1, -1).replace(/\\(["\\])/g, '$1'); // tira as aspas, mantém os espaços; \" e \\ viram literais
         }
         termo = termo.trim();
         if (!termo) return;

@@ -80,17 +80,46 @@
                     ></textarea>
                 </div>
                 <div>
+                    <label class="form-label">Pertence a</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Período que contém este, opcional. Ex.: o Segundo mandato do governo Dilma
+                        Rousseff pertence ao Governo Dilma Rousseff, que pertence à Nova República.
+                        O primeiro da lista é o principal e define o caminho mostrado; clique em um
+                        dos outros para torná-lo o principal.
+                    </p>
+                    <div id="ph-pais-chips" class="flex flex-wrap gap-1 mb-2"></div>
+                    <select id="ph-pais-select">
+                        <option value="">Adicionar período pai...</option>
+                    </select>
+                </div>
+                <div>
                     <label class="form-label">Região</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
-                        Onde o período aconteceu ou teve alcance — opcional. Use "Internacional"
-                        para o que não se limita a um lugar (ex.: Guerra Fria).
+                        Onde o período aconteceu ou teve alcance — opcional, com quantos lugares
+                        precisar. Use "Internacional" para o que não se limita a lugares específicos
+                        (ex.: Guerra Fria).
                     </p>
-                    <input
-                        type="text"
-                        id="ph-regiao"
-                        list="sugestoes-regiao-periodo-historico"
-                        placeholder="Ex: Brasil, Portugal, Europa, Internacional"
-                    />
+                    <div class="flex gap-2 mb-2">
+                        <input
+                            type="text"
+                            id="ph-regiao-input"
+                            class="text-sm flex-1"
+                            list="sugestoes-regiao-periodo-historico"
+                            placeholder="Ex: Inglaterra, Europa, América do Norte"
+                        />
+                        <button
+                            type="button"
+                            onclick="adicionarRegiaoPeriodoHistorico()"
+                            class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                        >
+                            +
+                        </button>
+                    </div>
+                    <div
+                        id="ph-regiao-container"
+                        class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                    ></div>
+                    <input type="hidden" id="ph-regiao" />
                     <datalist id="sugestoes-regiao-periodo-historico"></datalist>
                 </div>
                 <div>
@@ -99,7 +128,9 @@
                         Data do período em si (não do texto que o referencia). Preencha só o "De"
                         para um evento pontual (ex.: Semana de Arte Moderna), os dois para um
                         intervalo (ex.: Segunda Guerra Mundial), ou só o ano quando não há precisão
-                        de dia (ex.: Iluminismo).
+                        de dia (ex.: Iluminismo). Marque "c." quando a data for aproximada ou uma
+                        fronteira convencional (ex.: c. 1760 para a Revolução Industrial); o ano
+                        continua um número exato.
                     </p>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -130,6 +161,12 @@
                                     title="Ano"
                                 />
                             </div>
+                            <label
+                                class="flex items-center gap-1 mt-1 text-[10px] text-gray-500 dark:text-slate-400"
+                            >
+                                <input type="checkbox" id="ph-ini-aprox" class="w-auto" />
+                                c. (data aproximada)
+                            </label>
                         </div>
                         <div>
                             <span class="text-[10px] text-gray-400 dark:text-slate-500">Até</span>
@@ -159,7 +196,39 @@
                                     title="Ano"
                                 />
                             </div>
+                            <label
+                                class="flex items-center gap-1 mt-1 text-[10px] text-gray-500 dark:text-slate-400"
+                            >
+                                <input type="checkbox" id="ph-fim-aprox" class="w-auto" />
+                                c. (data aproximada)
+                            </label>
                         </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Fontes</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Obras que embasam o recorte deste período. Autores diferentes datam e
+                        delimitam um mesmo período de modos distintos, então registre aqui o que
+                        você consultou. As fontes que vêm de fábrica são obras de referência de
+                        história, sem número de página: confira título e ano na sua cópia e use a
+                        nota para anotar capítulo, página ou onde o autor diverge. As datas e a
+                        região de fábrica são decisões do app: as fontes dão base ao recorte, não
+                        provam cada número.
+                    </p>
+                    <p id="ph-fontes-vazio" class="text-xs text-gray-400 dark:text-slate-500 mb-2">
+                        Nenhuma fonte registrada.
+                    </p>
+                    <div id="ph-fontes-lista" class="grid grid-cols-1 gap-3"></div>
+                    <div class="mt-2">
+                        <button
+                            type="button"
+                            id="ph-fontes-adicionar"
+                            onclick="adicionarFontePeriodoHistorico()"
+                            class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded text-xs font-bold"
+                        >
+                            + Adicionar fonte
+                        </button>
                     </div>
                 </div>
                 <div

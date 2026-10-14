@@ -29,7 +29,7 @@ import {
 import { rotuloEco } from './ancora-eco.js';
 import {
     formatarDataParcial,
-    nomeEpoca,
+    nomeEpocaExibivel,
     escapeHtml,
     PREFIXOS_CANONICOS_POR_CAMPO,
     rotuloElo,
@@ -47,8 +47,10 @@ import {
     ROTULOS_PAPEL_TEMA_CURTO,
     rotuloSelecaoEmLote,
 } from './utils.js';
+import { opcoesOcultasDosPeriodos } from './ocultas-periodos.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
 import { renderCheckboxDownloadAbrangenteAcoes } from './download-abrangente.js';
+import { renderIncluirOcultosAcoes } from './ocultos-exportacao.js';
 import { DEFINICAO_COLUNAS, getColunasAtivas, renderSeletorColunas } from './colunas.js';
 import {
     getColunasContagem,
@@ -169,11 +171,17 @@ function badgeTemaComPapel({ nome, papel }, corClasse) {
 // achata tudo numa string só, perdendo de qual campo cada tag veio) —
 // aqui a categoria de origem de cada tag é o que decide a cor do badge.
 // `semTema: true` tira os Temas das Etiquetas (a tabela tem coluna própria).
-export function badgesEtiquetasPorCategoria(item, { semTema = false } = {}) {
+// `semTerritorialidade: true` faz o mesmo com a Territorialidade (coluna
+// própria, com o caminho hierárquico do Local).
+export function badgesEtiquetasPorCategoria(
+    item,
+    { semTema = false, semTerritorialidade = false } = {},
+) {
     const badges = Object.entries(SINALIZACOES_CATEGORIAS).flatMap(([categoria, campo]) => {
         const valor = item[campo];
         if (!valor) return [];
         if (semTema && categoria === 'tema') return [];
+        if (semTerritorialidade && categoria === 'territorialidade') return [];
         const corClasse = CORES_CATEGORIA_SINALIZACAO[categoria];
         // Tema com papel: o badge ganha um marcador (★ principal, ☆ secundário)
         // e o papel por extenso no title. Texto sem `temas` cai no caminho comum.
@@ -452,20 +460,14 @@ export function badgesReconhecimentos(item) {
 // abaixo). Pedido do Victor: o "e pós" do recorte "repercussão" (ver
 // ROTULOS_RECORTE_EPOCA em utils.js) precisa aparecer direto no badge,
 // não só na exportação — mesmo texto que formatarEpocaRetratada já
-// usa ("Nome e pós"). O Contexto do relacionamento (`contextoRelacao`,
-// campo do cadastro central db.epocas — ver modal-epoca.html) não cabe
-// no espaço do badge, então entra como `title` (hover), mesmo padrão
-// já usado em badgesPessoas/badgesEnvios pra informação secundária que
-// não precisa estar sempre visível.
+// usa ("Nome e pós"). Período oculto aparece como "(período oculto)" (a
+// célula vazia pareceria "texto sem período"), a menos que "Exibir ocultas"
+// da aba Período Biográfico esteja ligado.
 export function badgeEpocaRetratada(epoca) {
-    const nome = nomeEpoca(epoca, db.epocas);
+    const nome = nomeEpocaExibivel(epoca, db.epocas, opcoesOcultasDosPeriodos());
     if (!nome) return '';
     const posRepercussao = epoca?.recorte === 'repercussão' ? ' e pós' : '';
-    const contexto = epoca?.epocaId
-        ? db.epocas.find((e) => e.id == epoca.epocaId)?.contextoRelacao
-        : '';
-    const title = contexto ? ` title="${escapeHtml(contexto)}"` : '';
-    return `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold align-middle"${title}>${escapeHtml(nome)}${posRepercussao}</span>`;
+    return `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold align-middle">${escapeHtml(nome)}${posRepercussao}</span>`;
 }
 
 // Resolve o título de um Elo/Eco-alvo, que pode ser um poema OU
@@ -904,5 +906,8 @@ export function atualizarPainelAcoes(tabela, painelId) {
     // anexado por fora de renderSeletorAcoes (compartilhado entre as 4
     // tabelas), não um campo novo em DEFINICAO_ACOES/FORMATOS_BAIXAR.
     const extra = tabela === 'poemas' ? renderCheckboxDownloadAbrangenteAcoes() : '';
-    painel.innerHTML = renderSeletorAcoes(tabela) + extra;
+    // "Incluir dados ocultados" vale para os textos (Poemas e Prosas); as demais
+    // tabelas não exportam Pessoa nem Período Biográfico do texto.
+    const ocultos = tabela === 'poemas' || tabela === 'prosas' ? renderIncluirOcultosAcoes() : '';
+    painel.innerHTML = renderSeletorAcoes(tabela) + extra + ocultos;
 }

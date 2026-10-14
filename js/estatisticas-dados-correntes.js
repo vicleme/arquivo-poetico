@@ -18,7 +18,7 @@
 import { db } from './db.js';
 import { textosDasEstatisticas } from './estatisticas-dados.js';
 import { posturasDasCorrentes, programasDasCorrentes } from './correntes-hierarquia.js';
-import { POSTURAS_ESTETICAS, PROGRAMAS_MOVIMENTO } from './utils.js';
+import { POSTURAS_ESTETICAS, PROGRAMAS_MOVIMENTO, escaparAspasBusca } from './utils.js';
 
 export const SEM_CLASSIFICACAO = 'Sem classificação';
 const NAO_SE_APLICA = 'Não se aplica';
@@ -34,7 +34,7 @@ export function valoresDeAtributoDaCorrente(campo) {
     return CONFIG_ATRIBUTO[campo].valores.filter((v) => v !== NAO_SE_APLICA);
 }
 
-const aspas = (v) => String(v).replace(/"/g, '');
+const aspas = escaparAspasBusca;
 
 // Busca que abre exatamente os textos de uma barra (ver filtrarTextos).
 export function consultaDoValorDaCorrente(campo, valor) {

@@ -1003,7 +1003,7 @@ const DICAS_PERIODO = {
         'Aditivo: acrescenta o movimento sem tirar os que o texto já tem. "Remover" tira só este.',
     epoca: 'A Época pertence a um Autor: vale a do Autor de cada texto (se ainda não existir, é criada para o primeiro Autor do texto). Texto sem Autor é pulado. Datas e recorte que o texto já tinha são mantidos.',
     periodoHistorico:
-        'Quem já tem outro Período Histórico é mantido, a menos que você marque para substituir. "Remover" só limpa quem está com este.',
+        'Aditivo: acrescenta o período sem tirar os que o texto já tem. "Remover" tira só este.',
 };
 
 function tipoPeriodoSelecionado(tabela) {
@@ -1029,7 +1029,11 @@ function atualizarCamposPeriodo(tabela) {
     if (input) input.placeholder = `Nome do ${rotuloTipoPeriodoMassa(tipo)}...`;
     const dica = document.getElementById(ids.dica);
     if (dica) dica.textContent = DICAS_PERIODO[tipo];
-    document.getElementById(ids.sobrescreverWrap)?.classList.toggle('hidden', tipo === 'movimento');
+    // Corrente e Período Histórico são listas (aditivo); só Período Biográfico
+    // (id único) tem "sobrescrever".
+    document
+        .getElementById(ids.sobrescreverWrap)
+        ?.classList.toggle('hidden', tipo === 'movimento' || tipo === 'periodoHistorico');
 }
 
 export function prepararPainelPeriodosMassa(tabela) {
@@ -1099,8 +1103,7 @@ export function aplicarPeriodoEmMassa(tabela) {
     if (!nome) return mostrarAviso(`Digite o nome do ${rotuloTipo}.`);
 
     const ids = idsPeriodos(c);
-    const sobrescrever =
-        tipo !== 'movimento' && !!document.getElementById(ids.sobrescrever)?.checked;
+    const sobrescrever = tipo === 'epoca' && !!document.getElementById(ids.sobrescrever)?.checked;
     const plano = planejarAplicacaoPeriodo(tipo, itensSelecionados(tabela), nome, { sobrescrever });
 
     if (plano.alterar.length === 0) {

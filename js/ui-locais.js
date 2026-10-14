@@ -50,6 +50,17 @@ const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 // Nós recolhidos na árvore (só em memória, como o colapso de Grupos).
 const recolhidos = new Set();
 
+// Os botões "Recolher tudo" / "Expandir tudo" só têm efeito na árvore; com
+// busca ou filtro ativo a lista é plana, então ficam desativados.
+function atualizarBotoesColapso(ativos) {
+    ['btn-recolher-locais', 'btn-expandir-locais'].forEach((id) => {
+        const b = document.getElementById(id);
+        if (!b) return;
+        b.disabled = !ativos;
+        b.title = ativos ? '' : 'Disponível só na árvore (sem busca nem filtro)';
+    });
+}
+
 // ─── Lista ──────────────────────────────────────────────────────────────
 
 function contagensHtml(diretosC, agregC, diretosE, agregE) {
@@ -212,12 +223,14 @@ export function renderLocais() {
 
     if (locais.length === 0) {
         if (resumo) resumo.textContent = '';
+        atualizarBotoesColapso(false);
         container.innerHTML =
             '<div class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum local cadastrado ainda.</div>';
         return;
     }
 
     const filtrando = !!busca || filtro !== 'todos' || uso !== 'todos';
+    atualizarBotoesColapso(!filtrando);
     if (!filtrando) {
         if (resumo) {
             resumo.textContent = `${plural(locais.length, 'local', 'locais')} · ${semTipo} sem tipo · ${semPai} sem local maior`;
@@ -254,6 +267,22 @@ export function alternarColapsoLocal(id) {
     const k = String(id);
     if (recolhidos.has(k)) recolhidos.delete(k);
     else recolhidos.add(k);
+    renderLocais();
+}
+
+// Recolhe todo local que tem algo dentro (sublocais ou referências), em
+// qualquer nível; folhas não têm seta e ficam de fora.
+export function recolherTodosLocais() {
+    const marcar = (no) => {
+        if (no.filhos.length + no.tambemAqui.length > 0) recolhidos.add(String(no.id));
+        no.filhos.forEach(marcar);
+    };
+    arvoreDeLocais(db).forEach(marcar);
+    renderLocais();
+}
+
+export function expandirTodosLocais() {
+    recolhidos.clear();
     renderLocais();
 }
 

@@ -713,7 +713,6 @@ describe('obterOuCriarEpocaPorNome (dedup por (nome, autorId), não mais nome gl
         db.epocas.push({
             id: 1,
             nome: 'Corte de contato',
-            contextoRelacao: '',
             notas: '',
             autorId: 10,
         });
@@ -725,7 +724,7 @@ describe('obterOuCriarEpocaPorNome (dedup por (nome, autorId), não mais nome gl
     });
 
     it('mesmo nome em Autores DIFERENTES não colide — cria uma época nova pro segundo Autor', () => {
-        db.epocas.push({ id: 1, nome: 'Infância', contextoRelacao: '', notas: '', autorId: 10 });
+        db.epocas.push({ id: 1, nome: 'Infância', notas: '', autorId: 10 });
 
         const epoca = obterOuCriarEpocaPorNome('Infância', 20);
 
@@ -1294,7 +1293,7 @@ describe('migrarEpocas (item 3 do plano de schema — cadastro central de Época
 
     it('idempotente: item cuja epocaRetratada já tem epocaId passa intacto', () => {
         const dbRef = {
-            epocas: [{ id: 5, nome: 'Luto', contextoRelacao: '', notas: '' }],
+            epocas: [{ id: 5, nome: 'Luto', notas: '' }],
             poemas: [{ id: 1, epocaRetratada: { epocaId: 5, inicio: null, fim: null } }],
         };
         migrarEpocas(dbRef);
@@ -1304,7 +1303,7 @@ describe('migrarEpocas (item 3 do plano de schema — cadastro central de Época
 
     it('nome que já tem Época cadastrada reaproveita o id em vez de duplicar', () => {
         const dbRef = {
-            epocas: [{ id: 7, nome: 'Luto', contextoRelacao: '', notas: '' }],
+            epocas: [{ id: 7, nome: 'Luto', notas: '' }],
             poemas: [{ id: 1, epocaRetratada: { nome: 'Luto' } }],
         };
         migrarEpocas(dbRef);
@@ -1471,8 +1470,8 @@ describe('mesclarEpocas (junta duas entradas do cadastro de Épocas numa só)', 
     it('reatribui epocaId da origem pro destino em poemas e prosas', () => {
         const dbRef = {
             epocas: [
-                { id: 1, nome: 'Corte de contato', contextoRelacao: '', notas: '' },
-                { id: 2, nome: 'Corte de contato', contextoRelacao: '', notas: '' },
+                { id: 1, nome: 'Corte de contato', notas: '' },
+                { id: 2, nome: 'Corte de contato', notas: '' },
             ],
             poemas: [{ id: 10, epocaRetratada: { epocaId: 2 } }],
             prosas: [{ id: 20, epocaRetratada: { epocaId: 2 } }],
@@ -1484,52 +1483,35 @@ describe('mesclarEpocas (junta duas entradas do cadastro de Épocas numa só)', 
         assert.equal(dbRef.epocas[0].id, 1);
     });
 
-    it('preenche contextoRelacao/notas do destino a partir da origem, só se o destino estiver vazio', () => {
+    it('preenche as notas do destino a partir da origem, só se o destino estiver vazio', () => {
         const dbRef = {
             epocas: [
-                { id: 1, nome: 'Corte de contato', contextoRelacao: '', notas: '' },
-                {
-                    id: 2,
-                    nome: 'Corte de contato',
-                    contextoRelacao: 'Pedro e Victor',
-                    notas: 'período difícil',
-                },
+                { id: 1, nome: 'Corte de contato', notas: '' },
+                { id: 2, nome: 'Corte de contato', notas: 'período difícil' },
             ],
             poemas: [],
             prosas: [],
         };
         mesclarEpocas(dbRef, 2, 1);
-        assert.equal(dbRef.epocas[0].contextoRelacao, 'Pedro e Victor');
         assert.equal(dbRef.epocas[0].notas, 'período difícil');
     });
 
-    it('nunca sobrescreve contextoRelacao/notas do destino já preenchidos', () => {
+    it('nunca sobrescreve as notas do destino já preenchidas', () => {
         const dbRef = {
             epocas: [
-                {
-                    id: 1,
-                    nome: 'Corte de contato',
-                    contextoRelacao: 'Pedro e Victor',
-                    notas: 'nota original',
-                },
-                {
-                    id: 2,
-                    nome: 'Corte de contato',
-                    contextoRelacao: 'Outro contexto',
-                    notas: 'outra nota',
-                },
+                { id: 1, nome: 'Corte de contato', notas: 'nota original' },
+                { id: 2, nome: 'Corte de contato', notas: 'outra nota' },
             ],
             poemas: [],
             prosas: [],
         };
         mesclarEpocas(dbRef, 2, 1);
-        assert.equal(dbRef.epocas[0].contextoRelacao, 'Pedro e Victor');
         assert.equal(dbRef.epocas[0].notas, 'nota original');
     });
 
     it('não faz nada se origem e destino forem o mesmo id', () => {
         const dbRef = {
-            epocas: [{ id: 1, nome: 'Luto', contextoRelacao: '', notas: '' }],
+            epocas: [{ id: 1, nome: 'Luto', notas: '' }],
             poemas: [],
             prosas: [],
         };
@@ -1539,7 +1521,7 @@ describe('mesclarEpocas (junta duas entradas do cadastro de Épocas numa só)', 
 
     it('não faz nada se origem ou destino não existirem no cadastro', () => {
         const dbRef = {
-            epocas: [{ id: 1, nome: 'Luto', contextoRelacao: '', notas: '' }],
+            epocas: [{ id: 1, nome: 'Luto', notas: '' }],
             poemas: [],
             prosas: [],
         };
@@ -1550,8 +1532,8 @@ describe('mesclarEpocas (junta duas entradas do cadastro de Épocas numa só)', 
     it('recusa mesclar Épocas de Autores DIFERENTES (Período Biográfico é exclusivo de um Autor)', () => {
         const dbRef = {
             epocas: [
-                { id: 1, nome: 'Corte de contato', contextoRelacao: '', notas: '', autorId: 10 },
-                { id: 2, nome: 'Corte de contato', contextoRelacao: '', notas: '', autorId: 20 },
+                { id: 1, nome: 'Corte de contato', notas: '', autorId: 10 },
+                { id: 2, nome: 'Corte de contato', notas: '', autorId: 20 },
             ],
             poemas: [],
             prosas: [],
@@ -1564,7 +1546,7 @@ describe('mesclarEpocas (junta duas entradas do cadastro de Épocas numa só)', 
 // ─── obterOuCriarPeriodoHistoricoPorNome ────────────────────────────
 
 describe('obterOuCriarPeriodoHistoricoPorNome (dedup por nome exato, mesmo padrão de Grupo)', () => {
-    // `db.periodosHistoricos` já vem com os 12 períodos de fábrica (seed) e é
+    // `db.periodosHistoricos` já vem com os 16 períodos de fábrica (seed) e é
     // o `db` real do módulo, compartilhado com os describes seguintes (ex.:
     // "Seed de Período Histórico"). Zerar aqui sem restaurar deixava o
     // cadastro com 0/1 item pra quem rodasse depois — mesmo tipo de vazamento
@@ -1617,7 +1599,7 @@ describe('obterOuCriarPeriodoHistoricoPorNome (dedup por nome exato, mesmo padr�
 
     it('período criado por nome nasce com `regiao` vazia (preenche depois, na gestão)', () => {
         const periodo = obterOuCriarPeriodoHistoricoPorNome('Enchente de 2024');
-        assert.equal(periodo.regiao, '');
+        assert.deepEqual(periodo.regiao, []);
     });
 
     it('período criado por nome fica com inicio/fim null (data se preenche depois, na gestão)', () => {
@@ -1666,7 +1648,7 @@ describe('migrarDatasPeriodoHistorico (período histórico cadastrado antes de i
 
 describe('migrarDatasEpoca (Período Biográfico cadastrado antes de inicio/fim existirem)', () => {
     it('preenche inicio/fim com null quando ausentes, sem deduzir dos textos', () => {
-        const epocas = [{ id: 1, nome: 'Luto', contextoRelacao: '', notas: '', autorId: 1 }];
+        const epocas = [{ id: 1, nome: 'Luto', notas: '', autorId: 1 }];
         migrarDatasEpoca(epocas);
         assert.equal(epocas[0].inicio, null);
         assert.equal(epocas[0].fim, null);
@@ -1683,8 +1665,8 @@ describe('migrarDatasEpoca (Período Biográfico cadastrado antes de inicio/fim 
 describe('mesclarEpocas (datas oficiais do cadastro)', () => {
     const base = (destino, origem) => ({
         epocas: [
-            { id: 1, nome: 'A', autorId: 7, contextoRelacao: '', notas: '', ...destino },
-            { id: 2, nome: 'A', autorId: 7, contextoRelacao: '', notas: '', ...origem },
+            { id: 1, nome: 'A', autorId: 7, notas: '', ...destino },
+            { id: 2, nome: 'A', autorId: 7, notas: '', ...origem },
         ],
         poemas: [],
         prosas: [],
@@ -1806,24 +1788,24 @@ describe('migrarMovimentosEscolasEmbutidos (cadastro de Movimento/Escola ganhand
 
 // ─── Seed de Período Histórico ──────────────────────────────────────
 
-describe('Seed de Período Histórico (12 períodos de relevância ampla/internacional pra literatura)', () => {
+describe('Seed de Período Histórico (16 períodos de relevância ampla/internacional pra literatura)', () => {
     // Mesma técnica de seedCompleto() usada pra Movimento/Escola acima:
     // `db.periodosHistoricos` já passou pelo seed no momento em que este
     // módulo foi importado.
     const seedCompleto = () => structuredClone(db.periodosHistoricos);
 
-    it('tem os 12 períodos, todos `embutido: true` e com nome único', () => {
+    it('tem os 16 períodos, todos `embutido: true` e com nome único', () => {
         const seed = seedCompleto();
-        assert.equal(seed.length, 12);
+        assert.equal(seed.length, 16);
         seed.forEach((p) => assert.equal(p.embutido, true));
         const nomes = seed.map((p) => p.nome);
-        assert.equal(new Set(nomes).size, 12, 'nomes deveriam ser todos únicos');
+        assert.equal(new Set(nomes).size, 16, 'nomes deveriam ser todos únicos');
     });
 
     it('ids são únicos e cada item tem `notas` preenchida (contexto literário)', () => {
         const seed = seedCompleto();
         const ids = seed.map((p) => p.id);
-        assert.equal(new Set(ids).size, 12);
+        assert.equal(new Set(ids).size, 16);
         seed.forEach((p) => assert.ok(p.notas && p.notas.length > 0, `"${p.nome}" sem notas`));
     });
 
@@ -1854,21 +1836,41 @@ describe('Seed de Período Histórico (12 períodos de relevância ampla/interna
         });
     });
 
-    it('todo período de fábrica tem `regiao` preenchida (texto, sem espaços nas pontas)', () => {
+    it('todo período de fábrica tem `regiao` preenchida (lista de lugares, sem espaços nas pontas)', () => {
         seedCompleto().forEach((p) => {
-            assert.equal(typeof p.regiao, 'string', `"${p.nome}" sem regiao`);
+            assert.ok(Array.isArray(p.regiao), `"${p.nome}" sem regiao em lista`);
             assert.ok(p.regiao.length > 0, `"${p.nome}" com regiao vazia`);
-            assert.equal(p.regiao, p.regiao.trim());
+            p.regiao.forEach((lugar) => {
+                assert.equal(typeof lugar, 'string');
+                assert.ok(lugar.length > 0);
+                assert.equal(lugar, lugar.trim());
+            });
         });
     });
 
     it('regiões dos recortes locais e dos globais estão coerentes', () => {
         const porNome = Object.fromEntries(seedCompleto().map((p) => [p.nome, p.regiao]));
-        assert.equal(porNome['Semana de Arte Moderna'], 'Brasil');
-        assert.equal(porNome['Ditadura Militar Brasileira'], 'Brasil');
-        assert.equal(porNome['Estado Novo (Portugal)'], 'Portugal');
-        assert.equal(porNome['Guerra Fria'], 'Internacional');
-        assert.equal(porNome['Segunda Guerra Mundial'], 'Internacional');
+        assert.deepEqual(porNome['Semana de Arte Moderna'], ['Brasil']);
+        assert.deepEqual(porNome['Ditadura Militar Brasileira'], ['Brasil']);
+        assert.deepEqual(porNome['Estado Novo (Portugal)'], ['Portugal']);
+        assert.deepEqual(porNome['Guerra Fria'], ['Internacional']);
+        assert.deepEqual(porNome['Segunda Guerra Mundial'], ['Internacional']);
+    });
+
+    it('as quatro Revoluções Industriais estão no seed, a Terceira e a Quarta com datas aproximadas e a Quarta em curso', () => {
+        const porNome = Object.fromEntries(seedCompleto().map((p) => [p.nome, p]));
+        const terceira = porNome['Terceira Revolução Industrial (Era da Informação)'];
+        const quarta = porNome['Quarta Revolução Industrial (Indústria 4.0)'];
+        assert.ok(porNome['Primeira Revolução Industrial']);
+        assert.ok(porNome['Segunda Revolução Industrial']);
+        assert.ok(terceira, 'Terceira Revolução Industrial ausente');
+        assert.ok(quarta, 'Quarta Revolução Industrial ausente');
+        assert.equal(terceira.inicio.ano, 1950);
+        assert.equal(terceira.fim.ano, 2000);
+        assert.equal(quarta.inicio.ano, 2011);
+        assert.ok(!quarta.fim?.ano, 'a Quarta está em curso (sem fim)');
+        assert.deepEqual(terceira.regiao, ['Internacional']);
+        assert.deepEqual(quarta.regiao, ['Internacional']);
     });
 
     it('Semana de Arte Moderna tem a mesma âncora de 1922 já usada em Modernismo (Movimento/Escola)', () => {
@@ -1884,18 +1886,18 @@ describe('Seed de Período Histórico (12 períodos de relevância ampla/interna
 describe('migrarPeriodosHistoricosEmbutidos (cadastro de Período Histórico ganhando os itens de fábrica)', () => {
     const seedCompleto = () => structuredClone(db.periodosHistoricos);
 
-    it('instalação antiga (sem `embutido`, sem nenhum item de fábrica) ganha os 12, sem duplicar', () => {
+    it('instalação antiga (sem `embutido`, sem nenhum item de fábrica) ganha os 16, sem duplicar', () => {
         const antigos = [];
         migrarPeriodosHistoricosEmbutidos(antigos, []);
-        assert.equal(antigos.length, 12);
+        assert.equal(antigos.length, 16);
         antigos.forEach((p) => assert.equal(p.embutido, true));
     });
 
     it('instalação com só parte do seed (sem Pandemia de Covid-19) ganha só o item que falta', () => {
         const parcial = seedCompleto().filter((p) => p.nome !== 'Pandemia de Covid-19');
-        assert.equal(parcial.length, 11);
+        assert.equal(parcial.length, 15);
         migrarPeriodosHistoricosEmbutidos(parcial, []);
-        assert.equal(parcial.length, 12);
+        assert.equal(parcial.length, 16);
         const porNome = parcial.filter((p) => p.nome === 'Pandemia de Covid-19');
         assert.equal(porNome.length, 1);
         assert.equal(porNome[0].embutido, true);
@@ -1908,7 +1910,7 @@ describe('migrarPeriodosHistoricosEmbutidos (cadastro de Período Histórico gan
         });
         migrarPeriodosHistoricosEmbutidos(antigos, []);
         antigos.forEach((p) => assert.equal(p.embutido, true));
-        assert.equal(antigos.length, 12, 'não deveria duplicar ao só fazer o backfill');
+        assert.equal(antigos.length, 16, 'não deveria duplicar ao só fazer o backfill');
     });
 
     it('item de fábrica excluído de propósito (em `ocultos`) não volta', () => {
@@ -1919,7 +1921,7 @@ describe('migrarPeriodosHistoricosEmbutidos (cadastro de Período Histórico gan
                 return p;
             });
         migrarPeriodosHistoricosEmbutidos(antigos, ['Guerra Fria']);
-        assert.equal(antigos.length, 11);
+        assert.equal(antigos.length, 15);
         assert.equal(
             antigos.some((p) => p.nome === 'Guerra Fria'),
             false,
@@ -1929,7 +1931,7 @@ describe('migrarPeriodosHistoricosEmbutidos (cadastro de Período Histórico gan
     it('é idempotente: rodar de novo num cadastro já completo não duplica nada', () => {
         const completos = seedCompleto();
         migrarPeriodosHistoricosEmbutidos(completos, []);
-        assert.equal(completos.length, 12);
+        assert.equal(completos.length, 16);
     });
 
     it('não mexe em período cadastrado pelo próprio usuário (nome fora do seed)', () => {
@@ -1945,7 +1947,7 @@ describe('migrarPeriodosHistoricosEmbutidos (cadastro de Período Histórico gan
             antigos.filter((p) => p.nome === 'Enchente de 2024 na minha cidade').length,
             1,
         );
-        assert.equal(antigos.length, 13);
+        assert.equal(antigos.length, 17);
     });
 });
 
@@ -1955,9 +1957,9 @@ describe('calcularImpactoExclusaoPeriodoHistorico (quem referencia o Período Hi
     it('encontra os poemas cujo periodoHistoricoId aponta pra esse período', () => {
         const dbRef = {
             poemas: [
-                { id: 1, periodoHistoricoId: 10 },
-                { id: 2, periodoHistoricoId: 20 },
-                { id: 3, periodoHistoricoId: 10 },
+                { id: 1, periodosHistoricosIds: [10] },
+                { id: 2, periodosHistoricosIds: [20] },
+                { id: 3, periodosHistoricosIds: [10] },
             ],
         };
         const { poemasIds } = calcularImpactoExclusaoPeriodoHistorico(dbRef, 10);
@@ -1966,10 +1968,10 @@ describe('calcularImpactoExclusaoPeriodoHistorico (quem referencia o Período Hi
 
     it('encontra também as prosas cujo periodoHistoricoId aponta pra esse período', () => {
         const dbRef = {
-            poemas: [{ id: 1, periodoHistoricoId: 10 }],
+            poemas: [{ id: 1, periodosHistoricosIds: [10] }],
             prosas: [
-                { id: 100, periodoHistoricoId: 10 },
-                { id: 101, periodoHistoricoId: 20 },
+                { id: 100, periodosHistoricosIds: [10] },
+                { id: 101, periodosHistoricosIds: [20] },
             ],
         };
         const { poemasIds, prosasIds } = calcularImpactoExclusaoPeriodoHistorico(dbRef, 10);
@@ -1978,7 +1980,7 @@ describe('calcularImpactoExclusaoPeriodoHistorico (quem referencia o Período Hi
     });
 
     it('período sem nenhum vínculo retorna listas vazias', () => {
-        const dbRef = { poemas: [{ id: 1, periodoHistoricoId: 10 }] };
+        const dbRef = { poemas: [{ id: 1, periodosHistoricosIds: [10] }] };
         const { poemasIds, prosasIds } = calcularImpactoExclusaoPeriodoHistorico(dbRef, 999);
         assert.deepEqual(poemasIds, []);
         assert.deepEqual(prosasIds, []);
@@ -2000,12 +2002,12 @@ describe('mesclarPeriodosHistoricos (junta duas entradas do cadastro de Período
                 { id: 1, nome: 'Ditadura Militar', notas: '' },
                 { id: 2, nome: 'Ditadura Militar', notas: '' },
             ],
-            poemas: [{ id: 10, periodoHistoricoId: 2 }],
-            prosas: [{ id: 20, periodoHistoricoId: 2 }],
+            poemas: [{ id: 10, periodosHistoricosIds: [2] }],
+            prosas: [{ id: 20, periodosHistoricosIds: [2] }],
         };
         mesclarPeriodosHistoricos(dbRef, 2, 1);
-        assert.equal(dbRef.poemas[0].periodoHistoricoId, 1);
-        assert.equal(dbRef.prosas[0].periodoHistoricoId, 1);
+        assert.deepEqual(dbRef.poemas[0].periodosHistoricosIds, [1]);
+        assert.deepEqual(dbRef.prosas[0].periodosHistoricosIds, [1]);
         assert.equal(dbRef.periodosHistoricos.length, 1);
         assert.equal(dbRef.periodosHistoricos[0].id, 1);
     });
@@ -2013,25 +2015,25 @@ describe('mesclarPeriodosHistoricos (junta duas entradas do cadastro de Período
     it('preenche `regiao` do destino a partir da origem, só se o destino estiver vazio', () => {
         const vazioNoDestino = {
             periodosHistoricos: [
-                { id: 1, nome: 'Guerra Fria', regiao: '' },
-                { id: 2, nome: 'Guerra Fria', regiao: 'Internacional' },
+                { id: 1, nome: 'Guerra Fria', regiao: [] },
+                { id: 2, nome: 'Guerra Fria', regiao: ['Internacional'] },
             ],
             poemas: [],
             prosas: [],
         };
         mesclarPeriodosHistoricos(vazioNoDestino, 2, 1);
-        assert.equal(vazioNoDestino.periodosHistoricos[0].regiao, 'Internacional');
+        assert.deepEqual(vazioNoDestino.periodosHistoricos[0].regiao, ['Internacional']);
 
         const jaPreenchido = {
             periodosHistoricos: [
-                { id: 1, nome: 'Guerra Fria', regiao: 'Europa' },
-                { id: 2, nome: 'Guerra Fria', regiao: 'Internacional' },
+                { id: 1, nome: 'Guerra Fria', regiao: ['Europa'] },
+                { id: 2, nome: 'Guerra Fria', regiao: ['Internacional'] },
             ],
             poemas: [],
             prosas: [],
         };
         mesclarPeriodosHistoricos(jaPreenchido, 2, 1);
-        assert.equal(jaPreenchido.periodosHistoricos[0].regiao, 'Europa');
+        assert.deepEqual(jaPreenchido.periodosHistoricos[0].regiao, ['Europa']);
     });
 
     it('preenche notas do destino a partir da origem, só se o destino estiver vazio', () => {
@@ -2133,30 +2135,42 @@ describe('migrarRegiaoPeriodoHistorico (campo `regiao` nascendo depois do seed)'
         });
         migrarRegiaoPeriodoHistorico(antigos);
         const guerraFria = antigos.find((p) => p.nome === 'Guerra Fria');
-        assert.equal(guerraFria.regiao, 'Internacional');
-        antigos.forEach((p) => assert.ok(p.regiao, `"${p.nome}" ficou sem regiao`));
+        assert.deepEqual(guerraFria.regiao, ['Internacional']);
+        antigos.forEach((p) => assert.ok(p.regiao.length, `"${p.nome}" ficou sem regiao`));
     });
 
     it('período do próprio usuário (fora do seed) ganha `regiao` vazia, não inventada', () => {
         const lista = [{ id: 'c1', nome: 'Enchente de 2024 na minha cidade', notas: '' }];
         migrarRegiaoPeriodoHistorico(lista);
-        assert.equal(lista[0].regiao, '');
+        assert.deepEqual(lista[0].regiao, []);
     });
 
     it('mesmo nome de item de fábrica, mas sem `embutido`, não recebe região do seed', () => {
         const lista = [{ id: 'c2', nome: 'Guerra Fria', notas: 'minha' }];
         migrarRegiaoPeriodoHistorico(lista);
-        assert.equal(lista[0].regiao, '');
+        assert.deepEqual(lista[0].regiao, []);
     });
 
-    it('não sobrescreve `regiao` já gravada, inclusive `""` apagada de propósito', () => {
+    it('não sobrescreve `regiao` já gravada, inclusive a lista vazia apagada de propósito', () => {
         const lista = [
-            { id: 1, nome: 'Guerra Fria', embutido: true, regiao: '' },
-            { id: 2, nome: 'Renascimento', embutido: true, regiao: 'Itália' },
+            { id: 1, nome: 'Guerra Fria', embutido: true, regiao: [] },
+            { id: 2, nome: 'Renascimento', embutido: true, regiao: ['Itália'] },
         ];
         migrarRegiaoPeriodoHistorico(lista);
-        assert.equal(lista[0].regiao, '');
-        assert.equal(lista[1].regiao, 'Itália');
+        assert.deepEqual(lista[0].regiao, []);
+        assert.deepEqual(lista[1].regiao, ['Itália']);
+    });
+
+    it('texto antigo com barras (e texto vazio) vira lista de lugares', () => {
+        const lista = [
+            { id: 1, nome: 'Guerra Fria', embutido: true, regiao: 'Inglaterra/Europa' },
+            { id: 2, nome: 'Outro', regiao: '' },
+            { id: 3, nome: 'Mais um', regiao: ' Brasil / Portugal ' },
+        ];
+        migrarRegiaoPeriodoHistorico(lista);
+        assert.deepEqual(lista[0].regiao, ['Inglaterra', 'Europa']);
+        assert.deepEqual(lista[1].regiao, []);
+        assert.deepEqual(lista[2].regiao, ['Brasil', 'Portugal']);
     });
 
     it('é idempotente e tolera lista ausente', () => {
@@ -2170,7 +2184,7 @@ describe('migrarRegiaoPeriodoHistorico (campo `regiao` nascendo depois do seed)'
     it('migrarPeriodosHistoricosEmbutidos cria os que faltam já com `regiao`', () => {
         const vazio = [];
         migrarPeriodosHistoricosEmbutidos(vazio, []);
-        vazio.forEach((p) => assert.ok(p.regiao, `"${p.nome}" criado sem regiao`));
+        vazio.forEach((p) => assert.ok(p.regiao.length, `"${p.nome}" criado sem regiao`));
     });
 });
 

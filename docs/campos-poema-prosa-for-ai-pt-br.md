@@ -162,11 +162,17 @@ Como ler:
   rótulo é **Período Biográfico Retratado** (o nome interno `epocas`/
   `epocaRetratada` foi mantido por compatibilidade): é o período da vida
   da pessoa (ex.: uma fase de um relacionamento), não o momento histórico.
-- **`periodoHistoricoId`**: **Período Histórico Retratado** — o momento
-  histórico (não pessoal) que o texto retrata (ex.: Ditadura Militar,
-  Pandemia de Covid-19). Id único que aponta pro cadastro central
-  `db.periodosHistoricos`; coexiste com `epocaRetratada`, os dois podem
-  estar preenchidos ao mesmo tempo. Vazio (`null`) = não informado.
+- **`periodosHistoricosIds`**: **Período Histórico Retratado**: os momentos
+  históricos (não pessoais) que o texto retrata (ex.: Ditadura Militar,
+  Pandemia de Covid-19). Array de ids (0 a N) que apontam pro cadastro
+  central `db.periodosHistoricos`, sem período principal e sem ordem que
+  signifique algo (diferente do `pertenceA` do próprio cadastro). Um texto
+  sobre a pandemia no governo Bolsonaro lista "Governo Bolsonaro" e
+  "Pandemia de covid-19", que é um período de topo, independente.
+  Coexiste com `epocaRetratada`, os dois podem estar preenchidos ao mesmo
+  tempo. Vazio (`[]`) = não informado. Substitui o antigo
+  `periodoHistoricoId` (id único): backups e exportações antigos são
+  migrados/aceitos (`null` vira `[]`, um valor vira `[valor]`).
 - **`movimentosEscolasIds`**: **Corrente literária** (antes Movimento/Escola) — array de ids (0 a N)
   do cadastro central `db.movimentosEscolas` (ex.: Romantismo, Simbolismo,
   Modernismo). Um texto pode não se encaixar em nenhum ou caber em mais
@@ -174,7 +180,7 @@ Como ler:
 - **`contextoHistorico`**: rótulo **Inspiração** — texto livre sobre o que
   inspirou o texto (um gatilho pontual, uma circunstância específica). O
   nome interno é legado (`contextoHistorico`); o conteúdo NÃO é contexto
-  histórico, é inspiração. Não confunda com `periodoHistoricoId`.
+  histórico, é inspiração. Não confunda com `periodosHistoricosIds`.
 
 ## Intratextualidade — Elos e Ecos
 

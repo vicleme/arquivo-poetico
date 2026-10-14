@@ -60,8 +60,8 @@ function criarDb() {
         generoDivisao: '',
     });
     db.templatesEstrutura.push({ id: 't-meu', nome: 'Meu template', embutido: false });
-    db.poemas = [{ id: 'poema-1', periodoHistoricoId: null, movimentosEscolasIds: [] }];
-    db.prosas = [{ id: 'prosa-1', periodoHistoricoId: null, movimentosEscolasIds: [] }];
+    db.poemas = [{ id: 'poema-1', periodosHistoricosIds: [], movimentosEscolasIds: [] }];
+    db.prosas = [{ id: 'prosa-1', periodosHistoricosIds: [], movimentosEscolasIds: [] }];
     db.autores = [{ id: 'autor-1', movimentosEscolasIds: [] }];
     db.programaDeFabricaAplicado = true;
     return db;
@@ -227,7 +227,7 @@ describe('esvaziar acervo: só Pré-prontos (Dados mantidos)', () => {
     it('período de fábrica usado por texto fica; os ocultos cobrem só os apagados', () => {
         const db = criarDb();
         const usado = db.periodosHistoricos.find((p) => p.embutido);
-        db.prosas[0].periodoHistoricoId = usado.id;
+        db.prosas[0].periodosHistoricosIds = [usado.id];
         const total = deFabrica(db.periodosHistoricos).length;
         const resumo = aplicarEsvaziamento(db, SO_PRE);
 
@@ -248,7 +248,7 @@ describe('esvaziar acervo: só Pré-prontos (Dados mantidos)', () => {
         const db = criarDb();
         const usado = db.periodosHistoricos.find((p) => p.embutido);
         usado.id = '123';
-        db.poemas[0].periodoHistoricoId = 123;
+        db.poemas[0].periodosHistoricosIds = [123];
         aplicarEsvaziamento(db, SO_PRE);
         assert.ok(db.periodosHistoricos.some((p) => p.id === '123'));
     });
@@ -310,7 +310,7 @@ describe('esvaziar acervo: só Pré-prontos (Dados mantidos)', () => {
 
     it('resumo.preProntos.mantidos soma o que ficou', () => {
         const db = criarDb();
-        db.prosas[0].periodoHistoricoId = db.periodosHistoricos[0].id;
+        db.prosas[0].periodosHistoricosIds = [db.periodosHistoricos[0].id];
         db.autores[0].movimentosEscolasIds = [db.movimentosEscolas[0].id];
         const resumo = resumirEsvaziamento(db, SO_PRE);
         assert.equal(resumo.preProntos.mantidos, 2);
@@ -342,7 +342,7 @@ describe('esvaziar acervo: Dados e Pré-prontos juntos', () => {
 
     it('com Dados também apagados, o uso por texto deixa de valer: sai tudo', () => {
         const db = criarDb();
-        db.prosas[0].periodoHistoricoId = db.periodosHistoricos[0].id;
+        db.prosas[0].periodosHistoricosIds = [db.periodosHistoricos[0].id];
         const resumo = aplicarEsvaziamento(db, { dados: true, preProntos: true });
         assert.equal(resumo.preProntos.mantidos, 0);
         assert.equal(db.periodosHistoricos.length, 0);
@@ -430,7 +430,7 @@ describe('esvaziar acervo: resumo', () => {
 
     it('o resumo bate com o que o apagar realmente faz', () => {
         const db = criarDb();
-        db.prosas[0].periodoHistoricoId = db.periodosHistoricos[0].id;
+        db.prosas[0].periodosHistoricosIds = [db.periodosHistoricos[0].id];
         const totalFabrica = deFabrica(db.periodosHistoricos).length;
         const previsto = resumirEsvaziamento(db, SO_PRE);
         const devolvido = aplicarEsvaziamento(db, SO_PRE);
@@ -512,7 +512,7 @@ describe('esvaziar acervo: Versões Alternativas (F13-D7) e formato do acervo', 
         assert.equal(contarVersoesFiltradas('[1,2]'), 0);
     });
 
-    it('o formato do JSON do acervo não ganha chave nova: as 29 chaves seguem as do inventário', () => {
+    it('o formato do JSON do acervo não ganha chave nova: as 30 chaves seguem as do inventário', () => {
         const db = criarDb();
         aplicarEsvaziamento(db, TODAS);
         const permitidas = new Set([...CHAVES_DB.map((c) => c.chave)]);

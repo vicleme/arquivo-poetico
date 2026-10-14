@@ -128,52 +128,68 @@ describe('Movimento/Escola (lista, aditivo)', () => {
     });
 });
 
-describe('Período Histórico (id único)', () => {
+describe('Período Histórico (lista de períodos por texto)', () => {
     beforeEach(montarBase);
 
-    it('define onde está vazio e mantém quem já tem outro', () => {
+    it('aplicar acrescenta o período e mantém os que o texto já tinha', () => {
         const vazio = texto(1);
-        const outro = texto(2, { periodoHistoricoId: 201 });
+        const outro = texto(2, { periodosHistoricosIds: [201] });
         const plano = planejarAplicacaoPeriodo('periodoHistorico', [vazio, outro], 'Ditadura');
-        assert.equal(plano.alterar.length, 1);
-        assert.equal(plano.jaPreenchidos, 1);
+        assert.equal(plano.alterar.length, 2);
+        assert.equal(plano.jaPreenchidos, 0);
         aplicarPlanoPeriodo('periodoHistorico', plano, 'Ditadura');
-        assert.equal(vazio.periodoHistoricoId, 200);
-        assert.equal(outro.periodoHistoricoId, 201);
+        assert.deepEqual(vazio.periodosHistoricosIds, [200]);
+        assert.deepEqual(outro.periodosHistoricosIds, [201, 200]);
     });
 
-    it('sobrescrever troca o período que já estava', () => {
-        const outro = texto(2, { periodoHistoricoId: 201 });
+    it('não existe mais "sobrescrever" para Período Histórico: a opção é ignorada', () => {
+        const outro = texto(2, { periodosHistoricosIds: [201] });
         const plano = planejarAplicacaoPeriodo('periodoHistorico', [outro], 'Ditadura', {
             sobrescrever: true,
         });
         aplicarPlanoPeriodo('periodoHistorico', plano, 'Ditadura');
-        assert.equal(outro.periodoHistoricoId, 200);
+        assert.deepEqual(outro.periodosHistoricosIds, [201, 200]);
     });
 
-    it('já estar com o mesmo período conta como jaIguais (mesmo com sobrescrever)', () => {
-        const a = texto(1, { periodoHistoricoId: 200 });
-        const plano = planejarAplicacaoPeriodo('periodoHistorico', [a], 'Ditadura', {
-            sobrescrever: true,
-        });
+    it('já estar com o mesmo período conta como jaIguais', () => {
+        const a = texto(1, { periodosHistoricosIds: [200, 201] });
+        const plano = planejarAplicacaoPeriodo('periodoHistorico', [a], 'Ditadura');
         assert.equal(plano.jaIguais, 1);
         assert.equal(plano.alterar.length, 0);
     });
 
-    it('id órfão (período excluído) conta como vazio', () => {
-        const a = texto(1, { periodoHistoricoId: 999 });
+    it('id órfão (período excluído) sai e não impede de aplicar', () => {
+        const a = texto(1, { periodosHistoricosIds: [999] });
         const plano = planejarAplicacaoPeriodo('periodoHistorico', [a], 'Ditadura');
         assert.equal(plano.alterar.length, 1);
-        assert.equal(plano.jaPreenchidos, 0);
+        aplicarPlanoPeriodo('periodoHistorico', plano, 'Ditadura');
+        assert.deepEqual(a.periodosHistoricosIds, [200]);
     });
 
-    it('remover só de quem está com aquele período', () => {
-        const a = texto(1, { periodoHistoricoId: 200 });
-        const b = texto(2, { periodoHistoricoId: 201 });
+    it('texto no formato antigo (periodoHistoricoId) é convertido ao aplicar', () => {
+        const a = texto(1, { periodoHistoricoId: 201 });
+        const plano = planejarAplicacaoPeriodo('periodoHistorico', [a], 'Ditadura');
+        aplicarPlanoPeriodo('periodoHistorico', plano, 'Ditadura');
+        assert.deepEqual(a.periodosHistoricosIds, [201, 200]);
+        assert.equal('periodoHistoricoId' in a, false);
+    });
+
+    it('remover tira só aquele id, de quem tem, e mantém os outros', () => {
+        const a = texto(1, { periodosHistoricosIds: [200, 201] });
+        const b = texto(2, { periodosHistoricosIds: [201] });
         const plano = planejarRemocaoPeriodo('periodoHistorico', [a, b], 'Ditadura');
+        assert.equal(plano.alterar.length, 1);
+        assert.equal(plano.naoTinham, 1);
         aplicarRemocaoPeriodo('periodoHistorico', plano, 'Ditadura');
-        assert.equal(a.periodoHistoricoId, null);
-        assert.equal(b.periodoHistoricoId, 201);
+        assert.deepEqual(a.periodosHistoricosIds, [201]);
+        assert.deepEqual(b.periodosHistoricosIds, [201]);
+    });
+
+    it('remover o único período deixa a lista vazia', () => {
+        const a = texto(1, { periodosHistoricosIds: [200] });
+        const plano = planejarRemocaoPeriodo('periodoHistorico', [a], 'Ditadura');
+        aplicarRemocaoPeriodo('periodoHistorico', plano, 'Ditadura');
+        assert.deepEqual(a.periodosHistoricosIds, []);
     });
 });
 

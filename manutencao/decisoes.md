@@ -479,7 +479,7 @@ O plano deixava estes pontos abertos; escolhi o mais conservador. Se algum não 
     - _Só Dados, Pré-prontos mantidos:_ o plano pede "resultado de instalação nova", então os ocultos são zerados e voltam os de fábrica que a pessoa tinha excluído de propósito. Os de fábrica que ela editou (notas, datas) **ficam como estão**, não voltam ao texto do seed.
     - _Só Pré-prontos, hierarquia:_ um movimento de fábrica sem uso próprio, mas pai de um movimento que fica (de fábrica usado, ou da pessoa), também fica, para não soltar a hierarquia. O resumo conta esses separado dos mantidos por uso (`mantidosPorHierarquia`).
     - _Dados e Pré-prontos juntos:_ os ocultos recebem todos os nomes de fábrica, então o acervo recarrega com os três cadastros vazios.
-    - _Uso por texto:_ período por `periodoHistoricoId` em poema e prosa; movimento por `movimentosEscolasIds` em poema, prosa e autor. Id comparado como texto.
+    - _Uso por texto:_ período por `periodosHistoricosIds` (lista) em poema e prosa (antes `periodoHistoricoId`, ver Bloco 2e); movimento por `movimentosEscolasIds` em poema, prosa e autor. Id comparado como texto.
 
 ## Fase 13, etapa 13b: decisões e interpretações (07/10/2026)
 
@@ -533,3 +533,159 @@ O plano deixava estes pontos abertos; escolhi o mais conservador. Se algum não 
 - **Só adiciona ligação.** Tirar um tema de um assunto continua na aba Assuntos, para não desfazer cadastro de todos os textos por engano num modal de um só texto.
 - **Assunto novo sem papel fixável até salvar:** id temporário `novo:`, que nunca entra em `assuntosPapel` nem em `assuntosExcluidos`.
 - **Assunto novo nasce com `notas` vazia e `temaIds` só dos temas ligados**; nome repetido (sem caixa/acento) reaproveita o existente.
+
+## Bloco 2e: vários Períodos Históricos por texto (12/10/2026)
+
+- **Modelo.** `periodoHistoricoId` (um só) virou `periodosHistoricosIds` (lista, 0 a N) em Poema e Prosa. Sem período principal: os períodos do texto são iguais entre si. A pandemia continua um período de topo, independente do governo; quem liga os dois é o texto.
+- **Migração.** Ao carregar e ao restaurar backup (`migrarPeriodosHistoricosMultiplos`, em `db.js`): com valor vira `[valor]`, sem valor vira `[]`, o campo antigo sai, sem repetidos, e id que não existe mais no cadastro sai sem barulho. Idempotente. Testada com o backup real de `data/`.
+- **Tabela.** Um caminho por linha, no máximo 3 na tela; passando disso aparece "…" e a lista inteira fica no tooltip. O limite vale só para a tela. O modal Ver mostra o caminho completo de todos, um por linha (um só período fica na linha do rótulo); MD e CSV mostram todos, separados por ponto e vírgula. A chave da coluna continua `periodoHistoricoId`, para não quebrar colunas já salvas.
+- **Busca.** Qualquer período do texto, ou qualquer ancestral de qualquer um, acha o texto. `periodohistoricodireto:` continua exato.
+- **Contagem.** O card conta cada texto uma vez por período; "com os de dentro" conta cada texto uma única vez.
+- **Mesclar e excluir.** Mesclar A em B não repete B. Excluir tira só aquele id, e o Desfazer devolve o id à posição original.
+- **Edição em massa.** Aplicar soma o período; Remover tira só aquele id. A opção "substituir" saiu do Período Histórico e continua só no Período Biográfico (id único). Consequência assumida: trocar um período por outro em vários textos exige remover um e aplicar o outro.
+- **Exportação e importação.** O JSON leva `periodosHistoricosResolvidos` (id, nome e caminho). A importação aditiva cria uma referência por período e usa o caminho para religar ao pai certo; arquivos antigos (`periodoHistoricoId`, `periodoHistoricoNome`, `periodoHistoricoCaminho`) continuam aceitos.
+- **Lacuna corrigida junto.** O exportador não gerava `movimentosEscolasResolvidos`, que a importação aditiva espera; passou a gerar (mesmo padrão de `livrosResolvidos`).
+
+## Período Biográfico: relações orientadas entre autor e pessoas (13/10/2026)
+
+Pedido do Victor: o vínculo não pode pressupor que é sempre entre o autor e a pessoa (exemplo: o relacionamento dos pais), e a direção deve poder ser orientada.
+
+- **Estrutura:** uma lista única `relacoes: [{ de, para, vinculo }]`, em que as pontas são o autor ou uma Pessoa. Substitui o `vinculos` dentro de cada pessoa. Escolhido em vez de uma segunda lista só para pares de terceiros, para não ter duas formas de dizer a mesma coisa.
+- **Direção:** vínculo com lado oposto é orientado ("Responsável por" e "Filho ou filha de"); sem lado oposto é simétrico. A relação é guardada como foi dita, e o app trata os dois nomes como o mesmo tipo.
+- **Gênero:** o rótulo usa o Gênero da Pessoa e do Autor, que é texto livre. Só Mulher e Homem (e Feminino e Masculino) escolhem forma; o resto, e vazio, usa o neutro. Isso evita presumir gênero de quem não o declarou.
+- **Pessoa oculta:** a relação inteira some, não só o nome, porque mostrar o outro lado já revelaria com quem a pessoa oculta se relaciona.
+- **Migração:** mecânica. Cada vínculo antigo vira uma relação `autor → pessoa`, simétrica, com o mesmo texto.
+- **Fábrica:** Responsável por, Avô ou avó de, Tio ou tia de (orientados) e Irmão ou irmã de (simétrico com forma por gênero). Editáveis em "Esferas e vínculos", botão Papéis.
+
+## Período Biográfico: edição em massa (12/10/2026)
+
+Pedido do Victor. Combinado: só acrescentar e remover (nada de substituir) e avisar quando a seleção mistura autores.
+
+- **Pontas da relação:** pessoa do cadastro ou "Autor do período". O app guarda só `autor`, que vale o autor de cada período; por isso o aviso, e não um seletor de autor específico.
+- **Igualdade de relação:** o mesmo fato dito dos dois lados de um vínculo orientado conta como a mesma relação; vínculo simétrico vale nas duas ordens. Evita duplicar "Ana é mãe de Eva" com "Eva é filha de Ana".
+- **Remover:** relação sai sem tirar as pessoas das envolvidas; pessoa sai com as relações dela. Igual ao modal de edição.
+- **Desfazer:** guarda os quatro campos de cada período alterado e restaura por id. Valores novos no vocabulário (Esfera, Vínculo) não são retirados.
+- **Ocultas:** fora dos seletores; "Mostrar ocultas" só vale com seleção e volta a esconder ao limpar. Mesma regra do modal e da Visualização.
+
+## Período Biográfico: fim do Contexto do relacionamento, Exibir ocultas na aba (13/10/2026)
+
+Pedido do Victor, que já ligou as pessoas aos períodos.
+
+- **Remoção sem perda:** o texto de períodos com pessoa ligada é descartado (as pessoas e as relações o substituem); o de períodos sem pessoa ligada vai para o fim das Notas, rotulado, uma vez só. Escolha minha: o Victor disse que o campo "já pode cair", mas o app não tem como saber se ele ligou as pessoas em todos os períodos. Acréscimo de Notas é o único efeito visível; quem não quiser pode apagar o trecho.
+- **Exibir ocultas na aba:** mesma regra de privacidade do modal e da Visualização (temporário, só em memória, nunca guardado, não toca no flag da pessoa). Escolha minha: não zera ao trocar de aba, só ao recarregar; fica âmbar e com o texto "Esconder ocultas" para não passar despercebido. A barra de edição em massa continua com o seu próprio botão.
+- **Marca "(oculta)":** com ocultas à mostra, o nome da pessoa oculta leva "(oculta)" também nas frases das relações (cartão e Visualização), não só nos seletores.
+- **Seed:** a Terceira (c. 1950 a c. 2000) e a Quarta (c. 2011, em curso) Revolução Industrial entram como as demais, com região "Internacional" e datas aproximadas; os limites são convencionais e estão ditos nas notas de cada uma.
+
+## Período Biográfico: Esfera, Natureza e Vínculo (13/10/2026)
+
+Item 3 de `planejamento-pendencias-periodo-biografico.md`. Decidido pelo Victor: três níveis independentes, e a Natureza não pré-preenche a Esfera.
+
+- **Modelo:** `relacoes: [{ de, para, natureza, vinculo }]`. Pelo menos um dos dois (Natureza ou Vínculo) deve ter texto. Ajuste meu ao desenho anterior: a Natureza mora na relação, e não como propriedade do Vínculo no vocabulário, porque uma relação com vínculo vazio precisa dizer a Natureza por conta própria.
+- **Sugestão, não ligação:** o vocabulário guarda `sugestoesNatureza` (namorados sugere Romance, mãe sugere Familiar). No modal, escolher o vínculo preenche a Natureza; escolhida à mão, ela nunca é trocada sozinha, e trocar de vínculo só troca a Natureza que a sugestão anterior tinha posto.
+- **Migração:** mecânica e sem perda. Relação sem a chave `natureza` é do formato antigo: os seis vínculos de fábrica viram Natureza (Romântico vira Romance) com vínculo vazio; rótulos de fábrica mantêm o vínculo e ganham Familiar; vínculo criado pelo Victor mantém o nome e fica sem Natureza. A chave presente (mesmo vazia) impede converter de novo. Vocabulário: a chave `naturezas` ausente marca o formato antigo e dispara, uma única vez, a saída dos seis nomes da lista de Vínculos.
+- **Escolhas minhas, para o Victor mudar se quiser:** (1) o nome "Romance" (e não "Romântica"); (2) Vínculos de fábrica novos: Namorados, Ex-namorados, Conversantes, Webnamorados, Situationship e Amigos, tirados dos exemplos do plano, para a sugestão de Natureza ter com o que funcionar; (3) um vínculo de fábrica renomeado antes por ele conta como criado por ele (Natureza vazia); (4) frase sem vínculo é simétrica ("Ana e Davi: Romance"), com vínculo nada muda, mesmo que simétrico ("Ana e Davi: Namorados"); (5) filtros de Natureza, Vínculo e Pessoa, quando juntos, exigem que seja a mesma relação; (6) `natureza:` na busca (só com prefixo), ao lado de `vinculo:`.
+- **Edição em massa:** a relação ganha a Natureza; igualdade exige as mesmas pontas, Natureza e Vínculo (o fato dito do outro lado de um vínculo orientado continua igual). Remover com Natureza diferente não remove.
+- **Vocabulário na tela:** o modal passou a "Esferas, naturezas e vínculos", com a seção Naturezas e, em cada vínculo, o seletor de Natureza sugerida. Apagar Natureza ou vínculo apaga as sugestões ligadas a eles.
+
+### Frases da relação: "têm uma relação de" e plural por gênero (13/10/2026)
+
+Combinado com o Victor depois do item 3. Natureza sem vínculo vira "Ana e Davi têm uma relação de romance" (sem concordância de gênero, que quebraria com Naturezas novas). Vínculo simétrico ganha dois campos opcionais em Papéis, `pluralFeminino` e `pluralMasculino`: duas Mulheres usam o feminino, qualquer outra combinação usa o masculino plural (regra padrão do português, escolha do Victor). Com o campo necessário vazio, volta ao formato com dois-pontos (duas Mulheres sem plural feminino não caem no masculino). A frase continua sendo montada só pela configuração, nunca pela leitura da palavra.
+
+### Plural neutro e vínculo terapêutico de fábrica (13/10/2026)
+
+Pedido do Victor. (1) Terceiro campo de plural, `pluralNeutro`: duas Mulheres usam o feminino, dois Homens o masculino, qualquer outra combinação o neutro, e neutro vazio cai no masculino (a regra do masculino para o misto, que ele quis só como reserva). (2) Fábrica nova aplicada uma vez, com marcador `fabricaAplicada`, para chegar também ao acervo que já existe: Natureza "Vínculo terapêutico" e vínculo orientado Psicólogo/Psicóloga de, Terapeutizante de (neutro de quem conduz) e Terapeutizando/Terapeutizanda de (paciente). Escolhas minhas: o neutro do paciente é "Terapeutizando ou terapeutizanda de" (ele não deu um); o nome da Natureza é "Vínculo terapêutico", pela última frase dele (a primeira mensagem dizia "Psicoterapia"; renomear é um clique).
+
+- **Modal de vocabulário:** passou a crescer em telas grandes (`lg:max-w-3xl xl:max-w-5xl`), e o campo do nome ocupa o espaço que sobra.
+
+## Psicoterapeuta de e campo nota
+
+Pedido do Victor. A fábrica `terapeutico` virou `psicoterapia`: o vínculo é "Psicoterapeuta de" (nome que todos reconhecem; sem feminino/masculino, pois "psicólogo/psicóloga" é termo mais amplo e quem faz terapia integrativa também é psicoterapeuta). O lado do paciente é "Psicoterapeutizando de" (o masculino cobre o neutro e o misto, por pedido dele, para evitar o nome longo e binário) e "Psicoterapeutizanda de" para mulheres. Novo campo `nota` no rótulo, preenchido aqui com a explicação do neologismo. O item antigo "Terapeutizante de" é removido só se intacto e sem uso.
+
+## Check e aviso de pendências no modal de vocabulário
+
+Pedido do Victor. O modal "Esferas, naturezas e vínculos" ganhou um check ao lado do X ("Salvar tudo e fechar"). Ele aplica de uma vez os nomes editados, os Papéis alterados (inclusive a nota) e os valores digitados nos campos "novo", e fecha. Se algo não puder ser aplicado (nome vazio, nome que já existe, conflito de lado oposto), nada muda e o modal fica aberto com aviso; juntar dois valores continua só pelo botão Renomear da linha, que pede confirmação. O X e o Esc usam o mesmo rastreador dos modais de Poema e Prosa (`registrarModal` com rastreador): havendo pendência, pedem confirmação para descartar. A Natureza sugerida continua gravando na hora, então não conta como pendência.
+
+## Organizar vínculos por Natureza sugerida
+
+Pedido do Victor. Na seção Vínculos do modal de vocabulário, o seletor "Organizar por" alterna entre Ordem alfabética (padrão) e Natureza sugerida. Por natureza, a lista vira grupos com cabeçalho (uma Natureza por grupo, na ordem da lista de Naturezas), e os vínculos sem sugestão ficam no último grupo ("Sem natureza sugerida"). Só muda a exibição; a escolha fica lembrada no navegador (localStorage, com try/catch). Com alterações pendentes no modal, o seletor avisa e não reorganiza, porque refazer a lista perderia o que está digitado.
+
+## "Varia" na Natureza sugerida
+
+Pedido do Victor. O seletor de Natureza sugerida de cada vínculo ganhou a opção "Varia" (nome curto, a pedido dele), ao lado de "Sem sugestão". Ela guarda em `sugestoesNatureza` um item `{ vinculo, natureza: '', varia: true }`: decisão explícita de que o vínculo não tem uma Natureza só. Não preenche nada nas relações (igual a "Sem sugestão"); só distingue "decidi que varia" de "ainda não decidi". Na lista organizada por natureza, vira o grupo "Varia", antes de "Sem natureza sugerida". Renomear, juntar e apagar vínculo levam o "Varia" junto, como qualquer sugestão. Funções: `vinculoVariaDeNatureza`, `definirVinculoVaria`.
+
+## Período Biográfico oculto (14/10/2026)
+
+Pedido do Victor: poder ocultar também períodos biográficos, porque alguns são justamente sobre relações passadas, e ocultar só a Pessoa deixava o nome do período (ex.: "Namoro com Fulano") à vista em todo lugar. Decisões:
+
+- **Mesmo padrão da Pessoa.** `oculto` no próprio período, botão Ocultar/Reexibir no cartão (com "Desfazer" ao ocultar), cartão esmaecido e marcado "(oculto)" quando visível.
+- **O texto continua ligado.** Ocultar não desvincula nada. Na coluna Época Retratada o nome vira "(período oculto)": deixar a célula vazia pareceria "texto sem período".
+- **Um "Mostrar ocultas" só.** O botão "Exibir ocultas" da aba passou a valer para pessoas e períodos (estado em memória, nunca guardado, em `ocultas-periodos.js`). Não há filtro Ativos/Todos/Ocultos na aba de períodos: o botão basta, porque a aba não tem a ordem de grandeza da lista de Pessoas.
+- **Ocultar uma Pessoa avisa.** Se ela aparece em períodos ainda visíveis, o app pergunta: "Ocultar só a pessoa" ou "Ocultar também os períodos" (cancelar não faz nada). Ocultar sozinho pegaria de surpresa um período que a pessoa queria manter visível. O "Desfazer" reverte só o que aquela ação ocultou.
+- **Exportações não levam o período oculto:** nada que identifique o período sai (nome, Esfera, Categoria). Datas e recorte, que descrevem o texto, saem. (Esta linha dizia "seguem a regra da Pessoa oculta", mas até 13/10/2026 a Pessoa oculta não era filtrada em exportação nenhuma; ver "Incluir dados ocultados" abaixo.)
+- **Período em massa (Poemas e Prosas).** A lista de sugestões do painel (`nomesCadastroPeriodoMassa`, em `periodos-massa.js`) não oferece o nome de um período oculto, a menos que "Mostrar ocultas" esteja ligado. Movimento/Escola e Período Histórico não mudam.
+- **Importação Aditiva casa o período oculto só por nome exato.** Um texto importado com o mesmo nome de um período oculto do destino se liga a ele, em vez de criar um período visível duplicado (o que desfaria a ocultação). Na semelhança por trecho do nome (`aproximado`), o oculto fica de fora, para a lista de opções não revelar nomes ocultos; com "Mostrar ocultas" ligado ele volta a ser oferecido. O candidato oculto leva `oculto: true` e a tela mostra "(período oculto)" no lugar do nome, salvo com "Mostrar ocultas" ligado. A regra vale só para Período Biográfico: Pessoa oculta na importação segue como estava. Os JSON exportados não trazem nome de período oculto, então o caso só aparece quando o acervo de origem tem um período visível com o mesmo nome do período oculto do destino.
+- **Estatísticas: nada a fazer agora.** Nenhuma tela de Estatísticas usa Período Biográfico em cálculo ou listagem, então não há o que vazar. Regra para o futuro: qualquer gráfico novo por Período Biográfico deve seguir `periodosVisiveis` e o "Mostrar ocultas" desde a primeira versão.
+- **Ainda fora desta entrega:** conferir tudo no navegador.
+
+## Incluir dados ocultados nas exportações (13/10/2026)
+
+Pedido do Victor: ele envia textos a pessoas de confiança e a IAs, e às vezes quer os nomes verdadeiros, às vezes não. Ao conferir o código, só o período oculto era filtrado; a Pessoa oculta saía com nome e ficha em todo download. Decisões:
+
+- **Pessoa oculta também sai filtrada, por padrão.** Em JSON, CSV, Markdown, PDF e DOCX (todos passam por `montarRegistro`, em `exportar.js`): o vínculo da Pessoa some inteiro (nome, ficha, papéis) e a âncora de Eco que aponta para ela também; um Eco que só tinha essa âncora fica sem o campo `ancoras` (o Eco continua). Muda o comportamento anterior: downloads que antes levavam a Pessoa oculta passam a sair sem ela.
+- **Nome da caixa (pedido do Victor, 13/10/2026): "Incluir dados ocultados", não "Incluir ocultos".** Sem "dados", parecia ocultação de textos, que não existe; "ocultados" deixa claro que foram ocultados por ele, e não ocultos por padrão do sistema.
+- **Caixa "Incluir dados ocultados", separada do "Download abrangente".** Libera Pessoa e Período Biográfico ocultos juntos. Não segue o "Mostrar ocultas" da tela: ligar este para olhar a lista não deve mudar o que sai no arquivo. Aparece no painel Ações e na barra de seleção em massa (Poemas e Prosas), no modal de Visualização e na aba Exportação; todas ficam sincronizadas.
+- **Persistência é escolha dele ("lembrar"), desligada por padrão.** Sem "lembrar", a caixa vive só em memória e volta desmarcada a cada recarga. Com "lembrar", o estado é guardado (`arquivoPoetico_incluirOcultosExportacao`, com a escolha em `arquivoPoetico_incluirOcultosLembrar`, ambas `preferencia` no inventário). Desligar "lembrar" apaga o valor guardado. Motivo: numa época ele não se preocupa com isso, noutra se preocupa muito.
+- **Fora do filtro, de propósito:** Livro completo, Livros completos e Tudo aninhado (estrutura crua, só ids, sem nomes) e o backup completo, que sempre leva tudo.
+- **Limite conhecido:** o filtro age nos vínculos e nos nomes cadastrados. Um nome oculto digitado à mão em título, nota ou texto livre não é detectado.
+- **Importar um arquivo gerado com "Incluir dados ocultados" ligado** traz Pessoa e Período como itens comuns, já visíveis no destino.
+
+## Correntes literárias: recolher e expandir (13/10/2026)
+
+Pedido do Victor: a árvore de Correntes tinha a hierarquia, mas não o recolher/expandir que Período Histórico já tem. Mesmo modelo, `correntesRecolhidas` em `render-listas.js`:
+
+- Seta ▾/▸ no card da corrente que tem divisões; recolher esconde toda a descendência e o card diz quantas divisões ficaram escondidas.
+- Botões "Recolher tudo" e "Expandir tudo" acima da lista.
+- Estado só em memória: recarregar volta tudo expandido. Com filtro ativo (nome, período ou atributos) o recolhimento é ignorado, para um resultado da busca nunca ficar dentro de um ramo fechado.
+- Reaproveita `aplicarRecolhimentoPeriodos`, a mesma função de Período Histórico.
+
+## Fontes das Correntes literárias (13/10/2026)
+
+Pedido do Victor, a partir da pergunta da professora de Linguagens: de onde vêm as classificações que o sistema traz por padrão, já que autores diferentes classificam de modos distintos. Decisões:
+
+- **Campo `fontes` por corrente** (autor, obra, ano, nota), editável no modal, com as das correntes de fábrica já preenchidas. Quem cria uma corrente pode registrar o que consultou.
+- **Honestidade sobre a procedência (escolha minha, a confirmar):** as fontes de fábrica foram escolhidas como bibliografia de referência de cada corrente, **sem número de página**, e não como prova de que cada data ou rótulo saiu daquela obra. O texto do modal diz isso e pede que se confira na própria cópia. Títulos e anos foram escritos de memória: o Victor deve conferir, principalmente os anos de primeira edição, antes de apresentar como fonte do app.
+- **Postura estética e Programa não têm fonte:** são categorias próprias do app. O modal avisa; as fontes sustentam período, região e divisões.
+- **Divergência anotada só onde é conhecida:** Barroco (Candido x Haroldo de Campos), Pós-modernismo (Lyotard x Jameson), gerações do Romantismo (uso didático), Pré-Modernismo e Literatura Contemporânea (rótulos de convenção).
+- **Migração como a da postura:** só preenche registro de fábrica sem a chave, uma vez; nunca sobrescreve nem devolve lista esvaziada.
+- **Ficou de fora:** busca, coluna, filtro e exportação por fonte; fontes nos Períodos Históricos (mesma dúvida da professora vale para eles).
+
+## Faz parte de entre Períodos Biográficos (14/10/2026)
+
+Item 4 de `planejamento-pendencias-periodo-biografico.md`. Decidido pelo Victor em 13/10/2026: vários pais (como no Histórico), pai e filho do mesmo autor, o filho não pode começar depois do fim do pai nem terminar antes do começo dele, aba em lista vertical com recuo e recolher/expandir, pai sem datas permitido. O que escolhi sozinho (para o Victor confirmar):
+
+- **Sobrepor, não conter.** A regra do Victor equivale a "os intervalos se sobrepõem". Não reaproveitei `paisQueNaoContem` (contenção, só avisa depois de salvar); a regra nova está em `ordemSemSobreposicao` e **bloqueia** ao salvar, com mensagem que diz qual pai e quais datas.
+- **Precisão e "c.".** Compara no nível mais grosso das duas datas (ano contra mês e dia compara o ano; mês e dia só contam se os dois lados os têm). Data com "c." compara só o ano, e **acusa**, ao contrário do Histórico, que cala. Fim em aberto vale como infinito, também para o filho (um filho "a partir de 2020" sob um pai que terminou em 2014 é acusado).
+- **Bloqueia, não avisa.** Ao salvar o filho e ao editar datas ou autor do pai (lista os filhos afetados). Migração, importação e restauração de backup nunca falham por causa das regras: só limpam estrutura (id inexistente, ciclo).
+- **Trocar o autor no modal** tira do campo os pais de outro autor, com aviso; ao salvar, se o período tem filhos de outro autor, bloqueia.
+- **Regra de autor numa função só** (`autoresDoPeriodo`, hoje `[autorId]`), para o item 5 (vários autores) mudar só ela: os autores do filho precisam ser subconjunto dos de cada pai.
+- **Pai sem datas:** o cartão e o Ver mostram em itálico "dos períodos de dentro: …" (do começo mais cedo ao fim mais tarde dos descendentes; fim em aberto se algum deles está em aberto), só na tela. A ordem cronológica usa as datas efetivas (as próprias, senão as derivadas); sem nenhuma, vai para o fim e desempata pelo nome.
+- **Ocultos:** a hierarquia é lida só entre os períodos visíveis. Pai oculto some por inteiro (nem o nome aparece) e o filho vira de topo no cartão e no Ver; com "Exibir ocultas" a árvore volta. No modal, pai oculto não aparece nos chips nem no seletor, mas continua na lista e é regravado sem mudança.
+- **Aba:** uma árvore dentro de cada grupo de autor (a lista deixou de ser em duas colunas). Filtro ou busca ativos ignoram o recolhimento e mostram o pai que não passou como contexto (apagado, sem caixa de seleção), como no Histórico. "Recolher tudo" e "Expandir tudo" ao lado de "Selecionar todos".
+- **Seleção em massa:** "Selecionar todos", Inverter e shift-click seguem a ordem da tela e **pulam o que está recolhido e o pai de contexto**. Recolher um ramo **tira da seleção** o que sumiu da tela (mesma ideia de ocultar um período selecionado). Selecionar um pai não arrasta os de dentro.
+- **Edição em massa de "Faz parte de": ficou de fora.** A barra não ganhou o campo: cada período precisaria da validação de intervalo e de autor, e o aviso ficaria longo. Dá para fazer depois se o Victor sentir falta.
+- **Excluir e mesclar** seguem o Histórico (`retirarPeriodoDaHierarquia`, `mesclarHierarquiaDePeriodos`). Excluir não revalida o intervalo dos filhos que sobem (um filho pode ficar fora do intervalo do avô); só o aviso da exclusão diz para onde eles vão.
+- **Fica de fora:** "Faz parte de" em MD, CSV, JSON seletivo e importação aditiva (como pessoas e relações); filtro por pai; Estatísticas por árvore.
+
+
+## Fontes dos Períodos Históricos (14/10/2026)
+
+Pedido do Victor, pela mesma pergunta da professora de Linguagens (de onde vêm as classificações de fábrica), agora para os 16 períodos do seed. Espelha as Correntes; decisões próprias:
+
+- **Fábrica genérica em vez de cópia.** A lista editável virou `criarListaDeFontes` (`fontes-corrente-ui.js`), e as Correntes e os Períodos a instanciam com ids próprios. As funções de Corrente (`lerFontesCorrente` etc.) continuam existindo, só delegam. `listaFontesHtml` saiu de `visualizar-movimento-escola.js` para `fontes-corrente.js`, para os dois "Ver" usarem a mesma. Motivo: não duplicar código que mudaria em dois lugares.
+- **Uma coluna no modal de Período.** O modal é estreito (`max-w-md`) e o `md:grid-cols-6` das Correntes olha a largura da janela, então espremeria os campos. A fábrica ganhou `compacto`.
+- **Sem grupo recolhível.** O modal de Período Histórico é plano; a seção Fontes entra no fim, antes dos botões, sem criar grupos só para ela.
+- **Honestidade sobre a procedência (escolha minha, a confirmar):** as fontes de fábrica foram escolhidas **de memória**, são obras de referência **sem página**, e **as datas e a região do seed são decisões do app**: as fontes dão base ao recorte, não provam cada número. O modal diz isso. **O Victor deve conferir títulos, anos e traduções** antes de apresentar como fonte do app. Onde não tenho certeza do título em português, o catálogo traz o título original (Gaddis e Westad na Guerra Fria, Tooze e Snowden na Covid, o relatório de Kagermann na Indústria 4.0).
+- **Fontes primárias onde o período é definido por um ato:** a Pandemia de Covid-19 cita as duas declarações da OMS (11/03/2020 e 05/05/2023), que são exatamente as datas do seed; Kant (1784) e Adorno e Horkheimer (1947) entram no Iluminismo, o segundo como crítica.
+- **Divergência anotada onde é conhecida** (lista na seção de `schema.md`). Achado a conferir: o seed da Semana de Arte Moderna vai de 11 a 18 de fevereiro de 1922 (a semana inteira); as noites no Theatro Municipal foram em 13, 15 e 17. A nota registra isso na fonte de Mário da Silva Brito, sem mudar o seed.
+- **Período Biográfico fica de fora:** o recorte é a vida do autor, sem bibliografia.
+- **Ficou de fora:** busca, coluna, filtro e exportação por fonte, como nas Correntes.

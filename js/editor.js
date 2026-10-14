@@ -75,7 +75,12 @@ import {
     normalizarPapelIdioma,
     idiomasDoItem,
     extrairDialetosUnicos,
+    anoEquivalenteMovimento,
+    periodosHistoricosIdsDoItem,
 } from './utils.js';
+import { lugaresUsados, normalizarRegiao } from './regiao.js';
+import { periodosVisiveis } from './periodo-biografico-campos.js';
+import { opcoesOcultasDosPeriodos } from './ocultas-periodos.js';
 import {
     adicionarAssuntoPendente,
     podarAssuntosPendentes,
@@ -98,6 +103,12 @@ import {
 } from './ancora-eco-ui.js';
 import { ancoraAtiva, normalizarAncorasEco, rotuloEco } from './ancora-eco.js';
 import { lerPersonagens } from './grupo-personagens.js';
+import {
+    opcoesDePaiEmArvore,
+    caminhoDosAncestraisDoPeriodo,
+    rotuloDeEscolhaDoPeriodo,
+    resolverPeriodoPorRotulo,
+} from './periodos-historicos-hierarquia.js';
 
 // ─── Estado local ─────────────────────────────────────────────
 
@@ -409,6 +420,57 @@ export function carregarValoresMovimento(v) {
     grupoValoresMovimento.carregar(v);
 }
 
+// Região (lista de lugares) dos dois cadastros que têm o campo: Corrente
+// literária (região de origem) e Período Histórico (região de alcance).
+// Mesma fábrica dos campos de tag acima; o hidden input leva o JSON do array.
+const grupoRegiaoOrigemMovimento = criarGrupoDeTagsArray({
+    inputId: 'me-regiao-origem-input',
+    containerId: 'me-regiao-origem-container',
+    hiddenInputId: 'me-regiao-origem',
+    corClasse: 'bg-teal-700',
+    nomeFuncaoRemover: 'removerRegiaoOrigemMovimento',
+    nomeFuncaoEditar: 'editarRegiaoOrigemMovimento',
+});
+export function adicionarRegiaoOrigemMovimento(v) {
+    grupoRegiaoOrigemMovimento.adicionar(v);
+}
+export function removerRegiaoOrigemMovimento(v) {
+    grupoRegiaoOrigemMovimento.remover(v);
+}
+export function editarRegiaoOrigemMovimento(v) {
+    grupoRegiaoOrigemMovimento.editar(v);
+}
+export function resetRegiaoOrigemMovimento() {
+    grupoRegiaoOrigemMovimento.reset();
+}
+export function carregarRegiaoOrigemMovimento(v) {
+    grupoRegiaoOrigemMovimento.carregar(normalizarRegiao(v));
+}
+
+const grupoRegiaoPeriodoHistorico = criarGrupoDeTagsArray({
+    inputId: 'ph-regiao-input',
+    containerId: 'ph-regiao-container',
+    hiddenInputId: 'ph-regiao',
+    corClasse: 'bg-teal-700',
+    nomeFuncaoRemover: 'removerRegiaoPeriodoHistorico',
+    nomeFuncaoEditar: 'editarRegiaoPeriodoHistorico',
+});
+export function adicionarRegiaoPeriodoHistorico(v) {
+    grupoRegiaoPeriodoHistorico.adicionar(v);
+}
+export function removerRegiaoPeriodoHistorico(v) {
+    grupoRegiaoPeriodoHistorico.remover(v);
+}
+export function editarRegiaoPeriodoHistorico(v) {
+    grupoRegiaoPeriodoHistorico.editar(v);
+}
+export function resetRegiaoPeriodoHistorico() {
+    grupoRegiaoPeriodoHistorico.reset();
+}
+export function carregarRegiaoPeriodoHistorico(v) {
+    grupoRegiaoPeriodoHistorico.carregar(normalizarRegiao(v));
+}
+
 const grupoTemasMovimento = criarGrupoDeTagsArray({
     inputId: 'me-tema-input',
     containerId: 'me-temas-container',
@@ -558,6 +620,7 @@ export function carregarTemasAssunto(v) {
 }
 
 export function resetTodosOsGruposDeMovimento() {
+    resetRegiaoOrigemMovimento();
     resetValoresMovimento();
     resetTemasMovimento();
     resetTecnicasMovimento();
@@ -3530,9 +3593,12 @@ export function atualizarDatalistEpoca(tabela = null) {
     };
     tabelas.forEach((tab) => {
         const autorIds = obterAutoria(tab).map((a) => a.autorId);
+        // Período oculto não é sugerido (o autocomplete entregaria o nome),
+        // a menos que "Exibir ocultas" da aba Período Biográfico esteja ligado.
+        const visiveis = periodosVisiveis(db.epocas, opcoesOcultasDosPeriodos());
         const candidatos = autorIds.length
-            ? db.epocas.filter((e) => autorIds.includes(e.autorId))
-            : db.epocas;
+            ? visiveis.filter((e) => autorIds.includes(e.autorId))
+            : visiveis;
         const nomes = candidatos.map((e) => e.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
         const datalist = document.getElementById(idsPorTabela[tab]);
         if (datalist) {
@@ -3545,8 +3611,9 @@ export function atualizarDatalistEpoca(tabela = null) {
 // Período Histórico (db.periodosHistoricos) — sugestão vem dos nomes já
 // cadastrados, um datalist por modal (Poema/Prosa).
 export function atualizarDatalistPeriodoHistorico() {
-    const nomes = [...db.periodosHistoricos]
-        .map((p) => p.nome)
+    // Com homônimos, o rótulo leva o caminho (ver rotuloDeEscolhaDoPeriodo).
+    const nomes = db.periodosHistoricos
+        .map((p) => rotuloDeEscolhaDoPeriodo(db.periodosHistoricos, p.id))
         .sort((a, b) => a.localeCompare(b, 'pt-BR'));
     ['sugestoes-periodo-historico-nome', 'sugestoes-periodo-historico-nome-prosa'].forEach((id) => {
         const datalist = document.getElementById(id);
@@ -4926,10 +4993,8 @@ export function atualizarDatalistMovimentosEscolas() {
     });
 }
 
-// Sugestão de Região de origem — direto de db.movimentosEscolas (o
-// próprio cadastro central), não de Poemas/Prosas (mesmo espírito de
-// extrairInstituicoesUnicas, mas sem precisar de split por vírgula
-// porque regiaoOrigem já é um campo simples de texto por registro).
+// Sugestão de Região (origem de Corrente, alcance de Período Histórico) —
+// direto dos dois cadastros centrais, não de Poemas/Prosas.
 // Opções do select "Faz parte de" do modal de Corrente literária: todas as
 // correntes menos a que está sendo editada e as divisões dela (não dá para
 // ser filha de si mesma). O rótulo é o caminho completo (Romantismo ›
@@ -4960,27 +5025,131 @@ export function sincronizarCamposDivisaoCorrente() {
     });
 }
 
-export function atualizarDatalistRegiaoOrigemMovimento() {
-    const regioes = [
-        ...new Set(db.movimentosEscolas.map((m) => (m.regiaoOrigem || '').trim()).filter(Boolean)),
-    ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    const datalist = document.getElementById('sugestoes-regiao-origem-movimento');
+// As sugestões de Região (nos dois cadastros) vêm dos lugares já usados nos
+// dois: Corrente literária e Período Histórico compartilham o vocabulário.
+function lugaresDeRegiaoJaUsados() {
+    return lugaresUsados(
+        { lista: db.movimentosEscolas, ler: (m) => m.regiaoOrigem },
+        { lista: db.periodosHistoricos, ler: (p) => p.regiao },
+    );
+}
+
+function preencherDatalistRegiao(idDatalist) {
+    const datalist = document.getElementById(idDatalist);
     if (datalist) {
-        datalist.innerHTML = regioes.map((r) => `<option value="${escapeHtml(r)}">`).join('');
+        datalist.innerHTML = lugaresDeRegiaoJaUsados()
+            .map((r) => `<option value="${escapeHtml(r)}">`)
+            .join('');
     }
+}
+
+export function atualizarDatalistRegiaoOrigemMovimento() {
+    preencherDatalistRegiao('sugestoes-regiao-origem-movimento');
 }
 
 // Mesmo padrão de atualizarDatalistRegiaoOrigemMovimento acima, pro campo
 // Região do cadastro de Período Histórico — sugestão vem do próprio
 // db.periodosHistoricos.
+// ─── Pertence a (Período Histórico) ──────────────────────────────────────
+// Lista de períodos pais do modal de Período Histórico, como chips: o
+// primeiro é o principal (define o caminho mostrado) e um clique nos outros
+// o promove. O select oferece todos os períodos menos o que está sendo
+// editado e os de dentro dele (não dá para ser filho de si mesmo) e menos
+// quem já está na lista. O rótulo de cada opção traz o caminho acima dela,
+// para distinguir períodos de mesmo nome.
+let _paisPeriodoHistorico = [];
+let _idEditandoPeriodoHistorico = null;
+
+function rotuloPeriodoHistoricoNaLista(p) {
+    const acima = caminhoDosAncestraisDoPeriodo(db.periodosHistoricos, p.id);
+    return acima ? `${p.nome} (${acima})` : p.nome;
+}
+
+export function preencherPaisPeriodoHistorico(idEditando = null, pais = []) {
+    _idEditandoPeriodoHistorico = idEditando;
+    _paisPeriodoHistorico = [...(pais || [])];
+    renderPaisPeriodoHistorico();
+}
+
+export function lerPaisPeriodoHistorico() {
+    return [..._paisPeriodoHistorico];
+}
+
+// Irmãos em ordem cronológica (início, ou fim se faltar), como a lista da aba;
+// sem data, vão para o fim e desempatam por nome.
+function compararPeriodosNoSelect(a, b) {
+    const anoA = anoEquivalenteMovimento(a.inicio) ?? anoEquivalenteMovimento(a.fim);
+    const anoB = anoEquivalenteMovimento(b.inicio) ?? anoEquivalenteMovimento(b.fim);
+    if (anoA == null && anoB == null) return a.nome.localeCompare(b.nome, 'pt-BR');
+    if (anoA == null) return 1;
+    if (anoB == null) return -1;
+    if (anoA !== anoB) return anoA - anoB;
+    return a.nome.localeCompare(b.nome, 'pt-BR');
+}
+
+function renderPaisPeriodoHistorico() {
+    const chips = document.getElementById('ph-pais-chips');
+    const select = document.getElementById('ph-pais-select');
+    if (!chips || !select) return;
+    const lista = db.periodosHistoricos;
+    // Pai que deixou de existir sai da lista sem barulho.
+    _paisPeriodoHistorico = _paisPeriodoHistorico.filter((id) => lista.some((p) => p.id == id));
+
+    chips.innerHTML = '';
+    _paisPeriodoHistorico.forEach((id, i) => {
+        const reg = lista.find((p) => p.id == id);
+        const chip = document.createElement('span');
+        chip.className =
+            'inline-flex items-center gap-1 px-2 py-1 rounded text-xs border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300';
+        const rotulo = document.createElement('button');
+        rotulo.type = 'button';
+        rotulo.textContent = rotuloPeriodoHistoricoNaLista(reg) + (i === 0 ? ' · principal' : '');
+        rotulo.title = i === 0 ? 'Período principal' : 'Tornar principal';
+        if (i === 0) rotulo.disabled = true;
+        rotulo.onclick = () => {
+            _paisPeriodoHistorico = [id, ..._paisPeriodoHistorico.filter((x) => x != id)];
+            renderPaisPeriodoHistorico();
+        };
+        const remover = document.createElement('button');
+        remover.type = 'button';
+        remover.textContent = '×';
+        remover.title = 'Remover';
+        remover.setAttribute('aria-label', `Remover ${reg.nome}`);
+        remover.onclick = () => {
+            _paisPeriodoHistorico = _paisPeriodoHistorico.filter((x) => x != id);
+            renderPaisPeriodoHistorico();
+        };
+        chip.append(rotulo, remover);
+        chips.appendChild(chip);
+    });
+
+    // Em árvore, como a lista da aba: cada período seguido dos de dentro, com
+    // recuo. Quem já está nos chips continua na árvore (para os de dentro não
+    // perderem o contexto), mas desabilitado e marcado.
+    const opcoes = opcoesDePaiEmArvore(
+        lista,
+        _idEditandoPeriodoHistorico,
+        compararPeriodosNoSelect,
+    );
+    select.innerHTML =
+        '<option value="">Adicionar período pai...</option>' +
+        opcoes
+            .map(({ m, nivel }) => {
+                const jaEsta = _paisPeriodoHistorico.some((x) => x == m.id);
+                const recuo = '\u00a0\u00a0\u00a0\u00a0'.repeat(nivel) + (nivel ? '↳ ' : '');
+                return `<option value="${m.id}" title="${escapeHtml(rotuloPeriodoHistoricoNaLista(m))}"${jaEsta ? ' disabled' : ''}>${recuo}${escapeHtml(m.nome)}${jaEsta ? ' ✓' : ''}</option>`;
+            })
+            .join('');
+    select.value = '';
+    select.onchange = () => {
+        if (!select.value) return;
+        _paisPeriodoHistorico.push(Number(select.value));
+        renderPaisPeriodoHistorico();
+    };
+}
+
 export function atualizarDatalistRegiaoPeriodoHistorico() {
-    const regioes = [
-        ...new Set(db.periodosHistoricos.map((p) => (p.regiao || '').trim()).filter(Boolean)),
-    ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    const datalist = document.getElementById('sugestoes-regiao-periodo-historico');
-    if (datalist) {
-        datalist.innerHTML = regioes.map((r) => `<option value="${escapeHtml(r)}">`).join('');
-    }
+    preencherDatalistRegiao('sugestoes-regiao-periodo-historico');
 }
 
 export function adicionarMovimentoEscolaDireto(tabela, valor = null) {
@@ -4997,6 +5166,118 @@ export function carregarMovimentosEscolasDiretos(tabela, ids) {
 }
 export function obterMovimentosEscolasDiretos(tabela) {
     return grupoMovimentosEscolas(tabela).obterItens();
+}
+
+// ─── Períodos Históricos Retratados (Bloco 2e) ──────────────────
+// Poema e Prosa podem retratar vários períodos históricos, todos iguais
+// entre si (sem principal, a ordem não significa nada). Chips com o
+// rótulo de caminho (rotuloDeEscolhaDoPeriodo). Nome que não existe vira
+// chip "novo" e só é criado no cadastro ao SALVAR o texto, para cancelar o
+// modal não deixar período solto. Cada item é um id ou { novo: 'Nome' }.
+function criarGrupoDePeriodosHistoricos({ inputId, containerId, nomeFuncaoRemover, tabela }) {
+    let itens = [];
+
+    const ehNovo = (i) => i && typeof i === 'object';
+    const mesmoItem = (a, b) =>
+        ehNovo(a) || ehNovo(b) ? ehNovo(a) && ehNovo(b) && a.novo === b.novo : a == b;
+
+    function adicionar(valor = null) {
+        const input = document.getElementById(inputId);
+        const texto = (valor ?? input?.value ?? '').trim();
+        if (!texto) return;
+        const r = resolverPeriodoPorRotulo(db.periodosHistoricos, texto);
+        if (r.ambiguo) {
+            mostrarAviso(
+                `Há mais de um período chamado "${r.nome}". Escolha na lista o que mostra o caminho.`,
+            );
+            return;
+        }
+        if (input) input.value = '';
+        const item = r.novo ? { novo: texto } : r.id;
+        if (!itens.some((i) => mesmoItem(i, item))) {
+            itens.push(item);
+            renderizar();
+        }
+    }
+
+    function remover(chave) {
+        itens = itens.filter((i) => String(ehNovo(i) ? `novo:${i.novo}` : i) !== String(chave));
+        renderizar();
+    }
+
+    function renderizar() {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        // Id que deixou de existir sai sem barulho.
+        itens = itens.filter((i) => ehNovo(i) || db.periodosHistoricos.some((p) => p.id == i));
+        container.innerHTML = itens
+            .map((i) => {
+                const novo = ehNovo(i);
+                const rotulo = novo ? i.novo : rotuloDeEscolhaDoPeriodo(db.periodosHistoricos, i);
+                const chave = novo ? `novo:${i.novo}` : String(i);
+                return `
+            <span title="${escapeHtml(novo ? 'Período novo: será criado ao salvar o texto' : rotulo)}" class="text-[11px] bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 px-2 py-1 rounded-full inline-flex items-center gap-1">
+                ${escapeHtml(rotulo)}${novo ? ' (novo)' : ''}
+                <button type="button" data-chave="${escapeHtml(chave)}" onclick="${nomeFuncaoRemover}('${tabela}', this.dataset.chave)" aria-label="Remover ${escapeHtml(rotulo)}" class="hover:text-red-600 dark:hover:text-red-400 font-bold ml-1">×</button>
+            </span>`;
+            })
+            .join('');
+    }
+
+    function reset() {
+        itens = [];
+        renderizar();
+    }
+
+    function carregar(ids) {
+        itens = periodosHistoricosIdsDoItem({ periodosHistoricosIds: ids }, db.periodosHistoricos);
+        renderizar();
+    }
+
+    // Chips + o que sobrou digitado no campo (quem digita e salva sem
+    // apertar "+" não perde o período).
+    function obterItens() {
+        const pendente = (document.getElementById(inputId)?.value || '').trim();
+        if (pendente) adicionar(pendente);
+        return itens;
+    }
+
+    return { adicionar, remover, renderizar, reset, carregar, obterItens };
+}
+
+const grupoPeriodosHistoricosPoema = criarGrupoDePeriodosHistoricos({
+    tabela: 'poemas',
+    inputId: 'p-periodo-historico-nome',
+    containerId: 'p-periodos-historicos-container',
+    nomeFuncaoRemover: 'removerPeriodoHistoricoDoTexto',
+});
+const grupoPeriodosHistoricosProsa = criarGrupoDePeriodosHistoricos({
+    tabela: 'prosas',
+    inputId: 'pr-periodo-historico-nome',
+    containerId: 'pr-periodos-historicos-container',
+    nomeFuncaoRemover: 'removerPeriodoHistoricoDoTexto',
+});
+function grupoPeriodosHistoricos(tabela) {
+    if (tabela === 'poemas') return grupoPeriodosHistoricosPoema;
+    if (tabela === 'prosas') return grupoPeriodosHistoricosProsa;
+    throw new Error(`Tabela desconhecida em grupoPeriodosHistoricos: ${tabela}`);
+}
+export function adicionarPeriodoHistoricoDoTexto(tabela, valor = null) {
+    grupoPeriodosHistoricos(tabela).adicionar(valor);
+}
+export function removerPeriodoHistoricoDoTexto(tabela, chave) {
+    grupoPeriodosHistoricos(tabela).remover(chave);
+}
+export function resetPeriodosHistoricosDoTexto(tabela) {
+    grupoPeriodosHistoricos(tabela).reset();
+}
+export function carregarPeriodosHistoricosDoTexto(tabela, ids) {
+    grupoPeriodosHistoricos(tabela).carregar(ids);
+}
+// Lista de { id } ou { novo } na ordem dos chips; quem salva troca cada
+// { novo } pelo id do período criado.
+export function obterPeriodosHistoricosDoTexto(tabela) {
+    return grupoPeriodosHistoricos(tabela).obterItens();
 }
 
 // ─── 4º grupo do Autor: Reconhecimento e formação literária ─────

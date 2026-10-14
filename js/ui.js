@@ -16,6 +16,7 @@ import {
     resetReconhecimentos,
     atualizarDatalist,
     atualizarDatalistRegiaoPeriodoHistorico,
+    preencherPaisPeriodoHistorico,
     atualizarDatalistRegiaoOrigemMovimento,
     preencherOpcoesPaiCorrente,
     atualizarDatalistsAutor,
@@ -29,10 +30,14 @@ import {
     atualizarRotulosDirecaoElo,
     renderAutoclassificacao,
     resetMovimentosEscolasDiretos,
+    resetPeriodosHistoricosDoTexto,
     resetTodosOsGruposDeMovimento,
+    resetRegiaoPeriodoHistorico,
     resetTemasAssunto,
     atualizarDatalistTemasAssunto,
 } from './editor.js';
+import { resetFontesCorrente } from './fontes-corrente-ui.js';
+import { resetFontesPeriodoHistorico } from './fontes-periodo-historico-ui.js';
 import {
     extrairFasesUnicas,
     extrairNacionalidadesUnicas,
@@ -884,7 +889,12 @@ export async function prepararNovo(tipo) {
     const idField = document.getElementById(idFields[tipo]);
     if (idField) idField.value = '';
 
-    if (tipo === 'periodo-historico') atualizarDatalistRegiaoPeriodoHistorico();
+    if (tipo === 'periodo-historico') {
+        atualizarDatalistRegiaoPeriodoHistorico();
+        resetRegiaoPeriodoHistorico();
+        preencherPaisPeriodoHistorico(null, []);
+        resetFontesPeriodoHistorico();
+    }
     if (tipo === 'movimento-escola') {
         atualizarDatalistRegiaoOrigemMovimento();
         preencherOpcoesPaiCorrente();
@@ -908,6 +918,7 @@ export async function prepararNovo(tipo) {
         resetElos('poemas');
         resetEcos('poemas');
         resetMovimentosEscolasDiretos('poemas');
+        resetPeriodosHistoricosDoTexto('poemas');
         renderPainelElosDerivados(null);
         renderAutoclassificacao('poemas');
         atualizarDatalist();
@@ -951,6 +962,7 @@ export async function prepararNovo(tipo) {
         resetElos('prosas');
         resetEcos('prosas');
         resetMovimentosEscolasDiretos('prosas');
+        resetPeriodosHistoricosDoTexto('prosas');
         renderPainelElosDerivados(null);
         renderAutoclassificacao('prosas');
         import('./editor.js').then(
@@ -1020,6 +1032,7 @@ export async function prepararNovo(tipo) {
         // vivem em estado próprio (closure de criarGrupoDeTagsArray),
         // fora do form.reset() nativo.
         resetTodosOsGruposDeMovimento();
+        resetFontesCorrente();
         // Os grupos colapsáveis (<details>) também não são resetados pelo
         // form.reset(): fecha todos à mão, como no bloco 'autor' acima.
         document
@@ -1057,9 +1070,15 @@ export async function prepararNovo(tipo) {
     if (tipo === 'epoca') {
         // Mesmo raciocínio do bloco 'grupo' acima: Autor pré-selecionado
         // com quem estiver marcado "sou eu", sem travar a escolha.
-        import('./forms.js').then(({ renderSelectAutor }) => {
-            renderSelectAutor('ep-autor', null);
-        });
+        // Bloco 3: campos novos nascem vazios (estado fora do form.reset nativo).
+        // Depois do Autor, porque "Faz parte de" só oferece períodos do autor
+        // escolhido.
+        Promise.all([import('./forms.js'), import('./periodo-biografico-ui.js')]).then(
+            ([{ renderSelectAutor }, { preencherCamposPeriodoBiografico }]) => {
+                renderSelectAutor('ep-autor', null);
+                preencherCamposPeriodoBiografico(null);
+            },
+        );
     }
 
     const title = document.getElementById(`modal-${tipo}-titulo`);

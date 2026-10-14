@@ -30,9 +30,13 @@ import {
     chaveTema,
     podarSobrescritasAssunto,
     podarExcecoesAssunto,
+    periodosHistoricosIdsDoItem,
 } from './utils.js';
 import { resolverTemasEditados } from './temas.js';
 import { importarLocaisDoTexto } from './locais.js';
+import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
+import { normalizarLista, registrarValoresNovos } from './periodo-biografico-campos.js';
+import { exibindoOcultasDosPeriodos } from './ocultas-periodos.js';
 import { importarPersonagensDoTexto } from './personagens.js';
 import { completarPessoaComFicha } from './pessoas-viagem.js';
 import { ecosImportados } from './ancora-eco.js';
@@ -83,7 +87,7 @@ const COLECAO_POR_CAMPO = {
     grupos: 'grupos',
     autores: 'autores',
     'epocaRetratada.epocaId': 'epocas',
-    periodoHistoricoId: 'periodosHistoricos',
+    periodoHistoricoId: 'periodosHistoricos', // campo da referência (mantido; o item agora tem lista)
     livroId: 'livros',
     movimentosEscolas: 'movimentosEscolas',
 };
@@ -95,7 +99,14 @@ function normalizarTexto(s) {
 // Candidatos por nome (case-insensitive). Match exato tem prioridade —
 // só cai pra aproximado (substring num sentido ou noutro) se não houver
 // nenhum exato, e nesse caso pode haver mais de um candidato.
-function candidatosPorNome(lista, nome) {
+//
+// `periodos: true` (Período Biográfico): um período oculto do destino ainda
+// casa por nome EXATO, para o texto importado se ligar a ele em vez de criar
+// um período visível duplicado. No aproximado ele fica de fora (a menos que
+// "Mostrar ocultas" esteja ligado), para a lista de opções não revelar nomes
+// ocultos por semelhança. O candidato oculto leva `oculto: true` e a tela
+// mostra o rótulo "(período oculto)" no lugar do nome.
+function candidatosPorNome(lista, nome, { periodos = false } = {}) {
     const alvo = normalizarTexto(nome).toLowerCase();
     if (!alvo || !Array.isArray(lista)) return [];
 
@@ -103,22 +114,33 @@ function candidatosPorNome(lista, nome) {
 
     const exatos = lista
         .filter((x) => nomeDe(x).toLowerCase() === alvo)
-        .map((x) => ({ id: x.id, nome: nomeDe(x), match: 'exato' }));
+        .map((x) => ({
+            id: x.id,
+            nome: nomeDe(x),
+            match: 'exato',
+            ...(periodos && x.oculto ? { oculto: true } : {}),
+        }));
     if (exatos.length) return exatos;
 
     return lista
         .filter((x) => {
+            if (periodos && x.oculto && !exibindoOcultasDosPeriodos()) return false;
             const n = nomeDe(x).toLowerCase();
             return n && (n.includes(alvo) || alvo.includes(n));
         })
-        .map((x) => ({ id: x.id, nome: nomeDe(x), match: 'aproximado' }));
+        .map((x) => ({
+            id: x.id,
+            nome: nomeDe(x),
+            match: 'aproximado',
+            ...(periodos && x.oculto ? { oculto: true } : {}),
+        }));
 }
 
 // Regras de classificação (ver docs): sem candidato → 'criar'
 // automático; um candidato exato → 'casar' pré-marcado (trocável);
 // candidato aproximado ou mais de um → ambíguo, decisão manual.
-function classificarReferencia(campo, idOrigem, nome, lista) {
-    const candidatos = candidatosPorNome(lista, nome);
+function classificarReferencia(campo, idOrigem, nome, lista, opcoes) {
+    const candidatos = candidatosPorNome(lista, nome, opcoes);
     const exatoUnico = candidatos.length === 1 && candidatos[0].match === 'exato';
     return {
         campo,
@@ -127,6 +149,26 @@ function classificarReferencia(campo, idOrigem, nome, lista) {
         decisao: candidatos.length === 0 ? 'criar' : exatoUnico ? 'casar' : null,
         entidadeDestinoId: exatoUnico ? candidatos[0].id : null,
     };
+}
+
+// Períodos Históricos do item exportado: `periodosHistoricosResolvidos`
+// ({ id, nome, caminho }, formato novo) ou, em arquivo antigo, o
+// `periodoHistoricoId` único com `periodoHistoricoNome`/`Caminho`. Entrada
+// sem nome não resolve nada num acervo de destino e é ignorada.
+function periodosDeOrigem(item) {
+    if (Array.isArray(item.periodosHistoricosResolvidos)) {
+        return item.periodosHistoricosResolvidos.filter((x) => x?.id != null);
+    }
+    if (item.periodoHistoricoId != null) {
+        return [
+            {
+                id: item.periodoHistoricoId,
+                nome: item.periodoHistoricoNome,
+                caminho: item.periodoHistoricoCaminho,
+            },
+        ];
+    }
+    return [];
 }
 
 // Extrai as referências de um item exportado (formato montarRegistro,
@@ -158,24 +200,40 @@ function extrairReferencias(item, dbRef) {
                 item.epocaRetratada.epocaId,
                 item.epocaRetratada.nomeEpoca,
                 dbRef.epocas,
+                { periodos: true },
             ),
         );
     }
 
-    // periodoHistoricoId é campo solto (não objeto, ao contrário de
-    // epocaRetratada acima) — o nome vem de periodoHistoricoNome,
-    // denormalizado por montarRegistro (exportar.js) do mesmo jeito
-    // que epocaRetratada.nomeEpoca.
-    if (item.periodoHistoricoId != null) {
-        refs.push(
-            classificarReferencia(
-                'periodoHistoricoId',
-                item.periodoHistoricoId,
-                item.periodoHistoricoNome,
-                dbRef.periodosHistoricos,
-            ),
+    // Bloco 2e: um item de referência por período do texto, com nome e
+    // caminho denormalizados por montarRegistro (exportar.js). Arquivo
+    // antigo (periodoHistoricoId único + periodoHistoricoNome/Caminho) vira
+    // uma lista de um.
+    periodosDeOrigem(item).forEach((pOrigem) => {
+        const ref = classificarReferencia(
+            'periodoHistoricoId',
+            pOrigem.id,
+            pOrigem.nome,
+            dbRef.periodosHistoricos,
         );
-    }
+        // Caminho de origem: o aplicador usa para religar ao pai certo ao criar.
+        ref.caminhoOrigem = normalizarTexto(pOrigem.caminho);
+        // Homônimos no destino: o caminho exportado desempata. Só decide
+        // sozinho quando exatamente um deles tem esse mesmo caminho.
+        const caminho = ref.caminhoOrigem;
+        if (caminho && ref.candidatos.length > 1) {
+            const iguais = ref.candidatos.filter(
+                (c) =>
+                    c.match === 'exato' &&
+                    caminhoDoPeriodo(dbRef.periodosHistoricos, c.id) === caminho,
+            );
+            if (iguais.length === 1) {
+                ref.decisao = 'casar';
+                ref.entidadeDestinoId = iguais[0].id;
+            }
+        }
+        refs.push(ref);
+    });
 
     // Movimento/Escola: N:N (array), mesmo padrão de livrosResolvidos
     // logo abaixo — um item de referência por entrada do array, não um
@@ -298,6 +356,20 @@ export function relatorioProntoParaAplicar(relatorio) {
 // scripts/montar-pacote.js). Casa pelo id de origem primeiro e cai pro
 // nome se o id não bater; payload sem `autores` (Exportação comum)
 // devolve null e o Autor nasce só com nome, como sempre foi.
+// Bloco 3: Esfera e Categoria do período de origem (vêm em
+// itens[].epocaRetratada, ver montarRegistro em exportar.js). Pacote antigo
+// não tem os campos: a lista sai vazia.
+function camposEpocaDoPayload(payload, idOrigem) {
+    const itens = Array.isArray(payload?.itens) ? payload.itens : [];
+    const achado = itens.find(
+        (it) => it?.epocaRetratada?.epocaId != null && it.epocaRetratada.epocaId === idOrigem,
+    );
+    return {
+        esferas: achado?.epocaRetratada?.esferas,
+        categorias: achado?.epocaRetratada?.categorias,
+    };
+}
+
 function metadadosAutorDoPayload(payload, idOrigem, nome) {
     const lista = Array.isArray(payload?.autores) ? payload.autores : [];
     const alvo = normalizarTexto(nome).toLowerCase();
@@ -306,6 +378,58 @@ function metadadosAutorDoPayload(payload, idOrigem, nome) {
         lista.find((a) => normalizarTexto(a?.nome).toLowerCase() === alvo) ||
         null
     );
+}
+
+// Período Histórico novo com a cadeia de pais do caminho exportado
+// ("Nova República › Governo Dilma Rousseff › Segundo mandato"). Cada pai é
+// achado no destino pelo caminho exato; sem isso, pelo nome quando ele é
+// único; senão nasce um novo (se havia mais de um com o nome, conta em
+// `homonimos` para o aviso do resultado). O último trecho é o próprio
+// período, sempre criado. Sem caminho, ou com um que não termina no nome,
+// o período nasce de topo, como antes.
+export function criarPeriodoHistoricoComCaminho(dbRef, nome, caminho, contagem = null) {
+    const novo = (n, paiId) => {
+        const p = {
+            id: gerarId(),
+            nome: n,
+            notas: '',
+            regiao: [],
+            inicio: null,
+            fim: null,
+            pertenceA: paiId != null ? [paiId] : [],
+            fontes: [],
+        };
+        dbRef.periodosHistoricos.push(p);
+        return p.id;
+    };
+    const partes = normalizarTexto(caminho)
+        .split('›')
+        .map((x) => x.trim())
+        .filter(Boolean);
+    if (partes.length < 2 || partes[partes.length - 1].toLowerCase() !== nome.toLowerCase()) {
+        return novo(nome, null);
+    }
+    let paiId = null;
+    partes.slice(0, -1).forEach((parte, i) => {
+        const prefixo = partes.slice(0, i + 1).join(' › ');
+        const lista = dbRef.periodosHistoricos;
+        const porCaminho = lista.find((p) => caminhoDoPeriodo(lista, p.id) === prefixo);
+        if (porCaminho) {
+            paiId = porCaminho.id;
+            return;
+        }
+        const mesmoNome = lista.filter(
+            (p) => normalizarTexto(p.nome).toLowerCase() === parte.toLowerCase(),
+        );
+        if (mesmoNome.length === 1) {
+            paiId = mesmoNome[0].id;
+            return;
+        }
+        if (mesmoNome.length > 1 && contagem) contagem.homonimos++;
+        paiId = novo(parte, paiId);
+        if (contagem) contagem.paisCriados++;
+    });
+    return novo(nome, paiId);
 }
 
 function criarEntidade(campo, nome, dbRef, extra = null) {
@@ -339,10 +463,34 @@ function criarEntidade(campo, nome, dbRef, extra = null) {
             }));
         }
         dbRef.autores.push(autor);
-    } else if (campo === 'epocaRetratada.epocaId')
-        dbRef.epocas.push({ id, nome, contextoRelacao: '', notas: '', inicio: null, fim: null });
-    else if (campo === 'periodoHistoricoId')
-        dbRef.periodosHistoricos.push({ id, nome, notas: '', regiao: '', inicio: null, fim: null });
+    } else if (campo === 'epocaRetratada.epocaId') {
+        // Bloco 3: Esfera e Categoria vêm do pacote quando ele as declara;
+        // Pessoas envolvidas não viajam (ids não valem noutro acervo).
+        const epoca = {
+            id,
+            nome,
+            notas: '',
+            inicio: null,
+            fim: null,
+            esferas: normalizarLista(extra?.esferas),
+            categorias: normalizarLista(extra?.categorias),
+            pessoasEnvolvidas: [],
+            relacoes: [],
+            pertenceA: [],
+        };
+        dbRef.epocas.push(epoca);
+        registrarValoresNovos(dbRef, epoca);
+    } else if (campo === 'periodoHistoricoId')
+        dbRef.periodosHistoricos.push({
+            id,
+            nome,
+            notas: '',
+            regiao: [],
+            inicio: null,
+            fim: null,
+            pertenceA: [],
+            fontes: [],
+        });
     else if (campo === 'livroId')
         dbRef.livros.push({ id, titulo: nome, sequencia: null, tipo: '', fase: '' });
     else if (campo === 'movimentosEscolas')
@@ -358,13 +506,14 @@ function criarEntidade(campo, nome, dbRef, extra = null) {
             paiId: null,
             divisao: '',
             generoDivisao: '',
-            regiaoOrigem: '',
+            regiaoOrigem: [],
             valores: [],
             temas: [],
             tecnicas: [],
             tiposComposicao: [],
             lemas: [],
             manifestos: [],
+            fontes: [],
         });
     return id;
 }
@@ -388,6 +537,10 @@ function remontarItem(itemOrigem, novoId, referencias) {
     delete novo.livrosResolvidos;
     delete novo.movimentosEscolasResolvidos;
     delete novo.periodoHistoricoNome; // só existia pra resolução de referência, não persiste
+    delete novo.periodoHistoricoCaminho; // idem
+    delete novo.periodoHistoricoId; // arquivo antigo: vira periodosHistoricosIds abaixo
+    delete novo.periodosHistoricosResolvidos; // idem
+    delete novo.periodosHistoricosIds; // ids de outro acervo, refeitos abaixo
     delete novo.sonoridade; // vira registro próprio em db.escansoes, ver aplicarImportacaoAditiva
     delete novo.estruturaTextual; // idem, em db.estruturasTextuais
 
@@ -424,9 +577,11 @@ function remontarItem(itemOrigem, novoId, referencias) {
         };
     }
 
-    if (itemOrigem.periodoHistoricoId != null) {
-        novo.periodoHistoricoId = destinoDe('periodoHistoricoId', itemOrigem.periodoHistoricoId);
-    }
+    novo.periodosHistoricosIds = periodosHistoricosIdsDoItem({
+        periodosHistoricosIds: periodosDeOrigem(itemOrigem).map((pOrigem) =>
+            destinoDe('periodoHistoricoId', pOrigem.id),
+        ),
+    });
 
     novo.livrosIds = (itemOrigem.livrosResolvidos || [])
         .map((l) => destinoDe('livroId', l.id))
@@ -499,6 +654,8 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
     const novasEscansoes = [];
     const novasEstruturasTextuais = [];
     let duplicatasPuladas = 0;
+    // Pais de período criados pelo caminho e quantos tinham homônimo no destino.
+    const periodos = { paisCriados: 0, homonimos: 0 };
 
     relatorio.itensOrigem.forEach((rel) => {
         if (rel.status === 'erro') return; // já não entra no lote
@@ -541,8 +698,18 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
                               r.valorOrigem.idOrigem,
                               r.valorOrigem.nome,
                           )
-                        : null;
-                destinoId = criarEntidade(r.campo, r.valorOrigem.nome, dbRef, extra);
+                        : r.campo === 'epocaRetratada.epocaId'
+                          ? camposEpocaDoPayload(payload, r.valorOrigem.idOrigem)
+                          : null;
+                destinoId =
+                    r.campo === 'periodoHistoricoId'
+                        ? criarPeriodoHistoricoComCaminho(
+                              dbRef,
+                              r.valorOrigem.nome,
+                              r.caminhoOrigem,
+                              periodos,
+                          )
+                        : criarEntidade(r.campo, r.valorOrigem.nome, dbRef, extra);
                 mapaCriados[colecao][r.valorOrigem.idOrigem] = destinoId;
             }
             r._destinoFinal = destinoId;
@@ -643,5 +810,6 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
         },
         duplicatasPuladas,
         soltos,
+        periodos,
     };
 }

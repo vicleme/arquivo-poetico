@@ -351,7 +351,7 @@ describe('aplicarImportacaoAditiva', () => {
         assert.equal(db.poemas[0].autoria[0].autorId, 55);
     });
 
-    it('Período Histórico "criar" gera entidade nova e remapeia periodoHistoricoId no item, sem persistir periodoHistoricoNome', async () => {
+    it('Período Histórico "criar" gera entidade nova e remapeia o período antigo (periodoHistoricoId) para periodosHistoricosIds, sem persistir periodoHistoricoNome', async () => {
         const db = dbVazio();
         const payload = {
             itens: [
@@ -368,7 +368,8 @@ describe('aplicarImportacaoAditiva', () => {
         assert.equal(db.periodosHistoricos.length, 1);
         assert.equal(db.periodosHistoricos[0].nome, 'Ditadura Militar');
         const novoPoema = db.poemas[0];
-        assert.equal(novoPoema.periodoHistoricoId, db.periodosHistoricos[0].id);
+        assert.deepEqual(novoPoema.periodosHistoricosIds, [db.periodosHistoricos[0].id]);
+        assert.equal(novoPoema.periodoHistoricoId, undefined); // campo antigo sai
         assert.equal(novoPoema.periodoHistoricoNome, undefined); // decorativo, não persiste
     });
 
@@ -388,7 +389,7 @@ describe('aplicarImportacaoAditiva', () => {
         await aplicarImportacaoAditiva(payload, relatorio, db, deps);
 
         assert.equal(db.periodosHistoricos.length, 1); // não duplicou
-        assert.equal(db.poemas[0].periodoHistoricoId, 30);
+        assert.deepEqual(db.poemas[0].periodosHistoricosIds, [30]);
     });
 
     it('duas entidades "criar" com a mesma idOrigem no lote reaproveitam a mesma nova entidade', async () => {

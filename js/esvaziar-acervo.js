@@ -33,6 +33,7 @@ import {
     migrarMovimentosEscolasEmbutidos,
     migrarTemplatesEstruturaEmbutidos,
 } from './db.js';
+import { periodosHistoricosIdsDoItem } from './utils.js';
 
 // Os três cadastros de fábrica: coleção no db, lista de ocultos e a função que
 // recoloca o que faltar (a mesma que roda no carregamento).
@@ -70,6 +71,7 @@ export const ROTULOS_DADOS = Object.freeze({
     grupos: 'grupos',
     autores: 'autores',
     epocas: 'períodos biográficos',
+    opcoesPeriodoBiografico: 'opções de esfera e vínculo',
     assuntos: 'assuntos',
     temas: 'temas',
     locais: 'locais',
@@ -150,7 +152,12 @@ function planejarPreProntos(db, c) {
                 const emUso = new Set();
                 if (colecao === 'periodosHistoricos') {
                     for (const f of fabrica) {
-                        if (textos.some((t) => mesmoId(t.periodoHistoricoId, f.id))) emUso.add(f);
+                        if (
+                            textos.some((t) =>
+                                periodosHistoricosIdsDoItem(t).some((x) => mesmoId(x, f.id)),
+                            )
+                        )
+                            emUso.add(f);
                     }
                 } else if (colecao === 'movimentosEscolas') {
                     const referenciantes = [...textos, ...lista(db.autores)];

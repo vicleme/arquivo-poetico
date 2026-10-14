@@ -112,6 +112,8 @@ describe('Períodos e movimentos em massa: painel', () => {
         prepararPainelPeriodosMassa('poemas');
         assert.ok(el('bulk-periodo-sobrescrever-wrap').classList.contains('hidden'));
         escolher('poemas', 'periodoHistorico', '');
+        assert.ok(el('bulk-periodo-sobrescrever-wrap').classList.contains('hidden'));
+        escolher('poemas', 'epoca', '');
         assert.ok(!el('bulk-periodo-sobrescrever-wrap').classList.contains('hidden'));
     });
 
@@ -142,22 +144,22 @@ describe('Períodos e movimentos em massa: Poemas', () => {
         assert.equal(el('bulk-periodo-nome').value, '', 'campo limpo depois de aplicar');
     });
 
-    it('aplica Período Histórico só onde está vazio (mantém o que já tinha)', () => {
+    it('aplica Período Histórico somando ao que o texto já tinha', () => {
         db.periodosHistoricos.push({ id: 201, nome: 'Redemocratização' });
-        db.poemas.push(poema(1), poema(2, { periodoHistoricoId: 201 }));
+        db.poemas.push(poema(1), poema(2, { periodosHistoricosIds: [201] }));
         selecionarPoemas(1, 2);
         prepararPainelPeriodosMassa('poemas');
         escolher('poemas', 'periodoHistorico', 'Ditadura');
         aplicarPeriodoEmMassa('poemas');
         confirmar();
 
-        assert.equal(db.poemas[0].periodoHistoricoId, 200);
-        assert.equal(db.poemas[1].periodoHistoricoId, 201);
+        assert.deepEqual(db.poemas[0].periodosHistoricosIds, [200]);
+        assert.deepEqual(db.poemas[1].periodosHistoricosIds, [201, 200]);
     });
 
-    it('"substituir" troca o Período Histórico que já estava', () => {
+    it('"substituir" marcado não troca o Período Histórico: ele só soma', () => {
         db.periodosHistoricos.push({ id: 201, nome: 'Redemocratização' });
-        db.poemas.push(poema(2, { periodoHistoricoId: 201 }));
+        db.poemas.push(poema(2, { periodosHistoricosIds: [201] }));
         selecionarPoemas(2);
         prepararPainelPeriodosMassa('poemas');
         escolher('poemas', 'periodoHistorico', 'Ditadura');
@@ -165,7 +167,7 @@ describe('Períodos e movimentos em massa: Poemas', () => {
         aplicarPeriodoEmMassa('poemas');
         confirmar();
 
-        assert.equal(db.poemas[0].periodoHistoricoId, 200);
+        assert.deepEqual(db.poemas[0].periodosHistoricosIds, [201, 200]);
     });
 
     it('aplica Período Biográfico pelo Autor do texto', () => {

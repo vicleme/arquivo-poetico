@@ -9,7 +9,8 @@
 
 import { db, save } from './db.js';
 import { tirarSnapshotSeNecessario } from './autobackup.js';
-import { escapeHtml, mostrarAviso } from './utils.js';
+import { escapeHtml, mostrarAviso, ROTULO_PERIODO_OCULTO } from './utils.js';
+import { exibindoOcultasDosPeriodos } from './ocultas-periodos.js';
 import {
     normalizarItensPayload,
     classificarImportacaoAditiva,
@@ -32,6 +33,12 @@ const ROTULO_CAMPO_REF = {
 let _payloadAtual = null;
 let _relatorioAtual = null;
 
+// Candidato que é Período Biográfico oculto: o nome real só aparece com
+// "Mostrar ocultas" ligado; senão a tela mostra o rótulo de período oculto.
+function nomeDoCandidato(c) {
+    return c?.oculto && !exibindoOcultasDosPeriodos() ? ROTULO_PERIODO_OCULTO : c?.nome;
+}
+
 function labelReferencia(r) {
     if (r.campo === 'duplicataTitulo') {
         return `Título igual a um item já existente: "${r.valorOrigem.nome}"`;
@@ -48,7 +55,9 @@ function resumoDecisao(r) {
     }
     if (r.decisao === 'casar') {
         if (r.campo === 'duplicataTitulo') return '→ tratado como duplicata, não importado';
-        const nome = r.candidatos.find((c) => String(c.id) === String(r.entidadeDestinoId))?.nome;
+        const nome = nomeDoCandidato(
+            r.candidatos.find((c) => String(c.id) === String(r.entidadeDestinoId)),
+        );
         return `→ associa a "${nome || r.entidadeDestinoId}" já existente`;
     }
     return '→ decisão pendente';
@@ -71,7 +80,7 @@ function selectReferencia(itemIdx, refIdx, r) {
             const rotulo =
                 r.campo === 'duplicataTitulo'
                     ? rotuloCasarPrefixo
-                    : `🔗 ${escapeHtml(c.nome)} (${c.match})`;
+                    : `🔗 ${escapeHtml(nomeDoCandidato(c))} (${c.match})`;
             return `<option value="${i}" ${selecionado ? 'selected' : ''}>${rotulo}</option>`;
         })
         .join('');
@@ -341,6 +350,13 @@ export async function aplicarImportacaoAditivaClick() {
     let mensagem = partes.length ? `Importado: ${partes.join(' + ')}.` : 'Nada novo foi importado.';
     if (resultado.duplicatasPuladas) {
         mensagem += ` ${resultado.duplicatasPuladas} tratada(s) como duplicata e não importada(s).`;
+    }
+    const periodos = resultado.periodos || { paisCriados: 0, homonimos: 0 };
+    if (periodos.paisCriados) {
+        mensagem += ` ${plural(periodos.paisCriados, 'período-pai criado', 'períodos-pai criados')} pelo caminho dos Períodos Históricos.`;
+    }
+    if (periodos.homonimos) {
+        mensagem += ` ${plural(periodos.homonimos, 'pai tinha homônimo', 'pais tinham homônimos')} no acervo e ${periodos.homonimos === 1 ? 'foi criado separado' : 'foram criados separados'}: confira em Períodos Históricos.`;
     }
     const soltos = resultado.soltos || { elos: 0, ecos: 0 };
     if (soltos.elos || soltos.ecos) {

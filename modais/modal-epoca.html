@@ -7,7 +7,7 @@
     tabindex="-1"
 >
     <div
-        class="bg-white dark:bg-slate-900 rounded-lg w-full max-w-md shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        class="bg-white dark:bg-slate-900 rounded-lg w-full max-w-lg shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
     >
         <div
             class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0"
@@ -67,16 +67,96 @@
                         type="text"
                         id="ep-nome"
                         required
-                        placeholder="Ex: Namoro com Fulano, Luto, Pandemia"
+                        placeholder="Ex: Faculdade, Intercâmbio, Mudança de cidade"
                     />
                 </div>
                 <div>
-                    <label class="form-label">Contexto do relacionamento</label>
+                    <label class="form-label">Faz parte de</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
-                        Quem/o quê está envolvido nessa época — opcional, ex.: "Parceiro A e
-                        Parceiro B".
+                        Período que contém este, opcional. Ex.: "Pré-vestibular" faz parte de
+                        "Ensino médio". Só aparecem períodos do mesmo autor, e este precisa se
+                        sobrepor no tempo ao período pai: pode começar antes dele e terminar depois,
+                        mas não pode começar depois do fim dele nem terminar antes do começo dele. O
+                        primeiro da lista é o principal e define o caminho mostrado; clique em um
+                        dos outros para torná-lo o principal.
                     </p>
-                    <input type="text" id="ep-contexto" placeholder="Ex: Parceiro A e Parceiro B" />
+                    <div id="ep-pais-chips" class="flex flex-wrap gap-1 mb-2"></div>
+                    <select id="ep-pais-select">
+                        <option value="">Adicionar período pai...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label" for="ep-esferas-input">Esfera</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Áreas da vida a que este período se refere. Escolha da lista ou digite uma
+                        nova e aperte Enter.
+                    </p>
+                    <div id="ep-esferas-chips" class="flex flex-wrap gap-1 mb-2"></div>
+                    <input
+                        type="text"
+                        id="ep-esferas-input"
+                        list="sugestoes-ep-esferas"
+                        placeholder="Ex: Acadêmica, Afetiva"
+                        autocomplete="off"
+                    />
+                    <datalist id="sugestoes-ep-esferas"></datalist>
+                </div>
+                <div>
+                    <label class="form-label" for="ep-categorias-input">Categoria</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Tags livres para o que não cabe em Esfera, Pessoas, Natureza ou Vínculo.
+                        Aperte Enter para adicionar.
+                    </p>
+                    <div id="ep-categorias-chips" class="flex flex-wrap gap-1 mb-2"></div>
+                    <input
+                        type="text"
+                        id="ep-categorias-input"
+                        list="sugestoes-ep-categorias"
+                        placeholder="Ex: Luto, Pandemia, Transição"
+                        autocomplete="off"
+                    />
+                    <datalist id="sugestoes-ep-categorias"></datalist>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between gap-2">
+                        <label class="form-label">Pessoas envolvidas</label>
+                        <button
+                            type="button"
+                            id="ep-mostrar-ocultas"
+                            aria-pressed="false"
+                            title="Mostra as pessoas ocultas só enquanto este modal estiver aberto"
+                            class="hidden text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            Mostrar ocultas
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Pessoas do cadastro que fazem parte deste período. Quem aparece numa relação
+                        entra aqui sozinho.
+                    </p>
+                    <div id="ep-pessoas-lista" class="flex flex-wrap gap-1 mb-2"></div>
+                    <select id="ep-pessoas-select"></select>
+                </div>
+                <div>
+                    <label class="form-label">Relações</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Como as pessoas se relacionam neste período: entre o autor e uma pessoa, ou
+                        entre duas pessoas. A Natureza é a categoria da relação (Familiar, Amizade,
+                        Romance...) e o vínculo é o laço específico (namorados, mãe, tio...).
+                        Preencha ao menos um dos dois; ao escolher o vínculo, a Natureza sugerida
+                        vem preenchida e pode ser trocada. Em vínculos como "Responsável por" e
+                        "Filho ou filha de", quem vem primeiro é quem tem o papel. A frase abaixo de
+                        cada relação mostra como ela será lida.
+                    </p>
+                    <div id="ep-relacoes-lista" class="flex flex-col gap-2 mb-2"></div>
+                    <button
+                        type="button"
+                        id="ep-relacoes-adicionar"
+                        class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                        Adicionar relação
+                    </button>
+                    <datalist id="sugestoes-ep-vinculos"></datalist>
                 </div>
                 <div>
                     <label class="form-label">Data</label>
@@ -154,7 +234,7 @@
                     <textarea
                         id="ep-notas"
                         class="h-24"
-                        placeholder="Ex: período entre o pedido de espaço e a retomada do contato."
+                        placeholder="Ex: o que marca esse período, como começou ou terminou, o que o diferencia dos outros."
                     ></textarea>
                 </div>
                 <div

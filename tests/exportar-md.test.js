@@ -790,7 +790,13 @@ describe('gerarMarkdownExportacao — Períodos, Corrente literária e Inspiraç
 
     it('inclui Período Histórico Retratado e Corrente literária', () => {
         db.poemas = [
-            { id: 1, titulo: 'T', texto: 'x', periodoHistoricoId: 3, movimentosEscolasIds: [11] },
+            {
+                id: 1,
+                titulo: 'T',
+                texto: 'x',
+                periodosHistoricosIds: [3],
+                movimentosEscolasIds: [11],
+            },
         ];
         const md = gerarMarkdownExportacao(db.poemas);
         assert.match(md, /\*\*Período Histórico Retratado:\*\* Pandemia de Covid-19/);
@@ -810,7 +816,7 @@ describe('gerarMarkdownExportacao — Períodos, Corrente literária e Inspiraç
             id: 1,
             titulo: 'T',
             texto: 'x',
-            periodoHistoricoId: 3,
+            periodosHistoricosIds: [3],
         });
         assert.equal(comPeriodo, vazio + 1);
     });

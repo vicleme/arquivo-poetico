@@ -29,7 +29,7 @@
 // Tudo aqui é função pura sobre o `dbRef` passado (sem DOM, sem save()).
 // Comparação de nomes sempre por `chaveTema` (sem caixa/acento).
 
-import { chaveTema, gerarId } from './utils.js';
+import { chaveTema, gerarId, escaparAspasBusca } from './utils.js';
 
 export const TIPOS_LOCAL_PADRAO = [
     'País',
@@ -1021,7 +1021,7 @@ export function consultaBuscaDoLocal(dbRef, id, prefixo) {
     const local = achar(dbRef, id);
     if (!local) return '';
     const rotulo = local.tipo ? `${local.nome} (${local.tipo})` : rotuloLocal(dbRef, id);
-    return `${prefixo}:"${rotulo.replace(/"/g, '')}"`;
+    return `${prefixo}:"${escaparAspasBusca(rotulo)}"`;
 }
 
 // ─── Campos do modal: Territorialidade e Local onde foi escrito ─────────

@@ -13,10 +13,11 @@
 //                      Aplicar é aditivo (empilha o id se ainda não
 //                      está), remover tira só aquele id. Não existe
 //                      "substituir", como em Pessoas/Sinalizações.
-//   periodoHistorico   item.periodoHistoricoId — id ÚNICO, cadastro
-//                      global. Quem já tem outro período é mantido,
-//                      a menos que `sobrescrever` esteja ligado
-//                      (mesmo critério de "Preencher campo").
+//   periodoHistorico   item.periodosHistoricosIds — LISTA de ids (Bloco
+//                      2e), cadastro global. Igual a movimento: aplicar
+//                      é aditivo (empilha o id se ainda não está),
+//                      remover tira só aquele id. Não existe
+//                      "substituir".
 //   epoca              item.epocaRetratada.epocaId — id ÚNICO, mas a
 //                      Época pertence a um Autor (epoca.autorId).
 //                      Só vale pra um texto se o Autor dela consta na
@@ -37,6 +38,8 @@ import {
     obterOuCriarPeriodoHistoricoPorNome,
     obterOuCriarMovimentoEscolaPorNome,
 } from './db.js';
+import { periodosHistoricosIdsDoItem } from './utils.js';
+import { exibindoOcultasDosPeriodos } from './ocultas-periodos.js';
 
 export const TIPOS_PERIODO_MASSA = [
     { chave: 'movimento', rotulo: 'Corrente literária' },
@@ -51,13 +54,15 @@ export function rotuloTipoPeriodoMassa(tipo) {
 const limpar = (nome) => String(nome ?? '').trim();
 
 // Nomes do cadastro pro autocompletar do painel (sem repetição — o
-// mesmo nome de Época pode existir pra Autores diferentes).
+// mesmo nome de Época pode existir pra Autores diferentes). Período
+// Biográfico oculto não é sugerido, a menos que "Mostrar ocultas" esteja
+// ligado (ver ocultas-periodos.js).
 export function nomesCadastroPeriodoMassa(tipo, dbRef = db) {
     const lista =
         tipo === 'movimento'
             ? dbRef.movimentosEscolas
             : tipo === 'epoca'
-              ? dbRef.epocas
+              ? (dbRef.epocas || []).filter((x) => !x.oculto || exibindoOcultasDosPeriodos())
               : dbRef.periodosHistoricos;
     return [...new Set((lista || []).map((x) => x.nome).filter(Boolean))].sort((a, b) =>
         a.localeCompare(b, 'pt-BR'),
@@ -75,11 +80,6 @@ function autoresDoItem(item, dbRef) {
 function epocaAtual(item, dbRef) {
     const id = item.epocaRetratada?.epocaId;
     return id == null ? null : (dbRef.epocas || []).find((e) => e.id == id) || null;
-}
-
-function periodoAtual(item, dbRef) {
-    const id = item.periodoHistoricoId;
-    return id == null ? null : (dbRef.periodosHistoricos || []).find((p) => p.id == id) || null;
 }
 
 // O que "aplicar" faria, sem tocar em nada — a tela mostra
@@ -130,9 +130,8 @@ export function planejarAplicacaoPeriodo(
         const per = (dbRef.periodosHistoricos || []).find((p) => p.nome === alvoNome) || null;
         plano.cadastroNovo = !per;
         itens.forEach((item) => {
-            const atual = periodoAtual(item, dbRef);
-            if (atual && per && atual.id == per.id) plano.jaIguais++;
-            else if (atual && !sobrescrever) plano.jaPreenchidos++;
+            const tem = per && periodosHistoricosIdsDoItem(item).some((id) => id == per.id);
+            if (tem) plano.jaIguais++;
             else plano.alterar.push({ item, alvo: per ? { id: per.id } : {} });
         });
         return plano;
@@ -188,7 +187,11 @@ export function aplicarPlanoPeriodo(tipo, plano, nome) {
     } else if (tipo === 'periodoHistorico') {
         const per = obterOuCriarPeriodoHistoricoPorNome(alvoNome);
         plano.alterar.forEach(({ item }) => {
-            item.periodoHistoricoId = per.id;
+            // Com o cadastro: id órfão (período excluído) sai sem barulho.
+            const ids = periodosHistoricosIdsDoItem(item, db.periodosHistoricos);
+            if (!ids.some((id) => id == per.id)) ids.push(per.id);
+            item.periodosHistoricosIds = ids;
+            delete item.periodoHistoricoId;
         });
     } else if (tipo === 'epoca') {
         plano.alterar.forEach(({ item, alvo }) => {
@@ -223,7 +226,9 @@ export function planejarRemocaoPeriodo(tipo, itens, nome, dbRef = db) {
             if (mov && (item.movimentosEscolasIds || []).some((id) => id == mov.id))
                 alterar.push({ item });
         } else if (tipo === 'periodoHistorico') {
-            if (periodoAtual(item, dbRef)?.nome === alvoNome) alterar.push({ item });
+            const per = (dbRef.periodosHistoricos || []).find((p) => p.nome === alvoNome);
+            if (per && periodosHistoricosIdsDoItem(item).some((id) => id == per.id))
+                alterar.push({ item });
         } else if (tipo === 'epoca') {
             if (epocaAtual(item, dbRef)?.nome === alvoNome) alterar.push({ item });
         }
@@ -243,8 +248,15 @@ export function aplicarRemocaoPeriodo(tipo, plano, nome, dbRef = db) {
             );
         });
     } else if (tipo === 'periodoHistorico') {
+        const per = (dbRef.periodosHistoricos || []).find((p) => p.nome === alvoNome);
+        if (!per) return 0;
         plano.alterar.forEach(({ item }) => {
-            item.periodoHistoricoId = null;
+            // Só este id sai; os outros períodos do texto ficam.
+            item.periodosHistoricosIds = periodosHistoricosIdsDoItem(
+                item,
+                dbRef.periodosHistoricos,
+            ).filter((id) => id != per.id);
+            delete item.periodoHistoricoId;
         });
     } else if (tipo === 'epoca') {
         plano.alterar.forEach(({ item }) => {

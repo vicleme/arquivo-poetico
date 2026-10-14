@@ -45,6 +45,7 @@ import {
     rotuloElo,
     tokenizar,
     nomePeriodoHistorico,
+    periodosHistoricosIdsDoItem,
     nomesMovimentosEscolas,
     assuntosDoTexto,
     nomesAssuntosPorPapel,
@@ -53,6 +54,7 @@ import {
     dialetosDoItem,
 } from './utils.js';
 import { territorialidadeDoTexto, caminhoCompletoLocal, caminhoDoLocal } from './locais.js';
+import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
 
 // Local onde o texto foi escrito, para as colunas do CSV ('' sem Local ou se
 // o Local não existe mais).
@@ -381,10 +383,28 @@ export function colunasTexto(tipo) {
         coluna('periodo_biografico_nao_se_aplica', [], (r) => vazioSeNulo(r.epocaRetratada?.na)),
         ...colunasData('periodo_biografico_inicio', [], (r) => r.epocaRetratada?.inicio),
         ...colunasData('periodo_biografico_fim', [], (r) => r.epocaRetratada?.fim),
+        // Bloco 3: Esfera e Categoria do período (Pessoas e Vínculo não saem).
+        coluna('periodo_biografico_esferas', [], (r) => juntar(r.epocaRetratada?.esferas || [])),
+        coluna('periodo_biografico_categorias', [], (r) =>
+            juntar(r.epocaRetratada?.categorias || []),
+        ),
 
         // Período Histórico retratado (sem recorte de data, campo solto)
-        coluna('periodo_historico', ['periodoHistoricoId'], (r, ctx) =>
-            nomePeriodoHistorico(r.periodoHistoricoId, ctx.banco.periodosHistoricos),
+        // Bloco 2e: vários períodos por texto, juntos com ponto e vírgula.
+        coluna('periodo_historico', ['periodosHistoricosIds'], (r, ctx) =>
+            periodosHistoricosIdsDoItem(r, ctx.banco.periodosHistoricos)
+                .map((id) => nomePeriodoHistorico(id, ctx.banco.periodosHistoricos))
+                .filter(Boolean)
+                .join('; '),
+        ),
+        // Caminho completo na hierarquia ("Nova República › Governo Dilma
+        // Rousseff › Segundo mandato"): coluna à parte, para quem lê o CSV
+        // pelo nome ou pela posição das colunas anteriores não se perder.
+        coluna('periodo_historico_caminho', ['periodosHistoricosIds'], (r, ctx) =>
+            periodosHistoricosIdsDoItem(r, ctx.banco.periodosHistoricos)
+                .map((id) => caminhoDoPeriodo(ctx.banco.periodosHistoricos, id))
+                .filter(Boolean)
+                .join('; '),
         ),
 
         // Movimento/Escola (N:N, cadastro central — ver Autor também)

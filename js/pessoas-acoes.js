@@ -26,6 +26,7 @@ import { db, save } from './db.js';
 import {
     mostrarAviso,
     mostrarAvisoComAcao,
+    abrirModalConfirmacao,
     formaOcultadoPorGenero,
     formaReexibidoPorGenero,
     normalizarBusca,
@@ -33,6 +34,11 @@ import {
     CORES_RACA_AUTOR,
 } from './utils.js';
 import { renderPessoas } from './render-listas.js';
+import {
+    periodosLigadosAPessoa,
+    periodoVisivel,
+    definirOcultoNosPeriodos,
+} from './periodo-biografico-campos.js';
 
 export const selecaoPessoas = new Set();
 
@@ -479,21 +485,97 @@ export function limparGeneroEmMassaPessoas() {
 // caso ela tenha sido excluída ou mesclada nesse meio-tempo. Reexibir
 // não precisa do mesmo tratamento: mesmo que seja acidental, um clique
 // a mais no mesmo botão já resolve.
+// Períodos Biográficos ainda visíveis que citam alguma das pessoas. Ocultar só
+// a pessoa tira o nome dela, mas o nome do período (ex.: "Namoro com Fulano")
+// continuaria à vista; por isso, antes de ocultar, a pessoa escolhe se os
+// períodos vão junto. Ocultar sozinho pegaria de surpresa um período que ela
+// queria manter visível.
+function periodosVisiveisDasPessoas(ids) {
+    const achados = new Map();
+    ids.forEach((pid) => {
+        periodosLigadosAPessoa(db, pid)
+            .filter((e) => periodoVisivel(e))
+            .forEach((e) => achados.set(e.id, e));
+    });
+    return [...achados.values()];
+}
+
+const pluralPeriodos = (n) => `${n} período${n !== 1 ? 's' : ''} biográfico${n !== 1 ? 's' : ''}`;
+
+// Pergunta o que fazer com os períodos ligados; sem nenhum, ocultar direto.
+// `aoEscolher(comPeriodos, idsPeriodos)`: Cancelar não chama nada.
+function perguntarSobrePeriodos(ids, titulo, aoEscolher) {
+    const periodos = periodosVisiveisDasPessoas(ids);
+    if (periodos.length === 0) {
+        aoEscolher(false, []);
+        return;
+    }
+    const n = periodos.length;
+    abrirModalConfirmacao({
+        rotulo: 'Ocultar pessoa',
+        titulo,
+        mensagem: `${n === 1 ? 'Há 1 período biográfico' : `Há ${pluralPeriodos(n)}`} ligado${
+            n !== 1 ? 's' : ''
+        } a ${ids.length === 1 ? 'ela' : 'elas'}. Ocultando só ${
+            ids.length === 1 ? 'a pessoa' : 'as pessoas'
+        }, ${n !== 1 ? 'os nomes dos períodos continuam' : 'o nome do período continua'} à vista. Você pode ocultar ${
+            n !== 1 ? 'os períodos' : 'o período'
+        } junto.`,
+        textoConfirmar: ids.length === 1 ? 'Ocultar só a pessoa' : 'Ocultar só as pessoas',
+        corConfirmar: '#2563eb',
+        acaoSecundaria: {
+            texto: `Ocultar também ${n !== 1 ? `os ${n} períodos` : 'o período'}`,
+            onClick: () =>
+                aoEscolher(
+                    true,
+                    periodos.map((e) => e.id),
+                ),
+        },
+        onConfirmar: () => aoEscolher(false, []),
+    });
+}
+
+// Desfaz o que a ação fez: reexibe as pessoas e os períodos que ELA ocultou
+// (buscando pelo id de novo, nunca pela referência guardada).
+function desfazerOcultacao(idsPessoas, idsPeriodos) {
+    db.pessoas.forEach((p) => {
+        if (idsPessoas.includes(p.id)) p.oculto = false;
+    });
+    definirOcultoNosPeriodos(db, idsPeriodos, false);
+    save();
+}
+
 export function toggleOcultarPessoa(id) {
     const p = db.pessoas.find((x) => x.id === id);
     if (!p) return;
-    p.oculto = !p.oculto;
-    save();
     if (p.oculto) {
-        mostrarAvisoComAcao(`"${p.nome}" ${formaOcultadoPorGenero(p.genero)}.`, 'Desfazer', () => {
-            const alvo = db.pessoas.find((x) => x.id === id);
-            if (!alvo) return;
-            alvo.oculto = false;
-            save();
-        });
-    } else {
+        p.oculto = false;
+        save();
         mostrarAviso(`"${p.nome}" ${formaReexibidoPorGenero(p.genero)}.`, 'sucesso');
+        return;
     }
+    perguntarSobrePeriodos(
+        [id],
+        `"${p.nome}" aparece em períodos biográficos`,
+        (comPeriodos, idsPeriodos) => {
+            const alvo = db.pessoas.find((x) => x.id === id);
+            if (!alvo || alvo.oculto) return;
+            alvo.oculto = true;
+            const periodosOcultados = comPeriodos
+                ? definirOcultoNosPeriodos(db, idsPeriodos, true)
+                : [];
+            save();
+            const extra =
+                periodosOcultados.length > 0
+                    ? ` e ${pluralPeriodos(periodosOcultados.length)} ocultado${periodosOcultados.length !== 1 ? 's' : ''}`
+                    : '';
+            mostrarAvisoComAcao(
+                `"${alvo.nome}" ${formaOcultadoPorGenero(alvo.genero)}${extra}.`,
+                'Desfazer',
+                () => desfazerOcultacao([id], periodosOcultados),
+            );
+        },
+    );
 }
 
 // Ocultar/reexibir em massa, mesmo padrão de aplicarGrupoEmMassaPessoas/
@@ -509,27 +591,38 @@ export function toggleOcultarPessoa(id) {
 // do botão individual.
 export function ocultarSelecaoPessoas() {
     if (selecaoPessoas.size === 0) return;
-    const idsAlterados = [];
-    db.pessoas.forEach((p) => {
-        if (selecaoPessoas.has(p.id) && !p.oculto) {
-            p.oculto = true;
-            idsAlterados.push(p.id);
-        }
-    });
-    if (idsAlterados.length === 0) {
+    const aOcultar = db.pessoas.filter((p) => selecaoPessoas.has(p.id) && !p.oculto);
+    if (aOcultar.length === 0) {
         mostrarAviso('Todas as pessoas selecionadas já estavam ocultas.', 'info');
         return;
     }
-    save();
-    const n = idsAlterados.length;
-    mostrarAvisoComAcao(
-        `${n} pessoa${n !== 1 ? 's' : ''} oculta${n !== 1 ? 's' : ''}.`,
-        'Desfazer',
-        () => {
+    const n = aOcultar.length;
+    perguntarSobrePeriodos(
+        aOcultar.map((p) => p.id),
+        `${n} pessoa${n !== 1 ? 's' : ''} a ocultar aparece${n !== 1 ? 'm' : ''} em períodos biográficos`,
+        (comPeriodos, idsPeriodos) => {
+            const idsAlterados = [];
             db.pessoas.forEach((p) => {
-                if (idsAlterados.includes(p.id)) p.oculto = false;
+                if (selecaoPessoas.has(p.id) && !p.oculto) {
+                    p.oculto = true;
+                    idsAlterados.push(p.id);
+                }
             });
+            if (idsAlterados.length === 0) return;
+            const periodosOcultados = comPeriodos
+                ? definirOcultoNosPeriodos(db, idsPeriodos, true)
+                : [];
             save();
+            const k = idsAlterados.length;
+            const extra =
+                periodosOcultados.length > 0
+                    ? ` e ${pluralPeriodos(periodosOcultados.length)} ocultado${periodosOcultados.length !== 1 ? 's' : ''}`
+                    : '';
+            mostrarAvisoComAcao(
+                `${k} pessoa${k !== 1 ? 's' : ''} oculta${k !== 1 ? 's' : ''}${extra}.`,
+                'Desfazer',
+                () => desfazerOcultacao(idsAlterados, periodosOcultados),
+            );
         },
     );
 }

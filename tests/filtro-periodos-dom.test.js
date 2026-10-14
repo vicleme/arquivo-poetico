@@ -65,9 +65,10 @@ describe('filtros dos cadastros de período (UI)', () => {
 
     it('monta os controles uma única vez e o card mostra o intervalo cadastrado', () => {
         assert.ok(document.getElementById('fp-epocas-autor'));
-        assert.equal(document.querySelectorAll('#filtros-periodo-epocas select').length, 2);
+        // Autor, Esfera, Categoria, Pessoa, Natureza, Vínculo e o modo de data.
+        assert.equal(document.querySelectorAll('#filtros-periodo-epocas select').length, 7);
         renderEpocas();
-        assert.equal(document.querySelectorAll('#filtros-periodo-epocas select').length, 2);
+        assert.equal(document.querySelectorAll('#filtros-periodo-epocas select').length, 7);
         assert.match(document.getElementById('lista-epocas').textContent, /1990/);
     });
 

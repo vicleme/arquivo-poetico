@@ -32,12 +32,15 @@ import {
     corpoParaLinhasRicas,
     formatarAutoclassificacaoTexto,
     nomePeriodoHistorico,
+    periodosHistoricosIdsDoItem,
     nomesMovimentosEscolas,
 } from './utils.js';
 import { db } from './db.js';
 import { blocosExtrasMarkdown } from './download-abrangente.js';
+import { incluirOcultosNaExportacao } from './ocultos-exportacao.js';
 import { textoLocalEscrita, textoTerritorialidadeComCaminho } from './locais.js';
 import { textoPersonagensComPapel } from './personagens.js';
+import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
 
 export const INFO_STATUS = {
     publicado: { emoji: '🟢', titulo: 'Publicado' },
@@ -254,7 +257,7 @@ function verificacoesDeCampos(item) {
         !!item.dataEscrita,
         !!item.dataPublicacao,
         !!item.epocaRetratada,
-        !!item.periodoHistoricoId,
+        periodosHistoricosIdsDoItem(item).length > 0,
         Array.isArray(item.movimentosEscolasIds) && item.movimentosEscolasIds.length > 0,
         !!textoPessoas(item),
         !!textoGrupos(item),
@@ -441,13 +444,37 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
     if (item.epocaRetratada) {
         md += linhaMeta(
             'Período Biográfico Retratado',
-            formatarEpocaRetratada(item.epocaRetratada, db.epocas),
+            formatarEpocaRetratada(item.epocaRetratada, db.epocas, {
+                incluirOcultas: incluirOcultosNaExportacao(),
+            }),
         );
     }
-    if (item.periodoHistoricoId) {
+    // Bloco 3: Esfera e Categoria do período (Pessoas e Vínculo não saem).
+    // Período oculto não vaza na exportação: Esfera e Categoria dele ficam fora
+    // (o nome já sai como "(período oculto)" em formatarEpocaRetratada).
+    const epocaAchada = item.epocaRetratada?.epocaId
+        ? db.epocas.find((e) => e.id == item.epocaRetratada.epocaId)
+        : null;
+    const epocaDoTexto =
+        epocaAchada && (incluirOcultosNaExportacao() || !epocaAchada.oculto) ? epocaAchada : null;
+    if (epocaDoTexto?.esferas?.length) {
+        md += linhaMeta('Esfera do Período Biográfico', epocaDoTexto.esferas.join(', '));
+    }
+    if (epocaDoTexto?.categorias?.length) {
+        md += linhaMeta('Categoria do Período Biográfico', epocaDoTexto.categorias.join(', '));
+    }
+    const periodosDoTexto = periodosHistoricosIdsDoItem(item, db.periodosHistoricos);
+    if (periodosDoTexto.length) {
         md += linhaMeta(
             'Período Histórico Retratado',
-            nomePeriodoHistorico(item.periodoHistoricoId, db.periodosHistoricos),
+            periodosDoTexto
+                .map(
+                    (id) =>
+                        caminhoDoPeriodo(db.periodosHistoricos, id) ||
+                        nomePeriodoHistorico(id, db.periodosHistoricos),
+                )
+                .filter(Boolean)
+                .join('; '),
         );
     }
     if (item.movimentosEscolasIds?.length) {

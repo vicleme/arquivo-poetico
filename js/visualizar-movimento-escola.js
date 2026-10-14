@@ -13,6 +13,8 @@
 import { garantirModal, toggleModal } from './modais.js';
 import { db } from './db.js';
 import { editarMovimentoEscola } from './forms.js';
+import { textoDaRegiao } from './regiao.js';
+import { listaFontesHtml, normalizarFontes } from './fontes-corrente.js';
 import { escapeHtml, formatarIntervaloMovimentoEscola } from './utils.js';
 import {
     caminhoDaCorrente,
@@ -83,7 +85,7 @@ export function renderVisualizacaoMovimentoEscolaHtml(
     html += linhaMetaHtml('Aplica-se a', m.generoDivisao);
     html += linhaMetaHtml('Programa', textoComHerdeiro(programa, m.programa));
     html += linhaMetaHtml('Postura estética', textoComHerdeiro(postura, m.posturaEstetica));
-    html += linhaMetaHtml('Região de origem', m.regiaoOrigem);
+    html += linhaMetaHtml('Região de origem', textoDaRegiao(m.regiaoOrigem));
 
     if (m.notas) {
         html += secaoHtml(
@@ -104,6 +106,8 @@ export function renderVisualizacaoMovimentoEscolaHtml(
             linhaChipsHtml('Lemas', m.lemas, 'bg-amber-600') +
             linhaChipsHtml('Manifestos', m.manifestos, 'bg-rose-600'),
     );
+
+    html += secaoHtml(`Fontes (${normalizarFontes(m.fontes).length})`, listaFontesHtml(m.fontes));
 
     html += secaoHtml(
         `Divisões (${divisoes.length})`,

@@ -16,6 +16,7 @@ import {
     gerarId,
     mostrarAviso,
     normalizarBusca,
+    escaparAspasBusca,
 } from './utils.js';
 import {
     CAMPOS_RELACAO_PERSONAGEM,
@@ -219,7 +220,7 @@ export function verTextosPersonagem(id) {
     if (!p) return;
     const { poemasIds, prosasIds } = calcularImpactoExclusaoPersonagem(db, id);
     abrirListaComConsulta(
-        `personagem:"${p.nome}"`,
+        `personagem:"${escaparAspasBusca(p.nome)}"`,
         poemasIds,
         prosasIds,
         `Textos com o personagem “${p.nome}”`,

@@ -20,6 +20,8 @@
 // e não mexem em DOM nem em localStorage.
 // ============================================================
 
+import { lugaresDaRegiao } from './regiao.js';
+
 export const DIVISOES_CORRENTE = ['Variante regional', 'Fase ou geração', 'Vertente'];
 
 export const DESCRICOES_DIVISAO_CORRENTE = {
@@ -140,13 +142,18 @@ export function opcoesDePaiDaCorrente(lista, id) {
 // (inclusive "Não se aplica", que é uma decisão); senão o do ancestral mais
 // próximo que tiver. Nada é gravado. Devolve `{ valor, herdadoDe }`, com
 // `herdadoDe` = nome do ancestral ou null.
-function valorEfetivo(lista, m, campo) {
-    if (!m) return { valor: '', herdadoDe: null };
-    if (m[campo]) return { valor: m[campo], herdadoDe: null };
-    const ancestral = ancestraisDaCorrente(lista, m.id).find((a) => a[campo]);
+function valorEfetivo(lista, m, campo, vazio = '') {
+    if (!m) return { valor: vazio, herdadoDe: null };
+    if (preenchido(m[campo])) return { valor: m[campo], herdadoDe: null };
+    const ancestral = ancestraisDaCorrente(lista, m.id).find((a) => preenchido(a[campo]));
     return ancestral
         ? { valor: ancestral[campo], herdadoDe: ancestral.nome }
-        : { valor: '', herdadoDe: null };
+        : { valor: vazio, herdadoDe: null };
+}
+
+// Lista vazia conta como "sem valor" (um array vazio é truthy em JS).
+function preenchido(v) {
+    return Array.isArray(v) ? v.length > 0 : !!v;
 }
 
 export function posturaEfetivaDaCorrente(lista, m) {
@@ -162,7 +169,7 @@ export function tipoEfetivoDaCorrente(lista, m) {
 }
 
 export function regiaoEfetivaDaCorrente(lista, m) {
-    return valorEfetivo(lista, m, 'regiaoOrigem');
+    return valorEfetivo(lista, m, 'regiaoOrigem', []);
 }
 
 // ─── Filtro por atributos (Tipo, Região, Programa, Postura) ──────────────
@@ -170,14 +177,10 @@ export function regiaoEfetivaDaCorrente(lista, m) {
 // Programa/Postura não preenchidos, corrente sem região).
 export const FILTRO_CORRENTE_VAZIO = '__vazio__';
 
-// A Região é texto livre e aceita composição ("Brasil/Portugal",
-// "Portugal/Galiza"): cada trecho entre barras é um lugar.
-export function lugaresDaRegiao(texto) {
-    return String(texto || '')
-        .split('/')
-        .map((x) => x.trim())
-        .filter(Boolean);
-}
+// A Região é uma lista de lugares (ver regiao.js). `lugaresDaRegiao` segue
+// exportada daqui para quem já a importava; aceita também o texto antigo
+// com barras ("Brasil/Portugal").
+export { lugaresDaRegiao };
 
 // Lugares distintos usados no cadastro (já com a herança), em ordem
 // alfabética: alimenta o select de Região sem oferecer opção sem resultado.

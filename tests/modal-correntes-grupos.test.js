@@ -12,13 +12,14 @@ const HTML = readFileSync(
 const UI = readFileSync(new URL('../js/ui.js', import.meta.url), 'utf8');
 
 describe('modal de Corrente literária', () => {
-    it('tem os cinco grupos e todos os campos continuam no modal', () => {
+    it('tem os seis grupos e todos os campos continuam no modal', () => {
         const grupos = [...HTML.matchAll(/data-grupo-corrente="([^"]+)"/g)].map((m) => m[1]);
         assert.deepEqual(grupos, [
             'hierarquia',
             'classificacao',
             'origem',
             'caracteristicas',
+            'fontes',
             'notas',
         ]);
         [
@@ -39,6 +40,8 @@ describe('modal de Corrente literária', () => {
             'me-tipos-composicao',
             'me-lemas',
             'me-manifestos',
+            'me-fontes-lista',
+            'me-fontes-adicionar',
         ].forEach((id) => assert.ok(HTML.includes(`id="${id}"`), id));
     });
 
@@ -80,7 +83,12 @@ describe('correnteGruposComDados', () => {
             classificacao: true,
             origem: true,
             caracteristicas: true,
+            fontes: false,
             notas: false,
         });
+    });
+    it('o grupo Fontes abre quando a corrente tem fonte', () => {
+        assert.equal(correnteGruposComDados({ fontes: [{ autor: 'A', obra: 'B' }] }).fontes, true);
+        assert.equal(correnteGruposComDados({ fontes: [] }).fontes, false);
     });
 });

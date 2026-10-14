@@ -53,6 +53,15 @@ describe('Territorialidade (categoria de Sinalizações)', () => {
         assert.doesNotMatch(tematico, /emerald/);
     });
 
+    it('Etiquetas na tabela não repete a Territorialidade (semTerritorialidade), mas o resto continua', () => {
+        const item = { sinalizacoesTerritorialidade: 'Santos', sinalizacoesTom: 'Melancólico' };
+        const com = badgesEtiquetasPorCategoria(item);
+        const sem = badgesEtiquetasPorCategoria(item, { semTerritorialidade: true });
+        assert.match(com, /Santos/);
+        assert.doesNotMatch(sem, /Santos/);
+        assert.match(sem, /Melancólico/);
+    });
+
     it('o importador de texto nasce com o campo vazio', () => {
         const item = montarItem(
             1,

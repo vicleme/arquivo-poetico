@@ -221,7 +221,7 @@
                                 id="pr-epoca-nome"
                                 list="sugestoes-epoca-nome-prosa"
                                 class="text-sm mb-2"
-                                placeholder="Nome do período (opcional) — ex.: Namoro com Fulano, Luto, Pandemia..."
+                                placeholder="Nome do período (opcional), ex.: Faculdade, Intercâmbio, Pandemia..."
                                 onchange="aplicarSugestaoEpocaProsa()"
                             />
                             <datalist id="sugestoes-epoca-nome-prosa"></datalist>
@@ -313,18 +313,33 @@
                                 >Período Histórico Retratado
                                 <span
                                     class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                                    >(o momento histórico, não pessoal, que a prosa retrata —
-                                    coexiste com o Período Biográfico Retratado acima)</span
+                                    >(0 a N — os momentos históricos, não pessoais, que o texto
+                                    retrata; todos valem igual. Coexiste com o Período Biográfico
+                                    Retratado acima)</span
                                 ></label
                             >
-                            <input
-                                type="text"
-                                id="pr-periodo-historico-nome"
-                                list="sugestoes-periodo-historico-nome-prosa"
-                                class="text-sm"
-                                placeholder="Nome do período histórico (opcional) — ex.: Ditadura Militar, Pandemia de Covid-19..."
-                            />
-                            <datalist id="sugestoes-periodo-historico-nome-prosa"></datalist>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-periodo-historico-nome"
+                                    list="sugestoes-periodo-historico-nome-prosa"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome do período histórico (opcional) — ex.: Ditadura Militar, Pandemia de Covid-19..."
+                                />
+                                <datalist id="sugestoes-periodo-historico-nome-prosa"></datalist>
+                                <button
+                                    type="button"
+                                    onclick="adicionarPeriodoHistoricoDoTexto('prosas')"
+                                    aria-label="Adicionar período histórico"
+                                    class="bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="pr-periodos-historicos-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
 
                             <label class="form-label mt-3"
                                 >Corrente literária

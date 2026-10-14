@@ -450,7 +450,6 @@ describe('Autores — exclusão em cascata sobre Grupos/Épocas (DOM real via ha
         db.epocas.push({
             id: 20,
             nome: 'Corte de contato',
-            contextoRelacao: '',
             notas: '',
             autorId: 1,
         });
@@ -468,7 +467,6 @@ describe('Autores — exclusão em cascata sobre Grupos/Épocas (DOM real via ha
         db.epocas.push({
             id: 20,
             nome: 'Corte de contato',
-            contextoRelacao: '',
             notas: '',
             autorId: 1,
         });

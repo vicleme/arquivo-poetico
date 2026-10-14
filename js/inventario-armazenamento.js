@@ -68,6 +68,16 @@ export const CHAVES_LOCALSTORAGE = Object.freeze([
         nota: 'Incluir dados pessoais das Pessoas nos JSON',
     },
     {
+        chave: 'arquivoPoetico_incluirOcultosExportacao',
+        categoria: 'preferencia',
+        nota: 'Estado da caixa "Incluir dados ocultados" (só existe com "lembrar" ligado)',
+    },
+    {
+        chave: 'arquivoPoetico_incluirOcultosLembrar',
+        categoria: 'preferencia',
+        nota: 'Escolha de guardar ou não a caixa "Incluir dados ocultados"',
+    },
+    {
         chave: 'arquivoPoetico_downloadAbrangente',
         categoria: 'preferencia',
         nota: 'Download abrangente ligado ou desligado',
@@ -144,6 +154,7 @@ export const CHAVES_DB = Object.freeze([
         'grupos',
         'autores',
         'epocas',
+        'opcoesPeriodoBiografico',
         'assuntos',
         'temas',
         'locais',

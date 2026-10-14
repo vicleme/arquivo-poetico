@@ -6,22 +6,26 @@ aparece nas chaves dos campos, como `sinalizacoesEstilo`), para que uma IA que r
 dados exportados leia as tags pela categoria certa, sem misturar o que
 cada uma quer dizer.
 
+**Tema e Territorialidade não fazem mais parte das etiquetas.** Cada um tem
+campo próprio (`temas`; `territorialidade` e `localEscrita`), descritos em
+`campos-poema-prosa-for-ai-pt-br.md`. Ver "O que saiu das etiquetas", abaixo.
+
 ---
 
 ## O que o campo é (e o que não é)
 
 Não existe um campo único de "etiquetas". "Etiquetas" é o nome do
-**grupo**, mas por trás dele há **9 campos independentes**, um por
+**grupo**, mas por trás dele há **7 campos independentes**, um por
 categoria, cada um uma lista de tags em **texto livre** (não uma lista
 fechada de opções pré-definidas — quem cataloga digita a etiqueta que
 quiser, com autocompletar sugerindo o que já foi usado antes na mesma
 categoria, pra evitar variantes da mesma ideia).
 
-Cada um desses 9 campos é, de fato, uma **lista** — aceita quantas
+Cada um desses 7 campos é, de fato, uma **lista** — aceita quantas
 etiquetas fizerem sentido para o texto, não um valor único por categoria.
 Isso importa para uma decisão recorrente: quando o texto carrega duas
-coisas percebidas ao mesmo tempo (duas tradições, dois temas, duas
-sensações de Tom), o padrão é registrar cada uma como uma etiqueta própria
+coisas percebidas ao mesmo tempo (duas tradições, dois recursos de
+estilo, duas sensações de Tom), o padrão é registrar cada uma como uma etiqueta própria
 na lista — não fundir as duas num rótulo composto. Só vale fundir num
 único rótulo quando a combinação é, ela mesma, uma sensação ou ideia
 indivisível, que não é a soma das partes — em Tom, por exemplo, "Muito
@@ -32,16 +36,12 @@ trecho, esperançoso — duas sensações reais, mas distintas, não uma coisa
 só), etiquetas separadas mantêm a lista mais útil para filtrar e cruzar
 dados depois.
 
-Os 9 campos (dois deles, `sinalizacoesTema` e
-`sinalizacoesTerritorialidade`, são espelhos derivados e não se digitam
-mais no grupo de etiquetas do editor; ver as notas de categoria abaixo):
+Os 7 campos:
 
 | Campo (chave)                  | Rótulo            |
 | ------------------------------ | ----------------- |
 | `sinalizacoesTradicao`         | Tradição          |
 | `sinalizacoesEstilo`           | Estilo            |
-| `sinalizacoesTema`             | Tema              |
-| `sinalizacoesTerritorialidade` | Territorialidade  |
 | `sinalizacoesRelacao`          | Relação           |
 | `sinalizacoesSensibilidade`    | Sensibilidade     |
 | `sinalizacoesTom`              | Tom               |
@@ -50,10 +50,40 @@ mais no grupo de etiquetas do editor; ver as notas de categoria abaixo):
 
 Uma exportação "flat" combina tudo numa string única (`sinalizacoesCombinadas`)
 para busca geral e estatísticas simples — mas essa versão combinada **perde
-a categoria** de cada tag. Sempre que a tarefa depender de saber a que
-categoria uma etiqueta pertence (ex.: "quais são os temas mais comuns" vs.
-"quais são os recursos de estilo mais comuns"), use os 9 campos separados,
-não a string combinada.
+a categoria** de cada tag (e ainda pode arrastar os espelhos de Tema e
+Territorialidade, que não são etiquetas; ver abaixo). Sempre que a tarefa
+depender de saber a que categoria uma etiqueta pertence (ex.: "quais são os
+tons mais comuns" vs. "quais são os recursos de estilo mais comuns"), use os
+7 campos separados, não a string combinada.
+
+## O que saiu das etiquetas: Tema e Territorialidade
+
+Tema e Territorialidade já foram categorias de etiqueta. Hoje são **campos
+próprios**, com cadastro e estrutura que uma etiqueta de texto livre não tem.
+Não os procure entre as etiquetas e não proponha etiquetas desse tipo:
+
+- **Tema** → `temas`: lista de `{ temaId, papel, nome }`, com `papel`
+  `principal`, `secundario` ou vazio, ligada ao cadastro de Temas (que por sua
+  vez se agrupam em Assuntos). É o assunto central do texto. Ao nomear ou
+  revisar temas, vale o critério já adotado no acervo: nomear a **causa
+  concreta**, não o efeito emocional — "Crise existencial cíclica" é mais vago
+  do que o evento ou a situação que gera essa sensação. Um texto que fala do
+  Brasil como nação/identidade tem "Brasil" como Tema, sem citar lugar nenhum.
+- **Territorialidade** → `territorialidade`: lista de lugares **citados** no
+  texto (país, cidade, bairro, rio), ligada ao cadastro hierárquico de Locais.
+  O lugar onde o texto foi **escrito** é outro campo, `localEscrita`, e a
+  hierarquia exportada está em `locaisHierarquia`. Um poema que cita
+  "Copacabana" ou "rio Amazonas" usa Territorialidade; um que trata do Brasil
+  como assunto, sem citar lugar específico, usa Tema. Também não é Domínio
+  Imagético, que é vocabulário tomado de um campo de conhecimento, não um
+  lugar.
+
+`sinalizacoesTema` e `sinalizacoesTerritorialidade` ainda podem aparecer nos
+dados exportados, mas só como **espelhos derivados** desses campos (nomes
+separados por vírgula, sem papel, sem tipo e sem hierarquia). Não são
+etiquetas, não se editam e não devem ser lidos como tal: use `temas` e
+`territorialidade`. Uma exportação antiga, anterior aos campos próprios, pode
+ter só o espelho.
 
 ## O que cada categoria significa
 
@@ -66,20 +96,6 @@ não a string combinada.
   tipográfica" para um trecho que só lê de cabeça para baixo,
   "Paronomásia por espaçamento" para um espaço que isola uma raiz comum
   entre duas palavras). Tende a nomear a técnica, não o efeito.
-- **Tema**: o assunto ou conteúdo central do texto (ex.: "Brasil"). Ao
-  revisar consistência de tags, o critério já adotado no acervo é nomear a
-  **causa concreta**, não o efeito emocional — uma etiqueta como "Crise
-  existencial cíclica" é mais vaga do que nomear o evento ou situação
-  concreta que gera essa sensação.
-- **Territorialidade** (categoria nova, 2026-09-29; desde 2026-09-30 não
-  se digita mais neste grupo, o campo é um espelho derivado da lista de
-  lugares `territorialidade`, ver `campos-poema-prosa-for-ai-pt-br.md`):
-  lugares específicos citados no texto — um país, uma cidade, um bairro, um rio. Diferente de
-  Tema, que é o assunto amplo (um poema pode ter "Brasil" como Tema, no
-  sentido de nação/identidade, sem citar nenhum lugar específico; um poema
-  que cita "Copacabana" ou "rio Amazonas" usa Territorialidade). Também
-  diferente de Domínio Imagético, que é vocabulário tomado de um campo de
-  conhecimento, não um lugar.
 - **Relação**: nomeia uma relação ou vínculo específico retratado no
   texto — pode ser o nome de uma dinâmica entre duas pessoas específicas
   (o acervo já usa etiquetas desse tipo, cunhadas pelo autor para nomear
@@ -128,7 +144,7 @@ não a string combinada.
 3. Ao sugerir novas etiquetas, prefira reaproveitar uma já usada na mesma
    categoria (evitar variantes da mesma ideia) e nomear a causa concreta
    em vez do efeito emocional, seguindo o critério já adotado no acervo
-   para Tema.
+   para Temas.
 4. Não confunda Sensibilidade (tag categorizável) com o campo derivado de
    "conteúdo sensível" (presença de um parágrafo em `conteudoSensivel`) —
    são coisas diferentes que não devem ser somadas nem tratadas como

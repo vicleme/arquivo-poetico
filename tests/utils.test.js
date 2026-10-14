@@ -47,7 +47,6 @@ import {
     RECORTES_EPOCA,
     ROTULOS_RECORTE_EPOCA,
     nomeEpoca,
-    contextoRelacaoEpoca,
     formatarEpocaRetratada,
     obterSugestaoEpocaPorId,
     FORMAS_POEMA,
@@ -1606,7 +1605,7 @@ describe('RECORTES_EPOCA / ROTULOS_RECORTE_EPOCA', () => {
 
 describe('nomeEpoca (resolução epocaId → nome via cadastro central)', () => {
     const epocasCadastro = [
-        { id: 1, nome: 'Corte de contato', contextoRelacao: 'Pedro e Victor' },
+        { id: 1, nome: 'Corte de contato' },
         { id: 2, nome: 'Luto' },
     ];
 
@@ -1630,34 +1629,6 @@ describe('nomeEpoca (resolução epocaId → nome via cadastro central)', () => 
 
     it('funciona mesmo sem cadastro passado (default [])', () => {
         assert.equal(nomeEpoca({ epocaId: 1 }), '');
-    });
-});
-
-describe('contextoRelacaoEpoca (resolução epocaId → contexto do relacionamento)', () => {
-    const epocasCadastro = [
-        { id: 1, nome: 'Corte de contato', contextoRelacao: 'Pedro e Victor' },
-        { id: 2, nome: 'Luto' },
-    ];
-
-    it('resolve epocaId pro contexto cadastrado', () => {
-        assert.equal(contextoRelacaoEpoca({ epocaId: 1 }, epocasCadastro), 'Pedro e Victor');
-    });
-
-    it('devolve string vazia quando a época não tem contexto preenchido', () => {
-        assert.equal(contextoRelacaoEpoca({ epocaId: 2 }, epocasCadastro), '');
-    });
-
-    it('devolve string vazia sem epocaId (dado legado não migrado)', () => {
-        assert.equal(contextoRelacaoEpoca({ nome: 'Pandemia' }, epocasCadastro), '');
-    });
-
-    it('devolve string vazia pra epoca ausente/null', () => {
-        assert.equal(contextoRelacaoEpoca(null, epocasCadastro), '');
-        assert.equal(contextoRelacaoEpoca(undefined, epocasCadastro), '');
-    });
-
-    it('devolve string vazia quando epocaId não existe mais no cadastro (época excluída)', () => {
-        assert.equal(contextoRelacaoEpoca({ epocaId: 999 }, epocasCadastro), '');
     });
 });
 
@@ -1727,38 +1698,14 @@ describe('formatarEpocaRetratada (item 3 — epocaId + recorte)', () => {
         assert.equal(formatarEpocaRetratada(undefined, epocasCadastro), '—');
     });
 
-    describe('com Contexto do relacionamento cadastrado', () => {
-        const epocasComContexto = [
-            { id: 1, nome: 'Corte de contato', contextoRelacao: 'Pedro e Victor' },
-        ];
-
-        it('contexto entra na frente, separado por "•"', () => {
-            const epoca = { epocaId: 1, inicio: { ano: 2023 }, fim: { ano: 2024 } };
-            assert.equal(
-                formatarEpocaRetratada(epoca, epocasComContexto),
-                'Pedro e Victor • Corte de contato (2023 – 2024)',
-            );
-        });
-
-        it('contexto + N/A', () => {
-            assert.equal(
-                formatarEpocaRetratada({ epocaId: 1, na: true }, epocasComContexto),
-                'Pedro e Victor • Corte de contato (N/A)',
-            );
-        });
-
-        it('contexto + recorte "repercussão"', () => {
-            const epoca = { epocaId: 1, inicio: { ano: 2023 }, recorte: 'repercussão' };
-            assert.equal(
-                formatarEpocaRetratada(epoca, epocasComContexto),
-                'Pedro e Victor • Corte de contato e pós (A partir de 2023)',
-            );
-        });
-
-        it('sem contexto cadastrado (época sem o campo preenchido) não mostra o "•"', () => {
-            const epocasSemContexto = [{ id: 1, nome: 'Luto' }];
-            assert.equal(formatarEpocaRetratada({ epocaId: 1 }, epocasSemContexto), 'Luto');
-        });
+    it('não mostra mais o antigo Contexto do relacionamento, mesmo que o dado ainda traga a chave', () => {
+        const comResto = [{ id: 1, nome: 'Corte de contato', contextoRelacao: 'Pedro e Victor' }];
+        const epoca = { epocaId: 1, inicio: { ano: 2023 }, fim: { ano: 2024 } };
+        assert.equal(formatarEpocaRetratada(epoca, comResto), 'Corte de contato (2023 – 2024)');
+        assert.equal(
+            formatarEpocaRetratada({ epocaId: 1, na: true }, comResto),
+            'Corte de contato (N/A)',
+        );
     });
 });
 

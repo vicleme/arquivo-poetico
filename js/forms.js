@@ -2,6 +2,11 @@
 // forms.js — Submit handlers e funções de edição por entidade
 // ============================================================
 
+import {
+    preencherCamposPeriodoBiografico,
+    lerCamposPeriodoBiografico,
+} from './periodo-biografico-ui.js';
+import { registrarValoresNovos } from './periodo-biografico-campos.js';
 import { resolverTemasEditados, aplicarAssuntosPendentes } from './temas.js';
 import { impactoDoLocal, mesclarLocais, resolverLocaisEditados } from './locais.js';
 import { renderLocais, destinosDeMesclagemDeLocal } from './ui-locais.js';
@@ -22,6 +27,11 @@ import {
     normalizarGeneroDivisaoCorrente,
     criaCicloCorrente,
 } from './correntes-hierarquia.js';
+import { criaCicloPeriodo, paisQueNaoContem } from './periodos-historicos-hierarquia.js';
+import {
+    filhosInvalidosParaOPai,
+    paisInvalidosParaOFilho,
+} from './periodos-biograficos-hierarquia.js';
 import {
     db,
     save,
@@ -82,7 +92,6 @@ import {
     signoDoZodiaco,
     obterSugestaoEpocaPorId,
     nomeEpoca,
-    nomePeriodoHistorico,
     CORES_GRUPO,
     CORES_GRUPO_PADRAO,
     pontoCorGrupo,
@@ -108,7 +117,10 @@ import {
     espelhoDeIdiomas,
     normalizarPosturaEstetica,
     normalizarProgramaMovimento,
+    periodosHistoricosIdsDoItem,
+    formatarIntervaloPeriodoHistorico,
 } from './utils.js';
+import { normalizarRegiao } from './regiao.js';
 
 // Rastreadores de alterações não salvas dos formulários de texto longo
 // (ver toggleModal em modais.js — confirma antes de fechar se sujo).
@@ -129,6 +141,8 @@ import {
 import {
     atualizarDatalist,
     atualizarDatalistRegiaoPeriodoHistorico,
+    preencherPaisPeriodoHistorico,
+    lerPaisPeriodoHistorico,
     atualizarDatalistRegiaoOrigemMovimento,
     preencherOpcoesPaiCorrente,
     sincronizarCamposDivisaoCorrente,
@@ -178,11 +192,17 @@ import {
     adicionarInstituicaoAutor,
     carregarMovimentosEscolasDiretos,
     obterMovimentosEscolasDiretos,
+    carregarPeriodosHistoricosDoTexto,
+    obterPeriodosHistoricosDoTexto,
     carregarPremiosAutor,
     carregarObrasAutor,
     carregarCirculoLiterarioAutor,
     carregarLinguasEscritaAutor,
     carregarValoresMovimento,
+    carregarRegiaoOrigemMovimento,
+    carregarRegiaoPeriodoHistorico,
+    adicionarRegiaoOrigemMovimento,
+    adicionarRegiaoPeriodoHistorico,
     carregarTemasMovimento,
     adicionarTemaAssunto,
     carregarTemasAssunto,
@@ -221,6 +241,11 @@ import {
     resetLojas,
     renderAutoclassificacao,
 } from './editor.js';
+import { carregarFontesCorrente, lerFontesCorrente } from './fontes-corrente-ui.js';
+import {
+    carregarFontesPeriodoHistorico,
+    lerFontesPeriodoHistorico,
+} from './fontes-periodo-historico-ui.js';
 import {
     renderPessoas,
     renderGrupos,
@@ -1073,13 +1098,67 @@ export async function editarAutor(id) {
 }
 
 // ─── Época ───────────────────────────────────────────────────
-// Cadastro central (db.epocas: { id, nome, contextoRelacao, notas }),
+// Cadastro central (db.epocas: { id, nome, notas }),
 // item 3 do plano de schema — a que período um poema se refere (ver
 // migrarEpocas em db.js). Mesmo espírito de Autor acima: sem grupos,
 // só um cadastro simples referenciado por epocaId. O modal de Poema
 // não abre este modal diretamente — resolve/cria por nome no submit
 // (ver obterOuCriarEpocaPorNome em db.js); este modal serve pra edição
-// posterior (contextoRelacao/notas) e exclusão, na aba de gestão.
+// posterior (notas) e exclusão, na aba de gestão.
+
+const quandoDoPeriodo = (p) => {
+    const t = formatarIntervaloPeriodoHistorico(p);
+    return t === '—' ? '' : ` (${t})`;
+};
+
+// Frase de cada pai que não serve ao período `filho` (ver
+// paisInvalidosParaOFilho). `filho` traz `nome`, `inicio` e `fim` avulsos.
+function frasesDePaisInvalidos(filho, invalidos) {
+    const nomeFilho = filho.nome ? `"${filho.nome}"` : 'Este período';
+    return invalidos.map(({ paiId, motivo }) => {
+        const pai = db.epocas.find((x) => x.id == paiId);
+        const nomePai = `"${pai?.nome}"${quandoDoPeriodo(pai)}`;
+        if (motivo === 'autor') {
+            return `${nomePai} é de outro autor: um período só pode fazer parte de períodos do mesmo autor.`;
+        }
+        const como =
+            motivo === 'depois'
+                ? `começa depois do fim de ${nomePai}`
+                : `termina antes do começo de ${nomePai}`;
+        return `${nomeFilho}${quandoDoPeriodo(filho)} ${como}. Quem faz parte de um período precisa se sobrepor a ele no tempo.`;
+    });
+}
+
+// Frase dos períodos de dentro que deixariam de caber em `pai` com as datas ou
+// o autor novos (ver filhosInvalidosParaOPai).
+function fraseDeFilhosInvalidos(pai, invalidos) {
+    const itens = invalidos.map(({ filhoId, motivo }) => {
+        const filho = db.epocas.find((x) => x.id == filhoId);
+        const quando = {
+            autor: 'é de outro autor',
+            depois: 'começaria depois do fim',
+            antes: 'terminaria antes do começo',
+        }[motivo];
+        return `"${filho?.nome}"${quandoDoPeriodo(filho)} ${quando}`;
+    });
+    const nomePai = pai.nome ? `"${pai.nome}"` : 'deste período';
+    return `Essa mudança deixaria períodos de dentro de ${nomePai} fora dele: ${itens.join('; ')}. Ajuste os dados ou tire esses períodos daqui antes.`;
+}
+
+// Mensagem do primeiro problema de "Faz parte de" ao salvar, ou null se está
+// tudo certo. `dados` é o que o modal vai gravar.
+export function validarHierarquiaDaEpoca(dados) {
+    if (dados.id && criaCicloPeriodo(db.epocas, dados.id, dados.pertenceA)) {
+        return 'Um período não pode fazer parte de si mesmo nem de um período que está dentro dele.';
+    }
+    const paisRuins = paisInvalidosParaOFilho(db.epocas, dados, dados.pertenceA);
+    if (paisRuins.length) return frasesDePaisInvalidos(dados, paisRuins).join(' ');
+    if (dados.id) {
+        const filhosRuins = filhosInvalidosParaOPai(db.epocas, dados.id, dados);
+        if (filhosRuins.length) return fraseDeFilhosInvalidos(dados, filhosRuins);
+    }
+    return null;
+}
 
 export function initFormEpoca() {
     const form = document.getElementById('form-epoca');
@@ -1089,8 +1168,10 @@ export function initFormEpoca() {
         e.preventDefault();
         const id = document.getElementById('ep-edit-id').value;
         const nome = document.getElementById('ep-nome').value.trim();
-        const contextoRelacao = document.getElementById('ep-contexto').value.trim();
         const notas = document.getElementById('ep-notas').value.trim();
+        // Bloco 3: Esfera, Categoria, Pessoas envolvidas e Relações.
+        const { esferas, categorias, pessoasEnvolvidas, relacoes, pertenceA } =
+            lerCamposPeriodoBiografico();
         const autorId = parseInt(document.getElementById('ep-autor').value) || null;
         if (!autorId) return mostrarAviso('Escolha o Autor deste Período Biográfico.');
         // Datas oficiais do cadastro (independentes das de epocaRetratada
@@ -1102,22 +1183,43 @@ export function initFormEpoca() {
             return mostrarAviso('O "Até" não pode ser anterior ao "De".');
         }
 
+        // "Faz parte de": sem ciclo, mesmo autor e datas que se sobrepõem às
+        // do pai; e, ao editar, os períodos de dentro precisam continuar
+        // cabendo neste (datas e autor novos).
+        const erroHierarquia = validarHierarquiaDaEpoca({
+            id: id ? parseInt(id) : null,
+            nome,
+            autorId,
+            inicio,
+            fim,
+            pertenceA,
+        });
+        if (erroHierarquia) return mostrarAviso(erroHierarquia);
+
         // Mesmo raciocínio de initFormPessoa acima: grava primeiro (cria
         // se `id` vazio, atualiza no lugar se não), pra existir em
         // `db.epocas` antes de virar `origemId` de mesclarEpocas se for
         // esse o caminho escolhido.
         const gravar = () => {
             const dados = {
+                // Mantém qualquer campo que este formulário não edita.
+                ...(id ? db.epocas.find((x) => x.id == id) : null),
                 id: id ? parseInt(id) : gerarId(),
                 nome,
-                contextoRelacao,
                 notas,
                 autorId,
                 inicio,
                 fim,
+                esferas,
+                categorias,
+                pessoasEnvolvidas,
+                relacoes,
+                pertenceA,
             };
             if (id) db.epocas[db.epocas.findIndex((x) => x.id == id)] = dados;
             else db.epocas.push(dados);
+            // Esfera ou Vínculo digitado que ainda não estava na lista entra nela.
+            registrarValoresNovos(db, dados);
             return dados.id;
         };
 
@@ -1169,24 +1271,49 @@ export async function editarEpoca(id) {
     await garantirModal('modal-epoca');
     document.getElementById('ep-edit-id').value = ep.id;
     document.getElementById('ep-nome').value = ep.nome;
-    document.getElementById('ep-contexto').value = ep.contextoRelacao || '';
     document.getElementById('ep-notas').value = ep.notas || '';
     preencherDataParcial('ep-ini', ep.inicio);
     preencherDataParcial('ep-fim', ep.fim);
     renderSelectAutor('ep-autor', ep.autorId);
+    preencherCamposPeriodoBiografico(ep);
     document.getElementById('modal-epoca-titulo').innerText = 'Editar Período Biográfico';
     toggleModal('modal-epoca');
+}
+
+// Bloco 2e: itens do campo (id ou { novo: 'Nome' }) -> lista de ids sem
+// repetir. Período novo é criado no cadastro agora, ao salvar o texto.
+function periodosHistoricosDosItens(itens) {
+    const ids = (itens || []).map((i) =>
+        i && typeof i === 'object' ? obterOuCriarPeriodoHistoricoPorNome(i.novo)?.id : i,
+    );
+    return periodosHistoricosIdsDoItem({ periodosHistoricosIds: ids });
 }
 
 // ─── Período Histórico ──────────────────────────────────────────
 // Mesmo espírito de Época acima, mas cadastro mais simples (só
 // nome/notas, sem contextoRelacao) e vínculo mais simples também:
-// `periodoHistoricoId` é um campo solto no Poema/Prosa (não um
+// `periodosHistoricosIds` é um campo solto (lista) no Poema/Prosa (não um
 // sub-objeto com datas/recorte, como epocaRetratada) — ver
 // calcularImpactoExclusaoPeriodoHistorico em db.js. O modal de
 // Poema/Prosa resolve/cria por nome no submit (ver
 // obterOuCriarPeriodoHistoricoPorNome em db.js); este modal serve pra
 // edição posterior e exclusão, na aba de gestão.
+
+// Data do período com a marca "c." (circa). O número continua exato; `aprox`
+// é uma marca da data. Sempre gravada (true ou false) quando há data, para a
+// migração dos itens de fábrica saber que a pessoa já decidiu. Sem data, a
+// marca não tem onde ficar.
+function lerDataPeriodoHistorico(prefixo) {
+    const data = lerDataParcial(prefixo);
+    if (!data) return null;
+    return { ...data, aprox: Boolean(document.getElementById(`${prefixo}-aprox`)?.checked) };
+}
+
+function preencherDataPeriodoHistorico(prefixo, dataObj) {
+    preencherDataParcial(prefixo, dataObj);
+    const marca = document.getElementById(`${prefixo}-aprox`);
+    if (marca) marca.checked = Boolean(dataObj?.aprox);
+}
 
 export function initFormPeriodoHistorico() {
     const form = document.getElementById('form-periodo-historico');
@@ -1196,25 +1323,71 @@ export function initFormPeriodoHistorico() {
     // refresh do carregamento inicial (atualizarDatalist) não o alcançou.
     atualizarDatalistRegiaoPeriodoHistorico();
 
+    // Enter no campo de região acrescenta o lugar (não envia o formulário).
+    document.getElementById('ph-regiao-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarRegiaoPeriodoHistorico();
+        }
+    });
+
     form.onsubmit = (e) => {
         e.preventDefault();
         const id = document.getElementById('ph-edit-id').value;
         const nome = document.getElementById('ph-nome').value.trim();
         const notas = document.getElementById('ph-notas').value.trim();
-        const regiao = document.getElementById('ph-regiao').value.trim();
+        // Texto que ficou digitado e não virou chip entra como lugar (sem isso
+        // salvar com o campo ainda preenchido perderia o lugar).
+        adicionarRegiaoPeriodoHistorico();
+        const regiao = normalizarRegiao(
+            JSON.parse(document.getElementById('ph-regiao').value || '[]'),
+        );
         // Data do período em si (não do texto que o referencia — ver
         // migrarDatasPeriodoHistorico em db.js). Mesma leitura parcial
         // (dia/mês/ano cada um opcional) e mesma validação de ordem já
         // usadas pra Data de Escrita/Publicação e pro De/Até de Época.
-        const inicio = lerDataParcial('ph-ini');
-        const fim = lerDataParcial('ph-fim');
+        const inicio = lerDataPeriodoHistorico('ph-ini');
+        const fim = lerDataPeriodoHistorico('ph-fim');
 
         if (violaOrdemDeDatas(inicio, fim)) {
             return mostrarAviso('O "Até" não pode ser anterior ao "De".');
         }
 
+        // Períodos pais (o primeiro é o principal). O seletor já não oferece o
+        // próprio período nem os de dentro dele; esta checagem é a rede de
+        // segurança caso o estado do modal fique defasado.
+        const pertenceA = lerPaisPeriodoHistorico();
+        const fontes = lerFontesPeriodoHistorico();
+        if (id && criaCicloPeriodo(db.periodosHistoricos, parseInt(id), pertenceA)) {
+            return mostrarAviso(
+                'Um período não pode pertencer a si mesmo nem a um período que está dentro dele.',
+            );
+        }
+
+        // Datas fora do intervalo do pai: avisa depois de salvar, sem bloquear
+        // (o recorte do texto muitas vezes é aproximado).
+        const foraDoPai = paisQueNaoContem(db.periodosHistoricos, { inicio, fim }, pertenceA);
+        const avisarForaDoPai = () => {
+            if (!foraDoPai.length) return;
+            const nomes = foraDoPai
+                .map((pid) => db.periodosHistoricos.find((x) => x.id == pid)?.nome)
+                .filter(Boolean)
+                .map((n) => `"${n}"`)
+                .join(', ');
+            mostrarAviso(`Salvo, mas as datas saem do intervalo de ${nomes}.`, 'info');
+        };
+
         const gravar = () => {
-            const dados = { id: id ? parseInt(id) : gerarId(), nome, notas, regiao, inicio, fim };
+            const dados = {
+                id: id ? parseInt(id) : gerarId(),
+                nome,
+                notas,
+                regiao,
+                inicio,
+                fim,
+                pertenceA,
+                fontes,
+            };
             if (id) {
                 // Preserva `embutido` (item de fábrica editado continua de
                 // fábrica) — o objeto novo substitui o antigo por inteiro.
@@ -1236,6 +1409,7 @@ export function initFormPeriodoHistorico() {
             gravar();
             save();
             toggleModal('modal-periodo-historico');
+            avisarForaDoPai();
             return;
         }
 
@@ -1252,6 +1426,7 @@ export function initFormPeriodoHistorico() {
                     gravar();
                     save();
                     toggleModal('modal-periodo-historico');
+                    avisarForaDoPai();
                 },
             },
             onConfirmar: () => {
@@ -1273,10 +1448,12 @@ export async function editarPeriodoHistorico(id) {
     document.getElementById('ph-edit-id').value = ph.id;
     document.getElementById('ph-nome').value = ph.nome;
     document.getElementById('ph-notas').value = ph.notas || '';
-    document.getElementById('ph-regiao').value = ph.regiao || '';
+    carregarRegiaoPeriodoHistorico(ph.regiao);
     atualizarDatalistRegiaoPeriodoHistorico();
-    preencherDataParcial('ph-ini', ph.inicio);
-    preencherDataParcial('ph-fim', ph.fim);
+    preencherDataPeriodoHistorico('ph-ini', ph.inicio);
+    preencherDataPeriodoHistorico('ph-fim', ph.fim);
+    preencherPaisPeriodoHistorico(ph.id, ph.pertenceA || []);
+    carregarFontesPeriodoHistorico(ph.fontes || []);
     document.getElementById('modal-periodo-historico-titulo').innerText =
         'Editar Período Histórico';
     toggleModal('modal-periodo-historico');
@@ -1303,6 +1480,14 @@ export function initFormMovimentoEscola() {
 
     document.getElementById('me-pai')?.addEventListener('change', sincronizarCamposDivisaoCorrente);
 
+    // Enter no campo de região acrescenta o lugar (não envia o formulário).
+    document.getElementById('me-regiao-origem-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            adicionarRegiaoOrigemMovimento();
+        }
+    });
+
     form.onsubmit = (e) => {
         e.preventDefault();
         const id = document.getElementById('me-edit-id').value;
@@ -1325,7 +1510,10 @@ export function initFormMovimentoEscola() {
                 : normalizarGeneroDivisaoCorrente(
                       document.getElementById('me-genero-divisao').value,
                   );
-        const regiaoOrigem = document.getElementById('me-regiao-origem').value.trim();
+        adicionarRegiaoOrigemMovimento();
+        const regiaoOrigem = normalizarRegiao(
+            JSON.parse(document.getElementById('me-regiao-origem').value || '[]'),
+        );
         const inicio = lerDataParcialMovimento('me-ini');
         const fim = lerDataParcialMovimento('me-fim');
 
@@ -1347,6 +1535,7 @@ export function initFormMovimentoEscola() {
         );
         const lemas = JSON.parse(document.getElementById('me-lemas').value || '[]');
         const manifestos = JSON.parse(document.getElementById('me-manifestos').value || '[]');
+        const fontes = lerFontesCorrente();
 
         const gravar = () => {
             // Parte do registro existente: salvar não pode perder campo que o
@@ -1372,6 +1561,7 @@ export function initFormMovimentoEscola() {
                 tiposComposicao,
                 lemas,
                 manifestos,
+                fontes,
             };
             if (id) db.movimentosEscolas[db.movimentosEscolas.findIndex((x) => x.id == id)] = dados;
             else db.movimentosEscolas.push(dados);
@@ -1436,7 +1626,7 @@ export async function editarMovimentoEscola(id) {
     document.getElementById('me-genero-divisao').value = normalizarGeneroDivisaoCorrente(
         m.generoDivisao,
     );
-    document.getElementById('me-regiao-origem').value = m.regiaoOrigem || '';
+    carregarRegiaoOrigemMovimento(m.regiaoOrigem);
     preencherDataParcialMovimento('me-ini', m.inicio);
     preencherDataParcialMovimento('me-fim', m.fim);
     carregarValoresMovimento(m.valores || []);
@@ -1445,6 +1635,7 @@ export async function editarMovimentoEscola(id) {
     carregarTiposComposicaoMovimento(m.tiposComposicao || []);
     carregarLemasMovimento(m.lemas || []);
     carregarManifestosMovimento(m.manifestos || []);
+    carregarFontesCorrente(m.fontes || []);
     // Grupos colapsáveis: abre só os que já têm algo preenchido.
     const gruposComDados = correnteGruposComDados(m);
     document
@@ -1801,6 +1992,12 @@ export function initFormMesclar() {
             partes.push(`${assuntosCount} assunto${assuntosCount !== 1 ? 's' : ''}`);
         }
         const resumoImpacto = partes.join(' e ');
+        // Períodos que estão dentro da origem (só Período Histórico): passam
+        // a ficar dentro do destino. Não entram na conta de "textos".
+        const filhosCount = impacto.filhosIds?.length || 0;
+        const avisoFilhos = filhosCount
+            ? ` ${filhosCount} período${filhosCount !== 1 ? 's' : ''} dentro dele ${filhosCount !== 1 ? 'passam' : 'passa'} a ficar em "${destino.nome}".`
+            : '';
 
         // Fecha o modal de escolha antes de abrir o de confirmação — os
         // dois usam a mesma tecla Esc/foco-trap (ver modais.js), então
@@ -1814,8 +2011,8 @@ export function initFormMesclar() {
             rotulo: `Mesclar ${cfg.rotulo}`,
             mensagem:
                 total > 0
-                    ? `${resumoImpacto} que ${total !== 1 ? 'referenciam' : 'referencia'} "${origem.nome}" ${total !== 1 ? 'passam' : 'passa'} a referenciar "${destino.nome}". "${origem.nome}" será removido(a) do cadastro. ${aviso}`
-                    : `"${origem.nome}" será removido(a) do cadastro. ${aviso}`,
+                    ? `${resumoImpacto} que ${total !== 1 ? 'referenciam' : 'referencia'} "${origem.nome}" ${total !== 1 ? 'passam' : 'passa'} a referenciar "${destino.nome}".${avisoFilhos} "${origem.nome}" será removido(a) do cadastro. ${aviso}`
+                    : `"${origem.nome}" será removido(a) do cadastro.${avisoFilhos} ${aviso}`,
             textoConfirmar: 'Mesclar',
             corConfirmar: '#d97706',
             onConfirmar: () => {
@@ -3682,6 +3879,12 @@ export function initFormPoema() {
 
         const idInput = document.getElementById('p-edit-id').value;
         const id = idInput ? parseInt(idInput) : gerarId();
+
+        // Períodos Históricos Retratados (0 a N): os chips do campo, mais o
+        // que ficou digitado sem apertar "+". Nome ambíguo (homônimos) já foi
+        // avisado ao adicionar e fica no campo, então não salva até escolher.
+        const periodosHistoricosItens = obterPeriodosHistoricosDoTexto('poemas');
+        if ((document.getElementById('p-periodo-historico-nome')?.value || '').trim()) return;
         const destino = document.getElementById('p-destino').value;
 
         let paiTipo = null,
@@ -3753,13 +3956,7 @@ export function initFormPoema() {
         // resolvido/criado no cadastro central db.periodosHistoricos do
         // mesmo jeito que Época. Coexiste com epocaRetratada no mesmo
         // texto (ver calcularImpactoExclusaoPeriodoHistorico em db.js).
-        const periodoHistoricoNome = (
-            document.getElementById('p-periodo-historico-nome')?.value || ''
-        ).trim();
-        const periodoHistoricoCadastrado = periodoHistoricoNome
-            ? obterOuCriarPeriodoHistoricoPorNome(periodoHistoricoNome)
-            : null;
-        const periodoHistoricoId = periodoHistoricoCadastrado?.id ?? null;
+        const periodosHistoricosIds = periodosHistoricosDosItens(periodosHistoricosItens);
 
         const dados = {
             id,
@@ -3799,7 +3996,7 @@ export function initFormPoema() {
             autoclassificacao: Number(document.getElementById('p-autoclassificacao').value) || 0,
             status: document.getElementById('p-status').value,
             epocaRetratada,
-            periodoHistoricoId,
+            periodosHistoricosIds,
             movimentosEscolasIds: obterMovimentosEscolasDiretos('poemas'),
             hipertextualidade: obterHipertextualidade('poemas'),
             referenciasExternas: obterReferenciasExternas('poemas'),
@@ -3940,10 +4137,8 @@ export async function editarPoema(id) {
     document.getElementById('p-epoca-nome').value = nomeEpoca(p.epocaRetratada, db.epocas);
     document.getElementById('p-epoca-recorte').value = p.epocaRetratada?.recorte || '';
     toggleCamposEpocaNa();
-    document.getElementById('p-periodo-historico-nome').value = nomePeriodoHistorico(
-        p.periodoHistoricoId,
-        db.periodosHistoricos,
-    );
+    document.getElementById('p-periodo-historico-nome').value = '';
+    carregarPeriodosHistoricosDoTexto('poemas', p.periodosHistoricosIds || []);
     carregarMovimentosEscolasDiretos('poemas', p.movimentosEscolasIds || []);
     document.getElementById('p-intertexto-tipo').value = '';
     document.getElementById('p-intertexto-texto').value = '';
@@ -4053,6 +4248,12 @@ export function initFormProsa() {
 
         const idInput = document.getElementById('pr-edit-id').value;
         const id = idInput ? parseInt(idInput) : gerarId();
+
+        // Períodos Históricos Retratados (0 a N): os chips do campo, mais o
+        // que ficou digitado sem apertar "+". Nome ambíguo (homônimos) já foi
+        // avisado ao adicionar e fica no campo, então não salva até escolher.
+        const periodosHistoricosItens = obterPeriodosHistoricosDoTexto('prosas');
+        if ((document.getElementById('pr-periodo-historico-nome')?.value || '').trim()) return;
         const destino = document.getElementById('pr-destino').value;
 
         let paiTipo = null,
@@ -4106,13 +4307,7 @@ export function initFormProsa() {
                   }
                 : null;
 
-        const periodoHistoricoNomeProsa = (
-            document.getElementById('pr-periodo-historico-nome')?.value || ''
-        ).trim();
-        const periodoHistoricoCadastradoProsa = periodoHistoricoNomeProsa
-            ? obterOuCriarPeriodoHistoricoPorNome(periodoHistoricoNomeProsa)
-            : null;
-        const periodoHistoricoId = periodoHistoricoCadastradoProsa?.id ?? null;
+        const periodosHistoricosIds = periodosHistoricosDosItens(periodosHistoricosItens);
 
         const dados = {
             id,
@@ -4155,7 +4350,7 @@ export function initFormProsa() {
             publicado: document.getElementById('pr-pub').checked,
             status: document.getElementById('pr-status').value,
             epocaRetratada,
-            periodoHistoricoId,
+            periodosHistoricosIds,
             movimentosEscolasIds: obterMovimentosEscolasDiretos('prosas'),
             intertextualidade: obterIntertextualidade('prosas'),
             hipertextualidade: obterHipertextualidade('prosas'),
@@ -4284,10 +4479,8 @@ export async function editarProsa(id) {
     document.getElementById('pr-epoca-nome').value = nomeEpoca(pr.epocaRetratada, db.epocas);
     document.getElementById('pr-epoca-recorte').value = pr.epocaRetratada?.recorte || '';
     toggleCamposEpocaNaProsa();
-    document.getElementById('pr-periodo-historico-nome').value = nomePeriodoHistorico(
-        pr.periodoHistoricoId,
-        db.periodosHistoricos,
-    );
+    document.getElementById('pr-periodo-historico-nome').value = '';
+    carregarPeriodosHistoricosDoTexto('prosas', pr.periodosHistoricosIds || []);
     carregarMovimentosEscolasDiretos('prosas', pr.movimentosEscolasIds || []);
     document.getElementById('pr-intertexto-tipo').value = '';
     document.getElementById('pr-intertexto-texto').value = '';

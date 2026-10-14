@@ -18,11 +18,11 @@ import {
     seletorOcultos,
 } from './estatisticas-tela-comum.js';
 
+import { escaparAspasBusca } from './utils.js';
+
 const TOP_PERSONAGENS = 12;
 
-function termoEntreAspas(label) {
-    return String(label).replace(/"/g, '');
-}
+const termoEntreAspas = escaparAspasBusca;
 
 function textoDeContexto(id, texto) {
     const el = document.getElementById(id);

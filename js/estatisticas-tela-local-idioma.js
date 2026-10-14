@@ -32,7 +32,7 @@ import {
     seletorOcultos,
 } from './estatisticas-tela-comum.js';
 import { consultaBuscaDoLocal } from './locais.js';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, escaparAspasBusca } from './utils.js';
 import { db } from './db.js';
 
 // Os dois gráficos de Local são o mesmo componente com configuração própria.
@@ -183,7 +183,7 @@ function renderAssuntosPorLocalEscrita(total) {
         : 'localescrita:*';
     bindDrillDownBarra('grafico-assuntos-escrita', (label) =>
         navegarParaLista(
-            `assunto:"${String(label).replace(/"/g, '')}" ${consultaLocal}`,
+            `assunto:"${escaparAspasBusca(label)}" ${consultaLocal}`,
             '',
             tipoDestino(),
         ),

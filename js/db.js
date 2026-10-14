@@ -23,15 +23,37 @@ import {
     POSTURAS_ESTETICAS_RENOMEADAS,
     IDENTIDADES_CIS_TRANS,
     CORES_RACA_AUTOR,
+    periodosHistoricosIdsDoItem,
 } from './utils.js';
+import {
+    opcoesDeFabricaPeriodoBiografico,
+    migrarCamposPeriodoBiografico,
+    migrarOpcoesPeriodoBiografico,
+    mesclarCamposDosPeriodos,
+    mesclarPessoaNosPeriodos,
+    removerPessoaDosPeriodos,
+    restaurarPessoaNosPeriodos,
+} from './periodo-biografico-campos.js';
 import { sincronizarTemas } from './temas.js';
+import { normalizarRegiao, mesmaRegiao } from './regiao.js';
 import { sincronizarLocais } from './locais.js';
+import { fontesDeFabricaDaCorrente, normalizarFontes, unirFontes } from './fontes-corrente.js';
+import { fontesDeFabricaDoPeriodoHistorico } from './fontes-periodo-historico.js';
 import {
     sanearHierarquiaDeCorrentes,
     criaCicloCorrente,
     normalizarDivisaoCorrente,
     normalizarGeneroDivisaoCorrente,
 } from './correntes-hierarquia.js';
+import {
+    sanearHierarquiaDePeriodos,
+    mesclarHierarquiaDePeriodos,
+    retirarPeriodoDaHierarquia,
+    destinoDosFilhosAoExcluir,
+    paisDoPeriodo,
+    filhosDoPeriodo,
+    descendentesDoPeriodo,
+} from './periodos-historicos-hierarquia.js';
 import { sincronizarPersonagens, calcularImpactoExclusaoPersonagem } from './personagens.js';
 import { sincronizarParesIgnorados } from './sugestao-ecos.js';
 import { normalizarPadroesColunas } from './colunas.js';
@@ -86,7 +108,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Não se aplica',
         programa: 'Movimento',
-        regiaoOrigem: 'Portugal/Galiza',
+        regiaoOrigem: ['Portugal', 'Galiza'],
         valores: ['tradição oral', 'cortesia', 'amor cortês'],
         temas: ['amor não correspondido', 'saudade', 'amizade', 'zombaria'],
         tecnicas: ['refrão', 'paralelismo', 'mote e glosa'],
@@ -106,7 +128,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: 'Reformista',
         programa: 'Movimento',
-        regiaoOrigem: 'Portugal',
+        regiaoOrigem: ['Portugal'],
         valores: ['racionalidade emergente', 'valorização do indivíduo'],
         temas: ['feitos régios', 'moral cortesã'],
         tecnicas: ['prosa cronística', 'diálogo doutrinário'],
@@ -121,7 +143,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: 'Restauradora',
         programa: 'Escola',
-        regiaoOrigem: 'Portugal',
+        regiaoOrigem: ['Portugal'],
         valores: ['equilíbrio', 'universalismo clássico', 'heroísmo nacional'],
         temas: ['navegação/epopeia', 'amor platônico', 'mitologia'],
         tecnicas: ['métrica clássica (decassílabo)', 'alusão mitológica'],
@@ -136,7 +158,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Reformista',
         programa: 'Movimento',
-        regiaoOrigem: 'Brasil/Portugal',
+        regiaoOrigem: ['Brasil', 'Portugal'],
         valores: ['conflito fé×razão', 'efemeridade da vida'],
         temas: ['morte', 'pecado e salvação', 'vaidade (vanitas)'],
         tecnicas: [
@@ -156,7 +178,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: 'Restauradora',
         programa: 'Escola',
-        regiaoOrigem: 'Brasil/Portugal',
+        regiaoOrigem: ['Brasil', 'Portugal'],
         valores: ['simplicidade', 'racionalidade iluminista'],
         temas: ['vida bucólica', 'amor idealizado', 'fuga da cidade'],
         tecnicas: [
@@ -180,7 +202,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Inovadora',
         programa: 'Movimento',
-        regiaoOrigem: 'Brasil/Portugal',
+        regiaoOrigem: ['Brasil', 'Portugal'],
         valores: ['subjetivismo', 'nacionalismo', 'liberdade individual'],
         temas: ['amor idealizado', 'natureza', 'indianismo', 'melancolia'],
         tecnicas: ['primeira pessoa exacerbada', 'hipérbole sentimental'],
@@ -197,7 +219,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['nacionalismo', 'identidade nacional', 'subjetivismo'],
         temas: ['natureza', 'indígena como herói', 'pátria', 'amor idealizado', 'abolicionismo'],
         tecnicas: [],
@@ -218,7 +240,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['nacionalismo', 'religiosidade', 'idealização do passado'],
         temas: ['pátria', 'natureza', 'indígena como herói', 'saudade do exílio'],
         tecnicas: [],
@@ -237,7 +259,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['egocentrismo', 'pessimismo', 'evasão da realidade'],
         temas: ['morte', 'melancolia', 'amor impossível', 'mulher idealizada'],
         tecnicas: [],
@@ -256,7 +278,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['liberdade', 'justiça social', 'engajamento político'],
         temas: [
             'abolicionismo',
@@ -280,7 +302,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['nacionalismo', 'idealização do indígena'],
         temas: [
             'indígena como herói',
@@ -303,7 +325,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['costumes burgueses', 'idealização amorosa'],
         temas: ['bailes', 'casamento', 'intrigas amorosas', 'vida na Corte (Rio de Janeiro)'],
         tecnicas: [],
@@ -322,7 +344,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['nacionalismo', 'cor local'],
         temas: ['sertão', 'costumes do interior', 'falares regionais', 'paisagem das províncias'],
         tecnicas: [],
@@ -341,7 +363,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['nacionalismo', 'imaginação romântica'],
         temas: ['episódios do passado nacional', 'lendas heroicas'],
         tecnicas: [],
@@ -359,7 +381,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Portugal',
+        regiaoOrigem: ['Portugal'],
         valores: ['liberalismo', 'nacionalismo', 'subjetivismo'],
         temas: ['história medieval portuguesa', 'identidade nacional', 'paixão', 'melancolia'],
         tecnicas: [],
@@ -382,7 +404,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Portugal',
+        regiaoOrigem: ['Portugal'],
         valores: ['liberalismo', 'nacionalismo', 'resgate do passado'],
         temas: ['história medieval', 'mitos nacionais', 'identidade portuguesa'],
         tecnicas: [],
@@ -400,7 +422,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Portugal',
+        regiaoOrigem: ['Portugal'],
         valores: ['sentimentalismo exagerado', 'pessimismo'],
         temas: ['morte', 'melancolia', 'paixão trágica'],
         tecnicas: [],
@@ -418,7 +440,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Portugal',
+        regiaoOrigem: ['Portugal'],
         valores: ['equilíbrio', 'atenção à realidade social'],
         temas: ['vida campesina', 'costumes', 'realidade social'],
         tecnicas: [],
@@ -437,7 +459,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Portugal',
+        regiaoOrigem: ['Portugal'],
         valores: ['nacionalismo', 'medievalismo', 'rigor histórico'],
         temas: ['Idade Média portuguesa', 'origens da nação', 'lendas e narrativas'],
         tecnicas: [],
@@ -456,7 +478,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Portugal',
+        regiaoOrigem: ['Portugal'],
         valores: ['subjetivismo', 'ironia', 'atualidade'],
         temas: ['viagem', 'sociedade contemporânea', 'digressão do narrador'],
         tecnicas: ['digressão', 'conversa com o leitor'],
@@ -475,7 +497,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Portugal',
+        regiaoOrigem: ['Portugal'],
         valores: ['sentimentalismo', 'ultrarromantismo'],
         temas: ['amor proibido', 'paixão trágica', 'morte'],
         tecnicas: [],
@@ -494,7 +516,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: '',
         programa: '',
-        regiaoOrigem: 'Portugal',
+        regiaoOrigem: ['Portugal'],
         valores: ['moralização dos costumes', 'bondade humana', 'equilíbrio'],
         temas: ['vida na aldeia', 'costumes rurais', 'tipos populares'],
         tecnicas: [],
@@ -510,7 +532,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: 'Reformista',
         programa: 'Movimento',
-        regiaoOrigem: 'Brasil/Portugal',
+        regiaoOrigem: ['Brasil', 'Portugal'],
         valores: ['objetividade', 'crítica social'],
         temas: ['adultério', 'hipocrisia burguesa', 'decadência moral'],
         tecnicas: ['narrador crítico/irônico', 'análise psicológica', 'digressão ensaística'],
@@ -525,7 +547,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: 'Reformista',
         programa: 'Escola',
-        regiaoOrigem: 'Brasil/Portugal',
+        regiaoOrigem: ['Brasil', 'Portugal'],
         valores: ['determinismo', 'cientificismo', 'denúncia social'],
         temas: ['exclusão social', 'doença/degeneração', 'instinto'],
         tecnicas: ['descrição cientificista', 'zoomorfização'],
@@ -540,7 +562,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: 'Restauradora',
         programa: 'Escola',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['impessoalidade', 'culto à forma'],
         temas: ['beleza plástica', 'mitologia clássica', 'o fazer poético'],
         tecnicas: ['rigor métrico', 'rima rica', 'busca da forma fixa'],
@@ -555,7 +577,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Reformista',
         programa: 'Movimento',
-        regiaoOrigem: 'Brasil/Portugal',
+        regiaoOrigem: ['Brasil', 'Portugal'],
         valores: ['musicalidade', 'subjetividade', 'misticismo'],
         temas: ['morte', 'transcendência', 'o inefável'],
         tecnicas: ['sinestesia', 'sugestão em vez de descrição', 'musicalidade sonora'],
@@ -570,7 +592,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: 'Reformista',
         programa: 'Tendência',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['crítica social', 'hibridismo estético'],
         temas: ['exclusão/marginalidade', 'sertão e litoral'],
         tecnicas: ['hibridismo de registro (culto/coloquial)'],
@@ -585,7 +607,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Iconoclasta',
         programa: 'Vanguarda',
-        regiaoOrigem: 'Itália',
+        regiaoOrigem: ['Itália'],
         valores: ['culto à velocidade', 'ruptura com o passado'],
         temas: ['guerra', 'tecnologia', 'cidade moderna'],
         tecnicas: ['palavras em liberdade', 'ruptura sintática', 'tipografia expressiva'],
@@ -600,7 +622,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Iconoclasta',
         programa: 'Vanguarda',
-        regiaoOrigem: 'Alemanha',
+        regiaoOrigem: ['Alemanha'],
         valores: ['subjetividade extrema', 'angústia existencial'],
         temas: ['alienação', 'guerra', 'opressão urbana'],
         tecnicas: ['distorção grotesca', 'linguagem fragmentada'],
@@ -615,7 +637,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Iconoclasta',
         programa: 'Vanguarda',
-        regiaoOrigem: 'França',
+        regiaoOrigem: ['França'],
         valores: ['simultaneidade', 'multiplicidade de perspectivas'],
         temas: ['vida moderna urbana', 'fragmentação da experiência'],
         tecnicas: ['simultaneísmo', 'justaposição sem conectivos'],
@@ -630,7 +652,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Iconoclasta',
         programa: 'Vanguarda',
-        regiaoOrigem: 'Suíça/Europa',
+        regiaoOrigem: ['Suíça', 'Europa'],
         valores: ['antiarte', 'acaso', 'negação da lógica'],
         temas: ['absurdo da guerra', 'falência da razão burguesa'],
         tecnicas: ['colagem', 'acaso (cadavre exquis)', 'corte-e-recombinação de palavras'],
@@ -645,7 +667,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Inovadora',
         programa: 'Movimento',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['ruptura formal', 'nacionalismo crítico', 'liberdade de expressão'],
         temas: ['identidade nacional', 'cotidiano urbano', 'crítica ao passadismo'],
         tecnicas: ['verso livre', 'coloquialidade', 'paródia/humor'],
@@ -660,7 +682,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Iconoclasta',
         programa: 'Vanguarda',
-        regiaoOrigem: 'França',
+        regiaoOrigem: ['França'],
         valores: ['automatismo psíquico', 'valorização do inconsciente'],
         temas: ['sonho', 'desejo', 'o maravilhoso cotidiano'],
         tecnicas: ['escrita automática', 'justaposição onírica', 'associação livre de imagens'],
@@ -675,7 +697,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: 'Restauradora',
         programa: 'Grupo/Círculo',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['retorno ao rigor formal', 'equilíbrio tradição/modernidade'],
         temas: ['intimismo', 'universalismo'],
         tecnicas: ['metrificação recuperada', 'economia verbal', 'precisão lexical'],
@@ -690,7 +712,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Iconoclasta',
         programa: 'Vanguarda',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['síntese', 'economia verbal radical', 'palavra como objeto'],
         temas: ['linguagem e forma como próprio conteúdo'],
         tecnicas: [
@@ -717,7 +739,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Artístico',
         posturaEstetica: 'Eclética',
         programa: 'Movimento',
-        regiaoOrigem: 'Brasil',
+        regiaoOrigem: ['Brasil'],
         valores: ['antropofagia cultural', 'mistura de erudito e popular', 'experimentalismo'],
         temas: [
             'identidade nacional',
@@ -741,7 +763,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: 'Eclética',
         programa: 'Tendência',
-        regiaoOrigem: 'Internacional',
+        regiaoOrigem: ['Internacional'],
         valores: ['ceticismo às metanarrativas', 'pluralidade de vozes', 'ironia'],
         temas: ['simulacro', 'crise de identidade', 'paródia da tradição'],
         tecnicas: [
@@ -770,7 +792,7 @@ const DADOS_SEED_MOVIMENTOS_ESCOLAS = [
         tipo: 'Literário',
         posturaEstetica: 'Não se aplica',
         programa: 'Tendência',
-        regiaoOrigem: 'Internacional',
+        regiaoOrigem: ['Internacional'],
         valores: ['pluralidade', 'hibridismo', 'ausência de escola dominante'],
         temas: ['identidade', 'memória', 'corpo', 'tecnologia e cotidiano digital'],
         tecnicas: [
@@ -811,84 +833,121 @@ function _dataParcialDoSeed([dia, mes, ano, seculo, decada]) {
 const DADOS_SEED_PERIODOS_HISTORICOS = [
     {
         nome: 'Renascimento',
-        regiao: 'Europa',
+        regiao: ['Europa'],
         ini: [null, null, 1400],
+        iniAprox: true,
         fim: [null, null, 1600],
+        fimAprox: true,
         notas: 'Movimento cultural e artístico europeu de resgate dos clássicos greco-latinos e do antropocentrismo, entre a Idade Média e a Idade Moderna — datas aproximadas (varia por região). Pano de fundo do Humanismo e do Classicismo/Quinhentismo português (Camões), já cadastrados em Correntes literárias.',
     },
     {
         nome: 'Iluminismo',
-        regiao: 'Europa',
+        regiao: ['Europa'],
         ini: [null, null, 1715],
         fim: [null, null, 1789],
         notas: 'Movimento filosófico europeu de valorização da razão e da crítica ao Antigo Regime, do auge no século XVIII até a Revolução Francesa. Pano de fundo do Arcadismo (Neoclassicismo), já cadastrado em Correntes literárias.',
     },
     {
-        nome: 'Revolução Industrial (primeira fase)',
-        regiao: 'Inglaterra/Europa',
+        nome: 'Primeira Revolução Industrial',
+        regiao: ['Inglaterra', 'Europa', 'América do Norte'],
         ini: [null, null, 1760],
+        iniAprox: true,
         fim: [null, null, 1840],
-        notas: 'Mecanização e urbanização aceleradas, a partir da Inglaterra — pano de fundo econômico e social mais amplo das tensões depois retratadas pelo Realismo/Naturalismo.',
+        fimAprox: true,
+        notas: 'Mecanização e urbanização aceleradas, a partir da Inglaterra — pano de fundo econômico e social mais amplo das tensões depois retratadas pelo Realismo/Naturalismo. As datas são as convencionais.',
     },
     {
         nome: 'Revolução Francesa',
-        regiao: 'França',
+        regiao: ['França'],
         ini: [14, 7, 1789],
         fim: [null, null, 1799],
         notas: 'Marco simbólico do fim do Antigo Regime, do 14/07 (Queda da Bastilha) ao Golpe do 18 de Brumário — alimenta o culto à liberdade individual e o nacionalismo que o Romantismo herda.',
     },
     {
+        nome: 'Segunda Revolução Industrial',
+        regiao: ['Europa', 'América do Norte', 'Ásia Oriental'],
+        ini: [null, null, 1870],
+        iniAprox: true,
+        fim: [null, null, 1914],
+        fimAprox: true,
+        notas: 'Eletricidade, aço, química e produção em massa, com a industrialização se espalhando para além da Inglaterra (Alemanha, Estados Unidos, Japão). As datas são as convencionais.',
+    },
+    {
         nome: 'Belle Époque',
-        regiao: 'Europa',
+        regiao: ['Europa'],
         ini: [null, null, 1871],
         fim: [null, null, 1914],
         notas: 'Otimismo e efervescência cultural na Europa, entre a Guerra Franco-Prussiana e a Primeira Guerra Mundial — pano de fundo do Parnasianismo e do Simbolismo, já cadastrados em Correntes literárias.',
     },
     {
         nome: 'Primeira Guerra Mundial',
-        regiao: 'Internacional',
+        regiao: ['Internacional'],
         ini: [28, 7, 1914],
         fim: [11, 11, 1918],
         notas: 'Encerra a Belle Époque e alimenta o desencanto e a ruptura formal que antecedem o Modernismo.',
     },
     {
         nome: 'Semana de Arte Moderna',
-        regiao: 'Brasil',
+        regiao: ['Brasil'],
         ini: [11, 2, 1922],
         fim: [18, 2, 1922],
         notas: 'Theatro Municipal de São Paulo, sessões principais em 13, 15 e 17/02 — marco do início do Modernismo brasileiro, já cadastrado em Correntes literárias com a mesma âncora de 1922.',
     },
     {
         nome: 'Segunda Guerra Mundial',
-        regiao: 'Internacional',
+        regiao: ['Internacional'],
         ini: [1, 9, 1939],
         fim: [2, 9, 1945],
         notas: 'Reconfigura a ordem internacional — pano de fundo da literatura de testemunho e da reflexão sobre a barbárie no pós-guerra.',
     },
     {
         nome: 'Estado Novo (Portugal)',
-        regiao: 'Portugal',
+        regiao: ['Portugal'],
         ini: [null, null, 1933],
         fim: [25, 4, 1974],
         notas: 'Ditadura salazarista/marcelista, encerrada pela Revolução dos Cravos (25/04) — pano de fundo da censura e da poesia/prosa de intervenção em Portugal.',
     },
     {
         nome: 'Ditadura Militar Brasileira',
-        regiao: 'Brasil',
+        regiao: ['Brasil'],
         ini: [31, 3, 1964],
         fim: [null, null, 1985],
         notas: 'Regime militar no Brasil — pano de fundo da poesia marginal, da MPB de protesto e da literatura de resistência e censura.',
     },
     {
         nome: 'Guerra Fria',
-        regiao: 'Internacional',
+        regiao: ['Internacional'],
         ini: [null, null, 1947],
         fim: [null, null, 1991],
         notas: 'Disputa geopolítica EUA–URSS que atravessa boa parte do século XX — pano de fundo mais amplo das ditaduras latino-americanas, da Guerra Colonial Portuguesa e do "boom" da literatura latino-americana.',
     },
     {
+        nome: 'Terceira Revolução Industrial (Era da Informação)',
+        regiao: ['Internacional'],
+        ini: [null, null, 1950],
+        iniAprox: true,
+        fim: [null, null, 2000],
+        fimAprox: true,
+        notas: 'Eletrônica, computação, telecomunicações e automação, dos transistores e computadores do pós-guerra à popularização da internet — pano de fundo da cultura digital e das novas formas de circulação da escrita. As datas são as convencionais e variam conforme o autor; a passagem para a Quarta Revolução Industrial não tem marco único.',
+    },
+    {
+        nome: 'Nova República',
+        regiao: ['Brasil'],
+        ini: [15, 3, 1985],
+        fim: [null, null, null],
+        notas: 'Período democrático brasileiro que sucede a ditadura militar, iniciado com a posse de José Sarney em 15/03/1985 e ainda em curso.',
+    },
+    {
+        nome: 'Quarta Revolução Industrial (Indústria 4.0)',
+        regiao: ['Internacional'],
+        ini: [null, null, 2011],
+        iniAprox: true,
+        fim: [null, null, null],
+        notas: 'Integração de sistemas ciberfísicos, internet das coisas, inteligência artificial e dados em larga escala — o termo "Indústria 4.0" surge em 2011 (feira de Hannover) e "Quarta Revolução Industrial" foi popularizado por Klaus Schwab, em 2016. Ainda em curso; o início é convencional.',
+    },
+    {
         nome: 'Pandemia de Covid-19',
-        regiao: 'Internacional',
+        regiao: ['Internacional'],
         ini: [11, 3, 2020],
         fim: [5, 5, 2023],
         notas: 'Emergência sanitária global — a OMS caracteriza como pandemia em 11/03/2020 e declara o fim da emergência em 05/05/2023. Pano de fundo de uma leva recente de literatura de isolamento e luto coletivo.',
@@ -902,12 +961,15 @@ const DADOS_SEED_PERIODOS_HISTORICOS = [
 // seculo/decada. Período Histórico não tem essas duas, então uma data
 // só-ano fica `{ ano }`, não `{ dia: null, mes: null, ano }` — bate com
 // o que um cadastro feito à mão pelo próprio usuário produziria.
-function _dataParcialPeriodoHistoricoDoSeed([dia, mes, ano]) {
+function _dataParcialPeriodoHistoricoDoSeed([dia, mes, ano], aprox = false) {
     const obj = {};
     if (dia != null) obj.dia = dia;
     if (mes != null) obj.mes = mes;
     if (ano != null) obj.ano = ano;
-    return Object.keys(obj).length ? obj : null;
+    if (!Object.keys(obj).length) return null;
+    // `aprox` ("c."): marca da data, não do ano — o número segue exato.
+    if (aprox) obj.aprox = true;
+    return obj;
 }
 
 // Mesmo espírito de SEED_MOVIMENTOS_ESCOLAS logo acima — chamada só no
@@ -919,9 +981,10 @@ function SEED_PERIODOS_HISTORICOS() {
         nome: p.nome,
         embutido: true,
         notas: p.notas,
-        regiao: p.regiao,
-        inicio: _dataParcialPeriodoHistoricoDoSeed(p.ini),
-        fim: _dataParcialPeriodoHistoricoDoSeed(p.fim),
+        regiao: normalizarRegiao(p.regiao),
+        inicio: _dataParcialPeriodoHistoricoDoSeed(p.ini, p.iniAprox),
+        fim: _dataParcialPeriodoHistoricoDoSeed(p.fim, p.fimAprox),
+        fontes: fontesDeFabricaDoPeriodoHistorico(p.nome),
     }));
 }
 
@@ -957,13 +1020,14 @@ function _registroDeMovimentoDoSeed(modelo, lista) {
         paiId: pai ? pai.id : null,
         divisao: pai ? normalizarDivisaoCorrente(modelo.divisao) : '',
         generoDivisao: pai ? normalizarGeneroDivisaoCorrente(modelo.generoDivisao) : '',
-        regiaoOrigem: modelo.regiaoOrigem,
+        regiaoOrigem: normalizarRegiao(modelo.regiaoOrigem),
         valores: [...modelo.valores],
         temas: [...modelo.temas],
         tecnicas: [...modelo.tecnicas],
         tiposComposicao: [...modelo.tiposComposicao],
         lemas: [...modelo.lemas],
         manifestos: [...modelo.manifestos],
+        fontes: fontesDeFabricaDaCorrente(modelo.nome),
     };
 }
 
@@ -1097,7 +1161,7 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     pessoas: [], // cadastro central de Pessoas ({ id, nome, grupoIds, autorIds, oculto }) — ver migrarPessoasParaCadastro/migrarPessoasAutorIds/migrarPessoasOculto
     grupos: [], // cadastro central de Grupos ({ id, nome, oculto }) — quem uma Pessoa é na vida de quem escreve, constante entre poemas
     autores: [], // cadastro central de Autores ({ id, nome, sobre }) — quem escreveu o item, ver migrarAutoria
-    epocas: [], // cadastro central de Período Biográfico (rótulo na interface; nome interno "epocas" mantido por compatibilidade — { id, nome, contextoRelacao, notas }) — a que período pessoal um poema se refere, ver migrarEpocas
+    epocas: [], // cadastro central de Período Biográfico (rótulo na interface; nome interno "epocas" mantido por compatibilidade — { id, nome, notas }) — a que período pessoal um poema se refere, ver migrarEpocas
     // cadastro central de Período Histórico ({ id, nome, notas, regiao,
     // inicio, fim, embutido? }) — período histórico (não pessoal) que um poema
     // retrata; referenciado por Poema/Prosa via periodoHistoricoId (link
@@ -1105,7 +1169,7 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // são datas parciais { dia, mes, ano } (cada campo opcional, mesmo
     // formato de epocaRetratada) e vivem no cadastro, não por texto,
     // porque a data é do período em si (ver migrarDatasPeriodoHistorico).
-    // Vem pré-populado com 12 períodos de relevância ampla/internacional
+    // Vem pré-populado com 16 períodos de relevância ampla/internacional
     // pra literatura (Renascimento, Iluminismo, Guerras Mundiais, Semana
     // de Arte Moderna etc. — ver SEED_PERIODOS_HISTORICOS), semeado só na
     // primeira vez que o app roda e migrado aditivamente depois (mesmo
@@ -1113,7 +1177,7 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     periodosHistoricos: SEED_PERIODOS_HISTORICOS(),
     // cadastro central de Movimento/Escola ({ id, nome, notas, inicio, fim,
     // tipo, valores, temas, tecnicas, tiposComposicao, lemas, manifestos,
-    // regiaoOrigem }) — diferente de Período Histórico, a relação aqui é
+    // fontes, regiaoOrigem }) — diferente de Período Histórico, a relação aqui é
     // N:N dos dois lados: Autor.movimentosEscolasIds e
     // Poema/Prosa.movimentosEscolasIds são arrays de id (um Autor pode não
     // se enquadrar em nenhum movimento, ou pertencer a vários; um texto
@@ -1161,6 +1225,10 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // db (e não no localStorage, como a escolha atual de colunas) pra ir junto
     // no backup JSON, nos snapshots e na restauração. Ver colunas.js.
     padroesColunas: {},
+    // Bloco 3: valores de Esfera, Natureza e Vínculo do Período Biográfico
+    // (mais a Natureza sugerida de cada Vínculo), editáveis pela pessoa
+    // (começam com os de fábrica). Ver periodo-biografico-campos.js.
+    opcoesPeriodoBiografico: opcoesDeFabricaPeriodoBiografico(),
     // Análise de escansão/métrica/rimas de um poema (aba Sonoridade).
     // Um poema pode ter no máximo uma escansão vinculada (não é histórico
     // de versões) — ver getEscansaoDoPoema. Bloco 1 (dados + tabela) cobre
@@ -1801,6 +1869,19 @@ export function migrarAnoParaDataEscrita(itens) {
 migrarAnoParaDataEscrita(db.poemas);
 migrarAnoParaDataEscrita(db.prosas);
 
+// Bloco 2e: `periodoHistoricoId` (um só) virou `periodosHistoricosIds` (lista,
+// sem período principal). Com valor vira `[valor]`, sem valor vira `[]`, e o
+// campo antigo sai do objeto. Onde a lista já existe, só normaliza (sem
+// repetidos, sem vazios) e tira o campo antigo se ele sobrou. Id que não
+// existe mais no cadastro sai sem barulho quando `cadastro` é passado.
+// Idempotente; backups antigos continuam abrindo.
+export function migrarPeriodosHistoricosMultiplos(itens, cadastro = null) {
+    (itens || []).forEach((item) => {
+        item.periodosHistoricosIds = periodosHistoricosIdsDoItem(item, cadastro);
+        delete item.periodoHistoricoId;
+    });
+}
+
 // Migração: campo `reconhecimentos` — lista de prêmios/menções que um
 // texto recebeu (item 8 do plano de schema), separada de tag solta. Até
 // aqui, "Premiados" era uma tag genérica dentro do balde temporário
@@ -1877,7 +1958,7 @@ migrarAutoria(db);
 
 // Migração: item 3 do plano de schema. `epocaRetratada.nome` era texto
 // livre repetido em cada poema — vira referência (`epocaId`) a um
-// cadastro central próprio, `db.epocas` ({ id, nome, contextoRelacao,
+// cadastro central próprio, `db.epocas` ({ id, nome,
 // notas }), mesmo padrão de Pessoas/Autores acima. O que muda é só a
 // chave: de `{ nome, inicio, fim, na }` pra `{ epocaId, inicio, fim,
 // recorte, na }` — as datas/N-A continuam por item (o mesmo período
@@ -1907,10 +1988,13 @@ export function migrarEpocas(dbRef) {
             epoca = {
                 id: gerarId(),
                 nome,
-                contextoRelacao: '',
                 notas: '',
                 inicio: null,
                 fim: null,
+                esferas: [],
+                categorias: [],
+                pessoasEnvolvidas: [],
+                relacoes: [],
             };
             dbRef.epocas.push(epoca);
             porNome.set(nome, epoca);
@@ -2172,11 +2256,15 @@ export function obterOuCriarEpocaPorNome(nome, autorId) {
         epoca = {
             id: gerarId(),
             nome: nomeLimpo,
-            contextoRelacao: '',
             notas: '',
             autorId,
             inicio: null,
             fim: null,
+            esferas: [],
+            categorias: [],
+            pessoasEnvolvidas: [],
+            relacoes: [],
+            pertenceA: [],
         };
         db.epocas.push(epoca);
     }
@@ -2184,7 +2272,7 @@ export function obterOuCriarEpocaPorNome(nome, autorId) {
 }
 
 // Mesmo padrão de obterOuCriarEpocaPorNome, pro cadastro central de
-// Período Histórico — mais simples (sem contextoRelacao, que não se
+// Período Histórico — mais simples (sem o texto de relacionamento, que não se
 // aplica a um período histórico).
 export function obterOuCriarPeriodoHistoricoPorNome(nome) {
     const nomeLimpo = String(nome ?? '').trim();
@@ -2195,9 +2283,11 @@ export function obterOuCriarPeriodoHistoricoPorNome(nome) {
             id: gerarId(),
             nome: nomeLimpo,
             notas: '',
-            regiao: '',
+            regiao: [],
             inicio: null,
             fim: null,
+            pertenceA: [],
+            fontes: [],
         };
         db.periodosHistoricos.push(periodo);
     }
@@ -2219,10 +2309,43 @@ export function migrarDatasPeriodoHistorico(periodosHistoricos) {
 }
 migrarDatasPeriodoHistorico(db.periodosHistoricos);
 
+// Períodos de fábrica renomeados: o registro é renomeado no lugar (mesmo id,
+// então textos, datas e notas continuam ligados) em vez de a migração dos
+// embutidos criar um novo ao lado. A região só é trocada pela do seed se
+// ainda for a antiga, sem edição da pessoa. Quem tinha excluído o período de
+// propósito (nome em `ocultos`) continua sem ele sob o nome novo. Idempotente.
+const PERIODOS_HISTORICOS_RENOMEADOS = [
+    {
+        de: 'Revolução Industrial (primeira fase)',
+        para: 'Primeira Revolução Industrial',
+        regiaoAntiga: ['Inglaterra', 'Europa'],
+    },
+];
+
+export function renomearPeriodosHistoricosDeFabrica(periodosHistoricos, ocultos = []) {
+    PERIODOS_HISTORICOS_RENOMEADOS.forEach(({ de, para, regiaoAntiga }) => {
+        const modelo = DADOS_SEED_PERIODOS_HISTORICOS.find((p) => p.nome === para);
+        const antigo = periodosHistoricos.find((p) => p.nome === de && p.embutido !== false);
+        const novoJaExiste = periodosHistoricos.some((p) => p.nome === para);
+        if (antigo && !novoJaExiste) {
+            antigo.nome = para;
+            antigo.embutido = true;
+            if (modelo && mesmaRegiao(antigo.regiao, regiaoAntiga)) {
+                antigo.regiao = normalizarRegiao(modelo.regiao);
+            }
+        }
+        const idx = ocultos.indexOf(de);
+        if (idx !== -1) {
+            ocultos.splice(idx, 1);
+            if (!ocultos.includes(para)) ocultos.push(para);
+        }
+    });
+}
+
 // Migração aditiva: mesmo raciocínio de migrarMovimentosEscolasEmbutidos
 // (ver comentário lá) — instalação que já tinha `periodosHistoricos`
 // (mesmo que `[]`, ou já com cadastro próprio do usuário) nunca passa
-// pelo `if (!db.periodosHistoricos)` lá em cima, então os 12 períodos de
+// pelo `if (!db.periodosHistoricos)` lá em cima, então os períodos de
 // DADOS_SEED_PERIODOS_HISTORICOS (curados com o Victor, 28/09/2026 — ver
 // decisoes.md) só chegariam sozinhos em instalação nova. Casa por nome
 // contra o seed, pula quem a pessoa já excluiu de propósito (registrado
@@ -2233,6 +2356,7 @@ migrarDatasPeriodoHistorico(db.periodosHistoricos);
 // marcado (aí só ganha a chave, sem duplicar nem perder o que a pessoa
 // já tinha preenchido em notas/datas).
 export function migrarPeriodosHistoricosEmbutidos(periodosHistoricos, ocultos = []) {
+    renomearPeriodosHistoricosDeFabrica(periodosHistoricos, ocultos);
     const nomesSeed = new Set(DADOS_SEED_PERIODOS_HISTORICOS.map((p) => p.nome));
     periodosHistoricos.forEach((p) => {
         if (p.embutido === undefined && nomesSeed.has(p.nome)) p.embutido = true;
@@ -2247,13 +2371,32 @@ export function migrarPeriodosHistoricosEmbutidos(periodosHistoricos, ocultos = 
             nome: modelo.nome,
             embutido: true,
             notas: modelo.notas,
-            regiao: modelo.regiao,
-            inicio: _dataParcialPeriodoHistoricoDoSeed(modelo.ini),
-            fim: _dataParcialPeriodoHistoricoDoSeed(modelo.fim),
+            regiao: normalizarRegiao(modelo.regiao),
+            inicio: _dataParcialPeriodoHistoricoDoSeed(modelo.ini, modelo.iniAprox),
+            fim: _dataParcialPeriodoHistoricoDoSeed(modelo.fim, modelo.fimAprox),
+            fontes: fontesDeFabricaDoPeriodoHistorico(modelo.nome),
         });
     });
 }
 migrarPeriodosHistoricosEmbutidos(db.periodosHistoricos, db.periodosHistoricosOcultos);
+
+// Fontes (14/10/2026): campo que nunca existiu no registro de fábrica (casado
+// por nome, como a região) recebe as fontes do seed uma única vez. Depois
+// disso o campo existe e nada é sobrescrito, nem uma lista que a pessoa tenha
+// esvaziado de propósito. Cadastro da própria pessoa (embutido === false)
+// nasce sem fontes, e período com nome fora do seed fica com `[]`. Toda lista
+// é saneada (lixo e repetição saem). Idempotente. Precisa rodar DEPOIS de
+// migrarPeriodosHistoricosEmbutidos (é ela que renomeia os períodos de fábrica
+// e marca `embutido` por nome nos itens antigos).
+export function migrarFontesPeriodosHistoricos(periodosHistoricos) {
+    (periodosHistoricos || []).forEach((p) => {
+        if (p.fontes === undefined && p.embutido !== false) {
+            p.fontes = fontesDeFabricaDoPeriodoHistorico(p.nome);
+        }
+        p.fontes = normalizarFontes(p.fontes);
+    });
+}
+migrarFontesPeriodosHistoricos(db.periodosHistoricos);
 
 // Migração: `regiao` nasceu depois do seed de Período Histórico. Só toca
 // quem está com a chave ausente (`undefined`): item de fábrica ganha a
@@ -2262,14 +2405,66 @@ migrarPeriodosHistoricosEmbutidos(db.periodosHistoricos, db.periodosHistoricosOc
 // — nunca é reescrito, então isto é idempotente e não desfaz edição.
 // Precisa rodar DEPOIS de migrarPeriodosHistoricosEmbutidos (é ela que
 // marca `embutido` por nome nos itens antigos).
+//
+// A região é uma lista de lugares: o texto antigo com barras
+// ("Inglaterra/Europa") vira array aqui, para qualquer registro.
 export function migrarRegiaoPeriodoHistorico(periodosHistoricos) {
     const regiaoPorNome = new Map(DADOS_SEED_PERIODOS_HISTORICOS.map((p) => [p.nome, p.regiao]));
     (periodosHistoricos || []).forEach((p) => {
-        if (p.regiao !== undefined) return;
-        p.regiao = p.embutido && regiaoPorNome.has(p.nome) ? regiaoPorNome.get(p.nome) : '';
+        if (p.regiao === undefined) {
+            p.regiao = p.embutido && regiaoPorNome.has(p.nome) ? regiaoPorNome.get(p.nome) : [];
+        }
+        p.regiao = normalizarRegiao(p.regiao);
     });
 }
 migrarRegiaoPeriodoHistorico(db.periodosHistoricos);
+
+// Migração: a marca "c." (`aprox`) nasceu depois do seed de Período
+// Histórico. Item de fábrica cujo seed marca a data como aproximada ganha a
+// marca só se a data ainda for a do seed (só o ano, igual) e sem `aprox`
+// gravado. O formulário sempre grava `aprox` (true ou false) quando há data,
+// então uma data que a pessoa já salvou nunca é reescrita. Idempotente.
+export function migrarAproxPeriodosHistoricos(periodosHistoricos) {
+    DADOS_SEED_PERIODOS_HISTORICOS.forEach((modelo) => {
+        const p = (periodosHistoricos || []).find((x) => x.embutido && x.nome === modelo.nome);
+        if (!p) return;
+        [
+            ['inicio', modelo.ini, modelo.iniAprox],
+            ['fim', modelo.fim, modelo.fimAprox],
+        ].forEach(([campo, seedData, aprox]) => {
+            const d = p[campo];
+            if (!aprox || !d || d.aprox !== undefined) return;
+            if (d.ano === seedData[2] && d.dia == null && d.mes == null) {
+                p[campo] = { ...d, aprox: true };
+            }
+        });
+    });
+}
+migrarAproxPeriodosHistoricos(db.periodosHistoricos);
+
+// Hierarquia: `pertenceA` é a lista de ids dos períodos pais (o primeiro é o
+// principal; ver periodos-historicos-hierarquia.js). Instalação antiga não
+// tem o campo; esta migração cria a lista vazia, tira id que não existe e
+// desfaz ciclo de dado corrompido. Idempotente. Roda depois da migração dos
+// períodos de fábrica, que cria registros sem o campo.
+export function migrarHierarquiaPeriodosHistoricos(periodosHistoricos) {
+    return sanearHierarquiaDePeriodos(periodosHistoricos || []);
+}
+migrarHierarquiaPeriodosHistoricos(db.periodosHistoricos);
+
+// "Faz parte de" entre Períodos Biográficos (`db.epocas`): mesmo `pertenceA` do
+// Histórico (lista de ids de pais, o primeiro é o principal). Registro antigo
+// não tem o campo; a migração cria a lista vazia, tira id que não existe e
+// desfaz ciclo de dado corrompido. Só estrutura: as regras de intervalo e de
+// autor valem ao salvar no modal, nunca aqui (importar ou restaurar um backup
+// não pode falhar por causa delas). Idempotente.
+export function migrarHierarquiaPeriodosBiograficos(epocas) {
+    return sanearHierarquiaDePeriodos(epocas || []);
+}
+// Depois dos períodos de fábrica e da hierarquia: só então dá pra saber
+// quais ids de período ainda existem.
+migrarPeriodosHistoricosMultiplos(db.poemas, db.periodosHistoricos);
+migrarPeriodosHistoricosMultiplos(db.prosas, db.periodosHistoricos);
 
 // Período Biográfico (`epocas`) ganhou datas oficiais no cadastro
 // (`inicio`/`fim`, datas parciais { dia, mes, ano } — mesmo formato de
@@ -2284,6 +2479,11 @@ export function migrarDatasEpoca(epocas) {
     });
 }
 migrarDatasEpoca(db.epocas);
+// Bloco 3: Esfera, Categoria e Pessoas envolvidas (listas vazias nos
+// períodos antigos; o `contextoRelacao` antigo é absorvido, ver o módulo).
+migrarCamposPeriodoBiografico(db.epocas);
+migrarOpcoesPeriodoBiografico(db);
+migrarHierarquiaPeriodosBiograficos(db.epocas);
 
 // Mesmo padrão de obterOuCriarPeriodoHistoricoPorNome acima, pro
 // cadastro central de Movimento/Escola. Diferente de Época/Autor
@@ -2307,13 +2507,14 @@ export function obterOuCriarMovimentoEscolaPorNome(nome) {
             paiId: null,
             divisao: '',
             generoDivisao: '',
-            regiaoOrigem: '',
+            regiaoOrigem: [],
             valores: [],
             temas: [],
             tecnicas: [],
             tiposComposicao: [],
             lemas: [],
             manifestos: [],
+            fontes: [],
         };
         db.movimentosEscolas.push(movimento);
     }
@@ -2349,13 +2550,23 @@ export function migrarMovimentosEscolas(movimentosEscolas) {
             m.programa = PROGRAMA_DO_SEED.get(m.nome) || '';
         }
         m.programa = normalizarProgramaMovimento(m.programa);
-        if (m.regiaoOrigem === undefined) m.regiaoOrigem = '';
+        // Região: array de lugares. Texto antigo ("Brasil/Portugal") vira lista.
+        m.regiaoOrigem = normalizarRegiao(m.regiaoOrigem);
         if (!Array.isArray(m.valores)) m.valores = [];
         if (!Array.isArray(m.temas)) m.temas = [];
         if (!Array.isArray(m.tecnicas)) m.tecnicas = [];
         if (!Array.isArray(m.tiposComposicao)) m.tiposComposicao = [];
         if (!Array.isArray(m.lemas)) m.lemas = [];
         if (!Array.isArray(m.manifestos)) m.manifestos = [];
+        // Fontes (13/10/2026): campo que nunca existiu no registro de fábrica
+        // (casado por nome, como a postura e o programa) recebe as fontes do
+        // seed uma única vez. Depois disso o campo existe e nada é
+        // sobrescrito, nem uma lista que a pessoa tenha esvaziado de propósito.
+        // Cadastro da própria pessoa (embutido === false) nasce sem fontes.
+        if (m.fontes === undefined && m.embutido !== false) {
+            m.fontes = fontesDeFabricaDaCorrente(m.nome);
+        }
+        m.fontes = normalizarFontes(m.fontes);
     });
     // Hierarquia (pai, divisão, gênero): campos novos, saneados no conjunto.
     sanearHierarquiaDeCorrentes(movimentosEscolas);
@@ -2507,6 +2718,18 @@ export function migrarPessoasOculto(pessoas) {
     });
 }
 migrarPessoasOculto(db.pessoas);
+
+// `oculto` (boolean) em Período Biográfico (`db.epocas`) — mesmo eixo da
+// Pessoa: esconde o período das listas, seletores, busca e exportações sem
+// excluir nem desvincular nada (o texto segue ligado a ele). Útil para
+// períodos que são sobre uma relação passada. Idempotente: só toca quem ainda
+// não tem o campo.
+export function migrarEpocasOculto(epocas) {
+    (epocas || []).forEach((e) => {
+        if (e.oculto === undefined) e.oculto = false;
+    });
+}
+migrarEpocasOculto(db.epocas);
 
 // `identidadeCisTrans` e `corRaca` na Pessoa (Fase 1, etapa 1c-0): as mesmas
 // listas fechadas do Autor (`IDENTIDADES_CIS_TRANS`, `CORES_RACA_AUTOR`).
@@ -2743,10 +2966,11 @@ export async function importarDB(novoDb) {
     db.grupos = novoDb.grupos || [];
     db.autores = novoDb.autores || [];
     db.epocas = novoDb.epocas || [];
+    db.opcoesPeriodoBiografico = novoDb.opcoesPeriodoBiografico || null;
     // `|| SEED_PERIODOS_HISTORICOS()` (não `|| []`) de propósito, mesmo
     // raciocínio do comentário de movimentosEscolas logo abaixo: um
     // backup tirado antes deste item do roadmap não tem a chave e deve
-    // ganhar os 12 períodos pré-cadastrados; um backup mais recente com
+    // ganhar os períodos pré-cadastrados; um backup mais recente com
     // a chave já presente (mesmo `[]` esvaziado de propósito) é
     // respeitado como está.
     db.periodosHistoricos = novoDb.periodosHistoricos || SEED_PERIODOS_HISTORICOS();
@@ -2806,8 +3030,16 @@ export async function importarDB(novoDb) {
     migrarEpocas(db);
     migrarDatasPeriodoHistorico(db.periodosHistoricos);
     migrarPeriodosHistoricosEmbutidos(db.periodosHistoricos, db.periodosHistoricosOcultos);
+    migrarFontesPeriodosHistoricos(db.periodosHistoricos);
     migrarRegiaoPeriodoHistorico(db.periodosHistoricos);
+    migrarAproxPeriodosHistoricos(db.periodosHistoricos);
+    migrarHierarquiaPeriodosHistoricos(db.periodosHistoricos);
+    migrarPeriodosHistoricosMultiplos(db.poemas, db.periodosHistoricos);
+    migrarPeriodosHistoricosMultiplos(db.prosas, db.periodosHistoricos);
     migrarDatasEpoca(db.epocas);
+    migrarCamposPeriodoBiografico(db.epocas);
+    migrarOpcoesPeriodoBiografico(db);
+    migrarHierarquiaPeriodosBiograficos(db.epocas);
     migrarMovimentosEscolas(db.movimentosEscolas);
     migrarMovimentosEscolasEmbutidos(db.movimentosEscolas, db.movimentosEscolasOcultos);
     db.programaDeFabricaAplicado = novoDb.programaDeFabricaAplicado === true;
@@ -2827,6 +3059,7 @@ export async function importarDB(novoDb) {
     migrarGruposAutorId(db);
     migrarEpocasAutorId(db);
     migrarPessoasOculto(db.pessoas);
+    migrarEpocasOculto(db.epocas);
     migrarPessoasIdentidade(db.pessoas);
     migrarGruposOculto(db.grupos);
 
@@ -3099,7 +3332,32 @@ export function calcularImpactoExclusaoEpoca(dbRef, epocaId) {
  * exclui o texto, só desvincula.
  */
 export function calcularImpactoExclusaoPeriodoHistorico(dbRef, periodoHistoricoId) {
-    const acha = (item) => item.periodoHistoricoId == periodoHistoricoId;
+    const acha = (item) =>
+        periodosHistoricosIdsDoItem(item).some((x) => String(x) === String(periodoHistoricoId));
+    return {
+        poemasIds: (dbRef.poemas || []).filter(acha).map((p) => p.id),
+        prosasIds: (dbRef.prosas || []).filter(acha).map((p) => p.id),
+        // Períodos que estão dentro deste (não contam como "texto"; sobem
+        // para os pais dele na exclusão e passam ao destino na mesclagem).
+        filhosIds: filhosDoPeriodo(dbRef.periodosHistoricos || [], periodoHistoricoId),
+    };
+}
+
+/**
+ * Textos ligados ao Período Histórico `periodoHistoricoId` e, com
+ * `comDentro`, também aos períodos que estão dentro dele (cada texto conta
+ * uma vez). Serve ao "Ver textos" e à contagem do card: o texto se liga ao
+ * período mais específico, e o período que o contém o alcança por aqui.
+ */
+export function textosDoPeriodoHistorico(dbRef, periodoHistoricoId, { comDentro = false } = {}) {
+    const ids = new Set([String(periodoHistoricoId)]);
+    if (comDentro) {
+        descendentesDoPeriodo(dbRef.periodosHistoricos || [], periodoHistoricoId).forEach((d) =>
+            ids.add(String(d)),
+        );
+    }
+    // Qualquer um dos períodos do texto basta; cada texto entra uma só vez.
+    const acha = (item) => periodosHistoricosIdsDoItem(item).some((x) => ids.has(String(x)));
     return {
         poemasIds: (dbRef.poemas || []).filter(acha).map((p) => p.id),
         prosasIds: (dbRef.prosas || []).filter(acha).map((p) => p.id),
@@ -3188,6 +3446,8 @@ export function mesclarPessoas(dbRef, origemId, destinoId) {
 
     // A âncora de Eco que apontava para a origem passa para o destino.
     redirecionarAncora(dbRef, 'pessoa', origemId, destinoId);
+    // Bloco 3: a origem também vira o destino nas Pessoas envolvidas dos períodos.
+    mesclarPessoaNosPeriodos(dbRef, origemId, destinoId);
 
     destino.grupoIds = [...new Set([...(destino.grupoIds || []), ...(origem.grupoIds || [])])];
     destino.autorIds = [...new Set([...(destino.autorIds || []), ...(origem.autorIds || [])])];
@@ -3202,7 +3462,7 @@ export function mesclarPessoas(dbRef, origemId, destinoId) {
 /**
  * Reatribui pra `destinoId` todo `epocaRetratada.epocaId` que apontava
  * pra `origemId` (Poema e Prosa) e remove a origem do cadastro.
- * Contexto do relacionamento/Notas da origem preenchem o destino só se
+ * As Notas da origem preenchem o destino só se
  * o destino estiver com o campo vazio — nunca sobrescreve o que a
  * sobrevivente já tinha preenchido (mesmo critério de "só entra se
  * estiver vazio" já usado em aplicarSugestaoEpoca, forms.js).
@@ -3225,16 +3485,18 @@ export function mesclarEpocas(dbRef, origemId, destinoId) {
         });
     });
 
-    if (!destino.contextoRelacao && origem.contextoRelacao) {
-        destino.contextoRelacao = origem.contextoRelacao;
-    }
     if (!destino.notas && origem.notas) {
         destino.notas = origem.notas;
     }
     // Datas oficiais do cadastro: o destino mantém as suas; só herda da
-    // origem o que estiver vazio (mesmo tratamento de contextoRelacao/notas).
+    // origem o que estiver vazio (mesmo tratamento das notas).
     if (!destino.inicio && origem.inicio) destino.inicio = origem.inicio;
     if (!destino.fim && origem.fim) destino.fim = origem.fim;
+    // Bloco 3: Esfera, Categoria e Pessoas envolvidas somam.
+    mesclarCamposDosPeriodos(destino, origem);
+    // "Faz parte de": os períodos de dentro da origem passam ao destino, e o
+    // destino herda os pais da origem se não tinha nenhum (sem fechar ciclo).
+    mesclarHierarquiaDePeriodos(dbRef.epocas, origem, destino);
     dbRef.epocas = dbRef.epocas.filter((e) => e.id != origemId);
 }
 
@@ -3292,7 +3554,7 @@ export function mesclarGrupos(dbRef, origemId, destinoId) {
  * Mesmo espírito de mesclarEpocas acima, pro cadastro de Período
  * Histórico — mais simples, porque o vínculo no Poema/Prosa é um
  * `periodoHistoricoId` direto (sem sub-objeto), e o cadastro só tem
- * nome/notas (sem contextoRelacao).
+ * nome/notas.
  */
 export function mesclarPeriodosHistoricos(dbRef, origemId, destinoId) {
     if (origemId == destinoId) return;
@@ -3302,9 +3564,14 @@ export function mesclarPeriodosHistoricos(dbRef, origemId, destinoId) {
 
     ['poemas', 'prosas'].forEach((col) => {
         (dbRef[col] || []).forEach((it) => {
-            if (it.periodoHistoricoId == origemId) {
-                it.periodoHistoricoId = destinoId;
-            }
+            const lista = periodosHistoricosIdsDoItem(it);
+            if (!lista.some((x) => x == origemId)) return;
+            // A vira B no mesmo lugar; se o texto já tinha B, não repete.
+            const trocada = lista.map((x) => (x == origemId ? destinoId : x));
+            it.periodosHistoricosIds = periodosHistoricosIdsDoItem({
+                periodosHistoricosIds: trocada,
+            });
+            delete it.periodoHistoricoId;
         });
     });
 
@@ -3317,9 +3584,13 @@ export function mesclarPeriodosHistoricos(dbRef, origemId, destinoId) {
     if (!destino.fim && origem.fim) {
         destino.fim = origem.fim;
     }
-    if (!destino.regiao && origem.regiao) {
-        destino.regiao = origem.regiao;
+    if (normalizarRegiao(destino.regiao).length === 0 && normalizarRegiao(origem.regiao).length) {
+        destino.regiao = normalizarRegiao(origem.regiao);
     }
+    // Fontes: as duas listas, sem repetir a mesma obra do mesmo autor; o
+    // destino manda (vale a nota e o ano dele).
+    destino.fontes = unirFontes(destino.fontes, origem.fontes);
+    mesclarHierarquiaDePeriodos(dbRef.periodosHistoricos, origem, destino);
     dbRef.periodosHistoricos = dbRef.periodosHistoricos.filter((p) => p.id != origemId);
 }
 
@@ -3358,7 +3629,8 @@ function mesclarHierarquiaDeCorrentes(lista, origem, destino) {
  * duplicados). Campos escalares (notas/tipo/posturaEstetica/regiaoOrigem/inicio/fim)
  * só entram no destino se estiver vazio; campos de tags (valores,
  * temas, técnicas, tipos de composição, lemas, manifestos) são
- * unidos por Set, sem duplicar.
+ * unidos por Set, sem duplicar; as fontes são unidas por autor e obra
+ * (unirFontes), com o destino mandando.
  */
 export function mesclarMovimentosEscolas(dbRef, origemId, destinoId) {
     if (origemId == destinoId) return;
@@ -3382,7 +3654,12 @@ export function mesclarMovimentosEscolas(dbRef, origemId, destinoId) {
     if (!destino.posturaEstetica && origem.posturaEstetica)
         destino.posturaEstetica = origem.posturaEstetica;
     if (!destino.programa && origem.programa) destino.programa = origem.programa;
-    if (!destino.regiaoOrigem && origem.regiaoOrigem) destino.regiaoOrigem = origem.regiaoOrigem;
+    if (
+        normalizarRegiao(destino.regiaoOrigem).length === 0 &&
+        normalizarRegiao(origem.regiaoOrigem).length
+    ) {
+        destino.regiaoOrigem = normalizarRegiao(origem.regiaoOrigem);
+    }
     mesclarHierarquiaDeCorrentes(dbRef.movimentosEscolas, origem, destino);
     const inicioVazio = (d) => !d || (!d.dia && !d.mes && !d.ano && !d.seculo && !d.decada);
     if (inicioVazio(destino.inicio) && !inicioVazio(origem.inicio)) destino.inicio = origem.inicio;
@@ -3390,6 +3667,7 @@ export function mesclarMovimentosEscolas(dbRef, origemId, destinoId) {
     ['valores', 'temas', 'tecnicas', 'tiposComposicao', 'lemas', 'manifestos'].forEach((campo) => {
         destino[campo] = [...new Set([...(destino[campo] || []), ...(origem[campo] || [])])];
     });
+    destino.fontes = unirFontes(destino.fontes, origem.fontes);
 
     dbRef.movimentosEscolas = dbRef.movimentosEscolas.filter((m) => m.id != origemId);
 }
@@ -3425,6 +3703,14 @@ function _removerParaExclusao(col, id) {
     if (index === -1) return null;
 
     const item = db[col][index];
+    // Os pais do período precisam ser lidos antes de ele sair da lista:
+    // é para eles que os períodos de dentro sobem (ver abaixo).
+    const paisDoPeriodoExcluido =
+        col === 'periodosHistoricos'
+            ? paisDoPeriodo(db.periodosHistoricos, id)
+            : col === 'epocas'
+              ? paisDoPeriodo(db.epocas, id)
+              : [];
     db[col].splice(index, 1);
 
     const capasParaDescartar = _capasDoItem(item);
@@ -3468,6 +3754,12 @@ function _removerParaExclusao(col, id) {
             });
         });
     }
+
+    // Excluir Pessoa (Bloco 3): ela também sai das Pessoas envolvidas dos
+    // Períodos Biográficos (o período fica). Guarda onde estava, com os
+    // vínculos, para o Desfazer.
+    let periodosPessoaRemovidas = [];
+    if (col === 'pessoas') periodosPessoaRemovidas = removerPessoaDosPeriodos(db, id);
 
     // Excluir Personagem: mesmo padrão de Pessoa. Guarda cada vínculo removido
     // (com papéis e centralidade) para o "Desfazer"; sem isso o save() soltaria
@@ -3631,7 +3923,12 @@ function _removerParaExclusao(col, id) {
     // dois padrões acima — corrigido junto com calcularImpactoExclusaoEpoca
     // (ver comentário lá): antes só varria `db.poemas`.
     let vinculosEpocaRemovidos = [];
+    // Excluir um Período Biográfico com períodos dentro: eles sobem para os
+    // pais do excluído (ou viram de topo), sem sumir. Guarda o `pertenceA`
+    // anterior de cada um para o Desfazer.
+    let pertenceAEpocasAlteradas = [];
     if (col === 'epocas') {
+        pertenceAEpocasAlteradas = retirarPeriodoDaHierarquia(db.epocas, id, paisDoPeriodoExcluido);
         ['poemas', 'prosas'].forEach((itemCol) => {
             (db[itemCol] || []).forEach((it) => {
                 if (it.epocaRetratada?.epocaId == id) {
@@ -3647,16 +3944,31 @@ function _removerParaExclusao(col, id) {
     // espírito de vinculosEpocaRemovidos acima, mas mais simples (link
     // direto, sem sub-objeto).
     let vinculosPeriodoHistoricoRemovidos = [];
+    // Excluir um período com períodos dentro: eles sobem para os pais do
+    // excluído (ou viram de topo), sem sumir. Guarda o `pertenceA` anterior
+    // de cada um para o Desfazer.
+    let pertenceAPeriodosAlterados = [];
     if (col === 'periodosHistoricos') {
+        pertenceAPeriodosAlterados = retirarPeriodoDaHierarquia(
+            db.periodosHistoricos,
+            id,
+            paisDoPeriodoExcluido,
+        );
         ['poemas', 'prosas'].forEach((itemCol) => {
             (db[itemCol] || []).forEach((it) => {
-                if (it.periodoHistoricoId == id) {
+                const lista = periodosHistoricosIdsDoItem(it);
+                const indice = lista.findIndex((x) => x == id);
+                if (indice >= 0) {
+                    // Só este id sai; os outros períodos do texto ficam.
+                    // `indice` devolve o id ao lugar certo no Desfazer.
                     vinculosPeriodoHistoricoRemovidos.push({
                         itemCol,
                         itemId: it.id,
                         periodoHistoricoId: id,
+                        indice,
                     });
-                    it.periodoHistoricoId = null;
+                    it.periodosHistoricosIds = lista.filter((x) => x != id);
+                    delete it.periodoHistoricoId;
                 }
             });
         });
@@ -3853,6 +4165,7 @@ function _removerParaExclusao(col, id) {
         partesRemovidas,
         itensRemovidos,
         vinculosPessoaRemovidos,
+        periodosPessoaRemovidas,
         vinculosPersonagemRemovidos,
         ancorasEcoRemovidas,
         participacoesPersonagemRemovidas,
@@ -3868,6 +4181,8 @@ function _removerParaExclusao(col, id) {
         vinculosSubgrupoPromovidos,
         vinculosEpocaRemovidos,
         vinculosPeriodoHistoricoRemovidos,
+        pertenceAPeriodosAlterados,
+        pertenceAEpocasAlteradas,
         vinculosMovimentoEscolaRemovidos,
         filhosReligados,
         vinculosMoldeRemovidos,
@@ -3890,6 +4205,7 @@ function _restaurar(removido) {
         partesRemovidas,
         itensRemovidos,
         vinculosPessoaRemovidos,
+        periodosPessoaRemovidas,
         vinculosPersonagemRemovidos,
         ancorasEcoRemovidas,
         participacoesPersonagemRemovidas,
@@ -3905,6 +4221,8 @@ function _restaurar(removido) {
         vinculosSubgrupoPromovidos,
         vinculosEpocaRemovidos,
         vinculosPeriodoHistoricoRemovidos,
+        pertenceAPeriodosAlterados,
+        pertenceAEpocasAlteradas,
         vinculosMovimentoEscolaRemovidos,
         filhosReligados,
         vinculosMoldeRemovidos,
@@ -3939,6 +4257,7 @@ function _restaurar(removido) {
         const it = db[itemCol]?.find((i) => i.id == itemId);
         if (it) (it.pessoas ||= []).push(entrada);
     });
+    restaurarPessoaNosPeriodos(db, periodosPessoaRemovidas);
     (vinculosPersonagemRemovidos || []).forEach(({ itemCol, itemId, entrada }) => {
         const it = db[itemCol]?.find((i) => i.id == itemId);
         if (it) (it.personagens ||= []).push(entrada);
@@ -3986,9 +4305,25 @@ function _restaurar(removido) {
         const it = db[itemCol]?.find((i) => i.id == itemId);
         if (it && it.epocaRetratada) it.epocaRetratada.epocaId = epocaId;
     });
-    (vinculosPeriodoHistoricoRemovidos || []).forEach(({ itemCol, itemId, periodoHistoricoId }) => {
-        const it = db[itemCol]?.find((i) => i.id == itemId);
-        if (it) it.periodoHistoricoId = periodoHistoricoId;
+    (vinculosPeriodoHistoricoRemovidos || []).forEach(
+        ({ itemCol, itemId, periodoHistoricoId, indice }) => {
+            const it = db[itemCol]?.find((i) => i.id == itemId);
+            if (!it) return;
+            const lista = periodosHistoricosIdsDoItem(it);
+            if (lista.some((x) => x == periodoHistoricoId)) return;
+            const pos = Number.isInteger(indice) ? Math.min(indice, lista.length) : lista.length;
+            lista.splice(pos, 0, periodoHistoricoId);
+            it.periodosHistoricosIds = lista;
+            delete it.periodoHistoricoId;
+        },
+    );
+    (pertenceAPeriodosAlterados || []).forEach(({ id, anterior }) => {
+        const filho = db.periodosHistoricos?.find((p) => p.id == id);
+        if (filho) filho.pertenceA = [...anterior];
+    });
+    (pertenceAEpocasAlteradas || []).forEach(({ id, anterior }) => {
+        const filho = db.epocas?.find((p) => p.id == id);
+        if (filho) filho.pertenceA = [...anterior];
     });
     (vinculosMovimentoEscolaRemovidos || []).forEach(({ itemCol, itemId, movimentoEscolaId }) => {
         const it = db[itemCol]?.find((i) => i.id == itemId);
@@ -4127,6 +4462,37 @@ export function deleteItem(col, id, aposConfirmar = null) {
         }
     }
 
+    // Para Período Histórico: avisa quantos textos perdem o vínculo e quantos
+    // períodos dentro dele sobem para o pai (ou viram de topo), sem sumir.
+    if (col === 'periodosHistoricos') {
+        const { poemasIds, prosasIds } = calcularImpactoExclusaoPeriodoHistorico(db, id);
+        const totalTextos = poemasIds.length + prosasIds.length;
+        const partes = [];
+        if (totalTextos > 0) {
+            partes.push(
+                `deixará de aparecer em ${totalTextos} texto${totalTextos !== 1 ? 's' : ''}`,
+            );
+        }
+        const { topo, sobem, mantem } = destinoDosFilhosAoExcluir(db.periodosHistoricos, id);
+        const dentro = (n) => `${n} período${n !== 1 ? 's' : ''} dentro dele`;
+        if (sobem.length > 0) {
+            partes.push(
+                `${dentro(sobem.length)} ${sobem.length !== 1 ? 'passam' : 'passa'} a ficar ${paisDoPeriodo(db.periodosHistoricos, id).length > 1 ? 'nos períodos acima' : 'no período acima'}`,
+            );
+        }
+        if (mantem.length > 0) {
+            partes.push(
+                `${dentro(mantem.length)} ${mantem.length !== 1 ? 'continuam' : 'continua'} dentro de outro período`,
+            );
+        }
+        if (topo.length > 0) {
+            partes.push(
+                `${dentro(topo.length)} ${topo.length !== 1 ? 'viram períodos' : 'vira período'} de topo`,
+            );
+        }
+        rotulo = partes.length ? `Período Histórico · ${partes.join(', ')}` : 'Período Histórico';
+    }
+
     // Para Autor, avisa em quantos poemas/prosas ele vai deixar de
     // aparecer (o vínculo some, o texto em si não é afetado), quantas
     // Pessoas deixarão de estar associadas a ele (desvincula, sem
@@ -4167,10 +4533,28 @@ export function deleteItem(col, id, aposConfirmar = null) {
     if (col === 'epocas') {
         const { poemasIds, prosasIds } = calcularImpactoExclusaoEpoca(db, id);
         const total = poemasIds.length + prosasIds.length;
-        rotulo =
-            total > 0
-                ? `Época · deixará de aparecer em ${total} texto${total !== 1 ? 's' : ''}`
-                : 'Época';
+        const partes = [];
+        if (total > 0) {
+            partes.push(`deixará de aparecer em ${total} texto${total !== 1 ? 's' : ''}`);
+        }
+        const { topo, sobem, mantem } = destinoDosFilhosAoExcluir(db.epocas, id);
+        const dentro = (n) => `${n} período${n !== 1 ? 's' : ''} dentro dele`;
+        if (sobem.length > 0) {
+            partes.push(
+                `${dentro(sobem.length)} ${sobem.length !== 1 ? 'passam' : 'passa'} a ficar ${paisDoPeriodo(db.epocas, id).length > 1 ? 'nos períodos acima' : 'no período acima'}`,
+            );
+        }
+        if (mantem.length > 0) {
+            partes.push(
+                `${dentro(mantem.length)} ${mantem.length !== 1 ? 'continuam' : 'continua'} dentro de outro período`,
+            );
+        }
+        if (topo.length > 0) {
+            partes.push(
+                `${dentro(topo.length)} ${topo.length !== 1 ? 'viram períodos' : 'vira período'} de topo`,
+            );
+        }
+        rotulo = partes.length ? `Época · ${partes.join(', ')}` : 'Época';
     }
 
     // Para Grupo, avisa quantas pessoas deixarão de pertencer a ele,

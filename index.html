@@ -1114,9 +1114,9 @@
                             <li>
                                 Espaço = E lógico; <code>ou</code> = alternativa (<code
                                     >portuguesa ou brasileira</code
-                                >); aspas = frase exata; <code>-termo</code> exclui. Acento e
-                                maiúsculas não importam (a menos que as opções acima estejam
-                                marcadas).
+                                >); aspas = frase exata (aspa dentro dela: <code>\"</code>);
+                                <code>-termo</code> exclui. Acento e maiúsculas não importam (a
+                                menos que as opções acima estejam marcadas).
                             </li>
                             <li>
                                 Sem prefixo, a busca olha nome, nomes literários, nacionalidade,
@@ -1252,7 +1252,178 @@
                     </div>
                 </div>
                 <div id="filtros-periodo-epocas"></div>
-                <div id="lista-epocas" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                <div class="flex flex-wrap items-center gap-3 mb-3">
+                    <label
+                        class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-400"
+                    >
+                        <input
+                            type="checkbox"
+                            id="toggle-todos-epocas"
+                            data-action="toggle-todos-epocas"
+                            class="w-3.5 h-3.5"
+                        />
+                        Selecionar todos os que aparecem
+                    </label>
+                    <button
+                        type="button"
+                        data-action="recolher-todas-epocas"
+                        class="px-2 py-1 rounded border border-gray-200 dark:border-slate-600 text-xs text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                    >
+                        Recolher tudo
+                    </button>
+                    <button
+                        type="button"
+                        data-action="expandir-todas-epocas"
+                        class="px-2 py-1 rounded border border-gray-200 dark:border-slate-600 text-xs text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                    >
+                        Expandir tudo
+                    </button>
+                </div>
+                <div
+                    id="barra-acoes-epocas"
+                    class="hidden mb-4 p-3 bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900 rounded-lg flex flex-wrap items-end gap-4 text-xs"
+                >
+                    <span
+                        id="contador-selecao-epocas"
+                        class="font-bold text-indigo-800 dark:text-indigo-200"
+                    ></span>
+                    <div class="flex flex-col gap-1">
+                        <label
+                            for="epocas-massa-acao"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Ação</label
+                        >
+                        <select id="epocas-massa-acao" style="width: auto; margin-bottom: 0">
+                            <option value="adicionar">Acrescentar</option>
+                            <option value="remover">Remover</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label
+                            for="epocas-massa-campo"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Campo</label
+                        >
+                        <select
+                            id="epocas-massa-campo"
+                            style="width: auto; margin-bottom: 0"
+                        ></select>
+                    </div>
+                    <div id="epocas-massa-grupo-texto" class="flex flex-col gap-1">
+                        <label
+                            for="epocas-massa-valor"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Valor</label
+                        >
+                        <input
+                            type="text"
+                            id="epocas-massa-valor"
+                            list="sugestoes-epocas-massa-esferas"
+                            autocomplete="off"
+                            style="width: 12rem; margin-bottom: 0"
+                        />
+                        <datalist id="sugestoes-epocas-massa-esferas"></datalist>
+                        <datalist id="sugestoes-epocas-massa-categorias"></datalist>
+                    </div>
+                    <div id="epocas-massa-grupo-pessoa" class="hidden flex flex-col gap-1">
+                        <label
+                            for="epocas-massa-pessoa"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Pessoa</label
+                        >
+                        <select
+                            id="epocas-massa-pessoa"
+                            style="width: auto; margin-bottom: 0"
+                        ></select>
+                    </div>
+                    <div
+                        id="epocas-massa-grupo-relacao"
+                        class="hidden flex flex-wrap items-end gap-2"
+                    >
+                        <div class="flex flex-col gap-1">
+                            <label
+                                for="epocas-massa-de"
+                                class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                                >Quem</label
+                            >
+                            <select
+                                id="epocas-massa-de"
+                                style="width: auto; margin-bottom: 0"
+                            ></select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label
+                                for="epocas-massa-natureza"
+                                class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                                >Natureza</label
+                            >
+                            <select
+                                id="epocas-massa-natureza"
+                                style="width: auto; margin-bottom: 0"
+                            ></select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label
+                                for="epocas-massa-vinculo"
+                                class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                                >Vínculo (opcional)</label
+                            >
+                            <input
+                                type="text"
+                                id="epocas-massa-vinculo"
+                                list="sugestoes-epocas-massa-vinculos"
+                                autocomplete="off"
+                                placeholder="Ex: namorados"
+                                style="width: 10rem; margin-bottom: 0"
+                            />
+                            <datalist id="sugestoes-epocas-massa-vinculos"></datalist>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label
+                                for="epocas-massa-para"
+                                class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                                >Com quem</label
+                            >
+                            <select
+                                id="epocas-massa-para"
+                                style="width: auto; margin-bottom: 0"
+                            ></select>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        data-action="aplicar-massa-epocas"
+                        class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                    >
+                        Aplicar
+                    </button>
+                    <button
+                        type="button"
+                        id="epocas-massa-ocultas"
+                        data-action="alternar-ocultas-massa-epocas"
+                        aria-pressed="false"
+                        title="Mostra as pessoas ocultas nos seletores, só enquanto houver seleção"
+                        class="hidden text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                        Mostrar ocultas
+                    </button>
+                    <button
+                        type="button"
+                        data-action="inverter-selecao-epocas"
+                        title="Marca o que não está marcado e desmarca o que está marcado, entre os itens que a tela mostra agora"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Inverter seleção
+                    </button>
+                    <button
+                        type="button"
+                        data-action="limpar-selecao-epocas"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Limpar seleção
+                    </button>
+                </div>
+                <div id="lista-epocas" class="grid grid-cols-1 gap-3"></div>
             </section>
 
             <section id="periodos-historicos" class="tab-content">
@@ -1276,10 +1447,28 @@
                     </div>
                 </div>
                 <div id="filtros-periodo-periodosHistoricos"></div>
-                <div
-                    id="lista-periodos-historicos"
-                    class="grid grid-cols-1 md:grid-cols-2 gap-4"
-                ></div>
+                <div class="flex items-center gap-3 flex-wrap mb-3 text-xs">
+                    <span
+                        id="contagem-periodos-historicos"
+                        class="text-gray-500 dark:text-slate-400"
+                        aria-live="polite"
+                    ></span>
+                    <button
+                        type="button"
+                        data-action="recolher-todos-periodos-historicos"
+                        class="px-2 py-1 rounded border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                    >
+                        Recolher tudo
+                    </button>
+                    <button
+                        type="button"
+                        data-action="expandir-todos-periodos-historicos"
+                        class="px-2 py-1 rounded border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                    >
+                        Expandir tudo
+                    </button>
+                </div>
+                <div id="lista-periodos-historicos" class="grid grid-cols-1 gap-3"></div>
             </section>
 
             <section id="movimentos-escolas" class="tab-content">
@@ -1303,6 +1492,22 @@
                     </div>
                 </div>
                 <div id="filtros-periodo-movimentosEscolas"></div>
+                <div class="flex items-center gap-3 flex-wrap mb-3 text-xs">
+                    <button
+                        type="button"
+                        data-action="recolher-todas-correntes"
+                        class="px-2 py-1 rounded border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                    >
+                        Recolher tudo
+                    </button>
+                    <button
+                        type="button"
+                        data-action="expandir-todas-correntes"
+                        class="px-2 py-1 rounded border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                    >
+                        Expandir tudo
+                    </button>
+                </div>
                 <div id="lista-movimentos-escolas" class="grid grid-cols-1 gap-4"></div>
             </section>
 
@@ -1515,6 +1720,22 @@
                         <option value="citados">Só citados</option>
                         <option value="escritos">Só locais de escrita</option>
                     </select>
+                    <button
+                        type="button"
+                        id="btn-recolher-locais"
+                        data-action="recolher-todos-locais"
+                        class="px-2 py-1 rounded border border-gray-200 dark:border-slate-600 text-xs text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    >
+                        Recolher tudo
+                    </button>
+                    <button
+                        type="button"
+                        id="btn-expandir-locais"
+                        data-action="expandir-todos-locais"
+                        class="px-2 py-1 rounded border border-gray-200 dark:border-slate-600 text-xs text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                    >
+                        Expandir tudo
+                    </button>
                     <span
                         id="resumo-locais"
                         class="text-[11px] text-gray-400 dark:text-slate-500"
@@ -1667,8 +1888,8 @@
                             <li>
                                 Espaço = E lógico; <code>ou</code> = alternativa (<code
                                     >Dalton ou Gabriela</code
-                                >); aspas = frase exata (<code>"beira do mar"</code>);
-                                <code>-termo</code> exclui.
+                                >); aspas = frase exata (<code>"beira do mar"</code>; aspa dentro
+                                dela: <code>\"</code>); <code>-termo</code> exclui.
                             </li>
                             <li>
                                 Acento não importa, nem no termo nem no prefixo —
@@ -1747,6 +1968,21 @@
                                 >
                                 acha também o texto ligado a uma geração ou vertente dele). Com
                                 <code>movimentodireto:</code>, só a corrente exata.
+                            </li>
+                            <li>
+                                <code>esfera:</code> <code>categoria:</code> <code>natureza:</code>
+                                <code>vinculo:</code> <code>pessoaperiodo:</code> Campos do período
+                                biográfico do texto (<code>esfera:Afetiva</code>,
+                                <code>natureza:Amizade</code>, <code>vinculo:namorados</code>).
+                                <code>pessoaperiodo:</code> é a pessoa ligada ao período; o
+                                <code>pessoa:</code> continua sendo a do próprio texto. Só valem com
+                                o prefixo.
+                            </li>
+                            <li>
+                                <code>periodohistorico:</code> Período histórico do texto, incluindo
+                                o que o contém (<code>periodohistorico:"Nova República"</code>
+                                acha também o texto do Segundo mandato do governo Dilma). Com
+                                <code>periodohistoricodireto:</code>, só o período exato.
                             </li>
                             <li>
                                 <code>postura:</code> <code>programa:</code> Postura estética e
@@ -2124,9 +2360,10 @@
                         <tbody id="lista-poemas" class="text-sm"></tbody>
                     </table>
                 </div>
+                <div id="paginacao-poemas"></div>
                 <div
                     id="barra-acoes-poemas"
-                    class="hidden mb-3 p-3 bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-center gap-2"
+                    class="hidden mt-3 mb-3 p-3 bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-center gap-2"
                 >
                     <span
                         id="contador-selecao-poemas"
@@ -2225,6 +2462,7 @@
                     >
                         🏷️ Períodos e movimentos ▾
                     </button>
+                    <span class="incluir-ocultos-slot"></span>
                     <label
                         class="flex items-center gap-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 whitespace-nowrap px-1"
                         title="Inclui a Sonoridade e a Progressão Morfofuncional dos poemas selecionados, quando cadastradas (.md/.json por enquanto)"
@@ -2433,8 +2671,6 @@
                         </p>
                     </div>
                 </div>
-
-                <div id="paginacao-poemas"></div>
             </section>
             <section id="prosas" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
@@ -2579,8 +2815,8 @@
                             <li>
                                 Espaço = E lógico; <code>ou</code> = alternativa (<code
                                     >Dalton ou Gabriela</code
-                                >); aspas = frase exata (<code>"beira do mar"</code>);
-                                <code>-termo</code> exclui.
+                                >); aspas = frase exata (<code>"beira do mar"</code>; aspa dentro
+                                dela: <code>\"</code>); <code>-termo</code> exclui.
                             </li>
                             <li>
                                 Acento não importa, nem no termo nem no prefixo —
@@ -2659,6 +2895,21 @@
                                 >
                                 acha também o texto ligado a uma geração ou vertente dele). Com
                                 <code>movimentodireto:</code>, só a corrente exata.
+                            </li>
+                            <li>
+                                <code>esfera:</code> <code>categoria:</code> <code>natureza:</code>
+                                <code>vinculo:</code> <code>pessoaperiodo:</code> Campos do período
+                                biográfico do texto (<code>esfera:Afetiva</code>,
+                                <code>natureza:Amizade</code>, <code>vinculo:namorados</code>).
+                                <code>pessoaperiodo:</code> é a pessoa ligada ao período; o
+                                <code>pessoa:</code> continua sendo a do próprio texto. Só valem com
+                                o prefixo.
+                            </li>
+                            <li>
+                                <code>periodohistorico:</code> Período histórico do texto, incluindo
+                                o que o contém (<code>periodohistorico:"Nova República"</code>
+                                acha também o texto do Segundo mandato do governo Dilma). Com
+                                <code>periodohistoricodireto:</code>, só o período exato.
                             </li>
                             <li>
                                 <code>postura:</code> <code>programa:</code> Postura estética e
@@ -2950,9 +3201,10 @@
                         <tbody id="lista-prosas" class="text-sm"></tbody>
                     </table>
                 </div>
+                <div id="paginacao-prosas"></div>
                 <div
                     id="barra-acoes-prosas"
-                    class="hidden mb-3 p-3 bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-center gap-2"
+                    class="hidden mt-3 mb-3 p-3 bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-center gap-2"
                 >
                     <span
                         id="contador-selecao-prosas"
@@ -3071,6 +3323,7 @@
                     >
                         🏷️ Períodos e movimentos ▾
                     </button>
+                    <span class="incluir-ocultos-slot"></span>
                     <button
                         onclick="exportarSelecaoAtualJson('prosas')"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
@@ -3267,8 +3520,6 @@
                         </p>
                     </div>
                 </div>
-
-                <div id="paginacao-prosas"></div>
             </section>
 
             <section id="elementos" class="tab-content">
@@ -4092,6 +4343,7 @@
                         >
                             Baixar .docx seletivo
                         </button>
+                        <span class="incluir-ocultos-slot"></span>
                         <label
                             class="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 whitespace-nowrap px-1"
                             title="Gênero, orientação, cis/trans e cor/raça de cada Pessoa vão nos JSON por texto (seletivo, seleção, item avulso, tudo flat e templates). Desligada, saem sem esses campos. O backup completo nunca omite."

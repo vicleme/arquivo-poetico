@@ -17,9 +17,11 @@
 
 import { garantirModal, toggleModal } from './modais.js';
 import { db } from './db.js';
+import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
 import { textoPersonagensComPapel } from './personagens.js';
 import { itensDaSelecao, exportarItem } from './exportar.js';
 import { isDownloadAbrangenteAtivo } from './download-abrangente.js';
+import { montarControlesIncluirOcultos } from './ocultos-exportacao.js';
 import {
     INFO_STATUS,
     textoPessoas,
@@ -31,7 +33,7 @@ import {
 import {
     formatarDataParcial,
     formatarEpocaRetratada,
-    nomePeriodoHistorico,
+    periodosHistoricosIdsDoItem,
     nomesMovimentosEscolas,
     estaPublicado,
     sinalizacoesAgrupadas,
@@ -92,6 +94,15 @@ function linhaMetaHtml(rotulo, valorTexto, espacoExtra = false) {
     if (!valorTexto) return '';
     const margem = espacoExtra ? 'mt-4 mb-1.5' : 'mb-1.5';
     return `<p class="${margem}"><strong class="text-gray-600 dark:text-slate-300">${escapeHtml(rotulo)}:</strong> ${escapeHtml(valorTexto)}</p>`;
+}
+
+// Rótulo com vários valores, um por linha (o Ver mostra todos, sem limite).
+// Um valor só fica na mesma linha do rótulo, como linhaMetaHtml.
+function linhaMetaListaHtml(rotulo, valores) {
+    const lista = (valores || []).filter(Boolean);
+    if (lista.length <= 1) return linhaMetaHtml(rotulo, lista[0] || '');
+    const linhas = lista.map((v) => escapeHtml(v)).join('<br>');
+    return `<p class="mb-1.5"><strong class="text-gray-600 dark:text-slate-300">${escapeHtml(rotulo)}:</strong><br>${linhas}</p>`;
 }
 
 function blocoTextoHtml(titulo, texto) {
@@ -186,10 +197,12 @@ export function renderVisualizacaoHtml(item) {
             formatarEpocaRetratada(item.epocaRetratada, db.epocas),
         );
     }
-    if (item.periodoHistoricoId) {
-        html += linhaMetaHtml(
+    const periodosDoTexto = periodosHistoricosIdsDoItem(item, db.periodosHistoricos);
+    if (periodosDoTexto.length) {
+        // Caminho completo na hierarquia, um por linha (como na tabela).
+        html += linhaMetaListaHtml(
             'Período Histórico Retratado',
-            nomePeriodoHistorico(item.periodoHistoricoId, db.periodosHistoricos),
+            periodosDoTexto.map((id) => caminhoDoPeriodo(db.periodosHistoricos, id)),
         );
     }
     if (item.movimentosEscolasIds?.length) {
@@ -342,6 +355,7 @@ export async function abrirVisualizacao(tipo, id) {
         if (check) check.checked = isDownloadAbrangenteAtivo();
     }
 
+    montarControlesIncluirOcultos();
     toggleModal('modal-visualizar');
 }
 

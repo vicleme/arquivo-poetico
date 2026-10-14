@@ -402,10 +402,45 @@ describe('renderVisualizacaoHtml — Períodos, Corrente literária e Inspiraç�
     });
 
     it('mostra o Período Histórico Retratado quando preenchido', () => {
-        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x', periodoHistoricoId: 3 };
+        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x', periodosHistoricosIds: [3] };
         const html = renderVisualizacaoHtml(item);
         assert.match(html, /Período Histórico Retratado/);
         assert.match(html, /Ditadura Militar Brasileira/);
+    });
+
+    it('Período Histórico Retratado mostra o caminho completo, um por linha, sem limite', () => {
+        db.periodosHistoricos = [
+            { id: 1, nome: 'Nova República', pertenceA: [] },
+            { id: 2, nome: 'Governo Bolsonaro', pertenceA: [1] },
+            { id: 3, nome: 'Pandemia de covid-19', pertenceA: [] },
+            { id: 4, nome: 'A', pertenceA: [] },
+            { id: 5, nome: 'B', pertenceA: [] },
+        ];
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: 'x',
+            periodosHistoricosIds: [2, 3, 4, 5],
+        };
+        const html = renderVisualizacaoHtml(item);
+        assert.match(
+            html,
+            /Período Histórico Retratado:<\/strong><br>Nova República › Governo Bolsonaro<br>Pandemia de covid-19<br>A<br>B<\/p>/,
+        );
+        assert.doesNotMatch(html, /…/);
+    });
+
+    it('com um só período, o caminho fica na linha do rótulo', () => {
+        db.periodosHistoricos = [
+            { id: 1, nome: 'Nova República', pertenceA: [] },
+            { id: 2, nome: 'Governo Bolsonaro', pertenceA: [1] },
+        ];
+        const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x', periodosHistoricosIds: [2] };
+        assert.match(
+            renderVisualizacaoHtml(item),
+            /Período Histórico Retratado:<\/strong> Nova República › Governo Bolsonaro<\/p>/,
+        );
     });
 
     it('mostra Corrente literária (0 a N) separados por vírgula', () => {

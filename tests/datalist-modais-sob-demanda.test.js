@@ -33,8 +33,11 @@ const proximoTick = () => new Promise((resolve) => setTimeout(resolve, 0));
 describe('Datalists de modais carregados sob demanda', () => {
     beforeEach(() => {
         db.movimentosEscolas = [
-            { id: 1, nome: 'Simbolismo', regiaoOrigem: 'França' },
-            { id: 2, nome: 'Barroco', regiaoOrigem: 'Itália' },
+            { id: 1, nome: 'Simbolismo', regiaoOrigem: ['França'] },
+            { id: 2, nome: 'Barroco', regiaoOrigem: ['Itália', 'Europa'] },
+        ];
+        db.periodosHistoricos = [
+            { id: 20, nome: 'Guerra Fria', regiao: ['Internacional', 'Europa'] },
         ];
         db.autores = [{ id: 10, nome: 'Cruz e Sousa', movimentosEscolasIds: [1] }];
         esvaziar(
@@ -88,13 +91,23 @@ describe('Datalists de modais carregados sob demanda', () => {
         assert.deepEqual(opcoes('sugestoes-movimentos-escolas-prosa'), ['Barroco', 'Simbolismo']);
     });
 
-    it('Movimento/Escola: "Novo" sugere as regiões de origem já cadastradas', async () => {
+    it('Movimento/Escola: "Novo" sugere os lugares já usados em Correntes e Períodos Históricos', async () => {
         await prepararNovo('movimento-escola');
-        assert.deepEqual(opcoes('sugestoes-regiao-origem-movimento'), ['França', 'Itália']);
+        assert.deepEqual(opcoes('sugestoes-regiao-origem-movimento'), [
+            'Europa',
+            'França',
+            'Internacional',
+            'Itália',
+        ]);
     });
 
-    it('Movimento/Escola: editar sugere as regiões de origem já cadastradas', async () => {
+    it('Movimento/Escola: editar sugere os lugares já usados em Correntes e Períodos Históricos', async () => {
         await editarMovimentoEscola(1);
-        assert.deepEqual(opcoes('sugestoes-regiao-origem-movimento'), ['França', 'Itália']);
+        assert.deepEqual(opcoes('sugestoes-regiao-origem-movimento'), [
+            'Europa',
+            'França',
+            'Internacional',
+            'Itália',
+        ]);
     });
 });

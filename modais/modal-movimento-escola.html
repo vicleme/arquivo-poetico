@@ -272,12 +272,27 @@
                         <div class="grid grid-cols-1 gap-4">
                             <div>
                                 <label class="form-label">Região de origem</label>
-                                <input
-                                    type="text"
-                                    id="me-regiao-origem"
-                                    list="sugestoes-regiao-origem-movimento"
-                                    placeholder="Ex: Brasil, Europa, Itália"
-                                />
+                                <div class="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="me-regiao-origem-input"
+                                        class="text-sm flex-1"
+                                        list="sugestoes-regiao-origem-movimento"
+                                        placeholder="Ex: Brasil, Portugal, Europa"
+                                    />
+                                    <button
+                                        type="button"
+                                        onclick="adicionarRegiaoOrigemMovimento()"
+                                        class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <div
+                                    id="me-regiao-origem-container"
+                                    class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                                ></div>
+                                <input type="hidden" id="me-regiao-origem" />
                                 <datalist id="sugestoes-regiao-origem-movimento"></datalist>
                             </div>
                             <div>
@@ -574,6 +589,42 @@
                                     ></div>
                                     <input type="hidden" id="me-manifestos" />
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+                <details class="campo-grupo" data-grupo-corrente="fontes" style="margin: 0">
+                    <summary>
+                        Fontes
+                        <span class="campo-grupo-dica">(obras que embasam a classificação)</span>
+                    </summary>
+                    <div class="campo-grupo-corpo">
+                        <div class="grid grid-cols-1 gap-3">
+                            <p class="text-[11px] text-gray-500 dark:text-slate-400">
+                                Autores diferentes classificam uma mesma corrente de modos distintos
+                                (nome, datas, divisões). Registre aqui o que você consultou. As
+                                fontes que vêm de fábrica são obras de referência sobre a corrente,
+                                sem número de página: confira na sua cópia e use a nota para anotar
+                                capítulo, página ou onde o autor diverge. Postura estética e
+                                Programa são categorias próprias do app, sem um autor único por
+                                trás.
+                            </p>
+                            <p
+                                id="me-fontes-vazio"
+                                class="text-xs text-gray-400 dark:text-slate-500"
+                            >
+                                Nenhuma fonte registrada.
+                            </p>
+                            <div id="me-fontes-lista" class="grid grid-cols-1 gap-3"></div>
+                            <div>
+                                <button
+                                    type="button"
+                                    id="me-fontes-adicionar"
+                                    onclick="adicionarFonteCorrente()"
+                                    class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1.5 rounded text-xs font-bold"
+                                >
+                                    + Adicionar fonte
+                                </button>
                             </div>
                         </div>
                     </div>

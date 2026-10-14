@@ -172,12 +172,18 @@ How to read them:
   `epocaRetratada` is kept for compatibility): it is a period of the
   person's own life (e.g. a phase of a relationship), not a historical
   moment.
-- **`periodoHistoricoId`** (**Período Histórico Retratado**, Depicted
-  Historical Period): the historical (non-personal) moment the text
-  depicts (e.g. military dictatorship, Covid-19 pandemic). A single id
-  pointing to the central registry `db.periodosHistoricos`; it coexists
-  with `epocaRetratada` (both can be filled at once). Empty (`null`) =
-  not informed.
+- **`periodosHistoricosIds`** (**Período Histórico Retratado**, Depicted
+  Historical Period): the historical (non-personal) moments the text
+  depicts (e.g. military dictatorship, Covid-19 pandemic). An array of
+  ids (0 to N) pointing to the central registry `db.periodosHistoricos`,
+  with no main period and no meaningful order (unlike `pertenceA` in the
+  registry itself). A text about the pandemic under the Bolsonaro
+  government lists both "Governo Bolsonaro" and "Pandemia de covid-19",
+  which is an independent top-level period. It coexists with
+  `epocaRetratada` (both can be filled at once). Empty array = not
+  informed. Replaces the former single `periodoHistoricoId`: old backups
+  and old exports are migrated/accepted (`null` becomes `[]`, a value
+  becomes `[value]`).
 - **`movimentosEscolasIds`** (**Corrente literária**, Literary current (formerly Movimento/Escola)): an
   array of ids (0 to N) from the central registry `db.movimentosEscolas`
   (e.g. Romanticism, Symbolism, Modernism). A text may fit none or more
@@ -185,7 +191,7 @@ How to read them:
 - **`contextoHistorico`** (label **Inspiração**, Inspiration): free text
   about what inspired the text (a specific trigger or circumstance). The
   internal name is legacy; the content is NOT historical context, it is
-  inspiration. Don't confuse it with `periodoHistoricoId`.
+  inspiration. Don't confuse it with `periodosHistoricosIds`.
 
 ## Intratextuality — Elos (Links) and Ecos (Echoes)
 

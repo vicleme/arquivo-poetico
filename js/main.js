@@ -32,6 +32,16 @@ import {
     initNav,
 } from './ui.js';
 import { registrarModal } from './modais.js';
+import { adicionarFonteCorrente, removerFonteCorrente } from './fontes-corrente-ui.js';
+import {
+    adicionarFontePeriodoHistorico,
+    removerFontePeriodoHistorico,
+} from './fontes-periodo-historico-ui.js';
+import {
+    initOpcoesPeriodoBiografico,
+    rastreadorOpcoesPeriodoBiografico,
+    abrirOpcoesPeriodoBiografico,
+} from './periodo-biografico-opcoes-ui.js';
 import {
     toggleColuna,
     moverColuna,
@@ -64,11 +74,38 @@ import {
     abrirVisualizacaoMovimentoEscola,
     editarMovimentoEscolaDoVisualizador,
 } from './visualizar-movimento-escola.js';
+import {
+    abrirVisualizacaoPeriodoHistorico,
+    editarPeriodoHistoricoDoVisualizador,
+    abrirTextoDoPeriodoHistoricoVer,
+    verTodosTextosDoPeriodoHistorico,
+} from './visualizar-periodo-historico.js';
+import {
+    abrirVisualizacaoPeriodoBiografico,
+    editarPeriodoBiograficoDoVisualizador,
+    alternarOcultasPeriodoBiograficoDoVisualizador,
+    abrirTextoDoPeriodoBiograficoVer,
+    verTodosTextosDoPeriodoBiografico,
+} from './visualizar-periodo-biografico.js';
+import {
+    toggleSelecaoEpoca,
+    toggleSelecaoTodosEpocas,
+    limparSelecaoEpocas,
+    inverterSelecaoEpocas,
+    aplicarMassaEpocas,
+    alternarOcultasNaBarraEpocas,
+    toggleOcultarEpoca,
+} from './epocas-acoes.js';
 import { abrirVisualizacaoGrupo, editarGrupoDoVisualizador } from './visualizar-grupo.js';
 import {
     toggleDownloadAbrangente,
     sincronizarCheckboxesComEstadoSalvo,
 } from './download-abrangente.js';
+import {
+    toggleIncluirOcultos,
+    toggleLembrarIncluirOcultos,
+    montarControlesIncluirOcultos,
+} from './ocultos-exportacao.js';
 import { exportarEscansao } from './exportar-sonoridade.js';
 import {
     toggleIncluirDadosPessoais,
@@ -106,6 +143,15 @@ import {
     verTextosPessoa,
     verTextosEpoca,
     verTextosPeriodoHistorico,
+    alternarRamoEpoca,
+    recolherTodasEpocas,
+    expandirTodasEpocas,
+    alternarRamoPeriodoHistorico,
+    recolherTodosPeriodosHistoricos,
+    expandirTodosPeriodosHistoricos,
+    alternarRamoCorrente,
+    recolherTodasCorrentes,
+    expandirTodasCorrentes,
     verTextosAssunto,
     verTextosTema,
     renderTemas,
@@ -152,6 +198,8 @@ import {
     definirOrdenacaoPeriodosHistoricos,
     setFiltroPeriodo,
     limparFiltrosCorrentes,
+    limparFiltrosPeriodosBiograficos,
+    alternarExibirOcultasEpocas,
     toggleColapsoGrupo,
     setFiltroAutorGrupos,
     setFiltroNomeGrupos,
@@ -412,7 +460,15 @@ import {
     editarInstituicaoAutor,
     adicionarMovimentoEscolaDireto,
     removerMovimentoEscolaDireto,
+    adicionarPeriodoHistoricoDoTexto,
+    removerPeriodoHistoricoDoTexto,
     adicionarValorMovimento,
+    adicionarRegiaoOrigemMovimento,
+    removerRegiaoOrigemMovimento,
+    editarRegiaoOrigemMovimento,
+    adicionarRegiaoPeriodoHistorico,
+    removerRegiaoPeriodoHistorico,
+    editarRegiaoPeriodoHistorico,
     removerValorMovimento,
     editarValorMovimento,
     adicionarTemaMovimento,
@@ -605,6 +661,8 @@ import {
     excluirLocalComAviso,
     verTextosLocal,
     alternarColapsoLocal,
+    recolherTodosLocais,
+    expandirTodosLocais,
 } from './ui-locais.js';
 import {
     editarPersonagem,
@@ -659,6 +717,12 @@ registrarModal('modal-pessoa', 'modal-pessoa.html', initFormPessoa);
 registrarModal('modal-grupo', 'modal-grupo.html', initFormGrupo);
 registrarModal('modal-autor', 'modal-autor.html', initFormAutor);
 registrarModal('modal-epoca', 'modal-epoca.html', initFormEpoca);
+registrarModal(
+    'modal-opcoes-periodo-biografico',
+    'modal-opcoes-periodo-biografico.html',
+    initOpcoesPeriodoBiografico,
+    rastreadorOpcoesPeriodoBiografico,
+);
 registrarModal('modal-periodo-historico', 'modal-periodo-historico.html', initFormPeriodoHistorico);
 registrarModal('modal-assunto', 'modal-assunto.html', initFormAssunto);
 registrarModal('modal-tema', 'modal-tema.html', initFormTema);
@@ -700,6 +764,20 @@ registrarModal(
     'modal-visualizar-movimento-escola.html',
     () => {},
 );
+// Idem, pro Período Histórico (ver visualizar-periodo-historico.js) —
+// botão "Ver" do card em Períodos Históricos.
+registrarModal(
+    'modal-visualizar-periodo-historico',
+    'modal-visualizar-periodo-historico.html',
+    () => {},
+);
+// Idem, pro Período Biográfico (ver visualizar-periodo-biografico.js) —
+// botão "Ver" do card em Períodos Biográficos.
+registrarModal(
+    'modal-visualizar-periodo-biografico',
+    'modal-visualizar-periodo-biografico.html',
+    () => {},
+);
 // Idem, pro Grupo (ver visualizar-grupo.js) — botão "Ver" do card em
 // Grupos.
 registrarModal('modal-visualizar-grupo', 'modal-visualizar-grupo.html', () => {});
@@ -730,6 +808,18 @@ const ACOES_LISTA = {
     'editar-elemento': (el) => editarElemento(Number(el.dataset.id)),
     'ver-textos-pessoa': (el) => verTextosPessoa(Number(el.dataset.id)),
     'ver-textos-epoca': (el) => verTextosEpoca(Number(el.dataset.id)),
+    'toggle-ocultar-epoca': (el) => toggleOcultarEpoca(Number(el.dataset.id)),
+    'ver-periodo-historico': (el) => abrirVisualizacaoPeriodoHistorico(Number(el.dataset.id)),
+    'ver-periodo-biografico': (el) => abrirVisualizacaoPeriodoBiografico(Number(el.dataset.id)),
+    'alternar-ramo-epoca': (el) => alternarRamoEpoca(Number(el.dataset.id)),
+    'recolher-todas-epocas': () => recolherTodasEpocas(),
+    'expandir-todas-epocas': () => expandirTodasEpocas(),
+    'alternar-ramo-periodo-historico': (el) => alternarRamoPeriodoHistorico(Number(el.dataset.id)),
+    'recolher-todos-periodos-historicos': () => recolherTodosPeriodosHistoricos(),
+    'expandir-todos-periodos-historicos': () => expandirTodosPeriodosHistoricos(),
+    'alternar-ramo-corrente': (el) => alternarRamoCorrente(Number(el.dataset.id)),
+    'recolher-todas-correntes': () => recolherTodasCorrentes(),
+    'expandir-todas-correntes': () => expandirTodasCorrentes(),
     'ver-textos-periodo-historico': (el) => verTextosPeriodoHistorico(Number(el.dataset.id)),
     'ver-textos-movimento-escola': (el) => verTextosMovimentoEscola(Number(el.dataset.id)),
     'ver-textos-autor': (el) => verTextosAutor(Number(el.dataset.id)),
@@ -756,6 +846,8 @@ const ACOES_LISTA = {
     'excluir-local': (el) => excluirLocalComAviso(Number(el.dataset.id)),
     'ver-textos-local': (el) => verTextosLocal(Number(el.dataset.id)),
     'toggle-local-colapso': (el) => alternarColapsoLocal(Number(el.dataset.id)),
+    'recolher-todos-locais': () => recolherTodosLocais(),
+    'expandir-todos-locais': () => expandirTodosLocais(),
     'mesclar-duplicata': (el) =>
         mesclarDuplicataComConfirmacao(Number(el.dataset.manter), Number(el.dataset.remover)),
     'nao-sao-iguais': (el) => marcarNaoIguaisComAviso(Number(el.dataset.a), Number(el.dataset.b)),
@@ -821,6 +913,12 @@ const ACOES_LISTA = {
     'toggle-todos-autores': (el) => toggleSelecaoTodosAutores(el.checked),
     'toggle-pessoa': (el, e) => toggleSelecaoPessoa(Number(el.dataset.id), el.checked, e?.shiftKey),
     'toggle-todos-pessoas': (el) => toggleSelecaoTodosPessoas(el.checked),
+    'toggle-epoca': (el, e) => toggleSelecaoEpoca(Number(el.dataset.id), el.checked, e?.shiftKey),
+    'toggle-todos-epocas': (el) => toggleSelecaoTodosEpocas(el.checked),
+    'aplicar-massa-epocas': () => aplicarMassaEpocas(),
+    'alternar-ocultas-massa-epocas': () => alternarOcultasNaBarraEpocas(),
+    'inverter-selecao-epocas': () => inverterSelecaoEpocas(),
+    'limpar-selecao-epocas': () => limparSelecaoEpocas(),
     'toggle-ocultar-pessoa': (el) => toggleOcultarPessoa(Number(el.dataset.id)),
     'toggle-ocultar-grupo': (el) => toggleOcultarGrupo(Number(el.dataset.id)),
     'toggle-todos-poemas': (el) => toggleSelecaoTodos('poemas', el.checked),
@@ -888,6 +986,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // remontado via innerHTML a cada render — celulas-tabela.js).
     sincronizarCheckboxesComEstadoSalvo();
     sincronizarChecksDadosPessoaisComEstadoSalvo();
+    montarControlesIncluirOcultos();
 
     // Lembra a última escolha de "incluir capas" no backup (padrão: marcado,
     // já que o botão "Baixar JSON" é o backup "de verdade" — melhor pecar
@@ -1217,7 +1316,15 @@ window.removerInstituicaoAutor = removerInstituicaoAutor;
 window.editarInstituicaoAutor = editarInstituicaoAutor;
 window.adicionarMovimentoEscolaDireto = adicionarMovimentoEscolaDireto;
 window.removerMovimentoEscolaDireto = removerMovimentoEscolaDireto;
+window.adicionarPeriodoHistoricoDoTexto = adicionarPeriodoHistoricoDoTexto;
+window.removerPeriodoHistoricoDoTexto = removerPeriodoHistoricoDoTexto;
 window.adicionarValorMovimento = adicionarValorMovimento;
+window.adicionarRegiaoOrigemMovimento = adicionarRegiaoOrigemMovimento;
+window.removerRegiaoOrigemMovimento = removerRegiaoOrigemMovimento;
+window.editarRegiaoOrigemMovimento = editarRegiaoOrigemMovimento;
+window.adicionarRegiaoPeriodoHistorico = adicionarRegiaoPeriodoHistorico;
+window.removerRegiaoPeriodoHistorico = removerRegiaoPeriodoHistorico;
+window.editarRegiaoPeriodoHistorico = editarRegiaoPeriodoHistorico;
 window.removerValorMovimento = removerValorMovimento;
 window.editarValorMovimento = editarValorMovimento;
 window.adicionarTemaMovimento = adicionarTemaMovimento;
@@ -1248,6 +1355,10 @@ window.editarLemaMovimento = editarLemaMovimento;
 window.adicionarManifestoMovimento = adicionarManifestoMovimento;
 window.removerManifestoMovimento = removerManifestoMovimento;
 window.editarManifestoMovimento = editarManifestoMovimento;
+window.adicionarFonteCorrente = adicionarFonteCorrente;
+window.removerFonteCorrente = removerFonteCorrente;
+window.adicionarFontePeriodoHistorico = adicionarFontePeriodoHistorico;
+window.removerFontePeriodoHistorico = removerFontePeriodoHistorico;
 window.adicionarPremioAutor = adicionarPremioAutor;
 window.removerPremioAutor = removerPremioAutor;
 window.editarPremioAutor = editarPremioAutor;
@@ -1405,6 +1516,9 @@ window.definirOrdenacaoEpocas = definirOrdenacaoEpocas;
 window.definirOrdenacaoPeriodosHistoricos = definirOrdenacaoPeriodosHistoricos;
 window.setFiltroPeriodo = setFiltroPeriodo;
 window.limparFiltrosCorrentes = limparFiltrosCorrentes;
+window.limparFiltrosPeriodosBiograficos = limparFiltrosPeriodosBiograficos;
+window.alternarExibirOcultasEpocas = alternarExibirOcultasEpocas;
+window.abrirOpcoesPeriodoBiografico = abrirOpcoesPeriodoBiografico;
 window.setStatusProsas = setStatusProsas;
 window.setItensPorPagina = setItensPorPagina;
 window.togglePainel = togglePainel;
@@ -1427,9 +1541,19 @@ window.setFormatoBaixarColuna = setFormatoBaixarColuna;
 window.resetarAcoesColuna = resetarAcoesColuna;
 window.toggleDownloadAbrangente = toggleDownloadAbrangente;
 window.toggleIncluirDadosPessoais = toggleIncluirDadosPessoais;
+window.toggleIncluirOcultos = toggleIncluirOcultos;
+window.toggleLembrarIncluirOcultos = toggleLembrarIncluirOcultos;
 window.baixarDoModalVisualizacao = baixarDoModalVisualizacao;
 window.editarAutorDoVisualizador = editarAutorDoVisualizador;
 window.editarMovimentoEscolaDoVisualizador = editarMovimentoEscolaDoVisualizador;
+window.editarPeriodoHistoricoDoVisualizador = editarPeriodoHistoricoDoVisualizador;
+window.editarPeriodoBiograficoDoVisualizador = editarPeriodoBiograficoDoVisualizador;
+window.alternarOcultasPeriodoBiograficoDoVisualizador =
+    alternarOcultasPeriodoBiograficoDoVisualizador;
+window.abrirTextoDoPeriodoBiograficoVer = abrirTextoDoPeriodoBiograficoVer;
+window.verTodosTextosDoPeriodoBiografico = verTodosTextosDoPeriodoBiografico;
+window.abrirTextoDoPeriodoHistoricoVer = abrirTextoDoPeriodoHistoricoVer;
+window.verTodosTextosDoPeriodoHistorico = verTodosTextosDoPeriodoHistorico;
 window.editarGrupoDoVisualizador = editarGrupoDoVisualizador;
 window.baixarDoModalVisualizacaoSonoridade = baixarDoModalVisualizacaoSonoridade;
 window.baixarDoModalVisualizacaoEstruturaTextual = baixarDoModalVisualizacaoEstruturaTextual;
