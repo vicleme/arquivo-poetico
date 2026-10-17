@@ -19,7 +19,7 @@ document.body.innerHTML = modais
     .join('\n');
 
 const { db } = await import('../js/db.js');
-const { editarAutor, editarMovimentoEscola } = await import('../js/forms.js');
+const { editarAutor, editarMovimentoEscola, editarProsa } = await import('../js/forms.js');
 const { prepararNovo } = await import('../js/ui.js');
 
 const opcoes = (id) =>
@@ -40,7 +40,17 @@ describe('Datalists de modais carregados sob demanda', () => {
             { id: 20, nome: 'Guerra Fria', regiao: ['Internacional', 'Europa'] },
         ];
         db.autores = [{ id: 10, nome: 'Cruz e Sousa', movimentosEscolasIds: [1] }];
+        db.epocas = [
+            { id: 31, nome: 'Faculdade', autorId: 10 },
+            { id: 32, nome: 'Formatura', autorId: 10, evento: true },
+        ];
+        db.periodosHistoricos.push({ id: 21, nome: 'Semana de Arte Moderna', evento: true });
+        db.prosas = [{ id: 50, titulo: 'Prosa de teste', autoria: [{ autorId: 10 }] }];
         esvaziar(
+            'sugestoes-epoca-nome-prosa',
+            'sugestoes-evento-biografico-nome-prosa',
+            'sugestoes-periodo-historico-nome-prosa',
+            'sugestoes-evento-historico-nome-prosa',
             'sugestoes-movimentos-escolas-autor',
             'sugestoes-movimentos-escolas-prosa',
             'sugestoes-linguas-escrita-autor',
@@ -89,6 +99,28 @@ describe('Datalists de modais carregados sob demanda', () => {
         await prepararNovo('prosa');
         await proximoTick();
         assert.deepEqual(opcoes('sugestoes-movimentos-escolas-prosa'), ['Barroco', 'Simbolismo']);
+    });
+
+    const PERIODOS_EVENTOS_PROSA = {
+        'sugestoes-epoca-nome-prosa': ['Faculdade'],
+        'sugestoes-evento-biografico-nome-prosa': ['Formatura'],
+        'sugestoes-periodo-historico-nome-prosa': ['Guerra Fria'],
+        'sugestoes-evento-historico-nome-prosa': ['Semana de Arte Moderna'],
+    };
+    const conferirPeriodosEventosProsa = () =>
+        Object.entries(PERIODOS_EVENTOS_PROSA).forEach(([id, esperado]) =>
+            assert.deepEqual(opcoes(id), esperado, id),
+        );
+
+    it('Prosa: "Nova Prosa" já sugere Períodos e Eventos (biográficos e históricos)', async () => {
+        await prepararNovo('prosa');
+        await proximoTick();
+        conferirPeriodosEventosProsa();
+    });
+
+    it('Prosa: editar sugere Períodos e Eventos (biográficos e históricos)', async () => {
+        await editarProsa(50);
+        conferirPeriodosEventosProsa();
     });
 
     it('Movimento/Escola: "Novo" sugere os lugares já usados em Correntes e Períodos Históricos', async () => {

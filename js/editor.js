@@ -5991,17 +5991,19 @@ export function atualizarDatalistProsa() {
 
     // Item 4: Intertextualidade sugere só a partir de db.prosas (cada
     // tipo de texto sugere pelo próprio histórico, não combinado — ver
-    // atualizarDatalistIntertexto acima, que só lê db.poemas). Época e
-    // Migração (ver atualizarDatalistEpoca/atualizarDatalistMigracao)
-    // já foram generalizadas pra preencher os dois datalists (Poema e
-    // Prosa) de uma vez só, então não precisam ser chamadas de novo
-    // aqui — atualizarDatalist() (Poema) já cobre as duas pontas.
+    // atualizarDatalistIntertexto acima, que só lê db.poemas). Migração
+    // (ver atualizarDatalistMigracao) preenche os dois datalists (Poema e
+    // Prosa) de uma vez só e já é coberta por atualizarDatalist().
     atualizarDatalistIntertexto('prosas');
     atualizarDatalistReferenciaExterna('prosas');
     atualizarDatalistHipertextualidade('prosas');
-    // Movimento/Escola: o modal de Prosa também é carregado sob demanda e
-    // atualizarDatalist() só o alcança se ele já existir (mesmo motivo do Autor).
+    // Movimento/Escola, Períodos e Eventos (biográficos e históricos): o modal
+    // de Prosa também é carregado sob demanda e atualizarDatalist() só o alcança
+    // se ele já existir (mesmo motivo do Autor). Sem estas duas chamadas, os
+    // datalists de Período e Evento ficavam vazios na primeira abertura.
     atualizarDatalistMovimentosEscolas();
+    atualizarDatalistEpoca('prosas');
+    atualizarDatalistPeriodoHistorico();
 }
 
 // Wrappers de Sinalizações (Prosa) unificados acima em
