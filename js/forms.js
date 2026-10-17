@@ -4138,6 +4138,7 @@ export function initFormPoema() {
             epocaRetratada,
             periodosHistoricosIds,
             movimentosEscolasIds: obterMovimentosEscolasDiretos('poemas'),
+            intertextualidade: obterIntertextualidade('poemas'),
             hipertextualidade: obterHipertextualidade('poemas'),
             referenciasExternas: obterReferenciasExternas('poemas'),
             anexos: obterAnexos('poemas'),
