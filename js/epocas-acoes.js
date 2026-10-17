@@ -1,7 +1,8 @@
 // ============================================================
 // epocas-acoes.js — Seleção (checkbox por cartão) e edição em massa da
 // aba Período Biográfico: acrescentar ou remover Esfera, Categoria, Pessoa
-// envolvida e Relação nos períodos selecionados.
+// envolvida, Relação e "Faz parte de" (período pai em comum) nos períodos
+// selecionados.
 //
 // A lógica pura (o que muda em cada período, Desfazer) fica em
 // periodo-biografico-massa.js; aqui só o estado da seleção, a barra de
@@ -17,8 +18,12 @@
 import { db, save } from './db.js';
 import { mostrarAviso, mostrarAvisoComAcao, abrirModalConfirmacao, escapeHtml } from './utils.js';
 import { renderEpocas, getListaVisivelEpocas } from './render-listas.js';
-import { AUTOR, opcoesDoPeriodoBiografico } from './periodo-biografico-campos.js';
-import { exibindoOcultasDosPeriodos } from './ocultas-periodos.js';
+import { AUTOR, opcoesDoPeriodoBiografico, periodosVisiveis } from './periodo-biografico-campos.js';
+import {
+    criarComparadorDeEpocas,
+    ordenarPeriodosEmArvore,
+} from './periodos-biograficos-hierarquia.js';
+import { exibindoOcultasDosPeriodos, opcoesOcultasDosPeriodos } from './ocultas-periodos.js';
 import {
     CAMPOS_MASSA_PERIODO_BIOGRAFICO,
     aplicarMassaPeriodosBiograficos,
@@ -27,6 +32,12 @@ import {
     operacaoUsaAutor,
     validarOperacao,
 } from './periodo-biografico-massa.js';
+import {
+    prepararEtiquetasMassa,
+    lerEtiquetasMassa,
+    limparEtiquetasMassa,
+} from './campo-etiquetas-massa.js';
+import { rotuloComValores } from './massa-valores.js';
 
 export const selecaoEpocas = new Set();
 
@@ -142,11 +153,49 @@ function preencherDatalist(id, valores) {
         lista.innerHTML = valores.map((v) => `<option value="${escapeHtml(v)}"></option>`).join('');
 }
 
+// Opções do seletor de pai: todos os períodos que a tela pode mostrar, em
+// árvore (recuo) e agrupados por autor, porque um período só pode fazer parte
+// de períodos do mesmo autor. A regra completa (ciclo, autor, datas) é
+// conferida período a período ao aplicar; aqui só se evita o que é óbvio.
+function preencherSelectPai() {
+    const select = el('epocas-massa-pai');
+    if (!select) return;
+    const atual = select.value;
+    const lista = periodosVisiveis(db.epocas, opcoesOcultasDosPeriodos());
+    const porAutor = new Map();
+    lista.forEach((p) => {
+        const k = String(p.autorId ?? '');
+        if (!porAutor.has(k)) porAutor.set(k, []);
+        porAutor.get(k).push(p);
+    });
+    const nomeDoAutor = (k) => db.autores.find((a) => String(a.id) === k)?.nome || 'Sem autor';
+    const grupos = [...porAutor.entries()]
+        .map(([k, periodos]) => ({ nome: nomeDoAutor(k), periodos }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    select.innerHTML =
+        '<option value="">Escolher período pai…</option>' +
+        grupos
+            .map(({ nome, periodos }) => {
+                const itens = ordenarPeriodosEmArvore(periodos, criarComparadorDeEpocas(periodos))
+                    .map(({ m, nivel }) => {
+                        const recuo =
+                            '\u00a0\u00a0\u00a0\u00a0'.repeat(nivel) + (nivel ? '↳ ' : '');
+                        return `<option value="${m.id}">${recuo}${escapeHtml(m.nome)}</option>`;
+                    })
+                    .join('');
+                return `<optgroup label="${escapeHtml(nome)}">${itens}</optgroup>`;
+            })
+            .join('');
+    // Mantém a escolha se ela ainda existe (ex.: a barra foi redesenhada).
+    select.value = lista.some((p) => String(p.id) === atual) ? atual : '';
+}
+
 function mostrarGrupoDoCampo() {
     const campo = el('epocas-massa-campo')?.value;
     const texto = campo === 'esfera' || campo === 'categoria';
     el('epocas-massa-grupo-texto')?.classList.toggle('hidden', !texto);
     el('epocas-massa-grupo-pessoa')?.classList.toggle('hidden', campo !== 'pessoa');
+    el('epocas-massa-grupo-pai')?.classList.toggle('hidden', campo !== 'pai');
     el('epocas-massa-grupo-relacao')?.classList.toggle('hidden', campo !== 'relacao');
     const entrada = el('epocas-massa-valor');
     if (entrada && texto) {
@@ -156,7 +205,14 @@ function mostrarGrupoDoCampo() {
                 ? 'sugestoes-epocas-massa-esferas'
                 : 'sugestoes-epocas-massa-categorias',
         );
-        entrada.placeholder = campo === 'esfera' ? 'Esfera' : 'Categoria';
+    }
+    if (texto) {
+        prepararEtiquetasMassa({
+            inputId: 'epocas-massa-valor',
+            chipsId: 'epocas-massa-valor-chips',
+            chave: campo,
+            placeholder: `${campo === 'esfera' ? 'Esfera' : 'Categoria'}: Enter adiciona`,
+        });
     }
 }
 
@@ -175,6 +231,7 @@ function popularControles() {
         rotulo: rotuloPessoa(p),
     }));
     preencherSelect(el('epocas-massa-pessoa'), pessoas, 'Escolher pessoa…');
+    preencherSelectPai();
     const pontas = [{ valor: AUTOR, rotulo: 'Autor do período' }, ...pessoas];
     preencherSelect(el('epocas-massa-de'), pontas, 'Quem…');
     preencherSelect(el('epocas-massa-para'), pontas, 'Com quem…');
@@ -225,14 +282,19 @@ export function atualizarBarraSelecaoEpocas() {
 
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 
+// "Esfera ... acrescentada" / "Esferas ... acrescentadas".
+const plural_s = (op) => (op.valores?.length > 1 ? 's' : '');
+
 function lerOperacao() {
     const valorDe = (id) => el(id)?.value ?? '';
     const campo = valorDe('epocas-massa-campo');
     const acao = valorDe('epocas-massa-acao');
     if (campo === 'esfera' || campo === 'categoria') {
-        return { campo, acao, valor: valorDe('epocas-massa-valor').trim() };
+        return { campo, acao, valores: lerEtiquetasMassa('epocas-massa-valor') };
     }
     if (campo === 'pessoa') return { campo, acao, pessoaId: valorDe('epocas-massa-pessoa') };
+    if (campo === 'pai') return { campo, acao, paiId: valorDe('epocas-massa-pai') };
+    if (campo === 'evento') return { campo, acao };
     const ponta = (v) => (v === AUTOR || v === '' ? v : Number(v));
     return {
         campo,
@@ -249,21 +311,44 @@ function nomeDaPonta(valor) {
     return db.pessoas.find((p) => p.id == valor)?.nome || 'Pessoa';
 }
 
+const nomeDoPeriodo = (id) => db.epocas.find((e) => e.id == id)?.nome || 'período';
+
 function descricaoDaOperacao(op) {
-    if (op.campo === 'esfera') return `Esfera "${op.valor}"`;
-    if (op.campo === 'categoria') return `Categoria "${op.valor}"`;
+    if (op.campo === 'esfera') return rotuloComValores('Esfera', 'Esferas', op.valores);
+    if (op.campo === 'categoria') return rotuloComValores('Categoria', 'Categorias', op.valores);
     if (op.campo === 'pessoa') return `Pessoa "${nomeDaPonta(op.pessoaId)}"`;
+    if (op.campo === 'pai') return `Período pai "${nomeDoPeriodo(op.paiId)}"`;
+    if (op.campo === 'evento') return 'Marca de evento';
     const como = [op.natureza, op.vinculo].filter(Boolean).join(' / ');
     return `Relação "${nomeDaPonta(op.de)} → ${nomeDaPonta(op.para)}: ${como}"`;
 }
 
+// Por que um período não pôde entrar no pai escolhido (ver aplicarPaiNoPeriodo
+// em periodo-biografico-massa.js).
+const MOTIVOS_RECUSA = {
+    proprio: 'é o próprio pai',
+    ciclo: 'o pai escolhido está dentro dele',
+    autor: 'é de outro autor',
+    depois: 'começa depois do fim do pai',
+    antes: 'termina antes do começo do pai',
+};
+
+// Lista os primeiros recusados com o motivo de cada um; o resto vira "e mais N".
+function fraseDasRecusas(recusados) {
+    const itens = recusados
+        .slice(0, 4)
+        .map(({ id, motivo }) => `"${nomeDoPeriodo(id)}" (${MOTIVOS_RECUSA[motivo] || motivo})`);
+    const resto = recusados.length - itens.length;
+    return `Não entraram: ${itens.join('; ')}${resto > 0 ? ` e mais ${resto}` : ''}.`;
+}
+
 function limparCamposDigitados() {
-    ['epocas-massa-valor', 'epocas-massa-vinculo'].forEach((id) => {
-        const campo = el(id);
-        if (campo) campo.value = '';
-    });
+    limparEtiquetasMassa('epocas-massa-valor');
+    const vinculo = el('epocas-massa-vinculo');
+    if (vinculo) vinculo.value = '';
     [
         'epocas-massa-pessoa',
+        'epocas-massa-pai',
         'epocas-massa-de',
         'epocas-massa-para',
         'epocas-massa-natureza',
@@ -282,11 +367,20 @@ function executar(op, ids) {
     const adicionar = op.acao === 'adicionar';
     const descricao = descricaoDaOperacao(op);
     const n = resultado.alterados.length;
+    const recusados = resultado.recusados || [];
     if (n === 0) {
+        if (recusados.length) {
+            mostrarAviso(`Nenhum período foi alterado. ${fraseDasRecusas(recusados)}`, 'erro');
+            return;
+        }
         mostrarAviso(
-            adicionar
-                ? 'Todos os períodos selecionados já tinham isso.'
-                : 'Nenhum dos períodos selecionados tinha isso.',
+            op.campo === 'evento'
+                ? adicionar
+                    ? 'Todos os períodos selecionados já eram evento.'
+                    : 'Nenhum dos períodos selecionados era evento.'
+                : adicionar
+                  ? 'Todos os períodos selecionados já tinham isso.'
+                  : 'Nenhum dos períodos selecionados tinha isso.',
             'info',
         );
         return;
@@ -297,14 +391,31 @@ function executar(op, ids) {
     const ignorados = resultado.iguais;
     const verbo = adicionar ? 'já tinha' : 'não tinha';
     const resto = ignorados > 0 ? ` (${ignorados} ${verbo}${ignorados === 1 ? '' : 'm'})` : '';
+    // "Período pai" é masculino; os demais campos (Esfera, Categoria, Pessoa,
+    // Relação) são femininos.
+    const participio =
+        op.campo === 'pai'
+            ? adicionar
+                ? 'acrescentado a'
+                : 'removido de'
+            : `${adicionar ? 'acrescentada' : 'removida'}${plural_s(op)} ${adicionar ? 'a' : 'de'}`;
+    const recusa = recusados.length ? ` ${fraseDasRecusas(recusados)}` : '';
+    // A marca de evento não é "acrescentada a": diz o que aconteceu.
+    const frase =
+        op.campo === 'evento'
+            ? adicionar
+                ? `${plural(n, 'período marcado', 'períodos marcados')} como evento${resto}.`
+                : `Marca de evento tirada de ${plural(n, 'período', 'períodos')}${resto}.`
+            : `${descricao} ${participio} ${plural(n, 'período', 'períodos')}${resto}.${recusa}`;
     mostrarAvisoComAcao(
-        `${descricao} ${adicionar ? 'acrescentada a' : 'removida de'} ${plural(n, 'período', 'períodos')}${resto}.`,
+        frase,
         'Desfazer',
         () => {
             restaurarMassaPeriodosBiograficos(db, resultado.alterados);
             save();
             renderEpocas();
         },
+        recusados.length ? 8000 : 6000,
     );
 }
 

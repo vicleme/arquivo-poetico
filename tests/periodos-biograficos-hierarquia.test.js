@@ -331,6 +331,58 @@ describe('criarComparadorDeEpocas e ordem em árvore', () => {
         assert.deepEqual(ids(ordenados.map((o) => o.m)), [3, 2, 1]);
     });
 
+    it('mesmo ano: ordena por mês e dia, não pelo nome', () => {
+        const d = (dia, mes, ano) => ({ dia, mes, ano });
+        const lista = [
+            {
+                id: 1,
+                nome: 'Compromisso sustentado',
+                inicio: d(null, 7, 2018),
+                fim: d(2, 2, 2023),
+                pertenceA: [],
+            },
+            {
+                id: 2,
+                nome: 'Era Afetivo-Romântica',
+                inicio: d(19, 1, 2018),
+                fim: d(14, 3, 2021),
+                pertenceA: [],
+            },
+            {
+                id: 3,
+                nome: 'Reconciliação Narrativa',
+                inicio: d(8, 11, 2020),
+                fim: d(1, 1, 2021),
+                pertenceA: [],
+            },
+            {
+                id: 4,
+                nome: 'Reparo',
+                inicio: d(null, 1, 2020),
+                fim: d(null, 11, 2020),
+                pertenceA: [],
+            },
+        ];
+        const ordenados = H.ordenarPeriodosEmArvore(lista, H.criarComparadorDeEpocas(lista));
+        assert.deepEqual(ids(ordenados.map((o) => o.m)), [2, 1, 4, 3]);
+    });
+
+    it('mesmo começo: termina antes primeiro, em aberto por último', () => {
+        const d = (dia, mes, ano) => ({ dia, mes, ano });
+        const lista = [
+            { id: 1, nome: 'Luto', inicio: d(14, 3, 2021), fim: null, pertenceA: [] },
+            {
+                id: 2,
+                nome: 'Separação em bons termos',
+                inicio: d(14, 3, 2021),
+                fim: d(10, 2, 2022),
+                pertenceA: [],
+            },
+        ];
+        const ordenados = H.ordenarPeriodosEmArvore(lista, H.criarComparadorDeEpocas(lista));
+        assert.deepEqual(ids(ordenados.map((o) => o.m)), [2, 1]);
+    });
+
     it('modo alfabético ordena só pelo nome', () => {
         const lista = arvore().filter((p) => p.autorId === 1);
         const comparar = H.criarComparadorDeEpocas(lista, 'alfabetica');
@@ -341,6 +393,129 @@ describe('criarComparadorDeEpocas e ordem em árvore', () => {
                 return n(a).localeCompare(n(b), 'pt-BR');
             }),
         );
+    });
+});
+
+describe('escolha do período num texto (campo com sugestões)', () => {
+    const doAutor1 = (lista) => lista.filter((p) => p.autorId === 1);
+    const opcoesDe = (lista, candidatos = doAutor1(lista)) =>
+        H.opcoesDeEscolhaDoPeriodoBiografico(lista, candidatos, H.criarComparadorDeEpocas(lista));
+
+    it('opções em árvore: o valor é o nome e o caminho vai à parte', () => {
+        const opcoes = opcoesDe(arvore());
+        assert.deepEqual(
+            opcoes.map((o) => [o.id, o.rotulo, o.caminho, o.nivel]),
+            [
+                [1, 'Ensino médio', '', 0],
+                [2, 'Pré-vestibular', 'Ensino médio', 1],
+                [4, 'Relação com X', '', 0],
+                [5, 'Fase 1', 'Relação com X', 1],
+                [6, 'Fase 2', 'Relação com X', 1],
+            ],
+        );
+    });
+
+    it('neto leva o caminho todo, da raiz ao pai', () => {
+        const lista = arvore();
+        lista.push({ id: 8, nome: 'Neto', autorId: 1, inicio: { ano: 2011 }, pertenceA: [5] });
+        const neto = opcoesDe(lista).find((o) => o.id === 8);
+        assert.equal(neto.caminho, 'Relação com X › Fase 1');
+        assert.equal(neto.nivel, 2);
+    });
+
+    it('o caminho vem do cadastro inteiro, mesmo com o pai fora das opções', () => {
+        const lista = arvore();
+        const opcoes = opcoesDe(
+            lista,
+            lista.filter((p) => p.id === 5),
+        );
+        assert.deepEqual(
+            opcoes.map((o) => [o.rotulo, o.caminho]),
+            [['Fase 1', 'Relação com X']],
+        );
+    });
+
+    it('nome repetido ganha o caminho no valor e, se ainda repetir, #id', () => {
+        const lista = [
+            { id: 1, nome: 'Faculdade', autorId: 1, inicio: { ano: 2010 }, pertenceA: [] },
+            { id: 2, nome: 'Faculdade', autorId: 1, inicio: { ano: 2015 }, pertenceA: [] },
+            { id: 3, nome: 'Estágio', autorId: 1, inicio: { ano: 2011 }, pertenceA: [1] },
+            { id: 4, nome: 'Estágio', autorId: 1, inicio: { ano: 2016 }, pertenceA: [2] },
+        ];
+        // As duas Faculdades têm o mesmo nome e o mesmo caminho (topo): #id. Os dois
+        // Estágios têm o mesmo nome, mas caminhos diferentes... que viram o mesmo
+        // texto "Estágio (Faculdade)": #id também.
+        assert.deepEqual(
+            opcoesDe(lista).map((o) => o.rotulo),
+            ['Faculdade #1', 'Estágio (Faculdade) #3', 'Faculdade #2', 'Estágio (Faculdade) #4'],
+        );
+    });
+
+    it('resolve o nome, nome fora das sugestões, de outro autor e nome novo', () => {
+        const lista = arvore();
+        const extras = {
+            candidatos: doAutor1(lista).filter((p) => p.id !== 6),
+            preferidos: doAutor1(lista),
+            comparar: H.criarComparadorDeEpocas(lista),
+        };
+        const r = (texto) => H.resolverPeriodoBiograficoPorRotulo(lista, texto, extras);
+        assert.deepEqual(r('Fase 1'), { id: 5 });
+        assert.deepEqual(r('  Pré-vestibular  '), { id: 2 });
+        assert.deepEqual(r('Fase 2'), { id: 6 }); // fora das sugestões, mas do autor
+        assert.deepEqual(r('Outro autor'), { id: 3 }); // de outro autor: último recurso
+        assert.deepEqual(r('Intercâmbio'), { id: null, novo: true });
+        assert.deepEqual(r('   '), { id: null });
+    });
+
+    it('nome repetido: o valor com caminho aponta o período certo', () => {
+        const lista = [
+            { id: 1, nome: 'Faculdade', autorId: 1, pertenceA: [] },
+            { id: 2, nome: 'Estágio', autorId: 1, pertenceA: [1] },
+            { id: 3, nome: 'Faculdade', autorId: 1, pertenceA: [] },
+            { id: 4, nome: 'Estágio', autorId: 1, pertenceA: [3] },
+        ];
+        const extras = {
+            candidatos: lista,
+            preferidos: lista,
+            comparar: H.criarComparadorDeEpocas(lista),
+        };
+        const rotulos = H.opcoesDeEscolhaDoPeriodoBiografico(lista, lista, extras.comparar).map(
+            (o) => o.rotulo,
+        );
+        rotulos.forEach((rotulo, i) => {
+            const esperado = H.opcoesDeEscolhaDoPeriodoBiografico(lista, lista, extras.comparar)[i]
+                .id;
+            assert.deepEqual(H.resolverPeriodoBiograficoPorRotulo(lista, rotulo, extras), {
+                id: esperado,
+            });
+        });
+    });
+
+    it('nome igual em dois autores: vale o do autor do texto', () => {
+        const lista = [
+            { id: 1, nome: 'Faculdade', autorId: 2, pertenceA: [] },
+            { id: 2, nome: 'Faculdade', autorId: 1, pertenceA: [] },
+        ];
+        const dele = lista.filter((p) => p.autorId === 1);
+        const extras = {
+            candidatos: dele,
+            preferidos: dele,
+            comparar: H.criarComparadorDeEpocas(lista),
+        };
+        assert.deepEqual(H.resolverPeriodoBiograficoPorRotulo(lista, 'Faculdade', extras), {
+            id: 2,
+        });
+    });
+});
+
+describe('rótulo do período já escolhido (chip)', () => {
+    it('nome, e dentro de outro leva o caminho dos pais', () => {
+        const lista = arvore();
+        lista.push({ id: 8, nome: 'Neto', autorId: 1, inicio: { ano: 2011 }, pertenceA: [5] });
+        assert.equal(H.rotuloDoPeriodoBiografico(lista, 1), 'Ensino médio');
+        assert.equal(H.rotuloDoPeriodoBiografico(lista, 2), 'Pré-vestibular (Ensino médio)');
+        assert.equal(H.rotuloDoPeriodoBiografico(lista, 8), 'Neto (Relação com X › Fase 1)');
+        assert.equal(H.rotuloDoPeriodoBiografico(lista, 999), '');
     });
 });
 

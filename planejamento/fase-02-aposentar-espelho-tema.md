@@ -12,7 +12,7 @@
 >
 > - O arquivo se chamava `aposentar-espelho-sinalizacoes-tema.md`. Painel geral: `plano-central.md`.
 > - **A base mudou:** a suíte hoje é **2324/0** (o plano abaixo fala em 2086) e os números de linha andaram. A Etapa 0 deve ser refeita com a base atual e os `grep` de verdade.
-> - **Interação com a Fase 1** (`fase-01-estatisticas-temas-pessoas.md`): a etapa 1b cria `agregarPorPapel`, que lê `temas` por id e não o espelho. Se a Fase 1 vier antes, o leitor de `estatisticas-dados.js` (~667) da tabela de inventário já terá saído. `temasDoTexto` local (matriz e Tema ao longo do tempo) e `agregarPorTema` (~516) continuam lendo o espelho até a Etapa 2. **Regra:** nenhum código novo da Fase 1 deve ler `sinalizacoesTema`.
+> - **Interação com a Fase 1** (resumo em `plano-central.md`, decisões em `manutencao/decisoes.md`): a etapa 1b cria `agregarPorPapel`, que lê `temas` por id e não o espelho. Se a Fase 1 vier antes, o leitor de `estatisticas-dados.js` (~667) da tabela de inventário já terá saído. `temasDoTexto` local (matriz e Tema ao longo do tempo) e `agregarPorTema` (~516) continuam lendo o espelho até a Etapa 2. **Regra:** nenhum código novo da Fase 1 deve ler `sinalizacoesTema`.
 > - **IDs no plano central:** as quatro decisões D1 a D4 abaixo aparecem lá como F2-D1 a F2-D4, com as sugestões já dadas aqui.
 > - Esta fase é invisível para quem usa o app: limpeza interna. Vale fazer depois da Fase 1, que dá resultado visível, e antes de qualquer fase que ainda crie leitores novos de Tema.
 
@@ -182,7 +182,7 @@ Reversão: só restaurando o backup.
 ## Etapa 6. Limpeza e documentação
 
 1. `schema.md`: reescrever a seção "Tema no texto (Poema/Prosa)" e a de reconciliação (sem espelho).
-2. `decisoes.md`: nova seção "Aposentar o espelho `sinalizacoesTema`", com D1 a D4 e o que mudou na regra de reconciliação. `status.md` e `PROXIMA-SESSAO.md`: uma entrada cada, e tirar "Aposentar o espelho" das ideias.
+2. `decisoes.md`: nova seção "Aposentar o espelho `sinalizacoesTema`", com D1 a D4 e o que mudou na regra de reconciliação. `status.md`: uma entrada em "Fechado" e o "Estado atual" reescrito, e tirar "Aposentar o espelho" das ideias.
 3. `docs/campos-poema-prosa-for-ai*.md` (2) e `docs/etiquetas-sinalizacoes-for-ai*.md` (2): trocar as menções ao campo.
 4. Comentários que citam o espelho: `db.js` (~735), `editor.js` (~493, ~560, ~4002), `forms.js` (~294), `utils.js` (~2994, ~3028), cabeçalho de `temas.js`.
 5. Código sem uso: `espelhoDeTemas`, `temasDoTexto` de `utils.js` (se nada mais chamar), `extrairSinalizacoesUnicas` com o campo Tema.
@@ -216,4 +216,4 @@ Reversão: só restaurando o backup.
 5. Etapa 5 (com backup) e etapa 6.
 6. Fase 2b (ver `plano-central.md`), em sessões próprias, nunca na mesma sessão da Etapa 5.
 
-Cada sessão termina, como de costume, entregando o `.zip` do projeto e o `PROXIMA-SESSAO.md`, mesmo que incompleta.
+Cada sessão termina, como de costume, entregando o zip só com o que mudou e o "Estado atual" do `status.md` reescrito, mesmo que incompleta.

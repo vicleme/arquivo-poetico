@@ -106,15 +106,16 @@ describe('Períodos e movimentos em massa: painel', () => {
         );
         assert.match(el('bulk-periodo-nome').placeholder, /Período Biográfico/);
         assert.match(el('bulk-periodo-dica').textContent, /pertence a um Autor/);
+        assert.match(el('bulk-periodo-dica').textContent, /Aditivo/);
     });
 
-    it('"substituir" só aparece pros campos de valor único', () => {
+    it('não há "substituir": os três campos são aditivos', () => {
         prepararPainelPeriodosMassa('poemas');
-        assert.ok(el('bulk-periodo-sobrescrever-wrap').classList.contains('hidden'));
-        escolher('poemas', 'periodoHistorico', '');
-        assert.ok(el('bulk-periodo-sobrescrever-wrap').classList.contains('hidden'));
-        escolher('poemas', 'epoca', '');
-        assert.ok(!el('bulk-periodo-sobrescrever-wrap').classList.contains('hidden'));
+        ['movimento', 'periodoHistorico', 'epoca'].forEach((tipo) => {
+            escolher('poemas', tipo, '');
+            assert.equal(el('bulk-periodo-sobrescrever-wrap'), null);
+            assert.equal(el('bulk-periodo-sobrescrever'), null);
+        });
     });
 
     it('reabrir o painel não perde o que foi digitado e reflete o cadastro novo', () => {
@@ -157,19 +158,6 @@ describe('Períodos e movimentos em massa: Poemas', () => {
         assert.deepEqual(db.poemas[1].periodosHistoricosIds, [201, 200]);
     });
 
-    it('"substituir" marcado não troca o Período Histórico: ele só soma', () => {
-        db.periodosHistoricos.push({ id: 201, nome: 'Redemocratização' });
-        db.poemas.push(poema(2, { periodosHistoricosIds: [201] }));
-        selecionarPoemas(2);
-        prepararPainelPeriodosMassa('poemas');
-        escolher('poemas', 'periodoHistorico', 'Ditadura');
-        el('bulk-periodo-sobrescrever').checked = true;
-        aplicarPeriodoEmMassa('poemas');
-        confirmar();
-
-        assert.deepEqual(db.poemas[0].periodosHistoricosIds, [201, 200]);
-    });
-
     it('aplica Período Biográfico pelo Autor do texto', () => {
         db.poemas.push(poema(1));
         selecionarPoemas(1);
@@ -178,7 +166,23 @@ describe('Períodos e movimentos em massa: Poemas', () => {
         aplicarPeriodoEmMassa('poemas');
         confirmar();
 
-        assert.equal(db.poemas[0].epocaRetratada.epocaId, 100);
+        assert.deepEqual(db.poemas[0].epocaRetratada.periodos, [{ epocaId: 100, recorte: null }]);
+    });
+
+    it('aplica Período Biográfico somando ao que o texto já tinha, sem trocar', () => {
+        db.poemas.push(
+            poema(1, { epocaRetratada: { periodos: [{ epocaId: 102, recorte: 'momento' }] } }),
+        );
+        selecionarPoemas(1);
+        prepararPainelPeriodosMassa('poemas');
+        escolher('poemas', 'epoca', 'Juventude');
+        aplicarPeriodoEmMassa('poemas');
+        confirmar();
+
+        assert.deepEqual(db.poemas[0].epocaRetratada.periodos, [
+            { epocaId: 102, recorte: 'momento' },
+            { epocaId: 100, recorte: null },
+        ]);
     });
 
     it('sem nada a alterar: avisa e não abre a confirmação', () => {

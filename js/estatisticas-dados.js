@@ -9,6 +9,7 @@ import {
     paresGrupoPessoa,
     tokenizar,
     SINALIZACOES_CATEGORIAS,
+    textoDeEtiquetas,
     contarTextosPorAssunto,
     assuntosComPapel,
     nomesTemasPorPapel,
@@ -523,7 +524,7 @@ export function agregarPorTema(tipos = getTiposEtiquetaSelecionados()) {
             const tags =
                 tipoKey === 'tema'
                     ? temasDoTexto(t)
-                    : listaDeCampo(t[SINALIZACOES_CATEGORIAS[tipoKey]]);
+                    : listaDeCampo(textoDeEtiquetas(t[SINALIZACOES_CATEGORIAS[tipoKey]]));
             tags.forEach((tag) => {
                 contagem[tag] = (contagem[tag] || 0) + 1;
                 if (!categoriaDoLabel[tag]) categoriaDoLabel[tag] = tipoKey;

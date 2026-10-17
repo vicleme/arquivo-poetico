@@ -18,6 +18,8 @@
 // localStorage.
 // ============================================================
 
+import { lugaresDaRegiao } from './regiao.js';
+
 const mesmo = (a, b) => a != null && b != null && String(a) === String(b);
 
 function achar(lista, id) {
@@ -382,6 +384,26 @@ export function rotuloDeEscolhaDoPeriodo(lista, id) {
     return iguais.length > 1 ? `${rotulo} #${p.id}` : rotulo;
 }
 
+// Opções do campo Período Histórico Retratado dos textos, em árvore (o filho
+// logo depois do pai, irmãos na ordem de `comparar`), cada uma como
+// `{ id, nome, nivel, caminho, rotulo }`:
+// - `caminho`: de onde o período está ("Nova República › Governo Dilma"),
+//   vazio no topo;
+// - `rotulo`: o que preenche o campo, só o nome. Só os homônimos levam o
+//   rótulo com caminho (ou #id) de `rotuloDeEscolhaDoPeriodo`, porque o nome
+//   puro não diz qual deles é (ver `resolverPeriodoPorRotulo`).
+export function opcoesDeEscolhaDosPeriodosHistoricos(lista, comparar) {
+    const porNome = new Map();
+    (lista || []).forEach((p) => porNome.set(p.nome, (porNome.get(p.nome) || 0) + 1));
+    return ordenarPeriodosEmArvore(lista, comparar).map(({ m, nivel }) => ({
+        id: m.id,
+        nome: m.nome,
+        nivel,
+        caminho: caminhoDosAncestraisDoPeriodo(lista, m.id),
+        rotulo: porNome.get(m.nome) > 1 ? rotuloDeEscolhaDoPeriodo(lista, m.id) : m.nome,
+    }));
+}
+
 // Texto do campo -> período. Devolve `{ id }` (achou), `{ id: null, novo: true }`
 // (nome que não existe, vira período novo), `{ id: null }` (campo vazio) ou
 // `{ ambiguo: true, nome }` (há mais de um com esse nome e o texto não diz
@@ -400,4 +422,27 @@ export function resolverPeriodoPorRotulo(lista, texto, idAtual = null) {
         return atual ? { id: atual.id } : { ambiguo: true, nome: t };
     }
     return { id: null, novo: true };
+}
+
+// ─── Filtro por Região ───────────────────────────────────────────────────
+// Valor do filtro que casa com "período sem região".
+export const FILTRO_PERIODO_HISTORICO_SEM_REGIAO = '__vazio__';
+
+// Lugares distintos usados nos períodos, em ordem alfabética: alimenta o
+// select sem oferecer opção que não tem resultado.
+export function opcoesDeRegiaoDosPeriodosHistoricos(lista) {
+    const lugares = new Set();
+    (lista || []).forEach((p) => lugaresDaRegiao(p.regiao).forEach((l) => lugares.add(l)));
+    return [...lugares].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// Casamento exato com o lugar escolhido ("Europa" não traz o que só tem
+// "França"). '' = todos; FILTRO_PERIODO_HISTORICO_SEM_REGIAO = só os sem lugar.
+export function filtrarPeriodosHistoricosPorRegiao(lista, regiao) {
+    if (!regiao) return [...(lista || [])];
+    return (lista || []).filter((p) => {
+        const lugares = lugaresDaRegiao(p.regiao);
+        if (regiao === FILTRO_PERIODO_HISTORICO_SEM_REGIAO) return lugares.length === 0;
+        return lugares.includes(regiao);
+    });
 }

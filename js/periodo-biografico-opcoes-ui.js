@@ -1,5 +1,5 @@
-// Bloco 3 — modal "Esferas, naturezas e vínculos": gerencia as listas
-// editáveis de Esfera, Natureza e Vínculo do Período Biográfico
+// Bloco 3 — modal "Esferas, categorias, naturezas e vínculos": gerencia as
+// listas editáveis de Esfera, Categoria, Natureza e Vínculo do Período Biográfico
 // (db.opcoesPeriodoBiografico) e, em cada Vínculo, a Natureza sugerida, o lado
 // oposto e as formas por gênero.
 // Só lógica de tela; as regras (renomear propaga, só apaga o que ninguém
@@ -27,6 +27,7 @@ import { renderEpocas } from './render-listas.js';
 
 const TIPOS = [
     { tipo: 'esferas', singular: 'esfera' },
+    { tipo: 'categorias', singular: 'categoria' },
     { tipo: 'naturezas', singular: 'natureza' },
     { tipo: 'vinculos', singular: 'vínculo' },
 ];

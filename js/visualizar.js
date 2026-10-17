@@ -18,6 +18,7 @@
 import { garantirModal, toggleModal } from './modais.js';
 import { db } from './db.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
+import { caminhoDaCorrente, idsDeCorrentesDeTopo, idsDeDivisoes } from './correntes-hierarquia.js';
 import { textoPersonagensComPapel } from './personagens.js';
 import { itensDaSelecao, exportarItem } from './exportar.js';
 import { isDownloadAbrangenteAtivo } from './download-abrangente.js';
@@ -34,7 +35,6 @@ import {
     formatarDataParcial,
     formatarEpocaRetratada,
     periodosHistoricosIdsDoItem,
-    nomesMovimentosEscolas,
     estaPublicado,
     sinalizacoesAgrupadas,
     textoIdiomasComPapel,
@@ -192,12 +192,20 @@ export function renderVisualizacaoHtml(item) {
         html += linhaMetaHtml('Primeira publicação', formatarDataParcial(item.dataPublicacao));
     }
     if (item.epocaRetratada) {
-        html += linhaMetaHtml(
-            'Período Biográfico Retratado',
-            formatarEpocaRetratada(item.epocaRetratada, db.epocas),
-        );
+        // Períodos e Eventos em linhas separadas (F14-D4); o intervalo De/Até
+        // é do texto inteiro e fica na linha dos períodos.
+        const periodosTxt = formatarEpocaRetratada(item.epocaRetratada, db.epocas, {
+            comCaminho: true,
+            tipo: 'periodos',
+        });
+        if (periodosTxt !== '—') html += linhaMetaHtml('Período Biográfico Retratado', periodosTxt);
+        const eventosTxt = formatarEpocaRetratada(item.epocaRetratada, db.epocas, {
+            comCaminho: true,
+            tipo: 'eventos',
+        });
+        if (eventosTxt !== '—') html += linhaMetaHtml('Evento Biográfico Retratado', eventosTxt);
     }
-    const periodosDoTexto = periodosHistoricosIdsDoItem(item, db.periodosHistoricos);
+    const periodosDoTexto = periodosHistoricosIdsDoItem(item, db.periodosHistoricos, 'periodos');
     if (periodosDoTexto.length) {
         // Caminho completo na hierarquia, um por linha (como na tabela).
         html += linhaMetaListaHtml(
@@ -205,10 +213,28 @@ export function renderVisualizacaoHtml(item) {
             periodosDoTexto.map((id) => caminhoDoPeriodo(db.periodosHistoricos, id)),
         );
     }
-    if (item.movimentosEscolasIds?.length) {
-        html += linhaMetaHtml(
+    const eventosDoTexto = periodosHistoricosIdsDoItem(item, db.periodosHistoricos, 'eventos');
+    if (eventosDoTexto.length) {
+        html += linhaMetaListaHtml(
+            'Evento Histórico Retratado',
+            eventosDoTexto.map((id) => caminhoDoPeriodo(db.periodosHistoricos, id)),
+        );
+    }
+    // Correntes e Divisões em linhas separadas (Fase 14, etapa 2): a lista
+    // gravada é uma só, a separação é derivada do pai de cada uma.
+    const correntesDeTopo = idsDeCorrentesDeTopo(db.movimentosEscolas, item.movimentosEscolasIds);
+    if (correntesDeTopo.length) {
+        html += linhaMetaListaHtml(
             'Corrente literária',
-            nomesMovimentosEscolas(item.movimentosEscolasIds, db.movimentosEscolas).join(', '),
+            correntesDeTopo.map((id) => caminhoDaCorrente(db.movimentosEscolas, id)),
+        );
+    }
+    const divisoesDoTexto = idsDeDivisoes(db.movimentosEscolas, item.movimentosEscolasIds);
+    if (divisoesDoTexto.length) {
+        // Caminho completo na hierarquia, um por linha (como o Período Histórico).
+        html += linhaMetaListaHtml(
+            'Divisões',
+            divisoesDoTexto.map((id) => caminhoDaCorrente(db.movimentosEscolas, id)),
         );
     }
     // Assunto é derivado dos Temas do texto (assuntosDoTexto, utils.js),

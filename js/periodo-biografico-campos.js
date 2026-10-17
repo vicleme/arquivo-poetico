@@ -5,7 +5,7 @@
 //
 // Modelo (tudo mora no cadastro do período, não em cada texto):
 //   esferas:            ['Afetiva', 'Acadêmica', ...]   área da vida do período inteiro
-//   categorias:         ['Luto', 'Pandemia', ...]       tags livres
+//   categorias:         ['Crise', 'Novo começo', ...]   que TIPO de momento foi
 //   pessoasEnvolvidas:  [{ pessoaId }]                  quem aparece no período
 //   relacoes:           [{ de, para, natureza, vinculo }]
 // Cada ponta (`de`, `para`) é o autor do período (a string 'autor') ou o id de
@@ -13,6 +13,7 @@
 //
 // Três níveis, campos independentes (decidido em 13/10/2026):
 //   Esfera    área da vida do período inteiro (Afetiva, Acadêmica...);
+//   Categoria que tipo de momento foi (Crise, Novo começo, Encerramento de ciclo...);
 //   Natureza  a categoria da relação (Familiar, Amizade, Romance, Profissional);
 //   Vínculo   o laço específico (namorados, ex-namorados, mãe, tio, amigos...),
 //             com lado oposto e formas por gênero.
@@ -22,13 +23,14 @@
 // ao escolher o vínculo a Natureza vem preenchida, e pode ser trocada.
 //
 // Vocabulário editável: `db.opcoesPeriodoBiografico` =
-//   { esferas: [...], naturezas: [...], vinculos: [...],
+//   { esferas: [...], categorias: [...], naturezas: [...], vinculos: [...],
 //     sugestoesNatureza: [{ vinculo, natureza }], rotulosVinculo: [...] }
 // `rotulosVinculo` diz, para um vínculo, o nome do lado oposto (orientado) e
 // as formas por gênero: { nome, inverso, feminino, masculino,
 // inversoFeminino, inversoMasculino }. Vínculo sem rótulo é simétrico e sem
-// gênero. Categoria não tem lista própria: as sugestões saem do que já está
-// em uso nos períodos.
+// gênero. Categoria tem lista própria (16 valores de fábrica, `categorias`),
+// com o mesmo tratamento da Esfera: valor novo digitado entra na lista, renomear
+// propaga e junta, só apaga o que ninguém usa (decidido em 15/10/2026).
 //
 // Formatos antigos, convertidos na migração (idempotente):
 //   1. cada pessoa guardava `vinculos: [...]` (sempre em relação ao autor): vira
@@ -55,6 +57,28 @@ export const ESFERAS_DE_FABRICA = [
     'Espiritual',
     'Financeira',
     'Moradia/Mudança',
+];
+
+// Categoria diz QUE TIPO de momento foi; a Esfera diz em que área da vida.
+// Os valores se combinam (um período pode ser "Transição ou mudança" e "Novo
+// começo"). Lista fechada com o Victor em 15/10/2026; é só ponto de partida.
+export const CATEGORIAS_DE_FABRICA = [
+    'Adoecimento',
+    'Conquista',
+    'Crise',
+    'Descoberta',
+    'Despertar ou conscientização',
+    'Encerramento de ciclo',
+    'Fase estável',
+    'Novo começo',
+    'Perda e luto',
+    'Reaproximação',
+    'Recaída ou retrocesso',
+    'Recomeço',
+    'Rompimento',
+    'Superação',
+    'Suspensão ou espera',
+    'Transição ou mudança',
 ];
 
 export const NATUREZAS_DE_FABRICA = [
@@ -192,7 +216,7 @@ export const SUGESTOES_NATUREZA_DE_FABRICA = [
     ...ROTULOS_VINCULO_DE_FABRICA.map((r) => ({ vinculo: r.nome, natureza: 'Familiar' })),
 ];
 
-export const TIPOS_OPCAO_PERIODO_BIOGRAFICO = ['esferas', 'naturezas', 'vinculos'];
+export const TIPOS_OPCAO_PERIODO_BIOGRAFICO = ['esferas', 'categorias', 'naturezas', 'vinculos'];
 
 const semAcento = (s) =>
     String(s ?? '')
@@ -400,6 +424,7 @@ function normalizarSugestoesNatureza(lista) {
 export function opcoesDeFabricaPeriodoBiografico() {
     return {
         esferas: [...ESFERAS_DE_FABRICA],
+        categorias: [...CATEGORIAS_DE_FABRICA],
         naturezas: [...NATUREZAS_DE_FABRICA],
         vinculos: [...VINCULOS_DE_FABRICA],
         sugestoesNatureza: SUGESTOES_NATUREZA_DE_FABRICA.map((s) => ({ ...s })),
@@ -456,6 +481,19 @@ function aplicarFabricaTerapeutica(estado, vinculosEmUso) {
         ]),
         rotulos: normalizarRotulosVinculo([...atual.rotulos, { ...rotulo }]),
     };
+}
+
+// Só na primeira semeadura da lista de Categoria: o valor que o período já
+// tinha, igual a um da lista (sem caixa nem acento), passa a usar a grafia
+// da lista ("crise" vira "Crise"). Os outros ficam como estão.
+function alinharCategoriasComALista(epocas, lista) {
+    const porChave = new Map(lista.map((v) => [chaveValor(v), v]));
+    (epocas || []).forEach((e) => {
+        if (!Array.isArray(e.categorias)) return;
+        e.categorias = normalizarLista(
+            e.categorias.map((v) => (typeof v === 'string' && porChave.get(chaveValor(v))) || v),
+        );
+    });
 }
 
 // Semeia a lista de fábrica uma vez (chave ausente) e garante que todo
@@ -517,11 +555,23 @@ export function migrarOpcoesPeriodoBiografico(dbRef) {
         { fabricaAplicada, naturezas, vinculos, sugestoes, rotulos },
         vinculosEmUso,
     );
+    // Categoria ganhou lista em 15/10/2026. Chave ausente = vocabulário do formato
+    // anterior (a Categoria era etiqueta livre): a fábrica entra uma única vez e
+    // o que cada período já tinha escrito passa a usar a grafia da lista quando é o
+    // mesmo valor (sem caixa nem acento). O que não está na fábrica entra na lista
+    // (por `registrarValoresNovos`, abaixo), então nada some. Com a chave
+    // presente, o que a pessoa apagou ou renomeou não volta.
+    const semearCategorias = !Array.isArray(base.categorias);
+    const categorias = semearCategorias
+        ? [...CATEGORIAS_DE_FABRICA]
+        : normalizarLista(base.categorias);
+    if (semearCategorias) alinharCategoriasComALista(dbRef.epocas, categorias);
     dbRef.opcoesPeriodoBiografico = {
         fabricaAplicada: fabrica.fabricaAplicada,
         esferas: Array.isArray(base.esferas)
             ? normalizarLista(base.esferas)
             : [...ESFERAS_DE_FABRICA],
+        categorias,
         naturezas: fabrica.naturezas,
         vinculos: fabrica.vinculos,
         sugestoesNatureza: fabrica.sugestoes.map((s) => ({ ...s })),
@@ -660,20 +710,21 @@ function nomesInversos(dbRef) {
 // Lista de fábrica/editável + o que já está em uso (nunca some uma opção
 // que algum período usa). Em Vínculo, inclui o lado oposto dos rótulos.
 export function opcoesDoPeriodoBiografico(dbRef, tipo) {
-    const lista = tipo === 'categorias' ? [] : dbRef.opcoesPeriodoBiografico?.[tipo] || [];
+    const lista = dbRef.opcoesPeriodoBiografico?.[tipo] || [];
     const inversos = tipo === 'vinculos' ? nomesInversos(dbRef) : [];
     return normalizarLista([...lista, ...inversos, ...valoresEmUso(dbRef, tipo)]).sort((a, b) =>
         a.localeCompare(b, 'pt-BR'),
     );
 }
 
-// Valor digitado que não está na lista entra nela (Esfera, Natureza e
-// Vínculo). O lado oposto de um rótulo já existe e não entra como vínculo
+// Valor digitado que não está na lista entra nela (Esfera, Categoria,
+// Natureza e Vínculo). O lado oposto de um rótulo já existe e não entra como vínculo
 // próprio.
 export function registrarValoresNovos(dbRef, epoca) {
     if (!dbRef.opcoesPeriodoBiografico) return;
     const op = dbRef.opcoesPeriodoBiografico;
     op.esferas = normalizarLista([...(op.esferas || []), ...(epoca.esferas || [])]);
+    op.categorias = normalizarLista([...(op.categorias || []), ...(epoca.categorias || [])]);
     const relacoes = epoca.relacoes || [];
     op.naturezas = normalizarLista([...(op.naturezas || []), ...relacoes.map((r) => r.natureza)]);
     const novos = relacoes
@@ -741,10 +792,10 @@ export function renomearOpcaoPeriodoBiografico(dbRef, tipo, de, para) {
     const trocar = (lista) =>
         normalizarLista((lista || []).map((v) => (chaveValor(v) === chaveAntiga ? novo : v)));
     const op = dbRef.opcoesPeriodoBiografico;
-    if (tipo === 'esferas') {
-        if (op) op.esferas = trocar(op.esferas);
+    if (tipo === 'esferas' || tipo === 'categorias') {
+        if (op) op[tipo] = trocar(op[tipo]);
         (dbRef.epocas || []).forEach((e) => {
-            e.esferas = trocar(e.esferas);
+            e[tipo] = trocar(e[tipo]);
         });
         return { ok: true };
     }
@@ -1203,6 +1254,15 @@ export function opcoesDeFiltroBiografico(dbRef, opcoes = {}) {
 }
 
 // ─── Busca (texto cujo período biográfico tem...) ────────────────────────
+
+// Esfera ou Categoria de um texto = soma das dos períodos biográficos dele, sem
+// repetir (o texto guarda só o `epocaId`; a coluna lê o cadastro, como a
+// Esfera histórica). Quem chama passa só os períodos que valem na tela (o
+// oculto não entra, igual à busca).
+export function classificacaoDosPeriodosBiograficos(epocasDoTexto, tipo) {
+    if (tipo !== 'esferas' && tipo !== 'categorias') return [];
+    return normalizarLista((epocasDoTexto || []).flatMap((e) => e?.[tipo] || []));
+}
 
 export function textoBuscaEsferas(epoca) {
     return (epoca?.esferas || []).join(', ');

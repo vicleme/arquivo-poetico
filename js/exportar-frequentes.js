@@ -51,6 +51,7 @@ import {
     mostrarAviso,
     nomesPessoas,
     SINALIZACOES_CATEGORIAS,
+    textoDeEtiquetas,
 } from './utils.js';
 
 const LS_KEY_VERSOES = 'arquivoPoetico_versoesFiltradas_v1';
@@ -219,7 +220,8 @@ async function gerarBackupBlob() {
 
 function gerarAninhadoBlob() {
     const nesting = buildNesting(db);
-    const saida = { ...nesting, coletaneas: montarColetaneas() };
+    // `etiquetas`: o cadastro, para decifrar os ids dos sete campos de etiqueta.
+    const saida = { ...nesting, etiquetas: db.etiquetas || [], coletaneas: montarColetaneas() };
     return new Blob([JSON.stringify(saida, null, 4)], { type: 'application/json;charset=utf-8' });
 }
 
@@ -248,7 +250,10 @@ function gerarFlatMdBlob() {
 function gerarFiltradoJsonBlob() {
     const banco = lerBancoVersoesFiltradas();
     const nesting = buildNesting(db);
-    const saida = clonarComSubstituicoes({ ...nesting, coletaneas: montarColetaneas() }, banco);
+    const saida = clonarComSubstituicoes(
+        { ...nesting, etiquetas: db.etiquetas || [], coletaneas: montarColetaneas() },
+        banco,
+    );
     return new Blob([JSON.stringify(saida, null, 4)], { type: 'application/json;charset=utf-8' });
 }
 
@@ -445,7 +450,7 @@ function itemAtendeCriterio(item, criterio) {
             .map((n) => n.toLowerCase())
             .includes(valor);
     }
-    return listaDeCampo(item[criterio.campo]).includes(valor);
+    return listaDeCampo(textoDeEtiquetas(item[criterio.campo])).includes(valor);
 }
 
 function itemAtendeTemplate(item, tpl) {

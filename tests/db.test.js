@@ -1477,10 +1477,39 @@ describe('mesclarEpocas (junta duas entradas do cadastro de Épocas numa só)', 
             prosas: [{ id: 20, epocaRetratada: { epocaId: 2 } }],
         };
         mesclarEpocas(dbRef, 2, 1);
-        assert.equal(dbRef.poemas[0].epocaRetratada.epocaId, 1);
-        assert.equal(dbRef.prosas[0].epocaRetratada.epocaId, 1);
+        assert.deepEqual(dbRef.poemas[0].epocaRetratada.periodos, [{ epocaId: 1, recorte: null }]);
+        assert.deepEqual(dbRef.prosas[0].epocaRetratada.periodos, [{ epocaId: 1, recorte: null }]);
+        assert.equal(dbRef.poemas[0].epocaRetratada.epocaId, undefined);
         assert.equal(dbRef.epocas.length, 1);
         assert.equal(dbRef.epocas[0].id, 1);
+    });
+
+    it('texto com os dois períodos fica com um só (o recorte do destino vale, senão herda o da origem)', () => {
+        const dbRef = {
+            epocas: [
+                { id: 1, nome: 'Luto', notas: '' },
+                { id: 2, nome: 'Luto', notas: '' },
+                { id: 3, nome: 'Faculdade', notas: '' },
+            ],
+            poemas: [
+                {
+                    id: 10,
+                    epocaRetratada: {
+                        periodos: [
+                            { epocaId: 3, recorte: 'momento' },
+                            { epocaId: 2, recorte: 'repercussão' },
+                            { epocaId: 1, recorte: null },
+                        ],
+                    },
+                },
+            ],
+            prosas: [],
+        };
+        mesclarEpocas(dbRef, 2, 1);
+        assert.deepEqual(dbRef.poemas[0].epocaRetratada.periodos, [
+            { epocaId: 3, recorte: 'momento' },
+            { epocaId: 1, recorte: 'repercussão' },
+        ]);
     });
 
     it('preenche as notas do destino a partir da origem, só se o destino estiver vazio', () => {

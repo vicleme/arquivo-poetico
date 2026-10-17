@@ -62,7 +62,7 @@ const SUBSTITUICOES_SEGURAS_PDF = [
     [/•/g, '-'],
 ];
 
-function saneParaPdf(texto) {
+export function saneParaPdf(texto) {
     let t = String(texto ?? '');
     SUBSTITUICOES_SEGURAS_PDF.forEach(([re, subst]) => {
         t = t.replace(re, subst);

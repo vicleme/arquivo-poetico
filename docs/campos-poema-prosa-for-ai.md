@@ -33,8 +33,10 @@ distinction right.
 - **Etiquetas** (formerly "Sinalizações"; keys `sinalizacoesTradicao`,
   `sinalizacoesEstilo`, `sinalizacoesTema`, `sinalizacoesTerritorialidade`,
   `sinalizacoesRelacao`, `sinalizacoesSensibilidade`, `sinalizacoesTom`,
-  `sinalizacoesDominioImagetico`, `sinalizacoesOutros`) — 9 free-text tag
-  fields, each a different category. Two of them, `sinalizacoesTema` and
+  `sinalizacoesDominioImagetico`, `sinalizacoesOutros`) — 9 tag fields, each a
+  different category. The 7 that are real tags store ids from the
+  `db.etiquetas` registry (in text `.json` exports they come out as a list of
+  names). Two of them, `sinalizacoesTema` and
   `sinalizacoesTerritorialidade`, are derived mirrors and are no longer
   typed in the tag group. See `etiquetas-sinalizacoes-for-ai.md`.
 - **Temas** (`temas`: list of `{ temaId, papel, nome }` in exports) — the
@@ -160,9 +162,14 @@ How to read them:
   `ano` get `dataEscrita: { ano, exata: false }` on load
   (`migrarAnoParaDataEscrita`).
 - **`epocaRetratada`** ("depicted era"): the time span the text depicts
-  (not when it was written) — `{ epocaId, inicio, fim, recorte, na }`.
-  Points to the central registry `db.epocas`. `recorte` ("cut/scope") is
-  `"momento"` (moment) | `"repercussão"` (aftermath) | `null`. `na: true`
+  (not when it was written) — `{ periodos, inicio, fim, na }`. `periodos`
+  is a list (0 to N) of `{ epocaId, recorte }`, each pointing to the
+  central registry `db.epocas`; a text may depict several biographical
+  periods. `recorte` ("cut/scope") is per period: `"momento"` (moment) |
+  `"repercussão"` (aftermath) | `null` (e.g. "Corte de contato" as a
+  moment and "Luto" with its aftermath in the same text). `inicio`, `fim`
+  and `na` describe the whole text. Older files with `epocaId`/`recorte`
+  directly on the object are still accepted. `na: true`
   is a deliberate third state — "marked as Not Applicable", different
   from "not yet categorized" (the whole field is `null`). Don't confuse
   the two: a text with no `epocaRetratada` hasn't been assessed; a text
@@ -187,7 +194,16 @@ How to read them:
 - **`movimentosEscolasIds`** (**Corrente literária**, Literary current (formerly Movimento/Escola)): an
   array of ids (0 to N) from the central registry `db.movimentosEscolas`
   (e.g. Romanticism, Symbolism, Modernism). A text may fit none or more
-  than one.
+  than one. The same list also holds the divisions of a current (a current
+  with a parent, such as a phase, generation, vertent or regional variant,
+  e.g. "Romanticism in Brazil"). The app shows them apart ("Corrente
+  literária" for the parentless ones, "Divisões" for the others), but
+  nothing separate is stored: a division is derived from the registry
+  entry having a parent (`paiId`). In the `.md` export they are two lines
+  (`Corrente literária` and `Divisões`); in the `.csv`, `movimentos_escolas`
+  and `movimentos_escolas_caminho` carry all of them, and
+  `divisoes_corrente` and `divisoes_corrente_caminho` carry only the
+  divisions.
 - **`contextoHistorico`** (label **Inspiração**, Inspiration): free text
   about what inspired the text (a specific trigger or circumstance). The
   internal name is legacy; the content is NOT historical context, it is

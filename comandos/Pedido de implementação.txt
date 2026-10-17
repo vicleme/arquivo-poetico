@@ -1,0 +1,3 @@
+Antes de tudo, leia o CLAUDE.md na raiz do zip e siga o que ele manda.
+
+o npm test passou sem falhas e está funcionando (testei no navegador).

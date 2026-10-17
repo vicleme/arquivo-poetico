@@ -430,6 +430,35 @@
                                                 title="Década"
                                             />
                                         </div>
+                                        <div
+                                            class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[10px] text-gray-500 dark:text-slate-400"
+                                        >
+                                            <label
+                                                class="flex items-center gap-1"
+                                                title="Sem data de fim, a duração conta até hoje (fuso em 🕒 Fuso, no cabeçalho). Só vale com o campo Até vazio."
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    id="me-em-andamento"
+                                                    class="w-auto"
+                                                />
+                                                Sem data de fim (conta até hoje)
+                                            </label>
+                                            <label
+                                                class="flex items-center gap-1"
+                                                title="Só a palavra que aparece depois da duração. Em aberto serve a períodos que não se tratam como um processo com fim esperado, como um luto."
+                                            >
+                                                Mostrar como
+                                                <select
+                                                    id="me-em-andamento-rotulo"
+                                                    class="w-auto text-[10px] py-0.5 px-1"
+                                                    disabled
+                                                >
+                                                    <option value="">Em andamento</option>
+                                                    <option value="aberto">Em aberto</option>
+                                                </select>
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

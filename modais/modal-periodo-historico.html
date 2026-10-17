@@ -69,6 +69,21 @@
                     />
                 </div>
                 <div>
+                    <label
+                        class="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-200 cursor-pointer"
+                        for="ph-evento"
+                    >
+                        <input type="checkbox" id="ph-evento" class="w-auto mb-0" />
+                        É um evento
+                    </label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                        Marque quando for algo pontual ou curto (uma data, um acontecimento), em vez
+                        de uma fase longa. Continua sendo um período: tem as mesmas datas, o mesmo
+                        "Faz parte de" e a mesma duração. Nos textos, aparece no campo Eventos em
+                        vez do campo de períodos, e isso vale para todos os textos de uma vez.
+                    </p>
+                </div>
+                <div>
                     <label class="form-label">Notas</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
                         Nota livre sobre este período — opcional, não aparece na exportação.
@@ -121,6 +136,50 @@
                     ></div>
                     <input type="hidden" id="ph-regiao" />
                     <datalist id="sugestoes-regiao-periodo-historico"></datalist>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between gap-2">
+                        <label class="form-label" for="ph-esferas-input">Esfera</label>
+                        <button
+                            type="button"
+                            onclick="abrirOpcoesPeriodoHistorico()"
+                            class="text-[10px] font-bold text-indigo-600 dark:text-indigo-300 hover:underline"
+                            title="Renomear, juntar ou apagar as esferas e categorias da lista"
+                        >
+                            Gerenciar
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Onde o fenômeno acontece (Política, Econômica, Social...). Escolha da lista
+                        ou digite uma nova e aperte Enter. Pode ter mais de uma.
+                    </p>
+                    <div id="ph-esferas-chips" class="flex flex-wrap gap-1 mb-2"></div>
+                    <input
+                        type="text"
+                        id="ph-esferas-input"
+                        list="sugestoes-ph-esferas"
+                        placeholder="Ex: Política, Social"
+                        autocomplete="off"
+                    />
+                    <datalist id="sugestoes-ph-esferas"></datalist>
+                </div>
+                <div>
+                    <label class="form-label" for="ph-categorias-input">Categoria</label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                        Que tipo de acontecimento é (Revolução, Guerra e conflito, Regime
+                        político...). É diferente da Esfera: a Guerra Fria é conflito (categoria) e
+                        política (esfera). Se o período é pontual, marque "É um evento" no alto do
+                        cadastro; isso não vai aqui.
+                    </p>
+                    <div id="ph-categorias-chips" class="flex flex-wrap gap-1 mb-2"></div>
+                    <input
+                        type="text"
+                        id="ph-categorias-input"
+                        list="sugestoes-ph-categorias"
+                        placeholder="Ex: Revolução, Guerra e conflito"
+                        autocomplete="off"
+                    />
+                    <datalist id="sugestoes-ph-categorias"></datalist>
                 </div>
                 <div>
                     <label class="form-label">Data</label>
@@ -202,6 +261,31 @@
                                 <input type="checkbox" id="ph-fim-aprox" class="w-auto" />
                                 c. (data aproximada)
                             </label>
+                            <div
+                                class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[10px] text-gray-500 dark:text-slate-400"
+                            >
+                                <label
+                                    class="flex items-center gap-1"
+                                    title="Sem data de fim, a duração conta até hoje (fuso em 🕒 Fuso, no cabeçalho). Só vale com o campo Até vazio."
+                                >
+                                    <input type="checkbox" id="ph-em-andamento" class="w-auto" />
+                                    Sem data de fim (conta até hoje)
+                                </label>
+                                <label
+                                    class="flex items-center gap-1"
+                                    title="Só a palavra que aparece depois da duração. Em aberto serve a períodos que não se tratam como um processo com fim esperado, como um luto."
+                                >
+                                    Mostrar como
+                                    <select
+                                        id="ph-em-andamento-rotulo"
+                                        class="w-auto text-[10px] py-0.5 px-1"
+                                        disabled
+                                    >
+                                        <option value="">Em andamento</option>
+                                        <option value="aberto">Em aberto</option>
+                                    </select>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>

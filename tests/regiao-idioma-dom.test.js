@@ -202,7 +202,7 @@ describe('Região e Idioma: salvar', () => {
 });
 
 describe('Região e Idioma: HTML dos modais', () => {
-    it('o grupo tem só o ponto de montagem (o Idioma é montado por dentro) e vem antes de Datas', async () => {
+    it('o grupo tem só o ponto de montagem (o Idioma é montado por dentro) e vem depois de Datas (F14-D2)', async () => {
         const { readFile } = await import('node:fs/promises');
         for (const [arq, pre] of [
             ['modais/modal-poema.html', 'p'],
@@ -220,10 +220,10 @@ describe('Região e Idioma: HTML dos modais', () => {
                 false,
                 `${arq}: sobrou o Idioma antigo`,
             );
-            assert.ok(
-                inicio < html.indexOf('>\n                            Datas'),
-                `${arq}: fora de ordem`,
-            );
+            // F14-D2: Datas vem antes de Região e Idioma, como a ordem padrão das colunas.
+            // A ordem das abas e do menu (o \"onde\" antes do \"quando\") não muda.
+            const datas = html.indexOf('>\n                            Datas');
+            assert.ok(datas > 0 && datas < inicio, `${arq}: fora de ordem`);
         }
     });
     it('o grupo montado traz o bloco de Idioma', () => {
@@ -391,5 +391,36 @@ describe('Idiomas do texto: salvar', () => {
     it('sem nenhum idioma, o texto fica sem idioma', () => {
         removerIdiomaTexto('prosas', 0);
         assert.deepEqual(idiomasParaSalvar('prosas'), { idiomas: [], idioma: '' });
+    });
+});
+
+describe('Fase 14, etapa 1: grupos dos modais de Poema e Prosa', () => {
+    it('Períodos e Inspiração e Correntes literárias são dois grupos, nessa ordem, e o nome antigo sumiu', async () => {
+        const { readFile } = await import('node:fs/promises');
+        for (const [arq, pre] of [
+            ['modais/modal-poema.html', 'p'],
+            ['modais/modal-prosa.html', 'pr'],
+        ]) {
+            const html = await readFile(new URL(`../${arq}`, import.meta.url), 'utf8');
+            assert.equal(html.includes('Períodos, Movimento e Inspiração'), false, arq);
+            const grupos = html.split('<details class="campo-grupo">').slice(1);
+            const achar = (titulo) =>
+                grupos.findIndex((g) => g.split('</summary>')[0].includes(titulo));
+            const iDatas = achar('Datas');
+            const iRegiao = achar('Região e Idioma');
+            const iPeriodos = achar('Períodos e Inspiração');
+            const iCorrentes = achar('Correntes literárias');
+            assert.ok(iDatas >= 0 && iDatas < iRegiao, `${arq}: Datas antes de Região`);
+            assert.equal(iPeriodos, iRegiao + 1, `${arq}: Períodos logo após Região`);
+            assert.equal(iCorrentes, iPeriodos + 1, `${arq}: Correntes logo após Períodos`);
+            const corpo = (i) => grupos[i].split('</details>')[0];
+            // O que mora em cada grupo (ids intactos, só mudou de lugar).
+            assert.ok(corpo(iPeriodos).includes(`id="${pre}-periodos-historicos-container"`));
+            assert.ok(corpo(iPeriodos).includes(`id="${pre}-contexto"`), 'Inspiração no 1º grupo');
+            assert.equal(corpo(iPeriodos).includes(`${pre}-movimentos-escolas-container`), false);
+            assert.ok(corpo(iCorrentes).includes(`id="${pre}-movimentos-escolas-container"`));
+            assert.ok(corpo(iCorrentes).includes(`id="${pre}-movimento-escola-input"`));
+            assert.equal(corpo(iCorrentes).includes(`id="${pre}-contexto"`), false);
+        }
     });
 });

@@ -27,10 +27,12 @@
 // ============================================================
 
 import {
+    paisDoPeriodo,
     filhosDoPeriodo,
     descendentesDoPeriodo,
     opcoesDePaiDoPeriodo,
     ordenarPeriodosEmArvore,
+    caminhoDosAncestraisDoPeriodo,
 } from './periodos-historicos-hierarquia.js';
 
 export {
@@ -161,6 +163,91 @@ export function opcoesDePaiBiografico(lista, filho, comparar) {
     return ordenarPeriodosEmArvore(possiveis, comparar);
 }
 
+// ─── Escolha do período num texto (campo com sugestões) ──────────────────
+
+// Opções do campo "Período Biográfico Retratado" dos textos, em árvore (o
+// filho logo depois do pai, na ordem de `comparar`), cada uma como
+// `{ id, nome, nivel, caminho, rotulo }`:
+// - `caminho`: de onde o período está, "Relação com X › Fase 1" (vazio no
+//   topo). É lido em `lista` (o cadastro inteiro, para não perder pai oculto
+//   ou de fora das sugestões); `candidatos` é o que entra nas opções.
+// - `rotulo`: o que preenche o campo, só o nome. Nome repetido entre as
+//   opções ganha o caminho entre parênteses e, se ainda repetir, " #id".
+export function opcoesDeEscolhaDoPeriodoBiografico(lista, candidatos, comparar) {
+    const base = ordenarPeriodosEmArvore(candidatos, comparar).map(({ m, nivel }) => ({
+        id: m.id,
+        nome: m.nome,
+        nivel,
+        caminho: caminhoDosAncestraisDoPeriodo(lista, m.id),
+    }));
+    const contar = (valorDe) => {
+        const n = new Map();
+        base.forEach((o) => n.set(valorDe(o), (n.get(valorDe(o)) || 0) + 1));
+        return n;
+    };
+    const porNome = contar((o) => o.nome);
+    const comCaminho = (o) =>
+        porNome.get(o.nome) > 1 && o.caminho ? `${o.nome} (${o.caminho})` : o.nome;
+    const porRotulo = contar(comCaminho);
+    return base.map((o) => {
+        const rotulo = comCaminho(o);
+        return { ...o, rotulo: porRotulo.get(rotulo) > 1 ? `${rotulo} #${o.id}` : rotulo };
+    });
+}
+
+// Rótulo de um período já escolhido (o chip do campo): o nome e, se ele está
+// dentro de outro, o caminho de onde fica, "Fase 1 (Relação com X)". Vazio se o
+// id não existe em `lista`.
+export function rotuloDoPeriodoBiografico(lista, id) {
+    const p = achar(lista, id);
+    if (!p) return '';
+    const caminho = caminhoDosAncestraisDoPeriodo(lista, p.id);
+    return caminho ? `${p.nome} (${caminho})` : p.nome;
+}
+
+// Caminho de exibição de um período, da raiz até ele, pelo pai principal:
+// "Ensino médio › Pré-vestibular". Período oculto não vaza o nome: ele próprio
+// vira só `rotuloOculto`, e um ancestral oculto vira `rotuloOculto` no meio do
+// caminho. Com `incluirOculto` (opção "Exibir ocultas"/"Incluir ocultados") os
+// nomes reais saem. Vazio se o id não existe em `lista`.
+export function caminhoExibivelDoPeriodoBiografico(
+    lista,
+    id,
+    { incluirOculto = false, rotuloOculto = '(período oculto)' } = {},
+) {
+    const folha = achar(lista, id);
+    if (!folha) return '';
+    if (folha.oculto && !incluirOculto) return rotuloOculto;
+    const nomes = [];
+    const vistos = new Set();
+    let atual = folha;
+    while (atual && !vistos.has(String(atual.id))) {
+        vistos.add(String(atual.id));
+        nomes.unshift(atual.oculto && !incluirOculto ? rotuloOculto : atual.nome);
+        const pai = paisDoPeriodo(lista, atual.id)[0];
+        atual = pai == null ? null : achar(lista, pai);
+    }
+    return nomes.join(' › ');
+}
+
+// Texto do campo -> período: `{ id }` (achou) ou `{ id: null, novo: true }`
+// (nome que não existe, vira período novo ao salvar o texto) ou `{ id: null }`
+// (campo vazio). Ordem: o rótulo exato de uma opção; o nome puro entre as
+// opções (a primeira em árvore); o nome puro entre os `preferidos` (períodos
+// dos Autores do texto, inclusive ocultos); o nome puro em qualquer período.
+export function resolverPeriodoBiograficoPorRotulo(lista, texto, extras = {}) {
+    const t = String(texto ?? '').trim();
+    if (!t) return { id: null };
+    const { candidatos, preferidos, comparar } = extras;
+    const opcoes = opcoesDeEscolhaDoPeriodoBiografico(lista, candidatos ?? lista, comparar);
+    const achado =
+        opcoes.find((o) => o.rotulo === t) ||
+        opcoes.find((o) => o.nome === t) ||
+        (preferidos || []).find((p) => p.nome === t) ||
+        (lista || []).find((p) => p.nome === t);
+    return achado ? { id: achado.id } : { id: null, novo: true };
+}
+
 // ─── Intervalo derivado (só para mostrar) ────────────────────────────────
 
 // O que os períodos de dentro de `id` cobrem, do começo mais cedo ao fim mais
@@ -204,30 +291,35 @@ export function datasEfetivasDoPeriodo(lista, periodo) {
 
 // ─── Ordem ───────────────────────────────────────────────────────────────
 
-// Comparador de irmãos para `ordenarPeriodosEmArvore`. 'cronologica' põe pelo
-// ano de começo (ou de fim, se faltar), usando as datas efetivas: pai sem
-// data vai pela data do mais antigo dos de dentro. Sem nenhuma data, vai para
-// o fim; empate (e o modo alfabético) desempata pelo nome. `lista` é a lista
-// em que a hierarquia é lida (a que a tela mostra).
+// Comparador de irmãos para `ordenarPeriodosEmArvore`. 'cronologica' põe pela
+// data de começo completa (ano, mês e dia; campo em branco vale o menor
+// valor), ou pela de fim, se faltar o começo, usando as datas efetivas: pai
+// sem data vai pela data do mais antigo dos de dentro. Mesmo começo: termina
+// antes vem primeiro e período em aberto vem por último. Sem nenhuma data,
+// vai para o fim; empate total (e o modo alfabético) desempata pelo nome.
+// `lista` é a lista em que a hierarquia é lida (a que a tela mostra).
 export function criarComparadorDeEpocas(lista, modo = 'cronologica') {
     const porNome = (a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR');
     if (modo !== 'cronologica') return porNome;
-    const anos = new Map();
-    const anoDe = (p) => {
+    const chaves = new Map();
+    const chavesDe = (p) => {
         const k = String(p.id);
-        if (!anos.has(k)) {
+        if (!chaves.has(k)) {
             const d = datasEfetivasDoPeriodo(lista, p);
-            anos.set(k, d.inicio?.ano ?? d.fim?.ano ?? null);
+            const comeco = chave(d.inicio, 'inicio') ?? chave(d.fim, 'fim');
+            const termino = chave(d.fim, 'fim') ?? Infinity; // em aberto: por último
+            chaves.set(k, { comeco, termino });
         }
-        return anos.get(k);
+        return chaves.get(k);
     };
     return (a, b) => {
-        const anoA = anoDe(a);
-        const anoB = anoDe(b);
-        if (anoA == null && anoB == null) return porNome(a, b);
-        if (anoA == null) return 1;
-        if (anoB == null) return -1;
-        if (anoA !== anoB) return anoA - anoB;
+        const ca = chavesDe(a);
+        const cb = chavesDe(b);
+        if (ca.comeco == null && cb.comeco == null) return porNome(a, b);
+        if (ca.comeco == null) return 1;
+        if (cb.comeco == null) return -1;
+        if (ca.comeco !== cb.comeco) return ca.comeco - cb.comeco;
+        if (ca.termino !== cb.termino) return ca.termino < cb.termino ? -1 : 1;
         return porNome(a, b);
     };
 }

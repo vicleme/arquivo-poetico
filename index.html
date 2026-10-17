@@ -87,6 +87,21 @@
                                 class="hidden absolute right-0 mt-1 w-36 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1 z-20"
                             ></div>
                         </div>
+                        <div class="relative">
+                            <button
+                                id="btn-fuso"
+                                type="button"
+                                onclick="togglePainel('painel-fuso', this)"
+                                title='Fuso horário que define o "hoje" das durações em andamento'
+                                class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 transition text-sm font-medium"
+                            >
+                                🕒 Fuso
+                            </button>
+                            <div
+                                id="painel-fuso"
+                                class="hidden absolute right-0 mt-1 w-72 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-3 z-20"
+                            ></div>
+                        </div>
                         <input
                             type="file"
                             id="import-json"
@@ -321,6 +336,20 @@
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
                                 Assuntos
+                            </button>
+                            <button
+                                id="btn-etiquetas"
+                                onclick="abrirAba('etiquetas')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Etiquetas (Tags)
+                            </button>
+                            <button
+                                id="btn-tag-clusters"
+                                onclick="abrirAba('tag-clusters')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Tag clusters
                             </button>
                             <button
                                 id="btn-locais"
@@ -1244,6 +1273,14 @@
                             <option value="cronologica" selected>Ordem cronológica</option>
                         </select>
                         <button
+                            type="button"
+                            onclick="abrirModalRelatorioPeriodos('epocas')"
+                            title="Baixa um relatório em .md e/ou .pdf com a linha do tempo desta aba"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            Baixar relatório
+                        </button>
+                        <button
                             onclick="prepararNovo('epoca')"
                             class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
                         >
@@ -1313,8 +1350,13 @@
                         <label
                             for="epocas-massa-valor"
                             class="text-[10px] text-indigo-700 dark:text-indigo-300"
-                            >Valor</label
+                            >Valores</label
                         >
+                        <div
+                            id="epocas-massa-valor-chips"
+                            class="flex flex-wrap gap-1"
+                            style="max-width: 18rem"
+                        ></div>
                         <input
                             type="text"
                             id="epocas-massa-valor"
@@ -1334,6 +1376,17 @@
                         <select
                             id="epocas-massa-pessoa"
                             style="width: auto; margin-bottom: 0"
+                        ></select>
+                    </div>
+                    <div id="epocas-massa-grupo-pai" class="hidden flex flex-col gap-1">
+                        <label
+                            for="epocas-massa-pai"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Período pai</label
+                        >
+                        <select
+                            id="epocas-massa-pai"
+                            style="width: auto; max-width: 18rem; margin-bottom: 0"
                         ></select>
                     </div>
                     <div
@@ -1439,6 +1492,14 @@
                             <option value="cronologica" selected>Ordem cronológica</option>
                         </select>
                         <button
+                            type="button"
+                            onclick="abrirModalRelatorioPeriodos('periodosHistoricos')"
+                            title="Baixa um relatório em .md e/ou .pdf com a linha do tempo desta aba"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            Baixar relatório
+                        </button>
+                        <button
                             onclick="prepararNovo('periodo-historico')"
                             class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
                         >
@@ -1453,6 +1514,17 @@
                         class="text-gray-500 dark:text-slate-400"
                         aria-live="polite"
                     ></span>
+                    <label
+                        class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-400"
+                    >
+                        <input
+                            type="checkbox"
+                            id="toggle-todos-periodos-historicos"
+                            data-action="toggle-todos-periodos-historicos"
+                            class="w-3.5 h-3.5"
+                        />
+                        Selecionar todos os que aparecem
+                    </label>
                     <button
                         type="button"
                         data-action="recolher-todos-periodos-historicos"
@@ -1466,6 +1538,89 @@
                         class="px-2 py-1 rounded border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
                     >
                         Expandir tudo
+                    </button>
+                </div>
+                <div
+                    id="barra-acoes-periodos-historicos"
+                    class="hidden mb-4 p-3 bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900 rounded-lg flex flex-wrap items-end gap-4 text-xs"
+                >
+                    <span
+                        id="contador-selecao-periodos-historicos"
+                        class="font-bold text-indigo-800 dark:text-indigo-200"
+                    ></span>
+                    <div class="flex flex-col gap-1">
+                        <label
+                            for="ph-massa-acao"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Ação</label
+                        >
+                        <select id="ph-massa-acao" style="width: auto; margin-bottom: 0">
+                            <option value="adicionar">Acrescentar</option>
+                            <option value="remover">Remover</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label
+                            for="ph-massa-campo"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Campo</label
+                        >
+                        <select id="ph-massa-campo" style="width: auto; margin-bottom: 0"></select>
+                    </div>
+                    <div id="ph-massa-grupo-texto" class="flex flex-col gap-1">
+                        <label
+                            for="ph-massa-valor"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Valores</label
+                        >
+                        <div
+                            id="ph-massa-valor-chips"
+                            class="flex flex-wrap gap-1"
+                            style="max-width: 18rem"
+                        ></div>
+                        <input
+                            type="text"
+                            id="ph-massa-valor"
+                            list="sugestoes-ph-massa-esferas"
+                            autocomplete="off"
+                            style="width: 12rem; margin-bottom: 0"
+                        />
+                        <datalist id="sugestoes-ph-massa-esferas"></datalist>
+                        <datalist id="sugestoes-ph-massa-categorias"></datalist>
+                        <datalist id="sugestoes-ph-massa-regioes"></datalist>
+                    </div>
+                    <div id="ph-massa-grupo-pai" class="hidden flex flex-col gap-1">
+                        <label
+                            for="ph-massa-pai"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Período pai</label
+                        >
+                        <select
+                            id="ph-massa-pai"
+                            style="width: auto; max-width: 18rem; margin-bottom: 0"
+                        ></select>
+                    </div>
+                    <button
+                        type="button"
+                        data-action="aplicar-massa-periodos-historicos"
+                        class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                    >
+                        Aplicar
+                    </button>
+                    <button
+                        type="button"
+                        data-action="inverter-selecao-periodos-historicos"
+                        title="Marca o que não está marcado e desmarca o que está marcado, entre os itens que a tela mostra agora"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Inverter seleção
+                    </button>
+                    <button
+                        type="button"
+                        data-action="limpar-selecao-periodos-historicos"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Limpar seleção
                     </button>
                 </div>
                 <div id="lista-periodos-historicos" class="grid grid-cols-1 gap-3"></div>
@@ -1484,6 +1639,14 @@
                             <option value="cronologica" selected>Ordem cronológica</option>
                         </select>
                         <button
+                            type="button"
+                            onclick="abrirModalRelatorioPeriodos('correntes')"
+                            title="Baixa um relatório em .md e/ou .pdf com a linha do tempo desta aba"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            Baixar relatório
+                        </button>
+                        <button
                             onclick="prepararNovo('movimento-escola')"
                             class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
                         >
@@ -1493,6 +1656,17 @@
                 </div>
                 <div id="filtros-periodo-movimentosEscolas"></div>
                 <div class="flex items-center gap-3 flex-wrap mb-3 text-xs">
+                    <label
+                        class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-400"
+                    >
+                        <input
+                            type="checkbox"
+                            id="toggle-todas-correntes"
+                            data-action="toggle-todas-correntes"
+                            class="w-3.5 h-3.5"
+                        />
+                        Selecionar todas as que aparecem
+                    </label>
                     <button
                         type="button"
                         data-action="recolher-todas-correntes"
@@ -1506,6 +1680,122 @@
                         class="px-2 py-1 rounded border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700"
                     >
                         Expandir tudo
+                    </button>
+                </div>
+                <div
+                    id="barra-acoes-correntes"
+                    class="hidden mb-4 p-3 bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900 rounded-lg flex flex-wrap items-end gap-4 text-xs"
+                >
+                    <span
+                        id="contador-selecao-correntes"
+                        class="font-bold text-indigo-800 dark:text-indigo-200"
+                    ></span>
+                    <div class="flex flex-col gap-1">
+                        <label
+                            for="cor-massa-acao"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Ação</label
+                        >
+                        <select id="cor-massa-acao" style="width: auto; margin-bottom: 0">
+                            <option value="adicionar">Acrescentar</option>
+                            <option value="remover">Remover</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label
+                            for="cor-massa-campo"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Campo</label
+                        >
+                        <select id="cor-massa-campo" style="width: auto; margin-bottom: 0"></select>
+                    </div>
+                    <div id="cor-massa-grupo-unico" class="hidden flex flex-col gap-1">
+                        <label
+                            for="cor-massa-unico"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Valor</label
+                        >
+                        <select
+                            id="cor-massa-unico"
+                            style="width: auto; max-width: 18rem; margin-bottom: 0"
+                        ></select>
+                    </div>
+                    <div id="cor-massa-grupo-pai" class="hidden flex flex-wrap items-end gap-2">
+                        <div class="flex flex-col gap-1">
+                            <label
+                                for="cor-massa-pai"
+                                class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                                >Corrente pai</label
+                            >
+                            <select
+                                id="cor-massa-pai"
+                                style="width: auto; max-width: 18rem; margin-bottom: 0"
+                            ></select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label
+                                for="cor-massa-divisao"
+                                class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                                >Divisão (opcional)</label
+                            >
+                            <select
+                                id="cor-massa-divisao"
+                                style="width: auto; margin-bottom: 0"
+                            ></select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <label
+                                for="cor-massa-genero"
+                                class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                                >Aplica-se a (opcional)</label
+                            >
+                            <select
+                                id="cor-massa-genero"
+                                style="width: auto; margin-bottom: 0"
+                            ></select>
+                        </div>
+                    </div>
+                    <div id="cor-massa-grupo-texto" class="hidden flex flex-col gap-1">
+                        <label
+                            for="cor-massa-valor"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Valores</label
+                        >
+                        <div
+                            id="cor-massa-valor-chips"
+                            class="flex flex-wrap gap-1"
+                            style="max-width: 18rem"
+                        ></div>
+                        <input
+                            type="text"
+                            id="cor-massa-valor"
+                            list="sugestoes-cor-massa"
+                            autocomplete="off"
+                            style="width: 12rem; margin-bottom: 0"
+                        />
+                        <datalist id="sugestoes-cor-massa"></datalist>
+                    </div>
+                    <button
+                        type="button"
+                        data-action="aplicar-massa-correntes"
+                        class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                    >
+                        Aplicar
+                    </button>
+                    <button
+                        type="button"
+                        data-action="inverter-selecao-correntes"
+                        title="Marca o que não está marcado e desmarca o que está marcado, entre os itens que a tela mostra agora"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Inverter seleção
+                    </button>
+                    <button
+                        type="button"
+                        data-action="limpar-selecao-correntes"
+                        class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Limpar seleção
                     </button>
                 </div>
                 <div id="lista-movimentos-escolas" class="grid grid-cols-1 gap-4"></div>
@@ -1615,6 +1905,160 @@
                 </p>
                 <div id="lista-assuntos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                 <div id="temas-sem-assunto" class="mt-6"></div>
+            </section>
+
+            <section id="etiquetas" class="tab-content">
+                <div class="flex justify-between items-center mb-6 gap-3 flex-wrap">
+                    <h2 class="text-xl font-semibold">Etiquetas (Tags)</h2>
+                    <button
+                        onclick="novaEtiqueta()"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                    >
+                        Nova Etiqueta
+                    </button>
+                </div>
+                <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
+                    Etiquetas (Tags) são as marcas que você põe nos textos, por categoria: Tradição,
+                    Estilo, Relação, Sensibilidade, Tom, Domínio Imagético e Outros. Cada etiqueta
+                    existe uma vez aqui e os textos apontam para ela. Renomear muda o nome em todos
+                    os textos. Duas etiquetas da mesma categoria que dizem a mesma coisa podem ser
+                    juntadas com Mesclar. "Mover para…" troca a categoria e leva os textos junto. Em
+                    "Outros (triagem)", classifique o que ainda não tem categoria.
+                </p>
+                <div class="flex flex-wrap items-center gap-3 mb-3">
+                    <input
+                        type="search"
+                        id="busca-etiquetas"
+                        oninput="renderEtiquetas()"
+                        placeholder="Buscar etiqueta..."
+                        aria-label="Buscar etiqueta"
+                        class="text-sm"
+                        style="width: 16rem; margin-bottom: 0"
+                    />
+                    <select
+                        id="filtro-categoria-etiquetas"
+                        onchange="renderEtiquetas()"
+                        aria-label="Filtrar por categoria"
+                        style="width: auto; margin-bottom: 0"
+                    ></select>
+                    <label class="text-sm flex items-center gap-1.5">
+                        <input
+                            type="checkbox"
+                            id="filtro-etiquetas-sem-texto"
+                            onchange="renderEtiquetas()"
+                            style="width: auto; margin-bottom: 0"
+                        />
+                        Só sem texto
+                    </label>
+                    <select
+                        id="ordem-etiquetas"
+                        onchange="renderEtiquetas()"
+                        aria-label="Ordenar etiquetas"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="alfabetica">Ordem alfabética</option>
+                        <option value="usadas">Mais usadas primeiro</option>
+                    </select>
+                    <button
+                        type="button"
+                        data-action="recolher-todas-etiquetas"
+                        class="text-xs border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                    >
+                        Recolher todas
+                    </button>
+                    <button
+                        type="button"
+                        data-action="expandir-todas-etiquetas"
+                        class="text-xs border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                    >
+                        Expandir todas
+                    </button>
+                    <span
+                        id="resumo-etiquetas"
+                        class="text-[11px] text-gray-400 dark:text-slate-500"
+                    ></span>
+                </div>
+                <div id="duplicatas-etiquetas" class="mb-3"></div>
+                <div id="lista-etiquetas"></div>
+            </section>
+
+            <section id="tag-clusters" class="tab-content">
+                <div class="flex justify-between items-center mb-6 gap-3 flex-wrap">
+                    <div>
+                        <h2 class="text-xl font-semibold">Tag clusters</h2>
+                        <p class="text-[11px] text-gray-400 dark:text-slate-500">
+                            agrupamentos de etiquetas
+                        </p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button
+                            type="button"
+                            id="btn-importar-tag-clusters"
+                            data-action="importar-tag-clusters"
+                            title="Cola uma lista no formato “Cluster: etiqueta, etiqueta” e cria os clusters de uma vez, com Desfazer"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            Importar clusters
+                        </button>
+                        <button
+                            onclick="baixarTagClustersMd()"
+                            title="Baixa um .md com os tag clusters, as etiquetas de cada um e as etiquetas sem cluster, útil para colar numa IA e pedir ajuda para agrupar"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            Baixar .md
+                        </button>
+                        <button
+                            onclick="novoTagCluster()"
+                            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                        >
+                            Novo Tag cluster
+                        </button>
+                    </div>
+                </div>
+                <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
+                    Um tag cluster agrupa etiquetas de uma mesma categoria (Domínio Imagético, Tom,
+                    Tradição, Estilo, Relação ou Sensibilidade). Você monta os grupos à mão; nada é
+                    agrupado sozinho. Uma etiqueta fica em um tag cluster só, ou em nenhum, e
+                    continua sendo etiqueta própria. O cluster não aparece nos textos: classifica a
+                    etiqueta em si. Excluir um tag cluster só solta as etiquetas.
+                </p>
+                <div class="flex flex-wrap items-center gap-3 mb-4">
+                    <input
+                        type="search"
+                        id="busca-tag-clusters"
+                        oninput="renderTagClusters()"
+                        placeholder="Buscar tag cluster ou etiqueta..."
+                        aria-label="Buscar tag cluster ou etiqueta"
+                        class="text-sm"
+                        style="width: 16rem; margin-bottom: 0"
+                    />
+                    <select
+                        id="filtro-categoria-tag-clusters"
+                        onchange="renderTagClusters()"
+                        aria-label="Filtrar por categoria"
+                        style="width: auto; margin-bottom: 0"
+                    ></select>
+                    <button
+                        type="button"
+                        data-action="recolher-todos-tag-clusters"
+                        class="text-xs border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                    >
+                        Recolher todos
+                    </button>
+                    <button
+                        type="button"
+                        data-action="expandir-todos-tag-clusters"
+                        class="text-xs border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                    >
+                        Expandir todos
+                    </button>
+                    <span
+                        id="resumo-tag-clusters"
+                        class="text-[11px] text-gray-400 dark:text-slate-500"
+                    ></span>
+                </div>
+                <div id="lista-tag-clusters"></div>
+                <div id="etiquetas-sem-cluster" class="mt-6"></div>
             </section>
 
             <section id="personagens" class="tab-content">
@@ -1836,8 +2280,8 @@
                             type="search"
                             id="busca-numero-poemas"
                             oninput="setFiltroNumeroPoemas(this.value)"
-                            placeholder="Nº: 5,9,30 (pode combinar com etiqueta:, titulo:...)"
-                            title="Busca pela coluna Contagem de Poemas (nº na ordem de estrutura, já considerando os filtros acima). Números separados por vírgula; pode combinar com prefixos como etiqueta: pra recortar dentro da lista de números — mas isso nunca desloca a numeração, só filtra em cima dela."
+                            placeholder="Nº: 5,9 ou 5-20, 25-30 (pode combinar com etiqueta:, titulo:...)"
+                            title="Busca pela coluna Contagem de Poemas (nº na ordem de estrutura, já considerando os filtros acima). Números separados por vírgula, e intervalos com hífen (5-20 traz do 5 ao 20; 5-20, 25-30 traz os dois intervalos); pode combinar com prefixos como etiqueta: pra recortar dentro da lista de números — mas isso nunca desloca a numeração, só filtra em cima dela."
                             class="flex-1 mb-0"
                         />
                     </div>
@@ -1983,6 +2427,14 @@
                                 o que o contém (<code>periodohistorico:"Nova República"</code>
                                 acha também o texto do Segundo mandato do governo Dilma). Com
                                 <code>periodohistoricodireto:</code>, só o período exato.
+                            </li>
+                            <li>
+                                <code>esferahistorica:</code>
+                                <code>categoriahistorica:</code> Esfera e Categoria dos períodos
+                                históricos do texto (<code>esferahistorica:Política</code>,
+                                <code>categoriahistorica:"Guerra e conflito"</code>). Só valem com o
+                                prefixo e não se confundem com <code>esfera:</code> e
+                                <code>categoria:</code>, que são do período biográfico.
                             </li>
                             <li>
                                 <code>postura:</code> <code>programa:</code> Postura estética e
@@ -2369,14 +2821,17 @@
                         id="contador-selecao-poemas"
                         class="text-xs font-bold text-rose-700 dark:text-rose-300 whitespace-nowrap"
                     ></span>
-                    <input
-                        type="text"
-                        id="bulk-pessoa-input"
-                        list="sugestoes-pessoas"
-                        placeholder="Nome da pessoa..."
-                        class="flex-1 min-w-[160px] mb-0"
-                        onkeydown="aoEnterAplicar(event, () => aplicarPessoaEmMassa('poemas'))"
-                    />
+                    <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
+                        <div id="bulk-pessoa-input-chips" class="flex flex-wrap gap-1"></div>
+                        <input
+                            type="text"
+                            id="bulk-pessoa-input"
+                            list="sugestoes-pessoas"
+                            placeholder="Pessoa: Enter adiciona"
+                            autocomplete="off"
+                            class="mb-0"
+                        />
+                    </div>
                     <button
                         onclick="aplicarPessoaEmMassa('poemas')"
                         class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
@@ -2404,14 +2859,17 @@
                         <option value="sinalizacoesDominioImagetico">Domínio Imagético</option>
                         <option value="sinalizacoesOutros">Outros</option>
                     </select>
-                    <input
-                        type="text"
-                        id="bulk-sinal-input"
-                        list="sugestoes-sinais-tradicao-bulk"
-                        placeholder="Etiqueta..."
-                        class="flex-1 min-w-[160px] mb-0"
-                        onkeydown="aoEnterAplicar(event, () => aplicarSinalEmMassa('poemas'))"
-                    />
+                    <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
+                        <div id="bulk-sinal-input-chips" class="flex flex-wrap gap-1"></div>
+                        <input
+                            type="text"
+                            id="bulk-sinal-input"
+                            list="sugestoes-sinais-tradicao-bulk"
+                            placeholder="Etiqueta: Enter adiciona"
+                            autocomplete="off"
+                            class="mb-0"
+                        />
+                    </div>
                     <button
                         onclick="aplicarSinalEmMassa('poemas')"
                         class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
@@ -2538,19 +2996,16 @@
                         <div class="flex-1 min-w-[240px]">
                             <label
                                 class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
-                                >Temas (separe vários por vírgula)</label
+                                >Temas (Enter adiciona cada um)</label
                             >
+                            <div id="bulk-tema-input-chips" class="flex flex-wrap gap-1 mb-1"></div>
                             <input
                                 type="text"
                                 id="bulk-tema-input"
                                 list="sugestoes-temas-bulk"
-                                placeholder="ex.: saudade, amor não correspondido"
+                                placeholder="Tema: Enter adiciona"
                                 autocomplete="off"
                                 class="w-full text-xs p-2 mb-0"
-                                oninput="atualizarSugestoesTemasMassa('poemas')"
-                                onkeydown="
-                                    aoEnterAplicar(event, () => aplicarTemaEmMassa('poemas'))
-                                "
                             />
                             <datalist id="sugestoes-temas-bulk"></datalist>
                         </div>
@@ -2763,8 +3218,8 @@
                             type="search"
                             id="busca-numero-prosas"
                             oninput="setFiltroNumeroProsas(this.value)"
-                            placeholder="Nº: 5,9,30 (pode combinar com etiqueta:, titulo:...)"
-                            title="Busca pela coluna Contagem de Prosas (nº na ordem de estrutura, já considerando os filtros acima). Números separados por vírgula; pode combinar com prefixos como etiqueta: pra recortar dentro da lista de números — mas isso nunca desloca a numeração, só filtra em cima dela."
+                            placeholder="Nº: 5,9 ou 5-20, 25-30 (pode combinar com etiqueta:, titulo:...)"
+                            title="Busca pela coluna Contagem de Prosas (nº na ordem de estrutura, já considerando os filtros acima). Números separados por vírgula, e intervalos com hífen (5-20 traz do 5 ao 20; 5-20, 25-30 traz os dois intervalos); pode combinar com prefixos como etiqueta: pra recortar dentro da lista de números — mas isso nunca desloca a numeração, só filtra em cima dela."
                             class="flex-1 mb-0"
                         />
                     </div>
@@ -2910,6 +3365,14 @@
                                 o que o contém (<code>periodohistorico:"Nova República"</code>
                                 acha também o texto do Segundo mandato do governo Dilma). Com
                                 <code>periodohistoricodireto:</code>, só o período exato.
+                            </li>
+                            <li>
+                                <code>esferahistorica:</code>
+                                <code>categoriahistorica:</code> Esfera e Categoria dos períodos
+                                históricos do texto (<code>esferahistorica:Política</code>,
+                                <code>categoriahistorica:"Guerra e conflito"</code>). Só valem com o
+                                prefixo e não se confundem com <code>esfera:</code> e
+                                <code>categoria:</code>, que são do período biográfico.
                             </li>
                             <li>
                                 <code>postura:</code> <code>programa:</code> Postura estética e
@@ -3210,14 +3673,17 @@
                         id="contador-selecao-prosas"
                         class="text-xs font-bold text-rose-700 dark:text-rose-300 whitespace-nowrap"
                     ></span>
-                    <input
-                        type="text"
-                        id="bulk-pessoa-input-prosa"
-                        list="sugestoes-pessoas-bulk-prosa"
-                        placeholder="Nome da pessoa..."
-                        class="flex-1 min-w-[160px] mb-0"
-                        onkeydown="aoEnterAplicar(event, () => aplicarPessoaEmMassa('prosas'))"
-                    />
+                    <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
+                        <div id="bulk-pessoa-input-prosa-chips" class="flex flex-wrap gap-1"></div>
+                        <input
+                            type="text"
+                            id="bulk-pessoa-input-prosa"
+                            list="sugestoes-pessoas-bulk-prosa"
+                            placeholder="Pessoa: Enter adiciona"
+                            autocomplete="off"
+                            class="mb-0"
+                        />
+                    </div>
                     <button
                         onclick="aplicarPessoaEmMassa('prosas')"
                         class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
@@ -3245,14 +3711,17 @@
                         <option value="sinalizacoesDominioImagetico">Domínio Imagético</option>
                         <option value="sinalizacoesOutros">Outros</option>
                     </select>
-                    <input
-                        type="text"
-                        id="bulk-sinal-input-prosa"
-                        list="sugestoes-sinais-tradicao-bulk-prosa"
-                        placeholder="Etiqueta..."
-                        class="flex-1 min-w-[160px] mb-0"
-                        onkeydown="aoEnterAplicar(event, () => aplicarSinalEmMassa('prosas'))"
-                    />
+                    <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
+                        <div id="bulk-sinal-input-prosa-chips" class="flex flex-wrap gap-1"></div>
+                        <input
+                            type="text"
+                            id="bulk-sinal-input-prosa"
+                            list="sugestoes-sinais-tradicao-bulk-prosa"
+                            placeholder="Etiqueta: Enter adiciona"
+                            autocomplete="off"
+                            class="mb-0"
+                        />
+                    </div>
                     <button
                         onclick="aplicarSinalEmMassa('prosas')"
                         class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
@@ -3265,14 +3734,17 @@
                     >
                         − Remover
                     </button>
-                    <input
-                        type="text"
-                        id="bulk-genero-input-prosa"
-                        list="sugestoes-genero-bulk-prosa"
-                        placeholder="Gênero..."
-                        class="flex-1 min-w-[160px] mb-0"
-                        onkeydown="aoEnterAplicar(event, () => aplicarGeneroEmMassaProsa())"
-                    />
+                    <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
+                        <div id="bulk-genero-input-prosa-chips" class="flex flex-wrap gap-1"></div>
+                        <input
+                            type="text"
+                            id="bulk-genero-input-prosa"
+                            list="sugestoes-genero-bulk-prosa"
+                            placeholder="Gênero: Enter adiciona"
+                            autocomplete="off"
+                            class="mb-0"
+                        />
+                    </div>
                     <button
                         onclick="aplicarGeneroEmMassaProsa()"
                         class="bg-amber-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
@@ -3387,19 +3859,19 @@
                         <div class="flex-1 min-w-[240px]">
                             <label
                                 class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
-                                >Temas (separe vários por vírgula)</label
+                                >Temas (Enter adiciona cada um)</label
                             >
+                            <div
+                                id="bulk-tema-input-prosa-chips"
+                                class="flex flex-wrap gap-1 mb-1"
+                            ></div>
                             <input
                                 type="text"
                                 id="bulk-tema-input-prosa"
                                 list="sugestoes-temas-bulk-prosa"
-                                placeholder="ex.: saudade, amor não correspondido"
+                                placeholder="Tema: Enter adiciona"
                                 autocomplete="off"
                                 class="w-full text-xs p-2 mb-0"
-                                oninput="atualizarSugestoesTemasMassa('prosas')"
-                                onkeydown="
-                                    aoEnterAplicar(event, () => aplicarTemaEmMassa('prosas'))
-                                "
                             />
                             <datalist id="sugestoes-temas-bulk-prosa"></datalist>
                         </div>
@@ -5315,14 +5787,38 @@
                 <div class="mb-5">
                     <h2 class="text-xl font-semibold">Correntes literárias</h2>
                     <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                        Postura estética e Programa das correntes a que os textos estão ligados (uma
-                        divisão sem valor próprio vale pelo do pai). Clique numa barra ou numa
-                        célula para abrir a lista de textos.
+                        Textos por corrente (agrupado ou separado) e a Postura estética e o Programa
+                        das correntes a que os textos estão ligados (uma divisão sem valor próprio
+                        vale pelo do pai). Clique numa barra ou numa célula para abrir a lista de
+                        textos.
                     </p>
                 </div>
                 <div class="est-filtros-compartilhados mb-6"></div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    <div
+                        class="md:col-span-2 min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="mb-3">
+                            <div class="flex items-center justify-between gap-3 flex-wrap">
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Textos por corrente
+                                </h3>
+                                <div id="painel-modo-correntes" class="flex gap-1"></div>
+                            </div>
+                            <p
+                                id="est-correntes-textos-contexto"
+                                class="text-[10px] text-gray-400 mt-1"
+                            ></p>
+                            <p class="text-[10px] text-gray-400 mt-1">
+                                Clique numa barra para abrir a lista. A busca usa o nome da
+                                corrente, então um nome contido em outro (Romantismo, Romantismo no
+                                Brasil) pode trazer textos a mais na lista.
+                            </p>
+                        </div>
+                        <canvas id="grafico-correntes-textos" height="220"></canvas>
+                    </div>
+
                     <div
                         class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
                     >

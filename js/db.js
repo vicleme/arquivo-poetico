@@ -24,6 +24,10 @@ import {
     IDENTIDADES_CIS_TRANS,
     CORES_RACA_AUTOR,
     periodosHistoricosIdsDoItem,
+    periodosDaEpocaRetratada,
+    periodosBiograficosDoItem,
+    definirPeriodosBiograficosDoItem,
+    definirCadastroEtiquetas,
 } from './utils.js';
 import {
     opcoesDeFabricaPeriodoBiografico,
@@ -34,7 +38,15 @@ import {
     removerPessoaDosPeriodos,
     restaurarPessoaNosPeriodos,
 } from './periodo-biografico-campos.js';
+import {
+    opcoesDeFabricaPeriodoHistorico,
+    migrarClassificacaoPeriodosHistoricos,
+    migrarOpcoesPeriodoHistorico,
+    mesclarClassificacaoDosPeriodosHistoricos,
+} from './periodos-historicos-campos.js';
 import { sincronizarTemas } from './temas.js';
+import { sincronizarEtiquetas } from './etiquetas.js';
+import { sincronizarTagClusters } from './tag-clusters.js';
 import { normalizarRegiao, mesmaRegiao } from './regiao.js';
 import { sincronizarLocais } from './locais.js';
 import { fontesDeFabricaDaCorrente, normalizarFontes, unirFontes } from './fontes-corrente.js';
@@ -57,6 +69,7 @@ import {
 import { sincronizarPersonagens, calcularImpactoExclusaoPersonagem } from './personagens.js';
 import { sincronizarParesIgnorados } from './sugestao-ecos.js';
 import { normalizarPadroesColunas } from './colunas.js';
+import { aplicarPadroesColunasDeFabrica } from './padroes-colunas-fabrica.js';
 import {
     redirecionarAncora,
     removerAncoraDoCadastro,
@@ -889,6 +902,7 @@ const DADOS_SEED_PERIODOS_HISTORICOS = [
     {
         nome: 'Semana de Arte Moderna',
         regiao: ['Brasil'],
+        evento: true,
         ini: [11, 2, 1922],
         fim: [18, 2, 1922],
         notas: 'Theatro Municipal de São Paulo, sessões principais em 13, 15 e 17/02 — marco do início do Modernismo brasileiro, já cadastrado em Correntes literárias com a mesma âncora de 1922.',
@@ -985,6 +999,7 @@ function SEED_PERIODOS_HISTORICOS() {
         inicio: _dataParcialPeriodoHistoricoDoSeed(p.ini, p.iniAprox),
         fim: _dataParcialPeriodoHistoricoDoSeed(p.fim, p.fimAprox),
         fontes: fontesDeFabricaDoPeriodoHistorico(p.nome),
+        ...(p.evento ? { evento: true } : {}),
     }));
 }
 
@@ -1225,10 +1240,17 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // db (e não no localStorage, como a escolha atual de colunas) pra ir junto
     // no backup JSON, nos snapshots e na restauração. Ver colunas.js.
     padroesColunas: {},
+    // Versão dos padrões de colunas de fábrica já semeados em `padroesColunas`
+    // (ver padroes-colunas-fabrica.js); ausente = nenhum ainda.
+    padroesColunasFabricaVersao: 0,
     // Bloco 3: valores de Esfera, Natureza e Vínculo do Período Biográfico
     // (mais a Natureza sugerida de cada Vínculo), editáveis pela pessoa
     // (começam com os de fábrica). Ver periodo-biografico-campos.js.
     opcoesPeriodoBiografico: opcoesDeFabricaPeriodoBiografico(),
+    // Esfera e Categoria do Período Histórico (15/10/2026): vocabulário
+    // próprio, separado do biográfico, editável pelo "Gerenciar". Ver
+    // periodos-historicos-campos.js.
+    opcoesPeriodoHistorico: opcoesDeFabricaPeriodoHistorico(),
     // Análise de escansão/métrica/rimas de um poema (aba Sonoridade).
     // Um poema pode ter no máximo uma escansão vinculada (não é histórico
     // de versões) — ver getEscansaoDoPoema. Bloco 1 (dados + tabela) cobre
@@ -1333,10 +1355,23 @@ if (!db.movimentosEscolas) db.movimentosEscolas = SEED_MOVIMENTOS_ESCOLAS();
 if (!db.movimentosEscolasOcultos) db.movimentosEscolasOcultos = [];
 if (!db.assuntos) db.assuntos = [];
 if (!db.temas) db.temas = [];
+// cadastro central de Etiqueta ({ id, nome, categoria, notas }), ver
+// etiquetas.js. Tradição, Estilo, Relação, Sensibilidade, Tom, Domínio
+// Imagético e Outros guardam, no Poema e na Prosa, listas de ids deste
+// cadastro (sem espelho de texto). Mantido em sincronia por
+// `sincronizarEtiquetas`, que migra o texto antigo separado por vírgula.
+if (!db.etiquetas) db.etiquetas = [];
+// Tag clusters (Fase 17): agrupam etiquetas de uma categoria ({ id, nome,
+// categoria, notas }, ver tag-clusters.js); a etiqueta guarda `clusterId`.
+if (!db.tagClusters) db.tagClusters = [];
+// utils.js traduz id em nome (textoDeEtiquetas) lendo o db atual; o getter
+// precisa ler `db` a cada chamada porque importarDB e esvaziar trocam campos.
+definirCadastroEtiquetas(() => db.etiquetas);
 if (!db.locais) db.locais = [];
 if (!db.personagens) db.personagens = [];
 if (!db.ecosIgnorados) db.ecosIgnorados = [];
 if (!db.padroesColunas || typeof db.padroesColunas !== 'object') db.padroesColunas = {};
+aplicarPadroesColunasDeFabrica(db);
 if (!db.escansoes) db.escansoes = [];
 if (!db.estruturasTextuais) db.estruturasTextuais = [];
 if (!db.templatesEstrutura) db.templatesEstrutura = [];
@@ -1900,7 +1935,8 @@ export function migrarReconhecimentos(itens) {
     itens.forEach((item) => {
         if (item.reconhecimentos !== undefined) return; // já migrado
 
-        const tags = (item.sinalizacoesOutros || '')
+        // Outros já em ids (Fase 16): não há nome de tag para procurar.
+        const tags = (Array.isArray(item.sinalizacoesOutros) ? '' : item.sinalizacoesOutros || '')
             .split(',')
             .map((s) => s.trim())
             .filter(Boolean);
@@ -2004,7 +2040,8 @@ export function migrarEpocas(dbRef) {
 
     (dbRef.poemas || []).forEach((p) => {
         const epoca = p.epocaRetratada;
-        if (!epoca || epoca.epocaId !== undefined) return; // vazio ou já migrado
+        // vazio ou já migrado (formato com `epocaId` ou já com a lista `periodos`)
+        if (!epoca || epoca.epocaId !== undefined || Array.isArray(epoca.periodos)) return;
         const nome = (epoca.nome || '').trim();
         p.epocaRetratada = {
             epocaId: nome ? idParaNome(nome) : null,
@@ -2016,6 +2053,25 @@ export function migrarEpocas(dbRef) {
     });
 }
 migrarEpocas(db);
+
+// Vários Períodos Biográficos por texto: `epocaRetratada.epocaId` (um só) e
+// `epocaRetratada.recorte` viram `epocaRetratada.periodos`, lista de
+// `{ epocaId, recorte }` (o recorte passa a ser por período). `inicio`, `fim` e
+// `na` seguem no texto. Sem período, a lista fica vazia (o objeto continua se
+// houver datas ou N/A). Com `cadastro`, tira id que não existe mais.
+// Idempotente; backups antigos continuam abrindo.
+export function migrarPeriodosBiograficosMultiplos(itens, cadastro = null) {
+    (itens || []).forEach((item) => {
+        const er = item.epocaRetratada;
+        if (!er) return;
+        item.epocaRetratada = {
+            periodos: periodosDaEpocaRetratada(er, cadastro),
+            inicio: er.inicio || null,
+            fim: er.fim || null,
+            na: !!er.na,
+        };
+    });
+}
 
 // Helper compartilhado por migrarGruposAutorId/migrarEpocasAutorId
 // abaixo: Victor Leme como Autor padrão de backfill (único autor com
@@ -2248,7 +2304,7 @@ export function obterGrupoPaiValido(dbRef, grupoId, autorId, paiIdCandidato) {
 // Biográfico" do modal de Poema — texto digitado, resolvido/criado no
 // submit, mesmo caminho de obterOuCriarAutorPorNome (não chip de lista,
 // já que só existe uma Época por poema).
-export function obterOuCriarEpocaPorNome(nome, autorId) {
+export function obterOuCriarEpocaPorNome(nome, autorId, { evento = false } = {}) {
     const nomeLimpo = String(nome ?? '').trim();
     if (!nomeLimpo) return null;
     let epoca = db.epocas.find((e) => e.nome === nomeLimpo && e.autorId == autorId);
@@ -2265,6 +2321,7 @@ export function obterOuCriarEpocaPorNome(nome, autorId) {
             pessoasEnvolvidas: [],
             relacoes: [],
             pertenceA: [],
+            ...(evento ? { evento: true } : {}),
         };
         db.epocas.push(epoca);
     }
@@ -2274,7 +2331,7 @@ export function obterOuCriarEpocaPorNome(nome, autorId) {
 // Mesmo padrão de obterOuCriarEpocaPorNome, pro cadastro central de
 // Período Histórico — mais simples (sem o texto de relacionamento, que não se
 // aplica a um período histórico).
-export function obterOuCriarPeriodoHistoricoPorNome(nome) {
+export function obterOuCriarPeriodoHistoricoPorNome(nome, { evento = false } = {}) {
     const nomeLimpo = String(nome ?? '').trim();
     if (!nomeLimpo) return null;
     let periodo = db.periodosHistoricos.find((p) => p.nome === nomeLimpo);
@@ -2288,6 +2345,9 @@ export function obterOuCriarPeriodoHistoricoPorNome(nome) {
             fim: null,
             pertenceA: [],
             fontes: [],
+            esferas: [],
+            categorias: [],
+            ...(evento ? { evento: true } : {}),
         };
         db.periodosHistoricos.push(periodo);
     }
@@ -2375,10 +2435,32 @@ export function migrarPeriodosHistoricosEmbutidos(periodosHistoricos, ocultos = 
             inicio: _dataParcialPeriodoHistoricoDoSeed(modelo.ini, modelo.iniAprox),
             fim: _dataParcialPeriodoHistoricoDoSeed(modelo.fim, modelo.fimAprox),
             fontes: fontesDeFabricaDoPeriodoHistorico(modelo.nome),
+            ...(modelo.evento ? { evento: true } : {}),
         });
     });
 }
 migrarPeriodosHistoricosEmbutidos(db.periodosHistoricos, db.periodosHistoricosOcultos);
+
+// Evento de fábrica, uma única vez por acervo (16/10/2026). `evento` é
+// ausente quando não é evento (nunca gravado como `false`), então "só marcar
+// o indefinido" remarcaria o período toda vez que a pessoa o desmarcasse. A
+// marca `eventoDeFabricaAplicado` separa os dois casos: na primeira vez, o
+// período de fábrica que o seed define como evento (hoje só a Semana de Arte
+// Moderna) e ainda sem marca ganha `evento: true`; depois disso nada é
+// tocado, nem um período desmarcado de propósito. Cadastro da própria pessoa
+// (`embutido === false`) nunca é tocado. Idempotente.
+export function aplicarEventoDeFabricaUmaVez(banco) {
+    if (banco.eventoDeFabricaAplicado === true) return;
+    const nomesEvento = new Set(
+        DADOS_SEED_PERIODOS_HISTORICOS.filter((m) => m.evento).map((m) => m.nome),
+    );
+    (banco.periodosHistoricos || []).forEach((p) => {
+        if (p.embutido !== true || !nomesEvento.has(p.nome)) return;
+        if (p.evento === undefined) p.evento = true;
+    });
+    banco.eventoDeFabricaAplicado = true;
+}
+aplicarEventoDeFabricaUmaVez(db);
 
 // Fontes (14/10/2026): campo que nunca existiu no registro de fábrica (casado
 // por nome, como a região) recebe as fontes do seed uma única vez. Depois
@@ -2451,6 +2533,11 @@ export function migrarHierarquiaPeriodosHistoricos(periodosHistoricos) {
     return sanearHierarquiaDePeriodos(periodosHistoricos || []);
 }
 migrarHierarquiaPeriodosHistoricos(db.periodosHistoricos);
+// Esfera e Categoria (15/10/2026): depois dos períodos de fábrica (é a
+// migração deles que cria os que faltam), porque a classificação de fábrica
+// é casada por nome. Ver periodos-historicos-campos.js.
+migrarClassificacaoPeriodosHistoricos(db.periodosHistoricos);
+migrarOpcoesPeriodoHistorico(db);
 
 // "Faz parte de" entre Períodos Biográficos (`db.epocas`): mesmo `pertenceA` do
 // Histórico (lista de ids de pais, o primeiro é o principal). Registro antigo
@@ -2465,6 +2552,8 @@ export function migrarHierarquiaPeriodosBiograficos(epocas) {
 // quais ids de período ainda existem.
 migrarPeriodosHistoricosMultiplos(db.poemas, db.periodosHistoricos);
 migrarPeriodosHistoricosMultiplos(db.prosas, db.periodosHistoricos);
+migrarPeriodosBiograficosMultiplos(db.poemas);
+migrarPeriodosBiograficosMultiplos(db.prosas);
 
 // Período Biográfico (`epocas`) ganhou datas oficiais no cadastro
 // (`inicio`/`fim`, datas parciais { dia, mes, ano } — mesmo formato de
@@ -2652,6 +2741,8 @@ export function migrarAssuntos(assuntos) {
 }
 migrarAssuntos(db.assuntos);
 sincronizarTemas(db);
+sincronizarEtiquetas(db);
+sincronizarTagClusters(db);
 sincronizarLocais(db);
 sincronizarPersonagens(db);
 sincronizarAncorasEco(db);
@@ -2911,6 +3002,8 @@ export function save() {
     sortElementos(db.elementos, db);
 
     sincronizarTemas(db);
+    sincronizarEtiquetas(db);
+    sincronizarTagClusters(db);
     sincronizarLocais(db);
     sincronizarPersonagens(db);
     sincronizarAncorasEco(db);
@@ -2967,6 +3060,7 @@ export async function importarDB(novoDb) {
     db.autores = novoDb.autores || [];
     db.epocas = novoDb.epocas || [];
     db.opcoesPeriodoBiografico = novoDb.opcoesPeriodoBiografico || null;
+    db.opcoesPeriodoHistorico = novoDb.opcoesPeriodoHistorico || null;
     // `|| SEED_PERIODOS_HISTORICOS()` (não `|| []`) de propósito, mesmo
     // raciocínio do comentário de movimentosEscolas logo abaixo: um
     // backup tirado antes deste item do roadmap não tem a chave e deve
@@ -2987,12 +3081,19 @@ export async function importarDB(novoDb) {
     migrarAssuntos(db.assuntos);
     db.temas = novoDb.temas || [];
     sincronizarTemas(db);
+    // Só cadastro aqui; a conversão dos textos acontece depois de
+    // migrarSinalizacoes e migrarReconhecimentos (mais abaixo), porque um
+    // backup antigo ainda traz o campo `sinalizacoes` único.
+    db.etiquetas = Array.isArray(novoDb.etiquetas) ? novoDb.etiquetas : [];
+    db.tagClusters = Array.isArray(novoDb.tagClusters) ? novoDb.tagClusters : [];
     db.locais = novoDb.locais || [];
     sincronizarLocais(db);
     db.personagens = novoDb.personagens || [];
     sincronizarPersonagens(db);
     db.ecosIgnorados = novoDb.ecosIgnorados || [];
     db.padroesColunas = limparPadroesColunas(novoDb.padroesColunas);
+    db.padroesColunasFabricaVersao = Number(novoDb.padroesColunasFabricaVersao) || 0;
+    aplicarPadroesColunasDeFabrica(db);
     sincronizarAncorasEco(db);
     sincronizarParesIgnorados(db);
     db.escansoes = novoDb.escansoes || [];
@@ -3027,6 +3128,8 @@ export async function importarDB(novoDb) {
     // ao mexer neste bloco pra Épocas, sem relação direta com o item 3.
     migrarReconhecimentos(db.poemas);
     migrarReconhecimentos(db.prosas);
+    sincronizarEtiquetas(db);
+    sincronizarTagClusters(db);
     migrarEpocas(db);
     migrarDatasPeriodoHistorico(db.periodosHistoricos);
     migrarPeriodosHistoricosEmbutidos(db.periodosHistoricos, db.periodosHistoricosOcultos);
@@ -3034,8 +3137,12 @@ export async function importarDB(novoDb) {
     migrarRegiaoPeriodoHistorico(db.periodosHistoricos);
     migrarAproxPeriodosHistoricos(db.periodosHistoricos);
     migrarHierarquiaPeriodosHistoricos(db.periodosHistoricos);
+    migrarClassificacaoPeriodosHistoricos(db.periodosHistoricos);
+    migrarOpcoesPeriodoHistorico(db);
     migrarPeriodosHistoricosMultiplos(db.poemas, db.periodosHistoricos);
     migrarPeriodosHistoricosMultiplos(db.prosas, db.periodosHistoricos);
+    migrarPeriodosBiograficosMultiplos(db.poemas);
+    migrarPeriodosBiograficosMultiplos(db.prosas);
     migrarDatasEpoca(db.epocas);
     migrarCamposPeriodoBiografico(db.epocas);
     migrarOpcoesPeriodoBiografico(db);
@@ -3044,6 +3151,8 @@ export async function importarDB(novoDb) {
     migrarMovimentosEscolasEmbutidos(db.movimentosEscolas, db.movimentosEscolasOcultos);
     db.programaDeFabricaAplicado = novoDb.programaDeFabricaAplicado === true;
     aplicarProgramaDeFabricaUmaVez(db);
+    db.eventoDeFabricaAplicado = novoDb.eventoDeFabricaAplicado === true;
+    aplicarEventoDeFabricaUmaVez(db);
     migrarMovimentosEscolasIds(db.autores);
     migrarMovimentosEscolasIds(db.poemas);
     migrarMovimentosEscolasIds(db.prosas);
@@ -3317,7 +3426,7 @@ export function calcularImpactoExclusaoAutor(dbRef, autorId) {
  * pra uma Época já removida do cadastro. Ver histórico no .md de status.
  */
 export function calcularImpactoExclusaoEpoca(dbRef, epocaId) {
-    const acha = (item) => item.epocaRetratada?.epocaId == epocaId;
+    const acha = (item) => periodosBiograficosDoItem(item).some((x) => x.epocaId == epocaId);
     return {
         poemasIds: (dbRef.poemas || []).filter(acha).map((p) => p.id),
         prosasIds: (dbRef.prosas || []).filter(acha).map((p) => p.id),
@@ -3479,9 +3588,26 @@ export function mesclarEpocas(dbRef, origemId, destinoId) {
 
     ['poemas', 'prosas'].forEach((col) => {
         (dbRef[col] || []).forEach((it) => {
-            if (it.epocaRetratada?.epocaId == origemId) {
-                it.epocaRetratada.epocaId = destinoId;
-            }
+            if (!it.epocaRetratada) return;
+            const lista = periodosBiograficosDoItem(it);
+            if (!lista.some((x) => x.epocaId == origemId)) return;
+            // Se o texto já tinha o destino, os dois viram um só (o recorte do
+            // destino vale; se ele não tinha, herda o da origem).
+            const jaTemDestino = lista.some((x) => x.epocaId == destinoId);
+            const novaLista = [];
+            lista.forEach((x) => {
+                if (x.epocaId == origemId) {
+                    if (jaTemDestino) {
+                        const dest = lista.find((y) => y.epocaId == destinoId);
+                        if (!dest.recorte && x.recorte) dest.recorte = x.recorte;
+                        return;
+                    }
+                    novaLista.push({ epocaId: destinoId, recorte: x.recorte });
+                } else {
+                    novaLista.push(x);
+                }
+            });
+            definirPeriodosBiograficosDoItem(it, novaLista);
         });
     });
 
@@ -3590,6 +3716,8 @@ export function mesclarPeriodosHistoricos(dbRef, origemId, destinoId) {
     // Fontes: as duas listas, sem repetir a mesma obra do mesmo autor; o
     // destino manda (vale a nota e o ano dele).
     destino.fontes = unirFontes(destino.fontes, origem.fontes);
+    // Esfera e Categoria: a soma das duas listas, sem repetir.
+    mesclarClassificacaoDosPeriodosHistoricos(destino, origem);
     mesclarHierarquiaDePeriodos(dbRef.periodosHistoricos, origem, destino);
     dbRef.periodosHistoricos = dbRef.periodosHistoricos.filter((p) => p.id != origemId);
 }
@@ -3904,9 +4032,20 @@ function _removerParaExclusao(col, id) {
         epocasDoAutor.forEach((e) => {
             ['poemas', 'prosas'].forEach((itemCol) => {
                 (db[itemCol] || []).forEach((it) => {
-                    if (it.epocaRetratada?.epocaId == e.id) {
-                        vinculosEpocaAutorRemovidos.push({ itemCol, itemId: it.id, epocaId: e.id });
-                        it.epocaRetratada.epocaId = null;
+                    const lista = periodosBiograficosDoItem(it);
+                    const indice = lista.findIndex((x) => x.epocaId == e.id);
+                    if (indice !== -1) {
+                        vinculosEpocaAutorRemovidos.push({
+                            itemCol,
+                            itemId: it.id,
+                            epocaId: e.id,
+                            indice,
+                            recorte: lista[indice].recorte,
+                        });
+                        definirPeriodosBiograficosDoItem(
+                            it,
+                            lista.filter((x) => x.epocaId != e.id),
+                        );
                     }
                 });
             });
@@ -3931,9 +4070,20 @@ function _removerParaExclusao(col, id) {
         pertenceAEpocasAlteradas = retirarPeriodoDaHierarquia(db.epocas, id, paisDoPeriodoExcluido);
         ['poemas', 'prosas'].forEach((itemCol) => {
             (db[itemCol] || []).forEach((it) => {
-                if (it.epocaRetratada?.epocaId == id) {
-                    vinculosEpocaRemovidos.push({ itemCol, itemId: it.id, epocaId: id });
-                    it.epocaRetratada.epocaId = null;
+                const lista = periodosBiograficosDoItem(it);
+                const indice = lista.findIndex((x) => x.epocaId == id);
+                if (indice !== -1) {
+                    vinculosEpocaRemovidos.push({
+                        itemCol,
+                        itemId: it.id,
+                        epocaId: id,
+                        indice,
+                        recorte: lista[indice].recorte,
+                    });
+                    definirPeriodosBiograficosDoItem(
+                        it,
+                        lista.filter((x) => x.epocaId != id),
+                    );
                 }
             });
         });
@@ -4297,14 +4447,17 @@ function _restaurar(removido) {
         if (it) (it.gruposDiretos ||= []).push(grupoId);
     });
     if (epocasAutorRemovidas?.length) db.epocas.push(...epocasAutorRemovidas);
-    (vinculosEpocaAutorRemovidos || []).forEach(({ itemCol, itemId, epocaId }) => {
+    const devolverEpocaAoTexto = ({ itemCol, itemId, epocaId, indice, recorte }) => {
         const it = db[itemCol]?.find((i) => i.id == itemId);
-        if (it && it.epocaRetratada) it.epocaRetratada.epocaId = epocaId;
-    });
-    (vinculosEpocaRemovidos || []).forEach(({ itemCol, itemId, epocaId }) => {
-        const it = db[itemCol]?.find((i) => i.id == itemId);
-        if (it && it.epocaRetratada) it.epocaRetratada.epocaId = epocaId;
-    });
+        if (!it || !it.epocaRetratada) return;
+        const lista = periodosBiograficosDoItem(it);
+        if (lista.some((x) => x.epocaId == epocaId)) return;
+        const pos = Number.isInteger(indice) ? Math.min(indice, lista.length) : lista.length;
+        lista.splice(pos, 0, { epocaId, recorte: recorte || null });
+        definirPeriodosBiograficosDoItem(it, lista);
+    };
+    (vinculosEpocaAutorRemovidos || []).forEach(devolverEpocaAoTexto);
+    (vinculosEpocaRemovidos || []).forEach(devolverEpocaAoTexto);
     (vinculosPeriodoHistoricoRemovidos || []).forEach(
         ({ itemCol, itemId, periodoHistoricoId, indice }) => {
             const it = db[itemCol]?.find((i) => i.id == itemId);

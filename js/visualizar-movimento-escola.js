@@ -15,7 +15,8 @@ import { db } from './db.js';
 import { editarMovimentoEscola } from './forms.js';
 import { textoDaRegiao } from './regiao.js';
 import { listaFontesHtml, normalizarFontes } from './fontes-corrente.js';
-import { escapeHtml, formatarIntervaloMovimentoEscola } from './utils.js';
+import { escapeHtml, formatarIntervaloMovimentoEscola, comDuracao } from './utils.js';
+import { opcoesDuracao } from './fuso-horario.js';
 import {
     caminhoDaCorrente,
     filhosDaCorrente,
@@ -77,7 +78,12 @@ export function renderVisualizacaoMovimentoEscolaHtml(
     const m = movimento || {};
     let html = '';
 
-    const intervalo = formatarIntervaloMovimentoEscola(m);
+    const intervalo = comDuracao(
+        formatarIntervaloMovimentoEscola(m),
+        m.inicio,
+        m.fim,
+        opcoesDuracao(m),
+    );
     html += linhaMetaHtml('Período', intervalo !== '—' ? intervalo : '');
     html += linhaMetaHtml('Tipo', m.tipo);
     html += linhaMetaHtml('Faz parte de', pai);

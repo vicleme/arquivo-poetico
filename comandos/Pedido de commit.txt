@@ -1,0 +1,3 @@
+Eis o diff.
+
+Forneça Summary e Description para esse commit, em campos copiáveis separados, em inglês, commit único, seguindo conventional commits.

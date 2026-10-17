@@ -196,13 +196,15 @@ describe('Período Histórico (lista de períodos por texto)', () => {
 describe('Período Biográfico (Época pertence ao Autor)', () => {
     beforeEach(montarBase);
 
+    const ids = (item) => item.epocaRetratada.periodos.map((x) => x.epocaId);
+
     it('usa a Época do Autor do texto, não a homônima de outro Autor', () => {
         const doUm = texto(1);
         const doDois = texto(2, { autoria: [{ autorId: 2 }] });
         const plano = planejarAplicacaoPeriodo('epoca', [doUm, doDois], 'Juventude');
         aplicarPlanoPeriodo('epoca', plano, 'Juventude');
-        assert.equal(doUm.epocaRetratada.epocaId, 100);
-        assert.equal(doDois.epocaRetratada.epocaId, 101);
+        assert.deepEqual(ids(doUm), [100]);
+        assert.deepEqual(ids(doDois), [101]);
         assert.equal(db.epocas.length, 3, 'nenhuma Época nova');
     });
 
@@ -213,7 +215,7 @@ describe('Período Biográfico (Época pertence ao Autor)', () => {
         aplicarPlanoPeriodo('epoca', plano, 'Exílio');
         const nova = db.epocas.find((e) => e.nome === 'Exílio');
         assert.equal(nova.autorId, 2);
-        assert.equal(a.epocaRetratada.epocaId, nova.id);
+        assert.deepEqual(ids(a), [nova.id]);
     });
 
     it('vários textos do mesmo Autor compartilham a Época criada', () => {
@@ -222,7 +224,7 @@ describe('Período Biográfico (Época pertence ao Autor)', () => {
         // Mesmo lote: o segundo texto não pode criar uma segunda "Exílio".
         aplicarPlanoPeriodo('epoca', planejarAplicacaoPeriodo('epoca', [a, b], 'Exílio'), 'Exílio');
         assert.equal(db.epocas.filter((e) => e.nome === 'Exílio').length, 1);
-        assert.equal(a.epocaRetratada.epocaId, b.epocaRetratada.epocaId);
+        assert.deepEqual(ids(a), ids(b));
     });
 
     it('conta quantas Épocas novas o lote criaria (uma por Autor)', () => {
@@ -239,22 +241,20 @@ describe('Período Biográfico (Época pertence ao Autor)', () => {
         assert.equal(plano.alterar.length, 0);
     });
 
-    it('preserva datas, recorte e N/A que o texto já tinha', () => {
+    it('preserva datas e N/A que o texto já tinha', () => {
         const a = texto(1, {
             epocaRetratada: {
-                epocaId: null,
+                periodos: [],
                 inicio: { ano: 2001 },
                 fim: { ano: 2003 },
-                recorte: 'momento',
                 na: false,
             },
         });
         aplicarPlanoPeriodo('epoca', planejarAplicacaoPeriodo('epoca', [a], 'Luto'), 'Luto');
         assert.deepEqual(a.epocaRetratada, {
-            epocaId: 102,
+            periodos: [{ epocaId: 102, recorte: null }],
             inicio: { ano: 2001 },
             fim: { ano: 2003 },
-            recorte: 'momento',
             na: false,
         });
     });
@@ -263,37 +263,58 @@ describe('Período Biográfico (Época pertence ao Autor)', () => {
         const a = texto(1);
         aplicarPlanoPeriodo('epoca', planejarAplicacaoPeriodo('epoca', [a], 'Luto'), 'Luto');
         assert.deepEqual(a.epocaRetratada, {
+            periodos: [{ epocaId: 102, recorte: null }],
             inicio: null,
             fim: null,
-            recorte: null,
             na: false,
-            epocaId: 102,
         });
     });
 
-    it('mantém outra Época já definida, a menos que sobrescrever', () => {
-        const a = texto(1, { epocaRetratada: { epocaId: 100 } });
-        const mantido = planejarAplicacaoPeriodo('epoca', [a], 'Luto');
-        assert.equal(mantido.jaPreenchidos, 1);
-        assert.equal(mantido.alterar.length, 0);
-        const troca = planejarAplicacaoPeriodo('epoca', [a], 'Luto', { sobrescrever: true });
-        aplicarPlanoPeriodo('epoca', troca, 'Luto');
-        assert.equal(a.epocaRetratada.epocaId, 102);
+    it('é aditivo: soma o período sem tirar o que já estava e sem mexer no recorte dele', () => {
+        const a = texto(1, {
+            epocaRetratada: { periodos: [{ epocaId: 100, recorte: 'repercussão' }] },
+        });
+        const plano = planejarAplicacaoPeriodo('epoca', [a], 'Luto');
+        assert.equal(plano.jaPreenchidos, 0);
+        assert.equal(plano.alterar.length, 1);
+        aplicarPlanoPeriodo('epoca', plano, 'Luto');
+        assert.deepEqual(a.epocaRetratada.periodos, [
+            { epocaId: 100, recorte: 'repercussão' },
+            { epocaId: 102, recorte: null },
+        ]);
+    });
+
+    it('"sobrescrever" é ignorado: não existe mais substituir em Período Biográfico', () => {
+        const a = texto(1, { epocaRetratada: { periodos: [{ epocaId: 100, recorte: null }] } });
+        const plano = planejarAplicacaoPeriodo('epoca', [a], 'Luto', { sobrescrever: true });
+        aplicarPlanoPeriodo('epoca', plano, 'Luto');
+        assert.deepEqual(ids(a), [100, 102]);
+    });
+
+    it('aceita o formato antigo (epocaId e recorte direto no objeto) e o converte', () => {
+        const a = texto(1, { epocaRetratada: { epocaId: 100, recorte: 'momento' } });
+        aplicarPlanoPeriodo('epoca', planejarAplicacaoPeriodo('epoca', [a], 'Luto'), 'Luto');
+        assert.deepEqual(a.epocaRetratada.periodos, [
+            { epocaId: 100, recorte: 'momento' },
+            { epocaId: 102, recorte: null },
+        ]);
+        assert.equal(a.epocaRetratada.epocaId, undefined);
+        assert.equal(a.epocaRetratada.recorte, undefined);
     });
 
     it('já estar com a mesma Época conta como jaIguais', () => {
-        const a = texto(1, { epocaRetratada: { epocaId: 102 } });
+        const a = texto(1, { epocaRetratada: { periodos: [{ epocaId: 102, recorte: null }] } });
         const plano = planejarAplicacaoPeriodo('epoca', [a], 'Luto');
         assert.equal(plano.jaIguais, 1);
+        assert.equal(plano.alterar.length, 0);
     });
 
     it('remover: sem N/A nem datas, epocaRetratada volta a null', () => {
         const a = texto(1, {
             epocaRetratada: {
-                epocaId: 102,
+                periodos: [{ epocaId: 102, recorte: 'momento' }],
                 inicio: null,
                 fim: null,
-                recorte: 'momento',
                 na: false,
             },
         });
@@ -305,20 +326,32 @@ describe('Período Biográfico (Época pertence ao Autor)', () => {
     it('remover: com datas, só desvincula a Época e guarda o resto', () => {
         const a = texto(1, {
             epocaRetratada: {
-                epocaId: 102,
+                periodos: [{ epocaId: 102, recorte: null }],
                 inicio: { ano: 2001 },
                 fim: null,
-                recorte: null,
                 na: false,
             },
         });
         aplicarRemocaoPeriodo('epoca', planejarRemocaoPeriodo('epoca', [a], 'Luto'), 'Luto');
-        assert.equal(a.epocaRetratada.epocaId, null);
+        assert.deepEqual(a.epocaRetratada.periodos, []);
         assert.deepEqual(a.epocaRetratada.inicio, { ano: 2001 });
     });
 
+    it('remover tira só o período citado; os outros ficam com o próprio recorte', () => {
+        const a = texto(1, {
+            epocaRetratada: {
+                periodos: [
+                    { epocaId: 100, recorte: 'momento' },
+                    { epocaId: 102, recorte: 'repercussão' },
+                ],
+            },
+        });
+        aplicarRemocaoPeriodo('epoca', planejarRemocaoPeriodo('epoca', [a], 'Luto'), 'Luto');
+        assert.deepEqual(a.epocaRetratada.periodos, [{ epocaId: 100, recorte: 'momento' }]);
+    });
+
     it('remover não toca em texto com outra Época', () => {
-        const a = texto(1, { epocaRetratada: { epocaId: 100 } });
+        const a = texto(1, { epocaRetratada: { periodos: [{ epocaId: 100, recorte: null }] } });
         const plano = planejarRemocaoPeriodo('epoca', [a], 'Luto');
         assert.equal(plano.alterar.length, 0);
         assert.equal(plano.naoTinham, 1);

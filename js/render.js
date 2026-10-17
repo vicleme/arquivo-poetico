@@ -34,6 +34,8 @@ import {
 } from './render-listas.js';
 import { renderLocais } from './ui-locais.js';
 import { renderPersonagens } from './ui-personagens.js';
+import { renderEtiquetas } from './etiquetas-aba.js';
+import { renderTagClusters } from './tag-clusters-aba.js';
 import { popularSeletorEstrutura, renderEstrutura } from './render-estrutura.js';
 
 export function renderLists() {
@@ -50,6 +52,8 @@ export function renderLists() {
     renderAssuntos();
     renderLocais();
     renderTemas();
+    renderEtiquetas();
+    renderTagClusters();
     renderSonoridade();
     renderEstruturaTextual();
     renderMoldes();

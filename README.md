@@ -93,6 +93,8 @@ npm run format:check   # prettier --check .
 ├── README.md
 ├── README.pt-br.md
 ├── CONTRIBUTING.md / CONTRIBUTING.pt-br.md
+├── CLAUDE.md                 → Instructions for Claude (working rules and a map of
+│                                the maintenance and planning files)
 ├── LICENSE
 ├── package.json / package-lock.json  → Scripts (`npm test`, `npm run lint`,
 │                                        `npm run format`) and dev dependencies
@@ -120,7 +122,8 @@ npm run format:check   # prettier --check .
 │   ├── etiquetas-sinalizacoes-for-ai.md / etiquetas-sinalizacoes-for-ai-pt-br.md
 │   │                          → Logic of the archive's tags ("Etiquetas"
 │   │                            in the UI; formerly "Sinalizações") — which category each one
-│   │                            represents
+│   │                            represents, and how tags are stored (registry with ids)
+│   │                            and exported (names)
 │   ├── export-to-ia.md / export-to-ia-pt-br.md
 │   │                          → Nested vs. flat export format for use with
 │   │                            an AI (see "Main features")
@@ -153,12 +156,17 @@ npm run format:check   # prettier --check .
 │
 ├── manutencao/                → Internal development documentation (not a
 │   │                            usage guide — see "docs/" above)
-│   ├── status.md              → Short checklist of what's done/open/pending
-│   │                            manual testing, per session
-│   ├── schema.md               → Breakdown of every field in the data model
-│   ├── decisoes.md             → Reasoning behind product/schema decisions
-│   └── licoes-de-sessao.md     → Known risks and pitfalls when resuming a
-│                                  development session
+│   ├── status.md              → "Estado atual" (current state) at the top; below,
+│   │                            history of what was closed and browser-check scripts
+│   ├── schema.md              → Breakdown of every field in the data model
+│   ├── decisoes.md            → Reasoning behind product/schema decisions
+│   ├── licoes-de-sessao.md    → Known risks and pitfalls when resuming a
+│   │                            development session
+│   ├── criacao-molde.md       → Design of the Criação (Moldes) tab
+│   └── progressao-morfofuncional.md → Design of the Morphofunctional Progression
+│
+├── planejamento/              → Central plan of the phases, the plan of the phase
+│                                in progress, and ideas not yet in a phase
 │
 ├── js/                       → All app logic (ES Modules)
 │   ├── main.js               → Entry point; wires the HTML onclick="" handlers to
@@ -254,6 +262,32 @@ npm run format:check   # prettier --check .
 │   │                           separate downloads, the person's choice
 │   ├── nesting.js            → Hierarchical nesting logic (used by
 │   │                           exportar.js)
+│   ├── Remaining modules, grouped by topic (each file name says what it does;
+│   │   each header explains it in detail):
+│   │   · Registries: temas.js, etiquetas.js, tag-clusters*.js, locais.js, regiao.js, personagens.js,
+│   │     correntes-hierarquia.js, periodos-*-hierarquia.js,
+│   │     periodo-biografico-*.js, periodo-historico-*.js,
+│   │     periodos-historicos-campos.js, fontes-corrente*.js,
+│   │     fontes-periodo-historico*.js, pessoas-viagem.js
+│   │   · Bulk edit: selecao-massa.js, massa-valores.js,
+│   │     campo-etiquetas-massa.js, campos-preenchiveis.js, *-massa.js and
+│   │     *-acoes.js (one pair per tab)
+│   │   · Echo anchors and suggestions: alvos-conceitos.js, ancora-eco*.js,
+│   │     sugestao-ecos.js, ui-sugestao-ecos.js, grupo-personagens.js
+│   │   · Statistics: estatisticas-dados*.js (aggregations),
+│   │     estatisticas-tela-*.js (one screen per tab), estatisticas-filtros.js
+│   │   · Export, import and backup: exportar-csv.js, exportar-assuntos.js, exportar-tag-clusters.js, importar-tag-clusters.js,
+│   │     exportar-autores.js, exportar-estrutura-textual.js,
+│   │     ocultos-exportacao.js, download-abrangente.js, importar-aditivo.js,
+│   │     ui-importar-aditivo.js, importar-sonoridade.js, extras-backup.js,
+│   │     ui-extras-backup.js, pacote-texto.js, ui-biblioteca*.js
+│   │   · Viewing: visualizar-*.js (Author, Group, Currents, Periods,
+│   │     Text structure), lista-textos-periodo.js, faixa-origem.js
+│   │   · Creation and Morphofunctionality: editor-molde.js, molde-json.js,
+│   │     ui-molde-json.js, estrutura-textual.js
+│   │   · Help: modo-aprendizado.js, tour*.js, central-ajuda.js,
+│   │     faq-conteudo.js, como-faco-passos.js
+│   │   · Other: fuso-horario.js, ocultas-periodos.js
 │   └── utils.js              → Pure functions with no internal dependencies;
 │                               includes the delete-confirmation modal,
 │                               ID generation (gerarId), HTML escaping
@@ -278,10 +312,23 @@ npm run format:check   # prettier --check .
 │   ├── modal-visualizar-sonoridade.html → "View" modal for a scansion (see
 │   │                            visualizar-sonoridade.js)
 │   ├── modal-visualizar.html  → Poem/Prose "View" modal (see visualizar.js)
+│   ├── (other modals) Subject, Theme, Place, Character, Historical Period,
+│   │   Literary Currents (Movimento/Escola), Period options, Mold,
+│   │   Morphofunctionality, Structure template, Echo suggestions,
+│   │   Empty the collection, Help Center, Learning Mode, and the read-only
+│   │   "View" modals for Author, Group, Currents, Periods and Text structure
 │   └── modal-mesclar.html     → Generic Merge modal (Person/Era)
 │
 ├── scripts/
+│   ├── montar-pacote.js       → Builds the Library packages (biblioteca/*.json)
+│   │                            from biblioteca/fontes/
 │   └── normalizar-datas.js    → One-off data maintenance script (dates)
+│
+├── biblioteca/                → Public-domain text packages (one .json per
+│   │                            author, plus indice.json), built by montar-pacote.js
+│   └── fontes/                → Source of each package (.md + .meta.json)
+│
+├── prototipos/                → Standalone pages outside the app (e.g. cifra-minima.html)
 │
 ├── tests/                     → `node --test` (see "Test suite" above)
 │   └── helpers/
@@ -323,10 +370,45 @@ npm run format:check   # prettier --check .
   offers **Merge now** (unites the two, moving links over), **Save anyway**
   (keeps them separate), or **Cancel**. See `docs/pessoas-papeis-for-ai.md`
   for the full logic behind assigning roles to each Person.
-- **Eras**: its own registry (name, relationship context, notes) that a
-  Poem/Prose can reference under "Depicted Era", with a start/end (partial
-  dates) and a `recorte` — "moment" (just the event) or "aftermath" (its
-  later effect).
+- **Biographical Periods** (formerly "Eras"): its own registry (`db.epocas`)
+  with start/end (partial dates, "ongoing"), Sphere, Category, people involved
+  and the relations between them (Nature and Bond), a hierarchical "Part of",
+  an event mark, and a hide option. A Poem/Prose references one or more
+  periods, each with a `recorte` — "moment" (just the event) or "aftermath"
+  (its later effect).
+- **Historical Periods**: factory periods plus your own, with a hierarchy
+  ("Part of"), Sphere and Category (their own editable vocabulary), Region,
+  sources and an event mark. On texts, Sphere and Category show up as derived
+  columns and searches.
+- **Literary Currents** (formerly Movement/School): a hierarchical registry
+  with Type, Program, Aesthetic stance, divisions (phase, generation, strand,
+  regional variant), Region of origin, Values, Themes, Techniques, Composition
+  types, Mottos, Manifestos and sources; it ships with factory currents.
+- **Themes and Subjects**: a Theme is a central registry entry, with a role
+  (principal, secondary or undefined) on each text, grouped into Subjects; it
+  suggests duplicates and merges with Undo.
+- **Places**: a hierarchical registry (a Place can have several parents), used
+  in Territoriality and "Place where it was written", in the modal's "Region
+  and Language" group next to Language (with role and dialect).
+- **Characters**: a central registry with roles and centrality on each text,
+  participation per book and an optional anchor on Echoes; Echo suggestions
+  on demand. See `docs/personagens-for-ai.md`.
+- **Bulk edit**: Poems, Prose, People, Biographical Periods, Historical
+  Periods and Currents have per-card or per-row selection and an action bar
+  (Add, Remove, Set or Clear, depending on the field), always with **Undo**.
+  List fields use tags, as in the modals.
+- **Statistics**: several tabs, including Cruzamentos (a Themes by People or
+  Groups matrix), Place and language, Literary Currents and Characters;
+  clicking a bar opens the matching list of texts.
+- **Data**: a Library tab (public-domain text packages to import), Additive
+  Import (adds to the collection without erasing anything) and Backup and
+  recovery (automatic snapshots, an extras file and **Empty the collection**,
+  with a mandatory backup and a confirmation word).
+- **Creation (Molds)**: a verse grid driven by a structural goal (form,
+  rhymes), with rhyme pairing and promotion of a Mold to a Poem; a Mold can be
+  exported and imported as JSON.
+- **Learning Mode and Help Center**: a guided tour of the app, an FAQ and
+  "How do I..." walkthroughs.
 - **Tags and people**: theme tags and "dedicated to / about whom" as
   reusable labels, with `<datalist>` suggestions. See
   `docs/etiquetas-sinalizacoes-for-ai.md` for the full logic behind each
@@ -632,6 +714,16 @@ Data lives in two distinct places in the browser:
 | `elementos`      | Text Elements (introduction, multimedia, interlude, afterword...).                                                         |
 | `itensColetanea` | Anthology Items: reference an existing Poem/Prose (`refId`/`refTipo`) or carry anthology-exclusive text (`textoOverride`). |
 | `coletaneas`     | **Legacy** — not populated by the current tab; kept only for compatibility when importing old backups.                     |
+
+`db` currently has 30 top-level keys (the official list, with the category of
+each, is in `js/inventario-armazenamento.js`). Besides those in the table
+above: `pessoas`, `grupos`, `autores`, `epocas` (Biographical Periods),
+`opcoesPeriodoBiografico`, `opcoesPeriodoHistorico`, `assuntos`, `temas`,
+`locais`, `personagens`, `ecosIgnorados`, `escansoes`, `estruturasTextuais`,
+`moldes`, `padroesColunas`, and the factory registries `periodosHistoricos`,
+`movimentosEscolas` (Literary Currents) and `templatesEstrutura`, each with
+its record of deletions (`*Ocultos`), plus `programaDeFabricaAplicado`.
+Field by field: `manutencao/schema.md`.
 
 ### IndexedDB (`arquivoPoetico_capas`)
 

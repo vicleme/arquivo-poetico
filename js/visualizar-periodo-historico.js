@@ -15,7 +15,8 @@ import { db, textosDoPeriodoHistorico } from './db.js';
 import { editarPeriodoHistorico } from './forms.js';
 import { textoDaRegiao } from './regiao.js';
 import { listaFontesHtml, normalizarFontes } from './fontes-corrente.js';
-import { escapeHtml, formatarIntervaloPeriodoHistorico } from './utils.js';
+import { escapeHtml, formatarIntervaloPeriodoHistorico, comDuracao } from './utils.js';
+import { opcoesDuracao } from './fuso-horario.js';
 import {
     caminhoDoPeriodo,
     filhosDoPeriodo,
@@ -54,9 +55,16 @@ export function renderVisualizacaoPeriodoHistoricoHtml(
     const ph = periodo || {};
     let html = '';
 
-    const intervalo = formatarIntervaloPeriodoHistorico(ph);
+    const intervalo = comDuracao(
+        formatarIntervaloPeriodoHistorico(ph),
+        ph.inicio,
+        ph.fim,
+        opcoesDuracao(ph),
+    );
     html += linhaMetaHtml('Período', intervalo !== '—' ? intervalo : '');
     html += linhaMetaHtml('Região', textoDaRegiao(ph.regiao));
+    html += linhaMetaHtml('Esfera', (ph.esferas || []).join(', '));
+    html += linhaMetaHtml('Categoria', (ph.categorias || []).join(', '));
     html += linhaMetaHtml('Faz parte de', caminhos[0] || '');
     if (caminhos.length > 1) html += linhaMetaHtml('Também em', caminhos.slice(1).join('; '));
 

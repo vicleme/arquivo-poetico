@@ -368,8 +368,8 @@ describe('exportar movimentos/escolas para a importação aditiva', () => {
             movimentosEscolasIds: [12, 11],
         });
         assert.deepEqual(r.movimentosEscolasResolvidos, [
-            { id: 12, nome: 'Simbolismo' },
-            { id: 11, nome: 'Modernismo' },
+            { id: 12, nome: 'Simbolismo', caminho: 'Simbolismo' },
+            { id: 11, nome: 'Modernismo', caminho: 'Modernismo' },
         ]);
 
         const destino = {

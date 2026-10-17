@@ -679,3 +679,80 @@ describe('modal Esferas e vínculos (Bloco 3)', () => {
         assert.equal(rotulo.masculino, 'Mentor de');
     });
 });
+
+describe('modal: seção Categorias (lista própria, 15/10/2026)', () => {
+    beforeEach(() => {
+        montarBanco();
+        db.opcoesPeriodoBiografico.categorias = ['Crise', 'Conquista', 'Recomeço'];
+        db.epocas[0].categorias = ['Crise'];
+        renderEpocas();
+        initOpcoesPeriodoBiografico();
+    });
+
+    const abrir = async () => {
+        const { abrirOpcoesPeriodoBiografico } =
+            await import('../js/periodo-biografico-opcoes-ui.js');
+        await abrirOpcoesPeriodoBiografico();
+    };
+    const nomes = () =>
+        [...document.querySelectorAll('#opb-categorias-lista [data-valor]')].map(
+            (l) => l.dataset.valor,
+        );
+    const linha = (valor) =>
+        document.querySelector(`#opb-categorias-lista [data-valor="${valor}"]`);
+    const botao = (el, texto) =>
+        [...el.querySelectorAll('button')].find((b) => b.textContent === texto);
+
+    it('lista as categorias em ordem alfabética, com a contagem de uso', async () => {
+        await abrir();
+        // 'Luto' não está na lista, mas outro período o usa: valor em uso sempre aparece.
+        assert.deepEqual(nomes(), ['Conquista', 'Crise', 'Luto', 'Recomeço']);
+        assert.match(linha('Crise').textContent, /1 período/);
+        assert.match(linha('Conquista').textContent, /sem uso/);
+    });
+
+    it('adicionar valor novo entra na lista de Categoria e nas sugestões do modal do período', async () => {
+        await abrir();
+        definir('opb-categorias-novo', 'Suspensão ou espera');
+        document.getElementById('opb-categorias-adicionar').click();
+        assert.ok(db.opcoesPeriodoBiografico.categorias.includes('Suspensão ou espera'));
+        assert.ok(nomes().includes('Suspensão ou espera'));
+    });
+
+    it('a categoria em uso não pode ser apagada; a sem uso pode', async () => {
+        await abrir();
+        assert.equal(botao(linha('Crise'), 'Apagar').disabled, true);
+        botao(linha('Conquista'), 'Apagar').onclick();
+        assert.ok(!db.opcoesPeriodoBiografico.categorias.includes('Conquista'));
+        assert.ok(!nomes().includes('Conquista'));
+    });
+
+    it('renomear propaga para os períodos', async () => {
+        await abrir();
+        linha('Crise').querySelector('input').value = 'Crise aguda';
+        botao(linha('Crise'), 'Renomear').onclick();
+        assert.deepEqual(db.epocas[0].categorias, ['Crise aguda']);
+        assert.ok(db.opcoesPeriodoBiografico.categorias.includes('Crise aguda'));
+    });
+
+    it('o check aplica renomeação de categoria e categoria nova de uma vez', async () => {
+        await abrir();
+        linha('Recomeço').querySelector('input').value = 'Retomada';
+        definir('opb-categorias-novo', 'Despertar ou conscientização');
+        document.getElementById('opb-salvar-tudo').click();
+        assert.ok(db.opcoesPeriodoBiografico.categorias.includes('Retomada'));
+        assert.ok(!db.opcoesPeriodoBiografico.categorias.includes('Recomeço'));
+        assert.ok(db.opcoesPeriodoBiografico.categorias.includes('Despertar ou conscientização'));
+    });
+
+    it('categoria digitada e ainda não aplicada conta como pendência', async () => {
+        const { rastreadorOpcoesPeriodoBiografico: r } =
+            await import('../js/periodo-biografico-opcoes-ui.js');
+        await abrir();
+        assert.equal(r.estaSujo(), false);
+        definir('opb-categorias-novo', 'Nova');
+        assert.equal(r.estaSujo(), true);
+        r.marcarLimpo();
+        assert.equal(r.estaSujo(), false);
+    });
+});

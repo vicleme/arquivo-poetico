@@ -1,8 +1,10 @@
 // ============================================================
 // selecao-massa.js — Seleção múltipla e ações em massa de Poemas e
 // Prosas na listagem: checkboxes (com shift-click pra intervalo),
-// barra de ações, edição em massa (Pessoas/Sinalizações/Gênero/
-// Datas/Preencher campo), exclusão em massa e exportação da seleção.
+// barra de ações, edição em massa (Pessoas/Sinalizações/Gênero/Temas/
+// Datas/Preencher campo/Períodos), exclusão em massa e exportação da
+// seleção. Pessoas, Sinalizações, Gênero, Temas e o nome dos Períodos usam
+// o campo de etiquetas (chips) dos modais; ver "Campos de etiquetas" abaixo.
 //
 // Todas as ações que existem nas duas tabelas são uma função só,
 // parametrizada por `tabela` ('poemas'|'prosas') — ver CONFIG_SELECAO
@@ -39,11 +41,21 @@ import {
 } from './utils.js';
 import {
     nomesDeTemasDigitados,
-    sugestoesDeTemasEncadeadas,
     temasInexistentes,
     adicionarTemasAosTextos,
     removerTemasDosTextos,
 } from './temas.js';
+import {
+    prepararEtiquetasMassa,
+    lerEtiquetasMassa,
+    limparEtiquetasMassa,
+} from './campo-etiquetas-massa.js';
+import { fraseValores } from './massa-valores.js';
+import {
+    ETIQUETAS_CATEGORIAS,
+    adicionarEtiquetasAosTextos,
+    removerEtiquetasDosTextos,
+} from './etiquetas.js';
 import {
     CAMPOS_PREENCHIVEIS,
     obterCampoPreenchivel,
@@ -132,6 +144,64 @@ function rotuloSelecao(tabela, n) {
     const c = cfg(tabela);
     const plural = n !== 1 ? 's' : '';
     return `${c.singular}${plural} selecionad${c.genero}${plural}`;
+}
+
+// ─── Campos de etiquetas (chips) da barra ─────────────
+// Pessoas, Sinalizações, Gênero, Temas e o Nome de Períodos e movimentos
+// usam o mesmo campo de etiquetas dos modais e das barras de Período
+// Biográfico, Período Histórico e Correntes (campo-etiquetas-massa.js):
+// Enter ou vírgula confirmam, o × tira, texto colado com vírgula vira várias
+// etiquetas. Aplicar e Remover levam todas as etiquetas de uma vez, numa
+// confirmação só. O campo de texto fica sempre dentro de um bloco com o
+// <div id="{id}-chips"> acima dele (index.html e painel de Períodos).
+//
+// `chave` diz de que "campo" são as etiquetas: ao mudar (categoria de
+// Sinalização, tipo de período), as etiquetas esvaziam, porque o que valia
+// para Tom não vale para Estilo.
+function ligarEtiquetas(inputId, chave, placeholder) {
+    prepararEtiquetasMassa({ inputId, chipsId: `${inputId}-chips`, chave, placeholder });
+}
+
+// Etiquetas atuais, já com o que estiver digitado e ainda não confirmado.
+// Liga o campo antes de ler (é idempotente), assim a ação funciona mesmo que
+// ninguém tenha aberto a barra ou o painel antes.
+function lerEtiquetas(inputId, chave) {
+    ligarEtiquetas(inputId, chave);
+    return lerEtiquetasMassa(inputId);
+}
+
+function categoriaSinalDaBarra(c) {
+    return (
+        document.getElementById(`bulk-sinal-categoria${c.sufixoDom}`)?.value || 'sinalizacoesEstilo'
+    );
+}
+
+// Liga os campos de etiquetas que ficam direto na barra (Temas vive num
+// painel, mas o campo é o mesmo e entra aqui também).
+function ligarCamposDaBarra(tabela) {
+    const c = cfg(tabela);
+    ligarEtiquetas(`bulk-pessoa-input${c.sufixoDom}`, 'pessoa', 'Pessoa: Enter adiciona');
+    ligarEtiquetas(
+        `bulk-sinal-input${c.sufixoDom}`,
+        categoriaSinalDaBarra(c),
+        'Etiqueta: Enter adiciona',
+    );
+    ligarEtiquetas(`bulk-tema-input${c.sufixoDom}`, 'tema', 'Tema: Enter adiciona');
+    if (tabela === 'prosas') {
+        ligarEtiquetas('bulk-genero-input-prosa', 'genero', 'Gênero: Enter adiciona');
+    }
+}
+
+// "as etiquetas "A" e "B"" / "a etiqueta "A"" (e o mesmo para gênero).
+function rotuloEtiquetasMsg(valores, singular, pluralForma) {
+    return `${valores.length > 1 ? pluralForma : singular} ${fraseValores(valores)}`;
+}
+
+// "A", "B" ou "C": para as frases de "nenhum dos selecionados está com ...".
+function fraseOu(valores) {
+    const citados = valores.map((v) => `"${v}"`);
+    if (citados.length <= 1) return citados.join('');
+    return `${citados.slice(0, -1).join(', ')} ou ${citados.at(-1)}`;
 }
 
 // Âncora do último checkbox marcado/desmarcado em cada aba — usada pro
@@ -259,6 +329,7 @@ export function atualizarBarraSelecao(tabela) {
     if (!barra) return;
     if (c.selecao.size > 0) {
         barra.classList.remove('hidden');
+        ligarCamposDaBarra(tabela);
         if (contador)
             contador.innerText = `${c.selecao.size} ${rotuloSelecao(tabela, c.selecao.size)}`;
     } else {
@@ -305,15 +376,16 @@ function removerPessoaEmCampo(item, pessoaId) {
 
 export function aplicarPessoaEmMassa(tabela) {
     const c = cfg(tabela);
-    const input = document.getElementById(`bulk-pessoa-input${c.sufixoDom}`);
-    const nome = (input?.value || '').trim();
-    if (!nome || c.selecao.size === 0) return;
+    const inputId = `bulk-pessoa-input${c.sufixoDom}`;
+    const nomes = lerEtiquetas(inputId, 'pessoa');
+    if (!nomes.length || c.selecao.size === 0) return;
 
     const n = c.selecao.size;
     abrirModalConfirmacao({
-        titulo: `Dedicar a "${nome}"`,
+        titulo:
+            nomes.length === 1 ? `Dedicar a "${nomes[0]}"` : `Dedicar a ${nomes.length} pessoas`,
         rotulo: 'Ação em massa',
-        mensagem: `Isso vai adicionar "${nome}" aos dedicados de ${n} ${rotuloSelecao(tabela, n)}.`,
+        mensagem: `Isso vai adicionar ${fraseValores(nomes)} aos dedicados de ${n} ${rotuloSelecao(tabela, n)}.`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#e11d48',
         // Ação puramente aditiva (nada é removido) — foca Confirmar pra
@@ -321,11 +393,12 @@ export function aplicarPessoaEmMassa(tabela) {
         // de Tab/shift-Tab ou mouse (ver nota em abrirModalConfirmacao).
         focarConfirmar: true,
         onConfirmar: () => {
-            const pessoa = obterOuCriarPessoaPorNome(nome);
+            const pessoas = nomes.map((nome) => obterOuCriarPessoaPorNome(nome));
             db[tabela].forEach((item) => {
-                if (c.selecao.has(item.id)) adicionarPessoaEmCampo(item, pessoa.id);
+                if (!c.selecao.has(item.id)) return;
+                pessoas.forEach((pessoa) => adicionarPessoaEmCampo(item, pessoa.id));
             });
-            if (input) input.value = '';
+            limparEtiquetasMassa(inputId);
             c.selecao.clear();
             save(); // dispara re-render via evento db:saved
         },
@@ -334,31 +407,48 @@ export function aplicarPessoaEmMassa(tabela) {
 
 export function removerPessoaEmMassa(tabela) {
     const c = cfg(tabela);
-    const input = document.getElementById(`bulk-pessoa-input${c.sufixoDom}`);
-    const nome = (input?.value || '').trim();
-    if (!nome || c.selecao.size === 0) return;
+    const inputId = `bulk-pessoa-input${c.sufixoDom}`;
+    const nomes = lerEtiquetas(inputId, 'pessoa');
+    if (!nomes.length || c.selecao.size === 0) return;
 
-    const pessoa = db.pessoas.find((p) => p.nome === nome);
-    if (!pessoa) {
-        // Nome não bate com nenhuma pessoa cadastrada — nada a remover
-        // (diferente de "adicionar", aqui não faz sentido criar só pra
-        // desvincular em seguida).
-        if (input) input.value = '';
-        return;
+    // Nome que não bate com nenhuma pessoa cadastrada não tem o que
+    // remover (diferente de "adicionar", aqui não faz sentido criar só pra
+    // desvincular em seguida): é ignorado e avisado.
+    const conhecidas = [];
+    const desconhecidas = [];
+    nomes.forEach((nome) => {
+        const pessoa = db.pessoas.find((p) => p.nome === nome);
+        if (pessoa) conhecidas.push(pessoa);
+        else desconhecidas.push(nome);
+    });
+    if (!conhecidas.length) {
+        limparEtiquetasMassa(inputId);
+        return mostrarAviso(
+            `${nomes.length === 1 ? 'Essa pessoa não está' : 'Essas pessoas não estão'} no cadastro.`,
+            'info',
+        );
     }
 
+    const nomesConhecidos = conhecidas.map((p) => p.nome);
+    const aviso = desconhecidas.length
+        ? ` ${fraseValores(desconhecidas)} ${desconhecidas.length === 1 ? 'não está cadastrada e será ignorada' : 'não estão cadastradas e serão ignoradas'}.`
+        : '';
     const n = c.selecao.size;
     abrirModalConfirmacao({
-        titulo: `Remover "${nome}"`,
+        titulo:
+            nomesConhecidos.length === 1
+                ? `Remover "${nomesConhecidos[0]}"`
+                : `Remover ${nomesConhecidos.length} pessoas`,
         rotulo: 'Ação em massa',
-        mensagem: `Isso vai remover "${nome}" dos dedicados de ${n} ${rotuloSelecao(tabela, n)}.`,
+        mensagem: `Isso vai remover ${fraseValores(nomesConhecidos)} dos dedicados de ${n} ${rotuloSelecao(tabela, n)}.${aviso}`,
         textoConfirmar: 'Remover',
         corConfirmar: '#dc2626',
         onConfirmar: () => {
             db[tabela].forEach((item) => {
-                if (c.selecao.has(item.id)) removerPessoaEmCampo(item, pessoa.id);
+                if (!c.selecao.has(item.id)) return;
+                conhecidas.forEach((pessoa) => removerPessoaEmCampo(item, pessoa.id));
             });
-            if (input) input.value = '';
+            limparEtiquetasMassa(inputId);
             c.selecao.clear();
             save();
         },
@@ -373,36 +463,53 @@ const SLUG_POR_CAMPO_SINAL = Object.fromEntries(
     Object.entries(SINALIZACOES_CATEGORIAS).map(([slug, campo]) => [campo, slug]),
 );
 
+// Campo → categoria do cadastro de Etiquetas (só as sete; Territorialidade
+// segue pelo caminho antigo, com o espelho dos Locais).
+const CATEGORIA_DE_ETIQUETA_POR_CAMPO = Object.fromEntries(
+    Object.entries(ETIQUETAS_CATEGORIAS).map(([categoria, campo]) => [campo, categoria]),
+);
+
 export function atualizarListaSinalBulk(selectEl, inputId, sufixo = '') {
     const input = document.getElementById(inputId);
     if (!input || !selectEl) return;
     const slug = SLUG_POR_CAMPO_SINAL[selectEl.value] || 'estilo';
     input.setAttribute('list', `sugestoes-sinais-${slug}-bulk${sufixo}`);
+    // As etiquetas valem para uma categoria só: trocar de categoria esvazia.
+    ligarEtiquetas(inputId, selectEl.value);
 }
 
 export function aplicarSinalEmMassa(tabela) {
     const c = cfg(tabela);
-    const input = document.getElementById(`bulk-sinal-input${c.sufixoDom}`);
-    const campo =
-        document.getElementById(`bulk-sinal-categoria${c.sufixoDom}`)?.value ||
-        'sinalizacoesEstilo';
-    const tag = (input?.value || '').trim();
-    if (!tag || c.selecao.size === 0) return;
+    const inputId = `bulk-sinal-input${c.sufixoDom}`;
+    const campo = categoriaSinalDaBarra(c);
+    const categoria = CATEGORIA_DE_ETIQUETA_POR_CAMPO[campo] || null;
+    const tags = lerEtiquetas(inputId, campo);
+    if (!tags.length || c.selecao.size === 0) return;
 
     const n = c.selecao.size;
     abrirModalConfirmacao({
-        titulo: `Marcar "${tag}"`,
+        titulo: tags.length === 1 ? `Marcar "${tags[0]}"` : `Marcar ${tags.length} etiquetas`,
         rotulo: 'Ação em massa',
-        mensagem: `Isso vai adicionar a etiqueta "${tag}" a ${n} ${rotuloSelecao(tabela, n)}.`,
+        mensagem: `Isso vai adicionar ${rotuloEtiquetasMsg(tags, 'a etiqueta', 'as etiquetas')} a ${n} ${rotuloSelecao(tabela, n)}.`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#2563eb',
         // Ação aditiva — ver nota em aplicarPessoaEmMassa/abrirModalConfirmacao.
         focarConfirmar: true,
         onConfirmar: () => {
             db[tabela].forEach((item) => {
-                if (c.selecao.has(item.id)) adicionarValorEmCampo(item, campo, tag);
+                if (!c.selecao.has(item.id)) return;
+                if (!categoria) tags.forEach((tag) => adicionarValorEmCampo(item, campo, tag));
             });
-            if (input) input.value = '';
+            // Etiquetas por id (Fase 16): escreve pelo cadastro, de uma vez.
+            if (categoria) {
+                adicionarEtiquetasAosTextos(
+                    db,
+                    db[tabela].filter((item) => c.selecao.has(item.id)),
+                    categoria,
+                    tags,
+                );
+            }
+            limparEtiquetasMassa(inputId);
             c.selecao.clear();
             save();
         },
@@ -411,25 +518,33 @@ export function aplicarSinalEmMassa(tabela) {
 
 export function removerSinalEmMassa(tabela) {
     const c = cfg(tabela);
-    const input = document.getElementById(`bulk-sinal-input${c.sufixoDom}`);
-    const campo =
-        document.getElementById(`bulk-sinal-categoria${c.sufixoDom}`)?.value ||
-        'sinalizacoesEstilo';
-    const tag = (input?.value || '').trim();
-    if (!tag || c.selecao.size === 0) return;
+    const inputId = `bulk-sinal-input${c.sufixoDom}`;
+    const campo = categoriaSinalDaBarra(c);
+    const categoria = CATEGORIA_DE_ETIQUETA_POR_CAMPO[campo] || null;
+    const tags = lerEtiquetas(inputId, campo);
+    if (!tags.length || c.selecao.size === 0) return;
 
     const n = c.selecao.size;
     abrirModalConfirmacao({
-        titulo: `Remover "${tag}"`,
+        titulo: tags.length === 1 ? `Remover "${tags[0]}"` : `Remover ${tags.length} etiquetas`,
         rotulo: 'Ação em massa',
-        mensagem: `Isso vai remover a etiqueta "${tag}" de ${n} ${rotuloSelecao(tabela, n)}.`,
+        mensagem: `Isso vai remover ${rotuloEtiquetasMsg(tags, 'a etiqueta', 'as etiquetas')} de ${n} ${rotuloSelecao(tabela, n)}.`,
         textoConfirmar: 'Remover',
         corConfirmar: '#dc2626',
         onConfirmar: () => {
             db[tabela].forEach((item) => {
-                if (c.selecao.has(item.id)) removerValorDeCampo(item, campo, tag);
+                if (!c.selecao.has(item.id)) return;
+                if (!categoria) tags.forEach((tag) => removerValorDeCampo(item, campo, tag));
             });
-            if (input) input.value = '';
+            if (categoria) {
+                removerEtiquetasDosTextos(
+                    db,
+                    db[tabela].filter((item) => c.selecao.has(item.id)),
+                    categoria,
+                    tags,
+                );
+            }
+            limparEtiquetasMassa(inputId);
             c.selecao.clear();
             save();
         },
@@ -437,8 +552,8 @@ export function removerSinalEmMassa(tabela) {
 }
 
 // ─── Temas em massa ───────────────────────────────────
-// Botão "Temas ▾" da barra: painel com um campo que aceita VÁRIOS temas
-// separados por vírgula, aplicados (ou removidos) numa confirmação só. A
+// Botão "Temas ▾" da barra: painel com um campo de etiquetas que aceita
+// VÁRIOS temas, aplicados (ou removidos) numa confirmação só. A
 // escrita é por id, pelo cadastro (ver adicionarTemasAosTextos em
 // temas.js), então um tema novo é criado no cadastro e os papéis que o
 // texto já tinha ficam como estão. Tema NÃO é mais uma categoria das
@@ -452,14 +567,13 @@ function nomesTemasCadastrados() {
     return (db.temas || []).map((t) => t.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
-// Refaz as sugestões do campo a cada tecla (cada opção leva o que já foi
-// digitado antes da última vírgula); ver sugestoesDeTemasEncadeadas.
+// Sugestões do campo: os nomes do cadastro. Quem já virou etiqueta pode
+// aparecer de novo na lista, mas repetir não faz nada (o campo ignora).
 export function atualizarSugestoesTemasMassa(tabela) {
     const ids = idsTemas(cfg(tabela));
-    const input = document.getElementById(ids.input);
     const datalist = document.getElementById(ids.sugestoes);
-    if (!input || !datalist) return;
-    datalist.innerHTML = sugestoesDeTemasEncadeadas(input.value, nomesTemasCadastrados())
+    if (!datalist) return;
+    datalist.innerHTML = nomesTemasCadastrados()
         .map((v) => `<option value="${escapeHtml(v)}"></option>`)
         .join('');
 }
@@ -467,6 +581,7 @@ export function atualizarSugestoesTemasMassa(tabela) {
 // Chamado ao abrir o painel: o cadastro pode ter mudado desde a última vez.
 export function prepararPainelTemasMassa(tabela) {
     atualizarSugestoesTemasMassa(tabela);
+    ligarEtiquetas(idsTemas(cfg(tabela)).input, 'tema', 'Tema: Enter adiciona');
 }
 
 function listaTemasParaMensagem(nomes) {
@@ -476,16 +591,16 @@ function listaTemasParaMensagem(nomes) {
 }
 
 function lerTemasDigitados(tabela) {
-    const ids = idsTemas(cfg(tabela));
-    const input = document.getElementById(ids.input);
-    return { input, nomes: nomesDeTemasDigitados(input?.value) };
+    const inputId = idsTemas(cfg(tabela)).input;
+    // As etiquetas passam por nomesDeTemasDigitados só para limpar os nomes e
+    // tirar repetição por chave (sem caixa e sem acento), como no cadastro.
+    return { inputId, nomes: nomesDeTemasDigitados(lerEtiquetas(inputId, 'tema').join(',')) };
 }
 
 export function aplicarTemaEmMassa(tabela) {
     const c = cfg(tabela);
-    const { input, nomes } = lerTemasDigitados(tabela);
-    if (!nomes.length)
-        return mostrarAviso('Digite ao menos um tema (vários, separados por vírgula).');
+    const { inputId, nomes } = lerTemasDigitados(tabela);
+    if (!nomes.length) return mostrarAviso('Digite ao menos um tema (Enter confirma cada um).');
     if (c.selecao.size === 0) return;
 
     const n = c.selecao.size;
@@ -507,7 +622,7 @@ export function aplicarTemaEmMassa(tabela) {
         onConfirmar: () => {
             const itens = db[tabela].filter((item) => c.selecao.has(item.id));
             const r = adicionarTemasAosTextos(db, itens, nomes);
-            if (input) input.value = '';
+            limparEtiquetasMassa(inputId);
             c.selecao.clear();
             save();
             mostrarAviso(
@@ -522,15 +637,14 @@ export function aplicarTemaEmMassa(tabela) {
 
 export function removerTemaEmMassa(tabela) {
     const c = cfg(tabela);
-    const { input, nomes } = lerTemasDigitados(tabela);
-    if (!nomes.length)
-        return mostrarAviso('Digite ao menos um tema (vários, separados por vírgula).');
+    const { inputId, nomes } = lerTemasDigitados(tabela);
+    if (!nomes.length) return mostrarAviso('Digite ao menos um tema (Enter confirma cada um).');
     if (c.selecao.size === 0) return;
 
     const conhecidos = nomes.filter((nome) => !temasInexistentes(db, [nome]).length);
     if (!conhecidos.length) {
         // Nome sem registro no cadastro: nada a remover (e remover nunca cria).
-        if (input) input.value = '';
+        limparEtiquetasMassa(inputId);
         return mostrarAviso(
             `${nomes.length === 1 ? 'Esse tema não existe' : 'Esses temas não existem'} no cadastro.`,
             'info',
@@ -550,7 +664,7 @@ export function removerTemaEmMassa(tabela) {
         onConfirmar: () => {
             const itens = db[tabela].filter((item) => c.selecao.has(item.id));
             const r = removerTemasDosTextos(db, itens, conhecidos);
-            if (input) input.value = '';
+            limparEtiquetasMassa(inputId);
             c.selecao.clear();
             save();
             mostrarAviso(
@@ -935,24 +1049,26 @@ export function limparCampoEmMassa(tabela) {
 // Sem equivalente em Poemas — não entra na unificação acima (ver nota
 // no topo do arquivo).
 export function aplicarGeneroEmMassaProsa() {
-    const input = document.getElementById('bulk-genero-input-prosa');
-    const genero = (input?.value || '').trim();
-    if (!genero || selecaoProsas.size === 0) return;
+    const inputId = 'bulk-genero-input-prosa';
+    const generos = lerEtiquetas(inputId, 'genero');
+    if (!generos.length || selecaoProsas.size === 0) return;
 
     const n = selecaoProsas.size;
     abrirModalConfirmacao({
-        titulo: `Marcar "${genero}"`,
+        titulo:
+            generos.length === 1 ? `Marcar "${generos[0]}"` : `Marcar ${generos.length} gêneros`,
         rotulo: 'Ação em massa',
-        mensagem: `Isso vai adicionar o gênero "${genero}" a ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
+        mensagem: `Isso vai adicionar ${rotuloEtiquetasMsg(generos, 'o gênero', 'os gêneros')} a ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#d97706',
         // Ação aditiva — ver nota em aplicarPessoaEmMassa/abrirModalConfirmacao.
         focarConfirmar: true,
         onConfirmar: () => {
             db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) adicionarValorEmCampo(pr, 'genero', genero);
+                if (!selecaoProsas.has(pr.id)) return;
+                generos.forEach((genero) => adicionarValorEmCampo(pr, 'genero', genero));
             });
-            if (input) input.value = '';
+            limparEtiquetasMassa(inputId);
             selecaoProsas.clear();
             save();
         },
@@ -960,22 +1076,24 @@ export function aplicarGeneroEmMassaProsa() {
 }
 
 export function removerGeneroEmMassaProsa() {
-    const input = document.getElementById('bulk-genero-input-prosa');
-    const genero = (input?.value || '').trim();
-    if (!genero || selecaoProsas.size === 0) return;
+    const inputId = 'bulk-genero-input-prosa';
+    const generos = lerEtiquetas(inputId, 'genero');
+    if (!generos.length || selecaoProsas.size === 0) return;
 
     const n = selecaoProsas.size;
     abrirModalConfirmacao({
-        titulo: `Remover "${genero}"`,
+        titulo:
+            generos.length === 1 ? `Remover "${generos[0]}"` : `Remover ${generos.length} gêneros`,
         rotulo: 'Ação em massa',
-        mensagem: `Isso vai remover o gênero "${genero}" de ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
+        mensagem: `Isso vai remover ${rotuloEtiquetasMsg(generos, 'o gênero', 'os gêneros')} de ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
         textoConfirmar: 'Remover',
         corConfirmar: '#dc2626',
         onConfirmar: () => {
             db.prosas.forEach((pr) => {
-                if (selecaoProsas.has(pr.id)) removerValorDeCampo(pr, 'genero', genero);
+                if (!selecaoProsas.has(pr.id)) return;
+                generos.forEach((genero) => removerValorDeCampo(pr, 'genero', genero));
             });
-            if (input) input.value = '';
+            limparEtiquetasMassa(inputId);
             selecaoProsas.clear();
             save();
         },
@@ -993,15 +1111,13 @@ const idsPeriodos = (c) => ({
     tipo: `bulk-periodo-tipo${c.sufixoDom}`,
     nome: `bulk-periodo-nome${c.sufixoDom}`,
     sugestoes: `bulk-periodo-sugestoes${c.sufixoDom}`,
-    sobrescreverWrap: `bulk-periodo-sobrescrever-wrap${c.sufixoDom}`,
-    sobrescrever: `bulk-periodo-sobrescrever${c.sufixoDom}`,
     dica: `bulk-periodo-dica${c.sufixoDom}`,
 });
 
 const DICAS_PERIODO = {
     movimento:
         'Aditivo: acrescenta o movimento sem tirar os que o texto já tem. "Remover" tira só este.',
-    epoca: 'A Época pertence a um Autor: vale a do Autor de cada texto (se ainda não existir, é criada para o primeiro Autor do texto). Texto sem Autor é pulado. Datas e recorte que o texto já tinha são mantidos.',
+    epoca: 'Aditivo: acrescenta o período sem tirar os que o texto já tem (o recorte fica vazio; ajuste no texto). A Época pertence a um Autor: vale a do Autor de cada texto (se ainda não existir, é criada para o primeiro Autor do texto). Texto sem Autor é pulado. "Remover" tira só este. Trocar um por outro é remover e aplicar.',
     periodoHistorico:
         'Aditivo: acrescenta o período sem tirar os que o texto já tem. "Remover" tira só este.',
 };
@@ -1018,22 +1134,18 @@ function opcoesPeriodo(tipo) {
         .join('');
 }
 
-// Atualiza o que depende do tipo escolhido: sugestões, placeholder,
-// dica e a caixa "substituir" (Movimento/Escola é sempre aditivo).
+// Atualiza o que depende do tipo escolhido: sugestões, campo de etiquetas
+// (placeholder e esvaziar ao trocar), dica (os três campos são aditivos, sem
+// "substituir").
 function atualizarCamposPeriodo(tabela) {
     const ids = idsPeriodos(cfg(tabela));
     const tipo = tipoPeriodoSelecionado(tabela);
     const datalist = document.getElementById(ids.sugestoes);
     if (datalist) datalist.innerHTML = opcoesPeriodo(tipo);
-    const input = document.getElementById(ids.nome);
-    if (input) input.placeholder = `Nome do ${rotuloTipoPeriodoMassa(tipo)}...`;
+    // As etiquetas valem para um campo só: trocar o campo esvazia.
+    ligarEtiquetas(ids.nome, tipo, `Nome do ${rotuloTipoPeriodoMassa(tipo)}: Enter adiciona`);
     const dica = document.getElementById(ids.dica);
     if (dica) dica.textContent = DICAS_PERIODO[tipo];
-    // Corrente e Período Histórico são listas (aditivo); só Período Biográfico
-    // (id único) tem "sobrescrever".
-    document
-        .getElementById(ids.sobrescreverWrap)
-        ?.classList.toggle('hidden', tipo === 'movimento' || tipo === 'periodoHistorico');
 }
 
 export function prepararPainelPeriodosMassa(tabela) {
@@ -1054,16 +1166,12 @@ export function prepararPainelPeriodosMassa(tabela) {
                 </select>
             </div>
             <div>
-                ${rotulo('Nome')}
-                <input type="text" id="${ids.nome}" list="${ids.sugestoes}"
-                    class="text-xs p-2 min-w-[220px] mb-0"
-                    onkeydown="aoEnterAplicar(event, () => aplicarPeriodoEmMassa('${tabela}'))" />
+                ${rotulo('Nomes')}
+                <div id="${ids.nome}-chips" class="flex flex-wrap gap-1 mb-1" style="max-width: 18rem"></div>
+                <input type="text" id="${ids.nome}" list="${ids.sugestoes}" autocomplete="off"
+                    class="text-xs p-2 min-w-[220px] mb-0" />
                 <datalist id="${ids.sugestoes}"></datalist>
             </div>
-            <label id="${ids.sobrescreverWrap}" class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-300 pb-2">
-                <input type="checkbox" id="${ids.sobrescrever}" style="width: auto; margin: 0" />
-                Substituir o que já está definido
-            </label>
             <button type="button" onclick="aplicarPeriodoEmMassa('${tabela}')"
                 class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap">
                 + Aplicar
@@ -1083,15 +1191,12 @@ export function trocarTipoPeriodoMassa(tabela) {
     atualizarCamposPeriodo(tabela);
 }
 
-function lerNomePeriodo(tabela) {
-    const ids = idsPeriodos(cfg(tabela));
-    return (document.getElementById(ids.nome)?.value || '').trim();
+function lerNomesPeriodo(tabela, tipo) {
+    return lerEtiquetas(idsPeriodos(cfg(tabela)).nome, tipo);
 }
 
-function limparNomePeriodo(tabela) {
-    const ids = idsPeriodos(cfg(tabela));
-    const input = document.getElementById(ids.nome);
-    if (input) input.value = '';
+function limparNomesPeriodo(tabela) {
+    limparEtiquetasMassa(idsPeriodos(cfg(tabela)).nome);
 }
 
 export function aplicarPeriodoEmMassa(tabela) {
@@ -1099,66 +1204,87 @@ export function aplicarPeriodoEmMassa(tabela) {
     if (c.selecao.size === 0) return;
     const tipo = tipoPeriodoSelecionado(tabela);
     const rotuloTipo = rotuloTipoPeriodoMassa(tipo);
-    const nome = lerNomePeriodo(tabela);
-    if (!nome) return mostrarAviso(`Digite o nome do ${rotuloTipo}.`);
+    const nomes = lerNomesPeriodo(tabela, tipo);
+    if (!nomes.length) return mostrarAviso(`Digite o nome do ${rotuloTipo}.`);
 
-    const ids = idsPeriodos(c);
-    const sobrescrever = tipo === 'epoca' && !!document.getElementById(ids.sobrescrever)?.checked;
-    const plano = planejarAplicacaoPeriodo(tipo, itensSelecionados(tabela), nome, { sobrescrever });
+    // Cada nome é planejado sozinho, sobre o estado de agora; a confirmação
+    // é uma só para todos.
+    const itens = itensSelecionados(tabela);
+    const planos = nomes.map((nome) => ({
+        nome,
+        plano: planejarAplicacaoPeriodo(tipo, itens, nome),
+    }));
+    const comAlteracao = planos.filter(({ plano }) => plano.alterar.length > 0);
+    const varios = nomes.length > 1;
+    const somar = (campo) => planos.reduce((t, { plano }) => t + plano[campo], 0);
+    // Texto sem Autor é o mesmo para todos os nomes: não soma.
+    const semAutor = Math.max(...planos.map(({ plano }) => plano.semAutor));
+    const jaIguais = somar('jaIguais');
+    const jaPreenchidos = somar('jaPreenchidos');
 
-    if (plano.alterar.length === 0) {
+    if (comAlteracao.length === 0) {
         const motivos = [];
-        if (plano.jaIguais)
-            motivos.push(`${plano.jaIguais} já ${plural(plano.jaIguais, 'está', 'estão')} assim`);
-        if (plano.jaPreenchidos)
+        if (jaIguais) {
             motivos.push(
-                `${plano.jaPreenchidos} já ${plural(plano.jaPreenchidos, 'tem', 'têm')} outro valor`,
+                varios
+                    ? `${jaIguais} ${plural(jaIguais, 'vínculo já existia', 'vínculos já existiam')}`
+                    : `${jaIguais} já ${plural(jaIguais, 'está', 'estão')} assim`,
             );
-        if (plano.semAutor) motivos.push(`${plano.semAutor} sem Autor cadastrado no texto`);
+        }
+        if (jaPreenchidos)
+            motivos.push(`${jaPreenchidos} já ${plural(jaPreenchidos, 'tem', 'têm')} outro valor`);
+        if (semAutor) motivos.push(`${semAutor} sem Autor cadastrado no texto`);
         return mostrarAviso(
             `Nada a alterar em "${rotuloTipo}"${motivos.length ? ` (${motivos.join(', ')})` : ''}.`,
             'info',
         );
     }
 
-    const n = plano.alterar.length;
+    const n = new Set(comAlteracao.flatMap(({ plano }) => plano.alterar.map((x) => x.item.id)))
+        .size;
     const avisos = [];
     if (tipo === 'epoca') {
-        if (plano.epocasACriar) {
+        const epocasACriar = somar('epocasACriar');
+        if (epocasACriar) {
             avisos.push(
-                `${plano.epocasACriar} ${plural(plano.epocasACriar, 'Período Biográfico novo será criado', 'Períodos Biográficos novos serão criados')} (um por Autor).`,
+                `${epocasACriar} ${plural(epocasACriar, 'Período Biográfico novo será criado', 'Períodos Biográficos novos serão criados')} (um por Autor).`,
             );
         }
-    } else if (plano.cadastroNovo) {
-        avisos.push(`"${nome}" ainda não existe no cadastro e será criado.`);
+    } else {
+        const novos = planos.filter(({ plano }) => plano.cadastroNovo).map(({ nome }) => nome);
+        if (novos.length === 1) {
+            avisos.push(`"${novos[0]}" ainda não existe no cadastro e será criado.`);
+        } else if (novos.length > 1) {
+            avisos.push(`${fraseValores(novos)} ainda não existem no cadastro e serão criados.`);
+        }
     }
     const mantidos = [];
-    if (plano.jaIguais)
+    if (jaIguais)
         mantidos.push(
-            `${plano.jaIguais} ${plural(plano.jaIguais, 'já estava assim', 'já estavam assim')}`,
+            varios
+                ? `${jaIguais} ${plural(jaIguais, 'vínculo já existia', 'vínculos já existiam')}`
+                : `${jaIguais} ${plural(jaIguais, 'já estava assim', 'já estavam assim')}`,
         );
-    if (plano.jaPreenchidos)
+    if (jaPreenchidos)
         mantidos.push(
-            `${plano.jaPreenchidos} ${plural(plano.jaPreenchidos, 'já tinha outro valor e será mantido', 'já tinham outro valor e serão mantidos')}`,
+            `${jaPreenchidos} ${plural(jaPreenchidos, 'já tinha outro valor e será mantido', 'já tinham outro valor e serão mantidos')}`,
         );
-    if (plano.semAutor)
-        mantidos.push(`${plano.semAutor} ${plural(plano.semAutor, 'sem Autor', 'sem Autor')}`);
+    if (semAutor) mantidos.push(`${semAutor} ${plural(semAutor, 'sem Autor', 'sem Autor')}`);
 
     abrirModalConfirmacao({
-        titulo: `${rotuloTipo}: "${nome}"`,
+        titulo: varios ? `${rotuloTipo}: ${nomes.length} nomes` : `${rotuloTipo}: "${nomes[0]}"`,
         rotulo: 'Ação em massa',
         mensagem:
-            `Isso vai ${tipo === 'movimento' ? 'acrescentar' : 'definir'} "${nome}" em "${rotuloTipo}" de ${n} ${c.singular}${n !== 1 ? 's' : ''}.` +
+            `Isso vai acrescentar ${fraseValores(nomes)} em "${rotuloTipo}" de ${n} ${c.singular}${n !== 1 ? 's' : ''}.` +
             `${avisos.length ? ` ${avisos.join(' ')}` : ''}` +
             `${mantidos.length ? ` Pulados: ${mantidos.join('; ')}.` : ''}`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#2563eb',
-        // Só foca Confirmar quando nada é substituído (mesmo critério de
-        // aplicarPreenchimentoEmMassa).
-        focarConfirmar: !sobrescrever,
+        // Nada é substituído (os três campos são aditivos).
+        focarConfirmar: true,
         onConfirmar: () => {
-            aplicarPlanoPeriodo(tipo, plano, nome);
-            limparNomePeriodo(tabela);
+            comAlteracao.forEach(({ nome, plano }) => aplicarPlanoPeriodo(tipo, plano, nome));
+            limparNomesPeriodo(tabela);
             c.selecao.clear();
             save();
         },
@@ -1170,27 +1296,52 @@ export function removerPeriodoEmMassa(tabela) {
     if (c.selecao.size === 0) return;
     const tipo = tipoPeriodoSelecionado(tabela);
     const rotuloTipo = rotuloTipoPeriodoMassa(tipo);
-    const nome = lerNomePeriodo(tabela);
-    if (!nome) return mostrarAviso(`Digite o nome do ${rotuloTipo} a remover.`);
+    const nomes = lerNomesPeriodo(tabela, tipo);
+    if (!nomes.length) return mostrarAviso(`Digite o nome do ${rotuloTipo} a remover.`);
 
-    const plano = planejarRemocaoPeriodo(tipo, itensSelecionados(tabela), nome);
-    if (plano.alterar.length === 0) {
+    const itens = itensSelecionados(tabela);
+    const planos = nomes.map((nome) => ({
+        nome,
+        plano: planejarRemocaoPeriodo(tipo, itens, nome),
+    }));
+    const comAlteracao = planos.filter(({ plano }) => plano.alterar.length > 0);
+    if (comAlteracao.length === 0) {
         return mostrarAviso(
-            `Nada a remover: nenhum dos selecionados está com "${nome}" em "${rotuloTipo}".`,
+            `Nada a remover: nenhum dos selecionados está com ${fraseOu(nomes)} em "${rotuloTipo}".`,
             'info',
         );
     }
 
-    const n = plano.alterar.length;
+    const varios = nomes.length > 1;
+    const nomesComEfeito = comAlteracao.map(({ nome }) => nome);
+    const semEfeito = planos
+        .filter(({ plano }) => plano.alterar.length === 0)
+        .map(({ nome }) => nome);
+    const n = new Set(comAlteracao.flatMap(({ plano }) => plano.alterar.map((x) => x.item.id)))
+        .size;
+    // Um nome só: quantos dos selecionados não o tinham. Vários: só os nomes
+    // que não estavam em nenhum dos selecionados (a conta por texto não
+    // diz nada quando cada nome tem um conjunto diferente).
+    const naoTinham = varios ? 0 : comAlteracao[0].plano.naoTinham;
+    const avisoNaoTinham = naoTinham
+        ? ` ${naoTinham} ${plural(naoTinham, 'não tinha', 'não tinham')} esse valor.`
+        : '';
+    const avisoSemEfeito = semEfeito.length
+        ? ` ${fraseValores(semEfeito)} ${plural(semEfeito.length, 'não estava', 'não estavam')} em nenhum dos selecionados.`
+        : '';
+
     abrirModalConfirmacao({
-        titulo: `Remover "${nome}"`,
+        titulo:
+            nomesComEfeito.length === 1
+                ? `Remover "${nomesComEfeito[0]}"`
+                : `Remover ${nomesComEfeito.length} nomes`,
         rotulo: 'Ação em massa',
-        mensagem: `Isso vai remover "${nome}" de "${rotuloTipo}" em ${n} ${c.singular}${n !== 1 ? 's' : ''}.${plano.naoTinham ? ` ${plano.naoTinham} ${plural(plano.naoTinham, 'não tinha', 'não tinham')} esse valor.` : ''} O cadastro em si não é apagado.`,
+        mensagem: `Isso vai remover ${fraseValores(nomesComEfeito)} de "${rotuloTipo}" em ${n} ${c.singular}${n !== 1 ? 's' : ''}.${avisoNaoTinham}${avisoSemEfeito} O cadastro em si não é apagado.`,
         textoConfirmar: 'Remover',
         corConfirmar: '#dc2626',
         onConfirmar: () => {
-            aplicarRemocaoPeriodo(tipo, plano, nome);
-            limparNomePeriodo(tabela);
+            comAlteracao.forEach(({ nome, plano }) => aplicarRemocaoPeriodo(tipo, plano, nome));
+            limparNomesPeriodo(tabela);
             c.selecao.clear();
             save();
         },

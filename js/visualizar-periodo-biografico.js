@@ -20,7 +20,8 @@
 import { garantirModal, toggleModal } from './modais.js';
 import { db, calcularImpactoExclusaoEpoca } from './db.js';
 import { editarEpoca } from './forms.js';
-import { escapeHtml, formatarIntervaloPeriodoHistorico } from './utils.js';
+import { escapeHtml, formatarIntervaloPeriodoHistorico, comDuracao } from './utils.js';
+import { opcoesDuracao } from './fuso-horario.js';
 import { linhasDoPeriodoBiografico, periodosVisiveis } from './periodo-biografico-campos.js';
 import { opcoesOcultasDosPeriodos } from './ocultas-periodos.js';
 import {
@@ -75,13 +76,21 @@ export function renderVisualizacaoPeriodoBiograficoHtml(
     // não aparece (nem o nome).
     const visiveis = periodosVisiveis(dbRef.epocas, opcoesOcultasDosPeriodos());
     const datas = datasEfetivasDoPeriodo(visiveis, ep);
-    const intervalo = formatarIntervaloPeriodoHistorico(datas);
+    const intervalo = comDuracao(
+        formatarIntervaloPeriodoHistorico(datas),
+        datas.inicio,
+        datas.fim,
+        opcoesDuracao(ep),
+    );
     html += linhaMetaHtml(
         'Período',
         intervalo === '—'
             ? ''
             : datas.derivado
-              ? `${intervalo} (dos períodos de dentro)`
+              ? // Com duração já entre parênteses, a origem vem depois da vírgula.
+                intervalo.endsWith(')')
+                  ? `${intervalo}, dos períodos de dentro`
+                  : `${intervalo} (dos períodos de dentro)`
               : intervalo,
     );
     html += linhaMetaHtml('Faz parte de', caminhoDosAncestraisDoPeriodo(visiveis, ep.id));

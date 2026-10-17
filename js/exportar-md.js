@@ -33,7 +33,7 @@ import {
     formatarAutoclassificacaoTexto,
     nomePeriodoHistorico,
     periodosHistoricosIdsDoItem,
-    nomesMovimentosEscolas,
+    periodosBiograficosDoItem,
 } from './utils.js';
 import { db } from './db.js';
 import { blocosExtrasMarkdown } from './download-abrangente.js';
@@ -41,6 +41,8 @@ import { incluirOcultosNaExportacao } from './ocultos-exportacao.js';
 import { textoLocalEscrita, textoTerritorialidadeComCaminho } from './locais.js';
 import { textoPersonagensComPapel } from './personagens.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
+import { classificacaoDosPeriodosHistoricosDoTexto } from './periodos-historicos-campos.js';
+import { caminhoDaCorrente, idsDeCorrentesDeTopo, idsDeDivisoes } from './correntes-hierarquia.js';
 
 export const INFO_STATUS = {
     publicado: { emoji: '🟢', titulo: 'Publicado' },
@@ -442,45 +444,82 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
         md += linhaMeta('Primeira publicação', formatarDataParcial(item.dataPublicacao));
     }
     if (item.epocaRetratada) {
-        md += linhaMeta(
-            'Período Biográfico Retratado',
-            formatarEpocaRetratada(item.epocaRetratada, db.epocas, {
-                incluirOcultas: incluirOcultosNaExportacao(),
-            }),
-        );
+        // Períodos e Eventos em linhas separadas (F14-D4): a lista gravada é uma
+        // só, a separação vem da marca `evento` do cadastro. O intervalo De/Até
+        // é do texto inteiro e fica na linha dos períodos.
+        const opcoesEpoca = { incluirOcultas: incluirOcultosNaExportacao(), comCaminho: true };
+        const periodosTxt = formatarEpocaRetratada(item.epocaRetratada, db.epocas, {
+            ...opcoesEpoca,
+            tipo: 'periodos',
+        });
+        if (periodosTxt !== '—') md += linhaMeta('Período Biográfico Retratado', periodosTxt);
+        const eventosTxt = formatarEpocaRetratada(item.epocaRetratada, db.epocas, {
+            ...opcoesEpoca,
+            tipo: 'eventos',
+        });
+        if (eventosTxt !== '—') md += linhaMeta('Evento Biográfico Retratado', eventosTxt);
     }
     // Bloco 3: Esfera e Categoria do período (Pessoas e Vínculo não saem).
     // Período oculto não vaza na exportação: Esfera e Categoria dele ficam fora
     // (o nome já sai como "(período oculto)" em formatarEpocaRetratada).
-    const epocaAchada = item.epocaRetratada?.epocaId
-        ? db.epocas.find((e) => e.id == item.epocaRetratada.epocaId)
-        : null;
-    const epocaDoTexto =
-        epocaAchada && (incluirOcultosNaExportacao() || !epocaAchada.oculto) ? epocaAchada : null;
-    if (epocaDoTexto?.esferas?.length) {
-        md += linhaMeta('Esfera do Período Biográfico', epocaDoTexto.esferas.join(', '));
+    // Vários períodos por texto: Esfera e Categoria de todos, sem repetir.
+    const epocasDoTexto = periodosBiograficosDoItem(item)
+        .map((x) => db.epocas.find((e) => e.id == x.epocaId))
+        .filter((e) => e && (incluirOcultosNaExportacao() || !e.oculto));
+    const unicos = (campo) => [...new Set(epocasDoTexto.flatMap((e) => e[campo] || []))];
+    if (unicos('esferas').length) {
+        md += linhaMeta('Esfera do Período Biográfico', unicos('esferas').join(', '));
     }
-    if (epocaDoTexto?.categorias?.length) {
-        md += linhaMeta('Categoria do Período Biográfico', epocaDoTexto.categorias.join(', '));
+    if (unicos('categorias').length) {
+        md += linhaMeta('Categoria do Período Biográfico', unicos('categorias').join(', '));
     }
     const periodosDoTexto = periodosHistoricosIdsDoItem(item, db.periodosHistoricos);
     if (periodosDoTexto.length) {
-        md += linhaMeta(
-            'Período Histórico Retratado',
-            periodosDoTexto
+        // Períodos e Eventos em linhas separadas (F14-D4). Esfera e Categoria
+        // abaixo somam os dois, já que o evento também é um período do cadastro.
+        const caminhosDe = (tipo) =>
+            periodosHistoricosIdsDoItem(item, db.periodosHistoricos, tipo)
                 .map(
                     (id) =>
                         caminhoDoPeriodo(db.periodosHistoricos, id) ||
                         nomePeriodoHistorico(id, db.periodosHistoricos),
                 )
                 .filter(Boolean)
-                .join('; '),
+                .join('; ');
+        const soPeriodos = caminhosDe('periodos');
+        if (soPeriodos) md += linhaMeta('Período Histórico Retratado', soPeriodos);
+        const soEventos = caminhosDe('eventos');
+        if (soEventos) md += linhaMeta('Evento Histórico Retratado', soEventos);
+        const esferasHist = classificacaoDosPeriodosHistoricosDoTexto(
+            item,
+            db.periodosHistoricos,
+            'esferas',
         );
+        if (esferasHist.length) {
+            md += linhaMeta('Esfera do Período Histórico', esferasHist.join(', '));
+        }
+        const categoriasHist = classificacaoDosPeriodosHistoricosDoTexto(
+            item,
+            db.periodosHistoricos,
+            'categorias',
+        );
+        if (categoriasHist.length) {
+            md += linhaMeta('Categoria do Período Histórico', categoriasHist.join(', '));
+        }
     }
-    if (item.movimentosEscolasIds?.length) {
+    // Correntes de topo e Divisões em linhas separadas (Fase 14, etapa 2).
+    const correntesDeTopoMd = idsDeCorrentesDeTopo(db.movimentosEscolas, item.movimentosEscolasIds);
+    if (correntesDeTopoMd.length) {
         md += linhaMeta(
             'Corrente literária',
-            nomesMovimentosEscolas(item.movimentosEscolasIds, db.movimentosEscolas).join(', '),
+            correntesDeTopoMd.map((id) => caminhoDaCorrente(db.movimentosEscolas, id)).join('; '),
+        );
+    }
+    const divisoesMd = idsDeDivisoes(db.movimentosEscolas, item.movimentosEscolasIds);
+    if (divisoesMd.length) {
+        md += linhaMeta(
+            'Divisões',
+            divisoesMd.map((id) => caminhoDaCorrente(db.movimentosEscolas, id)).join('; '),
         );
     }
     // Assunto é derivado dos Temas do texto (assuntosDoTexto, utils.js),
@@ -526,7 +565,7 @@ function itemParaMarkdownDepoisDoTexto(item) {
         md += '### Intertextualidade\n\n';
         const linhaEntrada = (it) => {
             const link = it.link ? ` — [${it.linkTexto || it.link}](${it.link})` : '';
-            const nota = it.nota ? ` *(${it.nota})*` : '';
+            const nota = it.nota ? ` *(${it.nota.replace(/\s*\n\s*/g, ' ')})*` : '';
             return `${it.texto || ''}${link}${nota}`;
         };
         agruparIntertextualidadePorTipo(item.intertextualidade).forEach(
@@ -557,7 +596,7 @@ function itemParaMarkdownDepoisDoTexto(item) {
         item.hipertextualidade.forEach((h) => {
             const prefixo = h.tipo ? `**${h.tipo}:** ` : '';
             const link = h.link ? ` — [${h.linkTexto || h.link}](${h.link})` : '';
-            const nota = h.nota ? ` *(${h.nota})*` : '';
+            const nota = h.nota ? ` *(${h.nota.replace(/\s*\n\s*/g, ' ')})*` : '';
             md += `- ${prefixo}${corpoEntradaHipertextualidade(h)}${link}${nota}\n`;
         });
         md += '\n';
@@ -567,7 +606,7 @@ function itemParaMarkdownDepoisDoTexto(item) {
         md += '### Referências\n\n';
         const linhaEntrada = (it) => {
             const link = it.link ? ` — [${it.linkTexto || it.link}](${it.link})` : '';
-            const nota = it.nota ? ` *(${it.nota})*` : '';
+            const nota = it.nota ? ` *(${it.nota.replace(/\s*\n\s*/g, ' ')})*` : '';
             return `${it.texto || ''}${link}${nota}`;
         };
         agruparIntertextualidadePorTipo(item.referenciasExternas).forEach(

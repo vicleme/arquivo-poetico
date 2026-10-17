@@ -64,6 +64,37 @@ export const CATEGORIAS_FAQ = [
                 resposta:
                     'Porque essa situação não é gravada no texto: ela é calculada a partir do óbito do Autor vinculado. Corrigir a data de óbito no cadastro do Autor corrige automaticamente todos os textos dele, sem precisar mexer um por um.',
             },
+            {
+                id: 'faq-etiquetas-tags',
+                pergunta: 'O que são Etiquetas (Tags) e como são guardadas?',
+                resposta:
+                    'São as marcas de Tradição, Estilo, Relação, Sensibilidade, Tom, Domínio Imagético e Outros que você põe nos textos. Cada etiqueta existe uma vez no cadastro, na aba Etiquetas (Tags), e o texto só aponta para ela. Por isso renomear lá muda o nome em todos os textos, e duas etiquetas que dizem a mesma coisa podem ser juntadas com Mesclar. O mesmo nome pode existir em duas categorias, mas não repetido dentro de uma.',
+            },
+            {
+                id: 'faq-etiquetas-renomear-localizar',
+                pergunta:
+                    'Qual a diferença entre renomear uma etiqueta e trocá-la no Localizar e Substituir?',
+                resposta:
+                    'Renomear, na aba Etiquetas, muda a etiqueta em todos os textos de uma vez. O Localizar e Substituir mexe só nos textos que você marcar na lista: troca, naquele texto, a etiqueta pela de nome novo (criada se ainda não existe) e deixa o cadastro e os outros textos como estavam. Com o campo "Substituir por" vazio, a etiqueta sai só dos textos marcados.',
+            },
+            {
+                id: 'faq-tag-clusters',
+                pergunta: 'O que são Tag clusters (agrupamentos de etiquetas)?',
+                resposta:
+                    'São grupos de etiquetas que você monta à mão, na aba Tag clusters, para ler as Estatísticas por grupo em vez de por etiqueta. Um cluster pertence a uma categoria (Domínio Imagético, Tom, Tradição, Estilo, Relação ou Sensibilidade) e só aceita etiquetas dela. Uma etiqueta fica em um cluster só, ou em nenhum, e continua sendo etiqueta própria. O cluster não aparece nos modais nem é gravado nos textos: classifica a etiqueta em si. Por isso excluir um cluster só solta as etiquetas e nenhum texto muda.',
+            },
+            {
+                id: 'faq-tag-clusters-importar',
+                pergunta: 'Como importar vários tag clusters de uma vez?',
+                resposta:
+                    'Na aba Tag clusters, clique em Importar clusters, escolha a categoria e cole uma linha por cluster, no formato “Cluster: etiqueta, etiqueta”. Um título como “## Tom” troca a categoria dali em diante. O app cria os clusters e põe as etiquetas, reaproveita o cluster que já existe e não cria etiqueta nova: o que não existir na categoria aparece no relatório. Tudo tem Desfazer.',
+            },
+            {
+                id: 'faq-tag-clusters-contagem',
+                pergunta: 'Por que a soma dos textos dos tag clusters passa do total de textos?',
+                resposta:
+                    'Porque um texto tem várias etiquetas, e elas podem estar em clusters diferentes. O texto conta uma vez em cada cluster que tem alguma etiqueta dele, mas só uma vez por cluster, mesmo que use duas etiquetas do mesmo grupo.',
+            },
         ],
     },
     {

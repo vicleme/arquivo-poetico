@@ -33,9 +33,15 @@ import {
     periodosHistoricosIdsDoItem,
 } from './utils.js';
 import { resolverTemasEditados } from './temas.js';
+import {
+    ETIQUETAS_CATEGORIAS,
+    nomesDeEtiquetasDaOrigem,
+    resolverEtiquetasEditadas,
+} from './etiquetas.js';
 import { importarLocaisDoTexto } from './locais.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
 import { normalizarLista, registrarValoresNovos } from './periodo-biografico-campos.js';
+import { registrarValoresNovosPeriodoHistorico } from './periodos-historicos-campos.js';
 import { exibindoOcultasDosPeriodos } from './ocultas-periodos.js';
 import { importarPersonagensDoTexto } from './personagens.js';
 import { completarPessoaComFicha } from './pessoas-viagem.js';
@@ -175,6 +181,35 @@ function periodosDeOrigem(item) {
 // já com os nomes denormalizados: pessoas[].nome, autoria[].nome,
 // gruposDiretosResolvidos, livrosResolvidos, epocaRetratada.nomeEpoca,
 // periodoHistoricoNome).
+// Períodos Biográficos de um item exportado. Formato novo:
+// `epocaRetratada.periodos` (um item por período, com recorte, nome, Esfera e
+// Categoria). Arquivo antigo: `epocaId`, `nomeEpoca` e `recorte` direto no
+// objeto, que vira uma lista de um. Entrada sem id (período oculto no
+// arquivo de origem) fica de fora.
+function periodosEpocaDeOrigem(item) {
+    const er = item?.epocaRetratada;
+    if (!er) return [];
+    const lista = Array.isArray(er.periodos)
+        ? er.periodos
+        : er.epocaId != null
+          ? [
+                {
+                    epocaId: er.epocaId,
+                    nomeEpoca: er.nomeEpoca,
+                    recorte: er.recorte,
+                    esferas: er.esferas,
+                    categorias: er.categorias,
+                },
+            ]
+          : [];
+    const vistos = new Set();
+    return lista.filter((p) => {
+        if (p?.epocaId == null || vistos.has(String(p.epocaId))) return false;
+        vistos.add(String(p.epocaId));
+        return true;
+    });
+}
+
 function extrairReferencias(item, dbRef) {
     const refs = [];
 
@@ -193,17 +228,14 @@ function extrairReferencias(item, dbRef) {
         refs.push(classificarReferencia('autores', a.autorId, a.nome, dbRef.autores));
     });
 
-    if (item.epocaRetratada?.epocaId != null) {
+    // Um item de referência por período do texto.
+    periodosEpocaDeOrigem(item).forEach((p) => {
         refs.push(
-            classificarReferencia(
-                'epocaRetratada.epocaId',
-                item.epocaRetratada.epocaId,
-                item.epocaRetratada.nomeEpoca,
-                dbRef.epocas,
-                { periodos: true },
-            ),
+            classificarReferencia('epocaRetratada.epocaId', p.epocaId, p.nomeEpoca, dbRef.epocas, {
+                periodos: true,
+            }),
         );
-    }
+    });
 
     // Bloco 2e: um item de referência por período do texto, com nome e
     // caminho denormalizados por montarRegistro (exportar.js). Arquivo
@@ -356,17 +388,37 @@ export function relatorioProntoParaAplicar(relatorio) {
 // scripts/montar-pacote.js). Casa pelo id de origem primeiro e cai pro
 // nome se o id não bater; payload sem `autores` (Exportação comum)
 // devolve null e o Autor nasce só com nome, como sempre foi.
+// Esfera e Categoria do Período Histórico de origem (vêm em
+// itens[].periodosHistoricosResolvidos). Pacote antigo não tem os campos: a
+// lista sai vazia.
+function camposPeriodoHistoricoDoPayload(payload, idOrigem) {
+    const itens = Array.isArray(payload?.itens) ? payload.itens : [];
+    let achado = null;
+    itens.some((it) => {
+        achado = periodosDeOrigem(it).find((p) => p.id === idOrigem) || null;
+        return !!achado;
+    });
+    return {
+        esferas: achado?.esferas,
+        categorias: achado?.categorias,
+        evento: achado?.evento === true,
+    };
+}
+
 // Bloco 3: Esfera e Categoria do período de origem (vêm em
 // itens[].epocaRetratada, ver montarRegistro em exportar.js). Pacote antigo
 // não tem os campos: a lista sai vazia.
 function camposEpocaDoPayload(payload, idOrigem) {
     const itens = Array.isArray(payload?.itens) ? payload.itens : [];
-    const achado = itens.find(
-        (it) => it?.epocaRetratada?.epocaId != null && it.epocaRetratada.epocaId === idOrigem,
-    );
+    let achado = null;
+    itens.some((it) => {
+        achado = periodosEpocaDeOrigem(it).find((p) => p.epocaId === idOrigem) || null;
+        return !!achado;
+    });
     return {
-        esferas: achado?.epocaRetratada?.esferas,
-        categorias: achado?.epocaRetratada?.categorias,
+        esferas: achado?.esferas,
+        categorias: achado?.categorias,
+        evento: achado?.evento === true,
     };
 }
 
@@ -387,8 +439,14 @@ function metadadosAutorDoPayload(payload, idOrigem, nome) {
 // `homonimos` para o aviso do resultado). O último trecho é o próprio
 // período, sempre criado. Sem caminho, ou com um que não termina no nome,
 // o período nasce de topo, como antes.
-export function criarPeriodoHistoricoComCaminho(dbRef, nome, caminho, contagem = null) {
-    const novo = (n, paiId) => {
+export function criarPeriodoHistoricoComCaminho(
+    dbRef,
+    nome,
+    caminho,
+    contagem = null,
+    extra = null,
+) {
+    const novo = (n, paiId, classificacao = null) => {
         const p = {
             id: gerarId(),
             nome: n,
@@ -398,8 +456,12 @@ export function criarPeriodoHistoricoComCaminho(dbRef, nome, caminho, contagem =
             fim: null,
             pertenceA: paiId != null ? [paiId] : [],
             fontes: [],
+            esferas: normalizarLista(classificacao?.esferas),
+            categorias: normalizarLista(classificacao?.categorias),
+            ...(classificacao?.evento === true ? { evento: true } : {}),
         };
         dbRef.periodosHistoricos.push(p);
+        registrarValoresNovosPeriodoHistorico(dbRef, p);
         return p.id;
     };
     const partes = normalizarTexto(caminho)
@@ -407,7 +469,7 @@ export function criarPeriodoHistoricoComCaminho(dbRef, nome, caminho, contagem =
         .map((x) => x.trim())
         .filter(Boolean);
     if (partes.length < 2 || partes[partes.length - 1].toLowerCase() !== nome.toLowerCase()) {
-        return novo(nome, null);
+        return novo(nome, null, extra);
     }
     let paiId = null;
     partes.slice(0, -1).forEach((parte, i) => {
@@ -429,7 +491,7 @@ export function criarPeriodoHistoricoComCaminho(dbRef, nome, caminho, contagem =
         paiId = novo(parte, paiId);
         if (contagem) contagem.paisCriados++;
     });
-    return novo(nome, paiId);
+    return novo(nome, paiId, extra);
 }
 
 function criarEntidade(campo, nome, dbRef, extra = null) {
@@ -477,11 +539,12 @@ function criarEntidade(campo, nome, dbRef, extra = null) {
             pessoasEnvolvidas: [],
             relacoes: [],
             pertenceA: [],
+            ...(extra?.evento === true ? { evento: true } : {}),
         };
         dbRef.epocas.push(epoca);
         registrarValoresNovos(dbRef, epoca);
-    } else if (campo === 'periodoHistoricoId')
-        dbRef.periodosHistoricos.push({
+    } else if (campo === 'periodoHistoricoId') {
+        const periodo = {
             id,
             nome,
             notas: '',
@@ -490,8 +553,13 @@ function criarEntidade(campo, nome, dbRef, extra = null) {
             fim: null,
             pertenceA: [],
             fontes: [],
-        });
-    else if (campo === 'livroId')
+            esferas: normalizarLista(extra?.esferas),
+            categorias: normalizarLista(extra?.categorias),
+            ...(extra?.evento === true ? { evento: true } : {}),
+        };
+        dbRef.periodosHistoricos.push(periodo);
+        registrarValoresNovosPeriodoHistorico(dbRef, periodo);
+    } else if (campo === 'livroId')
         dbRef.livros.push({ id, titulo: nome, sequencia: null, tipo: '', fase: '' });
     else if (campo === 'movimentosEscolas')
         dbRef.movimentosEscolas.push({
@@ -568,12 +636,21 @@ function remontarItem(itemOrigem, novoId, referencias) {
         }))
         .filter((a) => a.autorId != null);
 
-    if (itemOrigem.epocaRetratada?.epocaId != null) {
-        const { nomeEpoca, ...resto } = itemOrigem.epocaRetratada;
-        void nomeEpoca; // só existia pra resolução de referência, não persiste
+    if (itemOrigem.epocaRetratada) {
+        // Nome, Esfera e Categoria só existiam pra resolução de referência e
+        // pra criar o período novo, não persistem no texto. Período sem
+        // destino (oculto no arquivo de origem) fica de fora; as datas e o N/A
+        // do texto seguem.
         novo.epocaRetratada = {
-            ...resto,
-            epocaId: destinoDe('epocaRetratada.epocaId', itemOrigem.epocaRetratada.epocaId),
+            periodos: periodosEpocaDeOrigem(itemOrigem)
+                .map((p) => ({
+                    epocaId: destinoDe('epocaRetratada.epocaId', p.epocaId),
+                    recorte: p.recorte || null,
+                }))
+                .filter((p) => p.epocaId != null),
+            inicio: itemOrigem.epocaRetratada.inicio ?? null,
+            fim: itemOrigem.epocaRetratada.fim ?? null,
+            na: !!itemOrigem.epocaRetratada.na,
         };
     }
 
@@ -700,7 +777,9 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
                           )
                         : r.campo === 'epocaRetratada.epocaId'
                           ? camposEpocaDoPayload(payload, r.valorOrigem.idOrigem)
-                          : null;
+                          : r.campo === 'periodoHistoricoId'
+                            ? camposPeriodoHistoricoDoPayload(payload, r.valorOrigem.idOrigem)
+                            : null;
                 destinoId =
                     r.campo === 'periodoHistoricoId'
                         ? criarPeriodoHistoricoComCaminho(
@@ -708,6 +787,7 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
                               r.valorOrigem.nome,
                               r.caminhoOrigem,
                               periodos,
+                              extra,
                           )
                         : criarEntidade(r.campo, r.valorOrigem.nome, dbRef, extra);
                 mapaCriados[colecao][r.valorOrigem.idOrigem] = destinoId;
@@ -740,6 +820,16 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
         novoItem.assuntosPapel = assuntosPapelImportados(dbRef, itemOrigem);
         // Idem para a exceção "não se aplica a este texto": ids de origem não valem.
         novoItem.assuntosExcluidos = assuntosExcluidosImportados(dbRef, itemOrigem);
+        // Etiquetas (Fase 16): os ids de origem não valem aqui. Casa/cria pelo
+        // NOME na categoria (a lista de nomes vem do cadastro do próprio
+        // arquivo; JSON antigo traz o texto "a, b" e cai no mesmo caminho).
+        Object.entries(ETIQUETAS_CATEGORIAS).forEach(([categoria, campo]) => {
+            novoItem[campo] = resolverEtiquetasEditadas(
+                dbRef,
+                categoria,
+                nomesDeEtiquetasDaOrigem(payload, itemOrigem[campo]),
+            );
+        });
         // Territorialidade e local de escrita: os ids de origem não valem
         // aqui. Com a hierarquia no JSON, casa/cria os Locais por nome +
         // tipo + pai; sem ela (JSON antigo), zera os ids e o espelho

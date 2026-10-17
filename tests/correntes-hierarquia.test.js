@@ -416,6 +416,24 @@ describe('lista e visualização', () => {
     });
 });
 
+describe('rotuloDaCorrente (chip da corrente já escolhida)', () => {
+    const lista = [
+        { id: 1, nome: 'Romantismo', paiId: null },
+        { id: 2, nome: 'Romantismo no Brasil', paiId: 1 },
+        { id: 3, nome: '3ª geração: Condoreira (Brasil)', paiId: 2 },
+    ];
+
+    it('nome, e divisão leva o caminho dos pais', () => {
+        assert.equal(H.rotuloDaCorrente(lista, 1), 'Romantismo');
+        assert.equal(H.rotuloDaCorrente(lista, 2), 'Romantismo no Brasil (Romantismo)');
+        assert.equal(
+            H.rotuloDaCorrente(lista, 3),
+            '3ª geração: Condoreira (Brasil) (Romantismo › Romantismo no Brasil)',
+        );
+        assert.equal(H.rotuloDaCorrente(lista, 999), '');
+    });
+});
+
 describe('sugestoesDeCorrentes (campo de corrente em Poema, Prosa e Autor)', () => {
     const lista = [
         { id: 1, nome: 'Romantismo', paiId: null },
@@ -439,5 +457,30 @@ describe('sugestoesDeCorrentes (campo de corrente em Poema, Prosa e Autor)', () 
         assert.equal(r[1], '');
         assert.equal(r[2], 'Romantismo');
         assert.equal(r[3], 'Romantismo › Romantismo no Brasil · Poesia');
+    });
+
+    it('sem comparador: alfabética; com comparador: em árvore, irmãos na ordem dele', () => {
+        const l = [
+            { id: 1, nome: 'Romantismo', paiId: null, inicio: { ano: 1836 } },
+            { id: 2, nome: 'Modernismo', paiId: null, inicio: { ano: 1922 } },
+            { id: 3, nome: 'Fase B', paiId: 1, inicio: { ano: 1850 } },
+            { id: 4, nome: 'Fase A', paiId: 1, inicio: { ano: 1860 } },
+            { id: 5, nome: 'Neto', paiId: 3, inicio: { ano: 1851 } },
+        ];
+        assert.deepEqual(
+            H.sugestoesDeCorrentes(l, 'autores').map((o) => o.nome),
+            ['Fase A', 'Fase B', 'Modernismo', 'Neto', 'Romantismo'],
+        );
+        const porAno = (a, b) => a.inicio.ano - b.inicio.ano;
+        assert.deepEqual(
+            H.sugestoesDeCorrentes(l, 'autores', porAno).map((o) => [o.nome, o.nivel]),
+            [
+                ['Romantismo', 0],
+                ['Fase B', 1],
+                ['Neto', 2],
+                ['Fase A', 1],
+                ['Modernismo', 0],
+            ],
+        );
     });
 });

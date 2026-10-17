@@ -443,7 +443,7 @@ describe('renderVisualizacaoHtml — Períodos, Corrente literária e Inspiraç�
         );
     });
 
-    it('mostra Corrente literária (0 a N) separados por vírgula', () => {
+    it('mostra Corrente literária (0 a N), uma por linha', () => {
         const item = {
             id: 1,
             tipo: 'prosa',
@@ -453,7 +453,30 @@ describe('renderVisualizacaoHtml — Períodos, Corrente literária e Inspiraç�
         };
         const html = renderVisualizacaoHtml(item);
         assert.match(html, /Corrente literária/);
-        assert.match(html, /Modernismo, Simbolismo/);
+        assert.match(html, /Corrente literária:<\/strong><br>Modernismo<br>Simbolismo<\/p>/);
+    });
+
+    it('mostra o caminho da divisão (Fase 14, etapa 2: linha própria) e do Período Biográfico', () => {
+        db.movimentosEscolas = [
+            { id: 1, nome: 'Romantismo' },
+            { id: 2, nome: 'Romantismo no Brasil', paiId: 1 },
+        ];
+        db.epocas = [
+            { id: 1, nome: 'Ensino médio', pertenceA: [] },
+            { id: 2, nome: 'Pré-vestibular', pertenceA: [1] },
+        ];
+        const item = {
+            id: 1,
+            tipo: 'poema',
+            titulo: 'T',
+            texto: 'x',
+            movimentosEscolasIds: [2],
+            epocaRetratada: { periodos: [{ epocaId: 2, recorte: null }] },
+        };
+        const html = renderVisualizacaoHtml(item);
+        assert.match(html, /Divisões:<\/strong> Romantismo › Romantismo no Brasil<\/p>/);
+        assert.doesNotMatch(html, /Corrente literária/);
+        assert.match(html, /Período Biográfico Retratado:<\/strong> Ensino médio › Pré-vestibular/);
     });
 
     it('omite Período Histórico e Corrente literária quando vazios', () => {

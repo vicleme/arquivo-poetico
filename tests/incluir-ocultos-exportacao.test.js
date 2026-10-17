@@ -94,9 +94,9 @@ describe('filtro nas exportações', () => {
 
     it('o período oculto sai sem nome, Esfera e Categoria', () => {
         const r = montarRegistro('poema', db.poemas[0]);
-        assert.equal(r.epocaRetratada.nomeEpoca, '');
-        assert.equal(r.epocaRetratada.epocaId, null);
-        assert.deepEqual(r.epocaRetratada.esferas, []);
+        assert.equal(r.epocaRetratada.periodos[0].nomeEpoca, '');
+        assert.equal(r.epocaRetratada.periodos[0].epocaId, null);
+        assert.deepEqual(r.epocaRetratada.periodos[0].esferas, []);
     });
 
     it('Markdown e CSV não trazem o nome da Pessoa nem do período ocultos', () => {
@@ -118,9 +118,9 @@ describe('filtro nas exportações', () => {
             ['Carla', 'Davi'],
         );
         assert.equal(r.conceitos.ecos[0].ancoras[0].nome, 'Davi');
-        assert.equal(r.epocaRetratada.nomeEpoca, 'Namoro com Davi');
-        assert.equal(r.epocaRetratada.epocaId, 10);
-        assert.deepEqual(r.epocaRetratada.esferas, ['Amorosa']);
+        assert.equal(r.epocaRetratada.periodos[0].nomeEpoca, 'Namoro com Davi');
+        assert.equal(r.epocaRetratada.periodos[0].epocaId, 10);
+        assert.deepEqual(r.epocaRetratada.periodos[0].esferas, ['Amorosa']);
         const md = gerarMarkdownExportacao([r]);
         assert.ok(md.includes('Davi'));
         assert.ok(md.includes('Namoro com Davi'));

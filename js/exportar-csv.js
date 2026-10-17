@@ -38,6 +38,7 @@ import {
 } from './personagens.js';
 import {
     SINALIZACOES_CATEGORIAS,
+    textoDeEtiquetas,
     corpoParaLinhasRicas,
     nomesPessoas,
     paresAutoria,
@@ -55,6 +56,8 @@ import {
 } from './utils.js';
 import { territorialidadeDoTexto, caminhoCompletoLocal, caminhoDoLocal } from './locais.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
+import { classificacaoDosPeriodosHistoricosDoTexto } from './periodos-historicos-campos.js';
+import { caminhosDasCorrentes, idsDeDivisoes, caminhoDaCorrente } from './correntes-hierarquia.js';
 
 // Local onde o texto foi escrito, para as colunas do CSV ('' sem Local ou se
 // o Local não existe mais).
@@ -109,6 +112,24 @@ export function baixarCsv(conteudo, nomeArquivo) {
 export const coluna = (cabecalho, campos, valor) => ({ cabecalho, campos, valor });
 
 // ─── Helpers de célula ──────────────────────────────────────────
+
+// Períodos Biográficos do registro exportado (`epocaRetratada.periodos`; o
+// formato anterior, com `nomeEpoca` e `recorte` direto no objeto, ainda vale).
+function periodosDoRegistro(r) {
+    const er = r.epocaRetratada;
+    if (!er) return [];
+    if (Array.isArray(er.periodos)) return er.periodos;
+    return er.nomeEpoca || er.recorte
+        ? [
+              {
+                  nomeEpoca: er.nomeEpoca,
+                  recorte: er.recorte,
+                  esferas: er.esferas,
+                  categorias: er.categorias,
+              },
+          ]
+        : [];
+}
 
 export function juntar(lista) {
     return lista
@@ -378,15 +399,30 @@ export function colunasTexto(tipo) {
         }),
 
         // Período Biográfico Retratado (campo interno: epocaRetratada)
-        coluna('periodo_biografico', ['epocaRetratada'], (r) => r.epocaRetratada?.nomeEpoca || ''),
-        coluna('periodo_biografico_recorte', [], (r) => r.epocaRetratada?.recorte || ''),
+        // Vários períodos por texto: nomes juntos pelo separador de lista; o
+        // recorte sai na mesma ordem (posição vazia = sem recorte).
+        coluna('periodo_biografico', ['epocaRetratada'], (r) =>
+            juntar(periodosDoRegistro(r).map((p) => p.nomeEpoca)),
+        ),
+        // Caminho na hierarquia ("Pai › Filho"), coluna à parte como no Histórico.
+        coluna('periodo_biografico_caminho', [], (r) =>
+            juntar(periodosDoRegistro(r).map((p) => p.caminho || p.nomeEpoca)),
+        ),
+        coluna('periodo_biografico_recorte', [], (r) => {
+            const recortes = periodosDoRegistro(r)
+                .filter((p) => p.nomeEpoca)
+                .map((p) => p.recorte || '');
+            return recortes.some(Boolean) ? recortes.join(SEPARADOR_LISTA) : '';
+        }),
         coluna('periodo_biografico_nao_se_aplica', [], (r) => vazioSeNulo(r.epocaRetratada?.na)),
         ...colunasData('periodo_biografico_inicio', [], (r) => r.epocaRetratada?.inicio),
         ...colunasData('periodo_biografico_fim', [], (r) => r.epocaRetratada?.fim),
         // Bloco 3: Esfera e Categoria do período (Pessoas e Vínculo não saem).
-        coluna('periodo_biografico_esferas', [], (r) => juntar(r.epocaRetratada?.esferas || [])),
+        coluna('periodo_biografico_esferas', [], (r) =>
+            juntar([...new Set(periodosDoRegistro(r).flatMap((p) => p.esferas || []))]),
+        ),
         coluna('periodo_biografico_categorias', [], (r) =>
-            juntar(r.epocaRetratada?.categorias || []),
+            juntar([...new Set(periodosDoRegistro(r).flatMap((p) => p.categorias || []))]),
         ),
 
         // Período Histórico retratado (sem recorte de data, campo solto)
@@ -406,10 +442,83 @@ export function colunasTexto(tipo) {
                 .filter(Boolean)
                 .join('; '),
         ),
+        // Esfera e Categoria dos períodos do texto (derivadas do cadastro,
+        // sem repetir), como as do Período Biográfico logo acima.
+        coluna('periodo_historico_esferas', ['periodosHistoricosIds'], (r, ctx) =>
+            juntar(
+                classificacaoDosPeriodosHistoricosDoTexto(
+                    r,
+                    ctx.banco.periodosHistoricos,
+                    'esferas',
+                ),
+            ),
+        ),
+        coluna('periodo_historico_categorias', ['periodosHistoricosIds'], (r, ctx) =>
+            juntar(
+                classificacaoDosPeriodosHistoricosDoTexto(
+                    r,
+                    ctx.banco.periodosHistoricos,
+                    'categorias',
+                ),
+            ),
+        ),
+
+        // Eventos (F14-D3): as colunas acima seguem com TODOS os períodos do
+        // texto, eventos inclusive (quem já lê o arquivo não quebra); estas só
+        // repetem os que são evento, para filtrar sem recalcular.
+        coluna('evento_biografico', [], (r) =>
+            juntar(
+                periodosDoRegistro(r)
+                    .filter((p) => p.evento === true)
+                    .map((p) => p.nomeEpoca),
+            ),
+        ),
+        coluna('evento_biografico_caminho', [], (r) =>
+            juntar(
+                periodosDoRegistro(r)
+                    .filter((p) => p.evento === true)
+                    .map((p) => p.caminho || p.nomeEpoca),
+            ),
+        ),
+        coluna('evento_historico', ['periodosHistoricosIds'], (r, ctx) =>
+            periodosHistoricosIdsDoItem(r, ctx.banco.periodosHistoricos, 'eventos')
+                .map((id) => nomePeriodoHistorico(id, ctx.banco.periodosHistoricos))
+                .filter(Boolean)
+                .join('; '),
+        ),
+        coluna('evento_historico_caminho', ['periodosHistoricosIds'], (r, ctx) =>
+            periodosHistoricosIdsDoItem(r, ctx.banco.periodosHistoricos, 'eventos')
+                .map((id) => caminhoDoPeriodo(ctx.banco.periodosHistoricos, id))
+                .filter(Boolean)
+                .join('; '),
+        ),
 
         // Movimento/Escola (N:N, cadastro central — ver Autor também)
         coluna('movimentos_escolas', ['movimentosEscolasIds'], (r, ctx) =>
             juntar(nomesMovimentosEscolas(r.movimentosEscolasIds, ctx.banco.movimentosEscolas)),
+        ),
+        // Caminho completo ("Romantismo › Romantismo no Brasil"), coluna à parte.
+        coluna('movimentos_escolas_caminho', ['movimentosEscolasIds'], (r, ctx) =>
+            juntar(caminhosDasCorrentes(ctx.banco.movimentosEscolas, r.movimentosEscolasIds)),
+        ),
+        // As duas colunas acima trazem TODAS as correntes ligadas (de topo e
+        // divisões), como sempre. Estas duas são só as divisões, a mesma
+        // separação do campo "Divisões" dos modais (Fase 14, etapa 2); é
+        // derivado, então não há campo novo no texto.
+        coluna('divisoes_corrente', ['movimentosEscolasIds'], (r, ctx) =>
+            juntar(
+                idsDeDivisoes(ctx.banco.movimentosEscolas, r.movimentosEscolasIds).map(
+                    (id) =>
+                        ctx.banco.movimentosEscolas.find((m) => String(m.id) === String(id)).nome,
+                ),
+            ),
+        ),
+        coluna('divisoes_corrente_caminho', ['movimentosEscolasIds'], (r, ctx) =>
+            juntar(
+                idsDeDivisoes(ctx.banco.movimentosEscolas, r.movimentosEscolasIds).map((id) =>
+                    caminhoDaCorrente(ctx.banco.movimentosEscolas, id),
+                ),
+            ),
         ),
 
         // Assunto: derivado dos Temas do texto (assuntosDoTexto, utils.js),
@@ -430,7 +539,7 @@ export function colunasTexto(tipo) {
 
         // Sinalizações: uma coluna por categoria
         ...Object.entries(SINALIZACOES_CATEGORIAS).map(([chave, campo]) =>
-            coluna(nomeSinal(chave), [campo], (r) => virgulasParaLista(r[campo])),
+            coluna(nomeSinal(chave), [campo], (r) => virgulasParaLista(textoDeEtiquetas(r[campo]))),
         ),
         // Territorialidade com o caminho de cada Local, do mais alto até ele
         // (`sinal_territorialidade` acima segue com só os nomes).

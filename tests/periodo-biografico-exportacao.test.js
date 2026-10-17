@@ -51,8 +51,8 @@ describe('exportação: Esfera e Categoria do período (Bloco 3)', () => {
 
     it('o registro exportado leva esferas e categorias, e não leva pessoas nem vínculo', () => {
         const reg = montarRegistro('poema', db.poemas[0]);
-        assert.deepEqual(reg.epocaRetratada.esferas, ['Afetiva', 'Social']);
-        assert.deepEqual(reg.epocaRetratada.categorias, ['Transição']);
+        assert.deepEqual(reg.epocaRetratada.periodos[0].esferas, ['Afetiva', 'Social']);
+        assert.deepEqual(reg.epocaRetratada.periodos[0].categorias, ['Transição']);
         const json = JSON.stringify(reg);
         assert.ok(!json.includes('pessoasEnvolvidas'));
         assert.ok(!json.includes('relacoes'));

@@ -308,6 +308,25 @@ export function definirModoGraficoPessoas(modo) {
     notificarMudanca();
 }
 
+// ─── Gráfico de Correntes literárias: modo (agrupado / separado) ────────────
+// F14-D9. Agrupado (padrão): cada corrente de topo soma o que foi marcado nela
+// e em todas as divisões dela, e um texto conta uma vez só por grupo. Separado:
+// uma barra por corrente, cada uma só com o que foi marcado nela.
+const MODOS_GRAFICO_CORRENTES = ['agrupado', 'separado'];
+
+export function getModoGraficoCorrentes() {
+    const valor = localStorage.getItem(LS_PREFIX_EST + 'modoCorrentes');
+    return MODOS_GRAFICO_CORRENTES.includes(valor) ? valor : 'agrupado';
+}
+
+export function definirModoGraficoCorrentes(modo) {
+    localStorage.setItem(
+        LS_PREFIX_EST + 'modoCorrentes',
+        MODOS_GRAFICO_CORRENTES.includes(modo) ? modo : 'agrupado',
+    );
+    notificarMudanca();
+}
+
 // Botão "Considerar cis/trans" (Fase 1, F1-D3): desligado por padrão. Às
 // vezes a análise deve levar em conta a identidade cis/trans da Pessoa, às
 // vezes ignorá-la de propósito. Ligado, o modo "Por gênero" combina Gênero

@@ -61,9 +61,22 @@ describe('padrões de colunas guardados no db (backup)', () => {
         assert.ok(getColunasAtivas('poemas').includes('notas'));
     });
 
-    it('backup antigo, sem a chave, não quebra e deixa a lista vazia', async () => {
+    it('backup antigo, sem a chave, não quebra e só recebe os padrões de fábrica', async () => {
         await importarDB({ livros: [], poemas: [], prosas: [] });
-        assert.deepEqual(db.padroesColunas, {});
+        assert.deepEqual(Object.keys(db.padroesColunas).sort(), ['poemas', 'prosas']);
+        assert.equal(db.padroesColunas.poemas.length, 8);
+        assert.ok(db.padroesColunasFabricaVersao >= 1);
+    });
+
+    it('backup que já aplicou a versão de fábrica não recria o padrão excluído', async () => {
+        await importarDB({
+            padroesColunasFabricaVersao: 2,
+            padroesColunas: { poemas: [{ nome: 'Meu', colunas: ['notas'] }] },
+        });
+        assert.deepEqual(
+            db.padroesColunas.poemas.map((p) => p.nome),
+            ['Meu'],
+        );
     });
 
     it('backup mal formado é limpo: tabela desconhecida, lista torta, nome vazio, repetido, chave extinta', () => {

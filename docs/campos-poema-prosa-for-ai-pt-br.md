@@ -34,8 +34,9 @@ essa distinção.
   `sinalizacoesTema`, `sinalizacoesTerritorialidade`,
   `sinalizacoesRelacao`, `sinalizacoesSensibilidade`,
   `sinalizacoesTom`, `sinalizacoesDominioImagetico`,
-  `sinalizacoesOutros`) — 9 campos de etiquetas em texto livre, cada um
-  uma categoria diferente. Dois deles, `sinalizacoesTema` e
+  `sinalizacoesOutros`) — 9 campos de etiquetas, cada um uma categoria
+  diferente. Os 7 que são etiquetas de verdade guardam ids do cadastro
+  `db.etiquetas` (nos `.json` de textos saem como lista de nomes). Dois deles, `sinalizacoesTema` e
   `sinalizacoesTerritorialidade`, são espelhos derivados e não se digitam
   mais no grupo de etiquetas. Ver `etiquetas-sinalizacoes-for-ai.md`.
 - **Temas** (`temas`: lista de `{ temaId, papel, nome }`, na exportação) —
@@ -152,9 +153,13 @@ Como ler:
   derivado de `dataEscrita`. Texto antigo que só tinha `ano` ganha
   `dataEscrita: { ano, exata: false }` na carga (`migrarAnoParaDataEscrita`).
 - **`epocaRetratada`**: intervalo de tempo que o texto retrata (não é
-  quando foi escrito) — `{ epocaId, inicio, fim, recorte, na }`. Aponta
-  pro cadastro central `db.epocas`. `recorte` é `"momento"` |
-  `"repercussão"` | `null`. `na: true` é um terceiro estado deliberado —
+  quando foi escrito) — `{ periodos, inicio, fim, na }`. `periodos` é uma
+  lista (0 a N) de `{ epocaId, recorte }`, cada item apontando pro cadastro
+  central `db.epocas`; um texto pode retratar vários períodos biográficos.
+  `recorte` é por período: `"momento"` | `"repercussão"` | `null` (ex.:
+  "Corte de contato" como momento e "Luto" com repercussão no mesmo texto).
+  `inicio`, `fim` e `na` valem para o texto inteiro. Arquivos antigos, com
+  `epocaId`/`recorte` direto no objeto, ainda são aceitos. `na: true` é um terceiro estado deliberado —
   "marcado como Não Aplicável", diferente de "ainda não categorizado"
   (campo inteiro `null`). Não confunda os dois: um texto sem
   `epocaRetratada` não foi avaliado; um texto com `na: true` foi avaliado
@@ -176,7 +181,14 @@ Como ler:
 - **`movimentosEscolasIds`**: **Corrente literária** (antes Movimento/Escola) — array de ids (0 a N)
   do cadastro central `db.movimentosEscolas` (ex.: Romantismo, Simbolismo,
   Modernismo). Um texto pode não se encaixar em nenhum ou caber em mais
-  de um.
+  de um. A mesma lista guarda também as divisões de uma corrente (corrente
+  com pai: fase, geração, vertente ou variante regional, como "Romantismo
+  no Brasil"). O app as mostra separadas ("Corrente literária" para as sem
+  pai, "Divisões" para as demais), mas nada separado é gravado: divisão é
+  derivada de o registro do cadastro ter pai (`paiId`). No `.md` são duas
+  linhas (`Corrente literária` e `Divisões`); no `.csv`, `movimentos_escolas`
+  e `movimentos_escolas_caminho` trazem todas, e `divisoes_corrente` e
+  `divisoes_corrente_caminho` trazem só as divisões.
 - **`contextoHistorico`**: rótulo **Inspiração** — texto livre sobre o que
   inspirou o texto (um gatilho pontual, uma circunstância específica). O
   nome interno é legado (`contextoHistorico`); o conteúdo NÃO é contexto

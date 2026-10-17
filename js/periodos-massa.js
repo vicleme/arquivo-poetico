@@ -18,14 +18,18 @@
 //                      é aditivo (empilha o id se ainda não está),
 //                      remover tira só aquele id. Não existe
 //                      "substituir".
-//   epoca              item.epocaRetratada.epocaId — id ÚNICO, mas a
-//                      Época pertence a um Autor (epoca.autorId).
-//                      Só vale pra um texto se o Autor dela consta na
-//                      autoria do texto; sem Época com esse nome desse
-//                      Autor, cria uma pro primeiro Autor do texto
-//                      (mesmo critério do modal do Poema). Texto sem
-//                      Autor é pulado. Datas, recorte e "N/A" que o
-//                      texto já tinha em epocaRetratada são preservados.
+//   epoca              item.epocaRetratada.periodos — LISTA de
+//                      { epocaId, recorte } (um texto pode ter vários
+//                      Períodos Biográficos). Aplicar é aditivo (empilha o
+//                      período, com recorte vazio, se ainda não está) e
+//                      remover tira só aquele. Não existe "substituir": trocar
+//                      um por outro é remover e aplicar. A Época pertence a
+//                      um Autor (epoca.autorId): só vale pra um texto se o
+//                      Autor dela consta na autoria do texto; sem Época com
+//                      esse nome desse Autor, cria uma pro primeiro Autor do
+//                      texto (mesmo critério do modal do Poema). Texto sem
+//                      Autor é pulado. Datas, "N/A" e o recorte dos outros
+//                      períodos do texto são preservados.
 //
 // Cadastro citado por nome que ainda não existe é criado ao APLICAR
 // (mesmo caminho de aplicarPessoaEmMassa); ao REMOVER nunca cria.
@@ -38,7 +42,7 @@ import {
     obterOuCriarPeriodoHistoricoPorNome,
     obterOuCriarMovimentoEscolaPorNome,
 } from './db.js';
-import { periodosHistoricosIdsDoItem } from './utils.js';
+import { periodosHistoricosIdsDoItem, periodosBiograficosDoItem } from './utils.js';
 import { exibindoOcultasDosPeriodos } from './ocultas-periodos.js';
 
 export const TIPOS_PERIODO_MASSA = [
@@ -77,9 +81,11 @@ function autoresDoItem(item, dbRef) {
         .filter((id) => id != null && (dbRef.autores || []).some((a) => a.id == id));
 }
 
-function epocaAtual(item, dbRef) {
-    const id = item.epocaRetratada?.epocaId;
-    return id == null ? null : (dbRef.epocas || []).find((e) => e.id == id) || null;
+// Épocas do cadastro ligadas ao texto, na ordem da lista (id órfão sai).
+function epocasDoItem(item, dbRef) {
+    return periodosBiograficosDoItem(item)
+        .map((x) => (dbRef.epocas || []).find((e) => e.id == x.epocaId))
+        .filter(Boolean);
 }
 
 // O que "aplicar" faria, sem tocar em nada — a tela mostra
@@ -88,8 +94,8 @@ function epocaAtual(item, dbRef) {
 //   alterar         [{ item, alvo }] — `alvo` é { id } de um cadastro que
 //                   já existe ou, só pra Época, { criarParaAutorId }
 //   jaIguais        já estão com esse valor (movimento: já tem o id)
-//   jaPreenchidos   têm OUTRO período e serão mantidos (só Período
-//                   Biográfico/Histórico, com `sobrescrever` desligado)
+//   jaPreenchidos   sempre 0 hoje (os três campos são listas aditivas);
+//                   fica na resposta por compatibilidade com a tela
 //   semAutor        só Período Biográfico: texto sem Autor, não dá pra
 //                   escolher nem criar a Época
 //   cadastroNovo    o nome ainda não existe no cadastro (o painel avisa
@@ -101,7 +107,8 @@ export function planejarAplicacaoPeriodo(
     tipo,
     itens,
     nome,
-    { sobrescrever = false } = {},
+    // eslint-disable-next-line no-unused-vars
+    { sobrescrever = false } = {}, // ignorado: os três campos são aditivos
     dbRef = db,
 ) {
     const alvoNome = limpar(nome);
@@ -157,9 +164,8 @@ export function planejarAplicacaoPeriodo(
             }
             if (!alvo) alvo = { criarParaAutorId: autores[0] };
 
-            const atual = epocaAtual(item, dbRef);
-            if (atual && alvo.id != null && atual.id == alvo.id) plano.jaIguais++;
-            else if (atual && !sobrescrever) plano.jaPreenchidos++;
+            const jaTem = alvo.id != null && epocasDoItem(item, dbRef).some((e) => e.id == alvo.id);
+            if (jaTem) plano.jaIguais++;
             else plano.alterar.push({ item, alvo });
         });
         plano.epocasACriar = new Set(
@@ -199,14 +205,17 @@ export function aplicarPlanoPeriodo(tipo, plano, nome) {
                 alvo.id != null
                     ? alvo.id
                     : obterOuCriarEpocaPorNome(alvoNome, alvo.criarParaAutorId).id;
-            // Preserva datas/recorte/N/A que o texto já tinha.
+            // Soma o período à lista (recorte vazio) e preserva datas e N/A
+            // que o texto já tinha.
+            const periodos = periodosBiograficosDoItem(item);
+            if (!periodos.some((x) => x.epocaId == epocaId)) {
+                periodos.push({ epocaId, recorte: null });
+            }
             item.epocaRetratada = {
-                inicio: null,
-                fim: null,
-                recorte: null,
-                na: false,
-                ...(item.epocaRetratada || {}),
-                epocaId,
+                inicio: item.epocaRetratada?.inicio ?? null,
+                fim: item.epocaRetratada?.fim ?? null,
+                na: !!item.epocaRetratada?.na,
+                periodos,
             };
         });
     }
@@ -230,7 +239,7 @@ export function planejarRemocaoPeriodo(tipo, itens, nome, dbRef = db) {
             if (per && periodosHistoricosIdsDoItem(item).some((id) => id == per.id))
                 alterar.push({ item });
         } else if (tipo === 'epoca') {
-            if (epocaAtual(item, dbRef)?.nome === alvoNome) alterar.push({ item });
+            if (epocasDoItem(item, dbRef).some((e) => e.nome === alvoNome)) alterar.push({ item });
         }
     });
     return { alterar, naoTinham: itens.length - alterar.length };
@@ -260,11 +269,17 @@ export function aplicarRemocaoPeriodo(tipo, plano, nome, dbRef = db) {
         });
     } else if (tipo === 'epoca') {
         plano.alterar.forEach(({ item }) => {
-            const er = { ...item.epocaRetratada, epocaId: null };
-            // Sem Época, o formulário só guarda epocaRetratada se
+            // Só os períodos com esse nome saem; os outros ficam.
+            const periodos = periodosBiograficosDoItem(item).filter(
+                (x) => (dbRef.epocas || []).find((e) => e.id == x.epocaId)?.nome !== alvoNome,
+            );
+            const er = { ...item.epocaRetratada, periodos };
+            delete er.epocaId;
+            delete er.recorte;
+            // Sem período, o formulário só guarda epocaRetratada se
             // sobrar "N/A" ou alguma data — mesmo critério aqui, pra
             // não deixar um objeto vazio pendurado no texto.
-            item.epocaRetratada = er.na || er.inicio || er.fim ? er : null;
+            item.epocaRetratada = periodos.length || er.na || er.inicio || er.fim ? er : null;
         });
     }
     return plano.alterar.length;

@@ -512,7 +512,7 @@ describe('esvaziar acervo: Versões Alternativas (F13-D7) e formato do acervo', 
         assert.equal(contarVersoesFiltradas('[1,2]'), 0);
     });
 
-    it('o formato do JSON do acervo não ganha chave nova: as 30 chaves seguem as do inventário', () => {
+    it('o formato do JSON do acervo não ganha chave nova: as 31 chaves seguem as do inventário', () => {
         const db = criarDb();
         aplicarEsvaziamento(db, TODAS);
         const permitidas = new Set([...CHAVES_DB.map((c) => c.chave)]);

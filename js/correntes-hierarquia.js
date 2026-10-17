@@ -51,23 +51,59 @@ function achar(lista, id) {
 
 // Sugestões do campo de corrente nos modais de Poema, Prosa e Autor: as
 // correntes que valem para o `tabela` ('poemas' | 'prosas' | 'autores'), cada
-// uma com o rótulo que a situa na árvore. Divisão de Poesia some da lista de
+// uma com o rótulo que a situa na árvore. Sem `comparar`, em ordem alfabética;
+// com ele, em árvore (ver `ordenarCorrentesEmArvore`), irmãos na ordem dele. Divisão de Poesia some da lista de
 // Prosa e vice-versa; sem gênero (ou no Autor) todas aparecem. O rótulo traz o
 // caminho dos pais ("Romantismo › Romantismo no Brasil") e, se a divisão se
 // aplica a um gênero, ele depois de " · ". Corrente de topo: rótulo vazio.
-export function sugestoesDeCorrentes(lista, tabela) {
+//
+// `somente` separa os dois campos dos modais de Poema e Prosa (Fase 14, etapa
+// 2): 'topo' devolve só as correntes sem pai e 'divisoes' só as que têm pai.
+// Sem ele, todas (como o modal de Autor, que segue com um campo só).
+export function sugestoesDeCorrentes(lista, tabela, comparar = null, somente = null) {
     const excluido = tabela === 'poemas' ? 'Prosa' : tabela === 'prosas' ? 'Poesia' : null;
-    return (lista || [])
-        .filter((m) => !excluido || m.generoDivisao !== excluido)
-        .map((m) => {
-            const caminho = ancestraisDaCorrente(lista, m.id)
-                .reverse()
-                .map((a) => a.nome)
-                .join(' › ');
-            const partes = [caminho, m.generoDivisao || ''].filter(Boolean);
-            return { id: m.id, nome: m.nome, rotulo: partes.join(' · ') };
-        })
-        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    const rotuloDe = (m) => {
+        const caminho = ancestraisDaCorrente(lista, m.id)
+            .reverse()
+            .map((a) => a.nome)
+            .join(' › ');
+        return [caminho, m.generoDivisao || ''].filter(Boolean).join(' · ');
+    };
+    const validas = (lista || []).filter(
+        (m) =>
+            (!excluido || m.generoDivisao !== excluido) &&
+            (somente === 'topo'
+                ? !ehDivisaoDaCorrente(lista, m.id)
+                : somente === 'divisoes'
+                  ? ehDivisaoDaCorrente(lista, m.id)
+                  : true),
+    );
+    // Sem `comparar`: ordem alfabética. Com ele: em árvore (cada corrente seguida
+    // das suas divisões), irmãos na ordem de `comparar`, com `nivel`.
+    const emOrdem = comparar
+        ? ordenarCorrentesEmArvore(validas, comparar)
+        : validas
+              .map((m) => ({ m, nivel: 0 }))
+              .sort((a, b) => a.m.nome.localeCompare(b.m.nome, 'pt-BR'));
+    return emOrdem.map(({ m, nivel }) => ({
+        id: m.id,
+        nome: m.nome,
+        rotulo: rotuloDe(m),
+        nivel,
+    }));
+}
+
+// Rótulo de uma corrente já escolhida (o chip do campo): o nome e, se é uma
+// divisão, o caminho dos pais, "Romantismo no Brasil (Romantismo)". Vazio se o
+// id não existe em `lista`.
+export function rotuloDaCorrente(lista, id) {
+    const m = achar(lista, id);
+    if (!m) return '';
+    const caminho = ancestraisDaCorrente(lista, m.id)
+        .reverse()
+        .map((a) => a.nome)
+        .join(' › ');
+    return caminho ? `${m.nome} (${caminho})` : m.nome;
 }
 
 // Pai direto (registro) ou null.
@@ -119,6 +155,43 @@ export function caminhoDaCorrente(lista, id, separador = ' › ') {
     const m = achar(lista, id);
     if (!m) return '';
     return [...ancestraisDaCorrente(lista, id).reverse(), m].map((x) => x.nome).join(separador);
+}
+
+// Caminhos ("Romantismo › Romantismo no Brasil › 3ª geração") das correntes
+// de `ids`, na ordem dada, sem os que não existem mais no cadastro.
+export function caminhosDasCorrentes(lista, ids) {
+    if (!Array.isArray(ids)) return [];
+    return ids.map((id) => caminhoDaCorrente(lista, id)).filter(Boolean);
+}
+
+// Divisão de corrente é DERIVADA (F14-D6): é a corrente que tem pai que
+// existe no cadastro. Nada é gravado, então o texto segue com uma lista só
+// (`movimentosEscolasIds`) e a separação entre "Correntes" e "Divisões" é só
+// de exibição. Um `paiId` que aponta para registro inexistente não conta
+// (a migração já o solta, mas dado cru de backup antigo pode trazê-lo).
+export function ehDivisaoDaCorrente(lista, id) {
+    return paiDaCorrente(lista, id) !== null;
+}
+
+// Ids de `ids` que são correntes de topo (existem no cadastro e não têm pai),
+// na ordem dada e sem repetir. Id que não existe mais fica fora.
+export function idsDeCorrentesDeTopo(lista, ids) {
+    return idsDistintosExistentes(lista, ids).filter((id) => !ehDivisaoDaCorrente(lista, id));
+}
+
+// Ids de `ids` que são divisões (corrente com pai), mesma regra acima.
+export function idsDeDivisoes(lista, ids) {
+    return idsDistintosExistentes(lista, ids).filter((id) => ehDivisaoDaCorrente(lista, id));
+}
+
+function idsDistintosExistentes(lista, ids) {
+    if (!Array.isArray(ids)) return [];
+    const vistos = new Set();
+    return ids.filter((id) => {
+        if (!achar(lista, id) || vistos.has(String(id))) return false;
+        vistos.add(String(id));
+        return true;
+    });
 }
 
 // Ligar `id` ao pai `novoPaiId` fecharia um ciclo? (o pai é o próprio

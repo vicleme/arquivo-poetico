@@ -71,6 +71,21 @@
                     />
                 </div>
                 <div>
+                    <label
+                        class="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-200 cursor-pointer"
+                        for="ep-evento"
+                    >
+                        <input type="checkbox" id="ep-evento" class="w-auto mb-0" />
+                        É um evento
+                    </label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                        Marque quando for algo pontual ou curto (uma data, um acontecimento), em vez
+                        de uma fase longa. Continua sendo um período: tem as mesmas datas, o mesmo
+                        "Faz parte de" e a mesma duração. Nos textos, aparece no campo Eventos em
+                        vez do campo de períodos, e isso vale para todos os textos de uma vez.
+                    </p>
+                </div>
+                <div>
                     <label class="form-label">Faz parte de</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
                         Período que contém este, opcional. Ex.: "Pré-vestibular" faz parte de
@@ -222,6 +237,31 @@
                                     max="2100"
                                     title="Ano"
                                 />
+                            </div>
+                            <div
+                                class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[10px] text-gray-500 dark:text-slate-400"
+                            >
+                                <label
+                                    class="flex items-center gap-1"
+                                    title="Sem data de fim, a duração conta até hoje (fuso em 🕒 Fuso, no cabeçalho). Só vale com o campo Até vazio."
+                                >
+                                    <input type="checkbox" id="ep-em-andamento" class="w-auto" />
+                                    Sem data de fim (conta até hoje)
+                                </label>
+                                <label
+                                    class="flex items-center gap-1"
+                                    title="Só a palavra que aparece depois da duração. Em aberto serve a períodos que não se tratam como um processo com fim esperado, como um luto."
+                                >
+                                    Mostrar como
+                                    <select
+                                        id="ep-em-andamento-rotulo"
+                                        class="w-auto text-[10px] py-0.5 px-1"
+                                        disabled
+                                    >
+                                        <option value="">Em andamento</option>
+                                        <option value="aberto">Em aberto</option>
+                                    </select>
+                                </label>
                             </div>
                         </div>
                     </div>

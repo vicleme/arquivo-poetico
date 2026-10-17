@@ -183,12 +183,13 @@ describe('busca por postura: e programa: em autores', () => {
 describe('colunas Postura e Programa em Poemas', () => {
     beforeEach(zerar);
 
-    it('estão na definição de Poemas e de Prosas, logo depois da Corrente literária', () => {
+    it('estão na definição de Poemas e de Prosas, logo depois da Corrente literária e das Divisões', () => {
         for (const tabela of ['poemas', 'prosas']) {
             const chaves = DEFINICAO_COLUNAS[tabela].map((c) => c.key);
             const i = chaves.indexOf('movimentosEscolas');
-            assert.equal(chaves[i + 1], 'posturaEstetica', tabela);
-            assert.equal(chaves[i + 2], 'programa', tabela);
+            assert.equal(chaves[i + 1], 'divisoesCorrentes', tabela);
+            assert.equal(chaves[i + 2], 'posturaEstetica', tabela);
+            assert.equal(chaves[i + 3], 'programa', tabela);
             const col = DEFINICAO_COLUNAS[tabela].find((c) => c.key === 'posturaEstetica');
             assert.equal(col.default, false);
         }

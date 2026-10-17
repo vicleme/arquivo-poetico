@@ -1,8 +1,10 @@
 import {
     agregarPorAtributoDaCorrente,
+    agregarTextosPorCorrente,
     cruzarProgramaPostura,
     SEM_CLASSIFICACAO,
 } from './estatisticas-dados-correntes.js';
+import { getModoGraficoCorrentes } from './estatisticas-filtros.js';
 import {
     criarBarChart,
     renderFiltrosCompartilhados,
@@ -50,6 +52,68 @@ export function resumoDoAtributoDaCorrente(dados) {
         );
     }
     return partes.join(' ');
+}
+
+const COR_CORRENTE = '#4f46e5';
+
+const ROTULOS_MODO_CORRENTES = { agrupado: 'Agrupado', separado: 'Separado' };
+
+const DESCRICAO_MODO_CORRENTES = {
+    agrupado:
+        'Agrupado: cada barra é uma corrente de topo e soma o que foi marcado nela e em todas as divisões dela. Um texto conta uma vez só por grupo.',
+    separado:
+        'Separado: uma barra por corrente ou divisão, cada uma só com os textos marcados nela.',
+};
+
+function seletorModoCorrentes() {
+    const modo = getModoGraficoCorrentes();
+    return Object.entries(ROTULOS_MODO_CORRENTES)
+        .map(
+            ([v, rotulo]) =>
+                `<button type="button" onclick="definirModoGraficoCorrentes('${v}')" aria-pressed="${modo === v}" class="px-2 py-0.5 rounded text-[11px] font-semibold ${modo === v ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'}">${rotulo}</button>`,
+        )
+        .join('');
+}
+
+// Texto de apoio do gráfico de textos por corrente: o modo, o que fica fora e
+// por que a soma das barras pode passar do total.
+export function resumoDosTextosPorCorrente(dados) {
+    if (dados.textos === 0) return 'Nenhum texto neste recorte.';
+    const partes = [
+        DESCRICAO_MODO_CORRENTES[dados.modo],
+        `${plural(dados.comCorrente, 'texto tem', 'textos têm')} corrente literária, de ${plural(dados.textos, 'texto', 'textos')} neste recorte.`,
+    ];
+    if (dados.semCorrente) {
+        partes.push(`Ficam fora: ${dados.semCorrente} sem corrente literária ligada.`);
+    }
+    const soma = dados.data.reduce((a, b) => a + b, 0);
+    if (soma > dados.comCorrente) {
+        partes.push(
+            `A soma das barras (${soma}) passa do total porque um texto ligado a mais de ${dados.modo === 'agrupado' ? 'um grupo' : 'uma corrente'} conta em cada um.`,
+        );
+    }
+    return partes.join(' ');
+}
+
+function renderGraficoPorCorrente() {
+    const dados = agregarTextosPorCorrente(getModoGraficoCorrentes());
+    criarBarChart(
+        'grafico-correntes-textos',
+        dados.labels,
+        dados.data,
+        COR_CORRENTE,
+        dados.comCorrente || null,
+        dados.titulos,
+    );
+    const painel = document.getElementById('painel-modo-correntes');
+    if (painel) painel.innerHTML = seletorModoCorrentes();
+    const contexto = document.getElementById('est-correntes-textos-contexto');
+    if (contexto) contexto.textContent = resumoDosTextosPorCorrente(dados);
+    const consultaPorRotulo = new Map(dados.labels.map((l, i) => [l, dados.consultas[i]]));
+    bindDrillDownBarra('grafico-correntes-textos', (label) => {
+        const consulta = consultaPorRotulo.get(label);
+        if (consulta) navegarParaLista(consulta, '', tipoDestino());
+    });
 }
 
 function renderGraficoAtributo(campo) {
@@ -119,6 +183,7 @@ window.abrirListaCorrenteEstatisticas = (botao) => {
 
 export function renderCorrentes() {
     renderFiltrosCompartilhados();
+    renderGraficoPorCorrente();
     renderGraficoAtributo('postura');
     renderGraficoAtributo('programa');
     renderCruzamentoDasCorrentes();

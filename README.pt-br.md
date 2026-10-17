@@ -94,6 +94,8 @@ npm run format:check   # prettier --check .
 ├── README.md
 ├── README.pt-br.md
 ├── CONTRIBUTING.md / CONTRIBUTING.pt-br.md
+├── CLAUDE.md                 → Instruções para o Claude (regras de trabalho e mapa dos
+│                                arquivos de manutenção e planejamento)
 ├── LICENSE
 ├── package.json / package-lock.json  → Scripts (`npm test`, `npm run lint`,
 │                                        `npm run format`) e dependências de
@@ -121,7 +123,8 @@ npm run format:check   # prettier --check .
 │   ├── etiquetas-sinalizacoes-for-ai.md / etiquetas-sinalizacoes-for-ai-pt-br.md
 │   │                          → Lógica das etiquetas do acervo ("Etiquetas"
 │   │                            na interface; antes "Sinalizações") — que categoria cada uma
-│   │                            representa
+│   │                            representa, e como são guardadas (cadastro com ids) e
+│   │                            exportadas (nomes)
 │   ├── export-to-ia.md / export-to-ia-pt-br.md
 │   │                          → Formato aninhado vs. flat na exportação do
 │   │                            acervo para uso com IA (ver "Funcionalidades
@@ -154,12 +157,17 @@ npm run format:check   # prettier --check .
 │
 ├── manutencao/                → Documentação interna de desenvolvimento (não é
 │   │                            guia de uso do app — ver "docs/" acima)
-│   ├── status.md              → Checklist curto do que está fechado/em
-│   │                            aberto/pendente de teste manual, por sessão
-│   ├── schema.md               → Detalhamento de cada campo do modelo de dados
-│   ├── decisoes.md             → Porquês de decisões de produto/schema
-│   └── licoes-de-sessao.md     → Riscos e armadilhas conhecidas ao retomar
-│                                  uma sessão de desenvolvimento
+│   ├── status.md              → "Estado atual" no topo; abaixo, histórico do que
+│   │                            foi fechado e roteiros de conferência no navegador
+│   ├── schema.md              → Detalhamento de cada campo do modelo de dados
+│   ├── decisoes.md            → Porquês de decisões de produto/schema
+│   ├── licoes-de-sessao.md    → Riscos e armadilhas conhecidas ao retomar
+│   │                            uma sessão de desenvolvimento
+│   ├── criacao-molde.md       → Desenho da aba Criação (Moldes)
+│   └── progressao-morfofuncional.md → Desenho da Progressão Morfofuncional
+│
+├── planejamento/              → Plano central das fases, plano da fase em
+│                                andamento e ideias ainda sem fase
 │
 ├── js/                       → Toda a lógica do app (ES Modules)
 │   ├── main.js               → Ponto de entrada; liga os onclick="" do HTML às
@@ -252,6 +260,32 @@ npm run format:check   # prettier --check .
 │   │                           downloads separados, à escolha da pessoa
 │   ├── nesting.js            → Lógica de encadeamento hierárquico (usada por
 │   │                           exportar.js)
+│   ├── Demais módulos, agrupados por assunto (o nome de cada arquivo diz o
+│   │   que ele faz; o cabeçalho de cada um explica em detalhe):
+│   │   · Cadastros: temas.js, etiquetas.js, tag-clusters*.js, locais.js, regiao.js, personagens.js,
+│   │     correntes-hierarquia.js, periodos-*-hierarquia.js,
+│   │     periodo-biografico-*.js, periodo-historico-*.js,
+│   │     periodos-historicos-campos.js, fontes-corrente*.js,
+│   │     fontes-periodo-historico*.js, pessoas-viagem.js
+│   │   · Edição em massa: selecao-massa.js, massa-valores.js,
+│   │     campo-etiquetas-massa.js, campos-preenchiveis.js, *-massa.js e
+│   │     *-acoes.js (uma dupla por aba)
+│   │   · Âncora e sugestão de Ecos: alvos-conceitos.js, ancora-eco*.js,
+│   │     sugestao-ecos.js, ui-sugestao-ecos.js, grupo-personagens.js
+│   │   · Estatísticas: estatisticas-dados*.js (agregações),
+│   │     estatisticas-tela-*.js (uma tela por aba), estatisticas-filtros.js
+│   │   · Exportação, importação e backup: exportar-csv.js, exportar-assuntos.js, exportar-tag-clusters.js, importar-tag-clusters.js,
+│   │     exportar-autores.js, exportar-estrutura-textual.js,
+│   │     ocultos-exportacao.js, download-abrangente.js, importar-aditivo.js,
+│   │     ui-importar-aditivo.js, importar-sonoridade.js, extras-backup.js,
+│   │     ui-extras-backup.js, pacote-texto.js, ui-biblioteca*.js
+│   │   · Visualização: visualizar-*.js (Autor, Grupo, Correntes, Períodos,
+│   │     Estrutura textual), lista-textos-periodo.js, faixa-origem.js
+│   │   · Criação e Morfofuncionalidade: editor-molde.js, molde-json.js,
+│   │     ui-molde-json.js, estrutura-textual.js
+│   │   · Ajuda: modo-aprendizado.js, tour*.js, central-ajuda.js,
+│   │     faq-conteudo.js, como-faco-passos.js
+│   │   · Outros: fuso-horario.js, ocultas-periodos.js
 │   └── utils.js              → Funções puras sem dependências internas;
 │                               inclui modal de confirmação de exclusão,
 │                               geração de ID (gerarId), escaping de HTML
@@ -276,10 +310,23 @@ npm run format:check   # prettier --check .
 │   ├── modal-visualizar-sonoridade.html → Modal "Ver" de uma escansão (ver
 │   │                            visualizar-sonoridade.js)
 │   ├── modal-visualizar.html  → Modal "Ver" de Poema/Prosa (ver visualizar.js)
+│   ├── (demais modais) Assunto, Tema, Local, Personagem, Período Histórico,
+│   │   Correntes (Movimento/Escola), opções de Períodos, Molde,
+│   │   Morfofuncionalidade, Template de estrutura, Sugestão de Ecos,
+│   │   Esvaziar acervo, Central de Ajuda, Modo Aprendizado e os modais
+│   │   "Ver" de Autor, Grupo, Correntes, Períodos e Estrutura textual
 │   └── modal-mesclar.html     → Modal genérico de Mesclar (Pessoa/Época)
 │
 ├── scripts/
+│   ├── montar-pacote.js       → Gera os pacotes da Biblioteca (biblioteca/*.json)
+│   │                            a partir de biblioteca/fontes/
 │   └── normalizar-datas.js    → Script de manutenção pontual de dados (datas)
+│
+├── biblioteca/                → Pacotes de textos em domínio público (um .json por
+│   │                            autor, mais indice.json), gerados por montar-pacote.js
+│   └── fontes/                → Fonte de cada pacote (.md + .meta.json)
+│
+├── prototipos/                → Páginas soltas, fora do app (ex.: cifra-minima.html)
 │
 ├── tests/                     → `node --test` (ver "Suíte de testes" abaixo)
 │   └── helpers/
@@ -327,10 +374,45 @@ npm run format:check   # prettier --check .
   etiquetas reutilizáveis, com sugestão por `<datalist>`. Veja
   `docs/etiquetas-sinalizacoes-for-ai-pt-br.md` para a lógica completa de
   cada categoria de etiqueta.
-- **Épocas**: cadastro próprio (nome, contexto da relação, notas) que um
-  Poema/Prosa pode referenciar em "Época Retratada", com início/fim (datas
-  parciais) e `recorte` — "momento" (só o evento) ou "repercussão" (o efeito
-  depois).
+- **Períodos Biográficos** (antes "Épocas"): cadastro próprio (`db.epocas`) com
+  início/fim (datas parciais, "em andamento"), Esfera, Categoria, pessoas
+  envolvidas e relações entre elas (Natureza e Vínculo), "Faz parte de"
+  hierárquico, marca de evento e opção de ocultar. Um Poema/Prosa referencia
+  um ou mais períodos, cada um com `recorte` — "momento" (só o evento) ou
+  "repercussão" (o efeito depois).
+- **Períodos Históricos**: períodos de fábrica mais os criados por você, com
+  hierarquia ("Faz parte de"), Esfera e Categoria (vocabulário próprio e
+  editável), Região, fontes e marca de evento. Nos textos, Esfera e Categoria
+  aparecem como colunas e buscas derivadas.
+- **Correntes literárias** (antes Movimento/Escola): cadastro hierárquico com
+  Tipo, Programa, Postura estética, divisões (fase, geração, vertente,
+  variante regional), Região de origem, Valores, Temas, Técnicas, Tipos de
+  composição, Lemas, Manifestos e fontes; vem com correntes de fábrica.
+- **Temas e Assuntos**: o Tema é um cadastro central, com papel (principal,
+  secundário ou indefinido) em cada texto, agrupado em Assuntos; sugere
+  duplicatas e mescla com Desfazer.
+- **Locais**: cadastro hierárquico (um Local pode ter vários pais), usado em
+  Territorialidade e em "Local onde foi escrito", no grupo "Região e Idioma"
+  do modal, ao lado do Idioma (com papel e dialeto).
+- **Personagens**: cadastro central com papéis e centralidade em cada texto,
+  participação por livro e âncora opcional nos Ecos; sugestão de Ecos
+  faltantes sob demanda. Ver `docs/personagens-for-ai-pt-br.md`.
+- **Edição em massa**: Poemas, Prosas, Pessoas, Períodos Biográficos, Períodos
+  Históricos e Correntes têm seleção por cartão ou linha e uma barra de ação
+  (Acrescentar, Remover, Definir ou Limpar, conforme o campo), sempre com
+  **Desfazer**. Campos de lista usam etiquetas, como nos modais.
+- **Estatísticas**: várias abas, entre elas Cruzamentos (matriz de Temas por
+  Pessoas ou Grupos), Local e idioma, Correntes literárias e Personagens;
+  clicar numa barra abre a lista de textos correspondente.
+- **Dados**: aba Biblioteca (pacotes de textos em domínio público para
+  importar), Importação Aditiva (soma ao acervo sem apagar nada) e Backup e
+  recuperação (retratos automáticos, arquivo de extras e **Esvaziar o acervo**,
+  com backup obrigatório e palavra de confirmação).
+- **Criação (Moldes)**: grade de versos orientada por uma meta estrutural
+  (forma, rimas), com pareamento de rimas e promoção do Molde a Poema; um Molde
+  pode ser exportado e importado em JSON.
+- **Modo Aprendizado e Central de Ajuda**: tour guiado do app, perguntas
+  frequentes e roteiros "Como eu faço para...".
 - **Status do Poema**: 🟡 Incompleto, ⚪ Completo, 🟢 Publicado, 🔵 Migrado
   (texto movido de um livro/seção para outro), 🔴 Descartado e 🔒 Privado
   (nunca teve intenção de publicação, diferente de Descartado).
@@ -634,6 +716,16 @@ Os dados vivem em dois lugares distintos no navegador:
 | `elementos`      | Elementos Textuais (introdução, multimídia, respiro, posfácio…).                                                          |
 | `itensColetanea` | Itens de Coletânea: referenciam um Poema/Prosa existente (`refId`/`refTipo`) ou trazem texto exclusivo (`textoOverride`). |
 | `coletaneas`     | **Legado** — não é preenchido pela aba atual; mantido só para compatibilidade ao importar backups antigos.                |
+
+O `db` tem hoje 30 chaves de primeiro nível (a lista oficial, com a categoria
+de cada uma, está em `js/inventario-armazenamento.js`). Além das da tabela
+acima: `pessoas`, `grupos`, `autores`, `epocas` (Períodos Biográficos),
+`opcoesPeriodoBiografico`, `opcoesPeriodoHistorico`, `assuntos`, `temas`,
+`locais`, `personagens`, `ecosIgnorados`, `escansoes`, `estruturasTextuais`,
+`moldes`, `padroesColunas` e os cadastros de fábrica `periodosHistoricos`,
+`movimentosEscolas` (Correntes literárias) e `templatesEstrutura`, cada um com
+seu registro de excluídos (`*Ocultos`), mais `programaDeFabricaAplicado`. Campo
+a campo: `manutencao/schema.md`.
 
 ### IndexedDB (`arquivoPoetico_capas`)
 

@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 // espelho `sinalizacoesTema` sempre coerente.
 const {
     nomesDeTemasDigitados,
-    sugestoesDeTemasEncadeadas,
     temasInexistentes,
     adicionarTemasAosTextos,
     removerTemasDosTextos,
@@ -49,37 +48,6 @@ describe('nomesDeTemasDigitados', () => {
         assert.deepEqual(nomesDeTemasDigitados(''), []);
         assert.deepEqual(nomesDeTemasDigitados(null), []);
         assert.deepEqual(nomesDeTemasDigitados(' , , '), []);
-    });
-});
-
-describe('sugestoesDeTemasEncadeadas', () => {
-    const cadastro = ['Amor', 'Saudade', 'Morte'];
-
-    it('sem vírgula: os próprios nomes', () => {
-        assert.deepEqual(sugestoesDeTemasEncadeadas('sa', cadastro), cadastro);
-    });
-
-    it('com vírgula: cada sugestão leva o que já foi digitado', () => {
-        assert.deepEqual(sugestoesDeTemasEncadeadas('Amor, sa', cadastro), [
-            'Amor, Saudade',
-            'Amor, Morte',
-        ]);
-    });
-
-    it('não sugere o que já está no campo (sem caixa nem acento)', () => {
-        assert.deepEqual(sugestoesDeTemasEncadeadas('amor,', cadastro), [
-            'amor, Saudade',
-            'amor, Morte',
-        ]);
-    });
-
-    it('respeita o espaçamento digitado depois da vírgula', () => {
-        assert.deepEqual(sugestoesDeTemasEncadeadas('Amor,sa', ['Saudade']), ['Amor,Saudade']);
-    });
-
-    it('cadastro vazio ou ausente não quebra', () => {
-        assert.deepEqual(sugestoesDeTemasEncadeadas('a', []), []);
-        assert.deepEqual(sugestoesDeTemasEncadeadas('a', undefined), []);
     });
 });
 

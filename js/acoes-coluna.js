@@ -98,6 +98,15 @@ export function getAcoesAtivas(tabela) {
     return CHAVES_ACOES.filter((k) => ativas.includes(k));
 }
 
+// A coluna Ações só existe na tabela se sobrar ao menos um botão ligado que
+// a aba realmente tem. Atenção: o estado salvo guarda TODAS as chaves ligadas
+// por padrão (inclusive 'promover', que só Moldes tem), então não basta
+// olhar a lista de ativas: ela é cruzada com os botões da aba.
+export function temAcoesVisiveis(tabela) {
+    const aplicaveis = ACOES_APLICAVEIS[tabela] || ACOES_APLICAVEIS_PADRAO;
+    return getAcoesAtivas(tabela).some((k) => aplicaveis.includes(k));
+}
+
 export function isAcaoAtiva(tabela, key) {
     return getAcoesAtivas(tabela).includes(key);
 }
@@ -183,6 +192,9 @@ export function renderSeletorAcoes(tabela) {
                     Botões na coluna Ações
                 </p>
                 <div class="flex flex-wrap gap-x-4">${botoes}</div>
+                <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                    Sem nenhum botão marcado, a coluna Ações some da tabela.
+                </p>
             </div>
             ${formatos}
             <button type="button" onclick="resetarAcoesColuna('${tabela}')"

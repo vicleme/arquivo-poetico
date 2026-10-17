@@ -1,7 +1,10 @@
 // ============================================================
-// utils.js — Funções puras sem dependências internas
+// utils.js — Funções puras, só com dependência de módulos de hierarquia
+// (também puros, sem DOM nem estado)
 // Importado por: db.js, render.js, forms.js
 // ============================================================
+
+import { caminhoExibivelDoPeriodoBiografico } from './periodos-biograficos-hierarquia.js';
 
 // ─── Geração de ID único ────────────────────────────────────────
 // Antes, cada módulo gerava IDs com `Date.now()` de forma independente.
@@ -1952,6 +1955,84 @@ export const ROTULOS_RECORTE_EPOCA = {
     repercussão: 'Momento e Repercussão',
 };
 
+// Vários Períodos Biográficos por texto. `epocaRetratada` guarda
+// `{ periodos: [{ epocaId, recorte }], inicio, fim, na }`: o `recorte` é por
+// período (um texto pode retratar "Corte de contato" como Momento e "Luto"
+// como Momento e Repercussão), enquanto `inicio`, `fim` e `na` descrevem a
+// janela que o texto inteiro retrata. A ordem da lista é a dos chips no modal
+// e não significa hierarquia. Aceita o formato anterior (`epocaId` e `recorte`
+// direto no objeto) e o legado `nome`, e com `cadastro` tira id que não existe
+// mais. Devolve cópias, sem repetir período.
+export function periodosDaEpocaRetratada(epocaRetratada, cadastro = null) {
+    if (!epocaRetratada) return [];
+    let bruto;
+    if (Array.isArray(epocaRetratada.periodos)) {
+        bruto = epocaRetratada.periodos;
+    } else if (epocaRetratada.epocaId != null && epocaRetratada.epocaId !== '') {
+        bruto = [{ epocaId: epocaRetratada.epocaId, recorte: epocaRetratada.recorte }];
+    } else if (epocaRetratada.nome) {
+        bruto = [{ nome: epocaRetratada.nome, recorte: epocaRetratada.recorte }];
+    } else {
+        bruto = [];
+    }
+    const vistos = new Set();
+    const saida = [];
+    bruto.forEach((p) => {
+        if (!p) return;
+        const temId = p.epocaId != null && p.epocaId !== '';
+        if (!temId && !p.nome) return;
+        if (temId && cadastro && !cadastro.some((e) => e.id == p.epocaId)) return;
+        const chave = temId ? `id:${p.epocaId}` : `nome:${p.nome}`;
+        if (vistos.has(chave)) return;
+        vistos.add(chave);
+        const entrada = temId ? { epocaId: p.epocaId } : { nome: p.nome };
+        entrada.recorte = p.recorte || null;
+        saida.push(entrada);
+    });
+    return saida;
+}
+
+// Grava a lista de períodos no texto e tira os campos do formato anterior
+// (`epocaId`, `recorte`, `nome`) que sobrarem no objeto. Não cria
+// `epocaRetratada` onde não existe.
+export function definirPeriodosBiograficosDoItem(item, periodos) {
+    if (!item?.epocaRetratada) return;
+    item.epocaRetratada.periodos = periodos;
+    delete item.epocaRetratada.epocaId;
+    delete item.epocaRetratada.recorte;
+    delete item.epocaRetratada.nome;
+}
+
+// Evento (F14-D3): marca do cadastro de Período Biográfico e de Período
+// Histórico (`evento: true`). O texto continua guardando períodos e eventos na
+// MESMA lista (F14-D4); quem decide em qual campo ou coluna o chip aparece é
+// esta marca, lida no cadastro na hora. Marcar ou desmarcar "é um evento" move
+// o chip em todos os textos sem migração.
+export function ehEvento(registro) {
+    return registro?.evento === true;
+}
+
+// `tipo`: 'todos' (padrão), 'periodos' (só os que NÃO são evento) ou 'eventos'
+// (só os que são). Sem `cadastro` não há como saber a marca, então a lista sai
+// inteira, a menos que `tipo` peça um recorte: aí o item sem cadastro conhecido
+// conta como período (nunca como evento).
+export function filtrarPorTipoDePeriodo(itens, cadastro, tipo, idDe) {
+    if (tipo !== 'periodos' && tipo !== 'eventos') return itens;
+    return itens.filter((item) => {
+        const registro = (cadastro || []).find((r) => r.id == idDe(item));
+        return ehEvento(registro) === (tipo === 'eventos');
+    });
+}
+
+export function periodosBiograficosDoItem(item, cadastro = null, tipo = 'todos') {
+    return filtrarPorTipoDePeriodo(
+        periodosDaEpocaRetratada(item?.epocaRetratada, cadastro),
+        cadastro,
+        tipo,
+        (p) => p.epocaId,
+    );
+}
+
 // Resolve epocaRetratada.epocaId pro nome cadastrado — dado ainda não
 // migrado (schema antigo, `.nome` cru) cai no fallback direto, mesmo
 // critério defensivo já usado em nomesPessoas/paresAutoria pra dado que
@@ -1973,10 +2054,24 @@ export const ROTULO_PERIODO_OCULTO = '(período oculto)';
 // a menos que a pessoa tenha pedido para ver as ocultas ("Mostrar ocultas",
 // só em memória). Telas de edição (que precisam do nome real para casar o
 // período) seguem usando nomeEpoca.
-export function nomeEpocaExibivel(epoca, epocasCadastro = [], { incluirOcultas = false } = {}) {
-    if (epoca?.epocaId && !incluirOcultas) {
+// Com `comCaminho`, o nome vem com os períodos onde ele está dentro
+// ("Ensino médio › Pré-vestibular"); ancestral oculto também vira
+// ROTULO_PERIODO_OCULTO.
+export function nomeEpocaExibivel(
+    epoca,
+    epocasCadastro = [],
+    { incluirOcultas = false, comCaminho = false } = {},
+) {
+    if (epoca?.epocaId) {
         const periodo = epocasCadastro.find((e) => e.id == epoca.epocaId);
-        if (periodo?.oculto) return ROTULO_PERIODO_OCULTO;
+        if (periodo?.oculto && !incluirOcultas) return ROTULO_PERIODO_OCULTO;
+        if (comCaminho && periodo) {
+            const caminho = caminhoExibivelDoPeriodoBiografico(epocasCadastro, periodo.id, {
+                incluirOculto: incluirOcultas,
+                rotuloOculto: ROTULO_PERIODO_OCULTO,
+            });
+            if (caminho) return caminho;
+        }
     }
     return nomeEpoca(epoca, epocasCadastro);
 }
@@ -1995,8 +2090,16 @@ export function nomePeriodoHistorico(periodoHistoricoId, periodosHistoricosCadas
 // que signifique algo). Devolve os ids do texto sem repetir. Tolera dado
 // ainda não migrado (`periodoHistoricoId` único) e, com `cadastro`, tira
 // id que não existe mais.
-export function periodosHistoricosIdsDoItem(item, cadastro = null) {
+export function periodosHistoricosIdsDoItem(item, cadastro = null, tipo = 'todos') {
     if (!item) return [];
+    if (tipo === 'periodos' || tipo === 'eventos') {
+        return filtrarPorTipoDePeriodo(
+            periodosHistoricosIdsDoItem(item, cadastro),
+            cadastro,
+            tipo,
+            (id) => id,
+        );
+    }
     const bruto = Array.isArray(item.periodosHistoricosIds)
         ? item.periodosHistoricosIds
         : item.periodoHistoricoId != null && item.periodoHistoricoId !== ''
@@ -2024,7 +2127,32 @@ export function formatarEpocaRetratada(epoca, epocasCadastro = [], opcoes = {}) 
     if (!epoca) return '—';
     // Período oculto: o nome vira ROTULO_PERIODO_OCULTO (ver nomeEpocaExibivel);
     // as datas e o recorte descrevem o texto e seguem aparecendo.
-    const nome = nomeEpocaExibivel(epoca, epocasCadastro, opcoes);
+    // `opcoes.tipo` (F14-D4): 'periodos' mostra só o que não é evento e
+    // 'eventos' só os eventos, sem o intervalo De/Até (que é do texto inteiro e
+    // fica junto dos períodos). Sem `tipo`, tudo junto, como antes.
+    const tipo = opcoes.tipo || 'todos';
+    const periodos = filtrarPorTipoDePeriodo(
+        periodosDaEpocaRetratada(epoca),
+        epocasCadastro,
+        tipo,
+        (p) => p.epocaId,
+    );
+    if (tipo === 'eventos') {
+        const sufixo = (p) => (p.recorte === 'repercussão' ? ' e pós' : '');
+        const colchete = (p) =>
+            p.recorte && p.recorte !== 'repercussão'
+                ? ` [${ROTULOS_RECORTE_EPOCA[p.recorte] || p.recorte}]`
+                : '';
+        const partes = periodos
+            .map((p) => {
+                const n = nomeEpocaExibivel(p, epocasCadastro, opcoes);
+                return n ? `${n}${sufixo(p)}${colchete(p)}` : '';
+            })
+            .filter(Boolean);
+        return partes.length ? partes.join('; ') : '—';
+    }
+    const nomes = periodos.map((p) => nomeEpocaExibivel(p, epocasCadastro, opcoes)).filter(Boolean);
+    const nome = nomes.join('; ');
     if (epoca.na) return nome ? `${nome} (N/A)` : 'N/A';
     const ini = formatarDataParcial(epoca.inicio);
     const fim = formatarDataParcial(epoca.fim);
@@ -2037,17 +2165,27 @@ export function formatarEpocaRetratada(epoca, epocasCadastro = [], opcoes = {}) 
                 ? `Até ${fim}`
                 : '';
     // "repercussão" (rótulo "Momento e Repercussão") é marcado inline,
-    // logo depois do nome e antes do parênteses de datas ("Nome e pós
-    // (datas)") — não mais num colchete solto no fim ("Nome (datas)
-    // [Repercussão (e Pós)]"), que lia como se o colchete falasse da
-    // repercussão em si e de um "pós-repercussão", em vez de "o
-    // momento e o que veio depois dele". "momento" (só o evento) segue
-    // marcado em colchete no fim, já que não tem ambiguidade de leitura.
-    const posRepercussao = epoca.recorte === 'repercussão' ? ' e pós' : '';
-    const recorte =
-        epoca.recorte && epoca.recorte !== 'repercussão'
-            ? ` [${ROTULOS_RECORTE_EPOCA[epoca.recorte] || epoca.recorte}]`
+    // logo depois do nome ("Nome e pós"), não num colchete solto no fim, que
+    // lia como se falasse da repercussão em si. "momento" (só o evento) segue
+    // em colchete, já que não tem ambiguidade de leitura. Com vários
+    // períodos, cada um leva o seu recorte e o intervalo (do texto inteiro)
+    // vem uma vez só, no fim.
+    const sufixoPos = (p) => (p.recorte === 'repercussão' ? ' e pós' : '');
+    const colchete = (p) =>
+        p.recorte && p.recorte !== 'repercussão'
+            ? ` [${ROTULOS_RECORTE_EPOCA[p.recorte] || p.recorte}]`
             : '';
+    if (periodos.length > 1) {
+        const partes = periodos.map((p) => {
+            const n = nomeEpocaExibivel(p, epocasCadastro, opcoes);
+            return n ? `${n}${sufixoPos(p)}${colchete(p)}` : '';
+        });
+        const juntos = partes.filter(Boolean).join('; ');
+        return intervalo ? `${juntos} (${intervalo})` : juntos || '—';
+    }
+    const p = periodos[0] || {};
+    const posRepercussao = sufixoPos(p);
+    const recorte = colchete(p);
     if (nome) {
         return (
             (intervalo ? `${nome}${posRepercussao} (${intervalo})` : `${nome}${posRepercussao}`) +
@@ -2162,6 +2300,163 @@ export function formatarIntervaloMovimentoEscola(m) {
     return '—';
 }
 
+// ─── Duração de um período (início → fim) ───────────────────────
+// Usada nas abas Período Biográfico, Período Histórico e Correntes literárias.
+// A duração é a diferença entre o fim e o início, na precisão que as DUAS
+// datas têm em comum (a mais grossa): 1914 a 1918 dá 4 anos, mesmo que uma
+// delas tenha dia e mês. Datas parciais valem: dia/mês/ano, só ano, década
+// ("decada": 1920) ou século ("seculo": "XIX", só Correntes).
+// O resultado é decomposto em séculos, décadas, anos, meses e dias, e mostra
+// só a maior unidade que existe e a seguinte (se não for zero): 67 anos vira
+// "6 décadas e 7 anos"; 1 ano, 3 meses e 10 dias vira "1 ano e 3 meses";
+// 2 séculos redondos viram "2 séculos". Sem as duas pontas, ou com fim igual
+// ao início (ou antes dele), não há duração.
+const UNIDADES_DURACAO = [
+    ['seculo', 'século', 'séculos'],
+    ['decada', 'década', 'décadas'],
+    ['ano', 'ano', 'anos'],
+    ['mes', 'mês', 'meses'],
+    ['dia', 'dia', 'dias'],
+];
+const PRECISOES_DURACAO = ['seculo', 'decada', 'ano', 'mes', 'dia']; // da mais grossa à mais fina
+
+function precisaoDaData(d) {
+    if (!d) return null;
+    if (d.ano) return d.mes ? (d.dia ? 'dia' : 'mes') : 'ano';
+    if (d.decada) return 'decada';
+    if (d.seculo && romanoParaNumero(d.seculo)) return 'seculo';
+    return null;
+}
+
+// Ano de referência de uma data parcial (século vira o seu primeiro ano, como
+// em anoEquivalenteMovimento).
+function anoParaDuracao(d) {
+    if (d.ano) return d.ano;
+    if (d.decada) return d.decada;
+    return (romanoParaNumero(d.seculo) - 1) * 100 + 1;
+}
+
+// Século (1901–2000 é o século XX) de uma data parcial.
+function seculoParaDuracao(d) {
+    if (d.seculo && !d.ano && !d.decada) return romanoParaNumero(d.seculo);
+    return Math.ceil((d.ano || d.decada + 1) / 100);
+}
+
+// Diferença em anos, meses e dias de calendário entre duas datas completas.
+function diferencaEmAnosMesesDias(i, f) {
+    let anos = f.ano - i.ano;
+    let meses = f.mes - i.mes;
+    let dias = f.dia - i.dia;
+    if (dias < 0) {
+        meses -= 1;
+        // Dias do mês anterior ao do fim.
+        dias += new Date(Date.UTC(f.ano, f.mes - 1, 0)).getUTCDate();
+        // 31/01 a 01/03: o mês anterior é mais curto que o dia de início.
+        dias = Math.max(0, dias);
+    }
+    if (meses < 0) {
+        anos -= 1;
+        meses += 12;
+    }
+    return { anos, meses, dias };
+}
+
+export function duracaoDoIntervalo(inicio, fim) {
+    const pi = precisaoDaData(inicio);
+    const pf = precisaoDaData(fim);
+    if (!pi || !pf) return '';
+    const grossa = Math.min(PRECISOES_DURACAO.indexOf(pi), PRECISOES_DURACAO.indexOf(pf));
+    const precisao = PRECISOES_DURACAO[grossa];
+
+    const partes = { seculo: 0, decada: 0, ano: 0, mes: 0, dia: 0 };
+    const doAnoAcima = (anos) => {
+        partes.seculo = Math.floor(anos / 100);
+        partes.decada = Math.floor((anos % 100) / 10);
+        partes.ano = anos % 10;
+    };
+    if (precisao === 'seculo') {
+        partes.seculo = Math.max(0, seculoParaDuracao(fim) - seculoParaDuracao(inicio));
+    } else if (precisao === 'decada') {
+        const decadas =
+            Math.floor(anoParaDuracao(fim) / 10) - Math.floor(anoParaDuracao(inicio) / 10);
+        if (decadas > 0) {
+            partes.seculo = Math.floor(decadas / 10);
+            partes.decada = decadas % 10;
+        }
+    } else if (precisao === 'ano') {
+        const anos = fim.ano - inicio.ano;
+        if (anos > 0) doAnoAcima(anos);
+    } else if (precisao === 'mes') {
+        const total = (fim.ano - inicio.ano) * 12 + (fim.mes - inicio.mes);
+        if (total > 0) {
+            doAnoAcima(Math.floor(total / 12));
+            partes.mes = total % 12;
+        }
+    } else {
+        const d = diferencaEmAnosMesesDias(inicio, fim);
+        if (d.anos >= 0) {
+            doAnoAcima(d.anos);
+            partes.mes = d.meses;
+            partes.dia = d.dias;
+        }
+    }
+
+    const idx = UNIDADES_DURACAO.findIndex(([chave]) => partes[chave] > 0);
+    if (idx === -1) return '';
+    // A maior unidade que existe e, se tiver valor, a imediatamente abaixo.
+    const usadas = [UNIDADES_DURACAO[idx]];
+    if (idx + 1 < UNIDADES_DURACAO.length && partes[UNIDADES_DURACAO[idx + 1][0]] > 0) {
+        usadas.push(UNIDADES_DURACAO[idx + 1]);
+    }
+    return usadas
+        .map(([chave, singular, plural]) => {
+            const n = partes[chave];
+            return `${n} ${n === 1 ? singular : plural}`;
+        })
+        .join(' e ');
+}
+
+// A data de hoje ({ ano, mes, dia }) num fuso horário (nome IANA, como
+// "America/Sao_Paulo"). Fuso inválido cai no horário do próprio aparelho.
+export function hojeNoFuso(fuso, agora = new Date()) {
+    let partes;
+    try {
+        partes = new Intl.DateTimeFormat('en-US', {
+            timeZone: fuso,
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+        }).formatToParts(agora);
+    } catch {
+        return { ano: agora.getFullYear(), mes: agora.getMonth() + 1, dia: agora.getDate() };
+    }
+    const valor = (tipo) => Number(partes.find((p) => p.type === tipo)?.value);
+    return { ano: valor('year'), mes: valor('month'), dia: valor('day') };
+}
+
+// "1914 – 1918" -> "1914 – 1918 (4 anos)". Texto sem intervalo ("—") ou sem
+// duração calculável volta como veio.
+// Período "em andamento" sem fim: a duração vai até `hoje` ({ ano, mes, dia },
+// ver hojeNoFuso) e o texto marca "em andamento": "A partir de 2024 (2 anos e
+// 3 meses, em andamento)". Com `emAberto` a marca é "em aberto" (para o que não
+// se trata como processo com fim esperado, como um luto); a conta é a mesma. Se o fim existe, a marca não vale e a duração é a
+// do intervalo. Só para exibição: nunca se grava.
+export function comDuracao(
+    textoIntervalo,
+    inicio,
+    fim,
+    { emAndamento = false, emAberto = false, hoje = null } = {},
+) {
+    if (!textoIntervalo || textoIntervalo === '—') return textoIntervalo;
+    if (emAndamento && !precisaoDaData(fim)) {
+        const duracao = hoje && precisaoDaData(inicio) ? duracaoDoIntervalo(inicio, hoje) : '';
+        const marca = emAberto ? 'em aberto' : 'em andamento';
+        return `${textoIntervalo} (${duracao ? `${duracao}, ` : ''}${marca})`;
+    }
+    const duracao = duracaoDoIntervalo(inicio, fim);
+    return duracao ? `${textoIntervalo} (${duracao})` : textoIntervalo;
+}
+
 // Converte um número romano (só o que este app usa: séculos de I a
 // XXI, sempre maiúsculo) num inteiro, pra dar pra comparar/ordenar.
 // Não é um validador romano completo (não rejeita formas inválidas
@@ -2222,7 +2517,7 @@ export function nomesMovimentosEscolas(ids, movimentosEscolasCadastro = []) {
 export function obterSugestaoEpocaPorId(poemas, epocaId) {
     if (!epocaId) return null;
     const candidatos = poemas
-        .filter((p) => p.epocaRetratada?.epocaId == epocaId)
+        .filter((p) => periodosBiograficosDoItem(p).some((x) => x.epocaId == epocaId))
         .sort((a, b) => b.id - a.id);
     if (!candidatos.length) return null;
     const maisRecente = candidatos[0];
@@ -2791,6 +3086,12 @@ const CAMPOS_ATRIBUTO = {
     dataescrita: '_buscaDataEscrita',
     datapublicacao: '_buscaDataPublicacao',
     epoca: '_buscaEpoca',
+    // Eventos (F14-D3): o período marcado como evento no cadastro. `epoca:` e
+    // `periodohistorico:` seguem achando períodos e eventos juntos (a lista do
+    // texto é uma só); estes dois restringem ao evento, sem hierarquia (buscar
+    // um evento acha só aquele evento, F14-D8).
+    eventobiografico: '_buscaEventoBiografico',
+    eventohistorico: '_buscaEventoHistorico',
     // Bloco 3: campos do Período Biográfico (cadastro db.epocas) do texto.
     // Só por prefixo, fora da busca sem prefixo ("Afetiva" ou "Amizade"
     // soltos casariam com muita coisa). `pessoaperiodo:` é a pessoa ligada
@@ -2809,6 +3110,11 @@ const CAMPOS_ATRIBUTO = {
     // `periodohistoricodireto:` restringe ao período exato.
     periodohistorico: '_buscaPeriodoHistorico',
     periodohistoricodireto: '_buscaPeriodoHistoricoDireto',
+    // Esfera e Categoria dos períodos históricos do texto (derivadas: soma
+    // das dos períodos dele). Só por prefixo, como `esfera:` e `categoria:`
+    // do período biográfico, que são outro vocabulário.
+    esferahistorica: '_buscaEsferasHistoricas',
+    categoriahistorica: '_buscaCategoriasHistoricas',
     // Hierárquicos (ver nomesDeBuscaDasCorrentes): `movimento:Romantismo` acha
     // também o que está em uma geração ou vertente dele. `...direto:`
     // restringe ao que foi ligado diretamente àquela corrente.
@@ -2921,6 +3227,8 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaDataEscrita: 'dataescrita',
     _buscaDataPublicacao: 'datapublicacao',
     _buscaEpoca: 'epoca',
+    _buscaEventoBiografico: 'eventobiografico',
+    _buscaEventoHistorico: 'eventohistorico',
     _buscaEsferas: 'esfera',
     _buscaCategorias: 'categoria',
     _buscaNaturezas: 'natureza',
@@ -2928,6 +3236,8 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaPessoasPeriodo: 'pessoaperiodo',
     _buscaPeriodoHistorico: 'periodohistorico',
     _buscaPeriodoHistoricoDireto: 'periodohistoricodireto',
+    _buscaEsferasHistoricas: 'esferahistorica',
+    _buscaCategoriasHistoricas: 'categoriahistorica',
     _buscaMovimentosEscolas: 'movimento',
     _buscaMovimentosEscolasDireto: 'movimentodireto',
     _buscaPosturas: 'postura',
@@ -3071,30 +3381,69 @@ export function parseConsultaBusca(query, mapaCampos = CAMPOS_ATRIBUTO) {
 
 // Interpreta a consulta da "Caixa B" (busca por Nº — ver
 // filtroNumeroPoemas/filtroNumeroProsas em render-listas.js): separa os
-// tokens que são só dígitos separados por vírgula, sem prefixo de campo
-// (ex. "5,9,30" — o número é o _numEstrutura, calculado depois de todos
-// os outros filtros, por isso não pode reaproveitar CAMPOS_ATRIBUTO/
-// parseConsultaBusca direto: aquele mecanismo roda ANTES do número
-// existir) de qualquer outro token (prefixos "campo:valor" como
-// etiqueta:, titulo: etc.), que continuam podendo ser digitados na
-// mesma caixa e são resolvidos depois, com filtrarTextos, mas já em
-// cima da lista que sobrou do recorte por número.
+// tokens que são só números, sem prefixo de campo, de qualquer outro
+// token (prefixos "campo:valor" como etiqueta:, titulo: etc., que
+// continuam podendo ser digitados na mesma caixa e são resolvidos
+// depois, com filtrarTextos, mas já em cima da lista que sobrou do
+// recorte por número). O número é o _numEstrutura, calculado depois de
+// todos os outros filtros, por isso não pode reaproveitar
+// CAMPOS_ATRIBUTO/parseConsultaBusca direto: aquele mecanismo roda
+// ANTES do número existir.
+//
+// Sintaxe dos números: valores soltos e intervalos com hífen, tudo
+// separado por vírgula (ex. "5,9,30", "5-20" ou "5-20, 25-30, 40").
+// Espaço depois (ou antes) da vírgula é aceito. Intervalo escrito de
+// trás pra frente ("20-5") vale como "5-20". Uma vírgula sobrando no
+// fim ("5-20,") é tolerada, porque a busca roda a cada tecla digitada.
+// O hífen só vale entre dois números colados ("5-20"): "-titulo:x"
+// continua sendo exclusão, como nas outras caixas.
+//
+// Devolve os valores soltos em `numeros` (Set) e os intervalos em
+// `intervalos` ([[min, max], ...], inclusivos). Intervalos ficam como
+// par em vez de virar um Set com todos os números, pra "1-1000000" não
+// custar memória. Use numeroEntraNaConsulta pra testar um número.
 //
 // Não interpreta aspas/frase-exata dentro do próprio "resto" — só separa
 // por espaço e devolve os tokens não-numéricos remontados na mesma
 // ordem, pra filtrarTextos (que entende aspas) reprocessar depois.
 export function parseConsultaNumero(query) {
-    const tokens = (query || '').trim().match(/\S+/g) || [];
+    // "5-20, 25-30" → "5-20,25-30": junta o que a vírgula separou com
+    // espaço, senão o espaço quebraria a lista em tokens diferentes.
+    const compacta = (query || '').trim().replace(/(\d)\s*,\s*(?=\d)/g, '$1,');
+    const tokens = compacta.match(/\S+/g) || [];
     const numeros = new Set();
+    const intervalos = [];
     const resto = [];
     tokens.forEach((tok) => {
-        if (/^\d+(,\d+)*$/.test(tok)) {
-            tok.split(',').forEach((n) => numeros.add(Number(n)));
+        if (/^\d+(-\d+)?(,\d+(-\d+)?)*,?$/.test(tok)) {
+            tok.split(',')
+                .filter(Boolean)
+                .forEach((parte) => {
+                    if (parte.includes('-')) {
+                        const [a, b] = parte.split('-').map(Number);
+                        intervalos.push([Math.min(a, b), Math.max(a, b)]);
+                    } else {
+                        numeros.add(Number(parte));
+                    }
+                });
         } else {
             resto.push(tok);
         }
     });
-    return { numeros, resto: resto.join(' ') };
+    return { numeros, intervalos, resto: resto.join(' ') };
+}
+
+// Diz se a consulta de parseConsultaNumero trouxe algum número ou
+// intervalo. Sem nenhum (nada digitado, ou só prefixos), a Caixa B não
+// filtra por número.
+export function consultaNumeroTemFiltro({ numeros, intervalos }) {
+    return numeros.size > 0 || intervalos.length > 0;
+}
+
+// Diz se o número `n` (um _numEstrutura) está entre os valores soltos ou
+// dentro de algum intervalo da consulta de parseConsultaNumero.
+export function numeroEntraNaConsulta(n, { numeros, intervalos }) {
+    return numeros.has(n) || intervalos.some(([min, max]) => n >= min && n <= max);
 }
 
 // Filtra uma lista de textos (poemas/prosas) por uma busca livre que
@@ -3217,6 +3566,32 @@ export function extrairGenerosUnicos(prosas) {
     return Array.from(generos).sort();
 }
 
+// ─── Etiquetas por id (Fase 16) ───────────────────────────────────────
+// Os campos de Tradição, Estilo, Relação, Sensibilidade, Tom, Domínio
+// Imagético e Outros guardam uma lista de ids do cadastro `db.etiquetas`
+// (ver etiquetas.js). Quem só precisa do texto ("a, b") pede a
+// `textoDeEtiquetas`, que traduz os ids em nomes e deixa passar o formato
+// antigo (string) e os campos que nunca foram ids (Tema, Territorialidade).
+// O cadastro é registrado pelo db.js (`definirCadastroEtiquetas`), porque
+// utils.js não importa o db.
+let _cadastroEtiquetas = () => [];
+export function definirCadastroEtiquetas(obterLista) {
+    _cadastroEtiquetas = typeof obterLista === 'function' ? obterLista : () => [];
+}
+export function nomeDaEtiquetaPorId(id) {
+    const lista = _cadastroEtiquetas() || [];
+    return lista.find((e) => e.id == id)?.nome ?? '';
+}
+// Lista de ids (ou de nomes, num backup misto) → "a, b"; string → ela mesma.
+export function textoDeEtiquetas(valor) {
+    if (!valor) return '';
+    if (!Array.isArray(valor)) return String(valor);
+    return valor
+        .map((v) => (typeof v === 'number' ? nomeDaEtiquetaPorId(v) : String(v ?? '').trim()))
+        .filter(Boolean)
+        .join(', ');
+}
+
 // Sinalizações viraram campos por categoria (Tradição/Estilo/Tema/
 // Relação/Sensibilidade/Tom/Domínio Imagético — ver SINALIZACOES_CATEGORIAS) em vez de um campo
 // único misturando tudo (ver migrarSinalizacoes em db.js). `campo`
@@ -3226,9 +3601,9 @@ export function extrairGenerosUnicos(prosas) {
 export function extrairSinalizacoesUnicas(itens, campo = 'sinalizacoesTema') {
     const sinais = new Set();
     itens.forEach((p) => {
-        const valor = p[campo];
+        const valor = textoDeEtiquetas(p[campo]);
         if (valor) {
-            const lista = Array.isArray(valor) ? valor : valor.split(',').map((s) => s.trim());
+            const lista = valor.split(',').map((s) => s.trim());
             lista.forEach((s) => {
                 if (s) sinais.add(s);
             });
@@ -3272,7 +3647,7 @@ export const SINALIZACOES_CATEGORIAS = {
 // individuais direto.
 export function sinalizacoesCombinadas(item) {
     return Object.values(SINALIZACOES_CATEGORIAS)
-        .map((campo) => item[campo])
+        .map((campo) => textoDeEtiquetas(item[campo]))
         .filter(Boolean)
         .join(', ');
 }
@@ -3310,7 +3685,7 @@ export function sinalizacoesAgrupadas(item, temasCadastro, textosProntos = {}) {
             valor:
                 categoria === 'tema' && temaComPapel
                     ? temaComPapel
-                    : textosProntos[categoria] || item[campo],
+                    : textosProntos[categoria] || textoDeEtiquetas(item[campo]),
         }))
         .filter((bloco) => bloco.valor);
 }

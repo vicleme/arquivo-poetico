@@ -15,6 +15,7 @@ import {
     migrarImagensLegadasParaIndexedDB,
 } from './db.js';
 import { mostrarAviso, avisarSalvo, debounce, aoEnterAplicar } from './utils.js';
+import { interpretarPaginaDigitada } from './celulas-tabela.js';
 import { listarSnapshots, baixarSnapshot } from './autobackup.js';
 import {
     openTab,
@@ -43,6 +44,11 @@ import {
     abrirOpcoesPeriodoBiografico,
 } from './periodo-biografico-opcoes-ui.js';
 import {
+    initOpcoesPeriodoHistorico,
+    rastreadorOpcoesPeriodoHistorico,
+    abrirOpcoesPeriodoHistorico,
+} from './periodo-historico-opcoes-ui.js';
+import {
     toggleColuna,
     moverColuna,
     selecionarTodasColunas,
@@ -52,6 +58,8 @@ import {
     usarArmazenamentoPadroes,
     salvarPadraoColunasUI,
     excluirPadraoColunasUI,
+    renomearPadraoColunasUI,
+    atualizarPadraoColunasUI,
     filtrarColunas,
 } from './colunas.js';
 import {
@@ -96,6 +104,20 @@ import {
     alternarOcultasNaBarraEpocas,
     toggleOcultarEpoca,
 } from './epocas-acoes.js';
+import {
+    toggleSelecaoPeriodoHistorico,
+    toggleSelecaoTodosPeriodosHistoricos,
+    limparSelecaoPeriodosHistoricos,
+    inverterSelecaoPeriodosHistoricos,
+    aplicarMassaBarraPeriodosHistoricos,
+} from './periodos-historicos-acoes.js';
+import {
+    toggleSelecaoCorrente,
+    toggleSelecaoTodasCorrentes,
+    limparSelecaoCorrentes,
+    inverterSelecaoCorrentes,
+    aplicarMassaBarraCorrentes,
+} from './correntes-acoes.js';
 import { abrirVisualizacaoGrupo, editarGrupoDoVisualizador } from './visualizar-grupo.js';
 import {
     toggleDownloadAbrangente,
@@ -121,6 +143,7 @@ import {
     baixarDoModalVisualizacaoEstruturaTextual,
 } from './visualizar-estrutura-textual.js';
 import { initTema, setTema } from './theme.js';
+import { initFusoHorario, setFusoHorario } from './fuso-horario.js';
 import { renderLists } from './render.js';
 import {
     setFiltroPoemas,
@@ -198,6 +221,7 @@ import {
     definirOrdenacaoPeriodosHistoricos,
     setFiltroPeriodo,
     limparFiltrosCorrentes,
+    limparFiltrosPeriodosHistoricos,
     limparFiltrosPeriodosBiograficos,
     alternarExibirOcultasEpocas,
     toggleColapsoGrupo,
@@ -258,7 +282,6 @@ import {
     aplicarTemaEmMassa,
     removerTemaEmMassa,
     prepararPainelTemasMassa,
-    atualizarSugestoesTemasMassa,
     atualizarListaSinalBulk,
     aplicarDataEmMassa,
     limparDataEmMassa,
@@ -319,6 +342,11 @@ import {
     atualizarModalEsvaziarAcervo,
     confirmarEsvaziarAcervo,
 } from './ui-esvaziar-acervo.js';
+import {
+    abrirModalRelatorioPeriodos,
+    atualizarModalRelatorioPeriodos,
+    baixarRelatorioPeriodos,
+} from './ui-relatorio-periodos.js';
 import { mostrarAvisoPosEsvaziar, ouvirEsvaziamentoDeOutraAba } from './apagar-acervo.js';
 import {
     baixarBackupCompleto,
@@ -354,6 +382,7 @@ import {
     renderEstatisticas,
     toggleTipoEtiqueta,
     definirModoGraficoPessoas,
+    definirModoGraficoCorrentes,
     definirConsiderarCisTrans,
     toggleGeneroFiltroPessoas,
     limparGenerosFiltroPessoas,
@@ -459,9 +488,12 @@ import {
     removerInstituicaoAutor,
     editarInstituicaoAutor,
     adicionarMovimentoEscolaDireto,
+    adicionarDivisaoCorrenteDireta,
     removerMovimentoEscolaDireto,
     adicionarPeriodoHistoricoDoTexto,
     removerPeriodoHistoricoDoTexto,
+    removerEpocaRetratadaDoTexto,
+    alterarRecorteEpocaRetratadaDoTexto,
     adicionarValorMovimento,
     adicionarRegiaoOrigemMovimento,
     removerRegiaoOrigemMovimento,
@@ -571,6 +603,7 @@ import {
     editarPoema,
     toggleCamposEpocaNa,
     aplicarSugestaoEpoca,
+    adicionarEpocaRetratadaComSugestao,
     initFormProsa,
     toggleCamposEpocaNaProsa,
     aplicarSugestaoEpocaProsa,
@@ -665,6 +698,40 @@ import {
     expandirTodosLocais,
 } from './ui-locais.js';
 import {
+    renderEtiquetas,
+    novaEtiqueta,
+    editarEtiqueta,
+    initFormEtiqueta,
+    verTextosEtiqueta,
+    excluirEtiquetaComAviso,
+    moverEtiquetaDoCartao,
+    alternarCategoriaEtiquetas,
+    recolherTodasEtiquetas,
+    expandirTodasEtiquetas,
+    mesclarDuplicataEtiqueta,
+    marcarEtiquetasNaoIguaisComAviso,
+} from './etiquetas-aba.js';
+import {
+    renderTagClusters,
+    alternarCategoriaTagClusters,
+    alternarTagCluster,
+    recolherTodosTagClusters,
+    expandirTodosTagClusters,
+    novoTagCluster,
+    baixarTagClustersMd,
+    editarTagCluster,
+    initFormTagCluster,
+    abrirImportarTagClusters,
+    initFormImportarTagClusters,
+    desfazerImportacaoTagClusters,
+    verTextosTagCluster,
+    excluirTagClusterComAviso,
+    tirarEtiquetaDoCluster,
+    colocarEtiquetaNoCluster,
+    adicionarEtiquetaAoClusterDoCartao,
+    definirClusterDaEtiqueta,
+} from './tag-clusters-aba.js';
+import {
     editarPersonagem,
     initFormPersonagem,
     novoPersonagem,
@@ -724,8 +791,21 @@ registrarModal(
     rastreadorOpcoesPeriodoBiografico,
 );
 registrarModal('modal-periodo-historico', 'modal-periodo-historico.html', initFormPeriodoHistorico);
+registrarModal(
+    'modal-opcoes-periodo-historico',
+    'modal-opcoes-periodo-historico.html',
+    initOpcoesPeriodoHistorico,
+    rastreadorOpcoesPeriodoHistorico,
+);
 registrarModal('modal-assunto', 'modal-assunto.html', initFormAssunto);
 registrarModal('modal-tema', 'modal-tema.html', initFormTema);
+registrarModal('modal-etiqueta', 'modal-etiqueta.html', initFormEtiqueta);
+registrarModal('modal-tag-cluster', 'modal-tag-cluster.html', initFormTagCluster);
+registrarModal(
+    'modal-importar-tag-clusters',
+    'modal-importar-tag-clusters.html',
+    initFormImportarTagClusters,
+);
 registrarModal('modal-local', 'modal-local.html', initFormLocal);
 registrarModal('modal-personagem', 'modal-personagem.html', initFormPersonagem);
 registrarModal('modal-sugestao-ecos', 'modal-sugestao-ecos.html', initSugestaoEcos);
@@ -745,6 +825,8 @@ registrarModal('modal-mesclar', 'modal-mesclar.html', initFormMesclar);
 registrarModal('modal-modo-aprendizado', 'modal-modo-aprendizado.html', initModoAprendizado);
 // Sem init: o conteúdo é redesenhado a cada abertura (ui-esvaziar-acervo.js).
 registrarModal('modal-esvaziar-acervo', 'modal-esvaziar-acervo.html', () => {});
+// Sem init: a janela se redesenha a cada abertura (ui-relatorio-periodos.js).
+registrarModal('modal-relatorio-periodos', 'modal-relatorio-periodos.html', () => {});
 registrarModal('modal-central-ajuda', 'modal-central-ajuda.html', initCentralAjuda);
 registrarModal('modal-col-parte', 'modal-col-parte.html', initFormColParte);
 registrarModal('modal-col-item', 'modal-col-item.html', initFormColItem);
@@ -841,6 +923,26 @@ const ACOES_LISTA = {
     'editar-tema': (el) => editarTema(Number(el.dataset.id)),
     'ver-textos-tema': (el) => verTextosTema(Number(el.dataset.id)),
     'excluir-tema': (el) => excluirTema(Number(el.dataset.id)),
+    'alternar-categoria-etiquetas': (el) => alternarCategoriaEtiquetas(el.dataset.categoria),
+    'recolher-todas-etiquetas': () => recolherTodasEtiquetas(),
+    'expandir-todas-etiquetas': () => expandirTodasEtiquetas(),
+    'editar-etiqueta': (el) => editarEtiqueta(Number(el.dataset.id)),
+    'ver-textos-etiqueta': (el) => verTextosEtiqueta(Number(el.dataset.id)),
+    'excluir-etiqueta': (el) => excluirEtiquetaComAviso(Number(el.dataset.id)),
+    'alternar-categoria-tag-clusters': (el) => alternarCategoriaTagClusters(el.dataset.categoria),
+    'alternar-tag-cluster': (el) => alternarTagCluster(Number(el.dataset.id)),
+    'recolher-todos-tag-clusters': () => recolherTodosTagClusters(),
+    'expandir-todos-tag-clusters': () => expandirTodosTagClusters(),
+    'importar-tag-clusters': () => abrirImportarTagClusters(),
+    'desfazer-importacao-tag-clusters': () => desfazerImportacaoTagClusters(),
+    'editar-tag-cluster': (el) => editarTagCluster(Number(el.dataset.id)),
+    'ver-textos-tag-cluster': (el) => verTextosTagCluster(Number(el.dataset.id)),
+    'excluir-tag-cluster': (el) => excluirTagClusterComAviso(Number(el.dataset.id)),
+    'tirar-etiqueta-do-cluster': (el) => tirarEtiquetaDoCluster(Number(el.dataset.id)),
+    'mesclar-duplicata-etiqueta': (el) =>
+        mesclarDuplicataEtiqueta(Number(el.dataset.manter), Number(el.dataset.remover)),
+    'nao-sao-iguais-etiqueta': (el) =>
+        marcarEtiquetasNaoIguaisComAviso(Number(el.dataset.a), Number(el.dataset.b)),
     'editar-local': (el) => editarLocalNaTela(Number(el.dataset.id)),
     'novo-sublocal': (el) => novoSublocal(Number(el.dataset.id)),
     'excluir-local': (el) => excluirLocalComAviso(Number(el.dataset.id)),
@@ -919,6 +1021,18 @@ const ACOES_LISTA = {
     'alternar-ocultas-massa-epocas': () => alternarOcultasNaBarraEpocas(),
     'inverter-selecao-epocas': () => inverterSelecaoEpocas(),
     'limpar-selecao-epocas': () => limparSelecaoEpocas(),
+    'toggle-periodo-historico': (el, e) =>
+        toggleSelecaoPeriodoHistorico(Number(el.dataset.id), el.checked, e?.shiftKey),
+    'toggle-todos-periodos-historicos': (el) => toggleSelecaoTodosPeriodosHistoricos(el.checked),
+    'aplicar-massa-periodos-historicos': () => aplicarMassaBarraPeriodosHistoricos(),
+    'inverter-selecao-periodos-historicos': () => inverterSelecaoPeriodosHistoricos(),
+    'limpar-selecao-periodos-historicos': () => limparSelecaoPeriodosHistoricos(),
+    'toggle-corrente': (el, e) =>
+        toggleSelecaoCorrente(Number(el.dataset.id), el.checked, e?.shiftKey),
+    'toggle-todas-correntes': (el) => toggleSelecaoTodasCorrentes(el.checked),
+    'aplicar-massa-correntes': () => aplicarMassaBarraCorrentes(),
+    'inverter-selecao-correntes': () => inverterSelecaoCorrentes(),
+    'limpar-selecao-correntes': () => limparSelecaoCorrentes(),
     'toggle-ocultar-pessoa': (el) => toggleOcultarPessoa(Number(el.dataset.id)),
     'toggle-ocultar-grupo': (el) => toggleOcultarGrupo(Number(el.dataset.id)),
     'toggle-todos-poemas': (el) => toggleSelecaoTodos('poemas', el.checked),
@@ -939,6 +1053,21 @@ document.querySelector('main')?.addEventListener('click', (e) => {
     if (!alvo) return;
     const acao = ACOES_LISTA[alvo.dataset.action];
     if (acao) acao(alvo, e);
+});
+
+// Caixa "Página N de M" da paginação (montarPaginacao): ao confirmar o número
+// (Enter ou sair do campo), abre a página pedida pela mesma ação dos botões
+// Anterior/Próxima. Valor inválido ou igual à página atual só restaura a caixa.
+document.querySelector('main')?.addEventListener('change', (e) => {
+    const campo = e.target.closest?.('input[data-pagina-input]');
+    if (!campo) return;
+    const atual = Number(campo.dataset.paginaAtual);
+    const destino = interpretarPaginaDigitada(campo.value, Number(campo.dataset.paginaTotal));
+    if (destino === null || destino === atual) {
+        campo.value = String(atual);
+        return;
+    }
+    ACOES_LISTA[campo.dataset.paginaInput]?.({ dataset: { pagina: String(destino) } });
 });
 
 // Padrões de colunas salvos pela pessoa (seletor "Colunas") moram em
@@ -970,6 +1099,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await migrarImagensLegadasParaIndexedDB();
 
     initTema();
+    initFusoHorario();
     initNav();
     renderColetaneas();
     renderLists();
@@ -1179,6 +1309,9 @@ window.aplicarImportacaoAditivaClick = aplicarImportacaoAditivaClick;
 window.abrirModalEsvaziarAcervo = abrirModalEsvaziarAcervo;
 window.atualizarModalEsvaziarAcervo = atualizarModalEsvaziarAcervo;
 window.confirmarEsvaziarAcervo = confirmarEsvaziarAcervo;
+window.abrirModalRelatorioPeriodos = abrirModalRelatorioPeriodos;
+window.atualizarModalRelatorioPeriodos = atualizarModalRelatorioPeriodos;
+window.baixarRelatorioPeriodos = baixarRelatorioPeriodos;
 window.baixarBackupCompleto = baixarBackupCompleto;
 window.baixarSoExtras = baixarSoExtras;
 window.restaurarExtrasArquivo = restaurarExtrasArquivo;
@@ -1315,9 +1448,13 @@ window.adicionarInstituicaoAutor = adicionarInstituicaoAutor;
 window.removerInstituicaoAutor = removerInstituicaoAutor;
 window.editarInstituicaoAutor = editarInstituicaoAutor;
 window.adicionarMovimentoEscolaDireto = adicionarMovimentoEscolaDireto;
+window.adicionarDivisaoCorrenteDireta = adicionarDivisaoCorrenteDireta;
 window.removerMovimentoEscolaDireto = removerMovimentoEscolaDireto;
 window.adicionarPeriodoHistoricoDoTexto = adicionarPeriodoHistoricoDoTexto;
 window.removerPeriodoHistoricoDoTexto = removerPeriodoHistoricoDoTexto;
+window.removerEpocaRetratadaDoTexto = removerEpocaRetratadaDoTexto;
+window.alterarRecorteEpocaRetratadaDoTexto = alterarRecorteEpocaRetratadaDoTexto;
+window.adicionarEpocaRetratadaComSugestao = adicionarEpocaRetratadaComSugestao;
 window.adicionarValorMovimento = adicionarValorMovimento;
 window.adicionarRegiaoOrigemMovimento = adicionarRegiaoOrigemMovimento;
 window.removerRegiaoOrigemMovimento = removerRegiaoOrigemMovimento;
@@ -1333,6 +1470,15 @@ window.removerTemaAssunto = removerTemaAssunto;
 window.editarTemaAssunto = editarTemaAssunto;
 window.atribuirTemaDoPainel = atribuirTemaDoPainel;
 window.renderTemas = renderTemas;
+window.renderEtiquetas = renderEtiquetas;
+window.novaEtiqueta = novaEtiqueta;
+window.moverEtiquetaDoCartao = moverEtiquetaDoCartao;
+window.renderTagClusters = renderTagClusters;
+window.novoTagCluster = novoTagCluster;
+window.baixarTagClustersMd = baixarTagClustersMd;
+window.colocarEtiquetaNoCluster = colocarEtiquetaNoCluster;
+window.adicionarEtiquetaAoClusterDoCartao = adicionarEtiquetaAoClusterDoCartao;
+window.definirClusterDaEtiqueta = definirClusterDaEtiqueta;
 window.atualizarListaSemAssunto = atualizarListaSemAssunto;
 window.renderLocais = renderLocais;
 window.renderPersonagens = renderPersonagens;
@@ -1516,9 +1662,11 @@ window.definirOrdenacaoEpocas = definirOrdenacaoEpocas;
 window.definirOrdenacaoPeriodosHistoricos = definirOrdenacaoPeriodosHistoricos;
 window.setFiltroPeriodo = setFiltroPeriodo;
 window.limparFiltrosCorrentes = limparFiltrosCorrentes;
+window.limparFiltrosPeriodosHistoricos = limparFiltrosPeriodosHistoricos;
 window.limparFiltrosPeriodosBiograficos = limparFiltrosPeriodosBiograficos;
 window.alternarExibirOcultasEpocas = alternarExibirOcultasEpocas;
 window.abrirOpcoesPeriodoBiografico = abrirOpcoesPeriodoBiografico;
+window.abrirOpcoesPeriodoHistorico = abrirOpcoesPeriodoHistorico;
 window.setStatusProsas = setStatusProsas;
 window.setItensPorPagina = setItensPorPagina;
 window.togglePainel = togglePainel;
@@ -1530,6 +1678,8 @@ window.resetarColunas = resetarColunas;
 window.aplicarPadraoColunas = aplicarPadraoColunas;
 window.salvarPadraoColunasUI = salvarPadraoColunasUI;
 window.excluirPadraoColunasUI = excluirPadraoColunasUI;
+window.renomearPadraoColunasUI = renomearPadraoColunasUI;
+window.atualizarPadraoColunasUI = atualizarPadraoColunasUI;
 window.filtrarColunas = filtrarColunas;
 window.adicionarColunaContagem = adicionarColunaContagem;
 window.removerColunaContagem = removerColunaContagem;
@@ -1558,6 +1708,7 @@ window.editarGrupoDoVisualizador = editarGrupoDoVisualizador;
 window.baixarDoModalVisualizacaoSonoridade = baixarDoModalVisualizacaoSonoridade;
 window.baixarDoModalVisualizacaoEstruturaTextual = baixarDoModalVisualizacaoEstruturaTextual;
 window.setTema = setTema;
+window.setFusoHorario = setFusoHorario;
 window.setFiltroDataEscritaPoemas = setFiltroDataEscritaPoemas;
 window.setFiltroDataPublicacaoPoemas = setFiltroDataPublicacaoPoemas;
 window.setFiltroEpocaRetratadaPoemas = setFiltroEpocaRetratadaPoemas;
@@ -1594,7 +1745,6 @@ window.removerSinalEmMassa = removerSinalEmMassa;
 window.aplicarTemaEmMassa = aplicarTemaEmMassa;
 window.removerTemaEmMassa = removerTemaEmMassa;
 window.prepararPainelTemasMassa = prepararPainelTemasMassa;
-window.atualizarSugestoesTemasMassa = atualizarSugestoesTemasMassa;
 window.atualizarListaSinalBulk = atualizarListaSinalBulk;
 window.aplicarDataEmMassa = aplicarDataEmMassa;
 window.limparDataEmMassa = limparDataEmMassa;
@@ -1623,6 +1773,7 @@ window.executarExportacaoSeletivaDocx = executarExportacaoSeletivaDocx;
 window.renderEstatisticas = renderEstatisticas;
 window.toggleTipoEtiqueta = toggleTipoEtiqueta;
 window.definirModoGraficoPessoas = definirModoGraficoPessoas;
+window.definirModoGraficoCorrentes = definirModoGraficoCorrentes;
 window.definirConsiderarCisTrans = definirConsiderarCisTrans;
 window.toggleGeneroFiltroPessoas = toggleGeneroFiltroPessoas;
 window.limparGenerosFiltroPessoas = limparGenerosFiltroPessoas;

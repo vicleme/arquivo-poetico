@@ -34,6 +34,9 @@ const {
     salvarPadraoColunas,
     aplicarPadraoColunas,
     excluirPadraoColunas,
+    renomearPadraoColunas,
+    atualizarPadraoColunas,
+    padraoEmEdicaoColunas,
     padraoAtivoColunas,
     renderSeletorColunas,
 } = await import('../js/colunas.js');
@@ -253,7 +256,7 @@ describe('moverColuna', () => {
         // ordem de fábrica (início): estrutura, dataEscrita, dataPublicacao, status, e depois as demais na ordem de definição (idioma, localEscrita, territorialidade, epocaRetratada...)
         moverColuna('poemas', 'notas', 'up');
         const estado = JSON.parse(localStorage.getItem(LS_PREFIX + 'poemas'));
-        assert.deepEqual(estado.ordem.slice(0, 17), [
+        assert.deepEqual(estado.ordem.slice(0, 24), [
             'estrutura',
             'dataEscrita',
             'dataPublicacao',
@@ -262,8 +265,15 @@ describe('moverColuna', () => {
             'localEscrita',
             'territorialidade',
             'epocaRetratada',
+            'esferaPeriodoBiografico',
+            'categoriaPeriodoBiografico',
+            'eventosBiograficos',
             'periodoHistoricoId',
+            'esferaPeriodoHistorico',
+            'categoriaPeriodoHistorico',
+            'eventosHistoricos',
             'movimentosEscolas',
+            'divisoesCorrentes',
             'posturaEstetica',
             'programa',
             'notas',
@@ -524,5 +534,106 @@ describe('padrões personalizados de colunas', () => {
         assert.ok(!html.includes('<b>"x"</b>'));
         assert.ok(html.includes('selected'));
         assert.ok(html.includes('Excluir padrão'));
+    });
+});
+
+describe('renomear e atualizar padrões de colunas', () => {
+    beforeEach(resetar);
+
+    it('renomear mantém colunas e posição, e aceita só mudar a caixa', () => {
+        salvarPadraoColunas('poemas', 'A');
+        toggleColuna('poemas', 'elos', true);
+        salvarPadraoColunas('poemas', 'B');
+        const colunasA = listarPadroesColunas('poemas')[0].colunas;
+        assert.deepEqual(renomearPadraoColunas('poemas', 'a', '  Novo   nome '), {
+            ok: true,
+            nome: 'Novo nome',
+        });
+        const lista = listarPadroesColunas('poemas');
+        assert.deepEqual(
+            lista.map((p) => p.nome),
+            ['Novo nome', 'B'],
+        );
+        assert.deepEqual(lista[0].colunas, colunasA);
+        assert.equal(renomearPadraoColunas('poemas', 'B', 'b').ok, true);
+        assert.equal(listarPadroesColunas('poemas')[1].nome, 'b');
+    });
+
+    it('renomear recusa nome de outro padrão, vazio ou padrão inexistente', () => {
+        salvarPadraoColunas('poemas', 'A');
+        salvarPadraoColunas('poemas', 'B');
+        assert.deepEqual(renomearPadraoColunas('poemas', 'A', ' b '), {
+            ok: false,
+            motivo: 'existe',
+        });
+        assert.deepEqual(renomearPadraoColunas('poemas', 'A', '  '), { ok: false, motivo: 'nome' });
+        assert.deepEqual(renomearPadraoColunas('poemas', 'Z', 'Y'), {
+            ok: false,
+            motivo: 'inexistente',
+        });
+        assert.deepEqual(renomearPadraoColunas('fantasma', 'A', 'Y'), {
+            ok: false,
+            motivo: 'tabela',
+        });
+        assert.deepEqual(
+            listarPadroesColunas('poemas').map((p) => p.nome),
+            ['A', 'B'],
+        );
+    });
+
+    it('atualizar regrava as colunas de agora sem mudar nome nem posição', () => {
+        salvarPadraoColunas('poemas', 'A');
+        salvarPadraoColunas('poemas', 'B');
+        aplicarPadraoColunas('poemas', 'A');
+        toggleColuna('poemas', 'elos', true);
+        moverColuna('poemas', 'elos', 'up');
+        const agora = getColunasAtivas('poemas');
+        assert.deepEqual(atualizarPadraoColunas('poemas', 'a'), { ok: true, nome: 'A' });
+        const lista = listarPadroesColunas('poemas');
+        assert.deepEqual(
+            lista.map((p) => p.nome),
+            ['A', 'B'],
+        );
+        assert.deepEqual(lista[0].colunas, agora);
+        assert.equal(padraoAtivoColunas('poemas'), 'A');
+        assert.deepEqual(atualizarPadraoColunas('poemas', 'Z'), {
+            ok: false,
+            motivo: 'inexistente',
+        });
+    });
+
+    it('os dois disparam "colunas:alteradas"; a recusa não', () => {
+        salvarPadraoColunas('poemas', 'A');
+        salvarPadraoColunas('poemas', 'B');
+        window._eventos = [];
+        renomearPadraoColunas('poemas', 'A', 'C');
+        atualizarPadraoColunas('poemas', 'C');
+        assert.equal(window._eventos.length, 2);
+        renomearPadraoColunas('poemas', 'C', 'B');
+        assert.equal(window._eventos.length, 2);
+    });
+
+    it('o painel oferece Atualizar só depois de mexer, e Renomear com o padrão lembrado', () => {
+        salvarPadraoColunas('poemas', 'Base');
+        let html = renderSeletorColunas('poemas');
+        assert.ok(html.includes('Renomear padrão'));
+        assert.ok(!html.includes('Atualizar padrão'));
+        toggleColuna('poemas', 'elos', true);
+        assert.equal(padraoAtivoColunas('poemas'), null);
+        assert.equal(padraoEmEdicaoColunas('poemas'), 'Base');
+        html = renderSeletorColunas('poemas');
+        assert.ok(html.includes('Atualizar padrão'));
+        assert.ok(html.includes('Renomear padrão'));
+        assert.ok(!html.includes('Excluir padrão'));
+        // excluído, o padrão deixa de ser lembrado
+        excluirPadraoColunas('poemas', 'Base');
+        assert.equal(padraoEmEdicaoColunas('poemas'), null);
+        assert.ok(!renderSeletorColunas('poemas').includes('Atualizar padrão'));
+    });
+
+    it('renomear leva junto o padrão lembrado', () => {
+        salvarPadraoColunas('poemas', 'Base');
+        renomearPadraoColunas('poemas', 'Base', 'Novo');
+        assert.equal(padraoEmEdicaoColunas('poemas'), 'Novo');
     });
 });

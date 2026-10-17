@@ -374,3 +374,243 @@ describe('Natureza em massa (item 3)', () => {
         assert.equal(JSON.stringify(db.epocas), antes);
     });
 });
+
+// ─── Faz parte de (pai em comum) ─────────────────────────────────────────
+// Reaproveita as regras do modal (ciclo, autor, sobreposição de datas) em cada
+// período da seleção; quem não cabe é pulado e devolvido com o motivo.
+
+const data = (ano, mes = null, dia = null) => ({ ano, mes, dia });
+
+function montarHierarquia() {
+    db.autores = [
+        { id: 1, nome: 'Ana', genero: 'Mulher' },
+        { id: 2, nome: 'Bia', genero: 'Mulher' },
+    ];
+    const base = { esferas: [], categorias: [], pessoasEnvolvidas: [], relacoes: [] };
+    db.epocas = [
+        { id: 10, nome: 'Ensino médio', autorId: 1, inicio: data(2005), fim: data(2007), ...base },
+        { id: 11, nome: 'Primeiro ano', autorId: 1, inicio: data(2005), fim: data(2005), ...base },
+        { id: 12, nome: 'Segundo ano', autorId: 1, inicio: data(2006), fim: data(2006), ...base },
+        { id: 13, nome: 'Faculdade', autorId: 1, inicio: data(2010), fim: data(2014), ...base },
+        { id: 14, nome: 'Sem datas', autorId: 1, ...base },
+        { id: 20, nome: 'Ensino médio da Bia', autorId: 2, inicio: data(2005), ...base },
+        { id: 21, nome: 'Fase da Bia', autorId: 2, ...base },
+    ];
+}
+const pais = (id) => ep(id).pertenceA ?? [];
+
+describe('Faz parte de em massa', () => {
+    beforeEach(montarHierarquia);
+
+    it('acrescentar põe vários períodos dentro do mesmo pai', () => {
+        const r = aplicarMassaPeriodosBiograficos(db, [11, 12], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 10,
+        });
+        assert.equal(r.erro, undefined);
+        assert.equal(r.alterados.length, 2);
+        assert.deepEqual(r.recusados, []);
+        assert.deepEqual(pais(11), [10]);
+        assert.deepEqual(pais(12), [10]);
+    });
+
+    it('aceita o id como texto (vem de um <select>)', () => {
+        aplicarMassaPeriodosBiograficos(db, [11], { campo: 'pai', acao: 'adicionar', paiId: '10' });
+        assert.deepEqual(pais(11), [10]);
+    });
+
+    it('soma ao que já tem: o pai antigo continua e o primeiro segue como principal', () => {
+        db.epocas.find((e) => e.id === 14).pertenceA = [13];
+        aplicarMassaPeriodosBiograficos(db, [14], { campo: 'pai', acao: 'adicionar', paiId: 10 });
+        assert.deepEqual(pais(14), [13, 10]);
+    });
+
+    it('quem já está dentro desse pai não duplica e é contado à parte', () => {
+        db.epocas.find((e) => e.id === 11).pertenceA = [10];
+        const r = aplicarMassaPeriodosBiograficos(db, [11, 12], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 10,
+        });
+        assert.equal(r.alterados.length, 1);
+        assert.equal(r.iguais, 1);
+        assert.deepEqual(pais(11), [10]);
+    });
+
+    it('o próprio pai na seleção é recusado ("proprio") e os outros entram', () => {
+        const r = aplicarMassaPeriodosBiograficos(db, [10, 11], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 10,
+        });
+        assert.deepEqual(r.recusados, [{ id: 10, motivo: 'proprio' }]);
+        assert.equal(r.alterados.length, 1);
+        assert.deepEqual(pais(10), []);
+        assert.deepEqual(pais(11), [10]);
+    });
+
+    it('não deixa um período virar filho de quem está dentro dele ("ciclo")', () => {
+        db.epocas.find((e) => e.id === 11).pertenceA = [10];
+        const r = aplicarMassaPeriodosBiograficos(db, [10], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 11,
+        });
+        assert.deepEqual(r.recusados, [{ id: 10, motivo: 'ciclo' }]);
+        assert.deepEqual(pais(10), []);
+    });
+
+    it('dois períodos que se escolheriam como pai: só o primeiro vale (o outro vira ciclo)', () => {
+        const r1 = aplicarMassaPeriodosBiograficos(db, [14], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 10,
+        });
+        const r2 = aplicarMassaPeriodosBiograficos(db, [10], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 14,
+        });
+        assert.equal(r1.alterados.length, 1);
+        assert.deepEqual(r2.recusados, [{ id: 10, motivo: 'ciclo' }]);
+        assert.deepEqual(pais(10), []);
+    });
+
+    it('recusa período de outro autor e deixa passar os do mesmo', () => {
+        const r = aplicarMassaPeriodosBiograficos(db, [11, 21], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 10,
+        });
+        assert.deepEqual(r.recusados, [{ id: 21, motivo: 'autor' }]);
+        assert.deepEqual(pais(11), [10]);
+        assert.deepEqual(pais(21), []);
+    });
+
+    it('recusa quem começa depois do fim do pai ("depois") e quem termina antes dele ("antes")', () => {
+        const r = aplicarMassaPeriodosBiograficos(db, [13], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 10,
+        });
+        assert.deepEqual(r.recusados, [{ id: 13, motivo: 'depois' }]);
+        const r2 = aplicarMassaPeriodosBiograficos(db, [11], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 13,
+        });
+        assert.deepEqual(r2.recusados, [{ id: 11, motivo: 'antes' }]);
+        assert.deepEqual(pais(13), []);
+    });
+
+    it('período sem datas nunca é recusado por intervalo', () => {
+        const r = aplicarMassaPeriodosBiograficos(db, [14], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 10,
+        });
+        assert.deepEqual(r.recusados, []);
+        assert.deepEqual(pais(14), [10]);
+    });
+
+    it('remover tira só aquele pai e ignora quem não o tinha', () => {
+        db.epocas.find((e) => e.id === 11).pertenceA = [10, 13];
+        db.epocas.find((e) => e.id === 12).pertenceA = [10];
+        const r = aplicarMassaPeriodosBiograficos(db, [11, 12, 14], {
+            campo: 'pai',
+            acao: 'remover',
+            paiId: 10,
+        });
+        assert.equal(r.alterados.length, 2);
+        assert.equal(r.iguais, 1);
+        assert.deepEqual(pais(11), [13]);
+        assert.deepEqual(pais(12), []);
+    });
+
+    it('remover não confere regra nenhuma (nem de outro autor)', () => {
+        db.epocas.find((e) => e.id === 21).pertenceA = [10]; // dado de fora do modal
+        const r = aplicarMassaPeriodosBiograficos(db, [21], {
+            campo: 'pai',
+            acao: 'remover',
+            paiId: 10,
+        });
+        assert.deepEqual(r.recusados, []);
+        assert.deepEqual(pais(21), []);
+    });
+
+    it('sem pai escolhido a operação é inválida', () => {
+        assert.equal(
+            validarOperacao({ campo: 'pai', acao: 'adicionar', paiId: '' }),
+            'Escolha o período pai.',
+        );
+        assert.equal(validarOperacao({ campo: 'pai', acao: 'adicionar', paiId: 10 }), null);
+    });
+
+    it('pai que não existe mais devolve erro e não mexe em nada', () => {
+        const r = aplicarMassaPeriodosBiograficos(db, [11], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 999,
+        });
+        assert.match(r.erro, /não existe mais/);
+        assert.equal('pertenceA' in ep(11), false);
+    });
+
+    it('não conta como Autor do período (não pede o aviso de vários autores)', () => {
+        assert.equal(operacaoUsaAutor({ campo: 'pai', acao: 'adicionar', paiId: 10 }), false);
+    });
+
+    it('Desfazer devolve só os alterados e preserva quem nunca teve o campo', () => {
+        const antes = JSON.stringify(db.epocas);
+        const r = aplicarMassaPeriodosBiograficos(db, [11, 12, 21], {
+            campo: 'pai',
+            acao: 'adicionar',
+            paiId: 10,
+        });
+        assert.equal(r.alterados.length, 2);
+        assert.equal(restaurarMassaPeriodosBiograficos(db, r.alterados), 2);
+        assert.equal(JSON.stringify(db.epocas), antes);
+    });
+
+    it('outros campos dos períodos ficam como estavam', () => {
+        db.epocas.find((e) => e.id === 11).esferas = ['Escolar'];
+        aplicarMassaPeriodosBiograficos(db, [11], { campo: 'pai', acao: 'adicionar', paiId: 10 });
+        assert.deepEqual(ep(11).esferas, ['Escolar']);
+    });
+});
+
+describe('Marca de evento em massa', () => {
+    beforeEach(montar);
+    const ep = (id) => db.epocas.find((e) => e.id === id);
+
+    it('acrescentar marca, não repete e Desfazer devolve o campo ausente', () => {
+        ep(2).evento = true;
+        const r = aplicarMassaPeriodosBiograficos(db, [1, 2], {
+            campo: 'evento',
+            acao: 'adicionar',
+        });
+        assert.equal(r.alterados.length, 1);
+        assert.equal(r.iguais, 1);
+        assert.equal(ep(1).evento, true);
+        restaurarMassaPeriodosBiograficos(db, r.alterados);
+        assert.equal('evento' in ep(1), false);
+        assert.equal(ep(2).evento, true);
+    });
+
+    it('remover apaga o campo (não grava false) e Desfazer o recoloca', () => {
+        ep(1).evento = true;
+        const r = aplicarMassaPeriodosBiograficos(db, [1, 2], {
+            campo: 'evento',
+            acao: 'remover',
+        });
+        assert.equal(r.alterados.length, 1);
+        assert.equal('evento' in ep(1), false);
+        restaurarMassaPeriodosBiograficos(db, r.alterados);
+        assert.equal(ep(1).evento, true);
+    });
+
+    it('não precisa de valor para validar', () => {
+        assert.equal(validarOperacao({ campo: 'evento', acao: 'adicionar' }), null);
+    });
+});

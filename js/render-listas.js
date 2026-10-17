@@ -9,6 +9,7 @@
 // ============================================================
 
 import { nomesDasAncoras } from './ancora-eco.js';
+import { opcoesDuracao } from './fuso-horario.js';
 import {
     db,
     save,
@@ -41,6 +42,8 @@ import {
     periodoEfetivoDaCorrente,
     posturasDasCorrentes,
     programasDasCorrentes,
+    idsDeCorrentesDeTopo,
+    idsDeDivisoes,
     FILTRO_CORRENTE_VAZIO,
 } from './correntes-hierarquia.js';
 import {
@@ -51,6 +54,9 @@ import {
     paisDoPeriodo,
     filhosDoPeriodo,
     nomesDeBuscaDosPeriodos,
+    FILTRO_PERIODO_HISTORICO_SEM_REGIAO,
+    opcoesDeRegiaoDosPeriodosHistoricos,
+    filtrarPeriodosHistoricosPorRegiao,
 } from './periodos-historicos-hierarquia.js';
 import {
     criarComparadorDeEpocas,
@@ -69,13 +75,17 @@ import {
     filtrarPorConteudo,
     normalizarBusca,
     parseConsultaNumero,
+    consultaNumeroTemFiltro,
+    numeroEntraNaConsulta,
     opcoesBuscaPadrao,
     formatarDataParcial,
     formatarIntervaloEpocaRetratada,
     formatarIntervaloPeriodoHistorico,
     formatarIntervaloMovimentoEscola,
+    comDuracao,
     anoEquivalenteMovimento,
     nomeEpocaExibivel,
+    formatarEpocaRetratada,
     nomesMovimentosEscolas,
     TIPOS_MOVIMENTO_ESCOLA,
     PROGRAMAS_MOVIMENTO,
@@ -96,6 +106,7 @@ import {
     itemBateFiltroEpoca,
     itemFaltaEpocaParaFiltro,
     sinalizacoesCombinadas,
+    textoDeEtiquetas,
     PREFIXOS_CANONICOS_POR_CAMPO,
     rotuloElo,
     nomesPessoas,
@@ -125,8 +136,18 @@ import {
     livroForaDeCirculacao,
     rotuloSituacaoEditorial,
     periodosHistoricosIdsDoItem,
+    ehEvento,
+    periodosBiograficosDoItem,
     escaparAspasBusca,
 } from './utils.js';
+import {
+    FILTRO_PERIODO_HISTORICO_SEM_VALOR,
+    filtrarPeriodosHistoricosPorClassificacao,
+    opcoesDeFiltroDosPeriodosHistoricos,
+    textoBuscaEsferasHistoricas,
+    textoBuscaCategoriasHistoricas,
+    classificacaoDosPeriodosHistoricosDoTexto,
+} from './periodos-historicos-campos.js';
 import { regiaoVazia, textoDaRegiao } from './regiao.js';
 import {
     exibindoOcultasDosPeriodos,
@@ -140,6 +161,7 @@ import {
     opcoesDeFiltroBiografico,
     linhasDoPeriodoBiografico,
     periodosVisiveis,
+    classificacaoDosPeriodosBiograficos,
     textoBuscaEsferas,
     textoBuscaCategorias,
     textoBuscaNaturezas,
@@ -165,7 +187,7 @@ import {
     renderOpcoesCampoContagem,
 } from './colunas-contagem.js';
 import { contarCamposPreenchidos } from './exportar-md.js';
-import { isAcaoAtiva } from './acoes-coluna.js';
+import { isAcaoAtiva, temAcoesVisiveis } from './acoes-coluna.js';
 import {
     celulaAcoesItem,
     resolverTituloPoemaOuProsa,
@@ -227,6 +249,20 @@ import {
 // epocas-acoes.js importa `renderEpocas` e `getListaVisivelEpocas` daqui:
 // mesmo import circular proposital de pessoas-acoes.js.
 import { selecaoEpocas, podarSelecaoEpocas, atualizarBarraSelecaoEpocas } from './epocas-acoes.js';
+// periodos-historicos-acoes.js e correntes-acoes.js importam daqui
+// `renderPeriodosHistoricos`/`getListaVisivelPeriodosHistoricos` e
+// `renderMovimentosEscolas`/`getListaVisivelCorrentes`: mesmo import circular
+// proposital de epocas-acoes.js.
+import {
+    selecaoPeriodosHistoricos,
+    podarSelecaoPeriodosHistoricos,
+    atualizarBarraSelecaoPeriodosHistoricos,
+} from './periodos-historicos-acoes.js';
+import {
+    selecaoCorrentes,
+    podarSelecaoCorrentes,
+    atualizarBarraSelecaoCorrentes,
+} from './correntes-acoes.js';
 
 // Sempre que uma coluna é ligada/desligada (ver colunas.js) a tabela
 // correspondente precisa recalcular cabeçalho + linhas.
@@ -259,7 +295,7 @@ export const ICONE_EXCLUIR = `<svg viewBox="0 0 20 20" fill="none" stroke="curre
 // Duas linhas convergindo num ponto só — mesmo espírito visual de
 // "mesclar" em apps de versionamento (git merge), usado no botão de
 // Mesclar de Pessoas/Épocas (ver renderPessoas/renderEpocas abaixo).
-const ICONE_MESCLAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M4 3v5a4 4 0 0 0 4 4h0"/><path d="M16 3v5a4 4 0 0 1-4 4h0"/><path d="M10 12v5"/><path d="M7.5 14.5l2.5 2.5 2.5-2.5"/></svg>`;
+export const ICONE_MESCLAR = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 inline-block" aria-hidden="true"><path d="M4 3v5a4 4 0 0 0 4 4h0"/><path d="M16 3v5a4 4 0 0 1-4 4h0"/><path d="M10 12v5"/><path d="M7.5 14.5l2.5 2.5 2.5-2.5"/></svg>`;
 // Placa de proibido/permitido — botão "Ocultar"/"Reexibir" dos cards de
 // Pessoa e Grupo (ver renderPessoas/cartaoGrupo abaixo e
 // migrarPessoasOculto/migrarGruposOculto em db.js). Ícone à parte do olho
@@ -922,21 +958,34 @@ function periodoVisivelNaTela(epoca) {
 // Bloco 3: texto de busca dos campos novos do período biográfico do texto
 // (o texto guarda só o epocaId; os campos moram em db.epocas).
 function camposBuscaDoPeriodoBiografico(item) {
-    const achada = item.epocaRetratada?.epocaId
-        ? db.epocas.find((e) => e.id == item.epocaRetratada.epocaId)
-        : null;
+    // Vários períodos por texto: qualquer um deles acha o texto.
     // Período oculto não entra na busca (nem o nome, nem Esfera/Categoria/
     // pessoas), a menos que "Exibir ocultas" esteja ligado.
-    const epoca = achada && periodoVisivelNaTela(achada) ? achada : null;
+    const epocas = periodosBiograficosDoItem(item)
+        .map((x) => db.epocas.find((e) => e.id == x.epocaId))
+        .filter((e) => e && periodoVisivelNaTela(e));
+    const juntar = (fn) => epocas.map(fn).filter(Boolean).join(' ');
     return {
-        _buscaEsferas: epoca ? textoBuscaEsferas(epoca) : '',
-        _buscaCategorias: epoca ? textoBuscaCategorias(epoca) : '',
-        _buscaNaturezas: epoca ? textoBuscaNaturezas(epoca, db, opcoesOcultasDaAba()) : '',
-        _buscaVinculos: epoca ? textoBuscaVinculos(epoca, db, opcoesOcultasDaAba()) : '',
-        _buscaPessoasPeriodo: epoca
-            ? textoBuscaPessoasDoPeriodo(epoca, db, opcoesOcultasDaAba())
-            : '',
+        _buscaEsferas: juntar((e) => textoBuscaEsferas(e)),
+        _buscaCategorias: juntar((e) => textoBuscaCategorias(e)),
+        _buscaNaturezas: juntar((e) => textoBuscaNaturezas(e, db, opcoesOcultasDaAba())),
+        _buscaVinculos: juntar((e) => textoBuscaVinculos(e, db, opcoesOcultasDaAba())),
+        _buscaPessoasPeriodo: juntar((e) =>
+            textoBuscaPessoasDoPeriodo(e, db, opcoesOcultasDaAba()),
+        ),
     };
+}
+
+// Períodos biográficos do texto que valem na tela (o oculto não entra, igual à
+// busca), na ordem do texto. Alimenta as colunas derivadas Esfera e Categoria.
+function periodosBiograficosVisiveisDoTexto(item) {
+    return periodosBiograficosDoItem(item)
+        .map((x) => db.epocas.find((e) => e.id == x.epocaId))
+        .filter((e) => e && periodoVisivelNaTela(e));
+}
+
+function classificacaoBiograficaDoTexto(item, tipo) {
+    return classificacaoDosPeriodosBiograficos(periodosBiograficosVisiveisDoTexto(item), tipo);
 }
 
 export function verTextosEpoca(id) {
@@ -1260,6 +1309,23 @@ function textoDataParaBusca(dataObj) {
 // "secao:" em filtrarTextos (utils.js). extraLivros é usado só pra
 // Poemas, que também podem estar vinculados a outros livros/coletâneas
 // via livrosIds (ver nomesLivros acima).
+const CAMPOS_DE_ETIQUETA = [
+    'sinalizacoesTradicao',
+    'sinalizacoesEstilo',
+    'sinalizacoesRelacao',
+    'sinalizacoesSensibilidade',
+    'sinalizacoesTom',
+    'sinalizacoesDominioImagetico',
+    'sinalizacoesOutros',
+];
+function nomesDeEtiquetasParaBusca(item) {
+    const saida = {};
+    CAMPOS_DE_ETIQUETA.forEach((campo) => {
+        if (Array.isArray(item[campo])) saida[campo] = textoDeEtiquetas(item[campo]);
+    });
+    return saida;
+}
+
 export function decorarCamposBusca(item, extraLivros = '') {
     let livroTitulo = '',
         parteTitulo = '',
@@ -1285,6 +1351,9 @@ export function decorarCamposBusca(item, extraLivros = '') {
 
     return {
         ...item,
+        // Etiquetas guardam ids; a busca por prefixo (`tom:`, `estilo:`...)
+        // lê estes campos como texto, então a cópia decorada leva os nomes.
+        ...nomesDeEtiquetasParaBusca(item),
         _buscaLivro: [livroTitulo, extraLivros].filter(Boolean).join(' '),
         _buscaParte: parteTitulo,
         _buscaSecao: secaoTitulo,
@@ -1444,16 +1513,39 @@ export function decorarCamposBusca(item, extraLivros = '') {
         // db.epocas — ver migrarEpocas em db.js); nome e recorte entram na
         // busca geral e no prefixo "epoca:" (ver CAMPOS_ATRIBUTO em
         // utils.js), mesmo padrão de _buscaAutoria acima.
-        _buscaEpoca: item.epocaRetratada
-            ? [
-                  // Período oculto: a busca acha o rótulo "(período oculto)",
-                  // não o nome real.
-                  nomeEpocaExibivel(item.epocaRetratada, db.epocas, opcoesOcultasDosPeriodos()),
-                  ROTULOS_RECORTE_EPOCA[item.epocaRetratada.recorte] || '',
-              ]
-                  .filter(Boolean)
-                  .join(' ')
-            : '',
+        // Vários períodos por texto: cada um entra com o seu recorte.
+        _buscaEpoca: periodosBiograficosDoItem(item)
+            .map((periodo) =>
+                [
+                    // Período oculto: a busca acha o rótulo "(período oculto)",
+                    // não o nome real.
+                    nomeEpocaExibivel(periodo, db.epocas, opcoesOcultasDosPeriodos()),
+                    ROTULOS_RECORTE_EPOCA[periodo.recorte] || '',
+                ]
+                    .filter(Boolean)
+                    .join(' '),
+            )
+            .filter(Boolean)
+            .join(' '),
+        // Eventos biográficos do texto (F14-D3), só o nome e o recorte, para o
+        // prefixo `eventobiografico:` e a lupa da coluna. O evento oculto
+        // aparece como "(período oculto)", como no `_buscaEpoca`.
+        _buscaEventoBiografico: periodosBiograficosDoItem(item, db.epocas, 'eventos')
+            .map((periodo) =>
+                [
+                    nomeEpocaExibivel(periodo, db.epocas, opcoesOcultasDosPeriodos()),
+                    ROTULOS_RECORTE_EPOCA[periodo.recorte] || '',
+                ]
+                    .filter(Boolean)
+                    .join(' '),
+            )
+            .filter(Boolean)
+            .join(' '),
+        // Eventos históricos do texto, só o nome do evento exato (sem os pais).
+        _buscaEventoHistorico: nomesDeBuscaDosPeriodos(
+            db.periodosHistoricos,
+            periodosHistoricosIdsDoItem(item, db.periodosHistoricos, 'eventos'),
+        ).join(' '),
         // Bloco 3: Esfera, Categoria, Natureza, Vínculo e Pessoas do Período
         // Biográfico do texto (prefixos esfera:, categoria:, natureza:, vinculo:,
         // pessoaperiodo:;
@@ -1485,6 +1577,18 @@ export function decorarCamposBusca(item, extraLivros = '') {
             db.periodosHistoricos,
             periodosHistoricosIdsDoItem(item),
         ).join(' '),
+        // Esfera e Categoria dos períodos históricos do texto (derivadas):
+        // `esferahistorica:` e `categoriahistorica:`.
+        _buscaEsferasHistoricas: classificacaoDosPeriodosHistoricosDoTexto(
+            item,
+            db.periodosHistoricos,
+            'esferas',
+        ).join(', '),
+        _buscaCategoriasHistoricas: classificacaoDosPeriodosHistoricosDoTexto(
+            item,
+            db.periodosHistoricos,
+            'categorias',
+        ).join(', '),
         // movimentosEscolasIds guarda só os ids (nomes moram no cadastro
         // central db.movimentosEscolas — ver migrarMovimentosEscolasIds em
         // db.js); nomes entram na busca geral e no prefixo "movimento:"
@@ -1749,8 +1853,10 @@ export function getListaVisivelPoemas() {
     // digitado, ou só prefixos sem número solto) não filtra por número,
     // igual ao resto do arquivo quando um filtro está "sem valor".
     if (filtroNumeroPoemas && filtroNumeroPoemas.trim()) {
-        const { numeros, resto } = parseConsultaNumero(filtroNumeroPoemas);
-        if (numeros.size) lista = lista.filter((p) => numeros.has(p._numEstrutura));
+        const consulta = parseConsultaNumero(filtroNumeroPoemas);
+        const { resto } = consulta;
+        if (consultaNumeroTemFiltro(consulta))
+            lista = lista.filter((p) => numeroEntraNaConsulta(p._numEstrutura, consulta));
         if (resto.trim()) lista = filtrarTextos(lista, resto, opcoesBuscaPoemas);
     }
 
@@ -1817,8 +1923,10 @@ export function getListaVisivelProsas() {
 
     // Caixa B — ver comentário equivalente em getListaVisivelPoemas acima.
     if (filtroNumeroProsas && filtroNumeroProsas.trim()) {
-        const { numeros, resto } = parseConsultaNumero(filtroNumeroProsas);
-        if (numeros.size) lista = lista.filter((pr) => numeros.has(pr._numEstrutura));
+        const consulta = parseConsultaNumero(filtroNumeroProsas);
+        const { resto } = consulta;
+        if (consultaNumeroTemFiltro(consulta))
+            lista = lista.filter((pr) => numeroEntraNaConsulta(pr._numEstrutura, consulta));
         if (resto.trim()) lista = filtrarTextos(lista, resto, opcoesBuscaProsas);
     }
 
@@ -1965,8 +2073,10 @@ const LIMITE_PERIODOS_NA_CELULA = 3;
 
 // Um caminho por linha (Bloco 2e). Passou do limite: "…" e o restante no
 // title da célula.
-function celulaPeriodosHistoricos(item) {
-    const caminhos = periodosHistoricosIdsDoItem(item, db.periodosHistoricos)
+// `tipo` (F14-D4): 'periodos' (coluna Período Histórico, sem os eventos) ou
+// 'eventos' (coluna Eventos históricos).
+function celulaPeriodosHistoricos(item, tipo = 'periodos') {
+    const caminhos = periodosHistoricosIdsDoItem(item, db.periodosHistoricos, tipo)
         .map((id) => caminhoDoPeriodo(db.periodosHistoricos, id))
         .filter(Boolean);
     if (!caminhos.length) {
@@ -1977,6 +2087,14 @@ function celulaPeriodosHistoricos(item) {
     const linhas = visiveis.map((c) => `<div>${escapeHtml(c)}</div>`).join('');
     const reticencias = resto > 0 ? `<div title="${escapeHtml(caminhos.join('\n'))}">…</div>` : '';
     return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400">${linhas}${reticencias}</td>`;
+}
+
+// Coluna Eventos biográficos: um selo por evento, com o recorte (os períodos
+// comuns ficam na coluna Período Biográfico Retratado). O intervalo De/Até é
+// do texto inteiro e fica só naquela coluna.
+function celulaEventosBiograficos(item) {
+    const html = badgeEpocaRetratada(item.epocaRetratada, 'eventos');
+    return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500">${html || '<span class="text-gray-300 dark:text-slate-600">—</span>'}</td>`;
 }
 
 function celulaAssuntos(item) {
@@ -1996,6 +2114,43 @@ function celulaIdioma(item) {
 function celulaLocalEscrita(item) {
     const texto = textoLocalEscrita(db, item);
     return `<td class="p-4 text-xs ${texto ? 'text-gray-500 dark:text-slate-400' : 'text-gray-300 dark:text-slate-600'}">${texto ? escapeHtml(texto) : '—'}</td>`;
+}
+
+// Coluna "Corrente literária": só as correntes de topo ligadas ao texto. As
+// divisões (corrente com pai) têm coluna própria, "Divisões de corrente"
+// (Fase 14, etapa 2); a lista gravada no texto continua uma só.
+function celulaCorrentesDeTopo(item) {
+    const nomes = idsDeCorrentesDeTopo(db.movimentosEscolas, item.movimentosEscolasIds).map((id) =>
+        caminhoDaCorrente(db.movimentosEscolas, id),
+    );
+    return `<td class="p-4">${
+        nomes.length
+            ? nomes
+                  .map(
+                      (n) =>
+                          `<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(n)}</span>`,
+                  )
+                  .join('')
+            : '<span class="text-gray-300 dark:text-slate-600">—</span>'
+    }</td>`;
+}
+
+// Coluna "Divisões de corrente": um selo por divisão ligada ao texto, com o
+// nome no selo e o caminho completo na dica (F14-D7: o nome se repete entre
+// correntes e o pai nem sempre está marcado no texto).
+function celulaDivisoesDeCorrente(item) {
+    const ids = idsDeDivisoes(db.movimentosEscolas, item.movimentosEscolasIds);
+    return `<td class="p-4">${
+        ids.length
+            ? ids
+                  .map((id) => {
+                      const m = db.movimentosEscolas.find((x) => String(x.id) === String(id));
+                      const dica = caminhoDaCorrente(db.movimentosEscolas, id);
+                      return `<span title="${escapeHtml(dica)}" class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(m.nome)}</span>`;
+                  })
+                  .join('')
+            : '<span class="text-gray-300 dark:text-slate-600">—</span>'
+    }</td>`;
 }
 
 // Células de Postura estética e Programa: os valores efetivos (com a herança do
@@ -2021,6 +2176,45 @@ function celulaPosturaDaCorrente(item) {
     return celulaAtributoDaCorrente(
         posturasDasCorrentes(db.movimentosEscolas, item.movimentosEscolasIds),
         CLASSES_SELO_POSTURA,
+    );
+}
+
+// Esfera (azul) e Categoria (cinza) dos períodos históricos do texto, as
+// mesmas cores dos cartões da aba de períodos.
+const CLASSES_SELO_ESFERA_HISTORICA =
+    'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300';
+const CLASSES_SELO_CATEGORIA_HISTORICA =
+    'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300';
+
+// Esfera e Categoria dos períodos biográficos do texto: as mesmas cores dos
+// cartões da aba de Períodos Biográficos (Esfera azul, Categoria cinza), que
+// são também as das colunas históricas; o título da coluna diz de qual período
+// é (a tela de Poemas e Prosas não mistura os dois vocabulários numa coluna).
+function celulaEsferaPeriodoBiografico(item) {
+    return celulaAtributoDaCorrente(
+        classificacaoBiograficaDoTexto(item, 'esferas'),
+        CLASSES_SELO_ESFERA_HISTORICA,
+    );
+}
+
+function celulaCategoriaPeriodoBiografico(item) {
+    return celulaAtributoDaCorrente(
+        classificacaoBiograficaDoTexto(item, 'categorias'),
+        CLASSES_SELO_CATEGORIA_HISTORICA,
+    );
+}
+
+function celulaEsferaPeriodoHistorico(item) {
+    return celulaAtributoDaCorrente(
+        classificacaoDosPeriodosHistoricosDoTexto(item, db.periodosHistoricos, 'esferas'),
+        CLASSES_SELO_ESFERA_HISTORICA,
+    );
+}
+
+function celulaCategoriaPeriodoHistorico(item) {
+    return celulaAtributoDaCorrente(
+        classificacaoDosPeriodosHistoricosDoTexto(item, db.periodosHistoricos, 'categorias'),
+        CLASSES_SELO_CATEGORIA_HISTORICA,
     );
 }
 
@@ -2051,6 +2245,16 @@ const COMPARADORES_ORDENACAO = {
     titulo: compararPorTexto((p) => p.titulo),
     idioma: compararPorTexto((p) => p.idioma),
     localEscrita: compararPorTexto((p) => textoLocalEscrita(db, p)),
+    movimentosEscolas: compararPorTexto((p) =>
+        idsDeCorrentesDeTopo(db.movimentosEscolas, p.movimentosEscolasIds)
+            .map((id) => caminhoDaCorrente(db.movimentosEscolas, id))
+            .join(' | '),
+    ),
+    divisoesCorrentes: compararPorTexto((p) =>
+        idsDeDivisoes(db.movimentosEscolas, p.movimentosEscolasIds)
+            .map((id) => caminhoDaCorrente(db.movimentosEscolas, id))
+            .join(' | '),
+    ),
     posturaEstetica: compararPorTexto((p) =>
         posturasDasCorrentes(db.movimentosEscolas, p.movimentosEscolasIds).join(', '),
     ),
@@ -2061,6 +2265,42 @@ const COMPARADORES_ORDENACAO = {
     dataEscrita: compararPorData((p) => p.dataEscrita),
     dataPublicacao: compararPorData((p) => p.dataPublicacao),
     epocaRetratada: compararPorEpocaRetratada,
+    esferaPeriodoBiografico: compararPorTexto((p) =>
+        classificacaoBiograficaDoTexto(p, 'esferas').join(', '),
+    ),
+    categoriaPeriodoBiografico: compararPorTexto((p) =>
+        classificacaoBiograficaDoTexto(p, 'categorias').join(', '),
+    ),
+    // Mesmo texto que a célula mostra (caminho de cada período, na ordem do
+    // texto). Sem esse comparador, aplicarOrdenacao devolvia a lista intacta
+    // e asc/desc não faziam diferença.
+    periodoHistoricoId: compararPorTexto((p) =>
+        periodosHistoricosIdsDoItem(p, db.periodosHistoricos, 'periodos')
+            .map((id) => caminhoDoPeriodo(db.periodosHistoricos, id))
+            .filter(Boolean)
+            .join(' | '),
+    ),
+    eventosHistoricos: compararPorTexto((p) =>
+        periodosHistoricosIdsDoItem(p, db.periodosHistoricos, 'eventos')
+            .map((id) => caminhoDoPeriodo(db.periodosHistoricos, id))
+            .filter(Boolean)
+            .join(' | '),
+    ),
+    eventosBiograficos: compararPorTexto((p) => {
+        const texto = formatarEpocaRetratada(p.epocaRetratada, db.epocas, {
+            ...opcoesOcultasDosPeriodos(),
+            tipo: 'eventos',
+        });
+        return texto === '—' ? '' : texto;
+    }),
+    esferaPeriodoHistorico: compararPorTexto((p) =>
+        classificacaoDosPeriodosHistoricosDoTexto(p, db.periodosHistoricos, 'esferas').join(', '),
+    ),
+    categoriaPeriodoHistorico: compararPorTexto((p) =>
+        classificacaoDosPeriodosHistoricosDoTexto(p, db.periodosHistoricos, 'categorias').join(
+            ', ',
+        ),
+    ),
     assuntos: compararPorTexto((p) =>
         assuntosComPapel(p, db.assuntos, db.temas)
             .map((a) => a.nome)
@@ -2490,7 +2730,9 @@ export function renderPoemas() {
         cabecalho.innerHTML = montarCabecalho(
             'poemas',
             `<th class="p-4 border-b w-8 border-gray-200 dark:border-slate-700 sticky left-0 top-0 z-20 bg-gray-100 dark:bg-slate-700"><input type="checkbox" id="check-todos-poemas" data-action="toggle-todos-poemas"></th>`,
-            `<th class="p-4 border-b text-right border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700">Ações</th>`,
+            temAcoesVisiveis('poemas')
+                ? `<th class="p-4 border-b text-right border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700">Ações</th>`
+                : '',
         );
         // O checkbox mestre é recriado a cada render do cabeçalho — reaplica o estado
         const novoMaster = document.getElementById('check-todos-poemas');
@@ -2502,7 +2744,7 @@ export function renderPoemas() {
     const paginacaoContainer = document.getElementById('paginacao-poemas');
 
     if (listaFiltrada.length === 0) {
-        container.innerHTML = `<tr><td colspan="${colunasAtivas.length + colunasContagemAtivas.length + 3}" class="p-6 text-center text-gray-400 dark:text-slate-500 text-sm">Nenhum poema encontrado.</td></tr>`;
+        container.innerHTML = `<tr><td colspan="${colunasAtivas.length + colunasContagemAtivas.length + 2 + (temAcoesVisiveis('poemas') ? 1 : 0)}" class="p-6 text-center text-gray-400 dark:text-slate-500 text-sm">Nenhum poema encontrado.</td></tr>`;
         if (paginacaoContainer) paginacaoContainer.innerHTML = '';
         return;
     }
@@ -2609,21 +2851,16 @@ export function renderPoemas() {
             const na = epoca?.na;
             return `<td class="p-4 text-xs ${na ? 'text-gray-300 dark:text-slate-600 italic' : 'text-gray-400 dark:text-slate-500'}">${badgeEpocaRetratada(epoca)}<span class="font-mono">${formatarIntervaloEpocaRetratada(epoca)}</span></td>`;
         },
+        esferaPeriodoBiografico: (p) => celulaEsferaPeriodoBiografico(p),
+        categoriaPeriodoBiografico: (p) => celulaCategoriaPeriodoBiografico(p),
         periodoHistoricoId: (p) => celulaPeriodosHistoricos(p),
+        eventosHistoricos: (p) => celulaPeriodosHistoricos(p, 'eventos'),
+        eventosBiograficos: (p) => celulaEventosBiograficos(p),
+        esferaPeriodoHistorico: (p) => celulaEsferaPeriodoHistorico(p),
+        categoriaPeriodoHistorico: (p) => celulaCategoriaPeriodoHistorico(p),
         assuntos: (p) => celulaAssuntos(p),
-        movimentosEscolas: (p) => {
-            const nomes = nomesMovimentosEscolas(p.movimentosEscolasIds, db.movimentosEscolas);
-            return `<td class="p-4">${
-                nomes.length
-                    ? nomes
-                          .map(
-                              (n) =>
-                                  `<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(n)}</span>`,
-                          )
-                          .join('')
-                    : '<span class="text-gray-300 dark:text-slate-600">—</span>'
-            }</td>`;
-        },
+        movimentosEscolas: (p) => celulaCorrentesDeTopo(p),
+        divisoesCorrentes: (p) => celulaDivisoesDeCorrente(p),
         intertextualidade: (p) => {
             const lista = Array.isArray(p.intertextualidade) ? p.intertextualidade : [];
             if (!lista.length)
@@ -2789,9 +3026,13 @@ export function renderPoemas() {
             </td>
             ${celulasMeio}
             ${celulasContagem}
-            <td class="p-4 text-right space-x-2">
+            ${
+                temAcoesVisiveis('poemas')
+                    ? `<td class="p-4 text-right space-x-2">
                 ${celulaAcoesItem('poemas', 'poema', 'poemas', p.id)}
-            </td>
+            </td>`
+                    : ''
+            }
         </tr>`;
         })
         .join('');
@@ -2846,7 +3087,9 @@ export function renderProsas() {
         cabecalho.innerHTML = montarCabecalho(
             'prosas',
             `<th class="p-4 border-b w-8 border-gray-200 dark:border-slate-700 sticky left-0 top-0 z-20 bg-gray-100 dark:bg-slate-700"><input type="checkbox" id="check-todos-prosas" data-action="toggle-todos-prosas"></th>`,
-            `<th class="p-4 border-b text-right border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700">Ações</th>`,
+            temAcoesVisiveis('prosas')
+                ? `<th class="p-4 border-b text-right border-gray-200 dark:border-slate-700 sticky top-0 z-20 bg-gray-100 dark:bg-slate-700">Ações</th>`
+                : '',
         );
         const novoMaster = document.getElementById('check-todos-prosas');
         if (novoMaster)
@@ -2857,7 +3100,7 @@ export function renderProsas() {
     const paginacaoContainerPr = document.getElementById('paginacao-prosas');
 
     if (listaFiltrada.length === 0) {
-        container.innerHTML = `<tr><td colspan="${colunasAtivas.length + colunasContagemAtivas.length + 3}" class="p-6 text-center text-gray-400 dark:text-slate-500 text-sm">Nenhuma prosa encontrada.</td></tr>`;
+        container.innerHTML = `<tr><td colspan="${colunasAtivas.length + colunasContagemAtivas.length + 2 + (temAcoesVisiveis('prosas') ? 1 : 0)}" class="p-6 text-center text-gray-400 dark:text-slate-500 text-sm">Nenhuma prosa encontrada.</td></tr>`;
         if (paginacaoContainerPr) paginacaoContainerPr.innerHTML = '';
         return;
     }
@@ -2963,21 +3206,16 @@ export function renderProsas() {
             const na = epoca?.na;
             return `<td class="p-4 text-xs ${na ? 'text-gray-300 dark:text-slate-600 italic' : 'text-gray-400 dark:text-slate-500'}">${badgeEpocaRetratada(epoca)}<span class="font-mono">${formatarIntervaloEpocaRetratada(epoca)}</span></td>`;
         },
+        esferaPeriodoBiografico: (pr) => celulaEsferaPeriodoBiografico(pr),
+        categoriaPeriodoBiografico: (pr) => celulaCategoriaPeriodoBiografico(pr),
         periodoHistoricoId: (pr) => celulaPeriodosHistoricos(pr),
+        eventosHistoricos: (pr) => celulaPeriodosHistoricos(pr, 'eventos'),
+        eventosBiograficos: (pr) => celulaEventosBiograficos(pr),
+        esferaPeriodoHistorico: (pr) => celulaEsferaPeriodoHistorico(pr),
+        categoriaPeriodoHistorico: (pr) => celulaCategoriaPeriodoHistorico(pr),
         assuntos: (pr) => celulaAssuntos(pr),
-        movimentosEscolas: (pr) => {
-            const nomes = nomesMovimentosEscolas(pr.movimentosEscolasIds, db.movimentosEscolas);
-            return `<td class="p-4">${
-                nomes.length
-                    ? nomes
-                          .map(
-                              (n) =>
-                                  `<span class="text-[9px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(n)}</span>`,
-                          )
-                          .join('')
-                    : '<span class="text-gray-300 dark:text-slate-600">—</span>'
-            }</td>`;
-        },
+        movimentosEscolas: (pr) => celulaCorrentesDeTopo(pr),
+        divisoesCorrentes: (pr) => celulaDivisoesDeCorrente(pr),
         contextoHistorico: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.contextoHistorico)}</td>`,
         elos: (pr) =>
@@ -3115,9 +3353,13 @@ export function renderProsas() {
             </td>
             ${celulasMeio}
             ${celulasContagem}
-            <td class="p-4 text-right space-x-2">
+            ${
+                temAcoesVisiveis('prosas')
+                    ? `<td class="p-4 text-right space-x-2">
                 ${celulaAcoesItem('prosas', 'prosa', 'prosas', pr.id)}
-            </td>
+            </td>`
+                    : ''
+            }
         </tr>`;
         })
         .join('');
@@ -3925,7 +4167,7 @@ export function renderSonoridade() {
             <th class="p-4 border-b border-gray-200 dark:border-slate-700">ID / Título</th>
             ${thsMeio}
             ${thsContagem}
-            <th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>`;
+            ${temAcoesVisiveis('sonoridade') ? '<th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>' : ''}`;
     }
 
     const ativas = getColunasAtivas('sonoridade');
@@ -3945,7 +4187,11 @@ export function renderSonoridade() {
     const paginacaoContainerSon = document.getElementById('paginacao-sonoridade');
 
     if (ordenadas.length === 0) {
-        const colspan = 2 + ativas.length + colunasContagemAtivas.length;
+        const colspan =
+            1 +
+            (temAcoesVisiveis('sonoridade') ? 1 : 0) +
+            ativas.length +
+            colunasContagemAtivas.length;
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
             db.escansoes.length === 0
                 ? 'Nenhuma escansão cadastrada ainda.'
@@ -4009,9 +4255,13 @@ export function renderSonoridade() {
             </td>
             ${tds}
             ${tdsContagem}
-            <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
+            ${
+                temAcoesVisiveis('sonoridade')
+                    ? `<td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
                 ${celulaAcoesSonoridade(es.id)}
-            </td>
+            </td>`
+                    : ''
+            }
         </tr>`;
         })
         .join('');
@@ -4140,7 +4390,7 @@ export function renderMoldes() {
         cabecalho.innerHTML = `
             <th class="p-4 border-b border-gray-200 dark:border-slate-700">ID / Título</th>
             ${thsMeio}
-            <th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>`;
+            ${temAcoesVisiveis('moldes') ? '<th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>' : ''}`;
     }
 
     const filtradas = db.moldes.filter((m) =>
@@ -4153,7 +4403,7 @@ export function renderMoldes() {
     const paginacaoContainer = document.getElementById('paginacao-moldes');
 
     if (ordenadas.length === 0) {
-        const colspan = 2 + colunas.length;
+        const colspan = 1 + (temAcoesVisiveis('moldes') ? 1 : 0) + colunas.length;
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
             db.moldes.length === 0
                 ? 'Nenhum Molde cadastrado ainda.'
@@ -4198,9 +4448,13 @@ export function renderMoldes() {
                 ${titulo}
             </td>
             ${tds}
-            <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
+            ${
+                temAcoesVisiveis('moldes')
+                    ? `<td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
                 ${celulaAcoesMolde(m.id, m.status, m.poemaId)}
-            </td>
+            </td>`
+                    : ''
+            }
         </tr>`;
         })
         .join('');
@@ -4330,7 +4584,7 @@ export function renderEstruturaTextual() {
         cabecalho.innerHTML = `
             <th class="p-4 border-b border-gray-200 dark:border-slate-700">ID / Título</th>
             ${thsMeio}
-            <th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>`;
+            ${temAcoesVisiveis('estrutura-textual') ? '<th class="p-4 border-b text-right border-gray-200 dark:border-slate-700">Ações</th>' : ''}`;
     }
 
     const filtradas = db.estruturasTextuais.filter((e) => {
@@ -4347,7 +4601,7 @@ export function renderEstruturaTextual() {
     const paginacaoContainerEstr = document.getElementById('paginacao-estrutura-textual');
 
     if (ordenadas.length === 0) {
-        const colspan = 2 + ativas.length;
+        const colspan = 1 + (temAcoesVisiveis('estrutura-textual') ? 1 : 0) + ativas.length;
         tbody.innerHTML = `<tr><td colspan="${colspan}" class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
             db.estruturasTextuais.length === 0
                 ? 'Nenhuma progressão cadastrada ainda.'
@@ -4397,9 +4651,13 @@ export function renderEstruturaTextual() {
                 ${titulo}
             </td>
             ${tds}
-            <td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
+            ${
+                temAcoesVisiveis('estrutura-textual')
+                    ? `<td class="p-4 border-b border-gray-100 dark:border-slate-800 text-right whitespace-nowrap">
                 ${celulaAcoesEstruturaTextual(e.id)}
-            </td>
+            </td>`
+                    : ''
+            }
         </tr>`;
         })
         .join('');
@@ -4485,6 +4743,11 @@ function textoExtraPeriodoBiografico(ep) {
 // `nivel` (recuo na árvore), `contexto` (pai que o filtro tirou, mostrado
 // apagado só para não perder o fio) e `escondidos` (quantos períodos estão
 // dentro de um ramo recolhido).
+// Selo "Evento" dos cartões de período (F14-D5). Evento é um período marcado:
+// continua na mesma lista e na mesma árvore, só ganha o selo.
+const SELO_EVENTO_HTML =
+    '<span class="ml-1 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300">Evento</span>';
+
 function cartaoEpoca(ep, ctx = {}) {
     const { visiveis = [ep], nivel = 0, contexto: soContexto = false, escondidos = 0 } = ctx;
     const { poemasIds, prosasIds } = calcularImpactoExclusaoEpoca(db, ep.id);
@@ -4512,7 +4775,12 @@ function cartaoEpoca(ep, ctx = {}) {
         .join(' · ');
     // Sem datas próprias, mostra (só na tela) o que os períodos de dentro cobrem.
     const datas = datasEfetivasDoPeriodo(visiveis, ep);
-    const intervalo = formatarIntervaloPeriodoHistorico(datas);
+    const intervalo = comDuracao(
+        formatarIntervaloPeriodoHistorico(datas),
+        datas.inicio,
+        datas.fim,
+        opcoesDuracao(ep),
+    );
     const linhaIntervalo =
         intervalo === '—'
             ? ''
@@ -4535,7 +4803,7 @@ function cartaoEpoca(ep, ctx = {}) {
                     ep.oculto
                         ? ' <span class="text-[10px] font-semibold text-amber-600 dark:text-amber-400">(oculto)</span>'
                         : ''
-                }</h4></div>
+                }</h4>${ehEvento(ep) ? SELO_EVENTO_HTML : ''}</div>
                 ${linhaIntervalo}
                 ${htmlEtiquetasPeriodoBiografico(ep)}
                 ${htmlPessoasPeriodoBiografico(ep)}
@@ -4567,9 +4835,20 @@ const filtrosPeriodo = {
         de: '',
         ate: '',
         modo: 'todos',
+        // '' = períodos e eventos; 'periodos' ou 'eventos' (F14-D11).
+        evento: '',
         ...FILTRO_PERIODO_BIOGRAFICO_VAZIO,
     },
-    periodosHistoricos: { nome: '', de: '', ate: '', modo: 'todos' },
+    periodosHistoricos: {
+        nome: '',
+        de: '',
+        ate: '',
+        modo: 'todos',
+        evento: '',
+        regiao: '',
+        esfera: '',
+        categoria: '',
+    },
     // Tipo, Região, Programa e Postura: '' = todos; FILTRO_CORRENTE_VAZIO =
     // só os sem valor (ver filtrarCorrentesPorAtributos).
     movimentosEscolas: {
@@ -4599,6 +4878,7 @@ export function setFiltroPeriodo(aba) {
     f.de = lerValor('de').trim();
     f.ate = lerValor('ate').trim();
     f.modo = lerValor('modo') || 'todos';
+    if (aba === 'epocas' || aba === 'periodosHistoricos') f.evento = lerValor('evento');
     if (aba === 'epocas') {
         f.autor = lerValor('autor');
         ['esfera', 'categoria', 'pessoa', 'natureza', 'vinculo'].forEach((campo) => {
@@ -4607,6 +4887,11 @@ export function setFiltroPeriodo(aba) {
     }
     if (aba === 'movimentosEscolas') {
         ['tipo', 'regiao', 'programa', 'postura'].forEach((campo) => {
+            f[campo] = lerValor(campo);
+        });
+    }
+    if (aba === 'periodosHistoricos') {
+        ['regiao', 'esfera', 'categoria'].forEach((campo) => {
             f[campo] = lerValor(campo);
         });
     }
@@ -4661,7 +4946,7 @@ function garantirControlesFiltroPeriodo(aba) {
                 title="Mostra as pessoas e os períodos ocultos nos filtros, na busca e nos cartões, só enquanto a página estiver aberta"></button>
             <button type="button" id="fp-epocas-opcoes" onclick="abrirOpcoesPeriodoBiografico()"
                 class="text-xs text-blue-600 dark:text-blue-400 hover:underline" style="margin-bottom: 0"
-                title="Editar as listas de Esfera, de Natureza e de Vínculo">Gerenciar esferas, naturezas e vínculos</button>
+                title="Editar as listas de Esfera, de Categoria, de Natureza e de Vínculo">Gerenciar esferas, categorias, naturezas e vínculos</button>
             <span id="fp-epocas-contagem" class="text-xs text-gray-500 dark:text-slate-400" aria-live="polite"></span>`
                 : '';
         // Só em Correntes literárias: Tipo, Região, Programa e Postura. As
@@ -4682,6 +4967,23 @@ function garantirControlesFiltroPeriodo(aba) {
             ${selectAtributo('programa', 'Programa (a divisão sem programa usa o do pai)', '-- Todos os programas --', PROGRAMAS_MOVIMENTO, 'Programa não preenchido')}
             ${selectAtributo('postura', 'Postura estética (a divisão sem postura usa a do pai)', '-- Todas as posturas --', POSTURAS_ESTETICAS, 'Postura não preenchida')}`
                 : '';
+        const seletoresHistorico =
+            aba === 'periodosHistoricos'
+                ? `<select id="fp-periodosHistoricos-regiao" onchange="setFiltroPeriodo('periodosHistoricos')"
+                title="Região onde o período aconteceu ou teve alcance" style="width: auto; margin-bottom: 0"></select>
+            <select id="fp-periodosHistoricos-esfera" onchange="setFiltroPeriodo('periodosHistoricos')"
+                title="Esfera: onde o fenômeno acontece" style="width: auto; margin-bottom: 0"></select>
+            <select id="fp-periodosHistoricos-categoria" onchange="setFiltroPeriodo('periodosHistoricos')"
+                title="Categoria: que tipo de acontecimento é" style="width: auto; margin-bottom: 0"></select>`
+                : '';
+        const acoesHistorico =
+            aba === 'periodosHistoricos'
+                ? `<button type="button" id="fp-periodosHistoricos-limpar" onclick="limparFiltrosPeriodosHistoricos()"
+                class="text-xs text-blue-600 dark:text-blue-400 hover:underline" style="margin-bottom: 0">Limpar filtros</button>
+            <button type="button" id="fp-periodosHistoricos-opcoes" onclick="abrirOpcoesPeriodoHistorico()"
+                class="text-xs text-blue-600 dark:text-blue-400 hover:underline" style="margin-bottom: 0"
+                title="Editar as listas de Esfera e de Categoria">Gerenciar esferas e categorias</button>`
+                : '';
         const acoesCorrente =
             aba === 'movimentosEscolas'
                 ? `<button type="button" id="fp-movimentosEscolas-limpar" onclick="limparFiltrosCorrentes()"
@@ -4689,11 +4991,24 @@ function garantirControlesFiltroPeriodo(aba) {
             <span id="fp-movimentosEscolas-contagem" class="text-xs text-gray-500 dark:text-slate-400" aria-live="polite"></span>`
                 : '';
         container.className = 'flex flex-wrap items-center gap-x-4 gap-y-2 mb-4';
+        // F14-D11: "Período ou evento" (não "Tipo", que se confundiria com a
+        // Categoria). Só nas abas de Período Biográfico e Histórico.
+        const seletorEvento =
+            aba === 'epocas' || aba === 'periodosHistoricos'
+                ? `<select id="fp-${aba}-evento" onchange="setFiltroPeriodo('${aba}')"
+                title="Período ou evento" style="width: auto; margin-bottom: 0">
+                <option value="">-- Períodos e eventos --</option>
+                <option value="periodos">Só períodos</option>
+                <option value="eventos">Só eventos</option>
+            </select>`
+                : '';
         container.innerHTML = `
             ${campoNome}
             ${seletorAutor}
+            ${seletorEvento}
             ${seletoresBiograficos}
             ${seletoresCorrente}
+            ${seletoresHistorico}
             ${campoTexto('de', 'De')}
             ${campoTexto('ate', 'Até')}
             <select id="fp-${aba}-modo" onchange="setFiltroPeriodo('${aba}')"
@@ -4703,6 +5018,7 @@ function garantirControlesFiltroPeriodo(aba) {
                 <option value="sem-data">Só sem data</option>
             </select>
             ${acoesCorrente}
+            ${acoesHistorico}
             ${acoesBiograficas}`;
         container.dataset.montado = '1';
     }
@@ -4719,6 +5035,72 @@ function garantirControlesFiltroPeriodo(aba) {
         atualizarBotaoExibirOcultasEpocas();
     }
     if (aba === 'movimentosEscolas') popularSelectRegiaoCorrentes();
+    if (aba === 'periodosHistoricos') {
+        popularSelectRegiaoPeriodosHistoricos();
+        popularSelectsClassificacaoPeriodosHistoricos();
+    }
+}
+
+// Esfera e Categoria dos Períodos Históricos: só os valores que algum período
+// usa (não oferece opção sem resultado), mais "Sem esfera" / "Sem categoria".
+// Refeito a cada render; se o valor escolhido deixou de existir, volta para
+// "Todas".
+function popularSelectsClassificacaoPeriodosHistoricos() {
+    const f = filtrosPeriodo.periodosHistoricos;
+    [
+        ['esfera', 'esferas', '-- Todas as esferas --', 'Sem esfera'],
+        ['categoria', 'categorias', '-- Todas as categorias --', 'Sem categoria'],
+    ].forEach(([campo, tipo, rotuloTodos, rotuloSem]) => {
+        const select = document.getElementById(`fp-periodosHistoricos-${campo}`);
+        if (!select) return;
+        const valores = opcoesDeFiltroDosPeriodosHistoricos(db.periodosHistoricos, tipo);
+        const valido =
+            !f[campo] ||
+            f[campo] === FILTRO_PERIODO_HISTORICO_SEM_VALOR ||
+            valores.includes(f[campo]);
+        if (!valido) f[campo] = '';
+        select.innerHTML = `<option value="">${rotuloTodos}</option>${valores
+            .map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`)
+            .join('')}<option value="${FILTRO_PERIODO_HISTORICO_SEM_VALOR}">${rotuloSem}</option>`;
+        select.value = f[campo];
+    });
+}
+
+// Região dos Períodos Históricos: um item por lugar usado no cadastro, refeito a
+// cada render; se o lugar escolhido deixou de existir, volta para "Todas".
+function popularSelectRegiaoPeriodosHistoricos() {
+    const select = document.getElementById('fp-periodosHistoricos-regiao');
+    if (!select) return;
+    const lugares = opcoesDeRegiaoDosPeriodosHistoricos(db.periodosHistoricos);
+    const f = filtrosPeriodo.periodosHistoricos;
+    const valido =
+        !f.regiao || f.regiao === FILTRO_PERIODO_HISTORICO_SEM_REGIAO || lugares.includes(f.regiao);
+    if (!valido) f.regiao = '';
+    select.innerHTML = `<option value="">-- Todas as regiões --</option>${lugares
+        .map((l) => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`)
+        .join('')}<option value="${FILTRO_PERIODO_HISTORICO_SEM_REGIAO}">Sem região</option>`;
+    select.value = f.regiao;
+}
+
+// Botão "Limpar filtros" da aba Período Histórico.
+export function limparFiltrosPeriodosHistoricos() {
+    Object.assign(filtrosPeriodo.periodosHistoricos, {
+        nome: '',
+        de: '',
+        ate: '',
+        modo: 'todos',
+        evento: '',
+        regiao: '',
+        esfera: '',
+        categoria: '',
+    });
+    ['nome', 'de', 'ate', 'evento', 'regiao', 'esfera', 'categoria'].forEach((sufixo) => {
+        const el = document.getElementById(`fp-periodosHistoricos-${sufixo}`);
+        if (el) el.value = '';
+    });
+    const modo = document.getElementById('fp-periodosHistoricos-modo');
+    if (modo) modo.value = 'todos';
+    renderPeriodosHistoricos();
 }
 
 // Região: um item por lugar usado no cadastro ("Brasil/Portugal" vira Brasil
@@ -4833,14 +5215,24 @@ export function limparFiltrosPeriodosBiograficos() {
         de: '',
         ate: '',
         modo: 'todos',
+        evento: '',
         ...FILTRO_PERIODO_BIOGRAFICO_VAZIO,
     });
-    ['nome', 'de', 'ate', 'autor', 'esfera', 'categoria', 'pessoa', 'natureza', 'vinculo'].forEach(
-        (sufixo) => {
-            const el = document.getElementById(`fp-epocas-${sufixo}`);
-            if (el) el.value = '';
-        },
-    );
+    [
+        'nome',
+        'de',
+        'ate',
+        'evento',
+        'autor',
+        'esfera',
+        'categoria',
+        'pessoa',
+        'natureza',
+        'vinculo',
+    ].forEach((sufixo) => {
+        const el = document.getElementById(`fp-epocas-${sufixo}`);
+        if (el) el.value = '';
+    });
     const modo = document.getElementById('fp-epocas-modo');
     if (modo) modo.value = 'todos';
     renderEpocas();
@@ -4852,6 +5244,9 @@ function aplicarFiltroPeriodo(aba, itens, opcoes = {}) {
     const ate = f.ate ? parseFiltroDataRapido(f.ate) : null;
     const termoNome = normalizarBusca(f.nome);
     const { textoExtra, ...opcoesDeData } = opcoes;
+    if (f.evento === 'periodos' || f.evento === 'eventos') {
+        itens = itens.filter((it) => ehEvento(it) === (f.evento === 'eventos'));
+    }
     const porNome = termoNome
         ? itens.filter((it) =>
               normalizarBusca([it.nome, textoExtra ? textoExtra(it) : ''].join(' ')).includes(
@@ -4874,6 +5269,8 @@ function filtroPeriodoAtivo(aba) {
         f.ate ||
         f.modo !== 'todos' ||
         f.autor ||
+        f.evento ||
+        (aba === 'periodosHistoricos' && (f.regiao || f.esfera || f.categoria)) ||
         filtroPeriodoBiograficoAtivo(f) ||
         filtroDeAtributosAtivo(f)
     );
@@ -5100,6 +5497,7 @@ export function alternarRamoPeriodoHistorico(id) {
     const k = String(id);
     if (periodosHistoricosRecolhidos.has(k)) periodosHistoricosRecolhidos.delete(k);
     else periodosHistoricosRecolhidos.add(k);
+    tirarEscondidosDaSelecaoPeriodosHistoricos();
     renderPeriodosHistoricos();
 }
 
@@ -5109,6 +5507,7 @@ export function recolherTodosPeriodosHistoricos() {
             periodosHistoricosRecolhidos.add(String(p.id));
         }
     });
+    tirarEscondidosDaSelecaoPeriodosHistoricos();
     renderPeriodosHistoricos();
 }
 
@@ -5136,16 +5535,44 @@ function aplicarRecolhimentoPeriodos(ordenados, recolhidos) {
     return { visiveis, escondidos };
 }
 
-export function renderPeriodosHistoricos() {
-    const container = document.getElementById('lista-periodos-historicos');
-    if (!container) return;
+function textoExtraPeriodoHistorico(ph) {
+    return [textoBuscaEsferasHistoricas(ph), textoBuscaCategoriasHistoricas(ph)].join(' ');
+}
 
-    garantirControlesFiltroPeriodo('periodosHistoricos');
+// Esfera (azul) e Categoria (cinza), como nos cartões dos Períodos Biográficos.
+function htmlEtiquetasPeriodoHistorico(ph) {
+    const etiqueta = (texto, classe) =>
+        `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] ${classe}">${escapeHtml(texto)}</span>`;
+    const todas = [
+        ...(ph.esferas || []).map((v) =>
+            etiqueta(v, 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300'),
+        ),
+        ...(ph.categorias || []).map((v) =>
+            etiqueta(v, 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'),
+        ),
+    ];
+    return todas.length ? `<div class="flex flex-wrap gap-1 mt-1">${todas.join('')}</div>` : '';
+}
 
+// O que a aba Período Histórico mostra: os períodos que passam no filtro, mais
+// o pai que o filtro tirou mas que tem período dentro que passou (apagado, só
+// como contexto), em árvore e já sem o que está dentro de um ramo recolhido.
+// `ignorarRecolhimento` devolve a lista como se tudo estivesse expandido (serve
+// para achar o que o recolhimento escondeu).
+function arvorePeriodosHistoricos({ ignorarRecolhimento = false } = {}) {
     // Em árvore: cada período seguido dos que estão dentro dele, recuados.
     // Período cujo pai o filtro tirou da lista aparece como de topo (e o
     // card diz de onde ele vem).
-    const filtrados = aplicarFiltroPeriodo('periodosHistoricos', [...db.periodosHistoricos]);
+    // A busca por nome também acha pela Esfera e pela Categoria.
+    const filtrados = filtrarPeriodosHistoricosPorClassificacao(
+        filtrarPeriodosHistoricosPorRegiao(
+            aplicarFiltroPeriodo('periodosHistoricos', [...db.periodosHistoricos], {
+                textoExtra: textoExtraPeriodoHistorico,
+            }),
+            filtrosPeriodo.periodosHistoricos.regiao,
+        ),
+        filtrosPeriodo.periodosHistoricos,
+    );
     // O pai que o filtro tirou, mas que tem período dentro que passou, fica na
     // lista apagado, só como contexto (como em Correntes literárias).
     const contextoPeriodos = ancestraisForaDoPeriodo(db.periodosHistoricos, filtrados);
@@ -5153,6 +5580,54 @@ export function renderPeriodosHistoricos() {
     const ordenados = ordenarPeriodosEmArvore(
         [...filtrados, ...contextoPeriodos],
         compararPeriodosHistoricos,
+    );
+    const { visiveis, escondidos } = aplicarRecolhimentoPeriodos(
+        ordenados,
+        filtroPeriodoAtivo('periodosHistoricos') || ignorarRecolhimento
+            ? new Set()
+            : periodosHistoricosRecolhidos,
+    );
+    return { filtrados, idsContextoPeriodos, visiveis, escondidos };
+}
+
+// Na ordem da tela, sem o que está dentro de um ramo recolhido nem o pai que só
+// aparece como contexto (usada pelo shift-click e pelo "selecionar todos").
+export function getListaVisivelPeriodosHistoricos() {
+    const { visiveis, idsContextoPeriodos } = arvorePeriodosHistoricos();
+    return visiveis.filter((i) => !idsContextoPeriodos.has(String(i.m.id))).map((i) => i.m);
+}
+
+// Períodos que sumiram da tela por causa de um recolhimento: saem da seleção em
+// lote, porque a barra de ações não pode contar o que não se vê.
+function tirarEscondidosDaSelecaoPeriodosHistoricos() {
+    const naTela = new Set(arvorePeriodosHistoricos().visiveis.map((i) => String(i.m.id)));
+    arvorePeriodosHistoricos({ ignorarRecolhimento: true }).visiveis.forEach(({ m }) => {
+        if (!naTela.has(String(m.id))) selecaoPeriodosHistoricos.delete(m.id);
+    });
+}
+
+// "Selecionar todos" reflete se tudo o que está à vista já está marcado, e a
+// barra de ações aparece só com seleção.
+function atualizarSelecaoPeriodosHistoricosNaTela(visiveis) {
+    const todos = document.getElementById('toggle-todos-periodos-historicos');
+    if (todos) {
+        todos.checked =
+            visiveis.length > 0 && visiveis.every((p) => selecaoPeriodosHistoricos.has(p.id));
+        todos.disabled = visiveis.length === 0;
+    }
+    atualizarBarraSelecaoPeriodosHistoricos();
+}
+
+export function renderPeriodosHistoricos() {
+    const container = document.getElementById('lista-periodos-historicos');
+    if (!container) return;
+
+    garantirControlesFiltroPeriodo('periodosHistoricos');
+    podarSelecaoPeriodosHistoricos();
+
+    const { filtrados, idsContextoPeriodos, visiveis, escondidos } = arvorePeriodosHistoricos();
+    atualizarSelecaoPeriodosHistoricosNaTela(
+        visiveis.filter((i) => !idsContextoPeriodos.has(String(i.m.id))).map((i) => i.m),
     );
 
     const contagemEl = document.getElementById('contagem-periodos-historicos');
@@ -5162,10 +5637,6 @@ export function renderPeriodosHistoricos() {
             ? `${filtrados.length} de ${total} período${total !== 1 ? 's' : ''}`
             : `${total} período${total !== 1 ? 's' : ''}`;
     }
-    const { visiveis, escondidos } = aplicarRecolhimentoPeriodos(
-        ordenados,
-        filtroPeriodoAtivo('periodosHistoricos') ? new Set() : periodosHistoricosRecolhidos,
-    );
 
     if (filtrados.length === 0) {
         container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">${filtroPeriodoAtivo('periodosHistoricos') ? 'Nenhum período histórico encontrado com esse filtro.' : 'Nenhum período histórico cadastrado ainda.'}</div>`;
@@ -5178,7 +5649,12 @@ export function renderPeriodosHistoricos() {
             const total = poemasIds.length + prosasIds.length;
             const comDentro = textosDoPeriodoHistorico(db, ph.id, { comDentro: true });
             const totalComDentro = comDentro.poemasIds.length + comDentro.prosasIds.length;
-            const intervalo = formatarIntervaloPeriodoHistorico(ph);
+            const intervalo = comDuracao(
+                formatarIntervaloPeriodoHistorico(ph),
+                ph.inicio,
+                ph.fim,
+                opcoesDuracao(ph),
+            );
             const paisIds = paisDoPeriodo(db.periodosHistoricos, ph.id);
             const numFilhos = filhosDoPeriodo(db.periodosHistoricos, ph.id).length;
             // Contexto: de topo na lista mas com pai no cadastro (o filtro tirou
@@ -5205,13 +5681,20 @@ export function renderPeriodosHistoricos() {
                 .map(escapeHtml)
                 .join(' · ');
             return `
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center${nivel > 0 ? ' border-l-4 border-l-indigo-300 dark:border-l-indigo-500/60' : ''}${soContexto ? ' opacity-60' : ''}" style="margin-left: ${nivel * 1.5}rem"${nivel > 0 ? ' data-dentro-de-outro="true"' : ''}${soContexto ? ' data-contexto="true"' : ''}>
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex items-center gap-3${nivel > 0 ? ' border-l-4 border-l-indigo-300 dark:border-l-indigo-500/60' : ''}${soContexto ? ' opacity-60' : ''}" style="margin-left: ${nivel * 1.5}rem"${nivel > 0 ? ' data-dentro-de-outro="true"' : ''}${soContexto ? ' data-contexto="true"' : ''}>
+            ${
+                soContexto
+                    ? ''
+                    : `<input type="checkbox" data-action="toggle-periodo-historico" data-id="${ph.id}" ${
+                          selecaoPeriodosHistoricos.has(ph.id) ? 'checked' : ''
+                      } aria-label="Selecionar ${escapeHtml(ph.nome)}" class="w-4 h-4 flex-shrink-0 mb-0" />`
+            }
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1">${
                     numFilhos
                         ? `<button type="button" data-action="alternar-ramo-periodo-historico" data-id="${ph.id}" aria-expanded="${recolhido ? 'false' : 'true'}" title="${recolhido ? 'Expandir' : 'Recolher'}" aria-label="${recolhido ? 'Expandir' : 'Recolher'} ${escapeHtml(ph.nome)}" class="inline-flex items-center justify-center w-5 h-5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 flex-shrink-0"><span aria-hidden="true">${recolhido ? '▸' : '▾'}</span></button>`
                         : ''
-                }<h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(ph.nome)}</h4></div>
+                }<h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(ph.nome)}</h4>${ehEvento(ph) ? SELO_EVENTO_HTML : ''}</div>
                 ${
                     intervalo !== '—' || !regiaoVazia(ph.regiao)
                         ? `<p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">${[
@@ -5223,6 +5706,7 @@ export function renderPeriodosHistoricos() {
                               .join(' · ')}</p>`
                         : ''
                 }
+                ${htmlEtiquetasPeriodoHistorico(ph)}
                 <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
                     aparece em ${total} texto${total !== 1 ? 's' : ''}${numFilhos ? ` (${totalComDentro} com os de dentro) · ${numFilhos} período${numFilhos !== 1 ? 's' : ''} dentro` : ''} · ${(ph.fontes || []).length ? `${ph.fontes.length} fonte${ph.fontes.length !== 1 ? 's' : ''}` : 'sem fontes'}${contexto ? ` · ${contexto}` : ''}
                 </p>
@@ -5287,6 +5771,7 @@ export function alternarRamoCorrente(id) {
     const k = String(id);
     if (correntesRecolhidas.has(k)) correntesRecolhidas.delete(k);
     else correntesRecolhidas.add(k);
+    tirarEscondidasDaSelecaoCorrentes();
     renderMovimentosEscolas();
 }
 
@@ -5296,6 +5781,7 @@ export function recolherTodasCorrentes() {
             correntesRecolhidas.add(String(m.id));
         }
     });
+    tirarEscondidasDaSelecaoCorrentes();
     renderMovimentosEscolas();
 }
 
@@ -5304,12 +5790,12 @@ export function expandirTodasCorrentes() {
     renderMovimentosEscolas();
 }
 
-export function renderMovimentosEscolas() {
-    const container = document.getElementById('lista-movimentos-escolas');
-    if (!container) return;
-
-    garantirControlesFiltroPeriodo('movimentosEscolas');
-
+// O que a aba Correntes literárias mostra: as correntes que passam no filtro,
+// mais o pai que o filtro tirou mas que tem divisão que passou (apagado, só
+// como contexto), em árvore e já sem o que está dentro de um ramo recolhido.
+// `ignorarRecolhimento` devolve a lista como se tudo estivesse expandido (serve
+// para achar o que o recolhimento escondeu).
+function arvoreCorrentes({ ignorarRecolhimento = false } = {}) {
     // Divisão sem data própria vale, no De/Até, pelo período do pai.
     const filtradas = aplicarFiltroPeriodo('movimentosEscolas', [...db.movimentosEscolas], {
         movimento: true,
@@ -5339,7 +5825,50 @@ export function renderMovimentosEscolas() {
     // quantas ficaram escondidas (mesma função de Período Histórico).
     const { visiveis: ordenados, escondidos } = aplicarRecolhimentoPeriodos(
         emArvore,
-        filtroPeriodoAtivo('movimentosEscolas') ? new Set() : correntesRecolhidas,
+        filtroPeriodoAtivo('movimentosEscolas') || ignorarRecolhimento
+            ? new Set()
+            : correntesRecolhidas,
+    );
+    return { passam, idsContexto, ordenados, escondidos };
+}
+
+// Na ordem da tela, sem o que está dentro de um ramo recolhido nem o pai que só
+// aparece como contexto (usada pelo shift-click e pelo "selecionar todas").
+export function getListaVisivelCorrentes() {
+    const { ordenados, idsContexto } = arvoreCorrentes();
+    return ordenados.filter((i) => !idsContexto.has(String(i.m.id))).map((i) => i.m);
+}
+
+// Correntes que sumiram da tela por causa de um recolhimento: saem da seleção
+// em lote, porque a barra de ações não pode contar o que não se vê.
+function tirarEscondidasDaSelecaoCorrentes() {
+    const naTela = new Set(arvoreCorrentes().ordenados.map((i) => String(i.m.id)));
+    arvoreCorrentes({ ignorarRecolhimento: true }).ordenados.forEach(({ m }) => {
+        if (!naTela.has(String(m.id))) selecaoCorrentes.delete(m.id);
+    });
+}
+
+// "Selecionar todas" reflete se tudo o que está à vista já está marcado, e a
+// barra de ações aparece só com seleção.
+function atualizarSelecaoCorrentesNaTela(visiveis) {
+    const todas = document.getElementById('toggle-todas-correntes');
+    if (todas) {
+        todas.checked = visiveis.length > 0 && visiveis.every((m) => selecaoCorrentes.has(m.id));
+        todas.disabled = visiveis.length === 0;
+    }
+    atualizarBarraSelecaoCorrentes();
+}
+
+export function renderMovimentosEscolas() {
+    const container = document.getElementById('lista-movimentos-escolas');
+    if (!container) return;
+
+    garantirControlesFiltroPeriodo('movimentosEscolas');
+    podarSelecaoCorrentes();
+
+    const { passam, idsContexto, ordenados, escondidos } = arvoreCorrentes();
+    atualizarSelecaoCorrentesNaTela(
+        ordenados.filter((i) => !idsContexto.has(String(i.m.id))).map((i) => i.m),
     );
 
     const contagem = document.getElementById('fp-movimentosEscolas-contagem');
@@ -5366,7 +5895,12 @@ export function renderMovimentosEscolas() {
                 comDivisoes: temDivisoes,
             });
             const total = autoresIds.length + poemasIds.length + prosasIds.length;
-            const intervalo = formatarIntervaloMovimentoEscola(m);
+            const intervalo = comDuracao(
+                formatarIntervaloMovimentoEscola(m),
+                m.inicio,
+                m.fim,
+                opcoesDuracao(m),
+            );
             const programa = programaEfetivoDaCorrente(db.movimentosEscolas, m);
             const postura = posturaEfetivaDaCorrente(db.movimentosEscolas, m);
             const paiForaDaLista =
@@ -5374,7 +5908,14 @@ export function renderMovimentosEscolas() {
                 nivel === 0 &&
                 caminhoDaCorrente(db.movimentosEscolas, m.paiId) !== '';
             return `
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center${soContexto ? ' opacity-60' : ''}" style="margin-left: ${nivel * 1.5}rem"${nivel > 0 ? ' data-divisao="true"' : ''}${soContexto ? ' data-contexto="true"' : ''}>
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex items-center gap-3${soContexto ? ' opacity-60' : ''}" style="margin-left: ${nivel * 1.5}rem"${nivel > 0 ? ' data-divisao="true"' : ''}${soContexto ? ' data-contexto="true"' : ''}>
+            ${
+                soContexto
+                    ? ''
+                    : `<input type="checkbox" data-action="toggle-corrente" data-id="${m.id}" ${
+                          selecaoCorrentes.has(m.id) ? 'checked' : ''
+                      } aria-label="Selecionar ${escapeHtml(m.nome)}" class="w-4 h-4 flex-shrink-0 mb-0" />`
+            }
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-1">${
                     temDivisoes
@@ -5731,4 +6272,22 @@ export function renderTemas() {
 </div>`;
         })
         .join('');
+}
+
+// O "hoje" das durações em andamento depende do fuso (ver fuso-horario.js): ao
+// trocar o fuso, as três abas se redesenham.
+if (typeof window !== 'undefined') {
+    window.addEventListener('fuso:alterado', () => {
+        for (const renderizar of [
+            renderEpocas,
+            renderPeriodosHistoricos,
+            renderMovimentosEscolas,
+        ]) {
+            try {
+                renderizar();
+            } catch {
+                /* aba ainda não montada */
+            }
+        }
+    });
 }

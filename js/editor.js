@@ -31,6 +31,7 @@ import {
     chaveTema,
     temasDoTexto,
     extrairSinalizacoesUnicas,
+    textoDeEtiquetas,
     extrairGenerosUnicos,
     extrairValoresUnicosDeAnotacoes,
     extrairValoresUnicosDeIntertextualidade,
@@ -77,9 +78,19 @@ import {
     extrairDialetosUnicos,
     anoEquivalenteMovimento,
     periodosHistoricosIdsDoItem,
+    periodosDaEpocaRetratada,
+    ehEvento,
+    RECORTES_EPOCA,
+    ROTULOS_RECORTE_EPOCA,
 } from './utils.js';
 import { lugaresUsados, normalizarRegiao } from './regiao.js';
 import { periodosVisiveis } from './periodo-biografico-campos.js';
+import {
+    criarComparadorDeEpocas,
+    opcoesDeEscolhaDoPeriodoBiografico,
+    resolverPeriodoBiograficoPorRotulo,
+    rotuloDoPeriodoBiografico,
+} from './periodos-biograficos-hierarquia.js';
 import { opcoesOcultasDosPeriodos } from './ocultas-periodos.js';
 import {
     adicionarAssuntoPendente,
@@ -91,7 +102,9 @@ import {
 import {
     opcoesDePaiDaCorrente,
     caminhoDaCorrente,
+    rotuloDaCorrente,
     sugestoesDeCorrentes,
+    ehDivisaoDaCorrente,
 } from './correntes-hierarquia.js';
 import {
     ancorasSelecionadas,
@@ -108,6 +121,7 @@ import {
     caminhoDosAncestraisDoPeriodo,
     rotuloDeEscolhaDoPeriodo,
     resolverPeriodoPorRotulo,
+    opcoesDeEscolhaDosPeriodosHistoricos,
 } from './periodos-historicos-hierarquia.js';
 
 // ─── Estado local ─────────────────────────────────────────────
@@ -3527,7 +3541,14 @@ export function atualizarDatalist() {
     SINAL_CATEGORIAS.forEach(({ chave }) => {
         const slug = slugDom(chave);
         const campo = `sinalizacoes${chave}`;
-        const valores = extrairSinalizacoesUnicas(todos, campo);
+        // Sugestões = o que os textos usam + o que o cadastro de Etiquetas tem
+        // nesta categoria (etiqueta criada na aba e ainda sem uso também aparece).
+        const valores = [
+            ...new Set([
+                ...extrairSinalizacoesUnicas(todos, campo),
+                ...(db.etiquetas || []).filter((e) => e.categoria === slug).map((e) => e.nome),
+            ]),
+        ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
         valores.forEach((v) => combinadas.add(v));
         [
             `sugestoes-sinais-${slug}`,
@@ -3587,39 +3608,83 @@ export function atualizarDatalist() {
 // acima).
 export function atualizarDatalistEpoca(tabela = null) {
     const tabelas = tabela ? [tabela] : ['poemas', 'prosas'];
+    // Um datalist por campo: Períodos e Eventos (F14-D4) sugerem cada um só o
+    // que é da sua marca.
     const idsPorTabela = {
-        poemas: 'sugestoes-epoca-nome',
-        prosas: 'sugestoes-epoca-nome-prosa',
+        poemas: { periodos: 'sugestoes-epoca-nome', eventos: 'sugestoes-evento-biografico-nome' },
+        prosas: {
+            periodos: 'sugestoes-epoca-nome-prosa',
+            eventos: 'sugestoes-evento-biografico-nome-prosa',
+        },
     };
     tabelas.forEach((tab) => {
-        const autorIds = obterAutoria(tab).map((a) => a.autorId);
-        // Período oculto não é sugerido (o autocomplete entregaria o nome),
-        // a menos que "Exibir ocultas" da aba Período Biográfico esteja ligado.
-        const visiveis = periodosVisiveis(db.epocas, opcoesOcultasDosPeriodos());
-        const candidatos = autorIds.length
-            ? visiveis.filter((e) => autorIds.includes(e.autorId))
-            : visiveis;
-        const nomes = candidatos.map((e) => e.nome).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-        const datalist = document.getElementById(idsPorTabela[tab]);
-        if (datalist) {
-            datalist.innerHTML = nomes.map((v) => `<option value="${escapeHtml(v)}">`).join('');
-        }
+        ['periodos', 'eventos'].forEach((tipo) => {
+            const datalist = document.getElementById(idsPorTabela[tab][tipo]);
+            if (!datalist) return;
+            // O valor de cada opção é o nome do período; o `label` mostra de onde ele
+            // está ("Relação com X › Fase 1") e as opções vêm em árvore, o filho logo
+            // depois do pai, como na lista de Correntes literárias.
+            const { candidatos, comparar } = periodosParaEscolhaRetratada(tab);
+            const doTipo = candidatos.filter((e) => ehEvento(e) === (tipo === 'eventos'));
+            const opcoes = opcoesDeEscolhaDoPeriodoBiografico(db.epocas, doTipo, comparar);
+            datalist.innerHTML = opcoes
+                .map(
+                    (o) =>
+                        `<option value="${escapeHtml(o.rotulo)}"${o.caminho ? ` label="${escapeHtml(o.caminho)}"` : ''}></option>`,
+                )
+                .join('');
+        });
     });
 }
 
+// Períodos que o campo Período Biográfico Retratado de um texto oferece e
+// resolve: `candidatos` são as sugestões (dos Autores do texto, ou de todos
+// enquanto não há Autor; sem os ocultos, a menos que "Exibir ocultas" da aba
+// Período Biográfico esteja ligado) e `preferidos` os dos Autores do texto,
+// ocultos inclusive, para o nome digitado achar o período certo.
+function periodosParaEscolhaRetratada(tab) {
+    const autorIds = (obterAutoria(tab) || []).map((a) => a.autorId);
+    const doAutor = (lista) =>
+        autorIds.length ? lista.filter((e) => autorIds.some((id) => id == e.autorId)) : lista;
+    const visiveis = periodosVisiveis(db.epocas, opcoesOcultasDosPeriodos());
+    return {
+        candidatos: doAutor(visiveis),
+        preferidos: doAutor(db.epocas),
+        comparar: criarComparadorDeEpocas(db.epocas),
+    };
+}
+
 // Mesmo padrão de atualizarDatalistEpoca acima, pro cadastro central de
-// Período Histórico (db.periodosHistoricos) — sugestão vem dos nomes já
-// cadastrados, um datalist por modal (Poema/Prosa).
+// Período Histórico (db.periodosHistoricos): um datalist por modal
+// (Poema/Prosa). O valor da opção é o nome e o `label` mostra de onde o
+// período está ("Nova República › Governo Dilma"); as opções vêm em árvore,
+// irmãos por data, como na aba. Só os homônimos levam o caminho no valor (ver
+// opcoesDeEscolhaDosPeriodosHistoricos).
 export function atualizarDatalistPeriodoHistorico() {
-    // Com homônimos, o rótulo leva o caminho (ver rotuloDeEscolhaDoPeriodo).
-    const nomes = db.periodosHistoricos
-        .map((p) => rotuloDeEscolhaDoPeriodo(db.periodosHistoricos, p.id))
-        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    ['sugestoes-periodo-historico-nome', 'sugestoes-periodo-historico-nome-prosa'].forEach((id) => {
+    // Os rótulos e caminhos saem da lista inteira (homônimos e pais contam
+    // mesmo sendo de outra marca); só a oferta é separada por campo (F14-D4).
+    const opcoes = opcoesDeEscolhaDosPeriodosHistoricos(
+        db.periodosHistoricos,
+        compararPeriodosNoSelect,
+    );
+    const montar = (querEvento) =>
+        opcoes
+            .filter((o) => ehEvento(db.periodosHistoricos.find((p) => p.id == o.id)) === querEvento)
+            .map(
+                (o) =>
+                    `<option value="${escapeHtml(o.rotulo)}"${o.caminho ? ` label="${escapeHtml(o.caminho)}"` : ''}></option>`,
+            )
+            .join('');
+    const htmlPeriodos = montar(false);
+    const htmlEventos = montar(true);
+    [
+        ['sugestoes-periodo-historico-nome', htmlPeriodos],
+        ['sugestoes-periodo-historico-nome-prosa', htmlPeriodos],
+        ['sugestoes-evento-historico-nome', htmlEventos],
+        ['sugestoes-evento-historico-nome-prosa', htmlEventos],
+    ].forEach(([id, html]) => {
         const datalist = document.getElementById(id);
-        if (datalist) {
-            datalist.innerHTML = nomes.map((v) => `<option value="${escapeHtml(v)}">`).join('');
-        }
+        if (datalist) datalist.innerHTML = html;
     });
 }
 
@@ -4008,7 +4073,7 @@ export function resetSinalizacoes(tabela) {
 }
 export function carregarSinalizacoes(tabela, item) {
     SINAL_CATEGORIAS.forEach(({ chave }) => {
-        grupoSinal(chave, tabela).carregar(item[`sinalizacoes${chave}`] || '');
+        grupoSinal(chave, tabela).carregar(textoDeEtiquetas(item[`sinalizacoes${chave}`]));
     });
 }
 
@@ -4865,11 +4930,26 @@ export function obterGruposDiretos(tabela) {
 // Mesmo espírito de criarGrupoDeGruposDiretos acima (array de id,
 // autocomplete por nome, cria com confirmação se não existir) —
 // generalizada aqui pra servir aos TRÊS lugares que referenciam
-// db.movimentosEscolas: Poema, Prosa (dentro de "Períodos, Movimento e Inspiração") e
+// db.movimentosEscolas: Poema, Prosa (grupo "Correntes literárias", desde a Fase 14) e
 // Autor (4º grupo do modal, ver decisoes.md). "tabela" cobre também
 // 'autores', não só 'poemas'/'prosas' como no resto do arquivo.
-function criarGrupoDeMovimentosEscolas({ tabela, inputId, containerId, nomeFuncaoRemover }) {
+function criarGrupoDeMovimentosEscolas({
+    tabela,
+    inputId,
+    containerId,
+    nomeFuncaoRemover,
+    inputDivisoesId = null,
+    containerDivisoesId = null,
+}) {
     let itens = []; // array de movimentoEscolaId
+
+    // Fase 14, etapa 2: em Poema e Prosa os chips se dividem em dois campos,
+    // Correntes (sem pai) e Divisões (com pai). A lista continua uma só
+    // (`itens` é o `movimentosEscolasIds` do texto): quem decide em qual campo
+    // o chip aparece é `ehDivisaoDaCorrente`, derivado do `paiId` na hora de
+    // desenhar (F14-D6). Sem `containerDivisoesId` (modal de Autor) o campo é
+    // um só, como antes.
+    const separado = !!containerDivisoesId;
 
     function movimentoDe(id) {
         return db.movimentosEscolas.find((m) => m.id == id);
@@ -4882,8 +4962,12 @@ function criarGrupoDeMovimentosEscolas({ tabela, inputId, containerId, nomeFunca
         }
     }
 
-    function adicionar(valor = null) {
-        const input = document.getElementById(inputId);
+    // `campo`: 'corrente' (padrão) ou 'divisao'. Nome que já existe entra
+    // pelos dois campos e aparece no campo a que pertence; nome novo só é
+    // criado pelo campo de Correntes, porque uma divisão precisa de pai.
+    function adicionar(valor = null, campo = 'corrente') {
+        const idDoInput = campo === 'divisao' && separado ? inputDivisoesId : inputId;
+        const input = document.getElementById(idDoInput);
         const nome = (valor ?? input?.value ?? '').trim();
         if (input) input.value = '';
         if (!nome) return;
@@ -4891,6 +4975,14 @@ function criarGrupoDeMovimentosEscolas({ tabela, inputId, containerId, nomeFunca
         const existente = db.movimentosEscolas.find((m) => m.nome === nome);
         if (existente) {
             adicionarPorId(existente.id);
+            return;
+        }
+
+        if (campo === 'divisao' && separado) {
+            mostrarAviso(
+                `"${nome}" não está no cadastro. Uma divisão precisa de uma corrente pai: crie-a na aba Correntes literárias, em "Faz parte de", e volte aqui.`,
+                'info',
+            );
             return;
         }
 
@@ -4912,20 +5004,48 @@ function criarGrupoDeMovimentosEscolas({ tabela, inputId, containerId, nomeFunca
         renderizar();
     }
 
-    function renderizar() {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-        container.innerHTML = itens
-            .map((id) => {
-                const movimento = movimentoDe(id);
-                const nome = movimento?.nome || '(corrente literária removida)';
-                return `
-            <span title="${escapeHtml(movimento ? caminhoDaCorrente(db.movimentosEscolas, id) : nome)}" class="text-[11px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded-full inline-flex items-center gap-1">
+    // Chip com o nome e, na dica, o caminho completo (F14-D7): nomes de
+    // divisão se repetem entre correntes ("2ª geração") e o pai nem sempre
+    // está marcado no texto.
+    function chipHtml(id, nome, dica) {
+        return `
+            <span title="${escapeHtml(dica)}" class="text-[11px] bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-2 py-1 rounded-full inline-flex items-center gap-1">
                 ${escapeHtml(nome)}
                 <button type="button" data-id="${escapeHtml(String(id))}" onclick="${nomeFuncaoRemover}('${tabela}', this.dataset.id)" class="hover:text-red-600 dark:hover:text-red-400 font-bold ml-1">×</button>
             </span>`;
-            })
-            .join('');
+    }
+
+    function renderizar() {
+        const container = document.getElementById(containerId);
+        const containerDivisoes = separado ? document.getElementById(containerDivisoesId) : null;
+        if (!separado) {
+            if (!container) return;
+            container.innerHTML = itens
+                .map((id) => {
+                    const nome = movimentoDe(id)
+                        ? rotuloDaCorrente(db.movimentosEscolas, id)
+                        : '(corrente literária removida)';
+                    return chipHtml(id, nome, nome);
+                })
+                .join('');
+            return;
+        }
+        const correntes = [];
+        const divisoes = [];
+        itens.forEach((id) => {
+            const movimento = movimentoDe(id);
+            if (!movimento) {
+                correntes.push(chipHtml(id, '(corrente literária removida)', 'removida'));
+            } else if (ehDivisaoDaCorrente(db.movimentosEscolas, id)) {
+                divisoes.push(
+                    chipHtml(id, movimento.nome, caminhoDaCorrente(db.movimentosEscolas, id)),
+                );
+            } else {
+                correntes.push(chipHtml(id, movimento.nome, movimento.nome));
+            }
+        });
+        if (container) container.innerHTML = correntes.join('');
+        if (containerDivisoes) containerDivisoes.innerHTML = divisoes.join('');
     }
 
     function reset() {
@@ -4949,12 +5069,16 @@ const grupoMovimentosEscolasPoema = criarGrupoDeMovimentosEscolas({
     tabela: 'poemas',
     inputId: 'p-movimento-escola-input',
     containerId: 'p-movimentos-escolas-container',
+    inputDivisoesId: 'p-divisao-corrente-input',
+    containerDivisoesId: 'p-divisoes-correntes-container',
     nomeFuncaoRemover: 'removerMovimentoEscolaDireto',
 });
 const grupoMovimentosEscolasProsa = criarGrupoDeMovimentosEscolas({
     tabela: 'prosas',
     inputId: 'pr-movimento-escola-input',
     containerId: 'pr-movimentos-escolas-container',
+    inputDivisoesId: 'pr-divisao-corrente-input',
+    containerDivisoesId: 'pr-divisoes-correntes-container',
     nomeFuncaoRemover: 'removerMovimentoEscolaDireto',
 });
 const grupoMovimentosEscolasAutor = criarGrupoDeMovimentosEscolas({
@@ -4974,17 +5098,27 @@ function grupoMovimentosEscolas(tabela) {
 // acima (candidatosPorAutoria), só que alimentando os TRÊS modais.
 export function atualizarDatalistMovimentosEscolas() {
     // O valor da opção é o nome (único no cadastro, e é o que o campo casa);
-    // o rótulo situa a divisão na árvore e diz a que gênero ela se aplica.
-    // Em Poema e Prosa, divisão do outro gênero não é sugerida.
-    const datalists = {
-        poemas: 'sugestoes-movimentos-escolas',
-        prosas: 'sugestoes-movimentos-escolas-prosa',
-        autores: 'sugestoes-movimentos-escolas-autor',
-    };
-    Object.entries(datalists).forEach(([tabela, id]) => {
+    // o rótulo situa a divisão na árvore e diz a que gênero ela se aplica. A
+    // ordem é a da aba (árvore, irmãos por data, como `compararPeriodosNoSelect`).
+    // Em Poema e Prosa, divisão do outro gênero não é sugerida, e o campo de
+    // Correntes sugere só as de topo e o de Divisões só as que têm pai
+    // (Fase 14, etapa 2). O Autor segue com um campo só, com todas.
+    const datalists = [
+        { tabela: 'poemas', id: 'sugestoes-movimentos-escolas', somente: 'topo' },
+        { tabela: 'poemas', id: 'sugestoes-divisoes-correntes', somente: 'divisoes' },
+        { tabela: 'prosas', id: 'sugestoes-movimentos-escolas-prosa', somente: 'topo' },
+        { tabela: 'prosas', id: 'sugestoes-divisoes-correntes-prosa', somente: 'divisoes' },
+        { tabela: 'autores', id: 'sugestoes-movimentos-escolas-autor', somente: null },
+    ];
+    datalists.forEach(({ tabela, id, somente }) => {
         const datalist = document.getElementById(id);
         if (!datalist) return;
-        datalist.innerHTML = sugestoesDeCorrentes(db.movimentosEscolas, tabela)
+        datalist.innerHTML = sugestoesDeCorrentes(
+            db.movimentosEscolas,
+            tabela,
+            compararPeriodosNoSelect,
+            somente,
+        )
             .map(
                 (o) =>
                     `<option value="${escapeHtml(o.nome)}"${o.rotulo ? ` label="${escapeHtml(o.rotulo)}"` : ''}></option>`,
@@ -5155,6 +5289,9 @@ export function atualizarDatalistRegiaoPeriodoHistorico() {
 export function adicionarMovimentoEscolaDireto(tabela, valor = null) {
     grupoMovimentosEscolas(tabela).adicionar(valor);
 }
+export function adicionarDivisaoCorrenteDireta(tabela, valor = null) {
+    grupoMovimentosEscolas(tabela).adicionar(valor, 'divisao');
+}
 export function removerMovimentoEscolaDireto(tabela, id) {
     grupoMovimentosEscolas(tabela).remover(id);
 }
@@ -5174,8 +5311,21 @@ export function obterMovimentosEscolasDiretos(tabela) {
 // rótulo de caminho (rotuloDeEscolhaDoPeriodo). Nome que não existe vira
 // chip "novo" e só é criado no cadastro ao SALVAR o texto, para cancelar o
 // modal não deixar período solto. Cada item é um id ou { novo: 'Nome' }.
-function criarGrupoDePeriodosHistoricos({ inputId, containerId, nomeFuncaoRemover, tabela }) {
+// Eventos (F14-D3/D4): a mesma lista do texto aparece em dois campos, Períodos
+// e Eventos. Cada campo é uma instância desta fábrica com o seu `tipo`
+// ('periodos' | 'eventos') e só guarda os itens da sua marca. Nome que já
+// existe no cadastro mas é do outro tipo vai para o campo certo, com um aviso.
+// `{ novo }` nasce com a marca do campo em que foi digitado.
+function criarGrupoDePeriodosHistoricos({
+    inputId,
+    containerId,
+    nomeFuncaoRemover,
+    tabela,
+    tipo = 'periodos',
+}) {
     let itens = [];
+    const querEvento = tipo === 'eventos';
+    const doTipo = (id) => ehEvento(db.periodosHistoricos.find((p) => p.id == id)) === querEvento;
 
     const ehNovo = (i) => i && typeof i === 'object';
     const mesmoItem = (a, b) =>
@@ -5193,9 +5343,28 @@ function criarGrupoDePeriodosHistoricos({ inputId, containerId, nomeFuncaoRemove
             return;
         }
         if (input) input.value = '';
+        if (!r.novo && !doTipo(r.id)) {
+            const nome = db.periodosHistoricos.find((p) => p.id == r.id)?.nome || texto;
+            mostrarAviso(
+                `"${nome}" ${querEvento ? 'é um período, não um evento' : 'é um evento'}: entrou ${querEvento ? 'em Períodos' : 'em Eventos'}.`,
+                'info',
+            );
+            grupoPeriodosHistoricos(tabela, querEvento ? 'periodos' : 'eventos').adicionarResolvido(
+                r.id,
+            );
+            return;
+        }
         const item = r.novo ? { novo: texto } : r.id;
         if (!itens.some((i) => mesmoItem(i, item))) {
             itens.push(item);
+            renderizar();
+        }
+    }
+
+    // Entrada já resolvida (id) vinda do campo irmão.
+    function adicionarResolvido(id) {
+        if (!itens.some((i) => mesmoItem(i, id))) {
+            itens.push(id);
             renderizar();
         }
     }
@@ -5210,15 +5379,21 @@ function criarGrupoDePeriodosHistoricos({ inputId, containerId, nomeFuncaoRemove
         if (!container) return;
         // Id que deixou de existir sai sem barulho.
         itens = itens.filter((i) => ehNovo(i) || db.periodosHistoricos.some((p) => p.id == i));
+        const cor = querEvento
+            ? 'bg-violet-100 dark:bg-violet-900 text-violet-800 dark:text-violet-200'
+            : 'bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200';
+        const avisoNovo = querEvento
+            ? 'Evento novo: será criado ao salvar o texto'
+            : 'Período novo: será criado ao salvar o texto';
         container.innerHTML = itens
             .map((i) => {
                 const novo = ehNovo(i);
                 const rotulo = novo ? i.novo : rotuloDeEscolhaDoPeriodo(db.periodosHistoricos, i);
                 const chave = novo ? `novo:${i.novo}` : String(i);
                 return `
-            <span title="${escapeHtml(novo ? 'Período novo: será criado ao salvar o texto' : rotulo)}" class="text-[11px] bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 px-2 py-1 rounded-full inline-flex items-center gap-1">
+            <span title="${escapeHtml(novo ? avisoNovo : rotulo)}" class="text-[11px] ${cor} px-2 py-1 rounded-full inline-flex items-center gap-1">
                 ${escapeHtml(rotulo)}${novo ? ' (novo)' : ''}
-                <button type="button" data-chave="${escapeHtml(chave)}" onclick="${nomeFuncaoRemover}('${tabela}', this.dataset.chave)" aria-label="Remover ${escapeHtml(rotulo)}" class="hover:text-red-600 dark:hover:text-red-400 font-bold ml-1">×</button>
+                <button type="button" data-chave="${escapeHtml(chave)}" onclick="${nomeFuncaoRemover}('${tabela}', this.dataset.chave, '${tipo}')" aria-label="Remover ${escapeHtml(rotulo)}" class="hover:text-red-600 dark:hover:text-red-400 font-bold ml-1">×</button>
             </span>`;
             })
             .join('');
@@ -5230,7 +5405,10 @@ function criarGrupoDePeriodosHistoricos({ inputId, containerId, nomeFuncaoRemove
     }
 
     function carregar(ids) {
-        itens = periodosHistoricosIdsDoItem({ periodosHistoricosIds: ids }, db.periodosHistoricos);
+        itens = periodosHistoricosIdsDoItem(
+            { periodosHistoricosIds: ids },
+            db.periodosHistoricos,
+        ).filter(doTipo);
         renderizar();
     }
 
@@ -5239,45 +5417,261 @@ function criarGrupoDePeriodosHistoricos({ inputId, containerId, nomeFuncaoRemove
     function obterItens() {
         const pendente = (document.getElementById(inputId)?.value || '').trim();
         if (pendente) adicionar(pendente);
-        return itens;
+        // `{ novo }` do campo Eventos leva a marca, para quem salva criar o
+        // registro já como evento.
+        return querEvento ? itens.map((i) => (ehNovo(i) ? { ...i, evento: true } : i)) : itens;
     }
 
-    return { adicionar, remover, renderizar, reset, carregar, obterItens };
+    return { adicionar, adicionarResolvido, remover, renderizar, reset, carregar, obterItens };
 }
 
-const grupoPeriodosHistoricosPoema = criarGrupoDePeriodosHistoricos({
-    tabela: 'poemas',
-    inputId: 'p-periodo-historico-nome',
-    containerId: 'p-periodos-historicos-container',
-    nomeFuncaoRemover: 'removerPeriodoHistoricoDoTexto',
+const GRUPOS_PERIODOS_HISTORICOS = {};
+[
+    ['poemas', 'p', 'periodo-historico-nome', 'periodos-historicos-container'],
+    ['prosas', 'pr', 'periodo-historico-nome', 'periodos-historicos-container'],
+].forEach(([tabela, pre, entrada, caixa]) => {
+    const por = (GRUPOS_PERIODOS_HISTORICOS[tabela] = {});
+    por.periodos = criarGrupoDePeriodosHistoricos({
+        tabela,
+        tipo: 'periodos',
+        inputId: `${pre}-${entrada}`,
+        containerId: `${pre}-${caixa}`,
+        nomeFuncaoRemover: 'removerPeriodoHistoricoDoTexto',
+    });
+    por.eventos = criarGrupoDePeriodosHistoricos({
+        tabela,
+        tipo: 'eventos',
+        inputId: `${pre}-evento-historico-nome`,
+        containerId: `${pre}-eventos-historicos-container`,
+        nomeFuncaoRemover: 'removerPeriodoHistoricoDoTexto',
+    });
 });
-const grupoPeriodosHistoricosProsa = criarGrupoDePeriodosHistoricos({
-    tabela: 'prosas',
-    inputId: 'pr-periodo-historico-nome',
-    containerId: 'pr-periodos-historicos-container',
-    nomeFuncaoRemover: 'removerPeriodoHistoricoDoTexto',
-});
-function grupoPeriodosHistoricos(tabela) {
-    if (tabela === 'poemas') return grupoPeriodosHistoricosPoema;
-    if (tabela === 'prosas') return grupoPeriodosHistoricosProsa;
-    throw new Error(`Tabela desconhecida em grupoPeriodosHistoricos: ${tabela}`);
+function grupoPeriodosHistoricos(tabela, tipo = 'periodos') {
+    const grupo = GRUPOS_PERIODOS_HISTORICOS[tabela]?.[tipo === 'eventos' ? 'eventos' : 'periodos'];
+    if (!grupo) throw new Error(`Tabela desconhecida em grupoPeriodosHistoricos: ${tabela}`);
+    return grupo;
 }
-export function adicionarPeriodoHistoricoDoTexto(tabela, valor = null) {
-    grupoPeriodosHistoricos(tabela).adicionar(valor);
+export function adicionarPeriodoHistoricoDoTexto(tabela, valor = null, tipo = 'periodos') {
+    grupoPeriodosHistoricos(tabela, tipo).adicionar(valor);
 }
-export function removerPeriodoHistoricoDoTexto(tabela, chave) {
-    grupoPeriodosHistoricos(tabela).remover(chave);
+export function removerPeriodoHistoricoDoTexto(tabela, chave, tipo = 'periodos') {
+    grupoPeriodosHistoricos(tabela, tipo).remover(chave);
 }
 export function resetPeriodosHistoricosDoTexto(tabela) {
-    grupoPeriodosHistoricos(tabela).reset();
+    grupoPeriodosHistoricos(tabela, 'periodos').reset();
+    grupoPeriodosHistoricos(tabela, 'eventos').reset();
 }
+// A lista do texto é uma só (F14-D4): cada campo fica com os itens da sua marca.
 export function carregarPeriodosHistoricosDoTexto(tabela, ids) {
-    grupoPeriodosHistoricos(tabela).carregar(ids);
+    grupoPeriodosHistoricos(tabela, 'periodos').carregar(ids);
+    grupoPeriodosHistoricos(tabela, 'eventos').carregar(ids);
 }
-// Lista de { id } ou { novo } na ordem dos chips; quem salva troca cada
-// { novo } pelo id do período criado.
+// Lista de id ou { novo } (o novo de Eventos leva `evento: true`): primeiro os
+// períodos, depois os eventos. Quem salva troca cada { novo } pelo id criado.
 export function obterPeriodosHistoricosDoTexto(tabela) {
-    return grupoPeriodosHistoricos(tabela).obterItens();
+    return [
+        ...grupoPeriodosHistoricos(tabela, 'periodos').obterItens(),
+        ...grupoPeriodosHistoricos(tabela, 'eventos').obterItens(),
+    ];
+}
+
+// ─── Períodos Biográficos Retratados (vários por texto) ─────────
+// Poema e Prosa podem retratar vários Períodos Biográficos. Cada chip leva o
+// SEU recorte (Momento, ou Momento e Repercussão): o mesmo texto pode retratar
+// um período como evento e outro como efeito. `inicio`, `fim` e N/A seguem
+// por texto (campos De/Até fora dos chips). Cada item é
+// `{ epocaId, recorte }` ou, para nome que ainda não existe no cadastro,
+// `{ novo: 'Nome', recorte }`: o período novo só é criado ao SALVAR o texto,
+// para cancelar o modal não deixar período solto. A ordem dos chips é a da
+// lista e não significa hierarquia.
+// Eventos (F14-D3/D4): a lista do texto é uma só e aparece em dois campos,
+// Períodos e Eventos. Cada campo é uma instância desta fábrica com o seu `tipo`
+// e só guarda os itens da sua marca; nome que existe no cadastro mas é do outro
+// tipo vai para o campo certo, com um aviso.
+function criarGrupoDeEpocasRetratadas({ inputId, containerId, tabela, tipo = 'periodos' }) {
+    let itens = [];
+    const querEvento = tipo === 'eventos';
+    const doTipo = (epocaId) => ehEvento(db.epocas.find((e) => e.id == epocaId)) === querEvento;
+
+    const ehNovo = (i) => i && Object.prototype.hasOwnProperty.call(i, 'novo');
+    const chaveDe = (i) => (ehNovo(i) ? `novo:${i.novo}` : String(i.epocaId));
+
+    // Texto do campo (o rótulo de uma sugestão ou só o nome) -> período do
+    // cadastro. Prefere o de um Autor do texto; sem nenhum deles, vira período
+    // novo (criado ao salvar, para o primeiro Autor).
+    function resolver(texto) {
+        const extras = periodosParaEscolhaRetratada(tabela);
+        const r = resolverPeriodoBiograficoPorRotulo(db.epocas, texto, extras);
+        return r.id != null ? { epocaId: r.id, recorte: null } : { novo: texto, recorte: null };
+    }
+
+    // Item já resolvido (vindo do campo irmão): entra sem repetir.
+    function adicionarResolvido(item) {
+        if (itens.some((i) => chaveDe(i) === chaveDe(item))) return;
+        itens.push(item);
+        renderizar();
+    }
+
+    // Devolve o nome adicionado (para quem quiser sugerir datas) ou null.
+    function adicionar(valor = null) {
+        const input = document.getElementById(inputId);
+        const texto = (valor ?? input?.value ?? '').trim();
+        if (!texto) return null;
+        if (input) input.value = '';
+        const item = resolver(texto);
+        if (!ehNovo(item) && !doTipo(item.epocaId)) {
+            const nome = db.epocas.find((e) => e.id == item.epocaId)?.nome || texto;
+            mostrarAviso(
+                `"${nome}" ${querEvento ? 'é um período, não um evento' : 'é um evento'}: entrou ${querEvento ? 'em Períodos' : 'em Eventos'}.`,
+                'info',
+            );
+            grupoEpocasRetratadas(tabela, querEvento ? 'periodos' : 'eventos').adicionarResolvido(
+                item,
+            );
+            return db.epocas.find((e) => e.id == item.epocaId)?.nome || texto;
+        }
+        if (itens.some((i) => chaveDe(i) === chaveDe(item))) return null;
+        itens.push(item);
+        renderizar();
+        // O nome do período (não o rótulo digitado, que leva o caminho) é o que
+        // a sugestão de datas procura no cadastro.
+        return ehNovo(item) ? texto : db.epocas.find((e) => e.id == item.epocaId)?.nome || texto;
+    }
+
+    function remover(chave) {
+        itens = itens.filter((i) => chaveDe(i) !== String(chave));
+        renderizar();
+    }
+
+    function alterarRecorte(chave, valor) {
+        const item = itens.find((i) => chaveDe(i) === String(chave));
+        if (!item) return;
+        item.recorte = RECORTES_EPOCA.includes(valor) ? valor : null;
+        renderizar();
+    }
+
+    function renderizar() {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        // Id que deixou de existir sai sem barulho.
+        itens = itens.filter((i) => ehNovo(i) || db.epocas.some((e) => e.id == i.epocaId));
+        const cor = querEvento
+            ? 'bg-violet-100 dark:bg-violet-900 text-violet-800 dark:text-violet-200'
+            : 'bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200';
+        const avisoNovo = querEvento
+            ? 'Evento novo: será criado ao salvar o texto'
+            : 'Período novo: será criado ao salvar o texto';
+        container.innerHTML = itens
+            .map((i) => {
+                const novo = ehNovo(i);
+                const rotulo = novo ? i.novo : rotuloDoPeriodoBiografico(db.epocas, i.epocaId);
+                const chave = chaveDe(i);
+                const opcoes = [['', 'Recorte não especificado']]
+                    .concat(RECORTES_EPOCA.map((r) => [r, ROTULOS_RECORTE_EPOCA[r]]))
+                    .map(
+                        ([v, t]) =>
+                            `<option value="${v}"${(i.recorte || '') === v ? ' selected' : ''}>${escapeHtml(t)}</option>`,
+                    )
+                    .join('');
+                return `
+            <span title="${escapeHtml(novo ? avisoNovo : rotulo)}" class="text-[11px] ${cor} px-2 py-1 rounded-full inline-flex items-center gap-1">
+                ${escapeHtml(rotulo)}${novo ? ' (novo)' : ''}
+                <select data-chave="${escapeHtml(chave)}" onchange="alterarRecorteEpocaRetratadaDoTexto('${tabela}', this.dataset.chave, this.value, '${tipo}')" aria-label="Recorte de ${escapeHtml(rotulo)}" class="text-[10px] py-0 px-1 w-auto rounded">${opcoes}</select>
+                <button type="button" data-chave="${escapeHtml(chave)}" onclick="removerEpocaRetratadaDoTexto('${tabela}', this.dataset.chave, '${tipo}')" aria-label="Remover ${escapeHtml(rotulo)}" class="hover:text-red-600 dark:hover:text-red-400 font-bold ml-1">×</button>
+            </span>`;
+            })
+            .join('');
+    }
+
+    function reset() {
+        itens = [];
+        renderizar();
+    }
+
+    // `periodos`: a lista de `epocaRetratada.periodos` do texto.
+    function carregar(periodos) {
+        itens = periodosDaEpocaRetratada({ periodos }, db.epocas)
+            .map((p) => ({
+                epocaId: p.epocaId,
+                recorte: p.recorte,
+            }))
+            .filter((p) => doTipo(p.epocaId));
+        renderizar();
+    }
+
+    // Chips + o que sobrou digitado no campo (quem digita e salva sem
+    // apertar "+" não perde o período).
+    function obterItens() {
+        const pendente = (document.getElementById(inputId)?.value || '').trim();
+        if (pendente) adicionar(pendente);
+        // `{ novo }` do campo Eventos leva a marca, para quem salva criar o
+        // registro já como evento.
+        return itens.map((i) => (querEvento && ehNovo(i) ? { ...i, evento: true } : { ...i }));
+    }
+
+    return {
+        adicionar,
+        adicionarResolvido,
+        remover,
+        alterarRecorte,
+        renderizar,
+        reset,
+        carregar,
+        obterItens,
+    };
+}
+
+const GRUPOS_EPOCAS_RETRATADAS = {};
+[
+    ['poemas', 'p'],
+    ['prosas', 'pr'],
+].forEach(([tabela, pre]) => {
+    GRUPOS_EPOCAS_RETRATADAS[tabela] = {
+        periodos: criarGrupoDeEpocasRetratadas({
+            tabela,
+            tipo: 'periodos',
+            inputId: `${pre}-epoca-nome`,
+            containerId: `${pre}-epocas-container`,
+        }),
+        eventos: criarGrupoDeEpocasRetratadas({
+            tabela,
+            tipo: 'eventos',
+            inputId: `${pre}-evento-biografico-nome`,
+            containerId: `${pre}-eventos-biograficos-container`,
+        }),
+    };
+});
+function grupoEpocasRetratadas(tabela, tipo = 'periodos') {
+    const grupo = GRUPOS_EPOCAS_RETRATADAS[tabela]?.[tipo === 'eventos' ? 'eventos' : 'periodos'];
+    if (!grupo) throw new Error(`Tabela desconhecida em grupoEpocasRetratadas: ${tabela}`);
+    return grupo;
+}
+export function adicionarEpocaRetratadaDoTexto(tabela, valor = null, tipo = 'periodos') {
+    return grupoEpocasRetratadas(tabela, tipo).adicionar(valor);
+}
+export function removerEpocaRetratadaDoTexto(tabela, chave, tipo = 'periodos') {
+    grupoEpocasRetratadas(tabela, tipo).remover(chave);
+}
+export function alterarRecorteEpocaRetratadaDoTexto(tabela, chave, valor, tipo = 'periodos') {
+    grupoEpocasRetratadas(tabela, tipo).alterarRecorte(chave, valor);
+}
+export function resetEpocasRetratadasDoTexto(tabela) {
+    grupoEpocasRetratadas(tabela, 'periodos').reset();
+    grupoEpocasRetratadas(tabela, 'eventos').reset();
+}
+// A lista do texto é uma só (F14-D4): cada campo fica com os itens da sua marca.
+export function carregarEpocasRetratadasDoTexto(tabela, periodos) {
+    grupoEpocasRetratadas(tabela, 'periodos').carregar(periodos);
+    grupoEpocasRetratadas(tabela, 'eventos').carregar(periodos);
+}
+// Lista de { epocaId, recorte } ou { novo, recorte } (o novo de Eventos leva
+// `evento: true`): primeiro os períodos, depois os eventos; quem salva troca
+// cada { novo } pelo id do período criado.
+export function obterEpocasRetratadasDoTexto(tabela) {
+    return [
+        ...grupoEpocasRetratadas(tabela, 'periodos').obterItens(),
+        ...grupoEpocasRetratadas(tabela, 'eventos').obterItens(),
+    ];
 }
 
 // ─── 4º grupo do Autor: Reconhecimento e formação literária ─────
@@ -5933,7 +6327,7 @@ export function initEditor() {
     }
 
     // Enter nos inputs de texto/link/nota da Intertextualidade
-    ['p-intertexto-texto', 'p-intertexto-link', 'p-intertexto-nota'].forEach((id) => {
+    ['p-intertexto-texto', 'p-intertexto-link'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('keydown', (e) => {
@@ -5946,7 +6340,7 @@ export function initEditor() {
     });
     // Enter nos inputs de texto/link/nota de Referências — mesmo padrão
     // de Intertextualidade acima.
-    ['p-refext-texto', 'p-refext-link', 'p-refext-nota'].forEach((id) => {
+    ['p-refext-texto', 'p-refext-link'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('keydown', (e) => {
@@ -5959,12 +6353,7 @@ export function initEditor() {
     });
     // Enter nos inputs de relação/hipotexto/link/nota da Hipertextualidade
     // — mesmo padrão de Intertextualidade/Referências acima.
-    [
-        'p-hipertexto-relacao',
-        'p-hipertexto-hipotexto',
-        'p-hipertexto-link',
-        'p-hipertexto-nota',
-    ].forEach((id) => {
+    ['p-hipertexto-relacao', 'p-hipertexto-hipotexto', 'p-hipertexto-link'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('keydown', (e) => {
@@ -6078,7 +6467,7 @@ export function initEditorProsa() {
 
     // Enter nos inputs de texto/link/nota da Intertextualidade (Prosa) —
     // mesmo padrão do Poema em initEditor().
-    ['pr-intertexto-texto', 'pr-intertexto-link', 'pr-intertexto-nota'].forEach((id) => {
+    ['pr-intertexto-texto', 'pr-intertexto-link'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('keydown', (e) => {
@@ -6089,7 +6478,7 @@ export function initEditorProsa() {
             });
         }
     });
-    ['pr-refext-texto', 'pr-refext-link', 'pr-refext-nota'].forEach((id) => {
+    ['pr-refext-texto', 'pr-refext-link'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('keydown', (e) => {
@@ -6102,12 +6491,7 @@ export function initEditorProsa() {
     });
     // Enter nos inputs de relação/hipotexto/link/nota da Hipertextualidade
     // (Prosa) — mesmo padrão do Poema em initEditor().
-    [
-        'pr-hipertexto-relacao',
-        'pr-hipertexto-hipotexto',
-        'pr-hipertexto-link',
-        'pr-hipertexto-nota',
-    ].forEach((id) => {
+    ['pr-hipertexto-relacao', 'pr-hipertexto-hipotexto', 'pr-hipertexto-link'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('keydown', (e) => {

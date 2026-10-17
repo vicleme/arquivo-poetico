@@ -71,6 +71,8 @@ describe('exportação com o caminho do período histórico', () => {
                 id: 3,
                 nome: 'Segundo mandato',
                 caminho: 'Nova República › Governo Dilma Rousseff › Segundo mandato',
+                esferas: [],
+                categorias: [],
             },
         ]);
         assert.equal(montarRegistro('poema', poema(null)).periodosHistoricosResolvidos, undefined);

@@ -111,7 +111,7 @@ describe('migração e funções puras', () => {
         mesclarEpocas(db, 10, 11);
         assert.equal(db.epocas.length, 1);
         assert.equal(db.epocas[0].oculto, true);
-        assert.equal(db.poemas[0].epocaRetratada.epocaId, 11);
+        assert.equal(db.poemas[0].epocaRetratada.periodos[0].epocaId, 11);
     });
 
     it('opções dos filtros não trazem Esfera/Categoria/Pessoa de período oculto', () => {
@@ -159,17 +159,18 @@ describe('exportação e sugestões', () => {
 
     it('a exportação não leva nome, Esfera nem Categoria de período oculto', () => {
         const r = montarRegistro('poema', db.poemas[0]);
-        assert.equal(r.epocaRetratada.nomeEpoca, '');
-        assert.deepEqual(r.epocaRetratada.esferas, []);
-        assert.deepEqual(r.epocaRetratada.categorias, []);
-        assert.equal(r.epocaRetratada.epocaId, null);
-        assert.equal(r.epocaRetratada.recorte, 'momento');
+        const periodo = r.epocaRetratada.periodos[0];
+        assert.equal(periodo.nomeEpoca, '');
+        assert.deepEqual(periodo.esferas, []);
+        assert.deepEqual(periodo.categorias, []);
+        assert.equal(periodo.epocaId, null);
+        assert.equal(periodo.recorte, 'momento');
     });
 
     it('a exportação segue normal para período visível', () => {
         const r = montarRegistro('poema', db.poemas[1]);
-        assert.equal(r.epocaRetratada.nomeEpoca, 'Faculdade');
-        assert.deepEqual(r.epocaRetratada.esferas, ['Estudos']);
+        assert.equal(r.epocaRetratada.periodos[0].nomeEpoca, 'Faculdade');
+        assert.deepEqual(r.epocaRetratada.periodos[0].esferas, ['Estudos']);
     });
 
     it('as sugestões do modal não incluem período oculto', () => {

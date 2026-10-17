@@ -87,6 +87,41 @@ describe('rótulo e resolução', () => {
     });
 });
 
+describe('opções do campo (nome em cima, caminho embaixo)', () => {
+    const porAno = (a, b) => (a.inicio?.ano ?? 9999) - (b.inicio?.ano ?? 9999);
+
+    it('em árvore e por data; valor é o nome, só homônimo leva o caminho', () => {
+        const lista = [
+            { id: 1, nome: 'Governo Lula', inicio: { ano: 2003 }, pertenceA: [] },
+            { id: 2, nome: 'Governo Dilma', inicio: { ano: 2011 }, pertenceA: [] },
+            { id: 3, nome: 'Primeiro mandato', inicio: { ano: 2003 }, pertenceA: [1] },
+            { id: 4, nome: 'Primeiro mandato', inicio: { ano: 2011 }, pertenceA: [2] },
+            { id: 5, nome: 'Segundo mandato', inicio: { ano: 2007 }, pertenceA: [1] },
+            { id: 6, nome: 'Ditadura Militar', inicio: { ano: 1964 }, pertenceA: [] },
+        ];
+        const opcoes = H.opcoesDeEscolhaDosPeriodosHistoricos(lista, porAno);
+        assert.deepEqual(
+            opcoes.map((o) => [o.rotulo, o.caminho, o.nivel]),
+            [
+                ['Ditadura Militar', '', 0],
+                ['Governo Lula', '', 0],
+                ['Primeiro mandato (Governo Lula)', 'Governo Lula', 1],
+                ['Segundo mandato', 'Governo Lula', 1],
+                ['Governo Dilma', '', 0],
+                ['Primeiro mandato (Governo Dilma)', 'Governo Dilma', 1],
+            ],
+        );
+    });
+
+    it('o valor escolhido volta ao período certo, também o nome puro quando é único', () => {
+        const lista = arvore();
+        lista.push({ id: 6, nome: 'Segundo mandato', pertenceA: [1] });
+        H.opcoesDeEscolhaDosPeriodosHistoricos(lista, porAno).forEach((o) => {
+            assert.deepEqual(H.resolverPeriodoPorRotulo(lista, o.rotulo), { id: o.id });
+        });
+    });
+});
+
 describe('modais de Poema e Prosa', () => {
     beforeEach(() => {
         db.periodosHistoricos = arvore();
@@ -105,6 +140,18 @@ describe('modais de Poema e Prosa', () => {
         assert.ok(valores.includes('Primeiro mandato (Governo Dilma)'));
         assert.ok(!valores.includes('Primeiro mandato'));
         assert.ok(valores.includes('Ditadura Militar'));
+    });
+
+    it('as sugestões levam o caminho no label, e o topo fica sem label', () => {
+        atualizarDatalistPeriodoHistorico();
+        const labels = Object.fromEntries(
+            [...document.querySelectorAll('#sugestoes-periodo-historico-nome option')].map((o) => [
+                o.getAttribute('value'),
+                o.getAttribute('label'),
+            ]),
+        );
+        assert.equal(labels['Primeiro mandato (Governo Lula)'], 'Governo Lula');
+        assert.equal(labels['Ditadura Militar'], null);
     });
 
     const enviar = (prefixo, formId, titulo, periodo) => {

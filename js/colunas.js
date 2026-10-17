@@ -69,15 +69,65 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'data',
         },
+        // Derivadas dos períodos biográficos do texto (o texto não guarda nada:
+        // lê o cadastro, como a Esfera e a Categoria históricas logo abaixo).
+        {
+            key: 'esferaPeriodoBiografico',
+            label: 'Esfera do Período Biográfico',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'categoriaPeriodoBiografico',
+            label: 'Categoria do Período Biográfico',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        // Eventos (F14-D3/D4): os períodos do texto marcados como evento no
+        // cadastro. A coluna acima mostra só os que não são evento.
+        {
+            key: 'eventosBiograficos',
+            label: 'Eventos biográficos',
+            default: false,
+            sortType: 'alfabetico',
+        },
         {
             key: 'periodoHistoricoId',
             label: 'Período Histórico Retratado',
             default: false,
             sortType: 'alfabetico',
         },
+        // Derivadas dos períodos históricos do texto (o texto não guarda nada:
+        // lê o cadastro, como Assunto lê os Temas).
+        {
+            key: 'esferaPeriodoHistorico',
+            label: 'Esfera do Período Histórico',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'categoriaPeriodoHistorico',
+            label: 'Categoria do Período Histórico',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'eventosHistoricos',
+            label: 'Eventos históricos',
+            default: false,
+            sortType: 'alfabetico',
+        },
         {
             key: 'movimentosEscolas',
             label: 'Corrente literária',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        // Derivada de `movimentosEscolasIds` (Fase 14, etapa 2): as ligadas que
+        // têm pai. A coluna de cima mostra só as de topo.
+        {
+            key: 'divisoesCorrentes',
+            label: 'Divisões de corrente',
             default: false,
             sortType: 'alfabetico',
         },
@@ -285,15 +335,65 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'data',
         },
+        // Derivadas dos períodos biográficos do texto (o texto não guarda nada:
+        // lê o cadastro, como a Esfera e a Categoria históricas logo abaixo).
+        {
+            key: 'esferaPeriodoBiografico',
+            label: 'Esfera do Período Biográfico',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'categoriaPeriodoBiografico',
+            label: 'Categoria do Período Biográfico',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        // Eventos (F14-D3/D4): os períodos do texto marcados como evento no
+        // cadastro. A coluna acima mostra só os que não são evento.
+        {
+            key: 'eventosBiograficos',
+            label: 'Eventos biográficos',
+            default: false,
+            sortType: 'alfabetico',
+        },
         {
             key: 'periodoHistoricoId',
             label: 'Período Histórico Retratado',
             default: false,
             sortType: 'alfabetico',
         },
+        // Derivadas dos períodos históricos do texto (o texto não guarda nada:
+        // lê o cadastro, como Assunto lê os Temas).
+        {
+            key: 'esferaPeriodoHistorico',
+            label: 'Esfera do Período Histórico',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'categoriaPeriodoHistorico',
+            label: 'Categoria do Período Histórico',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        {
+            key: 'eventosHistoricos',
+            label: 'Eventos históricos',
+            default: false,
+            sortType: 'alfabetico',
+        },
         {
             key: 'movimentosEscolas',
             label: 'Corrente literária',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        // Derivada de `movimentosEscolasIds` (Fase 14, etapa 2): as ligadas que
+        // têm pai. A coluna de cima mostra só as de topo.
+        {
+            key: 'divisoesCorrentes',
+            label: 'Divisões de corrente',
             default: false,
             sortType: 'alfabetico',
         },
@@ -711,6 +811,20 @@ function gravarPadroes(tabela, lista) {
     armazenamentoPadroes.gravar(tabela, lista);
 }
 
+// Último padrão aplicado ou salvo em cada tabela, só na memória da tela (não
+// vai pro banco nem pro backup). Serve para o painel oferecer "Atualizar
+// padrão" enquanto a pessoa ajusta as colunas: mexer numa coluna desmarca o
+// padrão ativo (ver padraoAtivoColunas), mas este continua lembrado.
+const padraoEmEdicao = {};
+
+// Nome (como está na lista) do padrão lembrado, ou null se ele não existe mais.
+export function padraoEmEdicaoColunas(tabela) {
+    const nome = padraoEmEdicao[tabela];
+    if (!nome) return null;
+    const achado = listarPadroesColunas(tabela).find((p) => mesmoNomePadrao(p.nome, nome));
+    return achado ? achado.nome : null;
+}
+
 // Guarda as colunas visíveis agora sob o nome dado. Mesmo nome (sem diferenciar
 // caixa) substitui o padrão existente, na mesma posição da lista.
 // Devolve { ok, nome, substituiu } ou { ok: false, motivo }.
@@ -726,6 +840,7 @@ export function salvarPadraoColunas(tabela, nome) {
     else lista.push(novo);
 
     gravarPadroes(tabela, lista);
+    padraoEmEdicao[tabela] = limpo;
     disparaAlteracao(tabela);
     return { ok: true, nome: limpo, substituiu: idx >= 0 };
 }
@@ -743,8 +858,45 @@ export function aplicarPadraoColunas(tabela, nome) {
     const estado = lerEstado(tabela);
     const resto = estado.ordem.filter((k) => !padrao.colunas.includes(k));
     salvarEstado(tabela, { ordem: [...padrao.colunas, ...resto], ativas: [...padrao.colunas] });
+    padraoEmEdicao[tabela] = padrao.nome;
     disparaAlteracao(tabela);
     return true;
+}
+
+// Troca o nome de um padrão sem mexer nas colunas nem na posição da lista.
+// Só recusa se OUTRO padrão já tem o novo nome (sem diferenciar caixa); mudar
+// só a caixa do próprio nome vale. Devolve { ok, nome } ou { ok: false, motivo }
+// com motivo 'tabela', 'nome' (vazio), 'inexistente' ou 'existe'.
+export function renomearPadraoColunas(tabela, nomeAtual, novoNome) {
+    if (!DEFINICAO_COLUNAS[tabela]) return { ok: false, motivo: 'tabela' };
+    const limpo = normalizarNomePadrao(novoNome);
+    if (!limpo) return { ok: false, motivo: 'nome' };
+    const lista = listarPadroesColunas(tabela);
+    const idx = lista.findIndex((p) => mesmoNomePadrao(p.nome, normalizarNomePadrao(nomeAtual)));
+    if (idx < 0) return { ok: false, motivo: 'inexistente' };
+    if (lista.some((p, i) => i !== idx && mesmoNomePadrao(p.nome, limpo))) {
+        return { ok: false, motivo: 'existe' };
+    }
+    const eraEmEdicao = padraoEmEdicaoColunas(tabela) === lista[idx].nome;
+    lista[idx] = { ...lista[idx], nome: limpo };
+    gravarPadroes(tabela, lista);
+    if (eraEmEdicao) padraoEmEdicao[tabela] = limpo;
+    disparaAlteracao(tabela);
+    return { ok: true, nome: limpo };
+}
+
+// Regrava no padrão existente as colunas ligadas agora, na ordem da tela.
+// Nome e posição na lista ficam. Devolve { ok, nome } ou { ok: false, motivo }.
+export function atualizarPadraoColunas(tabela, nome) {
+    if (!DEFINICAO_COLUNAS[tabela]) return { ok: false, motivo: 'tabela' };
+    const lista = listarPadroesColunas(tabela);
+    const idx = lista.findIndex((p) => mesmoNomePadrao(p.nome, normalizarNomePadrao(nome)));
+    if (idx < 0) return { ok: false, motivo: 'inexistente' };
+    lista[idx] = { ...lista[idx], colunas: getColunasAtivas(tabela) };
+    gravarPadroes(tabela, lista);
+    padraoEmEdicao[tabela] = lista[idx].nome;
+    disparaAlteracao(tabela);
+    return { ok: true, nome: lista[idx].nome };
 }
 
 export function excluirPadraoColunas(tabela, nome) {
@@ -785,6 +937,22 @@ export function salvarPadraoColunasUI(tabela) {
 export function excluirPadraoColunasUI(tabela, nome) {
     if (!nome || !confirm(`Excluir o padrão "${nome}"?`)) return;
     excluirPadraoColunas(tabela, nome);
+}
+
+export function renomearPadraoColunasUI(tabela, nome) {
+    if (!nome) return;
+    const novo = normalizarNomePadrao(prompt(`Novo nome para o padrão "${nome}":`, nome) || '');
+    if (!novo || novo === nome) return;
+    const r = renomearPadraoColunas(tabela, nome, novo);
+    if (!r.ok && r.motivo === 'existe') {
+        alert(`Já existe outro padrão chamado "${novo}". Escolha um nome diferente.`);
+    }
+}
+
+export function atualizarPadraoColunasUI(tabela, nome) {
+    if (!nome) return;
+    if (!confirm(`Atualizar o padrão "${nome}" com as colunas e a ordem de agora?`)) return;
+    atualizarPadraoColunas(tabela, nome);
 }
 
 // Alterna uma coluna e dispara 'colunas:alteradas' pra quem estiver
@@ -850,8 +1018,16 @@ export function renderSeletorColunas(tabela) {
             class="w-full text-[11px] border border-gray-200 dark:border-slate-600 rounded bg-white dark:bg-slate-800 dark:text-slate-200 px-2 py-1.5 mb-1.5 placeholder:text-gray-400 dark:placeholder:text-slate-500">`
             : '';
 
-    const padroes = listarPadroesColunas(tabela);
+    // Seletor em ordem alfabética (sem diferenciar caixa nem acento). A lista
+    // guardada segue a ordem de criação; só a exibição é ordenada.
+    const padroes = [...listarPadroesColunas(tabela)].sort((a, b) =>
+        a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }),
+    );
     const padraoAtivo = padraoAtivoColunas(tabela);
+    const emEdicao = padraoEmEdicaoColunas(tabela);
+    // "Atualizar" só faz sentido quando a tela já difere do padrão lembrado.
+    const nomeParaAtualizar = emEdicao && emEdicao !== padraoAtivo ? emEdicao : null;
+    const nomeParaRenomear = padraoAtivo || emEdicao;
     const seletorPadroes = `
             <div class="flex items-center gap-2 mt-2">
                 ${
@@ -874,6 +1050,26 @@ export function renderSeletorColunas(tabela) {
                     class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">
                     Salvar como padrão
                 </button>
+                ${
+                    nomeParaAtualizar
+                        ? `<button type="button" data-nome="${escapeHtml(nomeParaAtualizar)}"
+                    onclick="atualizarPadraoColunasUI('${tabela}', this.dataset.nome)"
+                    title="Regrava no padrão &quot;${escapeHtml(nomeParaAtualizar)}&quot; as colunas ligadas agora, na ordem atual"
+                    class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">
+                    Atualizar padrão
+                </button>`
+                        : ''
+                }
+                ${
+                    nomeParaRenomear
+                        ? `<button type="button" data-nome="${escapeHtml(nomeParaRenomear)}"
+                    onclick="renomearPadraoColunasUI('${tabela}', this.dataset.nome)"
+                    title="Troca o nome do padrão (as colunas não mudam)"
+                    class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">
+                    Renomear padrão
+                </button>`
+                        : ''
+                }
                 ${
                     padraoAtivo
                         ? `<button type="button" data-nome="${escapeHtml(padraoAtivo)}"

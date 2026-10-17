@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {
     AUTOR,
     ESFERAS_DE_FABRICA,
+    CATEGORIAS_DE_FABRICA,
+    opcoesDeFabricaPeriodoBiografico,
     VINCULOS_DE_FABRICA,
     ROTULOS_VINCULO_DE_FABRICA,
     ROTULOS_PLURAIS_DE_FABRICA,
@@ -448,7 +450,8 @@ describe('vocabulário', () => {
     it('recusa nome vazio e tipo inválido', () => {
         const d = novoDb();
         assert.equal(renomearOpcaoPeriodoBiografico(d, 'esferas', 'Afetiva', '  ').ok, false);
-        assert.equal(renomearOpcaoPeriodoBiografico(d, 'categorias', 'Luto', 'X').ok, false);
+        assert.equal(renomearOpcaoPeriodoBiografico(d, 'nada', 'Luto', 'X').ok, false);
+        assert.equal(renomearOpcaoPeriodoBiografico(d, 'categorias', 'Crise', '  ').ok, false);
     });
 
     it('só remove da lista o que nenhum período usa', () => {
@@ -724,5 +727,112 @@ describe('filtros', () => {
         comFamilia(d);
         const texto = textoBuscaVinculos(d.epocas[2], d);
         assert.ok(texto.includes('Responsável por') && texto.includes('Filho ou filha de'));
+    });
+});
+
+describe('lista de Categoria (15/10/2026)', () => {
+    const FABRICA = [
+        'Adoecimento',
+        'Conquista',
+        'Crise',
+        'Descoberta',
+        'Despertar ou conscientização',
+        'Encerramento de ciclo',
+        'Fase estável',
+        'Novo começo',
+        'Perda e luto',
+        'Reaproximação',
+        'Recaída ou retrocesso',
+        'Recomeço',
+        'Rompimento',
+        'Superação',
+        'Suspensão ou espera',
+        'Transição ou mudança',
+    ];
+
+    it('a fábrica tem os 16 valores fechados, e a instalação nova nasce com eles', () => {
+        assert.deepEqual(CATEGORIAS_DE_FABRICA, FABRICA);
+        assert.deepEqual(opcoesDeFabricaPeriodoBiografico().categorias, FABRICA);
+    });
+
+    it('vocabulário sem a chave `categorias` recebe a fábrica uma vez e nada some', () => {
+        const d = novoDb();
+        delete d.opcoesPeriodoBiografico.categorias;
+        d.epocas[0].categorias = ['transicao', 'Luto', 'CRISE'];
+        d.epocas[1].categorias = ['Pandemia'];
+        migrarOpcoesPeriodoBiografico(d);
+        const lista = d.opcoesPeriodoBiografico.categorias;
+        FABRICA.forEach((v) => assert.ok(lista.includes(v), v));
+        assert.ok(lista.includes('Luto'));
+        assert.ok(lista.includes('Pandemia'));
+        // mesmo valor sem caixa/acento passa a usar a grafia da lista
+        assert.deepEqual(d.epocas[0].categorias, ['transicao', 'Luto', 'Crise']);
+        assert.deepEqual(d.epocas[1].categorias, ['Pandemia']);
+    });
+
+    it('com a chave presente, o que foi apagado não volta (nem uma lista vazia)', () => {
+        const d = novoDb();
+        d.opcoesPeriodoBiografico.categorias = ['Crise'];
+        d.epocas.forEach((e) => (e.categorias = []));
+        migrarOpcoesPeriodoBiografico(d);
+        assert.deepEqual(d.opcoesPeriodoBiografico.categorias, ['Crise']);
+        d.opcoesPeriodoBiografico.categorias = [];
+        migrarOpcoesPeriodoBiografico(d);
+        assert.deepEqual(d.opcoesPeriodoBiografico.categorias, []);
+    });
+
+    it('migração é idempotente', () => {
+        const d = novoDb();
+        delete d.opcoesPeriodoBiografico.categorias;
+        migrarOpcoesPeriodoBiografico(d);
+        const antes = JSON.stringify(d.opcoesPeriodoBiografico.categorias);
+        migrarOpcoesPeriodoBiografico(d);
+        assert.equal(JSON.stringify(d.opcoesPeriodoBiografico.categorias), antes);
+    });
+
+    it('opções = lista + o que está em uso, em ordem alfabética', () => {
+        const d = novoDb();
+        d.opcoesPeriodoBiografico.categorias = ['Crise', 'Conquista'];
+        d.epocas[0].categorias = ['Pandemia'];
+        assert.deepEqual(opcoesDoPeriodoBiografico(d, 'categorias'), [
+            'Conquista',
+            'Crise',
+            'Pandemia',
+        ]);
+    });
+
+    it('valor novo digitado num período entra na lista', () => {
+        const d = novoDb();
+        d.opcoesPeriodoBiografico.categorias = ['Crise'];
+        registrarValoresNovos(d, { esferas: [], categorias: ['Crise', 'Mudança de rumo'] });
+        assert.deepEqual(d.opcoesPeriodoBiografico.categorias, ['Crise', 'Mudança de rumo']);
+    });
+
+    it('renomear troca na lista e em todos os períodos; nome existente junta', () => {
+        const d = novoDb();
+        d.opcoesPeriodoBiografico.categorias = ['Crise', 'Conquista'];
+        d.epocas[0].categorias = ['Crise'];
+        d.epocas[1].categorias = ['Crise', 'Conquista'];
+        assert.equal(
+            renomearOpcaoPeriodoBiografico(d, 'categorias', 'Crise', 'Conquista').ok,
+            true,
+        );
+        assert.deepEqual(d.opcoesPeriodoBiografico.categorias, ['Conquista']);
+        assert.deepEqual(d.epocas[0].categorias, ['Conquista']);
+        assert.deepEqual(d.epocas[1].categorias, ['Conquista']);
+    });
+
+    it('só apaga da lista o que nenhum período usa', () => {
+        const d = novoDb();
+        d.opcoesPeriodoBiografico.categorias = ['Crise', 'Conquista'];
+        d.epocas[0].categorias = ['Crise'];
+        d.epocas[1].categorias = [];
+        d.epocas.slice(2).forEach((e) => (e.categorias = []));
+        assert.equal(contarUsoOpcao(d, 'categorias', 'crise'), 1);
+        const r = removerOpcaoPeriodoBiografico(d, 'categorias', 'Crise');
+        assert.equal(r.ok, false);
+        assert.equal(r.motivo, 'em-uso');
+        assert.equal(removerOpcaoPeriodoBiografico(d, 'categorias', 'Conquista').ok, true);
+        assert.deepEqual(d.opcoesPeriodoBiografico.categorias, ['Crise']);
     });
 });

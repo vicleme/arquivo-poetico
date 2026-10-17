@@ -30,6 +30,8 @@ import { rotuloEco } from './ancora-eco.js';
 import {
     formatarDataParcial,
     nomeEpocaExibivel,
+    periodosDaEpocaRetratada,
+    filtrarPorTipoDePeriodo,
     escapeHtml,
     PREFIXOS_CANONICOS_POR_CAMPO,
     rotuloElo,
@@ -40,6 +42,7 @@ import {
     paresAutoria,
     nomeAutoriaExibido,
     SINALIZACOES_CATEGORIAS,
+    textoDeEtiquetas,
     renderCoracoesHtml,
     OPCOES_GRAFIA,
     temasComPapel,
@@ -178,7 +181,7 @@ export function badgesEtiquetasPorCategoria(
     { semTema = false, semTerritorialidade = false } = {},
 ) {
     const badges = Object.entries(SINALIZACOES_CATEGORIAS).flatMap(([categoria, campo]) => {
-        const valor = item[campo];
+        const valor = textoDeEtiquetas(item[campo]);
         if (!valor) return [];
         if (semTema && categoria === 'tema') return [];
         if (semTerritorialidade && categoria === 'territorialidade') return [];
@@ -463,11 +466,37 @@ export function badgesReconhecimentos(item) {
 // usa ("Nome e pós"). Período oculto aparece como "(período oculto)" (a
 // célula vazia pareceria "texto sem período"), a menos que "Exibir ocultas"
 // da aba Período Biográfico esteja ligado.
-export function badgeEpocaRetratada(epoca) {
-    const nome = nomeEpocaExibivel(epoca, db.epocas, opcoesOcultasDosPeriodos());
-    if (!nome) return '';
-    const posRepercussao = epoca?.recorte === 'repercussão' ? ' e pós' : '';
-    return `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold align-middle">${escapeHtml(nome)}${posRepercussao}</span>`;
+// Vários períodos por texto: um selo por período, cada um com o seu recorte,
+// um por linha. Passou do limite: "…" e o restante no title.
+const LIMITE_EPOCAS_NA_CELULA = 3;
+// `tipo`: 'periodos' (padrão, só os que não são evento) ou 'eventos' (F14-D4).
+export function badgeEpocaRetratada(epocaRetratada, tipo = 'periodos') {
+    const selos = filtrarPorTipoDePeriodo(
+        periodosDaEpocaRetratada(epocaRetratada),
+        db.epocas,
+        tipo,
+        (p) => p.epocaId,
+    )
+        .map((periodo) => {
+            const nome = nomeEpocaExibivel(periodo, db.epocas, {
+                ...opcoesOcultasDosPeriodos(),
+                comCaminho: true,
+            });
+            if (!nome) return null;
+            return `${nome}${periodo.recorte === 'repercussão' ? ' e pós' : ''}`;
+        })
+        .filter(Boolean);
+    if (!selos.length) return '';
+    const html = selos
+        .slice(0, LIMITE_EPOCAS_NA_CELULA)
+        .map(
+            (rotulo) =>
+                `<div><span class="inline-block px-1.5 py-0.5 mr-1 rounded ${tipo === 'eventos' ? 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300' : 'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300'} text-[10px] font-bold align-middle">${escapeHtml(rotulo)}</span></div>`,
+        )
+        .join('');
+    const resto = selos.length - LIMITE_EPOCAS_NA_CELULA;
+    const reticencias = resto > 0 ? `<div title="${escapeHtml(selos.join('\n'))}">…</div>` : '';
+    return html + reticencias;
 }
 
 // Resolve o título de um Elo/Eco-alvo, que pode ser um poema OU
@@ -557,6 +586,19 @@ export function celulaCamposPreenchidos(item) {
 // Monta o <thead> de Poemas ou Prosas de acordo com as colunas ativas.
 // `celulaCheck`/`celulaTitulo`/`celulaAcoes` são o HTML fixo de início/fim
 // (checkbox, título e Ações), que não passam pelo seletor de colunas.
+// Interpreta o número digitado na caixa "Página N de M" da paginação.
+// Devolve a página a abrir (inteiro entre 1 e `total`) ou `null` quando o
+// valor não serve (vazio, texto, NaN): nesse caso quem chama só restaura a
+// caixa. Número fora do intervalo é encaixado (0 vira 1, 99 de 29 vira 29)
+// e decimal é arredondado para baixo.
+export function interpretarPaginaDigitada(valor, total) {
+    const texto = String(valor ?? '').trim();
+    if (texto === '') return null;
+    const n = Number(texto.replace(',', '.'));
+    if (!Number.isFinite(n)) return null;
+    return Math.min(Math.max(1, Math.floor(n)), Math.max(1, total));
+}
+
 // Monta a barra de paginação (itens por página + Anterior/Próxima) exibida
 // abaixo da tabela. totalItens é o total já filtrado (não só o da página).
 // `tabela` ('poemas'|'prosas') e `idsPagina` (ids dos itens exibidos na
@@ -629,7 +671,12 @@ export function montarPaginacao(
         <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
             <button data-action="${acaoPagina}" data-pagina="${paginaAtual - 1}" ${paginaAtual <= 1 ? 'disabled' : ''}
                 class="px-2 py-1 border border-gray-300 dark:border-slate-600 rounded disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-slate-700">‹ Anterior</button>
-            <span>Página ${paginaAtual} de ${totalPaginas}</span>
+            <span class="flex items-center gap-1">Página
+                <input type="number" inputmode="numeric" min="1" max="${totalPaginas}" step="1"
+                    value="${paginaAtual}" aria-label="Número da página (de 1 a ${totalPaginas})"
+                    data-pagina-input="${acaoPagina}" data-pagina-atual="${paginaAtual}" data-pagina-total="${totalPaginas}"
+                    class="w-14 border border-gray-300 dark:border-slate-600 dark:bg-slate-800 rounded px-1.5 py-1 text-xs text-center">
+                de ${totalPaginas}</span>
             <button data-action="${acaoPagina}" data-pagina="${paginaAtual + 1}" ${paginaAtual >= totalPaginas ? 'disabled' : ''}
                 class="px-2 py-1 border border-gray-300 dark:border-slate-600 rounded disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-slate-700">Próxima ›</button>
         </div>`
@@ -674,6 +721,7 @@ const COLUNA_CAMPO_BUSCA = {
         titulo: 'titulo',
         idioma: 'idioma',
         movimentosEscolas: '_buscaMovimentosEscolas',
+        divisoesCorrentes: '_buscaMovimentosEscolasDireto',
         posturaEstetica: '_buscaPosturas',
         programa: '_buscaProgramas',
         pessoas: '_buscaPessoas',
@@ -709,7 +757,13 @@ const COLUNA_CAMPO_BUSCA = {
         reconhecimentos: '_buscaReconhecimentos',
         autoavaliacao: 'autoavaliacao',
         epocaRetratada: '_buscaEpoca',
+        eventosBiograficos: '_buscaEventoBiografico',
+        eventosHistoricos: '_buscaEventoHistorico',
+        esferaPeriodoBiografico: '_buscaEsferas',
+        categoriaPeriodoBiografico: '_buscaCategorias',
         periodoHistoricoId: '_buscaPeriodoHistorico',
+        esferaPeriodoHistorico: '_buscaEsferasHistoricas',
+        categoriaPeriodoHistorico: '_buscaCategoriasHistoricas',
         assuntos: '_buscaAssuntos',
         fonte: '_buscaFonte',
         grafia: '_buscaGrafia',
@@ -722,6 +776,7 @@ const COLUNA_CAMPO_BUSCA = {
         titulo: 'titulo',
         idioma: 'idioma',
         movimentosEscolas: '_buscaMovimentosEscolas',
+        divisoesCorrentes: '_buscaMovimentosEscolasDireto',
         posturaEstetica: '_buscaPosturas',
         programa: '_buscaProgramas',
         pessoas: '_buscaPessoas',
@@ -760,7 +815,13 @@ const COLUNA_CAMPO_BUSCA = {
         ecos: '_buscaEcos',
         referenciasExternas: '_buscaReferenciasExternas',
         epocaRetratada: '_buscaEpoca',
+        eventosBiograficos: '_buscaEventoBiografico',
+        eventosHistoricos: '_buscaEventoHistorico',
+        esferaPeriodoBiografico: '_buscaEsferas',
+        categoriaPeriodoBiografico: '_buscaCategorias',
         periodoHistoricoId: '_buscaPeriodoHistorico',
+        esferaPeriodoHistorico: '_buscaEsferasHistoricas',
+        categoriaPeriodoHistorico: '_buscaCategoriasHistoricas',
         assuntos: '_buscaAssuntos',
         fonte: '_buscaFonte',
         grafia: '_buscaGrafia',

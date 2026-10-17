@@ -16,6 +16,7 @@ import { ecosParaExportar } from './ancora-eco.js';
 import { comAlvoTitulo } from './alvos-conceitos.js';
 import { db } from './db.js';
 import { locaisParaExportar } from './locais.js';
+import { etiquetasParaExportar } from './etiquetas.js';
 import { personagensParaExportar } from './personagens.js';
 import { fichaPessoaParaExportar, avisoDadosPessoaisOmitidos } from './pessoas-viagem.js';
 import { exportarColetaneaResolvida } from './coletaneas.js';
@@ -27,6 +28,7 @@ import {
     nomesPessoas,
     idsAssuntosExcluidos,
     periodosHistoricosIdsDoItem,
+    periodosBiograficosDoItem,
 } from './utils.js';
 import { baixarMarkdown } from './exportar-md.js';
 import { baixarPdf } from './exportar-pdf.js';
@@ -35,6 +37,8 @@ import { gerarCsvTextos, baixarCsv } from './exportar-csv.js';
 import { enriquecerItensComExtras } from './download-abrangente.js';
 import { incluirOcultosNaExportacao } from './ocultos-exportacao.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
+import { caminhoDaCorrente } from './correntes-hierarquia.js';
+import { caminhoExibivelDoPeriodoBiografico } from './periodos-biograficos-hierarquia.js';
 
 // Exportada pra ser reaproveitada por exportar-frequentes.js (critérios
 // de template comparam contra essa mesma lista normalizada).
@@ -281,9 +285,10 @@ function resolverContexto(item) {
 // Período Biográfico do texto, só se puder sair numa exportação: período
 // oculto devolve null (nem o nome, nem Esfera/Categoria saem; ver montarRegistro),
 // a menos que "Incluir dados ocultados" esteja marcado (ocultos-exportacao.js).
-function epocaExportavel(epocaRetratada) {
-    const periodo = epocaRetratada?.epocaId
-        ? db.epocas.find((e) => e.id == epocaRetratada.epocaId)
+// Recebe um período da lista do texto (`{ epocaId, recorte }`).
+function epocaExportavel(periodoDoTexto) {
+    const periodo = periodoDoTexto?.epocaId
+        ? db.epocas.find((e) => e.id == periodoDoTexto.epocaId)
         : null;
     return periodo && (incluirOcultosNaExportacao() || !periodo.oculto) ? periodo : null;
 }
@@ -317,7 +322,6 @@ function ecosExportaveis(ecos) {
         return visiveis.length ? { ...resto, ancoras: visiveis } : resto;
     });
 }
-const nomeEpocaParaExportar = (epocaRetratada) => epocaExportavel(epocaRetratada)?.nome || '';
 
 // Exportado pra ser reaproveitado por exportar-frequentes.js (templates
 // de exportação e os 6 "fixos" da aba Exportações Frequentes) — mesmo
@@ -339,6 +343,10 @@ export function montarRegistro(tipo, item) {
     // manualmente. tipo e contexto são adicionados/sobrescritos depois.
     return {
         ...item,
+        // Etiquetas (Fase 16): o campo guarda ids do cadastro, que não valem
+        // em outro acervo. Cada texto leva as sete categorias como lista de
+        // nomes; a Importação Aditiva casa/cria a etiqueta pelo nome.
+        ...etiquetasParaExportar(db, item),
         tipo,
         contexto: resolverContexto(item),
         // Pessoa: além do nome, leva a ficha (gênero, cis/trans, cor/raça) do
@@ -412,27 +420,51 @@ export function montarRegistro(tipo, item) {
         movimentosEscolasResolvidos: (item.movimentosEscolasIds || [])
             .map((id) => db.movimentosEscolas.find((m) => m.id == id))
             .filter(Boolean)
-            .map((m) => ({ id: m.id, nome: m.nome })),
+            .map((m) => ({
+                id: m.id,
+                nome: m.nome,
+                caminho: caminhoDaCorrente(db.movimentosEscolas, m.id),
+            })),
         ...(item.epocaRetratada
             ? {
+                  // Vários períodos por texto: `periodos` leva um item por
+                  // período, cada um com o seu recorte. `inicio`, `fim` e `na`
+                  // são do texto inteiro.
                   epocaRetratada: {
-                      ...item.epocaRetratada,
-                      // Período oculto não vaza na exportação (como a Pessoa
-                      // oculta): sem nome, Esfera nem Categoria. As datas e o
-                      // recorte descrevem o texto e seguem. O id não vale
-                      // noutro acervo, então a Importação Aditiva não o religa.
-                      // Com "Incluir dados ocultados", o período sai como qualquer outro.
-                      ...(!incluirOcultosNaExportacao() &&
-                      db.epocas.find((e) => e.id == item.epocaRetratada.epocaId)?.oculto
-                          ? { epocaId: null }
-                          : {}),
-                      nomeEpoca: nomeEpocaParaExportar(item.epocaRetratada),
-                      // Bloco 3: Esfera e Categoria do período viajam junto (a
-                      // Importação Aditiva as usa ao criar um período novo).
-                      // Pessoas envolvidas e Vínculo NÃO viajam: o id de Pessoa
-                      // não vale noutro acervo e pessoa oculta não pode vazar.
-                      esferas: [...(epocaExportavel(item.epocaRetratada)?.esferas || [])],
-                      categorias: [...(epocaExportavel(item.epocaRetratada)?.categorias || [])],
+                      inicio: item.epocaRetratada.inicio ?? null,
+                      fim: item.epocaRetratada.fim ?? null,
+                      na: !!item.epocaRetratada.na,
+                      periodos: periodosBiograficosDoItem(item).map((x) => {
+                          const exportavel = epocaExportavel(x);
+                          return {
+                              // Período oculto não vaza na exportação (como a
+                              // Pessoa oculta): sem id, nome, Esfera nem
+                              // Categoria. O recorte descreve o texto e segue. O
+                              // id não vale noutro acervo, então a Importação
+                              // Aditiva não o religa. Com "Incluir dados
+                              // ocultados", o período sai como qualquer outro.
+                              epocaId: exportavel ? x.epocaId : null,
+                              recorte: x.recorte,
+                              nomeEpoca: exportavel?.nome || '',
+                              // Caminho até o período ("Pai › Filho"); ancestral oculto sai
+                              // como "(período oculto)" sem "Incluir dados ocultados".
+                              caminho: exportavel
+                                  ? caminhoExibivelDoPeriodoBiografico(db.epocas, x.epocaId, {
+                                        incluirOculto: incluirOcultosNaExportacao(),
+                                    })
+                                  : '',
+                              // Bloco 3: Esfera e Categoria do período viajam
+                              // junto (a Importação Aditiva as usa ao criar um
+                              // período novo). Pessoas envolvidas e Vínculo NÃO
+                              // viajam: o id de Pessoa não vale noutro acervo e
+                              // pessoa oculta não pode vazar.
+                              esferas: [...(exportavel?.esferas || [])],
+                              categorias: [...(exportavel?.categorias || [])],
+                              // F14-D3: a marca só sai quando é um evento (arquivo
+                              // de quem não usa eventos fica igual ao de antes).
+                              ...(exportavel?.evento === true ? { evento: true } : {}),
+                          };
+                      }),
                   },
               }
             : {}),
@@ -445,11 +477,19 @@ export function montarRegistro(tipo, item) {
                   periodosHistoricosResolvidos: periodosHistoricosIdsDoItem(
                       item,
                       db.periodosHistoricos,
-                  ).map((id) => ({
-                      id,
-                      nome: db.periodosHistoricos.find((ph) => ph.id == id)?.nome || '',
-                      caminho: caminhoDoPeriodo(db.periodosHistoricos, id),
-                  })),
+                  ).map((id) => {
+                      const ph = db.periodosHistoricos.find((x) => x.id == id);
+                      return {
+                          id,
+                          nome: ph?.nome || '',
+                          caminho: caminhoDoPeriodo(db.periodosHistoricos, id),
+                          // Esfera e Categoria do período viajam junto (a
+                          // Importação Aditiva as usa ao criar um período novo).
+                          esferas: [...(ph?.esferas || [])],
+                          categorias: [...(ph?.categorias || [])],
+                          ...(ph?.evento === true ? { evento: true } : {}),
+                      };
+                  }),
               }
             : {}),
     };

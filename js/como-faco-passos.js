@@ -128,6 +128,57 @@ export const TAREFAS_COMO_FACO = [
         ],
     },
     {
+        id: 'organizar-etiquetas',
+        titulo: 'Organizar as etiquetas (renomear, juntar, mover)',
+        descricao:
+            'Na aba Etiquetas (Tags), as etiquetas aparecem por categoria. Em cada cartão, Editar renomeia em todos os textos, Mesclar junta duas da mesma categoria, "Mover para…" troca a categoria e leva os textos junto, e Excluir só aparece para quem nenhum texto usa. Tudo tem Desfazer.',
+        passos: [
+            {
+                id: 'cf-etiquetas-1',
+                titulo: 'Ache a etiqueta',
+                texto: 'Busque pelo nome ou filtre por categoria. "Outros (triagem)" mostra o que ainda não tem categoria, e "Só sem texto" mostra as que nenhum texto usa.',
+                aba: 'etiquetas',
+                seletor: '#busca-etiquetas',
+            },
+            {
+                id: 'cf-etiquetas-2',
+                titulo: 'Confira as possíveis duplicatas',
+                texto: 'Quando duas etiquetas da mesma categoria parecem a mesma coisa, elas aparecem aqui. Escolha qual manter ou marque "Não são iguais".',
+                aba: 'etiquetas',
+                seletor: '#duplicatas-etiquetas',
+            },
+        ],
+    },
+    {
+        id: 'agrupar-etiquetas',
+        titulo: 'Agrupar etiquetas em tag clusters',
+        descricao:
+            'Na aba Tag clusters (agrupamentos de etiquetas), você cria grupos por categoria e coloca as etiquetas neles. O cluster não aparece nos textos: serve para ler as Estatísticas por grupo. Excluir um cluster só solta as etiquetas, e tudo tem Desfazer.',
+        passos: [
+            {
+                id: 'cf-clusters-1',
+                titulo: 'Crie um tag cluster',
+                texto: 'Escolha o nome e a categoria (Domínio Imagético, Tom, Tradição, Estilo, Relação ou Sensibilidade). A categoria não muda depois.',
+                aba: 'tag-clusters',
+                seletor: '#busca-tag-clusters',
+            },
+            {
+                id: 'cf-clusters-2',
+                titulo: 'Classifique as etiquetas sem cluster',
+                texto: 'Na lista “Etiquetas sem cluster”, escolha o cluster de cada uma. Também dá para classificar pelo cartão do cluster ou pelo cartão da aba Etiquetas.',
+                aba: 'tag-clusters',
+                seletor: '#etiquetas-sem-cluster',
+            },
+            {
+                id: 'cf-clusters-3',
+                titulo: 'Ou importe vários de uma vez',
+                texto: 'Em Importar clusters, cole uma linha por cluster, no formato “Cluster: etiqueta, etiqueta”. O relatório mostra o que não foi achado, e dá para desfazer a importação inteira.',
+                aba: 'tag-clusters',
+                seletor: '#btn-importar-tag-clusters',
+            },
+        ],
+    },
+    {
         id: 'fazer-backup',
         titulo: 'Fazer backup do acervo',
         descricao:

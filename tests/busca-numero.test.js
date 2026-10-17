@@ -43,6 +43,7 @@ const {
     setFiltroPoemas,
 } = rl;
 const { resetarColunas } = await import('../js/colunas.js');
+const { parseConsultaNumero, numeroEntraNaConsulta } = await import('../js/utils.js');
 await import('../js/main.js');
 
 function limparDb() {
@@ -166,5 +167,106 @@ describe('Busca por Nº (Caixa B) — filtra pela numeração de estrutura (_num
         setFiltroNumeroProsas('1,3');
         const visiveis = getListaVisivelProsas();
         assert.deepEqual(visiveis.map((pr) => pr.titulo).sort(), ['Três', 'Um']);
+    });
+});
+
+describe('Busca por Nº: intervalos com hífen', () => {
+    beforeEach(limparDb);
+
+    function poemasNumerados(qtd) {
+        db.livros.push({ id: 1, titulo: 'Livro Único', sequencia: 1 });
+        for (let i = 1; i <= qtd; i++) {
+            db.poemas.push({
+                id: 100 + i,
+                titulo: `Poema ${i}`,
+                paiTipo: 'livro',
+                paiId: 1,
+                sequencia: i,
+            });
+        }
+    }
+
+    function numerosVisiveis() {
+        return getListaVisivelPoemas()
+            .map((p) => p._numEstrutura)
+            .sort((a, b) => a - b);
+    }
+
+    it('"5-8" traz do 5 ao 8, inclusive as pontas', () => {
+        poemasNumerados(12);
+        setFiltroNumeroPoemas('5-8');
+        assert.deepEqual(numerosVisiveis(), [5, 6, 7, 8]);
+    });
+
+    it('mistura intervalos e números soltos, com ou sem espaço depois da vírgula', () => {
+        poemasNumerados(12);
+        setFiltroNumeroPoemas('2-3, 7-8, 11');
+        assert.deepEqual(numerosVisiveis(), [2, 3, 7, 8, 11]);
+        setFiltroNumeroPoemas('2-3,7-8,11');
+        assert.deepEqual(numerosVisiveis(), [2, 3, 7, 8, 11]);
+    });
+
+    it('intervalo de trás pra frente vale como o normal ("8-5" = "5-8")', () => {
+        poemasNumerados(12);
+        setFiltroNumeroPoemas('8-5');
+        assert.deepEqual(numerosVisiveis(), [5, 6, 7, 8]);
+    });
+
+    it('vírgula sobrando no fim (durante a digitação) não vira busca de texto', () => {
+        poemasNumerados(12);
+        setFiltroNumeroPoemas('2-3,');
+        assert.deepEqual(numerosVisiveis(), [2, 3]);
+    });
+
+    it('intervalo combina com prefixo e a numeração continua a de estrutura', () => {
+        poemasNumerados(12);
+        setFiltroNumeroPoemas('5-8 titulo:"Poema 7"');
+        const visiveis = getListaVisivelPoemas();
+        assert.deepEqual(
+            visiveis.map((p) => p.titulo),
+            ['Poema 7'],
+        );
+        assert.equal(visiveis[0]._numEstrutura, 7);
+    });
+
+    it('funciona também em Prosas', () => {
+        db.livros.push({ id: 1, titulo: 'Livro Único', sequencia: 1 });
+        for (let i = 1; i <= 6; i++) {
+            db.prosas.push({
+                id: 200 + i,
+                titulo: `Prosa ${i}`,
+                paiTipo: 'livro',
+                paiId: 1,
+                sequencia: i,
+            });
+        }
+        setFiltroNumeroProsas('2-4, 6');
+        const nums = getListaVisivelProsas()
+            .map((pr) => pr._numEstrutura)
+            .sort((a, b) => a - b);
+        assert.deepEqual(nums, [2, 3, 4, 6]);
+    });
+
+    it('parseConsultaNumero separa intervalos, soltos e o resto', () => {
+        const c = parseConsultaNumero('3, 5-7 etiqueta:x 10-9,');
+        assert.deepEqual([...c.numeros], [3]);
+        assert.deepEqual(c.intervalos, [
+            [5, 7],
+            [9, 10],
+        ]);
+        assert.equal(c.resto, 'etiqueta:x');
+    });
+
+    it('hífen de exclusão ("-termo") continua indo pro resto, não vira intervalo', () => {
+        const c = parseConsultaNumero('5-8 -bruma');
+        assert.deepEqual(c.intervalos, [[5, 8]]);
+        assert.equal(c.resto, '-bruma');
+    });
+
+    it('intervalo enorme não gera um Set gigante e ainda responde certo', () => {
+        const c = parseConsultaNumero('1-1000000');
+        assert.equal(c.numeros.size, 0);
+        assert.equal(numeroEntraNaConsulta(999999, c), true);
+        assert.equal(numeroEntraNaConsulta(1000001, c), false);
     });
 });

@@ -117,6 +117,31 @@ describe('barra de edição em massa', () => {
         assert.deepEqual(db.epocas[1].esferas, []);
     });
 
+    it('Marca de evento: marca os selecionados, mostra o selo e Desfazer devolve', () => {
+        E.toggleSelecaoEpoca(1, true);
+        E.toggleSelecaoEpoca(2, true);
+        definir('epocas-massa-campo', 'evento');
+        E.aplicarMassaEpocas();
+        assert.equal(db.epocas[0].evento, true);
+        assert.equal(db.epocas[1].evento, true);
+        assert.equal('evento' in db.epocas[2], false);
+        assert.match(el('lista-epocas').textContent, /Evento/);
+        botaoDesfazer().click();
+        assert.equal('evento' in db.epocas[0], false);
+        assert.equal('evento' in db.epocas[1], false);
+    });
+
+    it('Marca de evento: remover tira a marca só de quem tinha', () => {
+        db.epocas[0].evento = true;
+        E.toggleSelecaoEpoca(1, true);
+        E.toggleSelecaoEpoca(2, true);
+        definir('epocas-massa-campo', 'evento');
+        definir('epocas-massa-acao', 'remover');
+        E.aplicarMassaEpocas();
+        assert.equal('evento' in db.epocas[0], false);
+        assert.match(document.body.textContent, /Marca de evento tirada de 1 período/);
+    });
+
     it('campo incompleto não muda nada', () => {
         E.toggleSelecaoEpoca(1, true);
         definir('epocas-massa-campo', 'esfera');
@@ -249,5 +274,114 @@ describe('Natureza na barra de edição em massa (item 3)', () => {
         botaoDesfazer().click();
         assert.deepEqual(db.epocas[0].relacoes, []);
         assert.deepEqual(db.epocas[1].relacoes, []);
+    });
+});
+
+describe('Faz parte de na barra de edição em massa', () => {
+    const base = { esferas: [], categorias: [], pessoasEnvolvidas: [], relacoes: [] };
+    const d = (ano) => ({ ano, mes: null, dia: null });
+
+    beforeEach(() => {
+        montar();
+        // Os avisos vivem em #avisos-toast, que o montar() não esvazia: sem isto,
+        // um aviso (ou um "Desfazer") de teste anterior contaminaria as asserções.
+        document.getElementById('avisos-toast')?.replaceChildren();
+        db.epocas = [
+            { id: 1, nome: 'Ensino médio', autorId: 1, inicio: d(2005), fim: d(2007), ...base },
+            { id: 2, nome: 'Primeiro ano', autorId: 1, inicio: d(2005), fim: d(2005), ...base },
+            { id: 3, nome: 'Segundo ano', autorId: 1, inicio: d(2006), fim: d(2006), ...base },
+            { id: 4, nome: 'Faculdade da Bia', autorId: 2, ...base },
+        ];
+        renderEpocas();
+        E.toggleSelecaoEpoca(2, true);
+        E.toggleSelecaoEpoca(3, true);
+        definir('epocas-massa-campo', 'pai');
+    });
+
+    it('a opção existe no campo e mostra só o seletor de período pai', () => {
+        assert.ok(opcoes('epocas-massa-campo').includes('Faz parte de'));
+        assert.equal(el('epocas-massa-grupo-pai').classList.contains('hidden'), false);
+        assert.equal(el('epocas-massa-grupo-texto').classList.contains('hidden'), true);
+        assert.equal(el('epocas-massa-grupo-relacao').classList.contains('hidden'), true);
+        definir('epocas-massa-campo', 'esfera');
+        assert.equal(el('epocas-massa-grupo-pai').classList.contains('hidden'), true);
+    });
+
+    it('o seletor lista os períodos agrupados por autor', () => {
+        const grupos = [...el('epocas-massa-pai').querySelectorAll('optgroup')];
+        assert.deepEqual(
+            grupos.map((g) => g.label),
+            ['Ana', 'Bia'],
+        );
+        assert.equal(grupos[0].querySelectorAll('option').length, 3);
+        assert.equal(grupos[1].querySelectorAll('option').length, 1);
+    });
+
+    it('acrescenta o pai aos selecionados, avisa e o Desfazer devolve', () => {
+        definir('epocas-massa-pai', '1');
+        E.aplicarMassaEpocas();
+        assert.deepEqual(db.epocas[1].pertenceA, [1]);
+        assert.deepEqual(db.epocas[2].pertenceA, [1]);
+        assert.match(
+            document.body.textContent,
+            /Período pai "Ensino médio" acrescentado a 2 períodos/,
+        );
+        botaoDesfazer().click();
+        assert.equal('pertenceA' in db.epocas[1], false);
+        assert.equal('pertenceA' in db.epocas[2], false);
+    });
+
+    it('sem escolher o pai, avisa e não muda nada', () => {
+        E.aplicarMassaEpocas();
+        assert.match(document.body.textContent, /Escolha o período pai/);
+        assert.equal('pertenceA' in db.epocas[1], false);
+    });
+
+    it('quem não cabe é pulado e o aviso diz quem e por quê', () => {
+        E.toggleSelecaoEpoca(4, true); // outro autor
+        E.toggleSelecaoEpoca(1, true); // o próprio pai
+        definir('epocas-massa-pai', '1');
+        E.aplicarMassaEpocas();
+        assert.deepEqual(db.epocas[1].pertenceA, [1]);
+        assert.deepEqual(db.epocas[2].pertenceA, [1]);
+        assert.deepEqual(db.epocas[3].pertenceA ?? [], []);
+        const texto = document.body.textContent;
+        assert.match(texto, /acrescentado a 2 períodos/);
+        assert.match(texto, /"Faculdade da Bia" \(é de outro autor\)/);
+        assert.match(texto, /"Ensino médio" \(é o próprio pai\)/);
+    });
+
+    it('se ninguém coube, diz que nada foi alterado e não oferece Desfazer', () => {
+        E.limparSelecaoEpocas();
+        E.toggleSelecaoEpoca(4, true);
+        definir('epocas-massa-campo', 'pai');
+        definir('epocas-massa-pai', '1');
+        E.aplicarMassaEpocas();
+        assert.match(document.body.textContent, /Nenhum período foi alterado/);
+        assert.ok(!botaoDesfazer(), 'não deve haver Desfazer quando nada mudou');
+    });
+
+    it('remover tira o pai dos selecionados', () => {
+        db.epocas[1].pertenceA = [1];
+        db.epocas[2].pertenceA = [1];
+        definir('epocas-massa-acao', 'remover');
+        definir('epocas-massa-pai', '1');
+        E.aplicarMassaEpocas();
+        assert.deepEqual(db.epocas[1].pertenceA, []);
+        assert.deepEqual(db.epocas[2].pertenceA, []);
+        assert.match(
+            document.body.textContent,
+            /Período pai "Ensino médio" removido de 2 períodos/,
+        );
+    });
+
+    it('período oculto não aparece como opção de pai', () => {
+        db.epocas[0].oculto = true;
+        renderEpocas();
+        E.toggleSelecaoEpoca(2, true);
+        const nomes = [...el('epocas-massa-pai').querySelectorAll('option')].map((o) =>
+            o.textContent.trim(),
+        );
+        assert.equal(nomes.includes('Ensino médio'), false);
     });
 });

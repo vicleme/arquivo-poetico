@@ -228,26 +228,6 @@ export function nomesDeTemasDigitados(texto) {
     return saida;
 }
 
-// Opções do datalist do campo "vários temas separados por vírgula". O
-// navegador compara o texto INTEIRO do campo com cada opção, então cada
-// sugestão carrega o que a pessoa já digitou antes da última vírgula
-// ("amor, sa" → "amor, Saudade"). Não sugere o que já está no campo.
-export function sugestoesDeTemasEncadeadas(texto, nomesCadastro) {
-    const bruto = String(texto ?? '');
-    const i = bruto.lastIndexOf(',');
-    const antes = i === -1 ? '' : bruto.slice(0, i + 1);
-    const fragmento = i === -1 ? bruto : bruto.slice(i + 1);
-    let prefixo = antes;
-    if (antes) {
-        const espaco = fragmento.match(/^\s*/)[0];
-        prefixo += espaco === '' && fragmento.trim() === '' ? ' ' : espaco;
-    }
-    const jaDigitados = new Set(nomesDeTemasDigitados(antes).map(chaveTema));
-    return (nomesCadastro || [])
-        .filter((nome) => !jaDigitados.has(chaveTema(nome)))
-        .map((nome) => `${prefixo}${nome}`);
-}
-
 function gravarTemasNoTexto(dbRef, item, temas) {
     item.temas = temas;
     item.sinalizacoesTema = espelhoDeTemas(

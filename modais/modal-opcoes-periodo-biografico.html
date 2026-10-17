@@ -16,7 +16,7 @@
                 id="modal-opcoes-periodo-biografico-titulo"
                 class="text-xl font-bold text-gray-800 dark:text-slate-100"
             >
-                Esferas, naturezas e vínculos
+                Esferas, categorias, naturezas e vínculos
             </h3>
             <div class="flex items-center gap-1 ml-4 flex-shrink-0">
                 <button
@@ -63,12 +63,13 @@
         <div class="overflow-y-auto flex-1 px-6 py-5 space-y-6">
             <p class="text-sm text-gray-600 dark:text-slate-300">
                 Estas são as listas de sugestões dos campos do Período Biográfico. A Esfera é a área
-                da vida do período inteiro. Em cada relação, a Natureza é a categoria dela
-                (Familiar, Amizade, Romance...) e o Vínculo é o laço específico (namorados, mãe,
-                tio...). Os três campos são independentes. Renomear muda o nome em todos os períodos
-                que usam o valor. Só dá para apagar o que nenhum período usa. Em Vínculos, o seletor
-                define a Natureza sugerida e o botão Papéis define o lado oposto e as formas por
-                gênero.
+                da vida do período inteiro (onde), e a Categoria é o tipo de momento que foi (Crise,
+                Novo começo, Encerramento de ciclo...). Em cada relação, a Natureza é a categoria
+                dela (Familiar, Amizade, Romance...) e o Vínculo é o laço específico (namorados,
+                mãe, tio...). Os três campos são independentes. Renomear muda o nome em todos os
+                períodos que usam o valor. Só dá para apagar o que nenhum período usa. Em Vínculos,
+                o seletor define a Natureza sugerida e o botão Papéis define o lado oposto e as
+                formas por gênero.
             </p>
 
             <section aria-labelledby="opb-esferas-titulo">
@@ -90,6 +91,32 @@
                     <button
                         type="button"
                         id="opb-esferas-adicionar"
+                        class="text-sm text-blue-600 dark:text-blue-400 hover:underline flex-shrink-0"
+                    >
+                        Adicionar
+                    </button>
+                </div>
+            </section>
+
+            <section aria-labelledby="opb-categorias-titulo">
+                <h4
+                    id="opb-categorias-titulo"
+                    class="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-2"
+                >
+                    Categorias
+                </h4>
+                <div id="opb-categorias-lista" class="space-y-2"></div>
+                <div class="flex items-center gap-2 mt-3">
+                    <input
+                        type="text"
+                        id="opb-categorias-novo"
+                        placeholder="Nova categoria"
+                        autocomplete="off"
+                        style="margin-bottom: 0"
+                    />
+                    <button
+                        type="button"
+                        id="opb-categorias-adicionar"
                         class="text-sm text-blue-600 dark:text-blue-400 hover:underline flex-shrink-0"
                     >
                         Adicionar

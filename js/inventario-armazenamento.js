@@ -53,6 +53,11 @@ export const CHAVES_LOCALSTORAGE = Object.freeze([
         nota: 'Modo claro, escuro ou automático',
     },
     {
+        chave: 'arquivoPoetico_fusoHorario',
+        categoria: 'preferencia',
+        nota: 'Fuso horário que define o "hoje" das durações em andamento (sem a chave, vale Brasília)',
+    },
+    {
         chave: 'arquivoPoetico_itensPorPagina',
         categoria: 'preferencia',
         nota: 'Itens por página nas tabelas',
@@ -155,8 +160,11 @@ export const CHAVES_DB = Object.freeze([
         'autores',
         'epocas',
         'opcoesPeriodoBiografico',
+        'opcoesPeriodoHistorico',
         'assuntos',
         'temas',
+        'etiquetas',
+        'tagClusters',
         'locais',
         'personagens',
         'ecosIgnorados',
@@ -203,6 +211,16 @@ export const CHAVES_DB = Object.freeze([
         chave: 'programaDeFabricaAplicado',
         categoria: 'estado',
         nota: 'Marca de que o Programa de fábrica dos movimentos já foi aplicado uma vez',
+    },
+    {
+        chave: 'eventoDeFabricaAplicado',
+        categoria: 'estado',
+        nota: 'Marca de que o Evento de fábrica dos períodos históricos já foi aplicado uma vez',
+    },
+    {
+        chave: 'padroesColunasFabricaVersao',
+        categoria: 'estado',
+        nota: 'Versão dos padrões de colunas de fábrica já semeados (padrão excluído não volta)',
     },
 ]);
 

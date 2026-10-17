@@ -71,18 +71,6 @@
 
                     <details class="campo-grupo">
                         <summary>
-                            Região e Idioma
-                            <span class="campo-grupo-dica"
-                                >(idioma, local onde foi escrito, territorialidade)</span
-                            >
-                        </summary>
-                        <div class="campo-grupo-corpo">
-                            <div id="p-regiao-corpo"></div>
-                        </div>
-                    </details>
-
-                    <details class="campo-grupo">
-                        <summary>
                             Datas
                             <span class="campo-grupo-dica"
                                 >(data de escrita, data de primeira publicação)</span
@@ -191,11 +179,20 @@
 
                     <details class="campo-grupo">
                         <summary>
-                            Períodos, Movimento e Inspiração
+                            Região e Idioma
                             <span class="campo-grupo-dica"
-                                >(período biográfico, período histórico, corrente literária,
-                                inspiração)</span
+                                >(idioma, local onde foi escrito, territorialidade)</span
                             >
+                        </summary>
+                        <div class="campo-grupo-corpo">
+                            <div id="p-regiao-corpo"></div>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>
+                            Períodos e Inspiração
+                            <span class="campo-grupo-dica">(períodos, eventos, inspiração)</span>
                         </summary>
                         <div class="campo-grupo-corpo">
                             <div class="flex items-center justify-between">
@@ -219,19 +216,41 @@
                                     Não se aplica
                                 </label>
                             </div>
-                            <input
-                                type="text"
-                                id="p-epoca-nome"
-                                list="sugestoes-epoca-nome"
-                                class="text-sm mb-2"
-                                placeholder="Nome do período (opcional), ex.: Faculdade, Intercâmbio, Pandemia..."
-                                onchange="aplicarSugestaoEpoca()"
-                            />
-                            <datalist id="sugestoes-epoca-nome"></datalist>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-epoca-nome"
+                                    list="sugestoes-epoca-nome"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome do período (opcional), ex.: Faculdade, Intercâmbio, Pandemia..."
+                                    onchange="adicionarEpocaRetratadaComSugestao('poemas')"
+                                    onkeydown="
+                                        if (event.key === 'Enter') {
+                                            event.preventDefault();
+                                            adicionarEpocaRetratadaComSugestao('poemas');
+                                        }
+                                    "
+                                />
+                                <datalist id="sugestoes-epoca-nome"></datalist>
+                                <button
+                                    type="button"
+                                    onclick="adicionarEpocaRetratadaComSugestao('poemas')"
+                                    aria-label="Adicionar período biográfico"
+                                    class="bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-epocas-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 mb-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
                             <p class="text-[10px] text-gray-400 dark:text-slate-500 -mt-1 mb-2">
-                                Repetir um nome já usado sugere as datas e o contexto do poema mais
-                                recente com esse nome — só nos campos que estiverem vazios, sem
-                                sobrescrever o que você já preencheu.
+                                Pode haver mais de um período, cada um com o seu recorte (o poema
+                                retrata o evento em si, ou o efeito dele depois?). Repetir um nome
+                                já usado sugere as datas e o contexto do texto mais recente com esse
+                                nome, só nos campos que estiverem vazios. De/Até valem para o texto
+                                inteiro.
                             </p>
                             <div class="grid grid-cols-2 gap-2">
                                 <div>
@@ -298,19 +317,66 @@
                                 </div>
                             </div>
 
-                            <label
-                                class="text-[10px] text-gray-400 dark:text-slate-500 mt-2 block"
-                                for="p-epoca-recorte"
-                                >Recorte</label
+                            <label class="form-label mt-3"
+                                >Evento Biográfico Retratado
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(algo pontual ou curto da sua vida que o texto retrata, como
+                                    uma data ou um acontecimento. Os eventos são períodos marcados
+                                    como "É um evento" no cadastro; De/Até e o recorte funcionam
+                                    como nos períodos)</span
+                                ></label
                             >
-                            <select id="p-epoca-recorte" class="text-sm">
-                                <option value="">Não especificado</option>
-                                <option value="momento">Momento</option>
-                                <option value="repercussão">Momento e Repercussão</option>
-                            </select>
-                            <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
-                                O poema retrata o evento em si, ou o efeito dele depois?
-                            </p>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-evento-biografico-nome"
+                                    list="sugestoes-evento-biografico-nome"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome do evento (opcional), ex.: Formatura, Mudança de cidade..."
+                                    onchange="
+                                        adicionarEpocaRetratadaComSugestao(
+                                            'poemas',
+                                            null,
+                                            'eventos',
+                                        )
+                                    "
+                                    onkeydown="
+                                        if (event.key === 'Enter') {
+                                            event.preventDefault();
+                                            adicionarEpocaRetratadaComSugestao(
+                                                'poemas',
+                                                null,
+                                                'eventos',
+                                            );
+                                        }
+                                    "
+                                />
+                                <datalist id="sugestoes-evento-biografico-nome"></datalist>
+                                <button
+                                    type="button"
+                                    onclick="
+                                        adicionarEpocaRetratadaComSugestao(
+                                            'poemas',
+                                            null,
+                                            'eventos',
+                                        )
+                                    "
+                                    aria-label="Adicionar evento biográfico"
+                                    class="bg-violet-100 dark:bg-violet-900 text-violet-800 dark:text-violet-200 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-eventos-biograficos-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 mb-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+
+                            <div
+                                class="border-t border-gray-200 dark:border-slate-700 mt-4"
+                                role="separator"
+                            ></div>
 
                             <label class="form-label mt-3"
                                 >Período Histórico Retratado
@@ -345,6 +411,61 @@
                             ></div>
 
                             <label class="form-label mt-3"
+                                >Evento Histórico Retratado
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(0 a N: acontecimentos históricos pontuais ou curtos que o
+                                    texto retrata, como uma data ou um episódio)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-evento-historico-nome"
+                                    list="sugestoes-evento-historico-nome"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome do evento histórico (opcional), ex.: Semana de Arte Moderna..."
+                                />
+                                <datalist id="sugestoes-evento-historico-nome"></datalist>
+                                <button
+                                    type="button"
+                                    onclick="
+                                        adicionarPeriodoHistoricoDoTexto('poemas', null, 'eventos')
+                                    "
+                                    aria-label="Adicionar evento histórico"
+                                    class="bg-violet-100 dark:bg-violet-900 text-violet-800 dark:text-violet-200 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-eventos-historicos-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 mb-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
+
+                            <div
+                                class="border-t border-gray-200 dark:border-slate-700 mt-4"
+                                role="separator"
+                            ></div>
+
+                            <label class="form-label mt-3">Inspiração</label>
+                            <textarea
+                                id="p-contexto"
+                                class="text-sm h-20"
+                                placeholder="O que inspirou o texto — um gatilho pontual, uma circunstância específica..."
+                            ></textarea>
+                        </div>
+                    </details>
+
+                    <details class="campo-grupo">
+                        <summary>
+                            Correntes literárias
+                            <span class="campo-grupo-dica"
+                                >(movimento ou escola a que o texto se liga)</span
+                            >
+                        </summary>
+                        <div class="campo-grupo-corpo">
+                            <label class="form-label"
                                 >Corrente literária
                                 <span
                                     class="font-normal normal-case text-gray-400 dark:text-slate-500"
@@ -374,12 +495,35 @@
                                 class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
                             ></div>
 
-                            <label class="form-label mt-3">Inspiração</label>
-                            <textarea
-                                id="p-contexto"
-                                class="text-sm h-20"
-                                placeholder="O que inspirou o texto — um gatilho pontual, uma circunstância específica..."
-                            ></textarea>
+                            <label class="form-label mt-3"
+                                >Divisões
+                                <span
+                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                    >(fase, geração, vertente ou variante regional de uma corrente;
+                                    cada divisão tem o seu pai no cadastro)</span
+                                ></label
+                            >
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="p-divisao-corrente-input"
+                                    list="sugestoes-divisoes-correntes"
+                                    class="text-sm flex-1"
+                                    placeholder="Nome da divisão..."
+                                />
+                                <datalist id="sugestoes-divisoes-correntes"></datalist>
+                                <button
+                                    type="button"
+                                    onclick="adicionarDivisaoCorrenteDireta('poemas')"
+                                    class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 rounded text-xs font-bold"
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <div
+                                id="p-divisoes-correntes-container"
+                                class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"
+                            ></div>
                         </div>
                     </details>
 
@@ -768,12 +912,11 @@
                                 />
                             </div>
                             <div class="flex gap-2 mb-2">
-                                <input
-                                    type="text"
+                                <textarea
                                     id="p-intertexto-nota"
-                                    class="text-sm w-full"
+                                    class="text-sm w-full h-20"
                                     placeholder="Nota opcional..."
-                                />
+                                ></textarea>
                             </div>
                             <datalist id="sugestoes-intertexto"></datalist>
                             <datalist id="sugestoes-intertexto-tipo"></datalist>
@@ -846,12 +989,11 @@
                                 />
                             </div>
                             <div class="flex gap-2 mb-2">
-                                <input
-                                    type="text"
+                                <textarea
                                     id="p-hipertexto-nota"
-                                    class="text-sm w-full"
+                                    class="text-sm w-full h-20"
                                     placeholder="Nota opcional..."
-                                />
+                                ></textarea>
                             </div>
                             <datalist id="sugestoes-hipertexto-tipo"></datalist>
                             <datalist id="sugestoes-hipertexto-relacao"></datalist>
@@ -915,12 +1057,11 @@
                                 />
                             </div>
                             <div class="flex gap-2 mb-2">
-                                <input
-                                    type="text"
+                                <textarea
                                     id="p-refext-nota"
-                                    class="text-sm w-full"
+                                    class="text-sm w-full h-20"
                                     placeholder="Nota opcional..."
-                                />
+                                ></textarea>
                             </div>
                             <datalist id="sugestoes-refext"></datalist>
                             <datalist id="sugestoes-refext-tipo"></datalist>

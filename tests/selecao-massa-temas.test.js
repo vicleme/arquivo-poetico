@@ -40,6 +40,7 @@ const {
     removerTemaEmMassa,
 } = await import('../js/selecao-massa.js');
 const { renderPoemas, renderProsas } = await import('../js/render-listas.js');
+const { limparEtiquetasMassa } = await import('../js/campo-etiquetas-massa.js');
 
 const el = (id) => document.getElementById(id);
 const confirmar = () => el('excl-confirmar').click();
@@ -62,8 +63,10 @@ function reset() {
         { id: 101, nome: 'Amor', notas: '' },
         { id: 102, nome: 'Saudade', notas: '' },
     ];
-    el('bulk-tema-input').value = '';
-    el('bulk-tema-input-prosa').value = '';
+    // O campo de etiquetas guarda a lista em memória, fora do DOM: sem
+    // limpar, sobra de um teste pro outro.
+    limparEtiquetasMassa('bulk-tema-input');
+    limparEtiquetasMassa('bulk-tema-input-prosa');
     el('sugestoes-temas-bulk').innerHTML = '';
     el('sugestoes-temas-bulk-prosa').innerHTML = '';
     const overlay = el('modal-confirmar-exclusao');
@@ -89,13 +92,13 @@ describe('Temas em massa: sugestões', () => {
         assert.deepEqual(valores, ['Amor', 'Exílio', 'Saudade']);
     });
 
-    it('encadeia o que já foi digitado e usa o datalist de Prosa nas prosas', () => {
-        digitar('prosas', 'Amor, ');
+    it('cada aba usa o seu datalist, com o cadastro inteiro (sem encadear texto)', () => {
+        digitar('prosas', 'Amor');
         atualizarSugestoesTemasMassa('prosas');
         const valores = [...el('sugestoes-temas-bulk-prosa').querySelectorAll('option')].map(
             (o) => o.value,
         );
-        assert.deepEqual(valores, ['Amor, Saudade']);
+        assert.deepEqual(valores, ['Amor', 'Saudade']);
         assert.equal(el('sugestoes-temas-bulk').children.length, 0);
     });
 });

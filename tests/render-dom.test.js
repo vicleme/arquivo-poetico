@@ -487,7 +487,7 @@ describe('Autores — exclusão em cascata sobre Grupos/Épocas (DOM real via ha
         assert.equal(db.autores.length, 0);
         assert.deepEqual(db.pessoas[0].grupoIds, []);
         assert.deepEqual(db.poemas[0].gruposDiretos, []);
-        assert.equal(db.poemas[0].epocaRetratada.epocaId, null);
+        assert.deepEqual(db.poemas[0].epocaRetratada.periodos, []);
     });
 
     it('Grupo/Época de OUTRO Autor não é afetado pela exclusão', () => {

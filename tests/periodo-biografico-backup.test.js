@@ -143,4 +143,40 @@ describe('backup: período biográfico (ida e volta)', () => {
         assert.equal(e.notas, 'Contexto do relacionamento (texto antigo): texto');
         assert.ok(db.opcoesPeriodoBiografico.esferas.includes('Afetiva'));
     });
+
+    it('backup do formato anterior (Categoria era etiqueta livre) ganha a lista de fábrica e nada some', async () => {
+        await importarDB({
+            epocas: [
+                { id: 1, nome: 'A', autorId: 1, categorias: ['crise', 'Pandemia'] },
+                { id: 2, nome: 'B', autorId: 1, categorias: ['Luto'] },
+            ],
+            autores: [{ id: 1, nome: 'Ana' }],
+            opcoesPeriodoBiografico: { esferas: ['Afetiva'], naturezas: [], vinculos: [] },
+        });
+        const lista = db.opcoesPeriodoBiografico.categorias;
+        assert.equal(lista.length, 18);
+        ['Novo começo', 'Encerramento de ciclo', 'Superação'].forEach((v) =>
+            assert.ok(lista.includes(v), v),
+        );
+        assert.ok(lista.includes('Pandemia') && lista.includes('Luto'));
+        assert.deepEqual(db.epocas[0].categorias, ['Crise', 'Pandemia']);
+        assert.deepEqual(db.epocas[1].categorias, ['Luto']);
+    });
+
+    it('lista de Categoria editada sobrevive ao backup, e o que foi apagado não volta', async () => {
+        await importarDB({
+            epocas: [{ id: 1, nome: 'A', autorId: 1, categorias: ['Crise'] }],
+            autores: [{ id: 1, nome: 'Ana' }],
+            opcoesPeriodoBiografico: {
+                esferas: [],
+                naturezas: [],
+                vinculos: [],
+                categorias: ['Crise'],
+            },
+        });
+        assert.deepEqual(db.opcoesPeriodoBiografico.categorias, ['Crise']);
+        const copia = JSON.parse(JSON.stringify(db));
+        await importarDB(copia);
+        assert.deepEqual(db.opcoesPeriodoBiografico.categorias, ['Crise']);
+    });
 });

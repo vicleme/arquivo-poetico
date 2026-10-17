@@ -31,6 +31,7 @@ import {
     renderAutoclassificacao,
     resetMovimentosEscolasDiretos,
     resetPeriodosHistoricosDoTexto,
+    resetEpocasRetratadasDoTexto,
     resetTodosOsGruposDeMovimento,
     resetRegiaoPeriodoHistorico,
     resetTemasAssunto,
@@ -38,6 +39,7 @@ import {
 } from './editor.js';
 import { resetFontesCorrente } from './fontes-corrente-ui.js';
 import { resetFontesPeriodoHistorico } from './fontes-periodo-historico-ui.js';
+import { preencherCamposPeriodoHistorico } from './periodo-historico-campos-ui.js';
 import {
     extrairFasesUnicas,
     extrairNacionalidadesUnicas,
@@ -102,6 +104,8 @@ export const GRUPOS_NAV = [
         abas: [
             { id: 'temas', rotulo: 'Temas' },
             { id: 'assuntos', rotulo: 'Assuntos' },
+            { id: 'etiquetas', rotulo: 'Etiquetas (Tags)' },
+            { id: 'tag-clusters', rotulo: 'Tag clusters' },
             { id: 'locais', rotulo: 'Locais' },
             { id: 'pessoas', rotulo: 'Pessoas' },
             { id: 'grupos', rotulo: 'Grupos (Pessoas)' },
@@ -894,6 +898,7 @@ export async function prepararNovo(tipo) {
         resetRegiaoPeriodoHistorico();
         preencherPaisPeriodoHistorico(null, []);
         resetFontesPeriodoHistorico();
+        preencherCamposPeriodoHistorico(null);
     }
     if (tipo === 'movimento-escola') {
         atualizarDatalistRegiaoOrigemMovimento();
@@ -919,6 +924,7 @@ export async function prepararNovo(tipo) {
         resetEcos('poemas');
         resetMovimentosEscolasDiretos('poemas');
         resetPeriodosHistoricosDoTexto('poemas');
+        resetEpocasRetratadasDoTexto('poemas');
         renderPainelElosDerivados(null);
         renderAutoclassificacao('poemas');
         atualizarDatalist();
@@ -963,6 +969,7 @@ export async function prepararNovo(tipo) {
         resetEcos('prosas');
         resetMovimentosEscolasDiretos('prosas');
         resetPeriodosHistoricosDoTexto('prosas');
+        resetEpocasRetratadasDoTexto('prosas');
         renderPainelElosDerivados(null);
         renderAutoclassificacao('prosas');
         import('./editor.js').then(
