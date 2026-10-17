@@ -255,7 +255,15 @@ export function renderTagClusters() {
     const soltas = renderTriagem(busca, categoriaFiltro, usoEtiquetas);
     const resumo = document.getElementById('resumo-tag-clusters');
     if (resumo) {
-        resumo.textContent = `${filtrados.length} de ${plural(todos.length, 'tag cluster', 'tag clusters')} · ${plural(soltas, 'etiqueta sem cluster', 'etiquetas sem cluster')}`;
+        resumo.innerHTML = `${filtrados.length} de ${escapeHtml(plural(todos.length, 'tag cluster', 'tag clusters'))} · <button type="button" data-action="ir-etiquetas-sem-cluster" title="Ir para a lista de etiquetas sem cluster" class="underline decoration-dotted hover:text-gray-600 dark:hover:text-slate-300">${escapeHtml(plural(soltas, 'etiqueta sem cluster', 'etiquetas sem cluster'))}</button>`;
+    }
+}
+
+// Rola a página até a triagem "Etiquetas sem cluster".
+export function irParaEtiquetasSemCluster() {
+    const alvo = document.getElementById('etiquetas-sem-cluster');
+    if (alvo && typeof alvo.scrollIntoView === 'function') {
+        alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
 

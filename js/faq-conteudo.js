@@ -90,6 +90,19 @@ export const CATEGORIAS_FAQ = [
                     'Na aba Tag clusters, clique em Importar clusters, escolha a categoria e cole uma linha por cluster, no formato “Cluster: etiqueta, etiqueta”. Um título como “## Tom” troca a categoria dali em diante. O app cria os clusters e põe as etiquetas, reaproveita o cluster que já existe e não cria etiqueta nova: o que não existir na categoria aparece no relatório. Tudo tem Desfazer.',
             },
             {
+                id: 'faq-importar-campos',
+                pergunta:
+                    'Como preencher etiquetas, temas, pessoas e outros campos de muitos textos de uma vez?',
+                resposta:
+                    'Na aba Importação, clique em Importar campos (.json). O arquivo aponta cada texto pelo id ou pelo título e traz etiquetas, temas e assuntos (com papel), além de ligações de Temas a Assuntos que já existem, territorialidade, local de escrita, pessoas (com papéis), pendência e fonte. Dá para montá-lo à mão ou pedir a uma IA, entregando o modelo (de preferência o que leva o seu vocabulário) e a exportação dos textos. O app mostra a prévia antes de gravar, tira um snapshot de segurança e permite desfazer.',
+            },
+            {
+                id: 'faq-importar-campos-regras',
+                pergunta: 'O que a importação de campos faz com o que o texto já tem?',
+                resposta:
+                    'Nunca tira nada. Listas (etiquetas, temas, territorialidade, pessoas) são somadas, e só o papel de um tema, de um assunto ou de uma pessoa é atualizado quando o arquivo traz outro. Campos de valor único (local de escrita, pendência e fonte) só preenchem o que está vazio, a menos que você ligue “Substituir campos simples” no modal. Etiqueta, tema, local e pessoa que não existem são criados e listados na prévia, para você pegar erro de digitação. Assunto nunca é criado.',
+            },
+            {
                 id: 'faq-tag-clusters-contagem',
                 pergunta: 'Por que a soma dos textos dos tag clusters passa do total de textos?',
                 resposta:

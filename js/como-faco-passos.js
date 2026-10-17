@@ -179,6 +179,21 @@ export const TAREFAS_COMO_FACO = [
         ],
     },
     {
+        id: 'importar-campos-em-massa',
+        titulo: 'Preencher campos de muitos textos de uma vez (importar .json)',
+        descricao:
+            'Na aba Importação, o botão Importar campos soma etiquetas, temas, assuntos, territorialidade e pessoas a textos que já existem, e preenche local de escrita, pendência e fonte. O arquivo é feito à mão ou por uma IA, e você confere tudo antes de aplicar.',
+        passos: [
+            {
+                id: 'cf-campos-1',
+                titulo: 'Abra Importar campos',
+                texto: 'No cartão “Importar campos em textos que já existem”, clique em Importar campos (.json). No modal, baixe o modelo (ou o modelo com o seu vocabulário, para a IA reaproveitar os nomes).',
+                aba: 'importacao-aditiva',
+                seletor: '#btn-abrir-importar-campos',
+            },
+        ],
+    },
+    {
         id: 'fazer-backup',
         titulo: 'Fazer backup do acervo',
         descricao:

@@ -228,7 +228,7 @@ export function nomesDeTemasDigitados(texto) {
     return saida;
 }
 
-function gravarTemasNoTexto(dbRef, item, temas) {
+export function gravarTemasNoTexto(dbRef, item, temas) {
     item.temas = temas;
     item.sinalizacoesTema = espelhoDeTemas(
         temas.map((e) => ({ nome: nomeDoTemaPorId(dbRef, e.temaId), papel: e.papel })),

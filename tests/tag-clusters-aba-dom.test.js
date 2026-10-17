@@ -38,6 +38,7 @@ const { db } = await import('../js/db.js');
 const {
     renderTagClusters,
     alternarCategoriaTagClusters,
+    irParaEtiquetasSemCluster,
     alternarTagCluster,
     recolherTodosTagClusters,
     expandirTodosTagClusters,
@@ -101,6 +102,22 @@ describe('renderTagClusters (DOM real via happy-dom)', () => {
         );
         assert.match($('etiquetas-sem-cluster').textContent, /Etiquetas sem cluster/);
         assert.match($('etiquetas-sem-cluster').textContent, /Crie um tag cluster de Tom/);
+    });
+
+    it('"n etiquetas sem cluster" do resumo é um botão que rola até a triagem', () => {
+        renderTagClusters();
+        const botao = $('resumo-tag-clusters').querySelector(
+            '[data-action="ir-etiquetas-sem-cluster"]',
+        );
+        assert.ok(botao);
+        assert.equal(botao.textContent, '4 etiquetas sem cluster');
+        const alvo = $('etiquetas-sem-cluster');
+        let chamado = null;
+        alvo.scrollIntoView = (opcoes) => {
+            chamado = opcoes;
+        };
+        irParaEtiquetasSemCluster();
+        assert.deepEqual(chamado, { behavior: 'smooth', block: 'start' });
     });
 
     it('mostra o cartão com as etiquetas e a contagem de textos (um texto conta uma vez)', () => {

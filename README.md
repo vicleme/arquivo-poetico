@@ -127,6 +127,10 @@ npm run format:check   # prettier --check .
 │   ├── export-to-ia.md / export-to-ia-pt-br.md
 │   │                          → Nested vs. flat export format for use with
 │   │                            an AI (see "Main features")
+│   ├── importar-campos-for-ai.md / importar-campos-for-ai-pt-br.md
+│   │                          → File format of "Importar campos" (bulk-add tags,
+│   │                            themes, subjects, places, people and simple fields
+│   │                            to existing texts from a .json an AI can build)
 │   ├── morfofuncionalidade-for-ai.md / morfofuncionalidade-for-ai-pt-br.md
 │   │                          → Fields of the Morfofuncionalidade record
 │   │                            (Units/Events, position in the text,
@@ -149,6 +153,10 @@ npm run format:check   # prettier --check .
 │   │                          → Fields of the Sonoridade record (general
 │   │                            classification, syllable grid, rhymes and
 │   │                            echoes) — complements scansion-for-ai.md
+│   ├── temas-assuntos-for-ai.md / temas-assuntos-for-ai-pt-br.md
+│   │                          → Themes and Subjects: how they connect, roles,
+│   │                            naming, and criteria for choosing them (the
+│   │                            criteria behind "Importar campos")
 │   └── transtextualidade-referencias-for-ai.md / transtextualidade-referencias-for-ai-pt-br.md
 │                              → The three fields of the "Transtextualidade e
 │                                Referências (Externas)" group: Intertextuality,
@@ -279,7 +287,8 @@ npm run format:check   # prettier --check .
 │   │   · Export, import and backup: exportar-csv.js, exportar-assuntos.js, exportar-tag-clusters.js, importar-tag-clusters.js,
 │   │     exportar-autores.js, exportar-estrutura-textual.js,
 │   │     ocultos-exportacao.js, download-abrangente.js, importar-aditivo.js,
-│   │     ui-importar-aditivo.js, importar-sonoridade.js, extras-backup.js,
+│   │     ui-importar-aditivo.js, importar-campos.js, importar-campos-extras.js,
+│   │     modelo-importar-campos.js, ui-importar-campos.js, importar-sonoridade.js, extras-backup.js,
 │   │     ui-extras-backup.js, pacote-texto.js, ui-biblioteca*.js
 │   │   · Viewing: visualizar-*.js (Author, Group, Currents, Periods,
 │   │     Text structure), lista-textos-periodo.js, faixa-origem.js

@@ -338,6 +338,13 @@ import {
     cancelarImportacaoAditiva,
 } from './ui-importar-aditivo.js';
 import {
+    abrirImportarCampos,
+    initFormImportarCampos,
+    aplicarImportacaoCampos,
+    desfazerImportacaoCampos,
+    baixarModeloCampos,
+} from './ui-importar-campos.js';
+import {
     abrirModalEsvaziarAcervo,
     atualizarModalEsvaziarAcervo,
     confirmarEsvaziarAcervo,
@@ -714,6 +721,7 @@ import {
 import {
     renderTagClusters,
     alternarCategoriaTagClusters,
+    irParaEtiquetasSemCluster,
     alternarTagCluster,
     recolherTodosTagClusters,
     expandirTodosTagClusters,
@@ -806,6 +814,7 @@ registrarModal(
     'modal-importar-tag-clusters.html',
     initFormImportarTagClusters,
 );
+registrarModal('modal-importar-campos', 'modal-importar-campos.html', initFormImportarCampos);
 registrarModal('modal-local', 'modal-local.html', initFormLocal);
 registrarModal('modal-personagem', 'modal-personagem.html', initFormPersonagem);
 registrarModal('modal-sugestao-ecos', 'modal-sugestao-ecos.html', initSugestaoEcos);
@@ -930,10 +939,16 @@ const ACOES_LISTA = {
     'ver-textos-etiqueta': (el) => verTextosEtiqueta(Number(el.dataset.id)),
     'excluir-etiqueta': (el) => excluirEtiquetaComAviso(Number(el.dataset.id)),
     'alternar-categoria-tag-clusters': (el) => alternarCategoriaTagClusters(el.dataset.categoria),
+    'ir-etiquetas-sem-cluster': () => irParaEtiquetasSemCluster(),
     'alternar-tag-cluster': (el) => alternarTagCluster(Number(el.dataset.id)),
     'recolher-todos-tag-clusters': () => recolherTodosTagClusters(),
     'expandir-todos-tag-clusters': () => expandirTodosTagClusters(),
     'importar-tag-clusters': () => abrirImportarTagClusters(),
+    'abrir-importar-campos': () => abrirImportarCampos(),
+    'aplicar-importar-campos': () => aplicarImportacaoCampos(),
+    'desfazer-importar-campos': () => desfazerImportacaoCampos(),
+    'baixar-modelo-campos': () => baixarModeloCampos(),
+    'baixar-modelo-campos-vocabulario': () => baixarModeloCampos({ comVocabulario: true }),
     'desfazer-importacao-tag-clusters': () => desfazerImportacaoTagClusters(),
     'editar-tag-cluster': (el) => editarTagCluster(Number(el.dataset.id)),
     'ver-textos-tag-cluster': (el) => verTextosTagCluster(Number(el.dataset.id)),
@@ -1048,12 +1063,17 @@ const ACOES_LISTA = {
     'baixar-diagrama-ecos': (el) => baixarDiagramaEcos(el),
 };
 
-document.querySelector('main')?.addEventListener('click', (e) => {
+// Os modais moram em #modais-container, fora de <main>: sem o segundo
+// listener, os botões com data-action dentro de um modal (ex.: Importar
+// campos) não respondem.
+function delegarAcoes(e) {
     const alvo = e.target.closest('[data-action]');
     if (!alvo) return;
     const acao = ACOES_LISTA[alvo.dataset.action];
     if (acao) acao(alvo, e);
-});
+}
+document.querySelector('main')?.addEventListener('click', delegarAcoes);
+document.getElementById('modais-container')?.addEventListener('click', delegarAcoes);
 
 // Caixa "Página N de M" da paginação (montarPaginacao): ao confirmar o número
 // (Enter ou sair do campo), abre a página pedida pela mesma ação dos botões
