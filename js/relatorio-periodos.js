@@ -518,7 +518,7 @@ function tituloMd(nivel, texto) {
     return `${'#'.repeat(Math.min(Math.max(nivel, 1), NIVEL_MAXIMO_TITULO))} ${texto}`;
 }
 
-function linhasDoItem(item, modelo) {
+function linhasDoItem(item, modelo, recuo = '') {
     const linhas = [];
     if (item.datas) {
         linhas.push(
@@ -551,7 +551,7 @@ function linhasDoItem(item, modelo) {
             item.textos.prosas.forEach((t) => linhas.push(`  - ${tituloDoTexto(t)} (prosa)`));
         }
     }
-    return linhas;
+    return linhas.map((l) => `${recuo}${l}`);
 }
 
 function tituloDoItem(item) {
@@ -564,7 +564,9 @@ function tituloDoItem(item) {
  *   ## Autor            (só Período Biográfico)
  *   ## Século XIX       (só por data; ### sob o autor)
  *   ### Item            (em árvore, um nível a mais por nível da árvore)
- * Cada item vem seguido de uma lista de campos. Sem travessão (CLAUDE.md).
+ * Cada item vem seguido de uma lista de campos. Do 7º nível em diante (o
+ * Markdown só tem títulos até ######), o item vira marcador em negrito, com
+ * os campos recuados e um recuo a mais por nível. Sem travessão (CLAUDE.md).
  */
 export function relatorioParaMarkdown(modelo) {
     const org = modelo.organizacao;
@@ -592,8 +594,28 @@ export function relatorioParaMarkdown(modelo) {
             }
             secao.itens.forEach((item) => {
                 const nivel = nivelItem + (org === 'arvore' ? item.nivel : 0);
-                const bloco = [tituloMd(nivel, tituloDoItem(item)), ...linhasDoItem(item, modelo)];
-                partes.push(bloco.join('\n'));
+                if (nivel <= NIVEL_MAXIMO_TITULO) {
+                    const bloco = [
+                        tituloMd(nivel, tituloDoItem(item)),
+                        ...linhasDoItem(item, modelo),
+                    ];
+                    partes.push(bloco.join('\n'));
+                    return;
+                }
+                // Além do 6º nível o Markdown não tem título: o item vira
+                // um marcador em negrito (sem dois-pontos, para não parecer
+                // um campo) e os campos dele ficam recuados por baixo. Cada
+                // nível a mais recua mais, então a árvore continua legível e
+                // o item continua dentro do pai. Colado ao bloco anterior
+                // (sem linha em branco) para a lista não se partir.
+                const fundo = nivel - NIVEL_MAXIMO_TITULO;
+                const recuo = '  '.repeat(fundo - 1);
+                const bloco = [
+                    `${recuo}- **${tituloDoItem(item)}**`,
+                    ...linhasDoItem(item, modelo, `${recuo}  `),
+                ].join('\n');
+                if (partes.length) partes[partes.length - 1] += `\n${bloco}`;
+                else partes.push(bloco);
             });
         });
     });

@@ -261,3 +261,80 @@ describe('relatorio-periodos: Correntes', () => {
         assert.match(md, /\*\*Dentro de:\*\*|### Subcorrente|#### Subcorrente/);
     });
 });
+
+describe('relatorio-periodos: árvore funda no Markdown', () => {
+    const item = (nome, nivel, extra = {}) => ({
+        id: nome,
+        nome,
+        evento: false,
+        nivel,
+        datas: null,
+        dentroDe: null,
+        tambemEm: [],
+        detalhes: [],
+        notas: '',
+        textos: { poemas: [], prosas: [] },
+        autores: null,
+        ...extra,
+    });
+
+    const modelo = (itens, textos = 'contagem') => ({
+        tipo: 'periodosHistoricos',
+        titulo: 'Períodos Históricos',
+        organizacao: 'arvore',
+        textos,
+        hoje: null,
+        grupos: [{ titulo: null, secoes: [{ titulo: null, itens }] }],
+    });
+
+    // Sem título de grupo, o nível 0 vira ## (nível 2): o 6º nível é o item 4
+    // e o item de nível 5 já passa do limite do Markdown.
+    const cadeia = () => [
+        item('N0', 0),
+        item('N1', 1),
+        item('N2', 2),
+        item('N3', 3),
+        item('N4', 4),
+        item('N5', 5, { datas: { texto: '2000' } }),
+        item('N6', 6, { evento: true }),
+        item('Irmão de N5', 5),
+    ];
+
+    it('até o 6º nível segue em títulos', async () => {
+        const { relatorioParaMarkdown } = await import('../js/relatorio-periodos.js');
+        const md = relatorioParaMarkdown(modelo(cadeia()));
+        assert.match(md, /^## N0$/m);
+        assert.match(md, /^###### N4$/m);
+    });
+
+    it('do 7º nível em diante vira marcador recuado, sem passar de ######', async () => {
+        const { relatorioParaMarkdown } = await import('../js/relatorio-periodos.js');
+        const md = relatorioParaMarkdown(modelo(cadeia()));
+        assert.ok(!/^#######/m.test(md));
+        assert.match(md, /^- \*\*N5\*\*$/m);
+        assert.match(md, /^ {2}- \*\*Datas:\*\* 2000$/m);
+        // Neto: um recuo a mais e os campos mais recuados ainda.
+        assert.match(md, /^ {2}- \*\*N6 \(evento\)\*\*$/m);
+        assert.match(md, /^ {4}- \*\*Textos:\*\* /m);
+        // Irmão do N5 volta ao recuo do N5.
+        assert.match(md, /^- \*\*Irmão de N5\*\*$/m);
+    });
+
+    it('cola os marcadores ao título do pai, sem linha em branco no meio', async () => {
+        const { relatorioParaMarkdown } = await import('../js/relatorio-periodos.js');
+        const md = relatorioParaMarkdown(modelo(cadeia()));
+        const bloco = md.split('\n\n').find((b) => b.startsWith('###### N4'));
+        assert.ok(bloco.includes('- **N5**'));
+        assert.ok(bloco.includes('  - **N6 (evento)**'));
+        assert.ok(bloco.includes('- **Irmão de N5**'));
+    });
+
+    it('lista de títulos de textos também fica recuada', async () => {
+        const { relatorioParaMarkdown } = await import('../js/relatorio-periodos.js');
+        const itens = cadeia();
+        itens[5].textos = { poemas: [{ titulo: 'Poema X' }], prosas: [{ titulo: 'Prosa Y' }] };
+        const md = relatorioParaMarkdown(modelo(itens, 'titulos'));
+        assert.match(md, /^ {4}- Poema X \(poema\)$/m);
+        assert.match(md, /^ {4}- Prosa Y \(prosa\)$/m);
+    });
+});
