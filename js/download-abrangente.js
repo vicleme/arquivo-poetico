@@ -1,9 +1,9 @@
 // ============================================================
 // download-abrangente.js — Preferência única "Download abrangente":
-// quando ligada, o download de um Poema em .md/.json (por ora — .pdf/
-// .docx ficam pra depois, ver conversa de decisão) inclui junto a
-// Sonoridade e a Progressão Morfofuncional cadastradas pra aquele
-// poema, se existirem (getEscansaoDoPoema/getEstruturaDoPoema, db.js).
+// quando ligada, o download de um Poema em .md, .pdf, .docx ou .json
+// inclui junto a Sonoridade e a Progressão Morfofuncional cadastradas
+// pra aquele poema, se existirem (getEscansaoDoPoema/getEstruturaDoPoema,
+// db.js). O .csv não muda.
 //
 // Só existe pra Poemas: Sonoridade e Morfofuncionalidade são sempre
 // ligadas a um `poemaId` (ver db.js) — Prosa não tem nenhuma das duas,
@@ -59,10 +59,11 @@ export function renderCheckboxDownloadAbrangenteAcoes() {
     const ativo = isDownloadAbrangenteAtivo();
     return `
         <div class="mt-3 pt-3 border-t border-gray-100 dark:border-slate-700">
-            <label class="flex items-center gap-2 py-0.5 px-1 text-xs cursor-pointer whitespace-nowrap font-semibold text-gray-600 dark:text-slate-300">
+            <label class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 cursor-pointer whitespace-nowrap"
+                title="Download abrangente: inclui a Sonoridade e a Progressão Morfofuncional dos poemas, quando cadastradas">
                 <input type="checkbox" class="download-abrangente-check" ${ativo ? 'checked' : ''}
                     onchange="toggleDownloadAbrangente(this.checked)">
-                📦 Download abrangente (inclui Sonoridade e Morfofuncionalidade)
+                📦 Abrangente (com Sonoridade e Progressão)
             </label>
         </div>`;
 }

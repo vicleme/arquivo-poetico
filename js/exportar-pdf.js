@@ -21,7 +21,9 @@
 // internet cair bem nessa hora.
 // ============================================================
 
-import { itemParaMarkdownPartes } from './exportar-md.js';
+import { itemParaMarkdownPartes, linhasComunsDosItens } from './exportar-md.js';
+import { blocoLinhasComuns } from './exportar-comuns.js';
+import { resolverAgruparComuns } from './agrupar-comuns.js';
 import { corpoParaLinhasRicas, linhaTemFundoUniforme, blocosDeFundoContinuos } from './utils.js';
 import { blocoEstruturaMarkdown } from './download-abrangente.js';
 import {
@@ -607,7 +609,9 @@ function renderizarCorpoRico(doc, textoOriginal, opcoes) {
 
 // Gera o documento jsPDF (objeto `doc`, ainda não salvo) a partir dos
 // mesmos itens que iriam pro .md — ver gerarMarkdownExportacao().
-export function gerarPdfExportacao(itens) {
+// `opcoes.agruparComuns` (padrão: a preferência guardada, ver agrupar-comuns.js) sobe pro topo as linhas de metadado
+// iguais em todos os textos, igual ao .md (ver exportar-comuns.js).
+export function gerarPdfExportacao(itens, opcoes = {}) {
     const JsPDF = obterConstrutorJsPdf();
     if (!JsPDF) {
         throw new Error(
@@ -748,12 +752,18 @@ export function gerarPdfExportacao(itens) {
     // gerarMarkdownExportacao().
     const agora = new Date();
     const dataStr = agora.toLocaleDateString('pt-BR');
+    const { comuns, omitir } = resolverAgruparComuns(opcoes)
+        ? linhasComunsDosItens(itens)
+        : { comuns: [], omitir: new Set() };
     renderizarLinhasSimples(
-        `# Exportação Poética\n\n_Gerado em ${dataStr} — ${itens.length} texto(s)._\n\n---\n\n`,
+        `# Exportação Poética\n\n_Gerado em ${dataStr} — ${itens.length} texto(s)._\n\n` +
+            `${blocoLinhasComuns(comuns)}---\n\n`,
     );
 
     itens.forEach((item, i) => {
-        const { antesDoTexto, depoisDoTexto } = itemParaMarkdownPartes(item, i + 1);
+        const { antesDoTexto, depoisDoTexto } = itemParaMarkdownPartes(item, i + 1, {
+            omitirRotulos: omitir,
+        });
 
         // antesDoTexto termina com "### Texto\n\n" seguido do corpo em
         // Markdown achatado (ver blocoTexto em exportar-md.js) — corta
@@ -880,7 +890,7 @@ export function gerarPdfExportacao(itens) {
     return doc;
 }
 
-export function baixarPdf(itens, nomeArquivo) {
-    const doc = gerarPdfExportacao(itens);
+export function baixarPdf(itens, nomeArquivo, opcoes = {}) {
+    const doc = gerarPdfExportacao(itens, opcoes);
     doc.save(nomeArquivo);
 }

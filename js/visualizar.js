@@ -15,13 +15,15 @@
 // exportarItem() (exportar.js) com o tipo/id guardados aqui.
 // ============================================================
 
-import { garantirModal, toggleModal } from './modais.js';
-import { db } from './db.js';
+import { garantirModal, toggleModal, aoFecharModalUmaVez } from './modais.js';
+import { db, deleteItem } from './db.js';
+import { editarPoema, editarProsa } from './forms.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
 import { caminhoDaCorrente, idsDeCorrentesDeTopo, idsDeDivisoes } from './correntes-hierarquia.js';
 import { textoPersonagensComPapel } from './personagens.js';
 import { itensDaSelecao, exportarItem } from './exportar.js';
 import { isDownloadAbrangenteAtivo } from './download-abrangente.js';
+import { getFormatoBaixar } from './acoes-coluna.js';
 import { montarControlesIncluirOcultos } from './ocultos-exportacao.js';
 import {
     INFO_STATUS,
@@ -361,24 +363,80 @@ export function renderVisualizacaoHtml(item) {
     return html;
 }
 
-export async function abrirVisualizacao(tipo, id) {
+// ─── Navegação Anterior/Próximo ───────────────────────────────
+// A lista que a navegação percorre vem de fora (main.js registra, por tipo, uma
+// função que devolve os ids que a aba mostra, já com busca, filtros e ordenação),
+// pra este módulo não depender de render-listas.js. A lista é tirada uma vez, na
+// abertura, e fica congelada enquanto o modal estiver aberto: o texto não "foge"
+// do lugar se algo mudar por baixo.
+const provedoresNavegacao = {};
+let navegacao = { ids: [], pos: -1 };
+
+export function registrarListaNavegacaoVisualizacao(tipo, fn) {
+    provedoresNavegacao[tipo] = fn;
+}
+
+function montarNavegacao(tipo, id, idsFixos) {
+    navegacao = { ids: [], pos: -1 };
+    const fn = provedoresNavegacao[tipo];
+    if (!fn && !idsFixos) return;
+    let ids;
+    try {
+        ids = idsFixos || fn();
+    } catch {
+        return;
+    }
+    const pos = ids.findIndex((x) => String(x) === String(id));
+    if (pos >= 0) navegacao = { ids, pos };
+}
+
+function atualizarControlesNavegacao() {
+    const wrap = document.getElementById('visualizar-nav');
+    if (!wrap) return;
+    const ativo = navegacao.pos >= 0 && navegacao.ids.length > 1;
+    wrap.classList.toggle('hidden', !ativo);
+    if (!ativo) return;
+    const posicao = document.getElementById('visualizar-posicao');
+    if (posicao) {
+        posicao.value = String(navegacao.pos + 1);
+        posicao.max = String(navegacao.ids.length);
+    }
+    const total = document.getElementById('visualizar-total');
+    if (total) total.textContent = `de ${navegacao.ids.length}`;
+    const ant = document.getElementById('visualizar-anterior');
+    const prox = document.getElementById('visualizar-proximo');
+    if (ant) ant.disabled = proximoIndiceExistente(-1) < 0;
+    if (prox) prox.disabled = proximoIndiceExistente(1) < 0;
+}
+
+// Próxima posição da lista (no sentido de `delta`) cujo texto ainda existe.
+function proximoIndiceExistente(delta) {
+    const { ids, pos, tipo } = navegacao;
+    const colecao = tipo === 'prosa' ? db.prosas : db.poemas;
+    for (let i = pos + delta; i >= 0 && i < ids.length; i += delta) {
+        if (colecao.some((x) => String(x.id) === String(ids[i]))) return i;
+    }
+    return -1;
+}
+
+function preencherVisualizacao(tipo, id) {
     const itens = itensDaSelecao(tipo, [id]);
-    if (itens.length === 0) return;
+    if (itens.length === 0) return false;
     const item = itens[0];
     itemAtual = { tipo, id };
-
-    await garantirModal('modal-visualizar');
 
     const titulo = document.getElementById('modal-visualizar-titulo');
     if (titulo) titulo.innerText = item.titulo || '(sem título)';
 
     const conteudo = document.getElementById('visualizar-conteudo');
-    if (conteudo) conteudo.innerHTML = renderVisualizacaoHtml(item);
+    if (conteudo) {
+        conteudo.innerHTML = renderVisualizacaoHtml(item);
+        conteudo.scrollTop = 0;
+    }
 
-    // "Download abrangente" só existe pra Poema (Sonoridade e
-    // Morfofuncionalidade são sempre ligadas a poemaId) — pra Prosa o
-    // checkbox fica escondido (ver acoes-coluna.js/index.html pro mesmo
-    // recorte nos outros dois lugares).
+    // "Abrangente" só existe pra Poema (Sonoridade e Morfofuncionalidade são
+    // sempre ligadas a poemaId) — pra Prosa o checkbox fica escondido (ver
+    // acoes-coluna.js/index.html pro mesmo recorte nos outros dois lugares).
     const wrapAbrangente = document.getElementById('download-abrangente-modal-visualizar-wrap');
     if (wrapAbrangente) {
         wrapAbrangente.classList.toggle('hidden', tipo !== 'poema');
@@ -386,16 +444,152 @@ export async function abrirVisualizacao(tipo, id) {
         if (check) check.checked = isDownloadAbrangenteAtivo();
     }
 
-    montarControlesIncluirOcultos();
-    toggleModal('modal-visualizar');
+    // O select de formato começa no "Formato do Baixar" da coluna Ações da aba
+    // (a escolha feita aqui vale só para este modal aberto, não é gravada).
+    // Ao navegar entre textos, a escolha do select é mantida.
+    return true;
 }
 
-// Chamado pelos três botões "Baixar em .md/.pdf/.json" dentro do
-// próprio modal — sempre os três disponíveis ali, independente do
-// formato configurado na coluna Ações (ver painel "⚙️ Ações ▾"),
-// já que o pedido original foi deixar o download "bem acessível"
-// nessa tela também.
+// `opcoes.ids`: com `navegar`, usa essa lista em vez de pedir outra à aba (volta do
+// Editar, que reabre o Ver na mesma lista que a pessoa vinha percorrendo).
+// `opcoes.navegar`: liga os botões Anterior/Próximo, seguindo a lista que a aba
+// mostra. Só a tabela de Poemas/Prosas liga; quem abre o Ver de outro lugar
+// (por exemplo, dentro de um período) não tem lista de referência.
+export async function abrirVisualizacao(tipo, id, opcoes = {}) {
+    if (itensDaSelecao(tipo, [id]).length === 0) return;
+
+    await garantirModal('modal-visualizar');
+    if (!preencherVisualizacao(tipo, id)) return;
+
+    const selFormato = document.getElementById('visualizar-baixar-formato');
+    if (selFormato) selFormato.value = getFormatoBaixar(tipo === 'prosa' ? 'prosas' : 'poemas');
+
+    navegacao = { ids: [], pos: -1 };
+    if (opcoes.navegar) montarNavegacao(tipo, id, opcoes.ids);
+    navegacao.tipo = tipo;
+    atualizarControlesNavegacao();
+
+    montarControlesIncluirOcultos();
+    await toggleModal('modal-visualizar');
+}
+
+// Botões Anterior (-1) e Próximo (+1) do cabeçalho do modal. Pula textos que
+// deixaram de existir; nas pontas da lista não faz nada (sem dar a volta).
+export function navegarVisualizacao(delta) {
+    if (!itemAtual || navegacao.pos < 0) return;
+    const alvo = proximoIndiceExistente(delta);
+    if (alvo < 0) return;
+    const { tipo } = itemAtual;
+    if (!preencherVisualizacao(tipo, navegacao.ids[alvo])) return;
+    navegacao.pos = alvo;
+    atualizarControlesNavegacao();
+    montarControlesIncluirOcultos();
+}
+
+// Caixa de posição do cabeçalho: vai direto ao texto de número `n` da lista
+// (1 a N). Número fora da faixa vai para a ponta mais próxima; se o texto do
+// destino não existe mais, vale o existente mais próximo (primeiro adiante, depois
+// atrás). Valor inválido só restaura o número atual.
+export function irParaPosicaoVisualizacao(valor) {
+    if (!itemAtual || navegacao.pos < 0) return;
+    const n = Math.round(Number(valor));
+    if (!Number.isFinite(n) || valor === '' || valor == null) {
+        atualizarControlesNavegacao();
+        return;
+    }
+    const total = navegacao.ids.length;
+    const desejado = Math.min(Math.max(n, 1), total) - 1;
+    const existe = (i) => {
+        const colecao = navegacao.tipo === 'prosa' ? db.prosas : db.poemas;
+        return colecao.some((x) => String(x.id) === String(navegacao.ids[i]));
+    };
+    let alvo = -1;
+    for (let d = 0; d < total && alvo < 0; d++) {
+        if (desejado + d < total && existe(desejado + d)) alvo = desejado + d;
+        else if (desejado - d >= 0 && existe(desejado - d)) alvo = desejado - d;
+    }
+    if (alvo < 0 || alvo === navegacao.pos) {
+        atualizarControlesNavegacao();
+        return;
+    }
+    if (!preencherVisualizacao(itemAtual.tipo, navegacao.ids[alvo])) return;
+    navegacao.pos = alvo;
+    atualizarControlesNavegacao();
+    montarControlesIncluirOcultos();
+}
+
+// Setas ← e → navegam com o modal aberto, desde que o foco não esteja num campo
+// (select do formato, caixas de texto) e não haja Ctrl/Alt/Meta/Shift.
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+    const modal = document.getElementById('modal-visualizar');
+    if (!modal || modal.classList.contains('hidden')) return;
+    const alvo = e.target;
+    if (alvo?.closest?.('input, select, textarea, [contenteditable="true"]')) return;
+    if (document.getElementById('visualizar-nav')?.classList.contains('hidden')) return;
+    e.preventDefault();
+    navegarVisualizacao(e.key === 'ArrowLeft' ? -1 : 1);
+});
+
+// Botão "Editar" do rodapé: fecha o Ver e abre o formulário do mesmo texto.
+// Ao fechar o formulário, o Ver reabre (ver aoFecharModalUmaVez em modais.js).
+export async function editarDoModalVisualizacao() {
+    if (!itemAtual) return;
+    const { tipo, id } = itemAtual;
+    const colecao = tipo === 'prosa' ? db.prosas : db.poemas;
+    if (!colecao.some((x) => String(x.id) === String(id))) return;
+    // Só quando o formulário vem daqui: ao fechar (salvar, cancelar, X ou Esc) a
+    // pessoa volta ao Ver do mesmo texto, na mesma lista de navegação.
+    const ids = navegacao.pos >= 0 ? [...navegacao.ids] : null;
+    aoFecharModalUmaVez(tipo === 'prosa' ? 'modal-prosa' : 'modal-poema', () => {
+        abrirVisualizacao(tipo, id, ids ? { navegar: true, ids } : {});
+    });
+    await toggleModal('modal-visualizar');
+    await (tipo === 'prosa' ? editarProsa(id) : editarPoema(id));
+}
+
+// Botão "Excluir" do rodapé: pede a confirmação de sempre (com "Desfazer" depois).
+// Confirmada a exclusão, o modal segue para o próximo texto da lista (ou o
+// anterior, se era o último); sem navegação ou sem outro texto, fecha.
+export function excluirDoModalVisualizacao() {
+    if (!itemAtual) return;
+    const { tipo, id } = itemAtual;
+    deleteItem(tipo === 'prosa' ? 'prosas' : 'poemas', id, async () => {
+        let destino = -1;
+        if (navegacao.pos >= 0) {
+            // Tira o excluído da lista e procura o próximo existente (a posição
+            // dele agora é a do seguinte), senão o anterior.
+            const idx = navegacao.pos;
+            navegacao.ids.splice(idx, 1);
+            const colecao = tipo === 'prosa' ? db.prosas : db.poemas;
+            const existe = (i) => colecao.some((x) => String(x.id) === String(navegacao.ids[i]));
+            for (let i = idx; i < navegacao.ids.length && destino < 0; i++) {
+                if (existe(i)) destino = i;
+            }
+            for (let i = idx - 1; i >= 0 && destino < 0; i--) {
+                if (existe(i)) destino = i;
+            }
+        }
+        if (destino < 0 || !preencherVisualizacao(tipo, navegacao.ids[destino])) {
+            itemAtual = null;
+            navegacao = { ids: [], pos: -1 };
+            await toggleModal('modal-visualizar');
+            return;
+        }
+        navegacao.pos = destino;
+        atualizarControlesNavegacao();
+        montarControlesIncluirOcultos();
+    });
+}
+
+// Chamado pelo botão "Baixar" do rodapé do modal, que baixa no formato
+// escolhido no select ao lado (json, csv, md, pdf ou docx), sempre todos
+// disponíveis ali, independente do formato configurado na coluna Ações. Aceita
+// o formato direto como argumento (usado pelos testes).
 export function baixarDoModalVisualizacao(formato) {
     if (!itemAtual) return;
-    exportarItem(itemAtual.tipo, itemAtual.id, formato);
+    const escolhido =
+        formato || document.getElementById('visualizar-baixar-formato')?.value || 'md';
+    exportarItem(itemAtual.tipo, itemAtual.id, escolhido);
 }

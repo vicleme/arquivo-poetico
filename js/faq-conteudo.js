@@ -114,6 +114,12 @@ export const CATEGORIAS_FAQ = [
                 resposta:
                     'Porque um texto tem várias etiquetas, e elas podem estar em clusters diferentes. O texto conta uma vez em cada cluster que tem alguma etiqueta dele, mas só uma vez por cluster, mesmo que use duas etiquetas do mesmo grupo. No cluster pai, vale a união dos textos dele e dos subclusters, também sem somar.',
             },
+            {
+                id: 'faq-exportar-linhas-comuns',
+                pergunta: 'Por que Autoria e Fonte aparecem só no topo do meu .md, .pdf ou .docx?',
+                resposta:
+                    'Quando você baixa mais de um texto, as linhas que são exatamente iguais em todos eles (por exemplo Autoria, Fonte e Corrente literária) saem uma vez só, no começo do arquivo, sob "Comum a todos os textos", em vez de se repetirem em cada texto. A regra é estrita: se um único texto não tem a linha ou tem outro valor, ela continua em cada texto. Para ter tudo em cada texto, desmarque "Agrupar no topo" em "Opções de download" (a escolha fica guardada). O .json e o .csv não mudam, e baixar um texto só também não.',
+            },
         ],
     },
     {

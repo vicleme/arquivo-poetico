@@ -39,7 +39,9 @@
 // lado a lado) continua no caminho de RUN de sempre.
 // ============================================================
 
-import { itemParaMarkdownPartes } from './exportar-md.js';
+import { itemParaMarkdownPartes, linhasComunsDosItens } from './exportar-md.js';
+import { blocoLinhasComuns } from './exportar-comuns.js';
+import { resolverAgruparComuns } from './agrupar-comuns.js';
 import { corpoParaLinhasRicas, linhaTemFundoUniforme, blocosDeFundoContinuos } from './utils.js';
 import { blocosExtrasMarkdown } from './download-abrangente.js';
 
@@ -423,7 +425,8 @@ function corpoParaDocxParagrafos(docx, textoOriginal) {
 // Markdown de "antesDoTexto" bem no marcador "### Texto\n\n" e troca o
 // que viria depois (o corpo achatado) pelo corpo rico em Paragraph/
 // TextRun de verdade.
-export function gerarDocxDocumento(itens) {
+// `opcoes.agruparComuns` (padrão: a preferência guardada): ver gerarPdfExportacao.
+export function gerarDocxDocumento(itens, opcoes = {}) {
     const docx = obterDocx();
     if (!docx) {
         throw new Error(
@@ -434,13 +437,19 @@ export function gerarDocxDocumento(itens) {
     const agora = new Date();
     const dataStr = agora.toLocaleDateString('pt-BR');
 
+    const { comuns, omitir } = resolverAgruparComuns(opcoes)
+        ? linhasComunsDosItens(itens)
+        : { comuns: [], omitir: new Set() };
     let corpo = markdownParaParagrafos(
         docx,
-        `# Exportação Poética\n\n_Gerado em ${dataStr} — ${itens.length} texto(s)._\n\n---\n\n`,
+        `# Exportação Poética\n\n_Gerado em ${dataStr} — ${itens.length} texto(s)._\n\n` +
+            `${blocoLinhasComuns(comuns)}---\n\n`,
     );
 
     itens.forEach((item, i) => {
-        const { antesDoTexto, depoisDoTexto } = itemParaMarkdownPartes(item, i + 1);
+        const { antesDoTexto, depoisDoTexto } = itemParaMarkdownPartes(item, i + 1, {
+            omitirRotulos: omitir,
+        });
 
         const marcador = '### Texto\n\n';
         const indiceMarcador = antesDoTexto.indexOf(marcador);
@@ -472,7 +481,7 @@ export function gerarDocxDocumento(itens) {
     return new docx.Document({ styles: ESTILOS_PADRAO_DOCUMENTO, sections: [{ children: corpo }] });
 }
 
-export async function baixarDocx(itens, nomeArquivo) {
+export async function baixarDocx(itens, nomeArquivo, opcoes = {}) {
     const docx = obterDocx();
     if (!docx) {
         throw new Error(
@@ -480,7 +489,7 @@ export async function baixarDocx(itens, nomeArquivo) {
         );
     }
 
-    const documento = gerarDocxDocumento(itens);
+    const documento = gerarDocxDocumento(itens, opcoes);
     const blob = await docx.Packer.toBlob(documento);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

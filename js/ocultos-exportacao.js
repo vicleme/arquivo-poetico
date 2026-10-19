@@ -85,7 +85,7 @@ export function toggleLembrarIncluirOcultos(ativo) {
 const TITULO_INCLUIR =
     'Pessoas e Períodos Biográficos que você ocultou ficam de fora dos downloads por padrão. Marcada, a exportação leva os dois. O backup completo sempre leva tudo.';
 const TITULO_LEMBRAR =
-    'Marcada, a escolha de "Incluir dados ocultados" fica guardada neste navegador. Desmarcada, a caixa volta desmarcada a cada recarga da página.';
+    'Marcada, a escolha de "Dados ocultados" fica guardada neste navegador. Desmarcada, a caixa volta desmarcada a cada recarga da página.';
 
 // HTML dos dois controles (a caixa e o "lembrar"), no mesmo estilo das demais
 // caixas de exportação. Usado pelo painel Ações e pelos pontos de montagem
@@ -95,13 +95,11 @@ export function renderControlesIncluirOcultos() {
         <span class="inline-flex items-center gap-2 whitespace-nowrap">
             <label class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 cursor-pointer" title="${TITULO_INCLUIR}">
                 <input type="checkbox" class="incluir-ocultos-check" ${incluir ? 'checked' : ''}
-                    style="width: auto; margin: 0"
                     onchange="toggleIncluirOcultos(this.checked)">
-                🔒 Incluir dados ocultados
+                🔒 Dados ocultados
             </label>
             <label class="inline-flex items-center gap-1 text-[11px] font-normal text-gray-500 dark:text-slate-400 cursor-pointer" title="${TITULO_LEMBRAR}">
                 <input type="checkbox" class="incluir-ocultos-lembrar-check" ${lembrar ? 'checked' : ''}
-                    style="width: auto; margin: 0"
                     onchange="toggleLembrarIncluirOcultos(this.checked)">
                 lembrar
             </label>

@@ -76,7 +76,15 @@ import {
     getFormatoBaixar,
 } from './acoes-coluna.js';
 import { exportarItem } from './exportar.js';
-import { abrirVisualizacao, baixarDoModalVisualizacao } from './visualizar.js';
+import {
+    abrirVisualizacao,
+    baixarDoModalVisualizacao,
+    navegarVisualizacao,
+    irParaPosicaoVisualizacao,
+    editarDoModalVisualizacao,
+    excluirDoModalVisualizacao,
+    registrarListaNavegacaoVisualizacao,
+} from './visualizar.js';
 import { abrirVisualizacaoAutor, editarAutorDoVisualizador } from './visualizar-autor.js';
 import {
     abrirVisualizacaoMovimentoEscola,
@@ -128,6 +136,7 @@ import {
     toggleLembrarIncluirOcultos,
     montarControlesIncluirOcultos,
 } from './ocultos-exportacao.js';
+import { toggleAgruparComuns, montarControlesAgruparComuns } from './agrupar-comuns.js';
 import { exportarEscansao } from './exportar-sonoridade.js';
 import {
     toggleIncluirDadosPessoais,
@@ -230,6 +239,8 @@ import {
     setFiltroNomeGrupos,
     setVisibilidadeGrupos,
     toggleOcultarGrupo,
+    getListaVisivelPoemas,
+    getListaVisivelProsas,
 } from './render-listas.js';
 import {
     setFiltroAutores,
@@ -850,6 +861,10 @@ registrarModal('modal-col-item', 'modal-col-item.html', initFormColItem);
 // abrirVisualizacao() (visualizar.js), não há nada pra inicializar uma
 // vez só (ver comentário em registrarModal, acima).
 registrarModal('modal-visualizar', 'modal-visualizar.html', () => {});
+// Anterior/Próximo do modal Ver seguem a lista que a aba mostra (busca, filtros
+// e ordenação aplicados), ver navegarVisualizacao em visualizar.js.
+registrarListaNavegacaoVisualizacao('poema', () => getListaVisivelPoemas().map((p) => p.id));
+registrarListaNavegacaoVisualizacao('prosa', () => getListaVisivelProsas().map((p) => p.id));
 // Mesmo espírito acima, agora pra Sonoridade (ver visualizar-sonoridade.js)
 // — extensão desta sessão, antes só Poemas/Prosas tinham essa visualização.
 registrarModal('modal-visualizar-sonoridade', 'modal-visualizar-sonoridade.html', () => {});
@@ -1022,7 +1037,8 @@ const ACOES_LISTA = {
         exportarEstruturaTextual(Number(el.dataset.id), getFormatoBaixar('estrutura-textual')),
     'mesclar-item': (el) => abrirModalMesclar(el.dataset.tipo, Number(el.dataset.id)),
     'excluir-item': (el) => deleteItem(el.dataset.tipo, Number(el.dataset.id)),
-    'ver-item': (el) => abrirVisualizacao(el.dataset.tipo, Number(el.dataset.id)),
+    'ver-item': (el) =>
+        abrirVisualizacao(el.dataset.tipo, Number(el.dataset.id), { navegar: true }),
     'baixar-item': (el) =>
         exportarItem(el.dataset.tipo, Number(el.dataset.id), getFormatoBaixar(el.dataset.tabela)),
     'mover-livro': (el) => moverLivro(Number(el.dataset.id), el.dataset.dir),
@@ -1146,6 +1162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     sincronizarCheckboxesComEstadoSalvo();
     sincronizarChecksDadosPessoaisComEstadoSalvo();
     montarControlesIncluirOcultos();
+    montarControlesAgruparComuns();
 
     // Lembra a última escolha de "incluir capas" no backup (padrão: marcado,
     // já que o botão "Baixar JSON" é o backup "de verdade" — melhor pecar
@@ -1726,7 +1743,12 @@ window.toggleDownloadAbrangente = toggleDownloadAbrangente;
 window.toggleIncluirDadosPessoais = toggleIncluirDadosPessoais;
 window.toggleIncluirOcultos = toggleIncluirOcultos;
 window.toggleLembrarIncluirOcultos = toggleLembrarIncluirOcultos;
+window.toggleAgruparComuns = toggleAgruparComuns;
 window.baixarDoModalVisualizacao = baixarDoModalVisualizacao;
+window.navegarVisualizacao = navegarVisualizacao;
+window.irParaPosicaoVisualizacao = irParaPosicaoVisualizacao;
+window.editarDoModalVisualizacao = editarDoModalVisualizacao;
+window.excluirDoModalVisualizacao = excluirDoModalVisualizacao;
 window.editarAutorDoVisualizador = editarAutorDoVisualizador;
 window.editarMovimentoEscolaDoVisualizador = editarMovimentoEscolaDoVisualizador;
 window.editarPeriodoHistoricoDoVisualizador = editarPeriodoHistoricoDoVisualizador;

@@ -38,6 +38,8 @@ import {
     rotuloAcessoEm,
 } from './utils.js';
 import { db } from './db.js';
+import { separarLinhasComuns, blocoLinhasComuns } from './exportar-comuns.js';
+import { resolverAgruparComuns } from './agrupar-comuns.js';
 import { blocosExtrasMarkdown } from './download-abrangente.js';
 import { incluirOcultosNaExportacao } from './ocultos-exportacao.js';
 import { textoLocalEscrita, textoTerritorialidadeComCaminho } from './locais.js';
@@ -206,8 +208,34 @@ export function livroSecaoStr(ls) {
     return partes.length ? partes.join(' / ') : null;
 }
 
+// Contexto da geração em andamento (ver itemParaMarkdownPartes): `omitir`
+// é o Set de rótulos que não devem sair no texto (porque subiram para o
+// topo, ver exportar-comuns.js) e `capturadas` é o Map que recolhe as
+// linhas geradas. Fica nulo fora da geração, então linhaMeta se comporta
+// como sempre. A geração é síncrona, então não há mistura entre chamadas.
+let contextoLinhasMeta = null;
+
 function linhaMeta(rotulo, valor) {
-    return valor ? `- **${rotulo}:** ${valor}\n` : '';
+    if (!valor) return '';
+    if (contextoLinhasMeta) {
+        const { omitir, capturadas } = contextoLinhasMeta;
+        if (capturadas) {
+            if (!capturadas.has(rotulo)) capturadas.set(rotulo, []);
+            capturadas.get(rotulo).push(`- **${rotulo}:** ${valor}`);
+        }
+        if (omitir?.has(rotulo)) return '';
+    }
+    return `- **${rotulo}:** ${valor}\n`;
+}
+
+function comContextoLinhasMeta(contexto, geracao) {
+    const anterior = contextoLinhasMeta;
+    contextoLinhasMeta = contexto;
+    try {
+        return geracao();
+    } finally {
+        contextoLinhasMeta = anterior;
+    }
 }
 
 function blocoTexto(titulo, texto) {
@@ -724,16 +752,40 @@ function itemParaMarkdownDepoisDoTexto(item) {
 // itemParaMarkdownAntesDoTexto acima. gerarPdfExportacao (exportar-pdf.js)
 // é quem usa a versão dividida; itemParaMarkdown (abaixo) é só as duas
 // metades coladas, pro resto do app continuar chamando uma função só.
-export function itemParaMarkdownPartes(item, indice) {
-    return {
+//
+// `opcoes.omitirRotulos` (Set ou lista de rótulos, vazio por padrão) tira do
+// texto as linhas de metadado com esses rótulos: quem exporta vários textos
+// as sobe uma vez para o topo (ver separarLinhasComuns, exportar-comuns.js).
+// `opcoes.capturar` (Map) recolhe, por rótulo, as linhas que o texto gerou.
+export function itemParaMarkdownPartes(item, indice, opcoes = {}) {
+    const omitir = opcoes.omitirRotulos ? new Set(opcoes.omitirRotulos) : null;
+    const capturadas = opcoes.capturar || null;
+    const contexto = omitir?.size || capturadas ? { omitir, capturadas } : null;
+    return comContextoLinhasMeta(contexto, () => ({
         antesDoTexto: itemParaMarkdownAntesDoTexto(item, indice),
         depoisDoTexto: itemParaMarkdownDepoisDoTexto(item),
-    };
+    }));
 }
 
-export function itemParaMarkdown(item, indice) {
-    const { antesDoTexto, depoisDoTexto } = itemParaMarkdownPartes(item, indice);
+export function itemParaMarkdown(item, indice, opcoes = {}) {
+    const { antesDoTexto, depoisDoTexto } = itemParaMarkdownPartes(item, indice, opcoes);
     return antesDoTexto + depoisDoTexto;
+}
+
+// Linhas de metadado que o texto geraria na exportação: Map de rótulo para
+// a lista de linhas (sem a quebra final). Mesmo caminho da exportação, então
+// o que se compara é sempre o que de fato sairia.
+export function linhasMetaDoItem(item) {
+    const capturadas = new Map();
+    itemParaMarkdownPartes(item, 1, { capturar: capturadas });
+    return capturadas;
+}
+
+// Decide as linhas comuns de uma lista de textos (ver exportar-comuns.js).
+// Devolve `{ comuns, omitir }`; sem nada em comum (ou com menos de 2 textos),
+// `comuns` vem vazio e a exportação sai como sempre.
+export function linhasComunsDosItens(itens) {
+    return separarLinhasComuns((itens || []).map(linhasMetaDoItem));
 }
 
 // Markdown de um único item avulso, sem numeração nem cabeçalho de
@@ -744,16 +796,23 @@ export function gerarMarkdownItem(item) {
 }
 
 // ─── Documento completo ─────────────────────────────────────────────────
-export function gerarMarkdownExportacao(itens) {
+// `opcoes.agruparComuns` (padrão: a preferência guardada, ligada se nunca mexida): as linhas de metadado iguais em todos
+// os textos sobem uma vez para o topo (ver exportar-comuns.js). Com false, ou
+// com menos de 2 textos, cada texto leva todas as suas linhas.
+export function gerarMarkdownExportacao(itens, opcoes = {}) {
     const agora = new Date();
     const dataStr = agora.toLocaleDateString('pt-BR');
+    const { comuns, omitir } = resolverAgruparComuns(opcoes)
+        ? linhasComunsDosItens(itens)
+        : { comuns: [], omitir: new Set() };
 
     let md = `# Exportação Poética\n\n`;
     md += `_Gerado em ${dataStr} — ${itens.length} texto(s)._\n\n`;
+    md += blocoLinhasComuns(comuns);
     md += `---\n\n`;
 
     itens.forEach((item, i) => {
-        md += itemParaMarkdown(item, i + 1);
+        md += itemParaMarkdown(item, i + 1, { omitirRotulos: omitir });
         // Seções extras de Sonoridade/Morfofuncionalidade — só presentes
         // quando o item passou por enriquecerItensComExtras (ver
         // itensDaSelecao, exportar.js) com o toggle "Download abrangente"

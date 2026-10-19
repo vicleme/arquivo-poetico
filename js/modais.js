@@ -101,6 +101,19 @@ function abrirEFocar(id, el) {
     foco.focus();
 }
 
+// id do modal → função que roda UMA vez quando ele fechar (por salvar, cancelar,
+// X ou Esc; todos passam por fecharEDevolverFoco). Usado pra "voltar" a outro
+// modal, por exemplo do formulário de edição de volta ao Ver.
+const aoFecharUmaVez = {};
+
+export function aoFecharModalUmaVez(id, fn) {
+    aoFecharUmaVez[id] = fn;
+}
+
+export function cancelarAoFecharModal(id) {
+    delete aoFecharUmaVez[id];
+}
+
 function fecharEDevolverFoco(id, el) {
     fecharBuscaEmCampo();
     el.classList.add('hidden');
@@ -109,6 +122,9 @@ function fecharEDevolverFoco(id, el) {
     // só devolve se o elemento ainda existe na página (pode ter sumido
     // de uma re-renderização de lista enquanto o modal estava aberto)
     if (anterior && document.body.contains(anterior)) anterior.focus();
+    const depois = aoFecharUmaVez[id];
+    delete aoFecharUmaVez[id];
+    depois?.();
 }
 
 export async function toggleModal(id) {

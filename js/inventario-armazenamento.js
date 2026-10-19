@@ -83,6 +83,11 @@ export const CHAVES_LOCALSTORAGE = Object.freeze([
         nota: 'Escolha de guardar ou não a caixa "Incluir dados ocultados"',
     },
     {
+        chave: 'arquivoPoetico_agruparComuns',
+        categoria: 'preferencia',
+        nota: 'Agrupar no topo o que for igual em todos os textos exportados, ligado ou desligado',
+    },
+    {
         chave: 'arquivoPoetico_downloadAbrangente',
         categoria: 'preferencia',
         nota: 'Download abrangente ligado ou desligado',

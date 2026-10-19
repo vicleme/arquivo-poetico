@@ -143,6 +143,17 @@ input[type='checkbox'] {
     flex-shrink: 0;
 }
 
+/* Pontos de montagem das caixas de exportação ("Agrupar no topo" e "Dados
+   ocultados"). Como <span> solto, o rótulo dentro ficava numa linha de texto
+   (line-height do corpo, alinhada pela linha de base) e saía mais alto que as
+   caixas que são filhas diretas do flex, como a do Abrangente. Como flex, o
+   rótulo vira item e centraliza igual aos vizinhos. */
+.agrupar-comuns-slot,
+.incluir-ocultos-slot {
+    display: flex;
+    align-items: center;
+}
+
 /* Rádio, pelo mesmo motivo do checkbox: sem esta regra herda width:100% e
    margin-bottom do seletor genérico e fica esticado/deslocado do texto ao
    lado. O :not(.sr-only) deixa em paz os rádios escondidos de propósito

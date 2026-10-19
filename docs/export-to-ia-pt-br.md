@@ -60,6 +60,14 @@ Use quando os itens que você quer não formam um filtro fácil de descrever (ex
 
 ---
 
+## Linhas comuns no topo das exportações com vários textos
+
+Nos downloads em `.md`, `.pdf` e `.docx` com mais de um texto, uma linha de metadado (`- **Rótulo:** valor`) que todos os textos têm com exatamente o mesmo valor sai uma vez só, sob **"Comum a todos os textos"**, perto do topo, e deixa de aparecer em cada texto. Os rótulos considerados são Autoria, Fonte, Edição, Link da fonte, Grafia, Texto conferido, Domínio público, Corrente literária e Idioma. A regra é estrita, por rótulo: se um texto não tem a linha, ou tem outro valor, ela continua em cada texto. Assim, ao ler um texto, uma dessas linhas que não aparece nele está no bloco comum ou estava vazia.
+
+A caixa **"Agrupar no topo"** (em "Opções de download"; ligada por padrão, guardada no navegador) desliga isso. O `.json` e o `.csv` nunca mudam, e o download de um texto só sempre traz todas as linhas.
+
+---
+
 ## Resumo rápido
 
 | Situação                                                                                    | Formato recomendado              |

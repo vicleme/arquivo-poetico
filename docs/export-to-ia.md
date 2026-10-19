@@ -60,6 +60,14 @@ Use this when the items you want don't form an easy filter to describe (e.g., "t
 
 ---
 
+## Shared lines at the top of multi-text exports
+
+In `.md`, `.pdf` and `.docx` downloads with more than one text, a metadata line (`- **Label:** value`) that every text has with exactly the same value is written once, under **"Comum a todos os textos"** ("Common to all texts") near the top, and is left out of each text. The labels considered are Autoria, Fonte, Edição, Link da fonte, Grafia, Texto conferido, Domínio público, Corrente literária and Idioma. The rule is strict, per label: a text missing the line, or with another value, keeps that line in every text. So when you read a text below, any of those lines that is not there is either in the shared block or was empty.
+
+The **"Agrupar no topo"** box (under "Opções de download") (on by default, remembered in the browser) turns this off. `.json` and `.csv` never change, and a single-text download always has every line.
+
+---
+
 ## Quick summary
 
 | Situation                                                                              | Recommended format               |
