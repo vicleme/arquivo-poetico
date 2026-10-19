@@ -355,9 +355,25 @@ function mostrarRelatorio(html) {
     if (alvo) alvo.innerHTML = html;
 }
 
+// Aplicar e Conferir andam em oposição: com a conferência vigente (Aplicar
+// ligado) conferir de novo só refaria o mesmo relatório, sem sinal nenhum.
+// Qualquer edição no JSON ou na caixa "Substituir" volta a ligar o Conferir.
+const DICA_CONFERIDO = 'Conferido. Mexa no JSON ou na caixa “Substituir” para conferir de novo.';
+
 function ligarAplicar(ligado) {
-    const botao = $('icp-aplicar');
-    if (botao) botao.disabled = !ligado;
+    const aplicar = $('icp-aplicar');
+    const conferir = $('icp-conferir');
+    const dica = $('icp-dica');
+    // Botão que desabilita perde o foco: passa para o outro, para o teclado
+    // não cair fora do modal.
+    const focoNoQueDesliga = document.activeElement === (ligado ? conferir : aplicar);
+    if (aplicar) aplicar.disabled = !ligado;
+    if (conferir) conferir.disabled = ligado;
+    if (dica) {
+        dica.dataset.padrao ??= dica.textContent;
+        dica.textContent = ligado ? DICA_CONFERIDO : dica.dataset.padrao;
+    }
+    if (focoNoQueDesliga) (ligado ? aplicar : conferir)?.focus();
 }
 
 function opcoesDaTela() {

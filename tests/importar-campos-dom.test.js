@@ -130,6 +130,40 @@ describe('modal Importar campos (DOM real via happy-dom)', () => {
         assert.equal($('icp-aplicar').disabled, true);
     });
 
+    it('com a conferência vigente o Conferir desliga, e editar o JSON ou a caixa o religa', () => {
+        const dica = $('icp-dica').textContent;
+        assert.equal($('icp-conferir').disabled, false);
+        colar(ARQUIVO);
+        conferir();
+        assert.equal($('icp-aplicar').disabled, false);
+        assert.equal($('icp-conferir').disabled, true);
+        assert.match($('icp-dica').textContent, /^Conferido\./);
+        $('icp-texto').dispatchEvent(new Event('input'));
+        assert.equal($('icp-conferir').disabled, false);
+        assert.equal($('icp-aplicar').disabled, true);
+        assert.equal($('icp-dica').textContent, dica);
+        conferir();
+        assert.equal($('icp-conferir').disabled, true);
+        $('icp-substituir').dispatchEvent(new Event('change'));
+        assert.equal($('icp-conferir').disabled, false);
+    });
+
+    it('o foco acompanha o botão que desliga, e o Conferir volta depois do Aplicar', async () => {
+        colar(ARQUIVO);
+        $('icp-conferir').focus();
+        conferir();
+        assert.equal(document.activeElement, $('icp-aplicar'));
+        await aplicarImportacaoCampos();
+        assert.equal($('icp-conferir').disabled, false);
+        assert.equal(document.activeElement, $('icp-conferir'));
+    });
+
+    it('conferência sem nada para importar não desliga o Conferir', () => {
+        colar({ textos: [{ titulo: 'Não Existe', etiquetas: { Tom: ['x'] } }] });
+        conferir();
+        assert.equal($('icp-conferir').disabled, false);
+    });
+
     it('JSON inválido, sem "textos" e "textos" vazio explicam o problema e não ligam o Aplicar', () => {
         colar('{ quebrado');
         conferir();
