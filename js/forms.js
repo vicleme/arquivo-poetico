@@ -171,6 +171,9 @@ import {
     obterIdiomasTexto,
     resetIdiomasTexto,
     carregarIdiomasTexto,
+    obterJargaoGiriaTexto,
+    resetJargaoGiriaTexto,
+    carregarJargaoGiriaTexto,
     obterTemasTexto,
     obterAssuntosPendentesTexto,
     obterAssuntosPapelTexto,
@@ -431,6 +434,13 @@ export function locaisParaSalvar(tabela) {
 export function idiomasParaSalvar(tabela) {
     const idiomas = obterIdiomasTexto(tabela);
     return { idiomas, idioma: espelhoDeIdiomas(idiomas) };
+}
+
+// Jargão e gíria do texto, lido do grupo "Região e Idioma" do modal: lista de
+// textos livres, no nível do texto (fora de `idiomas`). Entra em `dados` por
+// espalhamento, como o idioma.
+export function jargaoGiriaParaSalvar(tabela) {
+    return { jargaoGiria: obterJargaoGiriaTexto(tabela) };
 }
 
 export function initFormLivro() {
@@ -3967,7 +3977,7 @@ export function aplicarSugestaoEpoca(nomeArg = null) {
 }
 
 // ─── Fonte do texto (Poema/Prosa) ────────────────────────────
-// `fonteTexto`: { origem, edicao, link, conferido, grafia } — de onde
+// `fonteTexto`: { origem, edicao, link, dataAcesso?, conferido, grafia } — de onde
 // veio o texto (edição de terceiros, transcrição) + a ortografia em que
 // foi transcrito. `grafia` é '' só quando o campo nunca foi definido —
 // "Atual (padrão)" escolhido de propósito grava GRAFIA_ATUAL, um valor
@@ -3982,14 +3992,20 @@ function lerFonteTexto(prefixo) {
     const link = document.getElementById(`${prefixo}-fonte-link`).value.trim();
     const conferido = document.getElementById(`${prefixo}-fonte-conferido`).checked;
     const grafia = document.getElementById(`${prefixo}-fonte-grafia`)?.value || '';
+    // Data de acesso: só com link, e a chave só existe quando preenchida.
+    const dataAcesso = link
+        ? document.getElementById(`${prefixo}-fonte-data-acesso`)?.value || ''
+        : '';
     if (!origem && !edicao && !link && !conferido && !grafia) return null;
-    return { origem, edicao, link, conferido, grafia };
+    return { origem, edicao, link, ...(dataAcesso ? { dataAcesso } : {}), conferido, grafia };
 }
 
 function preencherFonteTexto(prefixo, fonte) {
     document.getElementById(`${prefixo}-fonte-origem`).value = fonte?.origem || '';
     document.getElementById(`${prefixo}-fonte-edicao`).value = fonte?.edicao || '';
     document.getElementById(`${prefixo}-fonte-link`).value = fonte?.link || '';
+    const dataAcessoEl = document.getElementById(`${prefixo}-fonte-data-acesso`);
+    if (dataAcessoEl) dataAcessoEl.value = fonte?.dataAcesso || '';
     document.getElementById(`${prefixo}-fonte-conferido`).checked = !!fonte?.conferido;
     const selGrafia = document.getElementById(`${prefixo}-fonte-grafia`);
     if (selGrafia) selGrafia.value = fonte?.grafia || '';
@@ -4112,6 +4128,7 @@ export function initFormPoema() {
             paiId,
             sequencia: seqOuNull(document.getElementById('p-sequencia').value),
             ...idiomasParaSalvar('poemas'),
+            ...jargaoGiriaParaSalvar('poemas'),
             dataEscrita,
             dataPublicacao,
             ano: dataEscrita?.ano || '', // mantido por compatibilidade (ordenação/estatísticas/exportação)
@@ -4226,6 +4243,7 @@ export function initFormPoema() {
         resetTemasTexto('poemas');
         resetLocaisTexto('poemas');
         resetIdiomasTexto('poemas');
+        resetJargaoGiriaTexto('poemas');
         resetPersonagens('poemas');
         resetPessoas('poemas');
         resetGruposDiretos('poemas');
@@ -4298,6 +4316,8 @@ export async function editarPoema(id) {
     renderPainelElosDerivados(p.id);
     document.getElementById('p-anexo-tipo').value = '';
     document.getElementById('p-anexo-link').value = '';
+    document.getElementById('p-anexo-link-texto').value = '';
+    document.getElementById('p-anexo-data-acesso').value = '';
     carregarAnexos('poemas', p.anexos || p.ilustracoes || []);
     document.getElementById('p-anotacao-trecho').value = '';
     document.getElementById('p-anotacao-posicao').value = '';
@@ -4333,6 +4353,7 @@ export async function editarPoema(id) {
     carregarTemasTexto('poemas', p);
     carregarLocaisTexto('poemas', p);
     carregarIdiomasTexto('poemas', p);
+    carregarJargaoGiriaTexto('poemas', p);
     carregarPersonagens('poemas', p.personagens);
     carregarPessoas('poemas', p.pessoas);
     carregarGruposDiretos('poemas', p.gruposDiretos);
@@ -4457,6 +4478,7 @@ export function initFormProsa() {
             texto: document.getElementById('pr-texto').value,
             sequencia: seqOuNull(document.getElementById('pr-sequencia').value),
             ...idiomasParaSalvar('prosas'),
+            ...jargaoGiriaParaSalvar('prosas'),
             dataEscrita,
             dataPublicacao,
             ano: dataEscrita?.ano || '', // mantido por compatibilidade (ordenação/estatísticas/exportação)
@@ -4562,6 +4584,7 @@ export function initFormProsa() {
         resetTemasTexto('prosas');
         resetLocaisTexto('prosas');
         resetIdiomasTexto('prosas');
+        resetJargaoGiriaTexto('prosas');
         resetPersonagens('prosas');
         resetPessoas('prosas');
         resetGruposDiretos('prosas');
@@ -4634,6 +4657,8 @@ export async function editarProsa(id) {
     renderPainelElosDerivadosProsa(pr.id);
     document.getElementById('pr-anexo-tipo').value = '';
     document.getElementById('pr-anexo-link').value = '';
+    document.getElementById('pr-anexo-link-texto').value = '';
+    document.getElementById('pr-anexo-data-acesso').value = '';
     carregarAnexos('prosas', pr.anexos || []);
     document.getElementById('pr-cortado-livro').value = pr.cortadoDe?.livro || '';
     document.getElementById('pr-cortado-secao').value = pr.cortadoDe?.secao || '';
@@ -4677,6 +4702,7 @@ export async function editarProsa(id) {
     carregarTemasTexto('prosas', pr);
     carregarLocaisTexto('prosas', pr);
     carregarIdiomasTexto('prosas', pr);
+    carregarJargaoGiriaTexto('prosas', pr);
     carregarPersonagens('prosas', pr.personagens);
     carregarPessoas('prosas', pr.pessoas);
     carregarGruposDiretos('prosas', pr.gruposDiretos);

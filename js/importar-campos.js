@@ -20,6 +20,7 @@
 //         "territorialidade": ["Brasil", "Santos"],
 //         "localEscrita": "Santos",
 //         "pessoas": [{ "pessoa": "Dani", "papeis": ["Dedicatário(a)"] }],
+//         "jargaoGiria": ["Gíria de internet"],
 //         "pendencia": "revisar métrica",
 //         "fonte": { "origem": "Obra própria", "conferido": true }
 //       } ],
@@ -49,8 +50,9 @@
 //     Título que casa com mais de um texto, id que não bate com o título e
 //     texto que não existe NÃO são chutados: vão para o relatório e ficam de
 //     fora.
-//   - Extras: territorialidade e pessoas também são soma (Local e Pessoa
-//     novos são criados e listados); local de escrita, pendência e fonte só
+//   - Extras: territorialidade, pessoas e jargaoGiria também são soma (Local e
+//     Pessoa novos são criados e listados; Jargão e gíria é texto livre, sem
+//     cadastro, e o termo novo é só marcado no relatório); local de escrita, pendência e fonte só
 //     preenchem o que está vazio, a menos que a opção
 //     `substituirCamposSimples` esteja ligada. Ver importar-campos-extras.js.
 //   - Nada disso grava: `executarImportacaoCampos` muda o `dbRef` e devolve
@@ -88,6 +90,7 @@ import {
     aplicarTerritorialidade,
     aplicarLocalEscrita,
     aplicarPessoas,
+    aplicarJargaoGiria,
     aplicarCamposSimples,
 } from './importar-campos-extras.js';
 
@@ -542,8 +545,8 @@ function aplicarLigacoes(dbRef, ligacoes, temasDoArquivo, criadosAntes) {
 
 function relatorioVazio() {
     return {
-        adicionados: { etiquetas: [], temas: [], locais: [], pessoas: [] },
-        jaTinha: { etiquetas: [], temas: [], locais: [], pessoas: [] },
+        adicionados: { etiquetas: [], temas: [], locais: [], pessoas: [], jargaoGiria: [] },
+        jaTinha: { etiquetas: [], temas: [], locais: [], pessoas: [], jargaoGiria: [] },
         papeisTema: [],
         papeisPessoa: [],
         assuntos: [],
@@ -585,6 +588,7 @@ export function executarImportacaoCampos(dbRef, entradas, opcoes = {}) {
     const novosTemas = new Map();
     const novosLocais = new Map();
     const novasPessoas = new Map();
+    const novosJargaoGiria = new Map();
 
     // Ligações Tema → Assunto primeiro: os `assuntos` dos textos já enxergam
     // o que elas ligaram. Só Tema trazido por um texto achado pode ser criado.
@@ -646,6 +650,7 @@ export function executarImportacaoCampos(dbRef, entradas, opcoes = {}) {
             aplicarTerritorialidade(dbRef, item, entrada.territorialidade || [], linha);
             aplicarLocalEscrita(dbRef, item, entrada.localEscrita || null, linha, { substituir });
             aplicarPessoas(dbRef, item, entrada.pessoas || [], linha);
+            aplicarJargaoGiria(dbRef, item, entrada.jargaoGiria || [], linha);
             aplicarCamposSimples(item, entrada.simples || [], linha, { substituir });
             linha.mudou = JSON.stringify(item) !== antes;
 
@@ -665,6 +670,9 @@ export function executarImportacaoCampos(dbRef, entradas, opcoes = {}) {
             });
             linha.adicionados.pessoas.forEach((p) => {
                 if (p.nova) novasPessoas.set(chaveTema(p.nome), p.nome);
+            });
+            linha.adicionados.jargaoGiria.forEach((j) => {
+                if (j.nova) novosJargaoGiria.set(chaveTema(j.nome), j.nome);
             });
         }
         itens.push(linha);
@@ -693,6 +701,7 @@ export function executarImportacaoCampos(dbRef, entradas, opcoes = {}) {
         ),
         vinculosLocal: achados.reduce((n, i) => n + i.adicionados.locais.length, 0),
         vinculosPessoa: achados.reduce((n, i) => n + i.adicionados.pessoas.length, 0),
+        vinculosJargaoGiria: achados.reduce((n, i) => n + i.adicionados.jargaoGiria.length, 0),
         papeisPessoa: achados.reduce((n, i) => n + i.papeisPessoa.length, 0),
         camposSimplesGravados: achados.reduce(
             (n, i) =>
@@ -731,6 +740,7 @@ export function executarImportacaoCampos(dbRef, entradas, opcoes = {}) {
             temas: [...new Set([...novosTemas.values(), ...novosPelasLigacoes(ligacoes)])],
             locais: [...novosLocais.values()],
             pessoas: [...novasPessoas.values()],
+            jargaoGiria: [...novosJargaoGiria.values()],
         },
         desfazer,
     };

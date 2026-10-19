@@ -27,13 +27,14 @@
 //   ler(item)   valor atual (string, boolean ou, em 'local', o id do
 //               Local ou null)
 //   gravar(item, valor)   grava — pra limpar, recebe '' / false
+//   soImportacao  (opcional) true: fica fora do painel "Preencher campo"
 //   sugestoes(itens)      (opcional) valores pro autocompletar
 //   placeholder (opcional) dica do campo de texto
 // ============================================================
 
-import { extrairFontesUnicas, OPCOES_GRAFIA } from './utils.js';
+import { extrairFontesUnicas, OPCOES_GRAFIA, formatarDataAcesso } from './utils.js';
 
-// `fonteTexto` é { origem, edicao, link, conferido, grafia } ou null
+// `fonteTexto` é { origem, edicao, link, dataAcesso?, conferido, grafia } ou null
 // (ver lerFonteTexto em forms.js): grava um subcampo preservando os
 // outros e volta a null quando tudo fica vazio, "conferido" desmarcado
 // e grafia nunca definida (`''` — não GRAFIA_ATUAL, que é uma escolha
@@ -49,6 +50,9 @@ export function definirSubcampoFonte(item, sub, valor) {
         ...(item.fonteTexto || {}),
     };
     f[sub] = valor;
+    // A data de acesso descreve o link: sem link ela não fica.
+    // (e só vale uma data ISO válida; a gravação ignora o resto.)
+    if (!(f.link || '').trim() || !formatarDataAcesso(f.dataAcesso)) delete f.dataAcesso;
     const vazio = !(f.origem || '').trim() && !(f.edicao || '').trim() && !(f.link || '').trim();
     item.fonteTexto = vazio && !f.conferido && !f.grafia ? null : f;
 }
@@ -79,6 +83,17 @@ export const CAMPOS_PREENCHIVEIS = [
         ler: (item) => item.fonteTexto?.link || '',
         gravar: (item, valor) => definirSubcampoFonte(item, 'link', valor),
         placeholder: 'https://...',
+    },
+    // Só pela importação de campos (`soImportacao`): preencher a data em massa
+    // não tem uso claro, e sem link a data nem é gravada.
+    {
+        chave: 'fonteDataAcesso',
+        rotulo: 'Data de acesso da fonte',
+        tipo: 'texto',
+        soImportacao: true,
+        ler: (item) => item.fonteTexto?.dataAcesso || '',
+        gravar: (item, valor) => definirSubcampoFonte(item, 'dataAcesso', valor),
+        placeholder: 'aaaa-mm-dd',
     },
     {
         chave: 'fonteConferido',

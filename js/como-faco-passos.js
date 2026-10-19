@@ -153,7 +153,7 @@ export const TAREFAS_COMO_FACO = [
         id: 'agrupar-etiquetas',
         titulo: 'Agrupar etiquetas em tag clusters',
         descricao:
-            'Na aba Tag clusters (agrupamentos de etiquetas), você cria grupos por categoria e coloca as etiquetas neles. O cluster não aparece nos textos: serve para ler as Estatísticas por grupo. Excluir um cluster só solta as etiquetas, e tudo tem Desfazer.',
+            'Na aba Tag clusters (agrupamentos de etiquetas), você cria grupos por categoria e coloca as etiquetas neles. O cluster não aparece nos textos: serve para ler as Estatísticas por grupo. Um cluster pode ter subclusters (um nível). Excluir um cluster só solta as etiquetas, e tudo tem Desfazer.',
         passos: [
             {
                 id: 'cf-clusters-1',
@@ -170,9 +170,16 @@ export const TAREFAS_COMO_FACO = [
                 seletor: '#etiquetas-sem-cluster',
             },
             {
+                id: 'cf-clusters-sub',
+                titulo: 'Divida um cluster em subclusters',
+                texto: 'No cartão do cluster, clique em “+ Subcluster”. Para mover uma etiqueta entre o pai e os subclusters, use o botão ⇄ ao lado dela e escolha o destino; em tela grande dá para arrastar o chip até o cartão.',
+                aba: 'tag-clusters',
+                seletor: '#lista-tag-clusters',
+            },
+            {
                 id: 'cf-clusters-3',
                 titulo: 'Ou importe vários de uma vez',
-                texto: 'Em Importar clusters, cole uma linha por cluster, no formato “Cluster: etiqueta, etiqueta”. O relatório mostra o que não foi achado, e dá para desfazer a importação inteira.',
+                texto: 'Em Importar clusters, cole uma linha por cluster, no formato “Cluster: etiqueta, etiqueta” (ou “Cluster > Subcluster: etiqueta, etiqueta”). O relatório mostra o que não foi achado, e dá para desfazer a importação inteira.',
                 aba: 'tag-clusters',
                 seletor: '#btn-importar-tag-clusters',
             },
@@ -182,7 +189,7 @@ export const TAREFAS_COMO_FACO = [
         id: 'importar-campos-em-massa',
         titulo: 'Preencher campos de muitos textos de uma vez (importar .json)',
         descricao:
-            'Na aba Importação, o botão Importar campos soma etiquetas, temas, assuntos, territorialidade e pessoas a textos que já existem, e preenche local de escrita, pendência e fonte. O arquivo é feito à mão ou por uma IA, e você confere tudo antes de aplicar.',
+            'Na aba Importação, o botão Importar campos soma etiquetas, temas, assuntos, territorialidade, pessoas e jargão e gíria a textos que já existem, e preenche local de escrita, pendência e fonte. O arquivo é feito à mão ou por uma IA, e você confere tudo antes de aplicar.',
         passos: [
             {
                 id: 'cf-campos-1',

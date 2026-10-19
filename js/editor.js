@@ -47,6 +47,8 @@ import {
     extrairMeiosEnviosUnicos,
     extrairPremiosUnicos,
     escapeHtml,
+    formatarDataAcesso,
+    hojeIso,
     mostrarAviso,
     abrirModalConfirmacao,
     rotuloElo,
@@ -74,6 +76,9 @@ import {
     normalizarIdiomas,
     normalizarDialetos,
     normalizarPapelIdioma,
+    normalizarJargaoGiria,
+    jargaoGiriaDoItem,
+    extrairJargaoGiriaUnicos,
     idiomasDoItem,
     extrairDialetosUnicos,
     anoEquivalenteMovimento,
@@ -2082,6 +2087,16 @@ export function limparAutoclassificacao(tabela) {
     renderAutoclassificacao(tabela);
 }
 
+// Data de acesso do link (`dataAcesso`, "aaaa-mm-dd"): só aparece quando o
+// item tem link, porque a data descreve o acesso àquela página.
+function htmlDataAcesso(it) {
+    if (!it?.link) return '';
+    const data = formatarDataAcesso(it.dataAcesso);
+    return data
+        ? ` <span class="text-[11px] text-gray-500 dark:text-slate-400">(acesso em ${data})</span>`
+        : '';
+}
+
 function renderItemIntertexto(it) {
     const badge = it.tipo
         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
@@ -2090,7 +2105,7 @@ function renderItemIntertexto(it) {
         ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
         : '';
     const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
-    return `${badge}${escapeHtml(it.texto || '')}${link}${nota}`;
+    return `${badge}${escapeHtml(it.texto || '')}${link}${htmlDataAcesso(it)}${nota}`;
 }
 
 const listaIntertextoPoema = criarListaDeEntradas({
@@ -2175,18 +2190,28 @@ export function adicionarIntertexto(tabela) {
     const textoEl = document.getElementById(`${p}-intertexto-texto`);
     const linkEl = document.getElementById(`${p}-intertexto-link`);
     const linkTextoEl = document.getElementById(`${p}-intertexto-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-intertexto-data-acesso`);
     const notaEl = document.getElementById(`${p}-intertexto-nota`);
     const tipo = tipoEl?.value || '';
     const texto = (textoEl?.value || '').trim();
     const link = (linkEl?.value || '').trim();
     const linkTexto = (linkTextoEl?.value || '').trim();
+    const dataAcesso = link ? dataAcessoEl?.value || '' : '';
     const nota = (notaEl?.value || '').trim();
     if (!tipo && !texto && !link && !linkTexto && !nota) return;
-    listaIntertexto(tabela).salvar({ tipo, texto, link, linkTexto, nota });
+    listaIntertexto(tabela).salvar({
+        tipo,
+        texto,
+        link,
+        linkTexto,
+        ...(dataAcesso ? { dataAcesso } : {}),
+        nota,
+    });
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
     if (linkEl) linkEl.value = '';
     if (linkTextoEl) linkTextoEl.value = '';
+    if (dataAcessoEl) dataAcessoEl.value = '';
     if (notaEl) notaEl.value = '';
     atualizarBotaoIntertexto(tabela);
     atualizarDatalistIntertexto(tabela);
@@ -2198,11 +2223,13 @@ export function editarIntertexto(tabela, indice) {
     const textoEl = document.getElementById(`${p}-intertexto-texto`);
     const linkEl = document.getElementById(`${p}-intertexto-link`);
     const linkTextoEl = document.getElementById(`${p}-intertexto-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-intertexto-data-acesso`);
     const notaEl = document.getElementById(`${p}-intertexto-nota`);
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (textoEl) textoEl.value = item.texto || '';
     if (linkEl) linkEl.value = item.link || '';
     if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
+    if (dataAcessoEl) dataAcessoEl.value = item.dataAcesso || '';
     if (notaEl) notaEl.value = item.nota || '';
     textoEl?.focus();
     atualizarBotaoIntertexto(tabela);
@@ -2214,11 +2241,13 @@ export function cancelarEdicaoIntertexto(tabela) {
     const textoEl = document.getElementById(`${p}-intertexto-texto`);
     const linkEl = document.getElementById(`${p}-intertexto-link`);
     const linkTextoEl = document.getElementById(`${p}-intertexto-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-intertexto-data-acesso`);
     const notaEl = document.getElementById(`${p}-intertexto-nota`);
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
     if (linkEl) linkEl.value = '';
     if (linkTextoEl) linkTextoEl.value = '';
+    if (dataAcessoEl) dataAcessoEl.value = '';
     if (notaEl) notaEl.value = '';
     atualizarBotaoIntertexto(tabela);
 }
@@ -2261,7 +2290,7 @@ function renderItemReferenciaExterna(it) {
         ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
         : '';
     const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
-    return `${badge}${escapeHtml(it.texto || '')}${link}${nota}`;
+    return `${badge}${escapeHtml(it.texto || '')}${link}${htmlDataAcesso(it)}${nota}`;
 }
 
 const listaReferenciaExternaPoema = criarListaDeEntradas({
@@ -2328,7 +2357,7 @@ function renderItemHipertextualidade(h) {
         ? ` <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(h.linkTexto || h.link)}</a>`
         : '';
     const nota = h.nota ? ` — ${escapeHtml(h.nota)}` : '';
-    return `${badge}${escapeHtml(corpoEntradaHipertextualidade(h))}${link}${nota}`;
+    return `${badge}${escapeHtml(corpoEntradaHipertextualidade(h))}${link}${htmlDataAcesso(h)}${nota}`;
 }
 
 const listaHipertextualidadePoema = criarListaDeEntradas({
@@ -2403,20 +2432,31 @@ export function adicionarHipertextualidade(tabela) {
     const hipotextoEl = document.getElementById(`${p}-hipertexto-hipotexto`);
     const linkEl = document.getElementById(`${p}-hipertexto-link`);
     const linkTextoEl = document.getElementById(`${p}-hipertexto-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-hipertexto-data-acesso`);
     const notaEl = document.getElementById(`${p}-hipertexto-nota`);
     const tipo = tipoEl?.value || '';
     const relacao = (relacaoEl?.value || '').trim();
     const hipotexto = (hipotextoEl?.value || '').trim();
     const link = (linkEl?.value || '').trim();
     const linkTexto = (linkTextoEl?.value || '').trim();
+    const dataAcesso = link ? dataAcessoEl?.value || '' : '';
     const nota = (notaEl?.value || '').trim();
     if (!tipo && !relacao && !hipotexto && !link && !linkTexto && !nota) return;
-    listaHipertextualidade(tabela).salvar({ tipo, relacao, hipotexto, link, linkTexto, nota });
+    listaHipertextualidade(tabela).salvar({
+        tipo,
+        relacao,
+        hipotexto,
+        link,
+        linkTexto,
+        ...(dataAcesso ? { dataAcesso } : {}),
+        nota,
+    });
     if (tipoEl) tipoEl.value = '';
     if (relacaoEl) relacaoEl.value = '';
     if (hipotextoEl) hipotextoEl.value = '';
     if (linkEl) linkEl.value = '';
     if (linkTextoEl) linkTextoEl.value = '';
+    if (dataAcessoEl) dataAcessoEl.value = '';
     if (notaEl) notaEl.value = '';
     atualizarBotaoHipertextualidade(tabela);
     atualizarDatalistHipertextualidade(tabela);
@@ -2429,12 +2469,14 @@ export function editarHipertextualidade(tabela, indice) {
     const hipotextoEl = document.getElementById(`${p}-hipertexto-hipotexto`);
     const linkEl = document.getElementById(`${p}-hipertexto-link`);
     const linkTextoEl = document.getElementById(`${p}-hipertexto-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-hipertexto-data-acesso`);
     const notaEl = document.getElementById(`${p}-hipertexto-nota`);
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (relacaoEl) relacaoEl.value = item.relacao || '';
     if (hipotextoEl) hipotextoEl.value = item.hipotexto || '';
     if (linkEl) linkEl.value = item.link || '';
     if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
+    if (dataAcessoEl) dataAcessoEl.value = item.dataAcesso || '';
     if (notaEl) notaEl.value = item.nota || '';
     relacaoEl?.focus();
     atualizarBotaoHipertextualidade(tabela);
@@ -2447,12 +2489,14 @@ export function cancelarEdicaoHipertextualidade(tabela) {
     const hipotextoEl = document.getElementById(`${p}-hipertexto-hipotexto`);
     const linkEl = document.getElementById(`${p}-hipertexto-link`);
     const linkTextoEl = document.getElementById(`${p}-hipertexto-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-hipertexto-data-acesso`);
     const notaEl = document.getElementById(`${p}-hipertexto-nota`);
     if (tipoEl) tipoEl.value = '';
     if (relacaoEl) relacaoEl.value = '';
     if (hipotextoEl) hipotextoEl.value = '';
     if (linkEl) linkEl.value = '';
     if (linkTextoEl) linkTextoEl.value = '';
+    if (dataAcessoEl) dataAcessoEl.value = '';
     if (notaEl) notaEl.value = '';
     atualizarBotaoHipertextualidade(tabela);
 }
@@ -2478,18 +2522,28 @@ export function adicionarReferenciaExterna(tabela) {
     const textoEl = document.getElementById(`${p}-refext-texto`);
     const linkEl = document.getElementById(`${p}-refext-link`);
     const linkTextoEl = document.getElementById(`${p}-refext-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-refext-data-acesso`);
     const notaEl = document.getElementById(`${p}-refext-nota`);
     const tipo = tipoEl?.value || '';
     const texto = (textoEl?.value || '').trim();
     const link = (linkEl?.value || '').trim();
     const linkTexto = (linkTextoEl?.value || '').trim();
+    const dataAcesso = link ? dataAcessoEl?.value || '' : '';
     const nota = (notaEl?.value || '').trim();
     if (!tipo && !texto && !link && !linkTexto && !nota) return;
-    listaReferenciaExterna(tabela).salvar({ tipo, texto, link, linkTexto, nota });
+    listaReferenciaExterna(tabela).salvar({
+        tipo,
+        texto,
+        link,
+        linkTexto,
+        ...(dataAcesso ? { dataAcesso } : {}),
+        nota,
+    });
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
     if (linkEl) linkEl.value = '';
     if (linkTextoEl) linkTextoEl.value = '';
+    if (dataAcessoEl) dataAcessoEl.value = '';
     if (notaEl) notaEl.value = '';
     atualizarBotaoReferenciaExterna(tabela);
     atualizarDatalistReferenciaExterna(tabela);
@@ -2501,11 +2555,13 @@ export function editarReferenciaExterna(tabela, indice) {
     const textoEl = document.getElementById(`${p}-refext-texto`);
     const linkEl = document.getElementById(`${p}-refext-link`);
     const linkTextoEl = document.getElementById(`${p}-refext-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-refext-data-acesso`);
     const notaEl = document.getElementById(`${p}-refext-nota`);
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (textoEl) textoEl.value = item.texto || '';
     if (linkEl) linkEl.value = item.link || '';
     if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
+    if (dataAcessoEl) dataAcessoEl.value = item.dataAcesso || '';
     if (notaEl) notaEl.value = item.nota || '';
     textoEl?.focus();
     atualizarBotaoReferenciaExterna(tabela);
@@ -2517,11 +2573,13 @@ export function cancelarEdicaoReferenciaExterna(tabela) {
     const textoEl = document.getElementById(`${p}-refext-texto`);
     const linkEl = document.getElementById(`${p}-refext-link`);
     const linkTextoEl = document.getElementById(`${p}-refext-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-refext-data-acesso`);
     const notaEl = document.getElementById(`${p}-refext-nota`);
     if (tipoEl) tipoEl.value = '';
     if (textoEl) textoEl.value = '';
     if (linkEl) linkEl.value = '';
     if (linkTextoEl) linkTextoEl.value = '';
+    if (dataAcessoEl) dataAcessoEl.value = '';
     if (notaEl) notaEl.value = '';
     atualizarBotaoReferenciaExterna(tabela);
 }
@@ -2555,9 +2613,9 @@ function renderItemAnexo(it) {
         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
         : '';
     const link = it.link
-        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px]">${escapeHtml(it.link)}</a>`
+        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
         : '';
-    return `${badge}${escapeHtml(it.texto || '')}${link}`;
+    return `${badge}${escapeHtml(it.texto || '')}${link}${htmlDataAcesso(it)}`;
 }
 
 const listaAnexosPoema = criarListaDeEntradas({
@@ -2593,22 +2651,34 @@ export function adicionarAnexo(tabela, valor = null) {
     const p = prefixoDom(tabela);
     const tipoEl = document.getElementById(`${p}-anexo-tipo`);
     const linkEl = document.getElementById(`${p}-anexo-link`);
+    const linkTextoEl = document.getElementById(`${p}-anexo-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-anexo-data-acesso`);
     const textoEl = document.getElementById(`${p}-anexo-input`);
 
     const tipo = tipoEl?.value || '';
     const link = (linkEl?.value || '').trim();
+    const linkTexto = (linkTextoEl?.value || '').trim();
+    const dataAcesso = link ? dataAcessoEl?.value || '' : '';
     const texto = (valor ?? textoEl?.value ?? '').trim();
 
-    if (!tipo && !texto && !link) return;
+    if (!tipo && !texto && !link && !linkTexto) return;
 
     if (TIPOS_ANEXO_COM_LINK_OBRIGATORIO.includes(tipo) && !link) {
         mostrarAviso(`Anexos do tipo "${tipo}" precisam de um link.`);
         return;
     }
 
-    listaAnexos(tabela).salvar({ tipo, texto, link });
+    listaAnexos(tabela).salvar({
+        tipo,
+        texto,
+        link,
+        ...(linkTexto ? { linkTexto } : {}),
+        ...(dataAcesso ? { dataAcesso } : {}),
+    });
     if (tipoEl) tipoEl.value = '';
     if (linkEl) linkEl.value = '';
+    if (linkTextoEl) linkTextoEl.value = '';
+    if (dataAcessoEl) dataAcessoEl.value = '';
     if (textoEl) textoEl.value = '';
     atualizarBotaoAnexo(tabela);
 }
@@ -2617,9 +2687,13 @@ export function editarAnexo(tabela, indice) {
     const p = prefixoDom(tabela);
     const tipoEl = document.getElementById(`${p}-anexo-tipo`);
     const linkEl = document.getElementById(`${p}-anexo-link`);
+    const linkTextoEl = document.getElementById(`${p}-anexo-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-anexo-data-acesso`);
     const textoEl = document.getElementById(`${p}-anexo-input`);
     if (tipoEl) tipoEl.value = item.tipo || '';
     if (linkEl) linkEl.value = item.link || '';
+    if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
+    if (dataAcessoEl) dataAcessoEl.value = item.dataAcesso || '';
     if (textoEl) textoEl.value = item.texto || '';
     textoEl?.focus();
     atualizarBotaoAnexo(tabela);
@@ -2629,9 +2703,13 @@ export function cancelarEdicaoAnexo(tabela) {
     const p = prefixoDom(tabela);
     const tipoEl = document.getElementById(`${p}-anexo-tipo`);
     const linkEl = document.getElementById(`${p}-anexo-link`);
+    const linkTextoEl = document.getElementById(`${p}-anexo-link-texto`);
+    const dataAcessoEl = document.getElementById(`${p}-anexo-data-acesso`);
     const textoEl = document.getElementById(`${p}-anexo-input`);
     if (tipoEl) tipoEl.value = '';
     if (linkEl) linkEl.value = '';
+    if (linkTextoEl) linkTextoEl.value = '';
+    if (dataAcessoEl) dataAcessoEl.value = '';
     if (textoEl) textoEl.value = '';
     atualizarBotaoAnexo(tabela);
 }
@@ -4526,6 +4604,24 @@ export function criarGrupoRegiaoHTML(prefixo, tabela) {
                                 <input type="hidden" id="${prefixo}-idiomas-json" />
                             </div>
                             <div class="mb-4">
+                                <label class="form-label">Jargão e gíria <span class="font-normal normal-case text-gray-400 dark:text-slate-500">(vocabulário de uma comunidade ou meio, usado de forma literal no texto)</span></label>
+                                <div class="flex items-center gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="${prefixo}-jargao-giria-input"
+                                        list="${prefixo}-jargao-giria-sugestoes"
+                                        class="text-sm flex-1 mb-0"
+                                        placeholder="Ex.: Gíria de internet (vírgula separa vários)..."
+                                        onchange="adicionarJargaoGiriaTexto('${tabela}', this.value, false)"
+                                        onkeydown="if (event.key === 'Enter') { event.preventDefault(); adicionarJargaoGiriaTexto('${tabela}', this.value); }"
+                                    />
+                                    <button type="button" onclick="adicionarJargaoGiriaTexto('${tabela}')" class="${BOTAO_LOCAL_TEXTO}" title="Adicionar jargão ou gíria">+ Adicionar</button>
+                                </div>
+                                <div id="${prefixo}-jargao-giria-container" class="flex flex-wrap gap-1 min-h-[30px] p-2 bg-white dark:bg-slate-900 border rounded border-gray-300 dark:border-slate-600"></div>
+                                <datalist id="${prefixo}-jargao-giria-sugestoes"></datalist>
+                                <input type="hidden" id="${prefixo}-jargao-giria-json" />
+                            </div>
+                            <div class="mb-4">
                                 <label class="form-label">Local onde foi escrito <span class="font-normal normal-case text-gray-400 dark:text-slate-500">(um só; para escrita em trânsito, use um Local como “Viagem”)</span></label>
                                 <div class="flex items-center gap-2 mb-2">
                                     <input
@@ -4825,17 +4921,96 @@ export function carregarIdiomasTexto(tabela, item) {
     renderizarIdiomasTexto(tabela);
 }
 
+// ─── Jargão e gíria do texto ─────────────────────────────────────
+// Lista de textos livres no nível do texto (`jargaoGiria`), ao lado de Idioma
+// mas fora de `idiomas[]`: não pertence a uma língua só. Estado: ['Gíria de
+// internet', ...]. Sugestões: as sementes mais o que já está salvo no acervo.
+const jargaoGiriaTexto = { poemas: [], prosas: [] };
+
+function sincronizarJargaoGiriaOculto(tabela) {
+    const oculto = document.getElementById(`${prefixoLocaisTexto(tabela)}-jargao-giria-json`);
+    if (!oculto) return;
+    oculto.value = JSON.stringify(jargaoGiriaTexto[tabela]);
+    // Avisa o rastreador de alterações do formulário (só escuta input/change).
+    oculto.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function renderizarJargaoGiriaTexto(tabela, focar = false) {
+    const prefixo = prefixoLocaisTexto(tabela);
+    const datalist = document.getElementById(`${prefixo}-jargao-giria-sugestoes`);
+    if (datalist) {
+        const todos = [...db.poemas, ...(db.prosas || [])];
+        datalist.innerHTML = extrairJargaoGiriaUnicos(todos)
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    }
+    const container = document.getElementById(`${prefixo}-jargao-giria-container`);
+    if (container) {
+        container.innerHTML = jargaoGiriaTexto[tabela]
+            .map(
+                (v, j) =>
+                    `<span class="bg-emerald-600 text-white text-[10px] px-2 py-1 rounded-full max-w-full break-words inline-flex items-center gap-1">${escapeHtml(v)}<button type="button" onclick="removerJargaoGiriaTexto('${tabela}', ${j})" class="font-bold hover:text-red-200" title="Remover" aria-label="Remover ${escapeHtml(v)}">×</button></span>`,
+            )
+            .join('');
+    }
+    sincronizarJargaoGiriaOculto(tabela);
+    if (focar) document.getElementById(`${prefixo}-jargao-giria-input`)?.focus();
+}
+
+// Vírgula separa vários de uma vez; repetido (sem diferenciar caixa nem
+// acento) é ignorado. Enter e o botão devolvem o foco ao campo; sair do campo
+// (onchange) confirma sem puxar o foco de volta.
+export function adicionarJargaoGiriaTexto(tabela, valor = null, focar = true) {
+    const input = document.getElementById(`${prefixoLocaisTexto(tabela)}-jargao-giria-input`);
+    const novos = String(valor ?? input?.value ?? '')
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
+    if (input) input.value = '';
+    if (!novos.length) return;
+    jargaoGiriaTexto[tabela] = normalizarJargaoGiria(jargaoGiriaTexto[tabela], novos);
+    renderizarJargaoGiriaTexto(tabela, focar);
+}
+export function removerJargaoGiriaTexto(tabela, posicao) {
+    const lista = [...jargaoGiriaTexto[tabela]];
+    lista.splice(Number(posicao), 1);
+    jargaoGiriaTexto[tabela] = lista;
+    renderizarJargaoGiriaTexto(tabela);
+}
+// Estado atual, limpo, para forms.js gravar. Um valor digitado e ainda não
+// confirmado (sem Enter nem sair do campo) entra junto, para não se perder
+// ao salvar.
+export function obterJargaoGiriaTexto(tabela) {
+    const pendente =
+        document.getElementById(`${prefixoLocaisTexto(tabela)}-jargao-giria-input`)?.value ?? '';
+    return normalizarJargaoGiria(jargaoGiriaTexto[tabela], pendente.split(','));
+}
+export function resetJargaoGiriaTexto(tabela) {
+    jargaoGiriaTexto[tabela] = [];
+    const input = document.getElementById(`${prefixoLocaisTexto(tabela)}-jargao-giria-input`);
+    if (input) input.value = '';
+    renderizarJargaoGiriaTexto(tabela);
+}
+export function carregarJargaoGiriaTexto(tabela, item) {
+    jargaoGiriaTexto[tabela] = jargaoGiriaDoItem(item);
+    const input = document.getElementById(`${prefixoLocaisTexto(tabela)}-jargao-giria-input`);
+    if (input) input.value = '';
+    renderizarJargaoGiriaTexto(tabela);
+}
+
 export function renderRegiaoPoema() {
     const container = document.getElementById('p-regiao-corpo');
     if (!container) return;
     container.innerHTML = criarGrupoRegiaoHTML('p', 'poemas');
     renderizarIdiomasTexto('poemas');
+    renderizarJargaoGiriaTexto('poemas');
 }
 export function renderRegiaoProsa() {
     const container = document.getElementById('pr-regiao-corpo');
     if (!container) return;
     container.innerHTML = criarGrupoRegiaoHTML('pr', 'prosas');
     renderizarIdiomasTexto('prosas');
+    renderizarJargaoGiriaTexto('prosas');
 }
 
 // ─── Pessoas ─────────────────────────────────────────────────
@@ -6175,6 +6350,20 @@ export function carregarInstituicoesAutor(valorStr) {
     grupoInstituicoesAutor.carregar(valorStr);
 }
 
+// Ao digitar um link, a Data de acesso vira a de hoje se ainda estiver
+// vazia (`dataAcesso`). Data já preenchida nunca é trocada, e carregar um
+// item para editar não conta (setar `.value` não dispara `input`).
+export function ligarDataAcessoAoLink(p) {
+    ['intertexto', 'hipertexto', 'refext', 'anexo', 'fonte'].forEach((nome) => {
+        const linkEl = document.getElementById(`${p}-${nome}-link`);
+        const dataEl = document.getElementById(`${p}-${nome}-data-acesso`);
+        if (!linkEl || !dataEl) return;
+        linkEl.addEventListener('input', () => {
+            if (linkEl.value.trim() && !dataEl.value) dataEl.value = hojeIso();
+        });
+    });
+}
+
 export function initEditor() {
     // Preenche o corpo de Sinalizações do Poema (ver
     // renderSinalizacoesPoema acima) antes de qualquer wiring abaixo que
@@ -6380,6 +6569,7 @@ export function initEditor() {
     document
         .getElementById('p-hipertexto-tipo')
         ?.addEventListener('input', () => atualizarDatalistHipertextualidade('poemas'));
+    ligarDataAcessoAoLink('p');
 
     // Anexos usa textarea (texto longo) — Enter quebra linha na
     // descrição normalmente; Ctrl/Cmd+Enter é quem adiciona o item
@@ -6514,4 +6704,5 @@ export function initEditorProsa() {
     document
         .getElementById('pr-hipertexto-tipo')
         ?.addEventListener('input', () => atualizarDatalistHipertextualidade('prosas'));
+    ligarDataAcessoAoLink('pr');
 }

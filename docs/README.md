@@ -131,6 +131,10 @@ npm run format:check   # prettier --check .
 │   │                          → File format of "Importar campos" (bulk-add tags,
 │   │                            themes, subjects, places, people and simple fields
 │   │                            to existing texts from a .json an AI can build)
+│   ├── intratextualidade-for-ai.md / intratextualidade-for-ai-pt-br.md
+│   │                          → Elos and Ecos (Intratextualidade): how they differ,
+│   │                            how to pick Relation, Direction and Type, and
+│   │                            how not to confuse them with neighboring fields
 │   ├── morfofuncionalidade-for-ai.md / morfofuncionalidade-for-ai-pt-br.md
 │   │                          → Fields of the Morfofuncionalidade record
 │   │                            (Units/Events, position in the text,

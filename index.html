@@ -1806,6 +1806,13 @@
                     <h2 class="text-xl font-semibold">Temas</h2>
                     <div class="flex gap-2 flex-wrap">
                         <button
+                            onclick="baixarTemasMd()"
+                            title="Baixa um .md com os temas, os assuntos de cada um e os temas sem assunto, útil para colar numa IA e pedir ajuda para organizar"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            Baixar .md
+                        </button>
+                        <button
                             onclick="excluirTemasSemTexto()"
                             title="Exclui do cadastro os temas que nenhum texto usa. Os temas em uso ficam, e nenhum texto é alterado."
                             class="border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-2 rounded hover:bg-red-50 dark:hover:bg-red-900/30"
@@ -1910,12 +1917,21 @@
             <section id="etiquetas" class="tab-content">
                 <div class="flex justify-between items-center mb-6 gap-3 flex-wrap">
                     <h2 class="text-xl font-semibold">Etiquetas (Tags)</h2>
-                    <button
-                        onclick="novaEtiqueta()"
-                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
-                    >
-                        Nova Etiqueta
-                    </button>
+                    <div class="flex gap-2 flex-wrap">
+                        <button
+                            onclick="baixarEtiquetasMd()"
+                            title="Baixa um .md com as etiquetas por categoria, a contagem de textos e o cluster de cada uma, útil para colar numa IA e pedir ajuda para triar"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            Baixar .md
+                        </button>
+                        <button
+                            onclick="novaEtiqueta()"
+                            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                        >
+                            Nova Etiqueta
+                        </button>
+                    </div>
                 </div>
                 <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
                     Etiquetas (Tags) são as marcas que você põe nos textos, por categoria: Tradição,
@@ -1995,14 +2011,14 @@
                             type="button"
                             id="btn-importar-tag-clusters"
                             data-action="importar-tag-clusters"
-                            title="Cola uma lista no formato “Cluster: etiqueta, etiqueta” e cria os clusters de uma vez, com Desfazer"
+                            title="Cola uma lista no formato “Cluster: etiqueta, etiqueta” ou “Cluster > Subcluster: etiqueta, etiqueta” e cria os clusters de uma vez, com Desfazer"
                             class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
                         >
                             Importar clusters
                         </button>
                         <button
                             onclick="baixarTagClustersMd()"
-                            title="Baixa um .md com os tag clusters, as etiquetas de cada um e as etiquetas sem cluster, útil para colar numa IA e pedir ajuda para agrupar"
+                            title="Baixa um .md com os tag clusters (subclusters aninhados), as etiquetas de cada um e as etiquetas sem cluster, útil para colar numa IA e pedir ajuda para agrupar"
                             class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
                         >
                             Baixar .md
@@ -2020,7 +2036,9 @@
                     Tradição, Estilo, Relação ou Sensibilidade). Você monta os grupos à mão; nada é
                     agrupado sozinho. Uma etiqueta fica em um tag cluster só, ou em nenhum, e
                     continua sendo etiqueta própria. O cluster não aparece nos textos: classifica a
-                    etiqueta em si. Excluir um tag cluster só solta as etiquetas.
+                    etiqueta em si. Um cluster pode ter subclusters (um nível só): use “+
+                    Subcluster” no cartão do pai. Excluir um tag cluster só solta as etiquetas, e os
+                    subclusters dele sobem para o topo.
                 </p>
                 <div class="flex flex-wrap items-center gap-3 mb-4">
                     <input
@@ -2447,6 +2465,11 @@
                                 por papel no texto (<code>idioma:</code> acha o idioma em qualquer
                                 papel). <code>dialeto:</code> busca em qualquer dos dialetos do
                                 texto.
+                            </li>
+                            <li>
+                                <code>jargao:</code> Jargão e gíria do texto (<code
+                                    >jargao:"gíria de internet"</code
+                                >), sem acento no prefixo.
                             </li>
                             <li>
                                 <code>livro:</code> <code>parte:</code> <code>secao:</code> —
@@ -2933,36 +2956,25 @@
                         />
                         📦 Abrangente
                     </label>
+                    <select
+                        id="baixar-formato-poemas"
+                        onchange="salvarFormatoSelecao('poemas', this.value)"
+                        aria-label="Formato do download"
+                        title="Formato do arquivo baixado com os textos selecionados"
+                        class="text-xs py-1.5 px-2 w-auto"
+                    >
+                        <option value="json">.json</option>
+                        <option value="csv">.csv</option>
+                        <option value="md">.md (Markdown)</option>
+                        <option value="pdf">.pdf</option>
+                        <option value="docx">.docx (Word)</option>
+                    </select>
                     <button
-                        onclick="exportarSelecaoAtualJson('poemas')"
+                        onclick="baixarSelecaoPorFormato('poemas')"
+                        title='Baixa os selecionados no formato escolhido ao lado. No .csv, uma linha por texto e uma coluna por campo (listas separadas por " | ")'
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
-                        ⬇ JSON
-                    </button>
-                    <button
-                        onclick="exportarSelecaoAtualCsv('poemas')"
-                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                        title='Uma linha por texto, uma coluna por campo (listas separadas por " | "), pronto pra virar dataset'
-                    >
-                        ⬇ CSV
-                    </button>
-                    <button
-                        onclick="exportarSelecaoAtualMarkdown('poemas')"
-                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        ⬇ MD
-                    </button>
-                    <button
-                        onclick="exportarSelecaoAtualPdf('poemas')"
-                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        ⬇ PDF
-                    </button>
-                    <button
-                        onclick="exportarSelecaoAtualDocx('poemas')"
-                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        ⬇ DOCX
+                        ⬇ Baixar
                     </button>
                     <button
                         onclick="excluirSelecao('poemas')"
@@ -3387,6 +3399,11 @@
                                 texto.
                             </li>
                             <li>
+                                <code>jargao:</code> Jargão e gíria do texto (<code
+                                    >jargao:"gíria de internet"</code
+                                >), sem acento no prefixo.
+                            </li>
+                            <li>
                                 <code>livro:</code> <code>parte:</code> <code>secao:</code> —
                                 posição na estrutura.
                             </li>
@@ -3796,36 +3813,25 @@
                         🏷️ Períodos e movimentos ▾
                     </button>
                     <span class="incluir-ocultos-slot"></span>
+                    <select
+                        id="baixar-formato-prosas"
+                        onchange="salvarFormatoSelecao('prosas', this.value)"
+                        aria-label="Formato do download"
+                        title="Formato do arquivo baixado com os textos selecionados"
+                        class="text-xs py-1.5 px-2 w-auto"
+                    >
+                        <option value="json">.json</option>
+                        <option value="csv">.csv</option>
+                        <option value="md">.md (Markdown)</option>
+                        <option value="pdf">.pdf</option>
+                        <option value="docx">.docx (Word)</option>
+                    </select>
                     <button
-                        onclick="exportarSelecaoAtualJson('prosas')"
+                        onclick="baixarSelecaoPorFormato('prosas')"
+                        title='Baixa os selecionados no formato escolhido ao lado. No .csv, uma linha por texto e uma coluna por campo (listas separadas por " | ")'
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
-                        ⬇ JSON
-                    </button>
-                    <button
-                        onclick="exportarSelecaoAtualCsv('prosas')"
-                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                        title='Uma linha por texto, uma coluna por campo (listas separadas por " | "), pronto pra virar dataset'
-                    >
-                        ⬇ CSV
-                    </button>
-                    <button
-                        onclick="exportarSelecaoAtualMarkdown('prosas')"
-                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        ⬇ MD
-                    </button>
-                    <button
-                        onclick="exportarSelecaoAtualPdf('prosas')"
-                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        ⬇ PDF
-                    </button>
-                    <button
-                        onclick="exportarSelecaoAtualDocx('prosas')"
-                        class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        ⬇ DOCX
+                        ⬇ Baixar
                     </button>
                     <button
                         onclick="excluirSelecao('prosas')"
@@ -4596,12 +4602,12 @@
                         Importar campos em textos que já existem
                     </h3>
                     <p class="text-xs text-gray-400 dark:text-slate-500">
-                        Soma etiquetas, temas, assuntos (com papel), territorialidade e pessoas (com
-                        papéis) a Poemas e Prosas que já estão no acervo, e preenche local de
-                        escrita, pendência e fonte, a partir de um .json feito à mão ou por uma IA
-                        que analisou os seus textos. Também liga Temas a Assuntos que já existem.
-                        Nenhum texto é criado e nada é apagado deles. O modal traz um modelo para
-                        baixar, mostra a prévia antes de aplicar e permite desfazer.
+                        Soma etiquetas, temas, assuntos (com papel), territorialidade, pessoas (com
+                        papéis) e jargão e gíria a Poemas e Prosas que já estão no acervo, e
+                        preenche local de escrita, pendência e fonte, a partir de um .json feito à
+                        mão ou por uma IA que analisou os seus textos. Também liga Temas a Assuntos
+                        que já existem. Nenhum texto é criado e nada é apagado deles. O modal traz
+                        um modelo para baixar, mostra a prévia antes de aplicar e permite desfazer.
                     </p>
                     <button
                         type="button"

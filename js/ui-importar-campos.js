@@ -147,6 +147,11 @@ function mudancasDoTexto(i) {
         frases.push(`+ Pessoas: ${e(pessoas)}`);
     }
     i.papeisPessoa.forEach((p) => frases.push(`Pessoa ${e(p.nome)}: + ${e(p.papeis.join(', '))}`));
+    if (i.adicionados.jargaoGiria.length) {
+        frases.push(
+            `+ Jargão e gíria: ${e(i.adicionados.jargaoGiria.map((j) => j.nome).join(', '))}`,
+        );
+    }
     i.camposSimples
         .filter((c) => c.acao === 'preenchido' || c.acao === 'substituido')
         .forEach((c) =>
@@ -257,6 +262,15 @@ function resumoEmFrase(r, aplicado) {
     if (r.resumo.vinculosLocal) {
         partes.push(plural(r.resumo.vinculosLocal, 'local somado', 'locais somados'));
     }
+    if (r.resumo.vinculosJargaoGiria) {
+        partes.push(
+            plural(
+                r.resumo.vinculosJargaoGiria,
+                'jargão ou gíria somado',
+                'jargões ou gírias somados',
+            ),
+        );
+    }
     if (r.resumo.vinculosPessoa || r.resumo.papeisPessoa) {
         partes.push(
             plural(
@@ -303,6 +317,11 @@ function relatorioHtml(r, { aplicado }) {
         ...(r.cadastroNovo.locais.length ? [`Locais: ${e(r.cadastroNovo.locais.join(', '))}`] : []),
         ...(r.cadastroNovo.pessoas.length
             ? [`Pessoas: ${e(r.cadastroNovo.pessoas.join(', '))}`]
+            : []),
+        ...(r.cadastroNovo.jargaoGiria.length
+            ? [
+                  `Jargão e gíria (termos novos, sem cadastro): ${e(r.cadastroNovo.jargaoGiria.join(', '))}`,
+              ]
             : []),
     ];
     const porTexto = r.itens

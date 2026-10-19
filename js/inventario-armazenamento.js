@@ -122,6 +122,11 @@ export const PREFIXOS_LOCALSTORAGE = Object.freeze([
         nota: 'Ações por coluna, por tabela',
     },
     {
+        prefixo: 'arquivoPoetico_formatoSelecao_',
+        categoria: 'preferencia',
+        nota: 'Formato do download da seleção (barra de edição em massa), por tabela',
+    },
+    {
         prefixo: 'arquivoPoetico_est_',
         categoria: 'preferencia',
         nota: 'Filtros, modos, ocultos e mínimos das Estatísticas',

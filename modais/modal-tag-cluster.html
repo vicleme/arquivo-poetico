@@ -78,6 +78,19 @@
                     </p>
                 </div>
                 <div>
+                    <label class="form-label" for="tc-pai">Pai (para criar um subcluster)</label>
+                    <select id="tc-pai"></select>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                        Deixe em “Nenhum” para um tag cluster de topo. Só há um nível de subcluster,
+                        na mesma categoria do pai. O nome pode repetir em pais diferentes, mas não
+                        pode ser o de um cluster de topo nem o de um irmão.
+                    </p>
+                    <p
+                        id="tc-pai-dica"
+                        class="hidden text-[10px] text-amber-600 dark:text-amber-400 mt-1"
+                    ></p>
+                </div>
+                <div>
                     <label class="form-label">Notas</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
                         Nota livre sobre este agrupamento, opcional.

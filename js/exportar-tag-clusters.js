@@ -15,6 +15,8 @@ import { ROTULOS_ETIQUETAS, contarTextosPorEtiqueta } from './etiquetas.js';
 import {
     CATEGORIAS_EM_ORDEM,
     clustersDaCategoria,
+    clustersDeTopoDaCategoria,
+    subclustersDoCluster,
     etiquetasDoCluster,
     etiquetasSemCluster,
     contarTextosPorCluster,
@@ -22,20 +24,30 @@ import {
 
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
 
-function clusterParaMarkdown(dbRef, cluster, usoEtiquetas, usoClusters) {
+// Um cluster (### se for de topo, #### se for subcluster). O pai lista as
+// etiquetas postas direto nele e, depois da nota, os subclusters aninhados:
+// quem está dentro de quem aparece pela posição e pelo nível do título.
+// A contagem do pai é a união dos textos dele e dos subclusters.
+function clusterParaMarkdown(dbRef, cluster, usoEtiquetas, usoClusters, nivel = 3) {
+    const marca = '#'.repeat(nivel);
+    const subs = nivel === 3 ? subclustersDoCluster(dbRef, cluster.id) : [];
     const etiquetas = etiquetasDoCluster(dbRef, cluster.id);
-    const linhas = etiquetas.length
-        ? etiquetas.map((e) => `- ${e.nome} (${usoEtiquetas.get(e.id) || 0})`).join('\n')
-        : '- (nenhuma etiqueta ainda)';
-    let md = `### ${cluster.nome} (${plural(usoClusters.get(cluster.id) || 0, 'texto', 'textos')})\n\n${linhas}\n`;
+    let md = `${marca} ${cluster.nome} (${plural(usoClusters.get(cluster.id) || 0, 'texto', 'textos')})\n`;
+    if (etiquetas.length) {
+        md += `\n${etiquetas.map((e) => `- ${e.nome} (${usoEtiquetas.get(e.id) || 0})`).join('\n')}\n`;
+    } else if (subs.length === 0) {
+        md += '\n- (nenhuma etiqueta ainda)\n';
+    }
     if (cluster.notas) md += `\n**Notas:** ${cluster.notas}\n`;
+    subs.forEach((sub) => {
+        md += `\n${clusterParaMarkdown(dbRef, sub, usoEtiquetas, usoClusters, 4)}`;
+    });
     return md;
 }
 
 // Devolve o .md completo. Para cada categoria que aceita cluster (em ordem
-// alfabética): os tag
-// clusters dela (em ordem alfabética), cada um com as etiquetas e a
-// contagem de textos, e depois as etiquetas dessa categoria sem cluster
+// alfabética): os tag clusters de topo dela (em ordem alfabética), cada um
+// com as etiquetas, a contagem de textos e os subclusters aninhados, e depois as etiquetas dessa categoria sem cluster
 // (mais usadas primeiro). Categoria sem nenhuma etiqueta nem cluster não
 // aparece. A contagem do cluster não soma o total de textos, porque um
 // texto tem várias etiquetas (F17-D1).
@@ -45,13 +57,14 @@ export function gerarMarkdownTagClusters(dbRef) {
     const secoes = [];
 
     CATEGORIAS_EM_ORDEM.forEach((categoria) => {
-        const clusters = clustersDaCategoria(dbRef, categoria);
+        const clusters = clustersDeTopoDaCategoria(dbRef, categoria);
+        const temCluster = clustersDaCategoria(dbRef, categoria).length > 0;
         const soltas = etiquetasSemCluster(dbRef, categoria).sort(
             (a, b) =>
                 (usoEtiquetas.get(b.id) || 0) - (usoEtiquetas.get(a.id) || 0) ||
                 a.nome.localeCompare(b.nome, 'pt-BR'),
         );
-        if (clusters.length === 0 && soltas.length === 0) return;
+        if (!temCluster && soltas.length === 0) return;
         let md = `## ${ROTULOS_ETIQUETAS[categoria]}\n\n`;
         md += clusters.length
             ? clusters

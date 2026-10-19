@@ -9,12 +9,18 @@
 //   - pessoas: lista de { pessoa, papeis } (papéis de PAPEIS_PESSOA);
 //   - pendencia: texto livre;
 //   - fonte: { origem, edicao, link, conferido, grafia } (ou só um texto, que
-//     vale como origem).
+//     vale como origem);
+//   - jargaoGiria: lista de textos livres (campo "Jargão e gíria" do grupo
+//     Idioma; sem cadastro, sem idioma associado).
 //
 // Regras (escolhas a confirmar em `manutencao/decisoes.md`):
 //   - Listas (territorialidade, pessoas) são SOMA, como etiquetas e temas:
 //     o arquivo nunca tira nada do texto. Pessoa que o texto já tem ganha só
 //     os papéis que faltam.
+//   - Jargão e gíria também é SOMA, sem diferenciar caixa nem acento (a
+//     primeira grafia fica). Não há cadastro: o texto livre vai direto para o
+//     texto. Para a pessoa pegar erro de digitação, o relatório marca como
+//     "novo" o termo que não é semente nem já está em nenhum texto do acervo.
 //   - Local e Pessoa que não existem no cadastro são criados (Local sem tipo e
 //     sem pai; Pessoa sem grupo) e listados no relatório para conferir a
 //     grafia antes de aplicar.
@@ -25,7 +31,16 @@
 //   - Papel de pessoa fora da lista, grafia desconhecida e valor de tipo errado
 //     vão para o relatório e deixam aquela entrada de fora.
 
-import { chaveTema, gerarId, PAPEIS_PESSOA, OPCOES_GRAFIA } from './utils.js';
+import {
+    chaveTema,
+    gerarId,
+    PAPEIS_PESSOA,
+    OPCOES_GRAFIA,
+    formatarDataAcesso,
+    jargaoGiriaDoItem,
+    normalizarJargaoGiria,
+    extrairJargaoGiriaUnicos,
+} from './utils.js';
 import {
     localDoTextoDigitado,
     garantirLocalPorNome,
@@ -98,6 +113,35 @@ function lerLocais(bruto, campo, problemas) {
         .filter((n) => chaveTema(n));
 }
 
+// Jargão e gíria: lista de textos livres (ou um texto só, separado por vírgula
+// ou ponto e vírgula). Item que não é texto vai para o relatório e fica de fora.
+function lerJargaoGiria(bruta, problemas) {
+    const bruto =
+        bruta.jargaoGiria ??
+        bruta.jargao_giria ??
+        bruta['jargão e gíria'] ??
+        bruta['jargao e giria'] ??
+        bruta.jargao;
+    if (bruto == null || bruto === '') return [];
+    if (typeof bruto !== 'string' && !Array.isArray(bruto)) {
+        problemas.push({ campo: 'jargaoGiria', valor: String(bruto), motivo: 'formato-invalido' });
+        return [];
+    }
+    const textos = [];
+    listaDeStrings(bruto).forEach((v) => {
+        if (typeof v === 'string') {
+            textos.push(textoLimpo(v));
+        } else if (v != null) {
+            problemas.push({
+                campo: 'jargaoGiria',
+                valor: typeof v === 'object' ? JSON.stringify(v) : String(v),
+                motivo: 'formato-invalido',
+            });
+        }
+    });
+    return normalizarJargaoGiria(textos);
+}
+
 function lerPessoas(bruto, problemas) {
     const saida = [];
     if (bruto == null) return saida;
@@ -140,13 +184,20 @@ function lerBooleano(valor) {
     return { ok: false, valor: false };
 }
 
+// ISO aaaa-mm-dd que existe no calendário (31/02 não passa).
+function dataIsoReal(iso) {
+    if (!formatarDataAcesso(iso)) return false;
+    const d = new Date(`${iso}T00:00:00Z`);
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso;
+}
+
 const GRAFIA_POR_CHAVE = new Map(
     OPCOES_GRAFIA.filter((o) => o.valor).map((o) => [chaveSolta(o.valor), o.valor]),
 );
 
 // Campos simples lidos de uma entrada: lista de { chave, valor }, com as
 // chaves de CAMPOS_PREENCHIVEIS (fonteOrigem, fonteEdicao, fonteLink,
-// fonteConferido, fonteGrafia, pendencia). Vazio é ignorado.
+// fonteDataAcesso, fonteConferido, fonteGrafia, pendencia). Vazio é ignorado.
 function lerCamposSimples(bruta, problemas) {
     const saida = [];
     const pendencia = textoLimpo(bruta.pendencia ?? bruta['pendência'] ?? '');
@@ -165,6 +216,23 @@ function lerCamposSimples(bruta, problemas) {
     if (edicao) saida.push({ chave: 'fonteEdicao', valor: edicao });
     const link = String(fonte.link ?? '').trim();
     if (link) saida.push({ chave: 'fonteLink', valor: link });
+    const dataBruta = String(
+        fonte.dataAcesso ?? fonte.data_acesso ?? fonte['data de acesso'] ?? '',
+    ).trim();
+    if (dataBruta) {
+        const br = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dataBruta);
+        const iso = br ? `${br[3]}-${br[2]}-${br[1]}` : dataBruta;
+        if (!dataIsoReal(iso)) {
+            problemas.push({
+                campo: 'fonte',
+                valor: 'dataAcesso',
+                motivo: 'valor-invalido',
+                detalhe: dataBruta,
+            });
+        } else {
+            saida.push({ chave: 'fonteDataAcesso', valor: iso });
+        }
+    }
     if (fonte.conferido !== undefined && fonte.conferido !== null) {
         const b = lerBooleano(fonte.conferido);
         if (!b.ok) {
@@ -209,12 +277,13 @@ export function lerExtrasDaEntrada(bruta, problemas) {
         territorialidade: lerLocais(bruta.territorialidade, 'territorialidade', problemas),
         localEscrita: escrita.length === 1 ? escrita[0] : null,
         pessoas: lerPessoas(bruta.pessoas, problemas),
+        jargaoGiria: lerJargaoGiria(bruta, problemas),
         simples: lerCamposSimples(bruta, problemas),
     };
 }
 
 export function extrasVazios() {
-    return { territorialidade: [], localEscrita: null, pessoas: [], simples: [] };
+    return { territorialidade: [], localEscrita: null, pessoas: [], jargaoGiria: [], simples: [] };
 }
 
 export function entradaTemExtras(entrada) {
@@ -222,6 +291,7 @@ export function entradaTemExtras(entrada) {
         entrada.territorialidade?.length ||
         entrada.localEscrita ||
         entrada.pessoas?.length ||
+        entrada.jargaoGiria?.length ||
         entrada.simples?.length
     );
 }
@@ -337,6 +407,33 @@ export function aplicarPessoas(dbRef, item, pessoas, rel) {
         vinculo.papeis = ordemDosPapeis([...atuais, ...faltam]);
         rel.papeisPessoa.push({ nome: cadastro.nome, papeis: ordemDosPapeis(faltam) });
     });
+}
+
+// Soma Jargão e gíria ao texto. Sem cadastro: o termo é texto livre. `nova`
+// marca o termo que não é semente nem já está em nenhum texto (confira a
+// grafia). O texto só ganha a chave quando entra algo, então arquivo antigo e
+// texto sem mudança ficam como estavam.
+export function aplicarJargaoGiria(dbRef, item, termos, rel) {
+    if (!termos.length) return;
+    const conhecidos = new Set(
+        extrairJargaoGiriaUnicos([...(dbRef.poemas || []), ...(dbRef.prosas || [])]).map((t) =>
+            chaveTema(t),
+        ),
+    );
+    const atuais = jargaoGiriaDoItem(item);
+    const chavesAtuais = new Set(atuais.map((t) => chaveTema(t)));
+    const somados = [];
+    termos.forEach((termo) => {
+        const chave = chaveTema(termo);
+        if (chavesAtuais.has(chave)) {
+            rel.jaTinha.jargaoGiria.push({ nome: termo });
+            return;
+        }
+        chavesAtuais.add(chave);
+        somados.push(termo);
+        rel.adicionados.jargaoGiria.push({ nome: termo, nova: !conhecidos.has(chave) });
+    });
+    if (somados.length) item.jargaoGiria = normalizarJargaoGiria(atuais, somados);
 }
 
 export function aplicarCamposSimples(item, simples, rel, { substituir = false } = {}) {

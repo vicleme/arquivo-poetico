@@ -182,6 +182,7 @@ import {
     filtrarTemasSemAssunto,
     atualizarListaSemAssunto,
     baixarAssuntosMd,
+    baixarTemasMd,
     verTextosMovimentoEscola,
     verTextosAutor,
     verAutoresMovimentoEscola,
@@ -275,6 +276,8 @@ import {
     exportarSelecaoAtualMarkdown,
     exportarSelecaoAtualPdf,
     exportarSelecaoAtualDocx,
+    baixarSelecaoPorFormato,
+    salvarFormatoSelecao,
     aplicarPessoaEmMassa,
     removerPessoaEmMassa,
     aplicarSinalEmMassa,
@@ -589,6 +592,8 @@ import {
     definirPapelIdiomaTexto,
     adicionarDialetoIdiomaTexto,
     removerDialetoIdiomaTexto,
+    adicionarJargaoGiriaTexto,
+    removerJargaoGiriaTexto,
     removerTemaTexto,
     mudarPapelTemaTexto,
     mudarPapelAssuntoTexto,
@@ -707,6 +712,7 @@ import {
 import {
     renderEtiquetas,
     novaEtiqueta,
+    baixarEtiquetasMd,
     editarEtiqueta,
     initFormEtiqueta,
     verTextosEtiqueta,
@@ -738,6 +744,7 @@ import {
     colocarEtiquetaNoCluster,
     adicionarEtiquetaAoClusterDoCartao,
     definirClusterDaEtiqueta,
+    abrirMoverEtiquetaDoCluster,
 } from './tag-clusters-aba.js';
 import {
     editarPersonagem,
@@ -950,10 +957,12 @@ const ACOES_LISTA = {
     'baixar-modelo-campos': () => baixarModeloCampos(),
     'baixar-modelo-campos-vocabulario': () => baixarModeloCampos({ comVocabulario: true }),
     'desfazer-importacao-tag-clusters': () => desfazerImportacaoTagClusters(),
+    'novo-subcluster': (el) => novoTagCluster(Number(el.dataset.id)),
     'editar-tag-cluster': (el) => editarTagCluster(Number(el.dataset.id)),
     'ver-textos-tag-cluster': (el) => verTextosTagCluster(Number(el.dataset.id)),
     'excluir-tag-cluster': (el) => excluirTagClusterComAviso(Number(el.dataset.id)),
     'tirar-etiqueta-do-cluster': (el) => tirarEtiquetaDoCluster(Number(el.dataset.id)),
+    'mover-etiqueta-cluster': (el) => abrirMoverEtiquetaDoCluster(el),
     'mesclar-duplicata-etiqueta': (el) =>
         mesclarDuplicataEtiqueta(Number(el.dataset.manter), Number(el.dataset.remover)),
     'nao-sao-iguais-etiqueta': (el) =>
@@ -1390,6 +1399,8 @@ window.removerIdiomaTexto = removerIdiomaTexto;
 window.definirPapelIdiomaTexto = definirPapelIdiomaTexto;
 window.adicionarDialetoIdiomaTexto = adicionarDialetoIdiomaTexto;
 window.removerDialetoIdiomaTexto = removerDialetoIdiomaTexto;
+window.adicionarJargaoGiriaTexto = adicionarJargaoGiriaTexto;
+window.removerJargaoGiriaTexto = removerJargaoGiriaTexto;
 window.removerTemaTexto = removerTemaTexto;
 window.mudarPapelTemaTexto = mudarPapelTemaTexto;
 window.mudarPapelAssuntoTexto = mudarPapelAssuntoTexto;
@@ -1492,6 +1503,7 @@ window.atribuirTemaDoPainel = atribuirTemaDoPainel;
 window.renderTemas = renderTemas;
 window.renderEtiquetas = renderEtiquetas;
 window.novaEtiqueta = novaEtiqueta;
+window.baixarEtiquetasMd = baixarEtiquetasMd;
 window.moverEtiquetaDoCartao = moverEtiquetaDoCartao;
 window.renderTagClusters = renderTagClusters;
 window.novoTagCluster = novoTagCluster;
@@ -1505,6 +1517,7 @@ window.renderPersonagens = renderPersonagens;
 window.novoPersonagem = novoPersonagem;
 window.novoLocal = novoLocal;
 window.baixarAssuntosMd = baixarAssuntosMd;
+window.baixarTemasMd = baixarTemasMd;
 window.excluirTemasSemTexto = excluirTemasSemTextoComConfirmacao;
 window.excluirTodosAssuntos = excluirTodosAssuntosComConfirmacao;
 window.removerTemaMovimento = removerTemaMovimento;
@@ -1757,6 +1770,8 @@ window.exportarSelecaoAtualCsv = exportarSelecaoAtualCsv;
 window.exportarSelecaoAtualMarkdown = exportarSelecaoAtualMarkdown;
 window.exportarSelecaoAtualPdf = exportarSelecaoAtualPdf;
 window.exportarSelecaoAtualDocx = exportarSelecaoAtualDocx;
+window.baixarSelecaoPorFormato = baixarSelecaoPorFormato;
+window.salvarFormatoSelecao = salvarFormatoSelecao;
 window.aoEnterAplicar = aoEnterAplicar;
 window.aplicarPessoaEmMassa = aplicarPessoaEmMassa;
 window.removerPessoaEmMassa = removerPessoaEmMassa;

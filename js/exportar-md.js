@@ -20,6 +20,7 @@ import {
     sinalizacoesCombinadas,
     sinalizacoesAgrupadas,
     textoIdiomasComPapel,
+    jargaoGiriaDoItem,
     textoAssuntosComPapel,
     agruparIntertextualidadePorTipo,
     corpoEntradaHipertextualidade,
@@ -34,6 +35,7 @@ import {
     nomePeriodoHistorico,
     periodosHistoricosIdsDoItem,
     periodosBiograficosDoItem,
+    rotuloAcessoEm,
 } from './utils.js';
 import { db } from './db.js';
 import { blocosExtrasMarkdown } from './download-abrangente.js';
@@ -391,6 +393,13 @@ export function textoGrupos(item) {
 // quanto pelo modal de Visualização (ver js/visualizar.js); a coluna
 // "Autoria" da tabela não passa por aqui (ver badgesAutoria em
 // celulas-tabela.js, que continua só com o nome exibido, sem a nota).
+
+// " (acesso em dd/mm/aaaa)" depois do link, ou '' (ver rotuloAcessoEm em utils.js).
+function acessoEm(it) {
+    const rotulo = rotuloAcessoEm(it);
+    return rotulo ? ` (${rotulo})` : '';
+}
+
 export function textoAutoria(item) {
     const pares = paresAutoria(item, db.autores);
     if (!pares.length) return null;
@@ -427,6 +436,7 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
     const caminho = [ctx.livro, ctx.parte, ctx.secao].filter(Boolean).join(' → ');
     md += linhaMeta('Localização', caminho || null);
     md += linhaMeta('Idioma', textoIdiomasComPapel(item) || null);
+    md += linhaMeta('Jargão e gíria', jargaoGiriaDoItem(item).join(', ') || null);
     md += linhaMeta('Local onde foi escrito', textoLocalEscrita(db, item) || null);
 
     if (item.status) {
@@ -566,7 +576,7 @@ function itemParaMarkdownDepoisDoTexto(item) {
         const linhaEntrada = (it) => {
             const link = it.link ? ` — [${it.linkTexto || it.link}](${it.link})` : '';
             const nota = it.nota ? ` *(${it.nota.replace(/\s*\n\s*/g, ' ')})*` : '';
-            return `${it.texto || ''}${link}${nota}`;
+            return `${it.texto || ''}${link}${acessoEm(it)}${nota}`;
         };
         agruparIntertextualidadePorTipo(item.intertextualidade).forEach(
             ({ tipo, entradas, subBullet }) => {
@@ -597,7 +607,7 @@ function itemParaMarkdownDepoisDoTexto(item) {
             const prefixo = h.tipo ? `**${h.tipo}:** ` : '';
             const link = h.link ? ` — [${h.linkTexto || h.link}](${h.link})` : '';
             const nota = h.nota ? ` *(${h.nota.replace(/\s*\n\s*/g, ' ')})*` : '';
-            md += `- ${prefixo}${corpoEntradaHipertextualidade(h)}${link}${nota}\n`;
+            md += `- ${prefixo}${corpoEntradaHipertextualidade(h)}${link}${acessoEm(h)}${nota}\n`;
         });
         md += '\n';
     }
@@ -607,7 +617,7 @@ function itemParaMarkdownDepoisDoTexto(item) {
         const linhaEntrada = (it) => {
             const link = it.link ? ` — [${it.linkTexto || it.link}](${it.link})` : '';
             const nota = it.nota ? ` *(${it.nota.replace(/\s*\n\s*/g, ' ')})*` : '';
-            return `${it.texto || ''}${link}${nota}`;
+            return `${it.texto || ''}${link}${acessoEm(it)}${nota}`;
         };
         agruparIntertextualidadePorTipo(item.referenciasExternas).forEach(
             ({ tipo, entradas, subBullet }) => {
@@ -634,8 +644,9 @@ function itemParaMarkdownDepoisDoTexto(item) {
         md += '### Anexos\n\n';
         item.anexos.forEach((a) => {
             const prefixo = a.tipo ? `**${a.tipo}:** ` : '';
-            const link = a.link ? ` — ${a.link}` : '';
-            md += `- ${prefixo}${a.texto || ''}${link}\n`;
+            const rotuloLink = a.linkTexto ? `[${a.linkTexto}](${a.link})` : a.link;
+            const link = a.link ? ` — ${rotuloLink}` : '';
+            md += `- ${prefixo}${a.texto || ''}${link}${acessoEm(a)}\n`;
         });
         md += '\n';
     }

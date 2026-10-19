@@ -10,6 +10,7 @@ import {
     resetTemasTexto,
     resetLocaisTexto,
     resetIdiomasTexto,
+    resetJargaoGiriaTexto,
     resetPessoas,
     resetAutoria,
     resetEnvios,
@@ -911,6 +912,7 @@ export async function prepararNovo(tipo) {
         resetTemasTexto('poemas');
         resetLocaisTexto('poemas');
         resetIdiomasTexto('poemas');
+        resetJargaoGiriaTexto('poemas');
         resetPersonagens('poemas');
         resetPessoas('poemas');
         resetAutoria('poemas');
@@ -957,6 +959,7 @@ export async function prepararNovo(tipo) {
         resetTemasTexto('prosas');
         resetLocaisTexto('prosas');
         resetIdiomasTexto('prosas');
+        resetJargaoGiriaTexto('prosas');
         resetPersonagens('prosas');
         resetPessoas('prosas');
         resetAutoria('prosas');

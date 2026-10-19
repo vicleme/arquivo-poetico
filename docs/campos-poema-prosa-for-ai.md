@@ -57,6 +57,10 @@ distinction right.
   `intertextualidade`, `hipertextualidade`, `referenciasExternas`) —
   dialogue with works and facts external to the archive. See
   `transtextualidade-referencias-for-ai.md`.
+- **Intratextualidade** (`conceitos.elos`, `conceitos.ecos`): links to
+  other texts in the archive itself. See `intratextualidade-for-ai.md`
+  for the Elo vs. Eco criterion and how to choose Relation, Direction,
+  and Type.
 - **Pessoas** ("People" — `pessoas`, and how it differs from `autoria`
   and `gruposDiretos`) — links to registered people and the roles they
   play in the text. See `pessoas-papeis-for-ai.md`.
@@ -88,6 +92,22 @@ distinction right.
 - **`idioma`**: derived mirror of `idiomas`, a string with only the language
   names (primary ones first, comma-separated). Do not edit it on its own;
   `idiomas` is the source of truth.
+- **`jargaoGiria`** ("jargon and slang"): list of free-text strings, set on the
+  text itself and not inside `idiomas`, because a dialect belongs to one language
+  while internet slang or corporate jargon does not. Fill it only when the text
+  speaks WITH the vocabulary of a community or medium, literally: internet slang,
+  youth slang, corporate jargon, fandom language. The app suggests four seeds
+  (`"Gíria de internet"`, `"Gíria juvenil"`, `"Jargão corporativo"`,
+  `"Linguagem de fandom"`) but never saves them on its own, and any other label is
+  fine. Test question: does the text speak WITH these words, or AS IF it were that
+  field? The second case is `Domínio Imagético` (an Etiqueta), not this field. It
+  is also not: the general formality of the language (the Registro select in
+  Sonoridade, where plain spoken marks such as "pra" or "tô" belong); citing
+  memes, streaming services or apps (that is a Tema or a Referência: talking ABOUT
+  something); or a dialect (it belongs to one language). Optional and sparse: an
+  empty list is the normal case, so leave it empty when in doubt. Repeated labels
+  (ignoring case and accents) are merged. A `.json` for "Importar campos" can fill
+  it in bulk (see `importar-campos-for-ai.md`).
 
 ## Places: where the text was written and what it cites
 
@@ -212,7 +232,8 @@ How to read them:
 ## Intratextuality — Elos (Links) and Ecos (Echoes)
 
 Links to other texts in the archive itself, by id (`conceitos.elos`,
-`conceitos.ecos`):
+`conceitos.ecos`). See `intratextualidade-for-ai.md` for how to choose
+between Elo and Eco and fill in each one:
 
 - **Elos** ("Links", bilateral): `{ id, relacao, direcao, texto }`, where
   `id` is the **target text's** id (there is no `poemaId`). `relacao`
@@ -284,9 +305,9 @@ papel }`, `papel` ("role") is a single value (not an array) from
 
 ## Text source
 
-- **`fonteTexto`**: object `{ origem, edicao, link, conferido, grafia }`
+- **`fonteTexto`**: object `{ origem, edicao, link, dataAcesso, conferido, grafia }`
   (or `null`) — where the text came from when it is not the author's own
-  work (third-party edition, transcription). `conferido` is a boolean:
+  work (third-party edition, transcription). `dataAcesso` (optional, ISO `yyyy-mm-dd`) is when `link` was accessed; it is only kept with a link and the key is absent when empty. `conferido` is a boolean:
   the text was checked against the source edition. `grafia` is `''`
   (current spelling, default), `'etimológica'` (etymological spelling —
   ph/th/y, doubled consonants — e.g. Cruz e Sousa, Augusto dos Anjos) or

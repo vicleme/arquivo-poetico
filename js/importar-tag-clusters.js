@@ -1,22 +1,31 @@
 // importar-tag-clusters.js: importa tag clusters de uma lista colada em texto.
 //
 // Lógica pura, sem DOM e sem save(): a tela (tag-clusters-aba.js) só chama.
-// Formato, uma linha por cluster:
+// Formato, uma linha por cluster ou subcluster:
 //
 //   Nome do cluster: etiqueta, etiqueta, etiqueta
+//   Cluster > Subcluster: etiqueta, etiqueta
+//
+// A linha com ">" traz o caminho completo (um nível só): o pai é criado se
+// não existir, e o subcluster entra nele. Sem ">", o nome vale como cluster
+// de topo. Repetir o mesmo nome de subcluster em pais diferentes é permitido
+// (nome único entre irmãos); o que não pode é subcluster com o nome de um
+// cluster de topo, nem pai que já é subcluster.
 //
 // A categoria vem do seletor da tela (`categoriaPadrao`) ou de um título
 // "## Tom" no próprio texto, que vale até o próximo título (mesmos nomes de
 // categoria do .md exportado). Regras:
 //   - nunca cria etiqueta: nome que não existe na categoria vai para
 //     `naoAchadas`, porque o cadastro de etiquetas nasce dos textos;
-//   - cluster que já existe na categoria (sem caixa e sem acento) é
-//     reaproveitado: as etiquetas entram nele;
+//   - cluster que já existe (sem caixa e sem acento; o de topo pelo nome, o
+//     subcluster pelo pai e pelo nome) é reaproveitado: as etiquetas entram
+//     nele;
 //   - etiqueta que já estava em outro cluster passa para o novo (uma
 //     etiqueta fica em um cluster só) e a passagem é avisada em `movidas`;
 //   - nome de etiqueta repetido em duas linhas: vale a última, e avisa;
-//   - linhas vazias são ignoradas; linha sem ":" ou sem nome de cluster
-//     vira aviso e não muda nada.
+//   - linhas vazias são ignoradas; linha sem ":", sem nome de cluster, com
+//     mais de um ">" ou que bate com uma regra de nomes vira aviso e não muda
+//     nada.
 // Devolve `desfazer`, que desfaz tudo de uma vez (clusters criados e
 // etiquetas colocadas).
 
@@ -28,6 +37,7 @@ import {
     criarCluster,
     atribuirEtiquetasAoCluster,
     clusterDaEtiqueta,
+    caminhoDoCluster,
 } from './tag-clusters.js';
 
 function categoriaDoTitulo(texto) {
@@ -52,7 +62,9 @@ function nomesDaLista(texto) {
 }
 
 // Lê o texto em linhas já separadas por categoria. Lógica de leitura
-// apenas: não toca em `db`. Cada item: { linha, categoria, cluster, nomes }.
+// apenas: não toca em `db`. Cada item: { linha, texto, categoria, cluster,
+// pai, nomes }; `cluster` é o nome da folha e `pai` é o nome do cluster de
+// topo (ou null quando a linha não tem ">").
 export function lerListaDeClusters(texto, categoriaPadrao = null) {
     const itens = [];
     const avisos = [];
@@ -78,16 +90,32 @@ export function lerListaDeClusters(texto, categoriaPadrao = null) {
                 avisos.push({ linha, motivo: 'sem-dois-pontos', texto });
                 return;
             }
-            const cluster = limparNomeEtiqueta(texto.slice(0, corte).replace(/^[-*]\s*/, ''));
-            if (!cluster) {
+            const caminho = texto
+                .slice(0, corte)
+                .replace(/^[-*]\s*/, '')
+                .split('>')
+                .map((parte) => limparNomeEtiqueta(parte));
+            if (caminho.some((nome) => !nome)) {
                 avisos.push({ linha, motivo: 'sem-nome-de-cluster', texto });
+                return;
+            }
+            if (caminho.length > 2) {
+                avisos.push({ linha, motivo: 'nivel-maximo', texto });
                 return;
             }
             if (!categoria) {
                 avisos.push({ linha, motivo: 'sem-categoria', texto });
                 return;
             }
-            itens.push({ linha, categoria, cluster, nomes: nomesDaLista(texto.slice(corte + 1)) });
+            const [primeiro, segundo] = caminho;
+            itens.push({
+                linha,
+                texto,
+                categoria,
+                cluster: segundo ?? primeiro,
+                pai: segundo ? primeiro : null,
+                nomes: nomesDaLista(texto.slice(corte + 1)),
+            });
         });
 
     return { itens, avisos };
@@ -100,15 +128,28 @@ function etiquetaDaCategoria(dbRef, categoria, nome) {
     );
 }
 
-function clusterExistente(dbRef, categoria, nome) {
+// Cluster de topo da categoria com esse nome.
+function topoExistente(dbRef, categoria, nome) {
     const chave = chaveTema(nome);
     return (dbRef.tagClusters || []).find(
-        (c) => c.categoria === categoria && chaveTema(c.nome) === chave,
+        (c) => c.categoria === categoria && c.paiId == null && chaveTema(c.nome) === chave,
+    );
+}
+
+// Subcluster com esse nome dentro de um pai; sem `paiId`, de qualquer pai.
+function subExistente(dbRef, categoria, nome, paiId = null) {
+    const chave = chaveTema(nome);
+    return (dbRef.tagClusters || []).find(
+        (c) =>
+            c.categoria === categoria &&
+            c.paiId != null &&
+            (paiId == null || c.paiId == paiId) &&
+            chaveTema(c.nome) === chave,
     );
 }
 
 // Aplica a lista. Devolve:
-//   { ok, criados, reaproveitados, etiquetasColocadas, movidas,
+//   { ok, criados, subclustersCriados, reaproveitados, etiquetasColocadas, movidas,
 //     naoAchadas: [{ cluster, nome, categoria }],
 //     repetidas: [{ nome, categoria, de, para }],
 //     avisos: [{ linha, motivo, texto }], desfazer }
@@ -118,6 +159,7 @@ export function importarTagClusters(dbRef, texto, categoriaPadrao = null) {
     const resultado = {
         ok: itens.length > 0,
         criados: 0,
+        subclustersCriados: 0,
         reaproveitados: 0,
         etiquetasColocadas: 0,
         movidas: [],
@@ -132,43 +174,84 @@ export function importarTagClusters(dbRef, texto, categoriaPadrao = null) {
     // Última linha que pediu cada etiqueta (para avisar de repetição).
     const pedidaEm = new Map();
 
-    itens.forEach(({ categoria, cluster: nome, nomes }) => {
-        let cluster = clusterExistente(dbRef, categoria, nome);
-        if (cluster) {
-            resultado.reaproveitados++;
-        } else {
-            const r = criarCluster(dbRef, nome, categoria);
-            if (!r.ok) return;
-            cluster = r.cluster;
+    // Cria o cluster pedido (topo ou subcluster) e conta; devolve null e põe um
+    // aviso quando a regra de nomes impede.
+    function resolverCluster({ linha, texto, categoria, cluster: nome, pai: nomePai }) {
+        const avisar = (motivo) => {
+            resultado.avisos.push({ linha, motivo, texto });
+            return null;
+        };
+        const criar = (nomeNovo, paiId = null) => {
+            const r = criarCluster(dbRef, nomeNovo, categoria, paiId);
+            if (!r.ok) return null;
             desfazeres.push(r.desfazer);
             resultado.criados++;
+            if (paiId != null) resultado.subclustersCriados++;
+            return r.cluster;
+        };
+
+        if (!nomePai) {
+            const topo = topoExistente(dbRef, categoria, nome);
+            if (topo) {
+                resultado.reaproveitados++;
+                return topo;
+            }
+            // Só existe subcluster com esse nome: o nome sozinho é ambíguo.
+            if (subExistente(dbRef, categoria, nome)) return avisar('nome-e-subcluster');
+            return criar(nome);
         }
+
+        let pai = topoExistente(dbRef, categoria, nomePai);
+        if (!pai) {
+            if (subExistente(dbRef, categoria, nomePai)) return avisar('pai-e-subcluster');
+            pai = criar(nomePai);
+            if (!pai) return null;
+        }
+        const sub = subExistente(dbRef, categoria, nome, pai.id);
+        if (sub) {
+            resultado.reaproveitados++;
+            return sub;
+        }
+        // Subcluster não pode ter o nome de um cluster de topo da categoria.
+        if (topoExistente(dbRef, categoria, nome)) return avisar('subcluster-nome-de-topo');
+        return criar(nome, pai.id);
+    }
+
+    itens.forEach((item) => {
+        const { categoria, nomes } = item;
+        const cluster = resolverCluster(item);
+        if (!cluster) return;
+        const caminho = caminhoDoCluster(dbRef, cluster);
 
         const ids = [];
         nomes.forEach((n) => {
             const e = etiquetaDaCategoria(dbRef, categoria, n);
             if (!e) {
-                resultado.naoAchadas.push({ cluster: cluster.nome, nome: n, categoria });
+                resultado.naoAchadas.push({ cluster: caminho, nome: n, categoria });
                 return;
             }
             const chave = `${categoria}:${e.id}`;
             const jaPedida = pedidaEm.get(chave);
-            if (jaPedida && jaPedida !== cluster.nome) {
+            if (jaPedida && jaPedida.id != cluster.id) {
                 resultado.repetidas.push({
                     nome: e.nome,
                     categoria,
-                    de: jaPedida,
-                    para: cluster.nome,
+                    de: jaPedida.caminho,
+                    para: caminho,
                 });
             } else if (!jaPedida) {
                 // Só conta como "movida" a que já estava em outro cluster
                 // antes da importação (a repetida entra em `repetidas`).
                 const antes = clusterDaEtiqueta(dbRef, e);
                 if (antes && antes.id != cluster.id) {
-                    resultado.movidas.push({ nome: e.nome, de: antes.nome, para: cluster.nome });
+                    resultado.movidas.push({
+                        nome: e.nome,
+                        de: caminhoDoCluster(dbRef, antes),
+                        para: caminho,
+                    });
                 }
             }
-            pedidaEm.set(chave, cluster.nome);
+            pedidaEm.set(chave, { id: cluster.id, caminho });
             ids.push(e.id);
         });
 

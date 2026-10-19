@@ -103,6 +103,24 @@ describe('modal Importar campos (DOM real via happy-dom)', () => {
         assert.deepEqual(db.poemas[0].temas, []);
     });
 
+    it('Jargão e gíria: a prévia mostra a soma e marca o termo novo; Aplicar grava e Desfazer volta', async () => {
+        colar({
+            textos: [{ id: 1, jargaoGiria: ['Gíria juvenil', 'Giria de balada'] }],
+        });
+        conferir();
+        const t = textoDoRelatorio();
+        assert.match(t, /2 jargões ou gírias somados/);
+        assert.match(t, /Jargão e gíria \(termos novos, sem cadastro\): Giria de balada/);
+        assert.match(t, /\+ Jargão e gíria: Gíria juvenil, Giria de balada/);
+        assert.equal(db.poemas[0].jargaoGiria, undefined);
+        assert.equal($('icp-aplicar').disabled, false);
+
+        await aplicarImportacaoCampos();
+        assert.deepEqual(db.poemas[0].jargaoGiria, ['Gíria juvenil', 'Giria de balada']);
+        desfazerImportacaoCampos();
+        assert.equal(db.poemas[0].jargaoGiria, undefined);
+    });
+
     it('editar o texto depois de conferir desliga o Aplicar', () => {
         colar(ARQUIVO);
         conferir();

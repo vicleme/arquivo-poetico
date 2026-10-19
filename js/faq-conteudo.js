@@ -81,13 +81,19 @@ export const CATEGORIAS_FAQ = [
                 id: 'faq-tag-clusters',
                 pergunta: 'O que são Tag clusters (agrupamentos de etiquetas)?',
                 resposta:
-                    'São grupos de etiquetas que você monta à mão, na aba Tag clusters, para ler as Estatísticas por grupo em vez de por etiqueta. Um cluster pertence a uma categoria (Domínio Imagético, Tom, Tradição, Estilo, Relação ou Sensibilidade) e só aceita etiquetas dela. Uma etiqueta fica em um cluster só, ou em nenhum, e continua sendo etiqueta própria. O cluster não aparece nos modais nem é gravado nos textos: classifica a etiqueta em si. Por isso excluir um cluster só solta as etiquetas e nenhum texto muda.',
+                    'São grupos de etiquetas que você monta à mão, na aba Tag clusters, para ler as Estatísticas por grupo em vez de por etiqueta. Um cluster pertence a uma categoria (Domínio Imagético, Tom, Tradição, Estilo, Relação ou Sensibilidade) e só aceita etiquetas dela. Uma etiqueta fica em um cluster só, ou em nenhum, e continua sendo etiqueta própria. O cluster não aparece nos modais nem é gravado nos textos: classifica a etiqueta em si. Por isso excluir um cluster só solta as etiquetas e nenhum texto muda. Um cluster pode ter subclusters (um nível só): veja a pergunta sobre subclusters.',
+            },
+            {
+                id: 'faq-tag-clusters-subclusters',
+                pergunta: 'O que é um subcluster e como mover uma etiqueta para dentro dele?',
+                resposta:
+                    'Um subcluster é um grupo dentro de um cluster, na mesma categoria, para dar dois níveis de detalhe (por exemplo, o cluster “Tipografia e diagramação” com os subclusters “Arranjo no espaço da página” e “Marcas de edição”). Só existe um nível: um subcluster não tem subcluster. A etiqueta fica em um lugar só, o mais específico, e pertence ao cluster pai por consequência. Ela também pode ficar direto no pai, sem subcluster. O cluster pai conta os textos dele e dos subclusters sem somar: um texto vale uma vez. Para criar, use “+ Subcluster” no cartão do pai. Para mover uma etiqueta de um lugar para outro, clique no botão ⇄ ao lado dela e escolha o destino (“Pai” ou “Pai > Sub”, ou “Sem cluster”); em tela grande também dá para arrastar o chip até o cartão. Excluir o pai não apaga os subclusters: eles sobem para o topo. O nome pode se repetir em pais diferentes, mas não pode repetir o de um cluster de topo nem o de um irmão.',
             },
             {
                 id: 'faq-tag-clusters-importar',
                 pergunta: 'Como importar vários tag clusters de uma vez?',
                 resposta:
-                    'Na aba Tag clusters, clique em Importar clusters, escolha a categoria e cole uma linha por cluster, no formato “Cluster: etiqueta, etiqueta”. Um título como “## Tom” troca a categoria dali em diante. O app cria os clusters e põe as etiquetas, reaproveita o cluster que já existe e não cria etiqueta nova: o que não existir na categoria aparece no relatório. Tudo tem Desfazer.',
+                    'Na aba Tag clusters, clique em Importar clusters, escolha a categoria e cole uma linha por cluster, no formato “Cluster: etiqueta, etiqueta”. Para um subcluster, escreva o caminho: “Cluster > Subcluster: etiqueta, etiqueta” (um nível só; o pai é criado se não existir). Um título como “## Tom” troca a categoria dali em diante. O app cria os clusters e põe as etiquetas, reaproveita o cluster ou subcluster que já existe e não cria etiqueta nova: o que não existir na categoria aparece no relatório. Tudo tem Desfazer.',
             },
             {
                 id: 'faq-importar-campos',
@@ -100,13 +106,13 @@ export const CATEGORIAS_FAQ = [
                 id: 'faq-importar-campos-regras',
                 pergunta: 'O que a importação de campos faz com o que o texto já tem?',
                 resposta:
-                    'Nunca tira nada. Listas (etiquetas, temas, territorialidade, pessoas) são somadas, e só o papel de um tema, de um assunto ou de uma pessoa é atualizado quando o arquivo traz outro. Campos de valor único (local de escrita, pendência e fonte) só preenchem o que está vazio, a menos que você ligue “Substituir campos simples” no modal. Etiqueta, tema, local e pessoa que não existem são criados e listados na prévia, para você pegar erro de digitação. Assunto nunca é criado.',
+                    'Nunca tira nada. Listas (etiquetas, temas, territorialidade, pessoas, jargão e gíria) são somadas, e só o papel de um tema, de um assunto ou de uma pessoa é atualizado quando o arquivo traz outro. Campos de valor único (local de escrita, pendência e fonte) só preenchem o que está vazio, a menos que você ligue “Substituir campos simples” no modal. Etiqueta, tema, local e pessoa que não existem são criados e listados na prévia, para você pegar erro de digitação. Jargão e gíria não tem cadastro: o termo novo entra como está escrito e a prévia o marca como novo. Assunto nunca é criado.',
             },
             {
                 id: 'faq-tag-clusters-contagem',
                 pergunta: 'Por que a soma dos textos dos tag clusters passa do total de textos?',
                 resposta:
-                    'Porque um texto tem várias etiquetas, e elas podem estar em clusters diferentes. O texto conta uma vez em cada cluster que tem alguma etiqueta dele, mas só uma vez por cluster, mesmo que use duas etiquetas do mesmo grupo.',
+                    'Porque um texto tem várias etiquetas, e elas podem estar em clusters diferentes. O texto conta uma vez em cada cluster que tem alguma etiqueta dele, mas só uma vez por cluster, mesmo que use duas etiquetas do mesmo grupo. No cluster pai, vale a união dos textos dele e dos subclusters, também sem somar.',
             },
         ],
     },

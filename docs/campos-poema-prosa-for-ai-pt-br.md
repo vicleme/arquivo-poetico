@@ -56,6 +56,9 @@ essa distinção.
 - **Transtextualidade e Referências** (`intertextualidade`,
   `hipertextualidade`, `referenciasExternas`) — diálogo com obras e fatos
   externos ao acervo. Ver `transtextualidade-referencias-for-ai.md`.
+- **Intratextualidade** (`conceitos.elos`, `conceitos.ecos`) — vínculos com
+  outros textos do próprio acervo. Ver `intratextualidade-for-ai-pt-br.md`
+  para o critério de Elo contra Eco e a escolha de Relação, Direção e Tipo.
 - **Pessoas** (`pessoas`, e como isso se diferencia de `autoria` e
   `gruposDiretos`) — vínculo com pessoas cadastradas e os papéis que elas
   exercem no texto. Ver `pessoas-papeis-for-ai.md`.
@@ -86,6 +89,22 @@ essa distinção.
 - **`idioma`**: espelho derivado de `idiomas`, uma string só com os nomes
   (Principais primeiro, separados por vírgula). Não se edita sozinho; a
   fonte da verdade é `idiomas`.
+- **`jargaoGiria`**: lista de textos livres, no nível do texto e não dentro de
+  `idiomas`, porque dialeto pertence a uma língua e gíria de internet ou jargão
+  corporativo não. Só se preenche quando o texto fala COM o vocabulário de uma
+  comunidade ou meio, de forma literal: gíria de internet, gíria juvenil, jargão
+  corporativo, linguagem de fandom. O app sugere quatro sementes (`"Gíria de
+internet"`, `"Gíria juvenil"`, `"Jargão corporativo"`, `"Linguagem de fandom"`),
+  mas nunca grava nenhuma sozinho, e qualquer outro rótulo vale. Pergunta-teste: o
+  texto fala COM essas palavras ou fala COMO SE fosse esse campo do saber? No
+  segundo caso é `Domínio Imagético` (uma Etiqueta), não este campo. Também não é
+  este campo: a formalidade geral da língua (o select Registro, em Sonoridade, onde
+  ficam marcas de oralidade comum como "pra" e "tô"); citar memes, streamings ou
+  aplicativos (isso é Tema ou Referência: falar DE algo); nem dialeto (pertence a
+  uma língua). Opcional e esparso: lista vazia é o caso normal, então na dúvida
+  deixe vazio. Rótulos repetidos (sem diferenciar caixa nem acento) são juntados. Um
+  `.json` da "Importar campos" pode preenchê-lo em lote (ver
+  `importar-campos-for-ai-pt-br.md`).
 
 ## Lugares: onde o texto foi escrito e o que ele cita
 
@@ -197,7 +216,8 @@ Como ler:
 ## Intratextualidade — Elos e Ecos
 
 Vínculos com outros textos do próprio acervo, por id (`conceitos.elos`,
-`conceitos.ecos`):
+`conceitos.ecos`). Ver `intratextualidade-for-ai-pt-br.md` para escolher
+entre Elo e Eco e preencher cada um:
 
 - **Elos** (bilateral): `{ id, relacao, direcao, texto }`, em que `id` é o
   do **texto-alvo** (não existe `poemaId`). `relacao` vem de uma lista
@@ -260,9 +280,9 @@ Três campos parecidos, detalhados em `pessoas-papeis-for-ai.md`:
 
 ## Fonte do texto
 
-- **`fonteTexto`**: objeto `{ origem, edicao, link, conferido, grafia }`
+- **`fonteTexto`**: objeto `{ origem, edicao, link, dataAcesso, conferido, grafia }`
   (ou `null`) — de onde veio o texto quando não é obra própria (edição de
-  terceiros, transcrição). `conferido` é booleano: o texto foi comparado
+  terceiros, transcrição). `dataAcesso` (opcional, ISO `aaaa-mm-dd`) é quando o `link` foi acessado; só fica com link e a chave não existe quando vazia. `conferido` é booleano: o texto foi comparado
   com a edição de origem. `grafia` é `''` (atual, padrão), `'etimológica'`
   (ph/th/y/dobradas — ex.: Cruz e Sousa, Augusto dos Anjos) ou
   `'quinhentista'` (português do séc. XVI — ex.: Camões) — existe pra a

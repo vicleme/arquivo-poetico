@@ -256,12 +256,13 @@ describe('moverColuna', () => {
         // ordem de fábrica (início): estrutura, dataEscrita, dataPublicacao, status, e depois as demais na ordem de definição (idioma, localEscrita, territorialidade, epocaRetratada...)
         moverColuna('poemas', 'notas', 'up');
         const estado = JSON.parse(localStorage.getItem(LS_PREFIX + 'poemas'));
-        assert.deepEqual(estado.ordem.slice(0, 24), [
+        assert.deepEqual(estado.ordem.slice(0, 25), [
             'estrutura',
             'dataEscrita',
             'dataPublicacao',
             'status',
             'idioma',
+            'jargaoGiria',
             'localEscrita',
             'territorialidade',
             'epocaRetratada',

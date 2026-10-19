@@ -20,7 +20,8 @@ the archive** — works, public figures, historical facts. Links to
 **other poems within the archive itself** (rewrite, translation,
 continuation, diptych, echo...) live in a separate group,
 "Intratextualidade (elos e ecos)" ("Intratextuality — links and echoes"),
-and are not the subject of this document.
+and are not the subject of this document (see
+`intratextualidade-for-ai.md`).
 
 ---
 
@@ -45,6 +46,7 @@ Structure of each entry:
 - **`texto`** (text): the reference itself (the work's name, the quoted
   passage, etc.).
 - **`link`/`linkTexto`/`nota`**: optional, supplementary.
+- **`dataAcesso`**: optional date the `link` was last accessed, ISO `"yyyy-mm-dd"` (shown as "acesso em dd/mm/yyyy", the ABNT "Acesso em"). Only meaningful with a `link`: without one it is dropped. The key is absent when empty. Same field in Hipertextualidade, Attachments and the text's source (`fonteTexto.dataAcesso`).
 
 **What defines Intertextuality**: the text's dialogue with something
 external to the archive, pointing to an **identifiable, nameable** work

@@ -42,6 +42,7 @@ export const DEFINICAO_COLUNAS = {
     poemas: [
         // Campo simples logo abaixo de Título/Sequência no modal.
         { key: 'idioma', label: 'Idioma', default: false, sortType: 'alfabetico' },
+        { key: 'jargaoGiria', label: 'Jargão e gíria', default: false, sortType: 'alfabetico' },
         {
             key: 'localEscrita',
             label: 'Local de escrita',
@@ -307,6 +308,7 @@ export const DEFINICAO_COLUNAS = {
     ],
     prosas: [
         { key: 'idioma', label: 'Idioma', default: false, sortType: 'alfabetico' },
+        { key: 'jargaoGiria', label: 'Jargão e gíria', default: false, sortType: 'alfabetico' },
         {
             key: 'localEscrita',
             label: 'Local de escrita',

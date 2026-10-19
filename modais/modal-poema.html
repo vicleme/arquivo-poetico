@@ -897,17 +897,28 @@
                                     +
                                 </button>
                             </div>
-                            <div class="flex gap-2 mb-2">
+                            <div class="flex items-end gap-2 mb-2">
                                 <input
                                     type="url"
                                     id="p-intertexto-link"
-                                    class="text-sm flex-1"
+                                    class="text-sm flex-1 min-w-0"
                                     placeholder="Link (opcional)"
                                 />
+                                <label
+                                    class="flex flex-col gap-0.5 flex-shrink-0 text-[10px] text-gray-400 dark:text-slate-500"
+                                    >Data de acesso
+                                    <input
+                                        type="date"
+                                        id="p-intertexto-data-acesso"
+                                        class="text-sm w-36"
+                                    />
+                                </label>
+                            </div>
+                            <div class="flex gap-2 mb-2">
                                 <input
                                     type="text"
                                     id="p-intertexto-link-texto"
-                                    class="text-sm flex-1"
+                                    class="text-sm w-full"
                                     placeholder="Texto do link (opcional)"
                                 />
                             </div>
@@ -974,17 +985,28 @@
                                     +
                                 </button>
                             </div>
-                            <div class="flex gap-2 mb-2">
+                            <div class="flex items-end gap-2 mb-2">
                                 <input
                                     type="url"
                                     id="p-hipertexto-link"
-                                    class="text-sm flex-1"
+                                    class="text-sm flex-1 min-w-0"
                                     placeholder="Link (opcional)"
                                 />
+                                <label
+                                    class="flex flex-col gap-0.5 flex-shrink-0 text-[10px] text-gray-400 dark:text-slate-500"
+                                    >Data de acesso
+                                    <input
+                                        type="date"
+                                        id="p-hipertexto-data-acesso"
+                                        class="text-sm w-36"
+                                    />
+                                </label>
+                            </div>
+                            <div class="flex gap-2 mb-2">
                                 <input
                                     type="text"
                                     id="p-hipertexto-link-texto"
-                                    class="text-sm flex-1"
+                                    class="text-sm w-full"
                                     placeholder="Texto do link (opcional)"
                                 />
                             </div>
@@ -1028,7 +1050,7 @@
                                 <button
                                     type="button"
                                     id="p-refext-btn-cancelar"
-                                    onclick="cancelarEdicaoReferenciaExterna()"
+                                    onclick="cancelarEdicaoReferenciaExterna('poemas')"
                                     class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
                                 >
                                     Cancelar
@@ -1042,17 +1064,28 @@
                                     +
                                 </button>
                             </div>
-                            <div class="flex gap-2 mb-2">
+                            <div class="flex items-end gap-2 mb-2">
                                 <input
                                     type="url"
                                     id="p-refext-link"
-                                    class="text-sm flex-1"
+                                    class="text-sm flex-1 min-w-0"
                                     placeholder="Link (opcional)"
                                 />
+                                <label
+                                    class="flex flex-col gap-0.5 flex-shrink-0 text-[10px] text-gray-400 dark:text-slate-500"
+                                    >Data de acesso
+                                    <input
+                                        type="date"
+                                        id="p-refext-data-acesso"
+                                        class="text-sm w-36"
+                                    />
+                                </label>
+                            </div>
+                            <div class="flex gap-2 mb-2">
                                 <input
                                     type="text"
                                     id="p-refext-link-texto"
-                                    class="text-sm flex-1"
+                                    class="text-sm w-full"
                                     placeholder="Texto do link (opcional)"
                                 />
                             </div>
@@ -1080,8 +1113,8 @@
                                     vários, de tipos diferentes)</span
                                 ></label
                             >
-                            <div class="flex gap-2 mb-2">
-                                <select id="p-anexo-tipo" class="text-xs w-36 flex-shrink-0">
+                            <div class="flex items-end gap-2 mb-2">
+                                <select id="p-anexo-tipo" class="text-xs flex-1 min-w-0">
                                     <option value="">Tipo...</option>
                                     <option value="Ilustração">Ilustração</option>
                                     <option value="Foto">Foto</option>
@@ -1092,11 +1125,30 @@
                                     </option>
                                     <option value="Outro">Outro</option>
                                 </select>
+                                <label
+                                    class="flex flex-col gap-0.5 flex-shrink-0 text-[10px] text-gray-400 dark:text-slate-500"
+                                    >Data de acesso
+                                    <input
+                                        type="date"
+                                        id="p-anexo-data-acesso"
+                                        class="text-sm w-32"
+                                    />
+                                </label>
+                            </div>
+                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="url"
+                                    id="p-anexo-link"
+                                    class="text-sm w-full"
+                                    placeholder="Link (obrigatório para vídeo)"
+                                />
+                            </div>
+                            <div class="flex gap-2 mb-2">
                                 <input
                                     type="text"
-                                    id="p-anexo-link"
-                                    class="text-sm flex-1"
-                                    placeholder="Link (obrigatório para vídeo)"
+                                    id="p-anexo-link-texto"
+                                    class="text-sm w-full"
+                                    placeholder="Texto do link (opcional)"
                                 />
                             </div>
                             <div class="flex flex-col gap-2 mb-2">
@@ -1116,7 +1168,7 @@
                                 <button
                                     type="button"
                                     id="p-anexo-btn-cancelar"
-                                    onclick="cancelarEdicaoAnexo()"
+                                    onclick="cancelarEdicaoAnexo('poemas')"
                                     class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs self-end px-1"
                                 >
                                     Cancelar edição
@@ -1573,8 +1625,16 @@
                             />
                             <datalist id="sugestoes-fonte-edicao"></datalist>
 
-                            <label class="form-label">Link</label>
-                            <input type="url" id="p-fonte-link" placeholder="https://..." />
+                            <div class="flex items-end gap-2">
+                                <div class="flex-1 min-w-0">
+                                    <label class="form-label">Link</label>
+                                    <input type="url" id="p-fonte-link" placeholder="https://..." />
+                                </div>
+                                <div class="flex-shrink-0">
+                                    <label class="form-label">Data de acesso</label>
+                                    <input type="date" id="p-fonte-data-acesso" class="w-36" />
+                                </div>
+                            </div>
 
                             <label class="form-label"
                                 >Grafia

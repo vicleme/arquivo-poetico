@@ -13,6 +13,8 @@
 
 import {
     normalizarGrafia,
+    dataAcessoDoLink,
+    formatarDataAcesso,
     ASSINATURAS_AUTORIA,
     TIPOS_NOME_LITERARIO,
     SEXOS_AUTOR,
@@ -210,6 +212,10 @@ export function montarItem(id, texto, meta, tipo) {
             origem: (sobre.fonte ?? meta.fonte) || '',
             edicao: (sobre.edicao ?? meta.edicao) || '',
             link: (sobre.link ?? meta.link) || '',
+            ...dataAcessoDoPacote(
+                (sobre.link ?? meta.link) || '',
+                sobre.dataAcesso ?? meta.dataAcesso,
+            ),
             conferido: Boolean(sobre.conferido ?? meta.conferido),
             // Normaliza texto livre ("original", "atualizada"...) pro enum
             // de fonteTexto.grafia — zero digitação extra no pacote além do
@@ -232,6 +238,17 @@ export function montarItem(id, texto, meta, tipo) {
 // pra um erro de digitação não virar dado errado no cadastro) e
 // `nomesLiterarios` ([{ nome, tipo }], tipo ∈ TIPOS_NOME_LITERARIO). Vazio
 // significa "não documentado" e nunca é preenchido por dedução.
+// `dataAcesso` do pacote (ISO aaaa-mm-dd), só com link. Data preenchida mas
+// inválida é recusada: perder a data em silêncio apagaria o "acesso em".
+function dataAcessoDoPacote(link, dataAcesso) {
+    const d = String(dataAcesso ?? '').trim();
+    if (d && !formatarDataAcesso(d)) {
+        throw new Error(`dataAcesso inválida: "${d}" (use aaaa-mm-dd, ex.: 2026-10-18).`);
+    }
+    const valida = dataAcessoDoLink(link, d);
+    return valida ? { dataAcesso: valida } : {};
+}
+
 function conferirCamposDoAutor(autor) {
     if (autor.sexo && !SEXOS_AUTOR.includes(autor.sexo)) {
         throw new Error(
@@ -294,6 +311,7 @@ export function cabecalhoPacote(meta) {
             fonte: meta.fonte || '',
             edicao: meta.edicao || '',
             link: meta.link || '',
+            ...dataAcessoDoPacote(meta.link, meta.dataAcesso),
             ortografia: meta.ortografia || '',
             conferido: Boolean(meta.conferido),
         },
@@ -360,6 +378,10 @@ export function montarItemDeSelecao(id, item, meta) {
             origem: primeiroTexto(sobre.fonte, daFonte.origem, meta.fonte),
             edicao: primeiroTexto(sobre.edicao, daFonte.edicao, meta.edicao),
             link: primeiroTexto(sobre.link, daFonte.link, meta.link),
+            ...dataAcessoDoPacote(
+                primeiroTexto(sobre.link, daFonte.link, meta.link),
+                primeiroTexto(sobre.dataAcesso, daFonte.dataAcesso, meta.dataAcesso),
+            ),
             conferido: Boolean(sobre.conferido ?? daFonte.conferido ?? meta.conferido),
             grafia: normalizarGrafia(primeiroTexto(sobre.grafia, daFonte.grafia, meta.ortografia)),
         },
@@ -460,6 +482,7 @@ export function montarPayloadDeTexto(campos) {
         fonte: String(campos.fonte ?? '').trim(),
         edicao: String(campos.edicao ?? '').trim(),
         link: String(campos.link ?? '').trim(),
+        dataAcesso: String(campos.dataAcesso ?? '').trim(),
         ortografia: String(campos.ortografia ?? '').trim(),
         conferido: Boolean(campos.conferido),
     };

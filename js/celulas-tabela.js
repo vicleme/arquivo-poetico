@@ -49,6 +49,7 @@ import {
     assuntosComPapel,
     ROTULOS_PAPEL_TEMA_CURTO,
     rotuloSelecaoEmLote,
+    htmlAcessoEm,
 } from './utils.js';
 import { opcoesOcultasDosPeriodos } from './ocultas-periodos.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
@@ -395,7 +396,8 @@ export function celulaFonte(item) {
         ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(origem)}</a>`
         : escapeHtml(origem);
     const complemento = edicao ? ` <span class="opacity-70">(${escapeHtml(edicao)})</span>` : '';
-    return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${nome}${complemento}</td>`;
+    const acesso = htmlAcessoEm(item.fonteTexto, 'opacity-70');
+    return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${nome}${complemento}${acesso}</td>`;
 }
 
 // Coluna "Grafia" (mesmo grupo Fonte, `item.fonteTexto.grafia` —
@@ -720,6 +722,7 @@ const COLUNA_CAMPO_BUSCA = {
     poemas: {
         titulo: 'titulo',
         idioma: 'idioma',
+        jargaoGiria: '_buscaJargaoGiria',
         movimentosEscolas: '_buscaMovimentosEscolas',
         divisoesCorrentes: '_buscaMovimentosEscolasDireto',
         posturaEstetica: '_buscaPosturas',
@@ -775,6 +778,7 @@ const COLUNA_CAMPO_BUSCA = {
     prosas: {
         titulo: 'titulo',
         idioma: 'idioma',
+        jargaoGiria: '_buscaJargaoGiria',
         movimentosEscolas: '_buscaMovimentosEscolas',
         divisoesCorrentes: '_buscaMovimentosEscolasDireto',
         posturaEstetica: '_buscaPosturas',

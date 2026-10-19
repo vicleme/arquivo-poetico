@@ -17,6 +17,7 @@ import {
     abrirModalConfirmacao,
 } from './utils.js';
 import { garantirModal } from './modais.js';
+import { baixarEtiquetasMarkdown } from './exportar-etiquetas.js';
 import { toggleModal } from './ui.js';
 import {
     ICONE_EDITAR,
@@ -40,7 +41,12 @@ import {
     sugerirEtiquetasDuplicadas,
     marcarEtiquetasNaoIguais,
 } from './etiquetas.js';
-import { categoriaAceitaCluster, clusterDaEtiqueta, clustersDaCategoria } from './tag-clusters.js';
+import {
+    caminhoDoCluster,
+    categoriaAceitaCluster,
+    clusterDaEtiqueta,
+    clustersEmArvoreDaCategoria,
+} from './tag-clusters.js';
 
 // Prefixo da busca por categoria (ver CAMPOS_ATRIBUTO em utils.js). O
 // Domínio Imagético usa o prefixo curto "imagetico".
@@ -139,13 +145,13 @@ function seletorDeCluster(e) {
     if (!categoriaAceitaCluster(e.categoria)) return { badge: '', seletor: '' };
     const atual = clusterDaEtiqueta(db, e);
     const badge = atual
-        ? `<span class="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded" title="Tag cluster desta etiqueta">${escapeHtml(atual.nome)}</span>`
+        ? `<span class="text-[10px] bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.5 rounded" title="Tag cluster desta etiqueta">${escapeHtml(caminhoDoCluster(db, atual))}</span>`
         : '';
-    const clusters = clustersDaCategoria(db, e.categoria);
+    const clusters = clustersEmArvoreDaCategoria(db, e.categoria);
     const opcoes = clusters
         .map(
             (c) =>
-                `<option value="${c.id}"${atual && atual.id == c.id ? ' selected' : ''}>${escapeHtml(c.nome)}</option>`,
+                `<option value="${c.id}"${atual && atual.id == c.id ? ' selected' : ''}>${escapeHtml(caminhoDoCluster(db, c))}</option>`,
         )
         .join('');
     const dica =
@@ -263,6 +269,11 @@ function opcoesCategoria(select, selecionada) {
         (c) =>
             `<option value="${c}"${c === selecionada ? ' selected' : ''}>${escapeHtml(ROTULOS_ETIQUETAS[c])}</option>`,
     ).join('');
+}
+
+// Botão "Baixar .md" da aba: o cadastro inteiro, para colar numa IA.
+export function baixarEtiquetasMd() {
+    baixarEtiquetasMarkdown(db);
 }
 
 export async function novaEtiqueta() {

@@ -33,7 +33,18 @@ export const FORMATOS_BAIXAR = [
     { key: 'pdf', label: '.pdf' },
     { key: 'docx', label: '.docx (Word)' },
     { key: 'json', label: '.json' },
+    // .csv só existe onde há uma linha por texto (Poemas e Prosas); ver
+    // TABELAS_COM_CSV_BAIXAR.
+    { key: 'csv', label: '.csv' },
 ];
+
+const TABELAS_COM_CSV_BAIXAR = ['poemas', 'prosas'];
+
+function formatosDaTabela(tabela) {
+    return FORMATOS_BAIXAR.filter(
+        (f) => f.key !== 'csv' || TABELAS_COM_CSV_BAIXAR.includes(tabela),
+    );
+}
 
 const CHAVES_ACOES = DEFINICAO_ACOES.map((a) => a.key);
 const CHAVES_FORMATO = FORMATOS_BAIXAR.map((f) => f.key);
@@ -129,7 +140,7 @@ export function toggleAcaoColuna(tabela, key, ativo) {
 }
 
 export function setFormatoBaixarColuna(tabela, formato) {
-    if (!CHAVES_FORMATO.includes(formato)) return;
+    if (!formatosDaTabela(tabela).some((f) => f.key === formato)) return;
 
     const estado = lerEstado(tabela);
     estado.formato = formato;
@@ -174,14 +185,15 @@ export function renderSeletorAcoes(tabela) {
                 <p class="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500 mb-1">
                     Formato do Baixar
                 </p>
-                <div class="flex flex-wrap gap-x-4">${FORMATOS_BAIXAR.map(
-                    (f) => `
-        <label class="flex items-center gap-2 py-0.5 px-1 text-xs cursor-pointer whitespace-nowrap">
-            <input type="radio" name="formato-baixar-${tabela}" ${formato === f.key ? 'checked' : ''}
-                onchange="setFormatoBaixarColuna('${tabela}', '${f.key}')">
-            ${f.label}
-        </label>`,
-                ).join('')}</div>
+                <select class="text-xs py-1 px-2" aria-label="Formato do Baixar"
+                    onchange="setFormatoBaixarColuna('${tabela}', this.value)">${formatosDaTabela(
+                        tabela,
+                    )
+                        .map(
+                            (f) =>
+                                `<option value="${f.key}" ${formato === f.key ? 'selected' : ''}>${f.label}</option>`,
+                        )
+                        .join('')}</select>
             </div>`
             : '';
 

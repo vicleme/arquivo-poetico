@@ -38,6 +38,7 @@ import {
     estaPublicado,
     sinalizacoesAgrupadas,
     textoIdiomasComPapel,
+    jargaoGiriaDoItem,
     textoAssuntosComPapel,
     agruparIntertextualidadePorTipo,
     corpoEntradaHipertextualidade,
@@ -47,6 +48,7 @@ import {
     formatarAutoclassificacaoTexto,
     autoclassificacaoValida,
     linhasFonteTexto,
+    htmlAcessoEm,
 } from './utils.js';
 import { textoLocalEscrita, textoTerritorialidadeComCaminho } from './locais.js';
 
@@ -139,7 +141,7 @@ function listaIntertextualidadeHtml(titulo, itens) {
             ? ` — <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
             : '';
         const nota = it.nota ? ` <em>(${escapeHtml(it.nota)})</em>` : '';
-        return `${escapeHtml(it.texto || '')}${link}${nota}`;
+        return `${escapeHtml(it.texto || '')}${link}${htmlAcessoEm(it)}${nota}`;
     };
     const linhasGrupo = grupos
         .map(({ tipo, entradas, subBullet }) => {
@@ -172,6 +174,7 @@ export function renderVisualizacaoHtml(item) {
     const caminho = [ctx.livro, ctx.parte, ctx.secao].filter(Boolean).join(' → ');
     html += linhaMetaHtml('Localização', caminho || null);
     html += linhaMetaHtml('Idioma', textoIdiomasComPapel(item) || null);
+    html += linhaMetaHtml('Jargão e gíria', jargaoGiriaDoItem(item).join(', ') || null);
     html += linhaMetaHtml('Local onde foi escrito', textoLocalEscrita(db, item) || null);
 
     if (item.status) {
@@ -278,14 +281,16 @@ export function renderVisualizacaoHtml(item) {
             ? ` — <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(h.linkTexto || h.link)}</a>`
             : '';
         const nota = h.nota ? ` <em>(${escapeHtml(h.nota)})</em>` : '';
-        return `${prefixo}${escapeHtml(corpoEntradaHipertextualidade(h))}${link}${nota}`;
+        return `${prefixo}${escapeHtml(corpoEntradaHipertextualidade(h))}${link}${htmlAcessoEm(h)}${nota}`;
     });
     html += listaIntertextualidadeHtml('Referências', item.referenciasExternas);
 
     html += listaHtml('Anexos', item.anexos, (a) => {
         const prefixo = a.tipo ? `<strong>${escapeHtml(a.tipo)}:</strong> ` : '';
-        const link = a.link ? ` — ${escapeHtml(a.link)}` : '';
-        return `${prefixo}${escapeHtml(a.texto || '')}${link}`;
+        const link = a.link
+            ? ` — <a href="${escapeHtml(a.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(a.linkTexto || a.link)}</a>`
+            : '';
+        return `${prefixo}${escapeHtml(a.texto || '')}${link}${htmlAcessoEm(a)}`;
     });
     html += blocoTextoHtml('Nota sobre o conjunto de anexos', item.anexosNotaGeral);
 

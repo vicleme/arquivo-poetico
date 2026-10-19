@@ -85,4 +85,43 @@ describe('gerarMarkdownTagClusters', () => {
         );
         assert.deepEqual(titulos, ['Domínio Imagético', 'Estilo', 'Relação', 'Tom']);
     });
+
+    it('aninha os subclusters sob o pai (### e ####) e conta a união dos textos', () => {
+        const { dbRef, saude } = montar();
+        const astro = dbRef.etiquetas.find((e) => e.nome === 'Astrologia');
+        const sub = criarCluster(dbRef, 'Céu', 'dominioImagetico', saude.id).cluster;
+        atribuirEtiquetasAoCluster(dbRef, [astro.id], sub.id);
+        sub.notas = 'o que se olha de longe';
+        const md = gerarMarkdownTagClusters(dbRef);
+        assert.match(
+            md,
+            /### Saúde \(3 textos\)\n\n- Medicina \(2\)\n- Oftalmologia \(1\)\n\n#### Céu \(1 texto\)\n\n- Astrologia \(1\)\n\n\*\*Notas:\*\* o que se olha de longe/,
+        );
+        assert.ok(!/^### Céu/m.test(md));
+        assert.ok(!md.includes('### Etiquetas sem cluster\n\n- Astrologia'));
+    });
+
+    it('pai só com subclusters não mostra o marcador de vazio, e subcluster vazio mostra', () => {
+        const { dbRef } = montar();
+        const pai = criarCluster(dbRef, 'Tons', 'tom').cluster;
+        criarCluster(dbRef, 'Claros', 'tom', pai.id);
+        const md = gerarMarkdownTagClusters(dbRef);
+        assert.match(
+            md,
+            /### Tons \(0 textos\)\n\n#### Claros \(0 textos\)\n\n- \(nenhuma etiqueta ainda\)/,
+        );
+    });
+
+    it('subcluster com o mesmo nome em dois pais sai sob cada pai', () => {
+        const { dbRef } = montar();
+        const a = criarCluster(dbRef, 'A', 'tom').cluster;
+        const b = criarCluster(dbRef, 'B', 'tom').cluster;
+        criarCluster(dbRef, 'Outros', 'tom', a.id);
+        criarCluster(dbRef, 'Outros', 'tom', b.id);
+        const md = gerarMarkdownTagClusters(dbRef);
+        assert.match(
+            md,
+            /### A \(0 textos\)\n\n#### Outros[\s\S]*### B \(0 textos\)\n\n#### Outros/,
+        );
+    });
 });

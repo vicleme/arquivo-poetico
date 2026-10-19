@@ -720,7 +720,7 @@ function nomeArquivoSeguro(texto) {
 
 // ─── Download individual (botão "Baixar" da coluna Ações e modal de
 // Visualização) ────────────────────────────────────────────────────
-// `formato` é 'md' | 'pdf' | 'json' — na coluna Ações vem da configuração
+// `formato` é 'md' | 'pdf' | 'docx' | 'json' | 'csv' — na coluna Ações vem da configuração
 // salva por tabela (ver getFormatoBaixar em acoes-coluna.js); no modal
 // de Visualização, do botão que a pessoa clicou (os três ficam sempre
 // visíveis ali, ver visualizar.js). Reaproveita itensDaSelecao (mesmo
@@ -752,6 +752,17 @@ export async function exportarItem(tipo, id, formato) {
         }, 100);
         const aviso = avisoDadosPessoaisOmitidos(itens);
         if (aviso) mostrarAviso(aviso);
+        return;
+    }
+
+    if (formato === 'csv') {
+        const colecao = tipo === 'prosa' ? db.prosas : db.poemas;
+        const item = colecao.find((x) => x.id === id);
+        if (!item) {
+            mostrarAviso('Item não encontrado.');
+            return;
+        }
+        baixarCsv(gerarCsvTextos(tipo, [montarRegistro(tipo, item)], db), `${nomeBase}.csv`);
         return;
     }
 

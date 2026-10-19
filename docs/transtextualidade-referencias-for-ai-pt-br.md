@@ -17,7 +17,8 @@ Importante: este grupo é sempre sobre o texto e o **mundo fora do
 acervo** — obras, pessoas públicas, fatos históricos. Vínculos com
 **outros poemas do próprio acervo** (reescrita, tradução, continuação,
 díptico, eco...) ficam num grupo separado, "Intratextualidade (elos e
-ecos)", e não são o assunto deste documento.
+ecos)", e não são o assunto deste documento (ver
+`intratextualidade-for-ai-pt-br.md`).
 
 ---
 
@@ -41,6 +42,7 @@ Estrutura de cada entrada:
   referenciado, não uma lista fechada.
 - **`texto`**: a referência em si (nome da obra, trecho citado, etc.).
 - **`link`/`linkTexto`/`nota`**: opcionais, complementares.
+- **`dataAcesso`**: data opcional em que o `link` foi acessado, em ISO `"aaaa-mm-dd"` (aparece como "acesso em dd/mm/aaaa", o "Acesso em:" da ABNT). Só faz sentido com `link`: sem ele é descartada. A chave não existe quando vazia. Mesmo campo em Hipertextualidade, Anexos e na Fonte do texto (`fonteTexto.dataAcesso`).
 
 **O que caracteriza Intertextualidade**: diálogo do texto com algo
 externo ao arquivo, apontando para uma obra ou autoria **identificável e

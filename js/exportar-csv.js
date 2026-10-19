@@ -53,6 +53,9 @@ import {
     nomesTemasPorPapel,
     nomesIdiomasPorPapel,
     dialetosDoItem,
+    jargaoGiriaDoItem,
+    formatarDataAcesso,
+    dataAcessoDoLink,
 } from './utils.js';
 import { territorialidadeDoTexto, caminhoCompletoLocal, caminhoDoLocal } from './locais.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
@@ -175,13 +178,16 @@ function comNota(base, nota) {
 }
 
 // "Tipo: texto [link] (nota)". O rótulo de exibição do link
-// (`linkTexto`) é cosmético e não entra: a URL basta.
-function entradaExterna({ tipo, texto, link, nota }) {
+// (`linkTexto`) é cosmético e não entra: a URL basta. Com `dataAcesso` válida
+// o colchete vira "[link, acesso aaaa-mm-dd]" (ISO, que serve a dataset); sem
+// link a data não entra.
+function entradaExterna({ tipo, texto, link, dataAcesso, nota }) {
     const base = [tipo, texto]
         .map((v) => (v || '').trim())
         .filter(Boolean)
         .join(': ');
-    return comNota(link ? `${base} [${link}]` : base, nota);
+    const acesso = formatarDataAcesso(dataAcesso) ? `, acesso ${String(dataAcesso).trim()}` : '';
+    return comNota(link ? `${base} [${link}${acesso}]` : base, nota);
 }
 
 // ─── Análise do texto ───────────────────────────────────────────
@@ -287,6 +293,10 @@ export function colunasTexto(tipo) {
             juntar(nomesIdiomasPorPapel(r, 'secundario')),
         ),
         coluna('dialetos', ['idiomas'], (r) => juntar(dialetosDoItem(r))),
+        // Jargão e gíria: lista de textos livres no nível do texto (fora de
+        // `idiomas`). Entra em `dados` por espalhamento, então o teste-guarda de
+        // consistência não o enxerga: tests/jargao-giria-saidas.test.js cobra a coluna.
+        coluna('jargao_giria', ['jargaoGiria'], (r) => juntar(jargaoGiriaDoItem(r))),
         // Local onde foi escrito (um só), com o caminho completo do mais alto
         // até ele ("Brasil › São Paulo › Lapa").
         coluna('local_escrita', ['localEscrita'], (r, ctx) => localEscritaNome(ctx.banco, r)),
@@ -592,6 +602,7 @@ export function colunasTexto(tipo) {
                         tipo: h.tipo,
                         texto: h.relacao ? `${h.hipotexto || ''} (${h.relacao})` : h.hipotexto,
                         link: h.link,
+                        dataAcesso: h.dataAcesso,
                         nota: h.nota,
                     }),
                 ),
@@ -684,6 +695,9 @@ export function colunasTexto(tipo) {
         coluna('fonte_origem', ['fonteTexto'], (r) => r.fonteTexto?.origem || ''),
         coluna('fonte_edicao', [], (r) => r.fonteTexto?.edicao || ''),
         coluna('fonte_link', [], (r) => r.fonteTexto?.link || ''),
+        coluna('fonte_data_acesso', [], (r) =>
+            dataAcessoDoLink(r.fonteTexto?.link, r.fonteTexto?.dataAcesso),
+        ),
         coluna('fonte_conferido', [], (r) => vazioSeNulo(r.fonteTexto?.conferido)),
         coluna('fonte_grafia', [], (r) => r.fonteTexto?.grafia || ''),
     ];

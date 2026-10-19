@@ -18,6 +18,7 @@ import {
     chaveTema,
     idiomasDoItem,
     espelhoDeIdiomas,
+    jargaoGiriaDoItem,
     normalizarPosturaEstetica,
     normalizarProgramaMovimento,
     POSTURAS_ESTETICAS_RENOMEADAS,
@@ -1874,6 +1875,18 @@ export function migrarIdioma(itens) {
 migrarIdioma(db.poemas);
 migrarIdioma(db.prosas);
 
+// Jargão e gíria (18/10/2026): `jargaoGiria` é uma lista de textos livres no
+// nível do texto (ver utils.js). Todo texto passa a ter a lista (vazia quando
+// ninguém preencheu) e quem já a tem é normalizado (sem vazios, sem repetidos).
+// Idempotente; backup antigo, sem o campo, abre como lista vazia.
+export function migrarJargaoGiria(itens) {
+    (itens || []).forEach((item) => {
+        item.jargaoGiria = jargaoGiriaDoItem(item);
+    });
+}
+migrarJargaoGiria(db.poemas);
+migrarJargaoGiria(db.prosas);
+
 // Migração: `ano` legado → `dataEscrita`. Antes de `dataEscrita` existir, o
 // ano de escrita morava só em `item.ano`; hoje `ano` é uma cópia derivada de
 // `dataEscrita.ano` (ver forms.js), mas os textos antigos ficaram com `ano`
@@ -3121,6 +3134,8 @@ export async function importarDB(novoDb) {
     migrarPessoasParaCadastro(db);
     migrarIdioma(db.poemas);
     migrarIdioma(db.prosas);
+    migrarJargaoGiria(db.poemas);
+    migrarJargaoGiria(db.prosas);
     migrarAutoria(db);
     // migrarReconhecimentos tinha ficado de fora daqui (só rodava no
     // load do módulo) — mesmo padrão de risco de "arquivo/chamada que

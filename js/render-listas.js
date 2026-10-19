@@ -22,6 +22,7 @@ import {
     NIVEL_MAXIMO_GRUPO,
 } from './db.js';
 import { baixarAssuntosMarkdown } from './exportar-assuntos.js';
+import { baixarTemasMarkdown } from './exportar-temas.js';
 import {
     nomesPersonagens,
     nomesPersonagensPorCentralidade,
@@ -132,6 +133,7 @@ import {
     nomesIdiomasPorPapel,
     textoIdiomasComPapel,
     dialetosDoItem,
+    jargaoGiriaDoItem,
     htmlSeloSituacaoEditorial,
     livroForaDeCirculacao,
     rotuloSituacaoEditorial,
@@ -139,6 +141,7 @@ import {
     ehEvento,
     periodosBiograficosDoItem,
     escaparAspasBusca,
+    htmlAcessoEm,
 } from './utils.js';
 import {
     FILTRO_PERIODO_HISTORICO_SEM_VALOR,
@@ -1631,6 +1634,7 @@ export function decorarCamposBusca(item, extraLivros = '') {
         _buscaIdiomaPrincipal: nomesIdiomasPorPapel(item, 'principal').join(', '),
         _buscaIdiomaSecundario: nomesIdiomasPorPapel(item, 'secundario').join(', '),
         _buscaDialeto: dialetosDoItem(item).join(', '),
+        _buscaJargaoGiria: jargaoGiriaDoItem(item).join(', '),
         _buscaTemaPrincipal: nomesTemasPorPapel(item, db.temas, 'principal').join(', '),
         _buscaTemaSecundario: nomesTemasPorPapel(item, db.temas, 'secundario').join(', '),
         _buscaTemaSemPapel: nomesTemasPorPapel(item, db.temas, '').join(', '),
@@ -2109,6 +2113,13 @@ function celulaIdioma(item) {
     return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${escapeHtml(texto)}</td>`;
 }
 
+// Célula da coluna Jargão e gíria: os textos livres do campo, separados por
+// vírgula (o mesmo texto do .md); vazio mostra o traço.
+function celulaJargaoGiria(item) {
+    const texto = jargaoGiriaDoItem(item).join(', ');
+    return `<td class="p-4 text-xs ${texto ? 'text-gray-500 dark:text-slate-400' : 'text-gray-300 dark:text-slate-600'}">${texto ? escapeHtml(texto) : '—'}</td>`;
+}
+
 // Célula da coluna Local onde foi escrito: nome e, em cinza, o caminho até a
 // raiz (o mesmo texto do .md).
 function celulaLocalEscrita(item) {
@@ -2244,6 +2255,7 @@ function celulaTerritorialidade(item) {
 const COMPARADORES_ORDENACAO = {
     titulo: compararPorTexto((p) => p.titulo),
     idioma: compararPorTexto((p) => p.idioma),
+    jargaoGiria: compararPorTexto((p) => jargaoGiriaDoItem(p).join(', ')),
     localEscrita: compararPorTexto((p) => textoLocalEscrita(db, p)),
     movimentosEscolas: compararPorTexto((p) =>
         idsDeCorrentesDeTopo(db.movimentosEscolas, p.movimentosEscolasIds)
@@ -2779,6 +2791,7 @@ export function renderPoemas() {
 
     const CELULAS_POEMAS = {
         idioma: (p) => celulaIdioma(p),
+        jargaoGiria: (p) => celulaJargaoGiria(p),
         localEscrita: (p) => celulaLocalEscrita(p),
         posturaEstetica: (p) => celulaPosturaDaCorrente(p),
         programa: (p) => celulaProgramaDaCorrente(p),
@@ -2871,10 +2884,10 @@ export function renderPoemas() {
                         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
                         : '';
                     const link = it.link
-                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.link)}</a>`
+                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.linkTexto || it.link)}</a>`
                         : '';
                     const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
-                    return `<div>${badge}${trechoNota(it.texto)}${link}${nota}</div>`;
+                    return `<div>${badge}${trechoNota(it.texto)}${link}${htmlAcessoEm(it, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
                 })
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
@@ -2889,10 +2902,10 @@ export function renderPoemas() {
                         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(h.tipo)}</span>`
                         : '';
                     const link = h.link
-                        ? ` <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(h.link)}</a>`
+                        ? ` <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(h.linkTexto || h.link)}</a>`
                         : '';
                     const nota = h.nota ? ` — ${trechoNota(h.nota)}` : '';
-                    return `<div>${badge}${trechoNota(corpoEntradaHipertextualidade(h))}${link}${nota}</div>`;
+                    return `<div>${badge}${trechoNota(corpoEntradaHipertextualidade(h))}${link}${htmlAcessoEm(h, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
                 })
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
@@ -2907,10 +2920,10 @@ export function renderPoemas() {
                         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
                         : '';
                     const link = it.link
-                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.link)}</a>`
+                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.linkTexto || it.link)}</a>`
                         : '';
                     const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
-                    return `<div>${badge}${trechoNota(it.texto)}${link}${nota}</div>`;
+                    return `<div>${badge}${trechoNota(it.texto)}${link}${htmlAcessoEm(it, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
                 })
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
@@ -3133,6 +3146,7 @@ export function renderProsas() {
 
     const CELULAS_PROSAS = {
         idioma: (pr) => celulaIdioma(pr),
+        jargaoGiria: (pr) => celulaJargaoGiria(pr),
         localEscrita: (pr) => celulaLocalEscrita(pr),
         posturaEstetica: (pr) => celulaPosturaDaCorrente(pr),
         programa: (pr) => celulaProgramaDaCorrente(pr),
@@ -3232,10 +3246,10 @@ export function renderProsas() {
                         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
                         : '';
                     const link = it.link
-                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.link)}</a>`
+                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.linkTexto || it.link)}</a>`
                         : '';
                     const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
-                    return `<div>${badge}${trechoNota(it.texto)}${link}${nota}</div>`;
+                    return `<div>${badge}${trechoNota(it.texto)}${link}${htmlAcessoEm(it, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
                 })
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
@@ -3250,10 +3264,10 @@ export function renderProsas() {
                         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(h.tipo)}</span>`
                         : '';
                     const link = h.link
-                        ? ` <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(h.link)}</a>`
+                        ? ` <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(h.linkTexto || h.link)}</a>`
                         : '';
                     const nota = h.nota ? ` — ${trechoNota(h.nota)}` : '';
-                    return `<div>${badge}${trechoNota(corpoEntradaHipertextualidade(h))}${link}${nota}</div>`;
+                    return `<div>${badge}${trechoNota(corpoEntradaHipertextualidade(h))}${link}${htmlAcessoEm(h, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
                 })
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
@@ -3268,10 +3282,10 @@ export function renderProsas() {
                         ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
                         : '';
                     const link = it.link
-                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.link)}</a>`
+                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.linkTexto || it.link)}</a>`
                         : '';
                     const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
-                    return `<div>${badge}${trechoNota(it.texto)}${link}${nota}</div>`;
+                    return `<div>${badge}${trechoNota(it.texto)}${link}${htmlAcessoEm(it, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
                 })
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
@@ -5994,6 +6008,12 @@ export function verTextosAssunto(id) {
 // exportar-assuntos.js). Sem seleção — a lista costuma ser pequena.
 export function baixarAssuntosMd() {
     baixarAssuntosMarkdown(db.assuntos, [...db.poemas, ...(db.prosas || [])], db.temas);
+}
+
+// Botão "Baixar .md" da aba Temas: o cadastro inteiro (com os Assuntos de
+// cada Tema e os temas sem assunto), para colar numa IA. Ver exportar-temas.js.
+export function baixarTemasMd() {
+    baixarTemasMarkdown(db);
 }
 
 function badgeTemaAssunto(nome, contagem) {

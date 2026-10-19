@@ -1852,7 +1852,7 @@ export function rotuloDominioPublico(sit) {
 }
 
 // Grupo "Fonte" de um Poema/Prosa (`item.fonteTexto`:
-// { origem, edicao, link, conferido, grafia }) + a situação de domínio
+// { origem, edicao, link, dataAcesso, conferido, grafia }) + a situação de domínio
 // público de cada Autor vinculado que tenha óbito cadastrado. Devolve
 // pares { rotulo, valor } prontos pra visualização e exportação — lista
 // vazia quando não há nada a mostrar (texto próprio sem Fonte preenchida:
@@ -1863,7 +1863,13 @@ export function linhasFonteTexto(item, autoresCadastro = [], anoAtual = new Date
     if (f) {
         if ((f.origem || '').trim()) linhas.push({ rotulo: 'Fonte', valor: f.origem.trim() });
         if ((f.edicao || '').trim()) linhas.push({ rotulo: 'Edição', valor: f.edicao.trim() });
-        if ((f.link || '').trim()) linhas.push({ rotulo: 'Link da fonte', valor: f.link.trim() });
+        if ((f.link || '').trim()) {
+            const acesso = rotuloAcessoEm(f);
+            linhas.push({
+                rotulo: 'Link da fonte',
+                valor: acesso ? `${f.link.trim()} (${acesso})` : f.link.trim(),
+            });
+        }
         // Vazio = nunca definido, não mostra linha. Qualquer valor real
         // (inclusive GRAFIA_ATUAL, "Atual" escolhido de propósito) mostra
         // o rótulo de OPCOES_GRAFIA, não o valor cru do enum.
@@ -2414,6 +2420,42 @@ export function duracaoDoIntervalo(inicio, fim) {
             return `${n} ${n === 1 ? singular : plural}`;
         })
         .join(' e ');
+}
+
+// Data de acesso de um link (`dataAcesso`): guardada em ISO ("aaaa-mm-dd", o
+// formato do <input type="date">) e mostrada como "dd/mm/aaaa". Valor que não
+// seja uma data ISO completa vira '' (nunca se mostra lixo).
+export function hojeIso(agora = new Date()) {
+    const mm = String(agora.getMonth() + 1).padStart(2, '0');
+    const dd = String(agora.getDate()).padStart(2, '0');
+    return `${agora.getFullYear()}-${mm}-${dd}`;
+}
+
+export function formatarDataAcesso(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? '').trim());
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+
+// Data de acesso a gravar: a ISO válida quando há link, senão ''. É a regra de
+// todo lugar que grava `dataAcesso` (sem link a data não descreve nada).
+export function dataAcessoDoLink(link, dataAcesso) {
+    const d = String(dataAcesso ?? '').trim();
+    return String(link ?? '').trim() && formatarDataAcesso(d) ? d : '';
+}
+
+// "acesso em dd/mm/aaaa" de uma entrada com link (`link` + `dataAcesso`), ou ''
+// quando não há link ou a data não é válida: a data descreve o acesso àquela
+// página, então sem link ela não aparece em lugar nenhum.
+export function rotuloAcessoEm(it) {
+    if (!it?.link) return '';
+    const data = formatarDataAcesso(it.dataAcesso);
+    return data ? `acesso em ${data}` : '';
+}
+
+// Mesmo rótulo como HTML pequeno e discreto, para Visualização e tabelas.
+export function htmlAcessoEm(it, classe = 'text-gray-500 dark:text-slate-400') {
+    const rotulo = rotuloAcessoEm(it);
+    return rotulo ? ` <span class="${classe}">(${rotulo})</span>` : '';
 }
 
 // A data de hoje ({ ano, mes, dia }) num fuso horário (nome IANA, como
@@ -3080,6 +3122,9 @@ const CAMPOS_ATRIBUTO = {
     idiomaprincipal: '_buscaIdiomaPrincipal',
     idiomasecundario: '_buscaIdiomaSecundario',
     dialeto: '_buscaDialeto',
+    // Jargão e gíria (lista de textos livres no nível do texto, fora de
+    // `idiomas[]`): `jargao:"gíria de internet"` (sem acento no prefixo).
+    jargao: '_buscaJargaoGiria',
     // Datas de escrita e de publicação (texto formatado — ver
     // decorarCamposBusca): `dataescrita:*` / `-dataescrita:*` separam quem
     // tem e quem não tem a data; `dataescrita:2020` acha pelo texto da data.
@@ -3224,6 +3269,7 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaIdiomaPrincipal: 'idiomaprincipal',
     _buscaIdiomaSecundario: 'idiomasecundario',
     _buscaDialeto: 'dialeto',
+    _buscaJargaoGiria: 'jargao',
     _buscaDataEscrita: 'dataescrita',
     _buscaDataPublicacao: 'datapublicacao',
     _buscaEpoca: 'epoca',
@@ -4413,6 +4459,46 @@ export function extrairDialetosUnicos(itens, idioma) {
         });
     });
     return Array.from(dialetos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+// ─── Jargão e gíria do texto ───────────────────────────────────────────
+// Campo opcional do grupo Idioma (18/10/2026): `jargaoGiria` é uma lista de
+// textos livres no NÍVEL DO TEXTO, não dentro de `idiomas[]` como os dialetos.
+// Dialeto pertence a uma língua (o carioca é do pt-BR); gíria de internet ou
+// jargão corporativo não: "cringe" é palavra inglesa dentro de um texto em
+// pt-BR, e num texto bilíngue o valor teria de ser repetido por idioma.
+// Registra quando o texto FALA COM o vocabulário de uma comunidade ou meio, de
+// forma literal; não quando só fala DE memes ou de tecnologia (isso é Tema ou
+// Referência), nem quando usa um campo do saber como metáfora (Domínio
+// Imagético). A formalidade geral da língua (culto, coloquial) é outro eixo e
+// mora no select Registro da Sonoridade. Sem idioma associado e sem ordem
+// obrigatória; as sementes só aparecem como sugestão, nunca são gravadas sozinhas.
+export const JARGAO_GIRIA_SEMENTES = [
+    'Gíria de internet',
+    'Gíria juvenil',
+    'Jargão corporativo',
+    'Linguagem de fandom',
+];
+
+// Limpa a lista: tira vazios e junta repetidos (sem diferenciar caixa nem
+// acento), mantendo a primeira grafia e a ordem. A regra é a mesma dos
+// dialetos (lista de textos livres), por isso reaproveita a função.
+export function normalizarJargaoGiria(...fontes) {
+    return normalizarDialetos(...fontes);
+}
+
+// Jargão e gíria de um texto como lista normalizada (texto sem o campo,
+// backup antigo e pacote de texto leem como lista vazia).
+export function jargaoGiriaDoItem(item) {
+    return normalizarJargaoGiria(item?.jargaoGiria);
+}
+
+// Sugestões do campo: as sementes mais o que já está salvo no acervo (sem
+// repetir, sem diferenciar caixa nem acento), em ordem alfabética.
+export function extrairJargaoGiriaUnicos(itens) {
+    const todos = [...JARGAO_GIRIA_SEMENTES];
+    (itens || []).forEach((item) => todos.push(...jargaoGiriaDoItem(item)));
+    return normalizarJargaoGiria(todos).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
 // ─── Fonte do texto ────────────────────────────────────────────

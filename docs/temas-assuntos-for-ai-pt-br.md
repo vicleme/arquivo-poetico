@@ -68,7 +68,7 @@ Orientação padrão. A pessoa pode calibrar, normalmente com uma amostra de tex
 ## Duas tarefas diferentes
 
 1. **Classificar textos** (preencher Temas e Assuntos de textos que já existem): entregar o `.json` de "Importar campos", com os nomes do vocabulário.
-2. **Organizar Temas soltos** (agrupar em Assuntos os Temas que ainda não pertencem a nenhum): a aba Assuntos tem o botão **Baixar .md**, que exporta cada Assunto com seus Temas (e a contagem de textos de cada um) e a seção "Temas sem assunto". Com esse arquivo, a resposta útil é um `.json` só com `ligacoes` (e `textos` vazio), que a importação lê e mostra na prévia. Um Tema que não cabe em nenhum Assunto existente fica de fora, listado à parte.
+2. **Organizar Temas soltos** (agrupar em Assuntos os Temas que ainda não pertencem a nenhum): a aba Assuntos tem o botão **Baixar .md**, que exporta cada Assunto com seus Temas (e a contagem de textos de cada um) e a seção "Temas sem assunto". A aba Temas tem o seu próprio **Baixar .md**, com cada Tema, a contagem de textos, os Assuntos a que pertence e a nota, separados em "Temas com assunto" e "Temas sem assunto". Com esse arquivo, a resposta útil é um `.json` só com `ligacoes` (e `textos` vazio), que a importação lê e mostra na prévia. Um Tema que não cabe em nenhum Assunto existente fica de fora, listado à parte.
 
 Em qualquer das duas, nada é gravado sem a pessoa ver a prévia, e a importação tira um snapshot de segurança e permite desfazer.
 

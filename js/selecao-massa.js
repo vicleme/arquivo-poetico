@@ -327,6 +327,7 @@ export function atualizarBarraSelecao(tabela) {
     const barra = document.getElementById(`barra-acoes-${tabela}`);
     const contador = document.getElementById(`contador-selecao-${tabela}`);
     if (!barra) return;
+    restaurarFormatoSelecao(tabela);
     if (c.selecao.size > 0) {
         barra.classList.remove('hidden');
         ligarCamposDaBarra(tabela);
@@ -726,6 +727,55 @@ export function exportarSelecaoAtualDocx(tabela) {
     exportarSelecaoDocx(c.singular, [...c.selecao]);
 }
 
+// Baixa a seleção no formato escolhido no select da barra (json, csv, md,
+// pdf ou docx), chamando as funções acima.
+const BAIXAR_POR_FORMATO = {
+    json: exportarSelecaoAtualJson,
+    csv: exportarSelecaoAtualCsv,
+    md: exportarSelecaoAtualMarkdown,
+    pdf: exportarSelecaoAtualPdf,
+    docx: exportarSelecaoAtualDocx,
+};
+export function baixarSelecaoPorFormato(tabela) {
+    const sel = document.getElementById(`baixar-formato-${tabela}`);
+    const baixar = BAIXAR_POR_FORMATO[sel?.value];
+    if (baixar) baixar(tabela);
+}
+
+// A escolha do select fica salva por tabela no localStorage (uma chave por
+// aba, como em acoes-coluna.js), separada do "Formato do Baixar" da coluna
+// Ações: aquela vale para o Baixar de cada linha, esta para a seleção.
+const LS_FORMATO_SELECAO = 'arquivoPoetico_formatoSelecao_';
+const FORMATO_SELECAO_PADRAO = 'json';
+
+export function getFormatoSelecao(tabela) {
+    try {
+        const salvo = localStorage.getItem(LS_FORMATO_SELECAO + tabela);
+        if (salvo && Object.hasOwn(BAIXAR_POR_FORMATO, salvo)) return salvo;
+    } catch {
+        // localStorage indisponível: cai no padrão
+    }
+    return FORMATO_SELECAO_PADRAO;
+}
+
+export function salvarFormatoSelecao(tabela, formato) {
+    if (!Object.hasOwn(BAIXAR_POR_FORMATO, formato)) return;
+    try {
+        localStorage.setItem(LS_FORMATO_SELECAO + tabela, formato);
+    } catch {
+        // sem espaço ou bloqueado: a escolha vale só nesta sessão
+    }
+}
+
+// Põe no select o formato salvo (chamado sempre que a barra é atualizada,
+// porque o select vive no index.html e a escolha vem do armazenamento).
+function restaurarFormatoSelecao(tabela) {
+    const sel = document.getElementById(`baixar-formato-${tabela}`);
+    if (!sel) return;
+    const formato = getFormatoSelecao(tabela);
+    if (sel.value !== formato) sel.value = formato;
+}
+
 // ─── Datas em massa: Escrita / Publicação ─────────────
 // Diferente das tags acima, aqui o valor não é uma string "a, b, c" e
 // sim um objeto parcial { dia?, mes?, ano? }. Só os subcampos
@@ -902,7 +952,12 @@ export function prepararPainelPreencherMassa(tabela) {
                 ${rotulo('Campo')}
                 <select id="${ids.campo}" class="text-xs p-2"
                     onchange="trocarCampoPreencherMassa('${tabela}')">
-                    ${CAMPOS_PREENCHIVEIS.map((f) => `<option value="${escapeHtml(f.chave)}">${escapeHtml(f.rotulo)}</option>`).join('')}
+                    ${CAMPOS_PREENCHIVEIS.filter((f) => !f.soImportacao)
+                        .map(
+                            (f) =>
+                                `<option value="${escapeHtml(f.chave)}">${escapeHtml(f.rotulo)}</option>`,
+                        )
+                        .join('')}
                 </select>
             </div>
             <div id="${ids.valorArea}"></div>

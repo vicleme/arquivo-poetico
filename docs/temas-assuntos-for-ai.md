@@ -68,7 +68,7 @@ Default guidance. The person can calibrate it, usually with a sample of texts an
 ## Two different tasks
 
 1. **Classify texts** (fill in Themes and Subjects of texts that already exist): deliver the "Importar campos" `.json`, using the names from the vocabulary.
-2. **Organise loose Themes** (group into Subjects the Themes that don't belong to any yet): the Subjects tab has the **Baixar .md** button, which exports each Subject with its Themes (and the count of texts for each) and the "Temas sem assunto" section. With that file, the useful answer is a `.json` with only `ligacoes` (and `textos` empty), which the import reads and shows in the preview. A Theme that fits no existing Subject stays out, listed separately.
+2. **Organise loose Themes** (group into Subjects the Themes that don't belong to any yet): the Subjects tab has the **Baixar .md** button, which exports each Subject with its Themes (and the count of texts for each) and the "Temas sem assunto" section. The Themes tab has its own **Baixar .md**, with each Theme, its text count, the Subjects it belongs to and its note, split into "Temas com assunto" and "Temas sem assunto". With that file, the useful answer is a `.json` with only `ligacoes` (and `textos` empty), which the import reads and shows in the preview. A Theme that fits no existing Subject stays out, listed separately.
 
 In either task, nothing is saved before the person sees the preview, and the import takes a safety snapshot and can be undone.
 

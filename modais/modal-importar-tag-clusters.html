@@ -70,10 +70,12 @@
                     <label class="form-label" for="itc-texto">Lista de clusters</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
                         Uma linha por cluster, no formato
-                        <span class="font-mono">Cluster: etiqueta, etiqueta</span>. Cluster que já
-                        existe recebe as etiquetas; etiqueta que estava em outro cluster passa para
-                        o novo. Etiqueta que não existe na categoria não é criada: aparece no
-                        relatório.
+                        <span class="font-mono">Cluster: etiqueta, etiqueta</span>. Para um
+                        subcluster, escreva o caminho:
+                        <span class="font-mono">Cluster > Subcluster: etiqueta, etiqueta</span>
+                        (um nível só; o pai é criado se não existir). Cluster que já existe recebe
+                        as etiquetas; etiqueta que estava em outro cluster passa para o novo.
+                        Etiqueta que não existe na categoria não é criada: aparece no relatório.
                     </p>
                     <textarea
                         id="itc-texto"

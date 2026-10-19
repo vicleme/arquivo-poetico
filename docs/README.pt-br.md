@@ -134,6 +134,10 @@ npm run format:check   # prettier --check .
 │   │                            etiquetas, temas, assuntos, locais, pessoas e campos
 │   │                            simples a textos que já existem, por um .json que
 │   │                            uma IA pode montar)
+│   ├── intratextualidade-for-ai.md / intratextualidade-for-ai-pt-br.md
+│   │                          → Elos e Ecos (Intratextualidade): como se
+│   │                            diferenciam, como escolher Relação, Direção e
+│   │                            Tipo, e como não confundi-los com campos vizinhos
 │   ├── morfofuncionalidade-for-ai.md / morfofuncionalidade-for-ai-pt-br.md
 │   │                          → Campos do registro de Morfofuncionalidade
 │   │                            (Unidades/Eventos, posição no texto,

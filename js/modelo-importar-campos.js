@@ -15,7 +15,13 @@
 
 import { FORMATO_CAMPOS, VERSAO_FORMATO_CAMPOS } from './importar-campos.js';
 import { ETIQUETAS_CATEGORIAS, ROTULOS_ETIQUETAS } from './etiquetas.js';
-import { nomesTemasDoAssunto, PAPEIS_PESSOA, OPCOES_GRAFIA } from './utils.js';
+import {
+    nomesTemasDoAssunto,
+    PAPEIS_PESSOA,
+    OPCOES_GRAFIA,
+    JARGAO_GIRIA_SEMENTES,
+    extrairJargaoGiriaUnicos,
+} from './utils.js';
 import { rotuloCaminhoLocal } from './locais.js';
 
 const COMO_USAR = [
@@ -28,6 +34,7 @@ const COMO_USAR = [
     '"territorialidade": lista de lugares que o texto cita (países, cidades, bairros, rios). Soma aos que o texto já tem. Local que ainda não existe é criado, sem tipo e sem "pertence a"; organize depois na aba Locais.',
     '"localEscrita": o lugar onde o texto foi redigido, um só. Só preenche se o texto ainda não tem; com a opção "Substituir campos simples" ligada na tela, troca o que já existe.',
     '"pessoas": lista de { "pessoa": "Nome", "papeis": ["Retratado(a)"] }. Os papéis são os de "papeis_da_pessoa" (aceita sem o "(a)", como "Retratado"). Soma: pessoa que o texto já tem ganha só os papéis que faltam, e pessoa que não existe no cadastro é criada. Papel fora da lista deixa aquela pessoa de fora.',
+    '"jargaoGiria": lista de textos livres (grupo Idioma). Registra quando o texto FALA COM o vocabulário de uma comunidade ou meio, de forma literal (gíria de internet, gíria juvenil, jargão corporativo, linguagem de fandom). Teste: o texto usa essas palavras, ou só fala DE memes, apps ou tecnologia, ou usa um campo do saber como metáfora? Nos dois últimos casos, não é este campo (é Tema, Referência ou Domínio Imagético). Marcas gerais de oralidade ("pra", "tô") também não: são do Registro da Sonoridade. Soma ao que o texto já tem, sem diferenciar caixa nem acento. Não há cadastro: o termo entra como está escrito, e o relatório marca como novo o que não é uma das sugestões nem já aparece em outro texto. Use as sugestões de "sugestoes_jargao_giria" quando servirem. A maioria dos textos não tem nenhum: na dúvida, deixe de fora.',
     '"pendencia" (texto) e "fonte" ({ "origem", "edicao", "link", "conferido", "grafia" }, ou só um texto, que vale como origem): campos simples, preenchidos só onde estão vazios (ou trocados, com a opção ligada). Valor vazio nunca limpa nada e "conferido" só vale como true.',
     '"ligacoes": lista de { "tema": "Nome", "assunto": "Nome" } (ou { "tema": "Nome", "assuntos": ["Nome", "Nome"] }). Liga um Tema a um Assunto que JÁ existe, para todos os textos que têm o Tema (o Assunto lista Temas). Não cria Assunto. Um Tema novo só é criado se algum texto do arquivo o traz. As ligações valem antes dos "assuntos" dos textos, então um Tema novo já pode ser usado em "assuntos" no mesmo arquivo. O arquivo pode ter só "ligacoes" (com "textos" vazio) para organizar Temas que ainda não têm Assunto.',
     'Use os nomes que já existem no acervo sempre que houver um equivalente: nome novo cria etiqueta, tema, local ou pessoa nova, e uma variação de grafia vira duplicata.',
@@ -55,6 +62,7 @@ const EXEMPLOS = [
         territorialidade: ['Brasil', 'Santos'],
         localEscrita: 'Santos',
         pessoas: [{ pessoa: 'Nome de uma pessoa', papeis: ['Dedicatário(a)', 'Mencionado(a)'] }],
+        jargaoGiria: ['Gíria de internet'],
         pendencia: 'revisar métrica',
         fonte: { origem: 'Obra própria', conferido: true },
     },
@@ -97,6 +105,7 @@ function vocabularioDoAcervo(dbRef) {
             .filter((p) => !p.oculto)
             .map((p) => p.nome)
             .sort((a, b) => a.localeCompare(b, 'pt-BR')),
+        jargaoGiria: extrairJargaoGiriaUnicos([...(dbRef.poemas || []), ...(dbRef.prosas || [])]),
     };
 }
 
@@ -122,6 +131,7 @@ export function gerarModeloCampos(dbRef, { comVocabulario = false } = {}) {
             ],
             papeis_da_pessoa: PAPEIS_PESSOA,
             grafia_da_fonte: OPCOES_GRAFIA.filter((o) => o.valor).map((o) => o.valor),
+            sugestoes_jargao_giria: [...JARGAO_GIRIA_SEMENTES],
         },
         exemplos: EXEMPLOS,
         exemplos_ligacoes: EXEMPLOS_LIGACOES,
