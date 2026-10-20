@@ -203,6 +203,17 @@ npm run format:check   # prettier --check .
 │   │                           (pares/clusters) e Referências (grafo em
 │   │                           camadas) a partir de db.poemas/db.prosas,
 │   │                           mais o painel de "buracos"
+│   ├── exportar-conexoes.js  → Relatório das Conexões em .md (lógica pura:
+│   │                           escopos todas/elos/ecos/seleção, resumo) e o
+│   │                           download
+│   ├── exportar-conexoes-png.js → Relatório das Conexões desenhado num SVG só
+│   │                           (cartões para Elos, diagramas para Ecos),
+│   │                           usado pelo .png e pelo .pdf
+│   ├── exportar-conexoes-pdf.js → Fatia esse desenho em páginas A4 (quebra só
+│   │                           entre blocos, "n / total")
+│   ├── selecao-conexoes.js   → Modo Selecionar da aba Conexões: chave estável
+│   │                           por buraco/Elo/Eco e o filtro de "Só
+│   │                           selecionados"
 │   ├── render-lightbox.js    → Carrega capas do IndexedDB de forma
 │   │                           assíncrona e exibe lightbox navegável
 │   ├── autobackup.js         → Snapshots automáticos do acervo no
@@ -448,7 +459,15 @@ npm run format:check   # prettier --check .
   monta diagramas de grafo (pares/clusters para Elos, camadas para
   Referências — convergências e ramificações viram nós únicos com várias
   arestas, não nós duplicados) e um painel de "buracos" (elo cadastrado só
-  de um lado); os diagramas podem ser baixados como PNG.
+  de um lado); cada diagrama pode ser baixado como PNG. A aba também baixa
+  um **relatório** (todas as conexões, só Elos ou só Referências, que na tela se chamam Elos e Ecos) em `.md`
+  (texto simples, bom para colar numa IA), `.png` ou `.pdf` (os dois com os
+  desenhos; o PDF é imagem, então o texto dele não é pesquisável). Um modo
+  **Selecionar** põe uma caixinha em cada buraco, Elo e Referência para
+  baixar só os selecionados (`conexoes-selecao.*`). Os títulos de Elos e
+  Referências abrem o modal **Ver**, e os buracos abrem o editor; no editor
+  de Poema, um botão de olho no cabeçalho passa para o Ver do mesmo poema
+  (perguntando "Salvar antes de ver?" quando há alteração não salva).
 - **Envios e Reações** (Poema e Prosa): registro de quando e para quem um
   texto foi enviado (pessoa, data, meio, reação, notas) — `pessoa` e `meio`
   são texto livre com sugestão por `<datalist>`, sem exigir cadastro central.

@@ -201,6 +201,64 @@ export const TAREFAS_COMO_FACO = [
         ],
     },
     {
+        id: 'baixar-relatorio-conexoes',
+        titulo: 'Baixar o relatório das Conexões (.md, .png ou .pdf)',
+        descricao:
+            'Na aba Conexões, o primeiro menu escolhe o que entra (todas as conexões, só Elos ou só Ecos) e o segundo escolhe o formato: .md é texto simples, bom para colar numa IA; .png e .pdf trazem os desenhos. Depois é clicar em Baixar.',
+        passos: [
+            {
+                id: 'cf-conexoes-relatorio-1',
+                titulo: 'Escolha o que baixar',
+                texto: 'Todas as conexões, só os Elos ou só os Ecos. Os Buracos (Elos registrados só de um lado) vêm junto com os Elos.',
+                aba: 'conexoes',
+                seletor: '#conexoes-baixar-escopo',
+            },
+            {
+                id: 'cf-conexoes-relatorio-2',
+                titulo: 'Escolha o formato',
+                texto: 'O .md é texto simples. O .png é uma imagem, nas cores do tema ligado. O .pdf leva o mesmo desenho do .png em páginas A4, sempre em tema claro (o texto dele não é selecionável).',
+                aba: 'conexoes',
+                seletor: '#conexoes-baixar-formato',
+            },
+            {
+                id: 'cf-conexoes-relatorio-3',
+                titulo: 'Baixe',
+                texto: 'O arquivo sai como conexoes, conexoes-elos ou conexoes-ecos, com a extensão escolhida.',
+                aba: 'conexoes',
+                seletor: '#conexoes-baixar',
+            },
+        ],
+    },
+    {
+        id: 'baixar-selecao-conexoes',
+        titulo: 'Baixar só alguns itens das Conexões',
+        descricao:
+            'Na aba Conexões, o botão Selecionar põe uma caixinha em cada Buraco, Elo e Eco. Selecione os que quiser, escolha o formato e clique em Baixar: o arquivo sai como conexoes-selecao, só com o que foi selecionado. A seleção vale enquanto o modo estiver ligado.',
+        passos: [
+            {
+                id: 'cf-conexoes-selecao-1',
+                titulo: 'Ligue o modo Selecionar',
+                texto: 'Cada Buraco, cada cartão de Elo (par ou cluster) e cada cartão de Eco ganha uma caixinha. A barra que aparece mostra quantos estão selecionados e tem Marcar todos e Limpar.',
+                aba: 'conexoes',
+                seletor: '#conexoes-modo-selecao',
+            },
+            {
+                id: 'cf-conexoes-selecao-2',
+                titulo: 'Confira o escopo',
+                texto: 'Ao selecionar o primeiro item, o menu muda sozinho para “Só selecionados”. Escolha o formato ao lado (.md, .png ou .pdf).',
+                aba: 'conexoes',
+                seletor: '#conexoes-baixar-escopo',
+            },
+            {
+                id: 'cf-conexoes-selecao-3',
+                titulo: 'Baixe',
+                texto: 'O resumo do topo do arquivo conta só o que você selecionou, e só entram as seções com algo selecionado.',
+                aba: 'conexoes',
+                seletor: '#conexoes-baixar',
+            },
+        ],
+    },
+    {
         id: 'fazer-backup',
         titulo: 'Fazer backup do acervo',
         descricao:

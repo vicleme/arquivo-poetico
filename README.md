@@ -201,6 +201,17 @@ npm run format:check   # prettier --check .
 │   │                           clusters) and Reference (layered graph)
 │   │                           diagrams from db.poemas/db.prosas, plus the
 │   │                           "gaps" panel
+│   ├── exportar-conexoes.js  → Connections report as .md (pure logic:
+│   │                           scopes all/links/references/selection,
+│   │                           summary) and its download
+│   ├── exportar-conexoes-png.js → Connections report drawn as one SVG
+│   │                           (cards for Links, diagrams for References),
+│   │                           used by the .png and the .pdf
+│   ├── exportar-conexoes-pdf.js → Splits that drawing into A4 pages
+│   │                           (breaks only between blocks, "n / total")
+│   ├── selecao-conexoes.js   → Select mode of the Connections tab: stable
+│   │                           key per gap/Link/Reference card and the
+│   │                           filter for "Only selected"
 │   ├── render-lightbox.js    → Loads covers from IndexedDB asynchronously
 │   │                           and shows a navigable lightbox
 │   ├── autobackup.js         → Automatic snapshots of the collection in
@@ -447,8 +458,16 @@ npm run format:check   # prettier --check .
   all Links/References and builds graph diagrams (pairs/clusters for
   Links, layered graphs for References — convergences and branches become
   single nodes with multiple edges, not duplicate nodes) plus a "gaps"
-  panel (a link registered on only one side); diagrams can be downloaded
-  as PNG.
+  panel (a link registered on only one side); each diagram can be
+  downloaded as PNG. The tab also downloads a **report** (all connections,
+  only Links or only References, which the screen labels Elos and Ecos) as `.md` (plain text, handy to paste into
+  an AI), `.png` or `.pdf` (both with the drawings; the PDF is an image, so
+  its text is not searchable). A **Select** mode puts a checkbox on each
+  gap, Link and Reference card to download only the marked ones
+  (`conexoes-selecao.*`). Titles of Links and References open the **View**
+  modal, and gaps open the editor; in the Poem editor an eye button in the
+  header switches to the View of the same poem (asking "Save before
+  viewing?" when there are unsaved changes).
 - **Sendings and Reactions** (Poem and Prose): a record of when and to
   whom a text was sent (person, date, channel, reaction, notes) —
   `pessoa` and `meio` are free text with `<datalist>` suggestions, with no

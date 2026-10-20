@@ -39,6 +39,45 @@
 
 import { db } from './db.js';
 import { escapeHtml, rotuloElo } from './utils.js';
+import {
+    baixarConexoesMarkdown,
+    ESCOPOS_CONEXOES,
+    NOME_ARQUIVO_CONEXOES,
+} from './exportar-conexoes.js';
+import {
+    montarSvgRelatorio,
+    calcularEscalaExport,
+    PALETA_RELATORIO,
+} from './exportar-conexoes-png.js';
+import { planejarPdf, gerarPdfConexoes } from './exportar-conexoes-pdf.js';
+import {
+    chaveBuraco,
+    chaveCluster,
+    chaveGrafo,
+    todasAsChaves,
+    filtrarSelecionados,
+} from './selecao-conexoes.js';
+
+// ─── Seleção para baixar ───────────────────────────────────────
+// Com o modo ligado, cada Buraco, Elo (par ou cluster) e Eco (cadeia ou
+// grafo) ganha uma caixinha. "Só selecionados" no select de escopo baixa
+// só os marcados. Fica só em memória: não é salvo entre sessões.
+let modoSelecao = false;
+const selecionadas = new Set();
+
+const CLASSES_MARCADO = ['ring-2', 'ring-blue-400', 'dark:ring-blue-500'];
+
+function caixaSelecao(chave) {
+    if (!modoSelecao) return '';
+    return `<label class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500 cursor-pointer select-none">
+            <input type="checkbox" data-action="toggle-selecao-conexao" data-chave="${escapeHtml(chave)}" ${selecionadas.has(chave) ? 'checked' : ''} aria-label="Selecionar para baixar" />
+            Selecionar
+        </label>`;
+}
+
+function classeMarcado(chave) {
+    return modoSelecao && selecionadas.has(chave) ? ` ${CLASSES_MARCADO.join(' ')}` : '';
+}
 
 // ─── Buracos: Elos com só um lado cadastrado ───────────────────
 // Mesmo critério do painel derivado do modal (elosDerivados em
@@ -286,8 +325,10 @@ function ordenarCamadas(camadas, arestas) {
 
 // ─── Render DOM ─────────────────────────────────────────────────
 
-function tituloClicavel(id, titulo, corClasse = '') {
-    return `<span class="cursor-pointer hover:underline ${corClasse}" data-action="editar-poema" data-id="${id}">${escapeHtml(titulo)}</span>`;
+// Buracos abrem o Editar (a ideia é consertar o vínculo que falta); Elos e
+// Ecos abrem o Ver (a ideia é ler o poema), que tem o botão Editar à mão.
+function tituloClicavel(id, titulo, corClasse = '', acao = 'editar-poema') {
+    return `<span class="cursor-pointer hover:underline ${corClasse}" data-action="${acao}" data-id="${id}">${escapeHtml(titulo)}</span>`;
 }
 
 function badge(rotulo, corClasse) {
@@ -307,7 +348,8 @@ function renderBuracos() {
     container.innerHTML = buracos
         .map(
             (b) => `
-        <div class="flex flex-wrap items-center gap-2 py-1.5 text-sm border-b border-gray-100 dark:border-slate-800 last:border-0">
+        <div data-card-selecao="${escapeHtml(chaveBuraco(b))}" class="flex flex-wrap items-center gap-2 py-1.5 text-sm border-b border-gray-100 dark:border-slate-800 last:border-0 rounded${classeMarcado(chaveBuraco(b))}">
+            ${caixaSelecao(chaveBuraco(b))}
             ${tituloClicavel(b.deId, b.deTitulo)}
             ${badge(b.rotulo, 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300')}
             <span class="text-gray-300 dark:text-slate-600">→</span>
@@ -323,17 +365,21 @@ function renderClusterElo(cluster) {
         .map(
             (a) => `
         <div class="flex flex-wrap items-center gap-1.5 text-xs">
-            ${tituloClicavel(a.aId, a.aTitulo)}
+            ${tituloClicavel(a.aId, a.aTitulo, '', 'ver-poema')}
             ${badge(a.rotulo, 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300')}
             <span class="text-gray-300 dark:text-slate-600">↔</span>
-            ${tituloClicavel(a.bId, a.bTitulo)}
+            ${tituloClicavel(a.bId, a.bTitulo, '', 'ver-poema')}
         </div>`,
         )
         .join('');
     const rotuloTamanho = cluster.tamanho === 2 ? 'Par' : `Cluster (${cluster.tamanho} poemas)`;
+    const chave = chaveCluster(cluster);
     return `
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
-            <div class="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500 mb-2">${rotuloTamanho}</div>
+        <div data-card-selecao="${escapeHtml(chave)}" class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm${classeMarcado(chave)}">
+            <div class="flex items-center justify-between gap-2 mb-2">
+                <span class="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">${rotuloTamanho}</span>
+                ${caixaSelecao(chave)}
+            </div>
             <div class="space-y-1.5">${linhas}</div>
         </div>`;
 }
@@ -359,7 +405,7 @@ function renderPassosLineares(grafo) {
     return passos
         .map((id, i) => {
             const no = grafo.nos.find((n) => n.id === id);
-            if (i === 0) return tituloClicavel(id, no.titulo);
+            if (i === 0) return tituloClicavel(id, no.titulo, '', 'ver-poema');
             const aresta = grafo.arestas.find((a) => a.deId === passos[i - 1] && a.paraId === id);
             const seta = '<span class="text-gray-300 dark:text-slate-600 mx-1">→</span>';
             const rotulo = aresta?.tipo
@@ -368,7 +414,7 @@ function renderPassosLineares(grafo) {
                       'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-700 dark:text-fuchsia-300',
                   ) + seta
                 : '';
-            return `${seta}${rotulo}${tituloClicavel(id, no.titulo)}`;
+            return `${seta}${rotulo}${tituloClicavel(id, no.titulo, '', 'ver-poema')}`;
         })
         .join('');
 }
@@ -621,7 +667,7 @@ function renderDiagramaEcos(grafo, idSvg) {
                 )
                 .join('');
             return `
-        <g class="grafo-no" data-action="editar-poema" data-id="${no.id}" transform="translate(${p.x},${p.y})">
+        <g class="grafo-no" data-action="ver-poema" data-id="${no.id}" transform="translate(${p.x},${p.y})">
             <rect class="grafo-no-caixa" width="${DIAGRAMA_NO_LARGURA}" height="${p.altura}" rx="8"></rect>
             <text class="grafo-no-titulo" style="font: ${DIAGRAMA_FONTE_TITULO};" text-anchor="middle" y="${yTextoInicial}">${linhasSvg}</text>
         </g>`;
@@ -742,9 +788,12 @@ function renderDiagramaEcos(grafo, idSvg) {
 // depende de o elemento original estar visível.
 function renderCartaoEco(grafo, indice) {
     const idSvg = `conexoes-diagrama-${indice}`;
+    const chave = chaveGrafo(grafo);
+    const marcador = caixaSelecao(chave);
+    const barra = marcador ? `<div class="mb-2">${marcador}</div>` : '';
     if (grafo.linear) {
         return `
-        <div class="relative bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm text-xs">
+        <div data-card-selecao="${escapeHtml(chave)}" class="relative bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm text-xs${classeMarcado(chave)}">
             <button
                 type="button"
                 data-action="baixar-diagrama-ecos"
@@ -754,12 +803,13 @@ function renderCartaoEco(grafo, indice) {
             >
                 ⭳ PNG
             </button>
+            ${barra}
             <div class="flex flex-wrap items-center gap-y-1.5 pr-12">${renderPassosLineares(grafo)}</div>
             <div class="hidden">${renderDiagramaEcos(grafo, idSvg)}</div>
         </div>`;
     }
     return `
-        <div class="relative bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm text-xs">
+        <div data-card-selecao="${escapeHtml(chave)}" class="relative bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm text-xs${classeMarcado(chave)}">
             <button
                 type="button"
                 data-action="baixar-diagrama-ecos"
@@ -769,6 +819,7 @@ function renderCartaoEco(grafo, indice) {
             >
                 ⭳ PNG
             </button>
+            ${barra}
             ${renderDiagramaEcos(grafo, idSvg)}
         </div>`;
 }
@@ -818,21 +869,73 @@ const CORES_DIAGRAMA = {
 
 // Escala de super-amostragem: exporta em 2x o tamanho do SVG (que já é
 // pequeno, pensado pra caber na tela) pra não sair borrado em telas de
-// alta densidade — mesmo motivo de qualquer export canvas->PNG.
-const EXPORT_ESCALA = 2;
+// alta densidade — mesmo motivo de qualquer export canvas->PNG. A escala
+// só cai abaixo de 2x quando a imagem não caberia no canvas do navegador
+// (ver calcularEscalaExport).
 
-function svgParaPngBlob(svgOriginal) {
-    const clone = svgOriginal.cloneNode(true);
+function paletaDoTema() {
     const escuro = document.documentElement.classList.contains('dark');
-    const paleta = escuro ? CORES_DIAGRAMA.escuro : CORES_DIAGRAMA.claro;
+    return escuro ? CORES_DIAGRAMA.escuro : CORES_DIAGRAMA.claro;
+}
 
+// Troca as classes do diagrama por cores fixas, no próprio elemento.
+function aplicarPaleta(svg, paleta) {
     for (const [classe, cores] of Object.entries(paleta)) {
         if (classe === 'fundo') continue;
-        clone.querySelectorAll(`.${classe}`).forEach((el) => {
+        svg.querySelectorAll(`.${classe}`).forEach((el) => {
             if (cores.fill) el.setAttribute('fill', cores.fill);
             if (cores.stroke) el.setAttribute('stroke', cores.stroke);
         });
     }
+}
+
+// Rasteriza um SVG já serializado (com fundo opaco) num canvas, na
+// escala que o navegador aguenta. Devolve { canvas, escala }.
+function svgTextoParaCanvas(svgTexto, largura, altura) {
+    const escala = calcularEscalaExport(largura, altura);
+    if (!escala) {
+        return Promise.reject(
+            new Error('A imagem ficaria grande demais para exportar. Baixe um escopo menor.'),
+        );
+    }
+    const svgBlob = new Blob([svgTexto], { type: 'image/svg+xml;charset=utf-8' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(svgUrl);
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.floor(largura * escala);
+            canvas.height = Math.floor(altura * escala);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve({ canvas, escala: canvas.width / largura });
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(svgUrl);
+            reject(new Error('Falha ao carregar o diagrama pra exportação.'));
+        };
+        img.src = svgUrl;
+    });
+}
+
+async function svgTextoParaPngBlob(svgTexto, largura, altura) {
+    const { canvas } = await svgTextoParaCanvas(svgTexto, largura, altura);
+    return new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+            if (!blob) {
+                reject(new Error('Falha ao gerar PNG do diagrama.'));
+                return;
+            }
+            resolve(blob);
+        }, 'image/png');
+    });
+}
+
+function svgParaPngBlob(svgOriginal) {
+    const clone = svgOriginal.cloneNode(true);
+    const paleta = paletaDoTema();
+    aplicarPaleta(clone, paleta);
 
     // Fundo opaco (o card tem bg-white/slate-900) — sem isso, a área
     // fora dos elementos desenhados sairia transparente no PNG.
@@ -844,34 +947,16 @@ function svgParaPngBlob(svgOriginal) {
 
     const largura = Number(svgOriginal.getAttribute('width'));
     const altura = Number(svgOriginal.getAttribute('height'));
+    return svgTextoParaPngBlob(new XMLSerializer().serializeToString(clone), largura, altura);
+}
 
-    const svgTexto = new XMLSerializer().serializeToString(clone);
-    const svgBlob = new Blob([svgTexto], { type: 'image/svg+xml;charset=utf-8' });
-    const svgUrl = URL.createObjectURL(svgBlob);
-
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-            URL.revokeObjectURL(svgUrl);
-            const canvas = document.createElement('canvas');
-            canvas.width = largura * EXPORT_ESCALA;
-            canvas.height = altura * EXPORT_ESCALA;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob((blob) => {
-                if (!blob) {
-                    reject(new Error('Falha ao gerar PNG do diagrama.'));
-                    return;
-                }
-                resolve(blob);
-            }, 'image/png');
-        };
-        img.onerror = () => {
-            URL.revokeObjectURL(svgUrl);
-            reject(new Error('Falha ao carregar o diagrama pra exportação.'));
-        };
-        img.src = svgUrl;
-    });
+function baixarBlob(blob, nomeArquivo) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeArquivo;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 // Chamado pelo listener delegado em main.js (data-action="baixar-diagrama-ecos").
@@ -893,9 +978,211 @@ export async function baixarDiagramaEcos(botao) {
 }
 
 export function renderConexoes() {
+    podarSelecao();
     renderBuracos();
     renderElos();
     renderEcos();
+    atualizarBarraSelecao();
+}
+
+// ─── Baixar relatório da aba (.md, .png e .pdf) ─────────────────
+// Os três cálculos são os mesmos que alimentam a tela, então o
+// relatório nunca diverge do que está desenhado.
+export function dadosConexoes() {
+    return {
+        buracos: calcularBuracos(),
+        clusters: agruparElos(),
+        grafos: montarGrafosEcos(),
+    };
+}
+
+// Dados do relatório no escopo pedido: no escopo 'selecao' só entram os
+// itens marcados na aba.
+function dadosDoEscopo(escopo) {
+    const dados = dadosConexoes();
+    return escopo === 'selecao' ? filtrarSelecionados(dados, selecionadas) : dados;
+}
+
+// Diagrama de cada grafo de Ecos como SVG já serializado, com as cores
+// do tema fixadas (mesma técnica do botão "⭳ PNG" de cada cartão), pra
+// entrar dentro do desenho do relatório. Cadeia linear também vira
+// diagrama aqui, igual ao botão de cada cartão.
+function diagramasEcosParaRelatorio(grafos, paleta) {
+    return grafos.map((grafo, i) => {
+        const caixa = document.createElement('div');
+        caixa.innerHTML = renderDiagramaEcos(grafo, `conexoes-relatorio-${i}`);
+        const svg = caixa.querySelector('svg');
+        aplicarPaleta(svg, paleta);
+        return {
+            svg: new XMLSerializer().serializeToString(svg),
+            largura: Number(svg.getAttribute('width')),
+            altura: Number(svg.getAttribute('height')),
+        };
+    });
+}
+
+// Monta o desenho do relatório. `claro: true` ignora o tema da página
+// (o PDF é de papel e impressão, então sai sempre claro).
+function montarRelatorioConexoes(escopo, { claro = false } = {}) {
+    const dados = dadosDoEscopo(escopo);
+    const escuro = !claro && document.documentElement.classList.contains('dark');
+    return montarSvgRelatorio({
+        dados,
+        escopo,
+        paleta: escuro ? PALETA_RELATORIO.escuro : PALETA_RELATORIO.claro,
+        medir,
+        diagramasEcos:
+            escopo === 'elos' || !dados.grafos.length
+                ? []
+                : diagramasEcosParaRelatorio(
+                      dados.grafos,
+                      escuro ? CORES_DIAGRAMA.escuro : CORES_DIAGRAMA.claro,
+                  ),
+    });
+}
+
+function escopoValido(escopo) {
+    return ESCOPOS_CONEXOES.includes(escopo) ? escopo : 'tudo';
+}
+
+export async function baixarConexoesPng(escopo = 'tudo') {
+    const e = escopoValido(escopo);
+    try {
+        const relatorio = montarRelatorioConexoes(e);
+        const blob = await svgTextoParaPngBlob(relatorio.svg, relatorio.largura, relatorio.altura);
+        baixarBlob(blob, `${NOME_ARQUIVO_CONEXOES[e]}.png`);
+    } catch (err) {
+        console.error(err);
+        alert(err?.message || 'Não foi possível gerar a imagem do relatório.');
+    }
+}
+
+export async function baixarConexoesPdf(escopo = 'tudo') {
+    const e = escopoValido(escopo);
+    try {
+        const JsPdf = window.jspdf?.jsPDF;
+        if (!JsPdf) {
+            throw new Error(
+                'A biblioteca de PDF não carregou (verifique a conexão com a internet). Tente novamente em alguns segundos.',
+            );
+        }
+        const relatorio = montarRelatorioConexoes(e, { claro: true });
+        const { canvas, escala } = await svgTextoParaCanvas(
+            relatorio.svg,
+            relatorio.largura,
+            relatorio.altura,
+        );
+        const plano = planejarPdf(relatorio);
+        // Uma fatia do desenho por página. Início e fim arredondados do mesmo
+        // jeito nas duas pontas, para duas páginas seguidas não deixarem uma
+        // linha de pixels de fora nem repetida.
+        const fatias = plano.paginas.map((p) => {
+            const topo = Math.round(p.de * escala);
+            const altura = Math.max(1, Math.round(p.ate * escala) - topo);
+            const fatia = document.createElement('canvas');
+            fatia.width = canvas.width;
+            fatia.height = altura;
+            fatia
+                .getContext('2d')
+                .drawImage(canvas, 0, topo, canvas.width, altura, 0, 0, canvas.width, altura);
+            return fatia.toDataURL('image/png');
+        });
+        gerarPdfConexoes({ JsPdf, plano, fatias }).save(`${NOME_ARQUIVO_CONEXOES[e]}.pdf`);
+    } catch (err) {
+        console.error(err);
+        alert(err?.message || 'Não foi possível gerar o PDF do relatório.');
+    }
+}
+
+// Chamado pelo listener delegado em main.js (data-action="baixar-conexoes").
+// Lê o escopo (Todas, Elos ou Ecos) e o formato dos selects do topo da aba.
+export function baixarConexoes() {
+    const escopo = document.getElementById('conexoes-baixar-escopo')?.value || 'tudo';
+    const formato = document.getElementById('conexoes-baixar-formato')?.value || 'md';
+    if (escopo === 'selecao' && !selecionadas.size) {
+        alert('Marque ao menos um item para baixar a seleção.');
+        return;
+    }
+    if (formato === 'md') return baixarConexoesMarkdown(dadosDoEscopo(escopo), escopo);
+    if (formato === 'png') return baixarConexoesPng(escopo);
+    if (formato === 'pdf') return baixarConexoesPdf(escopo);
+}
+
+// ─── Seleção: ações da aba ──────────────────────────────────────
+// Itens marcados que já não existem (poema excluído, Elo desfeito) saem da
+// seleção a cada redesenho, para a contagem nunca passar do que há na tela.
+function podarSelecao() {
+    if (!selecionadas.size) return;
+    const existentes = new Set(todasAsChaves(dadosConexoes()));
+    for (const chave of [...selecionadas]) {
+        if (!existentes.has(chave)) selecionadas.delete(chave);
+    }
+}
+
+function selectEscopo() {
+    return document.getElementById('conexoes-baixar-escopo');
+}
+
+// Barra de contagem, botão "Selecionar" e a opção "Só selecionados" do
+// select de escopo, que só existe quando há algo marcado.
+function atualizarBarraSelecao() {
+    const n = selecionadas.size;
+    document.getElementById('conexoes-selecao-barra')?.classList.toggle('hidden', !modoSelecao);
+    const botao = document.getElementById('conexoes-modo-selecao');
+    if (botao) {
+        botao.setAttribute('aria-pressed', String(modoSelecao));
+        botao.textContent = modoSelecao ? '☑ Selecionando' : '☐ Selecionar';
+    }
+    const contagem = document.getElementById('conexoes-selecao-contagem');
+    if (contagem) {
+        contagem.textContent = n
+            ? `${n} ${n === 1 ? 'item selecionado' : 'itens selecionados'}`
+            : 'Nada selecionado. Marque as caixinhas dos cartões.';
+    }
+    const select = selectEscopo();
+    const opcao = select?.querySelector('option[value="selecao"]');
+    if (opcao) {
+        opcao.hidden = !n;
+        opcao.disabled = !n;
+        opcao.textContent = n ? `Só selecionados (${n})` : 'Só selecionados';
+    }
+    if (select && !n && select.value === 'selecao') select.value = 'tudo';
+}
+
+function usarEscopoSelecao() {
+    const select = selectEscopo();
+    if (select && selecionadas.size) select.value = 'selecao';
+}
+
+export function alternarModoSelecaoConexoes() {
+    modoSelecao = !modoSelecao;
+    if (!modoSelecao) selecionadas.clear();
+    renderConexoes();
+}
+
+// Marca ou desmarca um cartão sem redesenhar a aba (redesenhar refaria os
+// diagramas e tiraria o foco da caixinha).
+export function toggleSelecaoConexao(caixa) {
+    const chave = caixa?.dataset?.chave;
+    if (!chave) return;
+    const estavaVazia = selecionadas.size === 0;
+    if (caixa.checked) selecionadas.add(chave);
+    else selecionadas.delete(chave);
+    const card = caixa.closest('[data-card-selecao]');
+    CLASSES_MARCADO.forEach((c) => card?.classList.toggle(c, caixa.checked));
+    atualizarBarraSelecao();
+    if (estavaVazia) usarEscopoSelecao();
+}
+
+export function marcarTodosConexoes() {
+    todasAsChaves(dadosConexoes()).forEach((c) => selecionadas.add(c));
+    renderConexoes();
+    usarEscopoSelecao();
+}
+
+export function limparSelecaoConexoes() {
+    selecionadas.clear();
+    renderConexoes();
 }
 
 // Só recalcula se a aba de Conexões estiver visível, mesmo critério de

@@ -4362,6 +4362,8 @@ export async function editarPoema(id) {
     carregarReconhecimentos('poemas', p.reconhecimentos);
     renderColetaneasInfo('p-coletaneas-info', 'poema', p.id);
     document.getElementById('modal-poema-titulo').innerText = 'Editar Poema';
+    // O olho (abrir o Ver) só existe para poema já salvo.
+    document.getElementById('poema-ver')?.classList.remove('hidden');
     toggleModal('modal-poema');
 }
 

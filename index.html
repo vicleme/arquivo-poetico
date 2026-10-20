@@ -4117,14 +4117,84 @@
             </section>
 
             <section id="conexoes" class="tab-content">
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
                     <h2 class="text-xl font-semibold">Conexões</h2>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select
+                            id="conexoes-baixar-escopo"
+                            aria-label="O que baixar"
+                            title="Quais conexões entram no relatório"
+                            class="text-xs py-1.5 px-2 w-auto"
+                        >
+                            <option value="tudo">Todas as conexões</option>
+                            <option value="elos">Só Elos</option>
+                            <option value="ecos">Só Ecos</option>
+                            <option value="selecao" hidden disabled>Só selecionados</option>
+                        </select>
+                        <select
+                            id="conexoes-baixar-formato"
+                            aria-label="Formato do download"
+                            title="Formato do arquivo baixado"
+                            class="text-xs py-1.5 px-2 w-auto"
+                        >
+                            <option value="md">.md (Markdown)</option>
+                            <option value="png">.png (imagem)</option>
+                            <option value="pdf">.pdf</option>
+                        </select>
+                        <button
+                            type="button"
+                            id="conexoes-baixar"
+                            data-action="baixar-conexoes"
+                            title="Baixa o relatório das conexões, no escopo e no formato escolhidos ao lado"
+                            class="text-xs py-1.5 px-3 rounded border border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-800"
+                        >
+                            ⬇ Baixar
+                        </button>
+                        <button
+                            type="button"
+                            id="conexoes-modo-selecao"
+                            data-action="alternar-modo-selecao-conexoes"
+                            aria-pressed="false"
+                            title="Mostra uma caixinha em cada Buraco, Elo e Eco para baixar só os que você marcar"
+                            class="text-xs py-1.5 px-3 rounded border border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-800"
+                        >
+                            ☐ Selecionar
+                        </button>
+                    </div>
+                </div>
+                <div id="conexoes-selecao-barra" class="hidden mb-4">
+                    <div
+                        class="flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-slate-900 px-3 py-2 text-xs"
+                    >
+                        <span
+                            id="conexoes-selecao-contagem"
+                            class="font-bold text-blue-700 dark:text-blue-300"
+                        ></span>
+                        <button
+                            type="button"
+                            data-action="marcar-todos-conexoes"
+                            class="underline text-gray-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                        >
+                            Marcar todos
+                        </button>
+                        <button
+                            type="button"
+                            data-action="limpar-selecao-conexoes"
+                            class="underline text-gray-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                        >
+                            Limpar
+                        </button>
+                        <span class="text-gray-400 dark:text-slate-500"
+                            >Depois de marcar, escolha "Só selecionados" no primeiro menu e
+                            baixe.</span
+                        >
+                    </div>
                 </div>
                 <p class="text-xs text-gray-400 dark:text-slate-500 mb-6">
                     Visão computada sobre Elos e Ecos (item 10 do plano de schema) — não é dona de
                     nenhum dado, só uma lente sobre o que já está cadastrado no campo "Elos"/"Ecos"
-                    de cada poema. Pra editar um vínculo, clique no título do poema pra abrir o
-                    modal normalmente.
+                    de cada poema. Clique no título de um Buraco pra abrir o poema na edição; nos
+                    Elos e nos Ecos, o título abre a visualização (de lá dá pra ir pra edição).
                 </p>
 
                 <div class="mb-8">

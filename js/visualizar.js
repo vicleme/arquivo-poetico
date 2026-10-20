@@ -15,9 +15,14 @@
 // exportarItem() (exportar.js) com o tipo/id guardados aqui.
 // ============================================================
 
-import { garantirModal, toggleModal, aoFecharModalUmaVez } from './modais.js';
+import {
+    garantirModal,
+    toggleModal,
+    aoFecharModalUmaVez,
+    cancelarAoFecharModal,
+} from './modais.js';
 import { db, deleteItem } from './db.js';
-import { editarPoema, editarProsa } from './forms.js';
+import { editarPoema, editarProsa, rastreadorPoema } from './forms.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
 import { caminhoDaCorrente, idsDeCorrentesDeTopo, idsDeDivisoes } from './correntes-hierarquia.js';
 import { textoPersonagensComPapel } from './personagens.js';
@@ -45,6 +50,7 @@ import {
     agruparIntertextualidadePorTipo,
     corpoEntradaHipertextualidade,
     escapeHtml,
+    abrirModalConfirmacao,
     sanitizarTextoRico,
     renderCoracoesHtml,
     formatarAutoclassificacaoTexto,
@@ -532,6 +538,78 @@ document.addEventListener('keydown', (e) => {
     navegarVisualizacao(e.key === 'ArrowLeft' ? -1 : 1);
 });
 
+// Combina "ao fechar o formulário de edição, reabrir o Ver deste texto". Guarda
+// o combinado em `voltaAoVer` enquanto ele vale (some quando o Ver reabre), para
+// o olho do Editar saber se o formulário já veio do Ver.
+let voltaAoVer = null;
+
+function registrarVoltaAoVer(volta) {
+    voltaAoVer = volta;
+    aoFecharModalUmaVez(volta.tipo === 'prosa' ? 'modal-prosa' : 'modal-poema', () => {
+        voltaAoVer = null;
+        abrirVisualizacao(volta.tipo, volta.id, volta.ids ? { navegar: true, ids: volta.ids } : {});
+    });
+}
+
+// Olho do cabeçalho do Editar poema: troca o Editar pelo Ver do mesmo poema (um
+// modal só de cada vez, sem empilhar). O Ver só mostra o que está salvo, então
+// com alterações pendentes pergunta antes: "Salvar e ver", "Descartar e ver" ou
+// Cancelar (continua no Editar). Salvar já fecha o Editar; ao fechar, o Ver abre
+// pelo mesmo combinado do botão Editar do Ver, então nunca abre duas vezes. Poema
+// novo (ainda sem id) não tem o que ver: o botão nem aparece.
+export async function verDoModalEdicao() {
+    const campo = document.getElementById('p-edit-id')?.value;
+    if (!campo) return;
+    const id = Number(campo);
+    if (!db.poemas.some((p) => String(p.id) === String(id))) return;
+
+    // Formulário aberto pelo Ver: o combinado de voltar já existe (e leva a lista de
+    // navegação); senão o olho cria um, sem lista.
+    const anterior =
+        voltaAoVer && voltaAoVer.tipo === 'poema' && String(voltaAoVer.id) === String(id)
+            ? voltaAoVer
+            : null;
+    const volta = anterior || { tipo: 'poema', id, ids: null };
+    const agendar = () => registrarVoltaAoVer(volta);
+    const modalAberto = () => !document.getElementById('modal-poema')?.classList.contains('hidden');
+
+    if (!rastreadorPoema.estaSujo()) {
+        agendar();
+        await toggleModal('modal-poema');
+        return;
+    }
+
+    abrirModalConfirmacao({
+        titulo: 'Salvar antes de ver?',
+        rotulo: 'Alterações não salvas',
+        mensagem:
+            'A visualização mostra só o que já está salvo. Salve para ver as alterações, ou descarte-as.',
+        textoConfirmar: 'Salvar e ver',
+        corConfirmar: '#059669',
+        focarConfirmar: true,
+        acaoSecundaria: {
+            texto: 'Descartar e ver',
+            onClick: () => {
+                agendar();
+                rastreadorPoema.marcarLimpo();
+                toggleModal('modal-poema');
+            },
+        },
+        onConfirmar: () => {
+            agendar();
+            // O envio fecha o formulário na hora quando salva (e o Ver abre pelo
+            // combinado acima). Se algo impediu (campo obrigatório, data fora de
+            // ordem), o formulário segue aberto e o combinado é desfeito, para um
+            // X depois não abrir o Ver sem ninguém pedir.
+            document.getElementById('form-poema')?.requestSubmit();
+            if (modalAberto() && !anterior) {
+                voltaAoVer = null;
+                cancelarAoFecharModal('modal-poema');
+            }
+        },
+    });
+}
+
 // Botão "Editar" do rodapé: fecha o Ver e abre o formulário do mesmo texto.
 // Ao fechar o formulário, o Ver reabre (ver aoFecharModalUmaVez em modais.js).
 export async function editarDoModalVisualizacao() {
@@ -542,9 +620,7 @@ export async function editarDoModalVisualizacao() {
     // Só quando o formulário vem daqui: ao fechar (salvar, cancelar, X ou Esc) a
     // pessoa volta ao Ver do mesmo texto, na mesma lista de navegação.
     const ids = navegacao.pos >= 0 ? [...navegacao.ids] : null;
-    aoFecharModalUmaVez(tipo === 'prosa' ? 'modal-prosa' : 'modal-poema', () => {
-        abrirVisualizacao(tipo, id, ids ? { navegar: true, ids } : {});
-    });
+    registrarVoltaAoVer({ tipo, id, ids });
     await toggleModal('modal-visualizar');
     await (tipo === 'prosa' ? editarProsa(id) : editarPoema(id));
 }

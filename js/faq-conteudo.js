@@ -53,6 +53,31 @@ export const CATEGORIAS_FAQ = [
                     'Elo é uma relação bilateral entre dois textos SEUS (Reescrita, Continuação, Tradução, Versão anterior/oficial, Díptico, Resposta), cadastrada, em geral, dos dois lados. Referência é unidirecional, do texto mais novo pro mais antigo (Personagem em comum, Imagem central compartilhada, Aceno, Outro), e pode citar uma obra que não é sua.',
             },
             {
+                id: 'faq-conexoes-buraco',
+                pergunta: 'O que é um Buraco na aba Conexões?',
+                resposta:
+                    'É um Elo registrado só de um lado. Como o Elo liga dois textos seus, o normal é cadastrá-lo nos dois: se o poema A diz "reescrita de B", o B deveria dizer o mesmo de volta. Quando só um dos dois tem o registro, a aba mostra o par incompleto como Buraco, para você completar. Por isso o título de um Buraco abre direto a edição do poema, e não a visualização.',
+            },
+            {
+                id: 'faq-conexoes-relatorio',
+                pergunta: 'O que vai em cada formato do relatório da aba Conexões?',
+                resposta:
+                    'O .md é texto simples, bom para colar numa IA: traz um resumo com as contagens, os Buracos, os Elos (um bloco por par ou por cluster, que é um grupo de três ou mais poemas ligados entre si) e os Ecos (uma linha só para uma cadeia simples, ou uma linha por Eco quando o grafo ramifica ou converge; grafo, aqui, é o desenho de textos ligados por setas). A seta vai sempre do texto mais novo para o mais antigo. O .png é uma imagem do relatório, com os Elos em cartões e os Ecos com os diagramas que a aba desenha, nas cores do tema que estiver ligado. O .pdf leva o mesmo desenho do .png, sempre em tema claro, dividido em páginas A4 com "n / total" no rodapé. Como o .pdf é uma imagem, o texto dele não pode ser selecionado nem pesquisado; para isso use o .md.',
+            },
+            {
+                id: 'faq-conexoes-ver-editar',
+                pergunta:
+                    'Por que os títulos de Elos e Ecos abrem o Ver, e os Buracos abrem a edição?',
+                resposta:
+                    'Na aba Conexões você costuma estar lendo um panorama: quer lembrar que poema é aquele e como ele se liga aos outros, sem risco de mexer em nada. O Ver serve a isso, mostra os Elos e os Ecos do poema, e tem o botão Editar para quando você quiser corrigir um rótulo ou um Tipo. O Buraco é o caso contrário, o objetivo ali é consertar, então abre a edição direto. E, dentro do Editar de um poema já salvo, o olho no cabeçalho leva de volta ao Ver; se houver alteração não salva, o app pergunta "Salvar antes de ver?". Editar e Ver se alternam sobre o mesmo poema, nunca ficam empilhados.',
+            },
+            {
+                id: 'faq-conexoes-selecao-some',
+                pergunta: 'Por que a seleção de um Eco some depois que eu ligo outro poema a ele?',
+                resposta:
+                    'Cada cartão selecionado é lembrado pelos poemas que ele reúne, e não pela posição ("Grafo 2" muda de número quando entra um item novo, por isso a posição não serve). Ao ligar outro poema a um grafo de Ecos, o conjunto de poemas do cartão muda, o app o enxerga como outro cartão e a seleção do antigo se perde. É raro e fácil de notar: basta selecionar de novo. O mesmo vale se você apagar um poema ou desfizer um vínculo, o item que deixou de existir sai da seleção sozinho. A seleção vale só enquanto o modo Selecionar está ligado e não fica guardada entre sessões.',
+            },
+            {
                 id: 'faq-anotacao-descricao-visual',
                 pergunta: 'Qual a diferença entre Anotação Marginal e Descrição Visual?',
                 resposta:

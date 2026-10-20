@@ -908,6 +908,8 @@ export async function prepararNovo(tipo) {
     if (tipo === 'autor') atualizarDatalistsAutor();
 
     if (tipo === 'poema') {
+        // Poema novo ainda não tem o que ver: esconde o olho do cabeçalho.
+        document.getElementById('poema-ver')?.classList.add('hidden');
         resetSinalizacoes('poemas');
         resetTemasTexto('poemas');
         resetLocaisTexto('poemas');

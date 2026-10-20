@@ -82,6 +82,7 @@ import {
     navegarVisualizacao,
     irParaPosicaoVisualizacao,
     editarDoModalVisualizacao,
+    verDoModalEdicao,
     excluirDoModalVisualizacao,
     registrarListaNavegacaoVisualizacao,
 } from './visualizar.js';
@@ -425,7 +426,15 @@ import {
     definirFiltrosCompartilhados,
     limparFiltrosCompartilhados,
 } from './estatisticas.js';
-import { renderConexoes, baixarDiagramaEcos } from './render-conexoes.js';
+import {
+    renderConexoes,
+    baixarDiagramaEcos,
+    baixarConexoes,
+    alternarModoSelecaoConexoes,
+    toggleSelecaoConexao,
+    marcarTodosConexoes,
+    limparSelecaoConexoes,
+} from './render-conexoes.js';
 import {
     initEditor,
     initEditorProsa,
@@ -1039,6 +1048,9 @@ const ACOES_LISTA = {
     'excluir-item': (el) => deleteItem(el.dataset.tipo, Number(el.dataset.id)),
     'ver-item': (el) =>
         abrirVisualizacao(el.dataset.tipo, Number(el.dataset.id), { navegar: true }),
+    // Ver um poema sem lista de navegação (usado nas Conexões, onde não há
+    // uma tabela de referência para o Anterior/Próximo).
+    'ver-poema': (el) => abrirVisualizacao('poema', Number(el.dataset.id)),
     'baixar-item': (el) =>
         exportarItem(el.dataset.tipo, Number(el.dataset.id), getFormatoBaixar(el.dataset.tabela)),
     'mover-livro': (el) => moverLivro(Number(el.dataset.id), el.dataset.dir),
@@ -1086,6 +1098,11 @@ const ACOES_LISTA = {
     'selecionar-restantes-prosas': (el) =>
         selecionarRestantes('prosas', el.dataset.ids.split(',').map(Number)),
     'baixar-diagrama-ecos': (el) => baixarDiagramaEcos(el),
+    'baixar-conexoes': () => baixarConexoes(),
+    'alternar-modo-selecao-conexoes': () => alternarModoSelecaoConexoes(),
+    'toggle-selecao-conexao': (el) => toggleSelecaoConexao(el),
+    'marcar-todos-conexoes': () => marcarTodosConexoes(),
+    'limpar-selecao-conexoes': () => limparSelecaoConexoes(),
 };
 
 // Os modais moram em #modais-container, fora de <main>: sem o segundo
@@ -1748,6 +1765,7 @@ window.baixarDoModalVisualizacao = baixarDoModalVisualizacao;
 window.navegarVisualizacao = navegarVisualizacao;
 window.irParaPosicaoVisualizacao = irParaPosicaoVisualizacao;
 window.editarDoModalVisualizacao = editarDoModalVisualizacao;
+window.verDoModalEdicao = verDoModalEdicao;
 window.excluirDoModalVisualizacao = excluirDoModalVisualizacao;
 window.editarAutorDoVisualizador = editarAutorDoVisualizador;
 window.editarMovimentoEscolaDoVisualizador = editarMovimentoEscolaDoVisualizador;

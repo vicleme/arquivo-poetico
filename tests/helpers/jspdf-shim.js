@@ -112,6 +112,10 @@ export function criarConstrutorJsPdfFalso() {
             });
         }
 
+        addImage(dados, formato, x, y, largura, altura) {
+            this.chamadas.push({ tipo: 'addImage', dados, formato, x, y, largura, altura });
+        }
+
         line(x1, y1, x2, y2) {
             this.chamadas.push({ tipo: 'line', x1, y1, x2, y2 });
         }
