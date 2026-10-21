@@ -84,8 +84,9 @@ export function calcularEscalaExport(largura, altura) {
 }
 
 // ─── Auxiliares de SVG ──────────────────────────────────────────
+// Exportados porque o relatório dos Tag clusters monta o SVG do mesmo jeito.
 
-function esc(texto) {
+export function esc(texto) {
     return String(texto)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -94,7 +95,7 @@ function esc(texto) {
         .replace(/'/g, '&#39;');
 }
 
-function n(valor) {
+export function n(valor) {
     return Math.round(valor * 100) / 100;
 }
 
@@ -102,16 +103,16 @@ function titulo(t) {
     return t && String(t).trim() ? String(t).trim() : '(sem título)';
 }
 
-function texto(x, y, conteudo, fonte, cor, extra = '') {
+export function texto(x, y, conteudo, fonte, cor, extra = '') {
     return `<text x="${n(x)}" y="${n(y)}" style="font: ${fonte};" fill="${cor}"${extra}>${esc(conteudo)}</text>`;
 }
 
-function retangulo(x, y, largura, altura, atributos) {
+export function retangulo(x, y, largura, altura, atributos) {
     return `<rect x="${n(x)}" y="${n(y)}" width="${n(largura)}" height="${n(altura)}" ${atributos}></rect>`;
 }
 
 // Corta o texto com reticências até caber em `max` px.
-function cortar(conteudo, fonte, max, medir) {
+export function cortar(conteudo, fonte, max, medir) {
     if (medir(conteudo, fonte) <= max) return conteudo;
     let t = conteudo;
     while (t.length > 1 && medir(`${t}…`, fonte) > max) t = t.slice(0, -1).trimEnd();

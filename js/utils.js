@@ -762,8 +762,15 @@ export function abrirModalConfirmacao({
     acaoSecundaria = null,
     focarConfirmar = false,
     onConfirmar,
+    onCancelar = null,
 }) {
     let overlay = document.getElementById('modal-confirmar-exclusao');
+    // Aviso ainda na tela e substituído por outro: conta como dispensado.
+    if (overlay && overlay.style.display !== 'none' && _aoCancelarConfirmacao) {
+        const substituido = _aoCancelarConfirmacao;
+        _aoCancelarConfirmacao = null;
+        substituido();
+    }
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.id = 'modal-confirmar-exclusao';
@@ -815,7 +822,7 @@ export function abrirModalConfirmacao({
         document.body.appendChild(overlay);
 
         overlay.addEventListener('click', (e) => {
-            if (e.target === overlay) _fecharModalExclusao();
+            if (e.target === overlay) _cancelarModalExclusao();
         });
         document.addEventListener('keydown', _modalExclusaoTeclado);
     }
@@ -827,8 +834,12 @@ export function abrirModalConfirmacao({
     const btnCancelar = document.getElementById('excl-cancelar');
     const btnSecundaria = document.getElementById('excl-secundaria');
     const btnConfirmar = document.getElementById('excl-confirmar');
-    btnCancelar.onclick = _fecharModalExclusao;
+    // `onCancelar` (opcional) roda quando o aviso é dispensado sem escolher nada:
+    // Cancelar, clique fora ou Esc. Confirmar e a ação secundária o descartam.
+    _aoCancelarConfirmacao = onCancelar;
+    btnCancelar.onclick = _cancelarModalExclusao;
     btnConfirmar.onclick = () => {
+        _aoCancelarConfirmacao = null;
         _fecharModalExclusao();
         onConfirmar();
     };
@@ -839,6 +850,7 @@ export function abrirModalConfirmacao({
         btnSecundaria.style.display = '';
         btnSecundaria.textContent = acaoSecundaria.texto;
         btnSecundaria.onclick = () => {
+            _aoCancelarConfirmacao = null;
             _fecharModalExclusao();
             acaoSecundaria.onClick();
         };
@@ -863,15 +875,24 @@ export function abrirModalExclusao(titulo, rotulo, onConfirmar) {
     });
 }
 
+let _aoCancelarConfirmacao = null;
+
 function _fecharModalExclusao() {
     const overlay = document.getElementById('modal-confirmar-exclusao');
     if (overlay) overlay.style.display = 'none';
 }
 
+function _cancelarModalExclusao() {
+    const aoCancelar = _aoCancelarConfirmacao;
+    _aoCancelarConfirmacao = null;
+    _fecharModalExclusao();
+    if (aoCancelar) aoCancelar();
+}
+
 function _modalExclusaoTeclado(e) {
     const overlay = document.getElementById('modal-confirmar-exclusao');
     if (!overlay || overlay.style.display === 'none') return;
-    if (e.key === 'Escape') _fecharModalExclusao();
+    if (e.key === 'Escape') _cancelarModalExclusao();
 }
 
 // ─── Rastreador de alterações não salvas ──────────────────────

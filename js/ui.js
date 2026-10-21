@@ -4,6 +4,8 @@
 // ============================================================
 
 import { db } from './db.js';
+import { TIPO_FICHA, linkDoLivroParaFicha } from './ficha-catalografica.js';
+import { toggleCamposSumario, limparSumarioDoModal } from './ui-sumario.js';
 import { resetPersonagens } from './grupo-personagens.js';
 import {
     resetSinalizacoes,
@@ -906,6 +908,10 @@ export async function prepararNovo(tipo) {
         preencherOpcoesPaiCorrente();
     }
     if (tipo === 'autor') atualizarDatalistsAutor();
+    if (tipo === 'elemento') {
+        limparSumarioDoModal();
+        toggleCamposIntroducao();
+    }
 
     if (tipo === 'poema') {
         // Poema novo ainda não tem o que ver: esconde o olho do cabeçalho.
@@ -988,7 +994,14 @@ export async function prepararNovo(tipo) {
         if (infoPr) infoPr.innerHTML = '';
     }
 
+    if (tipo === 'parte' || tipo === 'secao' || tipo === 'elemento') {
+        // Parte, Seção e Elemento novos ainda não têm o que ver: esconde o olho do cabeçalho.
+        document.getElementById(`${tipo}-ver`)?.classList.add('hidden');
+    }
+
     if (tipo === 'livro') {
+        // Livro novo ainda não tem o que ver: esconde o olho do cabeçalho.
+        document.getElementById('livro-ver')?.classList.add('hidden');
         // Import dinâmico pra evitar ciclo (ui → editor não existe hoje,
         // mesmo motivo do bloco 'prosa' acima) — só zera o estado
         // transitório da lista de Lojas (onde comprar), já que ela vive
@@ -1135,8 +1148,27 @@ export function togglePainel(painelId, botaoEl = null) {
 export function toggleCamposIntroducao() {
     const tipo = document.getElementById('el-tipo')?.value;
     const box = document.getElementById('campos-introducao');
+    if (box) box.classList.toggle('hidden', tipo !== 'Introdução');
+    toggleCamposFicha();
+    toggleCamposSumario();
+}
+
+// Campos próprios da Ficha catalográfica. O link só aparece quando a ficha
+// está ligada direto a um Livro (é o único caso que sincroniza com o campo
+// do livro); com o campo vazio, mostra o link que o livro já tem.
+export function toggleCamposFicha() {
+    const box = document.getElementById('campos-ficha');
     if (!box) return;
-    box.classList.toggle('hidden', tipo !== 'Introdução');
+    const tipo = document.getElementById('el-tipo')?.value;
+    box.classList.toggle('hidden', tipo !== TIPO_FICHA);
+    const vinculo = document.getElementById('el-vinculo')?.value || '';
+    const [paiTipo, paiId] = vinculo.split(':');
+    const ligadaAoLivro = paiTipo === 'livro';
+    document.getElementById('campo-ficha-url')?.classList.toggle('hidden', !ligadaAoLivro);
+    const campo = document.getElementById('el-ficha-url');
+    if (campo && tipo === TIPO_FICHA && ligadaAoLivro && !campo.value) {
+        campo.value = linkDoLivroParaFicha(db, paiId);
+    }
 }
 
 export function sugerirSequencia() {

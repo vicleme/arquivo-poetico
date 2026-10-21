@@ -259,6 +259,64 @@ export const TAREFAS_COMO_FACO = [
         ],
     },
     {
+        id: 'baixar-tag-clusters',
+        titulo: 'Baixar os tag clusters (.md, .png ou .pdf)',
+        descricao:
+            'Na aba Tag clusters, o primeiro menu escolhe o que entra (o que a tela mostra, todo o cadastro ou só os selecionados) e o segundo escolhe o formato: .md é texto simples, bom para colar numa IA; .png e .pdf trazem o mesmo visual da aba. Depois é clicar em Baixar.',
+        passos: [
+            {
+                id: 'cf-tag-clusters-baixar-1',
+                titulo: 'Escolha o que baixar',
+                texto: '“O que a tela mostra” respeita a busca e o filtro de categoria; “Todo o cadastro” ignora os dois. Se algo estiver filtrado, o nome do arquivo ganha -filtrado e uma linha no topo avisa.',
+                aba: 'tag-clusters',
+                seletor: '#tag-clusters-baixar-escopo',
+            },
+            {
+                id: 'cf-tag-clusters-baixar-2',
+                titulo: 'Escolha o formato',
+                texto: 'O .md é texto simples. O .png é uma imagem, nas cores do tema ligado. O .pdf leva o mesmo desenho do .png em páginas A4, sempre em tema claro (o texto dele não é selecionável).',
+                aba: 'tag-clusters',
+                seletor: '#tag-clusters-baixar-formato',
+            },
+            {
+                id: 'cf-tag-clusters-baixar-3',
+                titulo: 'Baixe',
+                texto: 'O arquivo sai como tag-clusters, com a extensão escolhida.',
+                aba: 'tag-clusters',
+                seletor: '#tag-clusters-baixar',
+            },
+        ],
+    },
+    {
+        id: 'baixar-selecao-tag-clusters',
+        titulo: 'Baixar só alguns tag clusters',
+        descricao:
+            'Na aba Tag clusters, o botão Selecionar põe uma caixinha em cada tag cluster e em cada bloco de etiquetas sem cluster. Marque os que quiser, escolha o formato e clique em Baixar: o arquivo sai como tag-clusters-selecao, só com o que foi marcado. A seleção vale enquanto o modo estiver ligado.',
+        passos: [
+            {
+                id: 'cf-tag-clusters-selecao-1',
+                titulo: 'Ligue o modo Selecionar',
+                texto: 'Cada cartão (de cluster ou de subcluster) e cada bloco de etiquetas sem cluster ganha uma caixinha. A barra que aparece mostra quantos estão marcados e tem Marcar todos (o que a tela mostra) e Limpar. Marcar um cluster marca os subclusters dele junto.',
+                aba: 'tag-clusters',
+                seletor: '#tag-clusters-modo-selecao',
+            },
+            {
+                id: 'cf-tag-clusters-selecao-2',
+                titulo: 'Confira o escopo',
+                texto: 'Ao marcar o primeiro item, o menu muda sozinho para “Só selecionados”. A seleção passa por cima da busca e do filtro de categoria. Escolha o formato ao lado (.md, .png ou .pdf).',
+                aba: 'tag-clusters',
+                seletor: '#tag-clusters-baixar-escopo',
+            },
+            {
+                id: 'cf-tag-clusters-selecao-3',
+                titulo: 'Baixe',
+                texto: 'Um subcluster marcado sem o pai sai como cartão solto, com o nome “Pai > Subcluster”. O topo do arquivo diz “seleção de N itens”.',
+                aba: 'tag-clusters',
+                seletor: '#tag-clusters-baixar',
+            },
+        ],
+    },
+    {
         id: 'fazer-backup',
         titulo: 'Fazer backup do acervo',
         descricao:

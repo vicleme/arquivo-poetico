@@ -505,7 +505,9 @@ describe('consistência: todo campo do cadastro tem coluna no .csv', () => {
     });
 
     it('Autor', () => {
-        const cobertos = camposCobertos(COLUNAS_AUTOR);
+        // `imagem` é o id interno da foto no IndexedDB (como `capa` de Livro): não
+        // é dado do cadastro para exportar. O que sai é o link da imagem.
+        const cobertos = camposCobertos(COLUNAS_AUTOR, ['imagem']);
         const faltando = chavesDeDados("nome: document.getElementById('au-nome').value").filter(
             (k) => !cobertos.has(k),
         );

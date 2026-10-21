@@ -167,6 +167,31 @@ export function definirModoTemasAssuntos(modo) {
     notificarMudanca();
 }
 
+// ─── Gráfico de Temas e Assuntos: ordem das barras ──────────────────
+// 'total' (padrão, a ordem de sempre) ou o papel pelo qual ordenar: principal,
+// secundário ou indefinido (`semPapel`). Guardado entre sessões. Vale para os
+// dois modos (por tema e por assunto), porque o gráfico é um só.
+export const ORDENS_TEMAS_ASSUNTOS = ['total', 'principal', 'secundario', 'semPapel'];
+export const ROTULOS_ORDEM_TEMAS_ASSUNTOS = {
+    total: 'Total',
+    principal: 'Principais',
+    secundario: 'Secundários',
+    semPapel: 'Indefinidos',
+};
+
+export function getOrdemTemasAssuntos() {
+    const valor = localStorage.getItem(LS_PREFIX_EST + 'ordemTemasAssuntos');
+    return ORDENS_TEMAS_ASSUNTOS.includes(valor) ? valor : 'total';
+}
+
+export function definirOrdemTemasAssuntos(ordem) {
+    localStorage.setItem(
+        LS_PREFIX_EST + 'ordemTemasAssuntos',
+        ORDENS_TEMAS_ASSUNTOS.includes(ordem) ? ordem : 'total',
+    );
+    notificarMudanca();
+}
+
 // ─── Papel do Tema (aba Temas e Assuntos) ───────────────────────────
 // Recorta os Temas contados nas Estatísticas por papel no texto: 'todos'
 // (padrão: qualquer papel, comportamento de sempre), 'principal',

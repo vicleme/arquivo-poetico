@@ -9,7 +9,7 @@
 // ============================================================
 
 import { nomesDasAncoras } from './ancora-eco.js';
-import { opcoesDuracao } from './fuso-horario.js';
+import { opcoesDuracao, hojeDoUsuario } from './fuso-horario.js';
 import {
     db,
     save,
@@ -181,6 +181,20 @@ import {
     textoTerritorialidadeComCaminho,
 } from './locais.js';
 import { preencherCapas } from './render-lightbox.js';
+import { linkImagemExibivel, linkImagemHtml } from './imagem-link.js';
+import {
+    FASE_SEM_FASE,
+    filtrarLivros,
+    filtrosLivrosAtivos,
+    filtrosLivrosVazios,
+    fasesDosLivros,
+    haLivroSemFase,
+} from './filtro-livros.js';
+import {
+    previasAtivas,
+    definirPreviasImagem,
+    definirPreviasImagemTodas,
+} from './previas-imagem.js';
 import { getColunasAtivas, DEFINICAO_COLUNAS, renderSeletorColunas } from './colunas.js';
 import {
     getColunasContagem,
@@ -415,6 +429,10 @@ let filtroLivroPartes = '';
 let filtroLivroSecoes = '';
 let filtroParteSecoes = '';
 let filtroLivroElementos = '';
+let filtroTipoElementos = '';
+// Filtros da aba Livros (busca, tipo, fase, situação editorial). Não ficam salvos ao
+// recarregar, como os das outras abas.
+let filtrosLivros = filtrosLivrosVazios();
 // Filtro por Autor da aba Grupos — como grupo já pertence a um único
 // Autor (g.autorId, obrigatório), aqui basta recortar quais cabeçalhos
 // de Autor aparecem, sem precisar de N:N como o filtro equivalente de
@@ -508,6 +526,70 @@ export function setFiltroParteSecoes(valor) {
 export function setFiltroLivroElementos(valor) {
     filtroLivroElementos = valor;
     renderElementos();
+}
+
+export function setFiltroTipoElementos(valor) {
+    filtroTipoElementos = valor || '';
+    renderElementos();
+}
+
+// Filtros da aba Livros. A busca redesenha a cada tecla, como a de Grupos.
+export function setBuscaLivros(valor) {
+    filtrosLivros.busca = valor || '';
+    renderLivros();
+}
+
+export function setFiltroTipoLivros(valor) {
+    filtrosLivros.tipo = valor || '';
+    renderLivros();
+}
+
+export function setFiltroFaseLivros(valor) {
+    filtrosLivros.fase = valor || '';
+    renderLivros();
+}
+
+export function setFiltroSituacaoLivros(valor) {
+    filtrosLivros.situacao = valor || '';
+    renderLivros();
+}
+
+export function setFiltroPublicacaoLivros(valor) {
+    filtrosLivros.publicacao = valor || '';
+    renderLivros();
+}
+
+// Campo único de data (Data de Primeira Publicação): "2020", "03/2020", "15/03/2020"
+// ou "2020-2023". Texto que ainda não forma uma data (ex.: "03/20" no meio da
+// digitação) não muda o filtro, só marca o campo; vazio limpa.
+export function setFiltroDataLivros(texto) {
+    const resultado = parseFiltroDataRapido(texto);
+    const campo = document.getElementById('filtro-data-livros');
+    if (campo) campo.classList.toggle('border-red-400', resultado === null);
+    if (resultado === null) return;
+    filtrosLivros.data = resultado;
+    renderLivros();
+}
+
+export function limparFiltrosLivros() {
+    filtrosLivros = filtrosLivrosVazios();
+    const busca = document.getElementById('filtro-busca-livros');
+    if (busca) busca.value = '';
+    const campoData = document.getElementById('filtro-data-livros');
+    if (campoData) {
+        campoData.value = '';
+        campoData.classList.remove('border-red-400');
+    }
+    [
+        'filtro-tipo-livros',
+        'filtro-fase-livros',
+        'filtro-situacao-livros',
+        'filtro-publicacao-livros',
+    ].forEach((id) => {
+        const sel = document.getElementById(id);
+        if (sel) sel.value = '';
+    });
+    renderLivros();
 }
 
 export function setFiltroAutorGrupos(valor) {
@@ -2459,9 +2541,9 @@ function aplicarOrdenacao(lista, tabela, estado) {
 // lista já ordenada) — mesmo padrão de moverItemEstrutura(), pra não
 // ser preciso abrir o modal e digitar um número só pra reordenar.
 export function moverLivro(id, direcao) {
-    const ordenados = [...db.livros].sort(
-        (a, b) => (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999),
-    );
+    // Com filtro ligado, ▲▼ trocam com o vizinho que aparece na tela, e não com um
+    // livro escondido (senão o clique parecia não fazer nada).
+    const ordenados = filtrarLivros(livrosEmOrdemDaAba(), filtrosLivros, hojeDoUsuario());
     const idx = ordenados.findIndex((l) => l.id == id);
     if (idx === -1) return;
 
@@ -2477,27 +2559,86 @@ export function moverLivro(id, direcao) {
     save();
 }
 
+// Livros na ordem em que os cards aparecem (por sequência; sem sequência vai
+// pro fim). Fonte única da ordem: o desenho dos cards e o Anterior/Próximo do
+// modal Ver (ver visualizar-livro.js) usam esta mesma lista.
+function livrosEmOrdemDaAba() {
+    return [...db.livros].sort(
+        (a, b) => (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999),
+    );
+}
+
+// Livros na ordem da aba e com os filtros (busca, tipo, fase, situação editorial).
+function livrosVisiveisDaAba() {
+    return filtrarLivros(livrosEmOrdemDaAba(), filtrosLivros, hojeDoUsuario());
+}
+
+// Ids dos livros como aparecem na aba, já filtrados. O Anterior/Próximo do Ver do
+// Livro congela esta lista ao abrir, então "n de N" segue o filtro.
+export function getListaVisivelLivros() {
+    return livrosVisiveisDaAba().map((l) => l.id);
+}
+
+// Select de fase: só as fases que existem nos livros, mais "Sem fase" quando algum
+// livro não tem. Se a fase escolhida deixou de existir (livro editado ou excluído),
+// o filtro volta para "todas" em vez de esconder tudo sem aviso.
+function popularFiltroFaseLivros() {
+    const sel = document.getElementById('filtro-fase-livros');
+    const fases = fasesDosLivros(db.livros);
+    const semFase = haLivroSemFase(db.livros);
+    if (
+        filtrosLivros.fase &&
+        !(filtrosLivros.fase === FASE_SEM_FASE ? semFase : fases.includes(filtrosLivros.fase))
+    ) {
+        filtrosLivros.fase = '';
+    }
+    if (!sel) return;
+    sel.innerHTML =
+        '<option value="">-- Todas as fases --</option>' +
+        fases.map((f) => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join('') +
+        (semFase ? `<option value="${FASE_SEM_FASE}">Sem fase</option>` : '');
+    sel.value = filtrosLivros.fase;
+}
+
+// Contagem "N de M" e botão "Limpar filtros", só quando há filtro ligado.
+function atualizarBarraFiltrosLivros(visiveis, total) {
+    const ativos = filtrosLivrosAtivos(filtrosLivros);
+    const contagem = document.getElementById('contagem-livros');
+    if (contagem) {
+        contagem.textContent = ativos ? `${visiveis} de ${total} livros` : '';
+    }
+    const limpar = document.getElementById('limpar-filtros-livros');
+    if (limpar) limpar.classList.toggle('hidden', !ativos);
+}
+
 export function renderLivros() {
     const container = document.getElementById('lista-livros');
     if (!container) return;
 
-    const ordenados = [...db.livros].sort(
-        (a, b) => (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999),
-    );
+    popularFiltroFaseLivros();
+    const ordenados = livrosVisiveisDaAba();
+    atualizarBarraFiltrosLivros(ordenados.length, db.livros.length);
 
     if (ordenados.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum livro encontrado.</div>`;
+        const mensagem =
+            db.livros.length > 0 && filtrosLivrosAtivos(filtrosLivros)
+                ? 'Nenhum livro corresponde aos filtros.'
+                : 'Nenhum livro encontrado.';
+        container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">${mensagem}</div>`;
         return;
     }
 
+    const comPrevia = previasAtivas('livros');
     container.innerHTML = ordenados
         .map(
             (l) => `
         <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
             ${
-                l.capa
-                    ? `<img data-capa-id="${l.capa}" src="" alt="Capa de ${escapeHtml(l.titulo)}" class="w-full h-32 object-cover rounded mb-4 opacity-0 transition-opacity duration-200">`
-                    : `<div class="h-32 bg-gray-100 dark:bg-slate-700 rounded mb-4"></div>`
+                !comPrevia
+                    ? ''
+                    : l.capa
+                      ? `<img data-capa-id="${l.capa}" src="" alt="Capa de ${escapeHtml(l.titulo)}" class="w-full h-32 object-cover rounded mb-4 opacity-0 transition-opacity duration-200">`
+                      : `<div class="h-32 bg-gray-100 dark:bg-slate-700 rounded mb-4"></div>`
             }
             <div class="flex justify-between items-start">
                 <h4 class="font-bold text-blue-800 dark:text-blue-200">${escapeHtml(l.titulo)}</h4>
@@ -2545,8 +2686,10 @@ export function renderLivros() {
                 l.certificadoDireitoAutoralUrl ||
                 l.cartaExclusividadeUrl ||
                 l.pdfUrl ||
-                l.epubUrl
+                l.epubUrl ||
+                linkImagemExibivel(l.imagemUrl)
                     ? `<div class="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[10px]">
+                        ${linkImagemHtml(l.imagemUrl)}
                         ${l.pdfUrl ? `<a href="${escapeHtml(l.pdfUrl)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">PDF</a>` : ''}
                         ${l.epubUrl ? `<a href="${escapeHtml(l.epubUrl)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">Epub</a>` : ''}
                         ${l.codigoBarrasUrl ? `<a href="${escapeHtml(l.codigoBarrasUrl)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">Código de barras</a>` : ''}
@@ -2558,6 +2701,7 @@ export function renderLivros() {
             }
             <div class="flex justify-between items-center mt-4">
                 <div class="flex gap-4">
+                    <button data-action="ver-livro" data-id="${l.id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>
                     <button data-action="editar-livro" data-id="${l.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
                     <button data-action="excluir-item" data-tipo="livros" data-id="${l.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
                 </div>
@@ -2572,15 +2716,35 @@ export function renderLivros() {
     preencherCapas(container);
 }
 
+// ─── Exibir prévias (Livros, Partes, Seções, Elementos e Autores) ─────
+// A escolha mora em previas-imagem.js; aqui só se redesenha a aba afetada.
+const RENDER_PREVIAS = {
+    livros: () => renderLivros(),
+    partes: () => renderPartes(),
+    secoes: () => renderSecoes(),
+    elementos: () => renderElementos(),
+    autores: () => renderAutores(),
+};
+
+// onchange da caixa "Exibir prévias" de uma aba.
+export function alternarPreviasImagem(aba, ativo) {
+    definirPreviasImagem(aba, ativo);
+    RENDER_PREVIAS[aba]?.();
+}
+
+// Atalhos "ligar" e "desligar" de todas as abas de uma vez.
+export function definirPreviasImagemTodasAbas(ativo) {
+    definirPreviasImagemTodas(ativo);
+    Object.values(RENDER_PREVIAS).forEach((renderizar) => renderizar());
+}
+
 // ─── Partes ──────────────────────────────────────────────────
 
-export function renderPartes() {
-    const container = document.getElementById('lista-partes');
-    if (!container) return;
-
-    popularFiltroLivro('filtro-livro-partes');
-
-    const ordenadas = [...db.partes]
+// Partes na ordem e com o filtro dos cards (sem as de Coletânea, que vivem na aba
+// Coletâneas). Fonte única: o desenho dos cards e o Anterior/Próximo do Ver da
+// Parte (ver visualizar-parte-secao.js) usam esta mesma lista.
+function partesEmOrdemDaAba() {
+    return [...db.partes]
         .filter((p) => {
             const livro = db.livros.find((l) => l.id == p.livroId);
             if (!livro || livro.tipo === 'Coletânea') return false;
@@ -2593,28 +2757,52 @@ export function renderPartes() {
             if (livroIdxA !== livroIdxB) return livroIdxA - livroIdxB;
             return (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999);
         });
+}
+
+export function getListaVisivelPartes() {
+    return partesEmOrdemDaAba().map((p) => p.id);
+}
+
+export function renderPartes() {
+    const container = document.getElementById('lista-partes');
+    if (!container) return;
+
+    popularFiltroLivro('filtro-livro-partes');
+
+    const ordenadas = partesEmOrdemDaAba();
 
     if (ordenadas.length === 0) {
         container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhuma parte encontrada.</div>`;
         return;
     }
 
+    const comPrevia = previasAtivas('partes');
     container.innerHTML = ordenadas
         .map((p) => {
             const livro = db.livros.find((l) => l.id == p.livroId);
             return `
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm flex justify-between items-center">
-            ${p.capa ? `<img data-capa-id="${p.capa}" src="" alt="Capa de ${escapeHtml(p.titulo)}" class="w-16 h-16 object-cover rounded mr-3 flex-shrink-0 opacity-0 transition-opacity duration-200">` : ''}
-            <div class="flex-1 min-w-0">
-                <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(p.titulo)}</h4>
-                <p class="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">
-                    ${livro ? escapeHtml(livro.titulo) : 'Sem livro'}
-                </p>
-                <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">SEQ: ${p.sequencia || '0'}</p>
-            </div>
-            <div class="flex gap-3 flex-shrink-0">
-                <button data-action="editar-parte" data-id="${p.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
-                <button data-action="excluir-item" data-tipo="partes" data-id="${p.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+        <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
+            ${
+                !comPrevia
+                    ? ''
+                    : p.capa
+                      ? `<img data-capa-id="${p.capa}" src="" alt="Capa de ${escapeHtml(p.titulo)}" class="w-full h-24 object-cover rounded mb-3 border opacity-0 transition-opacity duration-200 border-gray-300 dark:border-slate-600">`
+                      : `<div class="h-24 bg-gray-100 dark:bg-slate-700 rounded mb-3"></div>`
+            }
+            <div class="flex justify-between items-center">
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(p.titulo)}</h4>
+                    <p class="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">
+                        ${livro ? escapeHtml(livro.titulo) : 'Sem livro'}
+                    </p>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">SEQ: ${p.sequencia || '0'}</p>
+                    ${linhaLinkImagemCard(p)}
+                </div>
+                <div class="flex gap-3 flex-shrink-0">
+                    <button data-action="ver-parte" data-id="${p.id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>
+                    <button data-action="editar-parte" data-id="${p.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
+                    <button data-action="excluir-item" data-tipo="partes" data-id="${p.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
+                </div>
             </div>
         </div>`;
         })
@@ -2624,13 +2812,9 @@ export function renderPartes() {
 
 // ─── Seções ──────────────────────────────────────────────────
 
-export function renderSecoes() {
-    const container = document.getElementById('lista-secoes');
-    if (!container) return;
-
-    popularFiltroLivro('filtro-livro-secoes');
-    popularFiltroParteSecoes();
-
+// Seções na ordem e com os filtros dos cards. Fonte única: o desenho dos cards e o
+// Anterior/Próximo do Ver da Seção (ver visualizar-parte-secao.js).
+function secoesEmOrdemDaAba() {
     const filtradas = db.secoes.filter((s) => {
         if (filtroParteSecoes) {
             return s.paiTipo === 'parte' && String(s.paiId) === String(filtroParteSecoes);
@@ -2641,7 +2825,7 @@ export function renderSecoes() {
         return true;
     });
 
-    const ordenadas = [...filtradas].sort((a, b) => {
+    return [...filtradas].sort((a, b) => {
         const hA = getElementHierarchy({ paiTipo: a.paiTipo, paiId: a.paiId }, db);
         const hB = getElementHierarchy({ paiTipo: b.paiTipo, paiId: b.paiId }, db);
         if (hA[0] !== hB[0]) return hA[0] - hB[0];
@@ -2655,12 +2839,27 @@ export function renderSecoes() {
 
         return (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999);
     });
+}
+
+export function getListaVisivelSecoes() {
+    return secoesEmOrdemDaAba().map((s) => s.id);
+}
+
+export function renderSecoes() {
+    const container = document.getElementById('lista-secoes');
+    if (!container) return;
+
+    popularFiltroLivro('filtro-livro-secoes');
+    popularFiltroParteSecoes();
+
+    const ordenadas = secoesEmOrdemDaAba();
 
     if (ordenadas.length === 0) {
         container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhuma seção encontrada.</div>`;
         return;
     }
 
+    const comPrevia = previasAtivas('secoes');
     container.innerHTML = ordenadas
         .map((s) => {
             const pai =
@@ -2670,9 +2869,11 @@ export function renderSecoes() {
             return `
         <div class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm">
             ${
-                s.capa
-                    ? `<img data-capa-id="${s.capa}" src="" alt="Capa de ${escapeHtml(s.titulo)}" class="w-full h-24 object-cover rounded mb-3 border opacity-0 transition-opacity duration-200 border-gray-300 dark:border-slate-600">`
-                    : `<div class="h-24 bg-gray-100 dark:bg-slate-700 rounded mb-3"></div>`
+                !comPrevia
+                    ? ''
+                    : s.capa
+                      ? `<img data-capa-id="${s.capa}" src="" alt="Capa de ${escapeHtml(s.titulo)}" class="w-full h-24 object-cover rounded mb-3 border opacity-0 transition-opacity duration-200 border-gray-300 dark:border-slate-600">`
+                      : `<div class="h-24 bg-gray-100 dark:bg-slate-700 rounded mb-3"></div>`
             }
             <div class="flex justify-between items-center">
                 <div>
@@ -2681,8 +2882,10 @@ export function renderSecoes() {
                         ${s.paiTipo}: ${pai ? escapeHtml(pai.titulo) : '---'}
                     </p>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500">POSIÇÃO: ${s.sequencia ?? '—'}</p>
+                    ${linhaLinkImagemCard(s)}
                 </div>
                 <div class="flex gap-3">
+                    <button data-action="ver-secao" data-id="${s.id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>
                     <button data-action="editar-secao" data-id="${s.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
                     <button data-action="excluir-item" data-tipo="secoes" data-id="${s.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
                 </div>
@@ -3381,17 +3584,96 @@ export function renderProsas() {
 
 // ─── Elementos ───────────────────────────────────────────────
 
-export function renderElementos() {
-    const container = document.getElementById('lista-elementos');
-    if (!container) return;
+// Dados próprios da Ficha catalográfica no card do elemento.
+function blocoFichaDoCard(el) {
+    if (el.tipo !== 'Ficha catalográfica') return '';
+    const linhas = [
+        ['CDD', el.fichaCdd],
+        ['Controle', el.fichaNumeroControle],
+        ['Bibliotecário(a)', [el.fichaBibliotecario, el.fichaCrb].filter(Boolean).join(', ')],
+    ].filter(([, v]) => v);
+    const link = el.fichaUrl
+        ? `<a href="${escapeHtml(el.fichaUrl)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">Abrir link da ficha</a>`
+        : '';
+    if (!linhas.length && !link) return '';
+    return `<div class="text-[11px] text-gray-600 dark:text-slate-300 mb-2 space-y-0.5">
+        ${linhas.map(([r, v]) => `<div><strong>${r}:</strong> ${escapeHtml(v)}</div>`).join('')}
+        ${link ? `<div>${link}</div>` : ''}
+    </div>`;
+}
 
-    popularFiltroLivro('filtro-livro-elementos');
+// Itens do Sumário no card do elemento: os primeiros, com recuo por nível.
+const MAX_ITENS_SUMARIO_NO_CARD = 6;
 
-    const filtrados = filtroLivroElementos
-        ? db.elementos.filter((e) => String(livroDoElemento(e)) === String(filtroLivroElementos))
-        : db.elementos;
+function blocoSumarioDoCard(el) {
+    if (el.tipo !== 'Sumário') return '';
+    const itens = Array.isArray(el.itensSumario) ? el.itensSumario : [];
+    if (!itens.length) return '';
+    const linhas = itens
+        .slice(0, MAX_ITENS_SUMARIO_NO_CARD)
+        .map((i) => {
+            const recuo = ((Number(i.nivel) || 1) - 1) * 10;
+            return `<div class="flex justify-between gap-2" style="padding-left:${recuo}px"><span class="truncate">${escapeHtml(i.item)}</span><span class="flex-shrink-0">${escapeHtml(i.pagina || '')}</span></div>`;
+        })
+        .join('');
+    const resto = itens.length - MAX_ITENS_SUMARIO_NO_CARD;
+    return `<div class="text-[11px] text-gray-600 dark:text-slate-300 mb-2 space-y-0.5">
+        ${linhas}
+        ${resto > 0 ? `<div class="text-gray-400 dark:text-slate-500">e mais ${resto} ${resto === 1 ? 'item' : 'itens'}</div>` : ''}
+        <div class="text-gray-400 dark:text-slate-500">${itens.length} ${itens.length === 1 ? 'item' : 'itens'} no sumário</div>
+    </div>`;
+}
 
-    const ordenados = [...filtrados].sort((a, b) => {
+// Tipos em que a imagem é esperada (é o conteúdo ou a página inteira): mostram um
+// espaço cinza quando ainda não há imagem. Nos outros tipos o bloco só aparece se
+// houver imagem. A imagem entra inteira (object-contain), sem recorte, porque numa
+// ficha catalográfica ou num respiro o recorte cortaria justamente o conteúdo.
+const TIPOS_COM_IMAGEM_ESPERADA = [
+    'Respiro (Imagem)',
+    'Conteúdo Multimídia',
+    'Ficha catalográfica',
+];
+
+// Linha "Abrir imagem original" dos cards de Parte, Seção e Elemento (vazia
+// sem link válido). O link é só de acesso, ver imagem-link.js.
+function linhaLinkImagemCard(item) {
+    const link = linkImagemHtml(item.imagemUrl);
+    return link ? `<p class="text-[10px] mt-1">${link}</p>` : '';
+}
+
+function blocoImagemDoElemento(el, comPrevia = true) {
+    if (!comPrevia) return '';
+    if (!el.imagem && !TIPOS_COM_IMAGEM_ESPERADA.includes(el.tipo)) return '';
+    const img = el.imagem
+        ? `<img data-capa-id="${el.imagem}" src="" alt="${el.titulo ? 'Imagem de ' + escapeHtml(el.titulo) : 'Imagem do elemento'}" class="max-h-full max-w-full object-contain opacity-0 transition-opacity duration-200">`
+        : '';
+    return `<div data-bloco-imagem-elemento class="h-40 mb-2 rounded bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 flex items-center justify-center overflow-hidden">${img}</div>`;
+}
+
+// Texto do elemento no card. O Sumário costuma ficar sem texto, porque o que importa é a
+// lista de itens: com itens e sem texto, o "(Sem texto)" não aparece (um espaço vazio
+// mantém o rodapé do card alinhado com os vizinhos). Sem itens, o aviso continua.
+function blocoTextoDoCard(el) {
+    const semTexto = !el.texto || !String(el.texto).trim();
+    const temItens = Array.isArray(el.itensSumario) && el.itensSumario.length > 0;
+    if (el.tipo === 'Sumário' && semTexto && temItens) {
+        return '<div data-sem-texto-oculto class="mb-auto"></div>';
+    }
+    return `<p class="text-sm text-gray-600 dark:text-slate-300 line-clamp-3 italic mb-auto" style="white-space: pre-line;">${el.texto ? sanitizarTextoRico(el.texto) : '(Sem texto)'}</p>`;
+}
+
+// Elementos na ordem e com os filtros (livro e tipo) dos cards. Fonte única: o
+// desenho dos cards e o Anterior/Próximo do Ver do Elemento (ver
+// visualizar-elemento.js) usam esta mesma lista.
+function elementosEmOrdemDaAba() {
+    const filtrados = db.elementos.filter(
+        (e) =>
+            (!filtroLivroElementos ||
+                String(livroDoElemento(e)) === String(filtroLivroElementos)) &&
+            (!filtroTipoElementos || e.tipo === filtroTipoElementos),
+    );
+
+    return [...filtrados].sort((a, b) => {
         const [lA, ppA, psA] = getPosicaoElemento(a, db);
         const [lB, ppB, psB] = getPosicaoElemento(b, db);
         if (lA !== lB) return lA - lB;
@@ -3399,12 +3681,26 @@ export function renderElementos() {
         if (psA !== psB) return psA - psB;
         return (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999);
     });
+}
+
+export function getListaVisivelElementos() {
+    return elementosEmOrdemDaAba().map((e) => e.id);
+}
+
+export function renderElementos() {
+    const container = document.getElementById('lista-elementos');
+    if (!container) return;
+
+    popularFiltroLivro('filtro-livro-elementos');
+
+    const ordenados = elementosEmOrdemDaAba();
 
     if (ordenados.length === 0) {
         container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum elemento encontrado.</div>`;
         return;
     }
 
+    const comPrevia = previasAtivas('elementos');
     container.innerHTML = ordenados
         .map((el) => {
             const pai =
@@ -3419,13 +3715,17 @@ export function renderElementos() {
             <div class="flex justify-between items-start mb-2">
                 <span class="text-[10px] bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded uppercase font-bold text-gray-500 dark:text-slate-400">${el.tipo}</span>
                 <div class="flex gap-2">
+                    <button data-action="ver-elemento" data-id="${el.id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>
                     <button data-action="editar-elemento" data-id="${el.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
                     <button data-action="excluir-item" data-tipo="elementos" data-id="${el.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
                 </div>
             </div>
             ${el.titulo ? `<p class="text-sm font-semibold text-gray-700 dark:text-slate-200 mt-1 mb-1">${escapeHtml(el.titulo)}</p>` : ''}
-            ${el.imagem ? `<img data-capa-id="${el.imagem}" src="" alt="${el.titulo ? 'Imagem de ' + escapeHtml(el.titulo) : 'Imagem do elemento'}" class="w-full h-24 object-cover rounded mb-2 border opacity-0 transition-opacity duration-200 border-gray-300 dark:border-slate-600">` : ''}
-            <p class="text-sm text-gray-600 dark:text-slate-300 line-clamp-3 italic mb-auto" style="white-space: pre-line;">${el.texto ? sanitizarTextoRico(el.texto) : '(Sem texto)'}</p>
+            ${blocoImagemDoElemento(el, comPrevia)}
+            ${linhaLinkImagemCard(el)}
+            ${blocoFichaDoCard(el)}
+            ${blocoSumarioDoCard(el)}
+            ${blocoTextoDoCard(el)}
             ${
                 el.notas
                     ? `
@@ -3980,6 +4280,7 @@ export function renderAutores() {
         return;
     }
 
+    const comPrevia = previasAtivas('autores');
     container.innerHTML = visiveis
         .map((a) => {
             const { poemasIds, prosasIds } = calcularImpactoExclusaoAutor(db, a.id);
@@ -4009,6 +4310,11 @@ export function renderAutores() {
             <input type="checkbox" data-action="toggle-autor" data-id="${a.id}" ${
                 selecaoAutores.has(a.id) ? 'checked' : ''
             } aria-label="Selecionar ${escapeHtml(a.nome)}" class="w-4 h-4 flex-shrink-0 mb-0" />
+            ${
+                comPrevia && a.imagem
+                    ? `<img data-capa-id="${escapeHtml(String(a.imagem))}" src="" alt="Imagem de ${escapeHtml(a.nome)}" class="w-12 h-12 flex-shrink-0 rounded-full object-cover border border-gray-300 dark:border-slate-600 opacity-0 transition-opacity duration-200">`
+                    : ''
+            }
             <div class="flex-1 min-w-0">
                 <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(a.nome)}${
                     a.souEu
@@ -4033,6 +4339,11 @@ export function renderAutores() {
                 <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono mt-1">
                     aparece em ${resumoContagemTextosAutor(poemasIds.length, prosasIds.length)}
                 </p>
+                ${
+                    linkImagemExibivel(a.imagemUrl)
+                        ? `<p class="text-[10px] mt-1">${linkImagemHtml(a.imagemUrl)}</p>`
+                        : ''
+                }
             </div>
             <div class="flex gap-3 flex-shrink-0">
                 ${
@@ -4047,6 +4358,7 @@ export function renderAutores() {
         </div>`;
         })
         .join('');
+    preencherCapas(container);
 }
 
 // ─── Sonoridade (Escansão) ──────────────────────────────────────

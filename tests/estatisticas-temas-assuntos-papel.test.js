@@ -155,6 +155,82 @@ describe('recortarPorPapel', () => {
     });
 });
 
+describe('ordenarRotulosPorPapel', () => {
+    // Amor 2/2/1 (total 5), Mar 1/1/0 (2), Cidade 1/1/0 (2) e Luto 0/3/0 (3).
+    function comLuto() {
+        acervo();
+        db.temas.push({ id: 4, nome: 'Luto', notas: '' });
+        const luto = (id) => ({
+            id,
+            titulo: `L${id}`,
+            ano: 2020,
+            temas: [{ temaId: 4, papel: 'secundario' }],
+        });
+        db.poemas.push(luto(201), luto(202), luto(203));
+    }
+    beforeEach(comLuto);
+
+    it('total mantém a ordem recebida (a ordem de sempre)', () => {
+        const r = E.agregarPorPapel({ base: 'tema' });
+        assert.deepEqual(r.labels, ['Amor', 'Luto', 'Mar', 'Cidade']);
+        assert.deepEqual(E.ordenarRotulosPorPapel(r, r.labels, 'total'), r.labels);
+        assert.deepEqual(E.ordenarRotulosPorPapel(r, r.labels, 'qualquer'), r.labels);
+    });
+
+    it('por secundários: mais secundários primeiro, mesmo com total menor', () => {
+        const r = E.agregarPorPapel({ base: 'tema' });
+        // Luto (3) à frente de Amor (2); Mar e Cidade empatam em 1 secundário e em
+        // total, e o empate se resolve em ordem alfabética.
+        assert.deepEqual(E.ordenarRotulosPorPapel(r, r.labels, 'secundario'), [
+            'Luto',
+            'Amor',
+            'Cidade',
+            'Mar',
+        ]);
+    });
+
+    it('por principais: quem não tem principal vai para o fim', () => {
+        const r = E.agregarPorPapel({ base: 'tema' });
+        assert.deepEqual(E.ordenarRotulosPorPapel(r, r.labels, 'principal'), [
+            'Amor',
+            'Cidade',
+            'Mar',
+            'Luto',
+        ]);
+    });
+
+    it('por indefinidos: só o Amor tem; os demais ficam por total e depois nome', () => {
+        const r = E.agregarPorPapel({ base: 'tema' });
+        assert.deepEqual(E.ordenarRotulosPorPapel(r, r.labels, 'semPapel'), [
+            'Amor',
+            'Luto',
+            'Cidade',
+            'Mar',
+        ]);
+    });
+
+    it('só reordena os nomes recebidos (não traz de volta o que foi cortado ou ocultado)', () => {
+        const r = E.agregarPorPapel({ base: 'tema' });
+        assert.deepEqual(E.ordenarRotulosPorPapel(r, ['Mar', 'Luto'], 'secundario'), [
+            'Luto',
+            'Mar',
+        ]);
+    });
+});
+
+describe('preferência da ordem das barras', () => {
+    beforeEach(acervo);
+    it('padrão é total, guarda cada papel e ignora valor estranho', () => {
+        assert.equal(E.getOrdemTemasAssuntos(), 'total');
+        for (const o of ['principal', 'secundario', 'semPapel']) {
+            E.definirOrdemTemasAssuntos(o);
+            assert.equal(E.getOrdemTemasAssuntos(), o);
+        }
+        E.definirOrdemTemasAssuntos('qualquer');
+        assert.equal(E.getOrdemTemasAssuntos(), 'total');
+    });
+});
+
 describe('preferência do modo', () => {
     beforeEach(acervo);
     it('padrão é por tema, guarda por assunto e ignora valor estranho', () => {
@@ -253,6 +329,141 @@ describe('tela Temas e Assuntos', () => {
         );
     });
 
+    describe('tooltip: porção do papel e total da barra', () => {
+        const itensDe = (g, i) =>
+            g.data.datasets.map((ds, k) => ({ dataset: ds, raw: ds.data[i], datasetIndex: k }));
+
+        it('vale para a barra inteira, sem exigir o mouse sobre o segmento', () => {
+            renderTemasAssuntos();
+            const { interaction } = graficos['grafico-temas-assuntos'].cfg.options;
+            assert.equal(interaction.mode, 'index');
+            assert.equal(interaction.intersect, false);
+        });
+
+        it('cada linha traz a porção do papel e o rodapé traz o total da barra', () => {
+            renderTemasAssuntos();
+            const g = graficos['grafico-temas-assuntos'];
+            const { label, footer } = g.cfg.options.plugins.tooltip.callbacks;
+            const i = g.data.labels.indexOf('Amor'); // principal 2, secundário 2, indefinido 1
+            const itens = itensDe(g, i);
+            assert.match(label(itens[1]), /^Secundário: 2 texto\(s\)/);
+            assert.match(footer(itens.map((it) => ({ ...it, dataIndex: i }))), /: 5 texto\(s\)/);
+        });
+
+        it('o total da barra não depende de quantos segmentos o tooltip listou', () => {
+            renderTemasAssuntos();
+            const g = graficos['grafico-temas-assuntos'];
+            const { footer } = g.cfg.options.plugins.tooltip.callbacks;
+            const i = g.data.labels.indexOf('Amor');
+            const soUm = [{ ...itensDe(g, i)[0], dataIndex: i }];
+            assert.match(footer(soUm), /Total \(todos os papéis\): 5 texto\(s\)/);
+        });
+    });
+
+    describe('ordenar por mais principais, secundários ou indefinidos', () => {
+        function acervoComLuto() {
+            db.temas.push({ id: 4, nome: 'Luto', notas: '' });
+            db.poemas.push(
+                ...[201, 202, 203].map((id) => ({
+                    id,
+                    titulo: `L${id}`,
+                    ano: 2020,
+                    temas: [{ temaId: 4, papel: 'secundario' }],
+                })),
+            );
+        }
+
+        it('por padrão a ordem é a do total e o título é o de sempre', () => {
+            acervoComLuto();
+            renderTemasAssuntos();
+            assert.deepEqual(graficos['grafico-temas-assuntos'].data.labels, [
+                'Amor',
+                'Luto',
+                'Mar',
+                'Cidade',
+            ]);
+            assert.equal(
+                document.getElementById('titulo-temas-assuntos').textContent,
+                'Temas mais frequentes',
+            );
+        });
+
+        it('os botões aparecem, com o ativo marcado, e chamam definirOrdemTemasAssuntos', () => {
+            renderTemasAssuntos();
+            const html = document.getElementById('painel-ordem-temas-assuntos').innerHTML;
+            for (const rotulo of ['Total', 'Principais', 'Secundários', 'Indefinidos'])
+                assert.match(html, new RegExp(rotulo));
+            for (const v of ['total', 'principal', 'secundario', 'semPapel'])
+                assert.match(html, new RegExp(`definirOrdemTemasAssuntos\\('${v}'\\)`));
+            assert.equal((html.match(/bg-blue-600/g) || []).length, 1, 'só o ativo');
+        });
+
+        it('secundários: reordena as barras, mantém os dados de cada tema e muda o título', () => {
+            acervoComLuto();
+            E.definirOrdemTemasAssuntos('secundario');
+            renderTemasAssuntos();
+            const g = graficos['grafico-temas-assuntos'];
+            assert.deepEqual(g.data.labels, ['Luto', 'Amor', 'Cidade', 'Mar']);
+            const linha = (nome) => {
+                const i = g.data.labels.indexOf(nome);
+                return g.data.datasets.map((d) => d.data[i]);
+            };
+            assert.deepEqual(linha('Luto'), [0, 3, 0]);
+            assert.deepEqual(linha('Amor'), [2, 2, 1]);
+            assert.equal(
+                document.getElementById('titulo-temas-assuntos').textContent,
+                'Temas com mais secundários',
+            );
+        });
+
+        it('no modo Assuntos o título acompanha', () => {
+            E.definirModoTemasAssuntos('assunto');
+            E.definirOrdemTemasAssuntos('principal');
+            renderTemasAssuntos();
+            assert.equal(
+                document.getElementById('titulo-temas-assuntos').textContent,
+                'Assuntos com mais principais',
+            );
+        });
+
+        it('a ordem vale antes do Top 12: entra quem tem mais do papel, não só do total', () => {
+            acervoComLuto();
+            // 12 temas com 4 principais cada: no total ocupam o Top 12 e deixam o Luto de fora.
+            for (let n = 1; n <= 12; n++) {
+                const id = 100 + n;
+                db.temas.push({ id, nome: `F${String(n).padStart(2, '0')}`, notas: '' });
+                for (let k = 0; k < 4; k++)
+                    db.poemas.push({
+                        id: id * 10 + k,
+                        titulo: `F${n}-${k}`,
+                        ano: 2020,
+                        temas: [{ temaId: id, papel: 'principal' }],
+                    });
+            }
+            renderTemasAssuntos();
+            const porTotal = [...graficos['grafico-temas-assuntos'].data.labels];
+            assert.equal(porTotal.length, 12);
+            assert.ok(!porTotal.includes('Luto'), 'Luto (total 3) fica fora do Top 12 por total');
+
+            E.definirOrdemTemasAssuntos('secundario');
+            renderTemasAssuntos();
+            const porSecundario = graficos['grafico-temas-assuntos'].data.labels;
+            assert.equal(porSecundario.length, 12);
+            assert.equal(porSecundario[0], 'Luto');
+            assert.equal(porSecundario[1], 'Amor');
+        });
+
+        it('o clique no segmento continua abrindo a lista do papel certo na nova ordem', () => {
+            acervoComLuto();
+            E.definirOrdemTemasAssuntos('secundario');
+            renderTemasAssuntos();
+            clicar(0, 1); // Luto, Secundário
+            assert.equal(consultas.length, 1);
+            assert.ok(consultas[0].startsWith('temasecundario:'), consultas[0]);
+            assert.match(consultas[0], /Luto/);
+        });
+    });
+
     it('o corte por mínimo vale para o total e usa a chave temas', () => {
         E.definirMinimoAparicoes('temas', 3);
         renderTemasAssuntos();
@@ -301,6 +512,7 @@ describe('tela Temas e Assuntos', () => {
 describe('HTML da aba', () => {
     it('um cartão só, com o botão de modo e sem seletores de papel; o do tema fica no tempo', () => {
         assert.ok(SECAO.includes('id="painel-modo-temas-assuntos"'));
+        assert.ok(SECAO.includes('id="painel-ordem-temas-assuntos"'));
         assert.ok(SECAO.includes('id="painel-papel-tema-tempo"'));
         assert.ok(!SECAO.includes('id="grafico-assuntos"'));
         assert.ok(!SECAO.includes('painel-papel-assunto'));

@@ -141,7 +141,31 @@ import { normalizarRegiao } from './regiao.js';
 // formulário, que mora neste módulo.
 export const rastreadorPoema = criarRastreadorDeAlteracoes();
 export const rastreadorProsa = criarRastreadorDeAlteracoes();
+// Livro: serve ao olho do cabeçalho ("Salvar antes de ver?") e, registrado em
+// registrarModal (main.js), à confirmação "Alterações não salvas" ao fechar o
+// formulário com alteração, como em Poema e Prosa.
+export const rastreadorLivro = criarRastreadorDeAlteracoes();
+// Parte e Seção: o mesmo papel do rastreador do Livro (olho do cabeçalho e
+// confirmação ao fechar com alteração).
+export const rastreadorParte = criarRastreadorDeAlteracoes();
+export const rastreadorSecao = criarRastreadorDeAlteracoes();
+// Elemento: o mesmo papel (olho do cabeçalho e confirmação ao fechar com alteração).
+export const rastreadorElemento = criarRastreadorDeAlteracoes();
 import { salvarCapa, deletarCapa } from './capas.js';
+import { normalizarLinkImagem } from './imagem-link.js';
+import {
+    camposDaFicha,
+    outrasFichasDoLivro,
+    sincronizarLivroComFicha,
+    sincronizarFichasComLivro,
+} from './ficha-catalografica.js';
+import { camposDoSumario } from './sumario.js';
+import {
+    ligarSumarioNoModal,
+    lerSumarioDoModal,
+    renderSumarioNoModal,
+    limparSumarioDoModal,
+} from './ui-sumario.js';
 import { getColetaneasDeItem } from './coletaneas.js';
 import {
     toggleModal,
@@ -443,93 +467,128 @@ export function jargaoGiriaParaSalvar(tabela) {
     return { jargaoGiria: obterJargaoGiriaTexto(tabela) };
 }
 
+// Último envio do formulário de Livro: uma promessa de "salvou?" (true) ou "recusou"
+// (false, por data fora de ordem). Salvar é assíncrono (a capa vai pro IndexedDB),
+// então o "Salvar e ver" do olho espera por ela. `null` depois de
+// `zerarUltimoEnvioLivro()` significa que nenhum envio começou (validação nativa
+// do navegador recusou, por exemplo o título vazio).
+let envioLivroEmAndamento = null;
+
+export function ultimoEnvioLivro() {
+    return envioLivroEmAndamento;
+}
+
+export function zerarUltimoEnvioLivro() {
+    envioLivroEmAndamento = null;
+}
+
 export function initFormLivro() {
     const form = document.getElementById('form-livro');
     if (!form) return;
 
-    form.onsubmit = async (e) => {
+    rastreadorLivro.observar(form);
+
+    form.onsubmit = (e) => {
         e.preventDefault();
-        const id = document.getElementById('l-edit-id').value;
-        const capaFile = document.getElementById('l-capa').files[0];
-        const removerCapa = document.getElementById('l-remover-capa').checked;
-        const capaAtual = id ? db.livros.find((x) => x.id == id)?.capa : null;
-        // "Remover capa" tem prioridade sobre um arquivo eventualmente selecionado —
-        // se a pessoa marcou a caixa, a intenção é ficar sem capa, ponto final.
-        let capaFinal;
-        if (removerCapa) {
-            await deletarCapa(capaAtual);
-            capaFinal = null;
-        } else {
-            // salvarCapa retorna o novo ID (e descarta o antigo) se houver arquivo novo,
-            // ou null se não houver — nesse caso mantemos o ID já existente.
-            const novoCapaId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
-            capaFinal = novoCapaId ?? capaAtual;
-        }
-
-        const dataPublicacao = lerDataParcial('l-data');
-        const dataUltimaEdicao = lerDataParcial('l-ultima-edicao');
-        if (violaOrdemDeDatas(dataPublicacao, dataUltimaEdicao)) {
-            return mostrarAviso(
-                'A Data da Última Edição não pode ser anterior à Data de Primeira Publicação.',
-            );
-        }
-
-        const situacaoDesde = lerDataParcial('l-situacao-desde');
-        if (violaOrdemDeDatas(dataPublicacao, situacaoDesde)) {
-            return mostrarAviso(
-                'A data da situação editorial não pode ser anterior à Data de Primeira Publicação.',
-            );
-        }
-
-        const dados = {
-            id: id ? parseInt(id) : gerarId(),
-            titulo: document.getElementById('l-titulo').value,
-            sequencia: seqOuNull(document.getElementById('l-sequencia').value),
-            siglaOficial: document.getElementById('l-sigla-oficial').value,
-            siglaPessoal: document.getElementById('l-sigla-pessoal').value,
-            data: dataPublicacao,
-            dataUltimaEdicao,
-            tipo: document.getElementById('l-tipo').value,
-            fase: document.getElementById('l-fase').value,
-            abertura: document.getElementById('l-abertura').value,
-            sinopse: document.getElementById('l-sinopse').value,
-            capaDesc: document.getElementById('l-capa-desc').value,
-            fraseCapa: document.getElementById('l-frase-capa').value,
-            orelha1: document.getElementById('l-orelha-1').value,
-            orelha2: document.getElementById('l-orelha-2').value,
-            contracapa: document.getElementById('l-contracapa').value,
-            isbn13: document.getElementById('l-isbn-13').value.trim(),
-            isbn10: document.getElementById('l-isbn-10').value.trim(),
-            codigoBarrasUrl: document.getElementById('l-codigo-barras').value.trim(),
-            pdfUrl: document.getElementById('l-pdf').value.trim(),
-            epubUrl: document.getElementById('l-epub').value.trim(),
-            fichaCatalograficaUrl: document.getElementById('l-ficha-catalografica').value.trim(),
-            certificadoDireitoAutoralUrl: document
-                .getElementById('l-certificado-direito-autoral')
-                .value.trim(),
-            cartaExclusividadeUrl: document.getElementById('l-carta-exclusividade').value.trim(),
-            situacaoEditorial: document.getElementById('l-situacao-editorial').value,
-            situacaoDesde,
-            situacaoNota: document.getElementById('l-situacao-nota').value.trim(),
-            lojas: obterLojas(),
-            capa: capaFinal,
-        };
-
-        const posicaoAntiga = id ? (db.livros.find((x) => x.id == id)?.sequencia ?? null) : null;
-
-        if (id) db.livros[db.livros.findIndex((x) => x.id == id)] = dados;
-        else db.livros.push(dados);
-
-        reordenarPosicao(db.livros, dados, dados.sequencia, posicaoAntiga);
-
-        save();
-        resetLojas();
-        toggleModal('modal-livro');
+        envioLivroEmAndamento = salvarLivroDoFormulario();
     };
+}
+
+// Devolve true quando salvou (e fechou o modal) e false quando recusou.
+async function salvarLivroDoFormulario() {
+    const id = document.getElementById('l-edit-id').value;
+    const imagemUrl = lerLinkImagem('l-imagem-url');
+    if (imagemUrl === null) return false;
+    const capaFile = document.getElementById('l-capa').files[0];
+    const removerCapa = document.getElementById('l-remover-capa').checked;
+    const capaAtual = id ? db.livros.find((x) => x.id == id)?.capa : null;
+    // "Remover capa" tem prioridade sobre um arquivo eventualmente selecionado —
+    // se a pessoa marcou a caixa, a intenção é ficar sem capa, ponto final.
+    let capaFinal;
+    if (removerCapa) {
+        await deletarCapa(capaAtual);
+        capaFinal = null;
+    } else {
+        // salvarCapa retorna o novo ID (e descarta o antigo) se houver arquivo novo,
+        // ou null se não houver — nesse caso mantemos o ID já existente.
+        const novoCapaId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
+        capaFinal = novoCapaId ?? capaAtual;
+    }
+
+    const dataPublicacao = lerDataParcial('l-data');
+    const dataUltimaEdicao = lerDataParcial('l-ultima-edicao');
+    if (violaOrdemDeDatas(dataPublicacao, dataUltimaEdicao)) {
+        mostrarAviso(
+            'A Data da Última Edição não pode ser anterior à Data de Primeira Publicação.',
+        );
+        return false;
+    }
+
+    const situacaoDesde = lerDataParcial('l-situacao-desde');
+    if (violaOrdemDeDatas(dataPublicacao, situacaoDesde)) {
+        mostrarAviso(
+            'A data da situação editorial não pode ser anterior à Data de Primeira Publicação.',
+        );
+        return false;
+    }
+
+    const dados = {
+        id: id ? parseInt(id) : gerarId(),
+        titulo: document.getElementById('l-titulo').value,
+        sequencia: seqOuNull(document.getElementById('l-sequencia').value),
+        siglaOficial: document.getElementById('l-sigla-oficial').value,
+        siglaPessoal: document.getElementById('l-sigla-pessoal').value,
+        data: dataPublicacao,
+        dataUltimaEdicao,
+        tipo: document.getElementById('l-tipo').value,
+        fase: document.getElementById('l-fase').value,
+        abertura: document.getElementById('l-abertura').value,
+        sinopse: document.getElementById('l-sinopse').value,
+        capaDesc: document.getElementById('l-capa-desc').value,
+        fraseCapa: document.getElementById('l-frase-capa').value,
+        orelha1: document.getElementById('l-orelha-1').value,
+        orelha2: document.getElementById('l-orelha-2').value,
+        contracapa: document.getElementById('l-contracapa').value,
+        isbn13: document.getElementById('l-isbn-13').value.trim(),
+        isbn10: document.getElementById('l-isbn-10').value.trim(),
+        codigoBarrasUrl: document.getElementById('l-codigo-barras').value.trim(),
+        pdfUrl: document.getElementById('l-pdf').value.trim(),
+        epubUrl: document.getElementById('l-epub').value.trim(),
+        fichaCatalograficaUrl: document.getElementById('l-ficha-catalografica').value.trim(),
+        certificadoDireitoAutoralUrl: document
+            .getElementById('l-certificado-direito-autoral')
+            .value.trim(),
+        cartaExclusividadeUrl: document.getElementById('l-carta-exclusividade').value.trim(),
+        situacaoEditorial: document.getElementById('l-situacao-editorial').value,
+        situacaoDesde,
+        situacaoNota: document.getElementById('l-situacao-nota').value.trim(),
+        lojas: obterLojas(),
+        capa: capaFinal,
+        imagemUrl,
+    };
+
+    const livroAnterior = id ? db.livros.find((x) => x.id == id) : null;
+    const posicaoAntiga = livroAnterior?.sequencia ?? null;
+    const fichaUrlAnterior = livroAnterior?.fichaCatalograficaUrl ?? '';
+
+    if (id) db.livros[db.livros.findIndex((x) => x.id == id)] = dados;
+    else db.livros.push(dados);
+
+    reordenarPosicao(db.livros, dados, dados.sequencia, posicaoAntiga);
+
+    // Link da ficha mudou no livro: as fichas ligadas a ele acompanham.
+    sincronizarFichasComLivro(db, dados.id, fichaUrlAnterior, dados.fichaCatalograficaUrl);
+
+    save();
+    rastreadorLivro.marcarLimpo();
+    resetLojas();
+    toggleModal('modal-livro');
+    return true;
 }
 
 const MAPA_LIVRO = {
     id: 'l-edit-id',
+    imagemUrl: 'l-imagem-url',
     titulo: 'l-titulo',
     sequencia: 'l-sequencia',
     siglaOficial: 'l-sigla-oficial',
@@ -572,7 +631,12 @@ export async function editarLivro(id) {
     carregarLojas(l.lojas || []);
     document.getElementById('l-remover-capa').checked = false;
     document.getElementById('modal-livro-titulo').innerText = 'Editar Livro';
-    toggleModal('modal-livro');
+    // Preencher por código não dispara 'input': o que está no form agora é o estado
+    // inicial, não edição (mesma lógica do toggleModal ao abrir Poema e Prosa).
+    rastreadorLivro.marcarLimpo();
+    // Livro já salvo tem o que ver: mostra o olho do cabeçalho.
+    document.getElementById('livro-ver')?.classList.remove('hidden');
+    await toggleModal('modal-livro');
 }
 
 // ─── Pessoa ──────────────────────────────────────────────────
@@ -921,6 +985,15 @@ export async function editarGrupo(id) {
     toggleModal('modal-grupo');
 }
 
+// Lê o campo "Link da imagem" de um modal: '' se vazio, o link limpo se for
+// http/https, ou null (com aviso) se for outro texto. Quem salva deve parar
+// no null ANTES de gravar ou apagar qualquer imagem. Ver imagem-link.js.
+export function lerLinkImagem(idCampo) {
+    const link = normalizarLinkImagem(document.getElementById(idCampo)?.value);
+    if (link === null) mostrarAviso('O link da imagem precisa começar com http:// ou https://.');
+    return link;
+}
+
 // ─── Autor ───────────────────────────────────────────────────
 // Cadastro central (db.autores: { id, nome, sobre }), à parte do de
 // Pessoas — quem tem responsabilidade autoral sobre um texto (ver
@@ -932,9 +1005,14 @@ export function initFormAutor() {
     const form = document.getElementById('form-autor');
     if (!form) return;
 
-    form.onsubmit = (e) => {
+    form.onsubmit = async (e) => {
         e.preventDefault();
         const id = document.getElementById('au-edit-id').value;
+
+        const imagemUrl = normalizarLinkImagem(document.getElementById('au-imagem-url').value);
+        if (imagemUrl === null) {
+            return mostrarAviso('O link da imagem precisa começar com http:// ou https://.');
+        }
 
         const nascimento = lerDataParcial('au-nasc');
         const obito = lerDataParcial('au-obito');
@@ -942,9 +1020,25 @@ export function initFormAutor() {
             return mostrarAviso('O Óbito não pode ser anterior ao Nascimento.');
         }
 
+        // Imagem do Autor: mesmo ciclo das capas (IndexedDB, ver capas.js).
+        // "Remover" tem prioridade sobre um arquivo eventualmente escolhido.
+        const imagemFile = document.getElementById('au-imagem').files[0];
+        const removerImagem = document.getElementById('au-remover-imagem').checked;
+        const imagemAtual = id ? db.autores.find((x) => x.id == id)?.imagem : null;
+        let imagemFinal;
+        if (removerImagem) {
+            await deletarCapa(imagemAtual);
+            imagemFinal = null;
+        } else {
+            const novaImagemId = imagemFile ? await salvarCapa(imagemFile, imagemAtual) : null;
+            imagemFinal = novaImagemId ?? imagemAtual ?? null;
+        }
+
         const dados = {
             id: id ? parseInt(id) : gerarId(),
             nome: document.getElementById('au-nome').value.trim(),
+            imagem: imagemFinal,
+            imagemUrl,
             isni: document.getElementById('au-isni').value.trim(),
             nomesLiterarios: JSON.parse(
                 document.getElementById('au-nomes-literarios').value || '[]',
@@ -1088,6 +1182,9 @@ export async function editarAutor(id) {
     document.getElementById('au-edit-id').value = a.id;
     document.getElementById('au-nome').value = a.nome;
     document.getElementById('au-isni').value = a.isni || '';
+    document.getElementById('au-imagem').value = '';
+    document.getElementById('au-remover-imagem').checked = false;
+    document.getElementById('au-imagem-url').value = a.imagemUrl || '';
     carregarNomesLiterariosAutor(a.nomesLiterarios || []);
     const souEuEl = document.getElementById('au-sou-eu');
     if (souEuEl) souEuEl.checked = !!a.souEu;
@@ -3728,67 +3825,92 @@ export async function abrirModalMesclar(tipo, origemId) {
 
 // ─── Parte ───────────────────────────────────────────────────
 
+// Último envio dos formulários de Parte e de Seção: uma promessa de "salvou?"
+// (true) ou "recusou" (false), como no Livro (ver `ultimoEnvioLivro`). Salvar é
+// assíncrono (a imagem vai pro IndexedDB), então o "Salvar e ver" do olho espera
+// por ela. `null` depois de `zerarUltimoEnvioParteSecao` significa que nenhum
+// envio começou (validação nativa do navegador recusou, por exemplo o título vazio).
+const enviosParteSecao = { parte: null, secao: null };
+
+export function ultimoEnvioParteSecao(tipo) {
+    return enviosParteSecao[tipo] ?? null;
+}
+
+export function zerarUltimoEnvioParteSecao(tipo) {
+    enviosParteSecao[tipo] = null;
+}
+
 export function initFormParte() {
     const form = document.getElementById('form-parte');
     if (!form) return;
 
-    form.onsubmit = async (e) => {
+    rastreadorParte.observar(form);
+
+    form.onsubmit = (e) => {
         e.preventDefault();
-        const id = document.getElementById('part-edit-id').value;
-        const capaFile = document.getElementById('part-capa').files[0];
-        const removerCapa = document.getElementById('part-remover-capa').checked;
-        const capaAtual = id ? db.partes.find((x) => x.id == id)?.capa : null;
-        let capaFinal;
-        if (removerCapa) {
-            await deletarCapa(capaAtual);
-            capaFinal = null;
-        } else {
-            const novoCapaId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
-            capaFinal = novoCapaId ?? capaAtual;
-        }
-
-        const dados = {
-            id: id ? parseInt(id) : gerarId(),
-            titulo: document.getElementById('part-titulo').value,
-            livroId: document.getElementById('part-livro').value,
-            sequencia: seqOuNull(document.getElementById('part-sequencia').value),
-            capaDesc: document.getElementById('part-capa-desc').value,
-            abertura: document.getElementById('part-abertura').value,
-            capa: capaFinal,
-        };
-
-        const anterior = id ? db.partes.find((x) => x.id == id) : null;
-        const posicaoAntiga =
-            anterior && String(anterior.livroId) === String(dados.livroId)
-                ? (anterior.sequencia ?? null)
-                : null;
-
-        if (id) db.partes[db.partes.findIndex((x) => x.id == id)] = dados;
-        else db.partes.push(dados);
-
-        // Se mudou de livro, fecha o buraco que deixou no livro antigo
-        if (anterior && String(anterior.livroId) !== String(dados.livroId)) {
-            fecharEspaco(getIrmaosTopoLivro(db, anterior.livroId), anterior.sequencia ?? null);
-        }
-
-        reordenarPosicao(
-            getIrmaosTopoLivro(db, dados.livroId),
-            dados,
-            dados.sequencia,
-            posicaoAntiga,
-        );
-
-        save();
-        toggleModal('modal-parte');
+        enviosParteSecao.parte = salvarParteDoFormulario();
     };
+}
+
+// Devolve true quando salvou (e fechou o modal) e false quando recusou.
+async function salvarParteDoFormulario() {
+    const id = document.getElementById('part-edit-id').value;
+    const imagemUrl = lerLinkImagem('part-imagem-url');
+    if (imagemUrl === null) return false;
+    const capaFile = document.getElementById('part-capa').files[0];
+    const removerCapa = document.getElementById('part-remover-capa').checked;
+    const capaAtual = id ? db.partes.find((x) => x.id == id)?.capa : null;
+    let capaFinal;
+    if (removerCapa) {
+        await deletarCapa(capaAtual);
+        capaFinal = null;
+    } else {
+        const novoCapaId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
+        capaFinal = novoCapaId ?? capaAtual;
+    }
+
+    const dados = {
+        id: id ? parseInt(id) : gerarId(),
+        titulo: document.getElementById('part-titulo').value,
+        livroId: document.getElementById('part-livro').value,
+        sequencia: seqOuNull(document.getElementById('part-sequencia').value),
+        capaDesc: document.getElementById('part-capa-desc').value,
+        sobre: document.getElementById('part-sobre').value,
+        abertura: document.getElementById('part-abertura').value,
+        capa: capaFinal,
+        imagemUrl,
+    };
+
+    const anterior = id ? db.partes.find((x) => x.id == id) : null;
+    const posicaoAntiga =
+        anterior && String(anterior.livroId) === String(dados.livroId)
+            ? (anterior.sequencia ?? null)
+            : null;
+
+    if (id) db.partes[db.partes.findIndex((x) => x.id == id)] = dados;
+    else db.partes.push(dados);
+
+    // Se mudou de livro, fecha o buraco que deixou no livro antigo
+    if (anterior && String(anterior.livroId) !== String(dados.livroId)) {
+        fecharEspaco(getIrmaosTopoLivro(db, anterior.livroId), anterior.sequencia ?? null);
+    }
+
+    reordenarPosicao(getIrmaosTopoLivro(db, dados.livroId), dados, dados.sequencia, posicaoAntiga);
+
+    save();
+    rastreadorParte.marcarLimpo();
+    toggleModal('modal-parte');
+    return true;
 }
 
 const MAPA_PARTE = {
     id: 'part-edit-id',
+    imagemUrl: 'part-imagem-url',
     titulo: 'part-titulo',
     livroId: 'part-livro',
     sequencia: 'part-sequencia',
     capaDesc: 'part-capa-desc',
+    sobre: 'part-sobre',
     abertura: 'part-abertura',
 };
 
@@ -3802,7 +3924,12 @@ export async function editarParte(id) {
     document.getElementById('part-capa').value = ''; // limpa seleção anterior — sem arquivo novo, preserva capa atual
     document.getElementById('part-remover-capa').checked = false;
     document.getElementById('modal-parte-titulo').innerText = 'Editar Parte';
-    toggleModal('modal-parte');
+    // Preencher por código não dispara 'input': o que está no form agora é o estado
+    // inicial, não edição.
+    rastreadorParte.marcarLimpo();
+    // Parte já salva tem o que ver: mostra o olho do cabeçalho.
+    document.getElementById('parte-ver')?.classList.remove('hidden');
+    await toggleModal('modal-parte');
 }
 
 // ─── Seção ───────────────────────────────────────────────────
@@ -3811,73 +3938,91 @@ export function initFormSecao() {
     const form = document.getElementById('form-secao');
     if (!form) return;
 
-    form.onsubmit = async (e) => {
+    rastreadorSecao.observar(form);
+
+    form.onsubmit = (e) => {
         e.preventDefault();
-        const idInput = document.getElementById('sec-edit-id').value;
-        const vinculo = document.getElementById('sec-vinculo').value;
-        if (!vinculo) return mostrarAviso('Selecione um vínculo para a seção!');
-
-        const [tipo, idPai] = vinculo.split(':');
-        const id = idInput ? parseInt(idInput) : gerarId();
-        const capaFile = document.getElementById('sec-capa').files[0];
-        const removerCapa = document.getElementById('sec-remover-capa').checked;
-        const capaAtual = idInput ? db.secoes.find((x) => x.id == id)?.capa : null;
-        let capaFinal;
-        if (removerCapa) {
-            await deletarCapa(capaAtual);
-            capaFinal = null;
-        } else {
-            const novoCapaId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
-            capaFinal = novoCapaId ?? capaAtual;
-        }
-
-        const dados = {
-            id,
-            titulo: document.getElementById('sec-titulo').value,
-            paiTipo: tipo,
-            paiId: idPai,
-            abertura: document.getElementById('sec-abertura').value,
-            sequencia: seqOuNull(document.getElementById('sec-sequencia')?.value),
-            capaDesc: document.getElementById('sec-capa-desc').value,
-            capa: capaFinal,
-        };
-
-        const anterior = idInput ? db.secoes.find((x) => x.id == id) : null;
-        const mesmoEscopo =
-            anterior &&
-            anterior.paiTipo === dados.paiTipo &&
-            String(anterior.paiId) === String(dados.paiId);
-        const posicaoAntiga = mesmoEscopo ? (anterior.sequencia ?? null) : null;
-
-        if (idInput) {
-            const idx = db.secoes.findIndex((x) => x.id == id);
-            if (idx !== -1) db.secoes[idx] = dados;
-        } else {
-            db.secoes.push(dados);
-        }
-
-        if (anterior && !mesmoEscopo) {
-            fecharEspaco(
-                getIrmaosPorEscopo(db, anterior.paiTipo, anterior.paiId),
-                anterior.sequencia ?? null,
-            );
-        }
-        reordenarPosicao(
-            getIrmaosPorEscopo(db, dados.paiTipo, dados.paiId),
-            dados,
-            dados.sequencia,
-            posicaoAntiga,
-        );
-
-        save();
-        toggleModal('modal-secao');
+        enviosParteSecao.secao = salvarSecaoDoFormulario();
     };
+}
+
+// Devolve true quando salvou (e fechou o modal) e false quando recusou.
+async function salvarSecaoDoFormulario() {
+    const idInput = document.getElementById('sec-edit-id').value;
+    const vinculo = document.getElementById('sec-vinculo').value;
+    if (!vinculo) {
+        mostrarAviso('Selecione um vínculo para a seção!');
+        return false;
+    }
+    const imagemUrl = lerLinkImagem('sec-imagem-url');
+    if (imagemUrl === null) return false;
+
+    const [tipo, idPai] = vinculo.split(':');
+    const id = idInput ? parseInt(idInput) : gerarId();
+    const capaFile = document.getElementById('sec-capa').files[0];
+    const removerCapa = document.getElementById('sec-remover-capa').checked;
+    const capaAtual = idInput ? db.secoes.find((x) => x.id == id)?.capa : null;
+    let capaFinal;
+    if (removerCapa) {
+        await deletarCapa(capaAtual);
+        capaFinal = null;
+    } else {
+        const novoCapaId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
+        capaFinal = novoCapaId ?? capaAtual;
+    }
+
+    const dados = {
+        id,
+        titulo: document.getElementById('sec-titulo').value,
+        paiTipo: tipo,
+        paiId: idPai,
+        sobre: document.getElementById('sec-sobre').value,
+        abertura: document.getElementById('sec-abertura').value,
+        sequencia: seqOuNull(document.getElementById('sec-sequencia')?.value),
+        capaDesc: document.getElementById('sec-capa-desc').value,
+        capa: capaFinal,
+        imagemUrl,
+    };
+
+    const anterior = idInput ? db.secoes.find((x) => x.id == id) : null;
+    const mesmoEscopo =
+        anterior &&
+        anterior.paiTipo === dados.paiTipo &&
+        String(anterior.paiId) === String(dados.paiId);
+    const posicaoAntiga = mesmoEscopo ? (anterior.sequencia ?? null) : null;
+
+    if (idInput) {
+        const idx = db.secoes.findIndex((x) => x.id == id);
+        if (idx !== -1) db.secoes[idx] = dados;
+    } else {
+        db.secoes.push(dados);
+    }
+
+    if (anterior && !mesmoEscopo) {
+        fecharEspaco(
+            getIrmaosPorEscopo(db, anterior.paiTipo, anterior.paiId),
+            anterior.sequencia ?? null,
+        );
+    }
+    reordenarPosicao(
+        getIrmaosPorEscopo(db, dados.paiTipo, dados.paiId),
+        dados,
+        dados.sequencia,
+        posicaoAntiga,
+    );
+
+    save();
+    rastreadorSecao.marcarLimpo();
+    toggleModal('modal-secao');
+    return true;
 }
 
 const MAPA_SECAO = {
     id: 'sec-edit-id',
+    imagemUrl: 'sec-imagem-url',
     titulo: 'sec-titulo',
     sequencia: 'sec-sequencia',
+    sobre: 'sec-sobre',
     abertura: 'sec-abertura',
     capaDesc: 'sec-capa-desc',
 };
@@ -3893,7 +4038,10 @@ export async function editarSecao(id) {
     document.getElementById('sec-capa').value = '';
     document.getElementById('sec-remover-capa').checked = false;
     document.getElementById('modal-secao-titulo').innerText = 'Editar Seção';
-    toggleModal('modal-secao');
+    rastreadorSecao.marcarLimpo();
+    // Seção já salva tem o que ver: mostra o olho do cabeçalho.
+    document.getElementById('secao-ver')?.classList.remove('hidden');
+    await toggleModal('modal-secao');
 }
 
 // ─── Poema ───────────────────────────────────────────────────
@@ -4720,82 +4868,158 @@ export async function editarProsa(id) {
 
 // ─── Elemento ────────────────────────────────────────────────
 
+// Último envio do formulário de Elemento: uma promessa de "salvou?" (true) ou
+// "recusou" (false), como em Parte e Seção (ver `ultimoEnvioParteSecao`). O "Salvar e
+// ver" do olho espera por ela. `null` depois de `zerarUltimoEnvioElemento` significa
+// que nenhum envio começou (validação nativa do navegador recusou, por exemplo).
+let envioElemento = null;
+
+export function ultimoEnvioElemento() {
+    return envioElemento;
+}
+
+export function zerarUltimoEnvioElemento() {
+    envioElemento = null;
+}
+
 export function initFormElemento() {
     const form = document.getElementById('form-elemento');
     if (!form) return;
 
-    form.onsubmit = async (e) => {
+    rastreadorElemento.observar(form);
+
+    form.onsubmit = (e) => {
         e.preventDefault();
+        envioElemento = salvarElementoDoFormulario(form);
+        return envioElemento;
+    };
 
-        const idInput = document.getElementById('el-edit-id').value;
-        const id = idInput ? parseInt(idInput) : gerarId();
-        const vinculo = document.getElementById('el-vinculo').value;
-        if (!vinculo) return mostrarAviso('Selecione um vínculo.');
+    ligarSumarioNoModal();
+}
 
-        const [tipoPai, idPaiStr] = vinculo.split(':');
-        const idPai = parseInt(idPaiStr);
-        const fileEl = document.getElementById('el-img');
-        const capaFile = fileEl && fileEl.files.length > 0 ? fileEl.files[0] : null;
-        const removerImagem = document.getElementById('el-remover-imagem').checked;
-        const capaAtual = idInput ? db.elementos.find((x) => x.id == id)?.imagem : null;
-        let imagemFinal;
-        if (removerImagem) {
-            await deletarCapa(capaAtual);
-            imagemFinal = null;
-        } else {
-            const novaImagemId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
-            imagemFinal = novaImagemId ?? capaAtual;
-        }
+// Devolve true quando salvou (e fechou o modal) e false quando recusou. Com o aviso
+// da segunda ficha, a promessa só se resolve depois da resposta: o resultado do
+// salvamento se confirmar, false se cancelar (nada foi gravado até a confirmação).
+async function salvarElementoDoFormulario(form, { fichaConfirmada = false } = {}) {
+    const idInput = document.getElementById('el-edit-id').value;
+    const id = idInput ? parseInt(idInput) : gerarId();
+    const vinculo = document.getElementById('el-vinculo').value;
+    if (!vinculo) {
+        mostrarAviso('Selecione um vínculo.');
+        return false;
+    }
+    const imagemUrl = lerLinkImagem('el-imagem-url');
+    if (imagemUrl === null) return false;
 
-        const dados = {
+    const [tipoPai, idPaiStr] = vinculo.split(':');
+    const idPai = parseInt(idPaiStr);
+    const tipoEscolhido = document.getElementById('el-tipo').value;
+
+    // Segunda ficha no mesmo livro: avisa antes de salvar (nada foi gravado ainda).
+    if (!fichaConfirmada) {
+        const outras = outrasFichasDoLivro(db, {
             id,
-            tipo: document.getElementById('el-tipo').value,
-            titulo: document.getElementById('el-titulo')?.value || '',
-            texto: document.getElementById('el-texto').value,
-            notas: document.getElementById('el-notas').value,
+            tipo: tipoEscolhido,
             paiTipo: tipoPai,
             paiId: idPai,
-            sequencia: seqOuNull(document.getElementById('el-sequencia')?.value),
-            avisoConteudo: document.getElementById('el-aviso').value,
-            versosPosIntroducao: document.getElementById('el-pos-versos').value,
-            imagem: imagemFinal,
-        };
-
-        const anterior = idInput ? db.elementos.find((x) => x.id == id) : null;
-        const mesmoEscopo =
-            anterior &&
-            anterior.paiTipo === dados.paiTipo &&
-            String(anterior.paiId) === String(dados.paiId);
-        const posicaoAntiga = mesmoEscopo ? (anterior.sequencia ?? null) : null;
-
-        if (idInput) {
-            const idx = db.elementos.findIndex((x) => x.id == id);
-            if (idx !== -1) db.elementos[idx] = dados;
-        } else {
-            db.elementos.push(dados);
+        });
+        if (outras.length) {
+            const livro = db.livros.find((l) => l.id == idPai);
+            return new Promise((resolve) => {
+                abrirModalConfirmacao({
+                    titulo: livro?.titulo || 'Livro',
+                    rotulo: 'Ficha catalográfica',
+                    mensagem:
+                        'Este livro já tem uma ficha catalográfica. Salvar mesmo assim cria uma segunda, e o último link salvo vale para o campo do livro.',
+                    textoConfirmar: 'Salvar mesmo assim',
+                    corConfirmar: '#2563eb',
+                    onConfirmar: () =>
+                        resolve(salvarElementoDoFormulario(form, { fichaConfirmada: true })),
+                    onCancelar: () => resolve(false),
+                });
+            });
         }
+    }
 
-        if (anterior && !mesmoEscopo) {
-            fecharEspaco(
-                getIrmaosPorEscopo(db, anterior.paiTipo, anterior.paiId),
-                anterior.sequencia ?? null,
-            );
-        }
-        reordenarPosicao(
-            getIrmaosPorEscopo(db, dados.paiTipo, dados.paiId),
-            dados,
-            dados.sequencia,
-            posicaoAntiga,
-        );
+    const fileEl = document.getElementById('el-img');
+    const capaFile = fileEl && fileEl.files.length > 0 ? fileEl.files[0] : null;
+    const removerImagem = document.getElementById('el-remover-imagem').checked;
+    const capaAtual = idInput ? db.elementos.find((x) => x.id == id)?.imagem : null;
+    let imagemFinal;
+    if (removerImagem) {
+        await deletarCapa(capaAtual);
+        imagemFinal = null;
+    } else {
+        const novaImagemId = capaFile ? await salvarCapa(capaFile, capaAtual) : null;
+        imagemFinal = novaImagemId ?? capaAtual;
+    }
 
-        save();
-        toggleModal('modal-elemento');
-        form.reset();
+    const dados = {
+        id,
+        tipo: tipoEscolhido,
+        titulo: document.getElementById('el-titulo')?.value || '',
+        texto: document.getElementById('el-texto').value,
+        notas: document.getElementById('el-notas').value,
+        paiTipo: tipoPai,
+        paiId: idPai,
+        sequencia: seqOuNull(document.getElementById('el-sequencia')?.value),
+        avisoConteudo: document.getElementById('el-aviso').value,
+        versosPosIntroducao: document.getElementById('el-pos-versos').value,
+        imagem: imagemFinal,
+        imagemUrl,
+        ...camposDaFicha(tipoEscolhido, {
+            // O link só vale com a ficha ligada direto a um livro.
+            fichaUrl: tipoPai === 'livro' ? document.getElementById('el-ficha-url').value : '',
+            fichaCdd: document.getElementById('el-ficha-cdd').value,
+            fichaNumeroControle: document.getElementById('el-ficha-numero-controle').value,
+            fichaBibliotecario: document.getElementById('el-ficha-bibliotecario').value,
+            fichaCrb: document.getElementById('el-ficha-crb').value,
+        }),
+        // Só o tipo Sumário guarda a lista de itens.
+        ...camposDoSumario(tipoEscolhido, lerSumarioDoModal()),
     };
+
+    const anterior = idInput ? db.elementos.find((x) => x.id == id) : null;
+    const mesmoEscopo =
+        anterior &&
+        anterior.paiTipo === dados.paiTipo &&
+        String(anterior.paiId) === String(dados.paiId);
+    const posicaoAntiga = mesmoEscopo ? (anterior.sequencia ?? null) : null;
+
+    if (idInput) {
+        const idx = db.elementos.findIndex((x) => x.id == id);
+        if (idx !== -1) db.elementos[idx] = dados;
+    } else {
+        db.elementos.push(dados);
+    }
+
+    if (anterior && !mesmoEscopo) {
+        fecharEspaco(
+            getIrmaosPorEscopo(db, anterior.paiTipo, anterior.paiId),
+            anterior.sequencia ?? null,
+        );
+    }
+    reordenarPosicao(
+        getIrmaosPorEscopo(db, dados.paiTipo, dados.paiId),
+        dados,
+        dados.sequencia,
+        posicaoAntiga,
+    );
+
+    // Ficha ligada a um livro: o link vira o link do campo do livro.
+    sincronizarLivroComFicha(db, dados);
+
+    save();
+    rastreadorElemento.marcarLimpo();
+    toggleModal('modal-elemento');
+    form.reset();
+    limparSumarioDoModal();
+    return true;
 }
 
 const MAPA_ELEMENTO = {
     id: 'el-edit-id',
+    imagemUrl: 'el-imagem-url',
     sequencia: 'el-sequencia',
     tipo: ['el-tipo', '', (v) => (v === 'Comentário' ? 'Conteúdo Multimídia' : v)],
     titulo: 'el-titulo',
@@ -4803,6 +5027,11 @@ const MAPA_ELEMENTO = {
     notas: 'el-notas',
     avisoConteudo: 'el-aviso',
     versosPosIntroducao: 'el-pos-versos',
+    fichaUrl: 'el-ficha-url',
+    fichaCdd: 'el-ficha-cdd',
+    fichaNumeroControle: 'el-ficha-numero-controle',
+    fichaBibliotecario: 'el-ficha-bibliotecario',
+    fichaCrb: 'el-ficha-crb',
 };
 
 export async function editarElemento(id) {
@@ -4814,9 +5043,15 @@ export async function editarElemento(id) {
     preencherCampos(el, MAPA_ELEMENTO);
     document.getElementById('el-vinculo').value = `${el.paiTipo}:${el.paiId}`;
     document.getElementById('el-remover-imagem').checked = false;
+    renderSumarioNoModal(el.itensSumario || []);
 
     // Importa toggleCamposIntroducao dinamicamente para evitar circular
     import('./ui.js').then(({ toggleCamposIntroducao }) => toggleCamposIntroducao());
     document.getElementById('modal-elemento-titulo').innerText = 'Editar Elemento';
-    toggleModal('modal-elemento');
+    // Preencher por código não dispara 'input': o que está no form agora é o estado
+    // inicial, não edição.
+    rastreadorElemento.marcarLimpo();
+    // Elemento já salvo tem o que ver: mostra o olho do cabeçalho.
+    document.getElementById('elemento-ver')?.classList.remove('hidden');
+    await toggleModal('modal-elemento');
 }

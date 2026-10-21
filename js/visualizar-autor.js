@@ -24,6 +24,8 @@
 import { garantirModal, toggleModal } from './modais.js';
 import { db, calcularImpactoExclusaoAutor } from './db.js';
 import { editarAutor } from './forms.js';
+import { preencherCapas } from './render-lightbox.js';
+import { linkImagemHtml } from './imagem-link.js';
 import {
     escapeHtml,
     formatarDataParcial,
@@ -91,6 +93,11 @@ export function renderVisualizacaoAutorHtml(autor, { totalPoemas = 0, totalProsa
     const a = autor || {};
     let html = '';
 
+    // ── Imagem (o src vem depois, de preencherCapas, que lê do IndexedDB)
+    if (a.imagem) {
+        html += `<img data-capa-id="${escapeHtml(String(a.imagem))}" src="" alt="Imagem de ${escapeHtml(a.nome || 'autor')}" class="max-h-64 w-auto max-w-full mx-auto object-contain rounded mb-5 opacity-0 transition-opacity duration-200">`;
+    }
+
     // ── Cabeçalho (sem título de seção)
     const nomesLiterarios = listaComTipo(a.nomesLiterarios);
     const nascObito =
@@ -109,6 +116,10 @@ export function renderVisualizacaoAutorHtml(autor, { totalPoemas = 0, totalProsa
 
     html += linhaChipsHtml('Heterônimos e Pseudônimos', nomesLiterarios, 'bg-indigo-600');
     html += linhaMetaHtml('ISNI', a.isni);
+    const linkImagem = linkImagemHtml(a.imagemUrl);
+    if (linkImagem) {
+        html += `<p class="mb-1.5"><strong class="text-gray-600 dark:text-slate-300">Imagem:</strong> ${linkImagem}</p>`;
+    }
     html += linhaMetaHtml('Nacionalidade', a.nacionalidade);
     html += linhaMetaHtml('Nascimento – Óbito', nascObito);
     html += linhaMetaHtml('Idade e signo', idadeSigno);
@@ -203,6 +214,11 @@ export async function abrirVisualizacaoAutor(id) {
             totalPoemas: poemasIds.length,
             totalProsas: prosasIds.length,
         });
+        // A imagem carrega do IndexedDB depois do HTML no DOM; falha ali
+        // não pode derrubar a abertura do modal.
+        if (conteudo.querySelector('img[data-capa-id]')) {
+            Promise.resolve(preencherCapas(conteudo)).catch(() => {});
+        }
     }
 
     await toggleModal('modal-visualizar-autor');

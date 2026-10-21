@@ -35,6 +35,7 @@ import {
     CATEGORIAS_COM_CLUSTER,
     categoriaAceitaCluster,
     criarCluster,
+    limparNomeCluster,
     atribuirEtiquetasAoCluster,
     clusterDaEtiqueta,
     caminhoDoCluster,
@@ -94,7 +95,7 @@ export function lerListaDeClusters(texto, categoriaPadrao = null) {
                 .slice(0, corte)
                 .replace(/^[-*]\s*/, '')
                 .split('>')
-                .map((parte) => limparNomeEtiqueta(parte));
+                .map((parte) => limparNomeCluster(parte));
             if (caminho.some((nome) => !nome)) {
                 avisos.push({ linha, motivo: 'sem-nome-de-cluster', texto });
                 return;

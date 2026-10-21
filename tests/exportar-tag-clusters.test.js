@@ -125,3 +125,32 @@ describe('gerarMarkdownTagClusters', () => {
         );
     });
 });
+
+describe('gerarMarkdownTagClusters com filtro da aba', () => {
+    it('busca leva só o que casa, avisa o filtro e não afirma que não há etiqueta solta', () => {
+        const { dbRef } = montar();
+        const md = gerarMarkdownTagClusters(dbRef, { busca: 'oftalmo' });
+        assert.match(md, /^# Tag clusters\n\n_Filtro: busca “oftalmo”\._/);
+        assert.match(md, /### Saúde/);
+        assert.ok(!md.includes('Astrologia'));
+        assert.ok(!md.includes('Etiquetas sem cluster'));
+        assert.ok(!md.includes('Nenhuma: todas'));
+    });
+
+    it('filtro de categoria deixa só ela', () => {
+        const { dbRef } = montar();
+        const md = gerarMarkdownTagClusters(dbRef, { categoria: 'relacao' });
+        assert.match(md, /## Relação/);
+        assert.ok(!md.includes('Domínio Imagético'));
+        assert.match(md, /- Amor \(1\)/);
+    });
+
+    it('filtro sem resultado avisa, e sem filtro nada muda', () => {
+        const { dbRef } = montar();
+        assert.match(
+            gerarMarkdownTagClusters(dbRef, { busca: 'zzzz' }),
+            /_Nada bate com o filtro\._/,
+        );
+        assert.equal(gerarMarkdownTagClusters(dbRef, {}), gerarMarkdownTagClusters(dbRef));
+    });
+});

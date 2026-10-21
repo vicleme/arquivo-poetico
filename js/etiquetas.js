@@ -6,7 +6,7 @@
 // Poema e Prosa. Tema e Territorialidade já têm cadastro próprio e ficam
 // de fora.
 //
-// Decisões (F16-D1 a F16-D3, em `planejamento/plano-central.md`):
+// Decisões (F16-D1 a F16-D3, em `planejamento/plano-concluido.md`):
 // - Os sete campos continuam nos textos, mas guardam IDS (lista), sem
 //   espelho de texto por vírgula. O nome mora só em `db.etiquetas`.
 // - A etiqueta guarda a própria categoria. O mesmo nome pode existir em

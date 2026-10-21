@@ -295,6 +295,8 @@ describe('Modal de Autor: novos campos (Religião, Classe social, Neurodivergên
         [
             'au-nome',
             'au-isni',
+            'au-imagem',
+            'au-imagem-url',
             'au-nome-literario-input',
             'au-nacionalidade',
             'au-nasc-ano',

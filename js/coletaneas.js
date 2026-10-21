@@ -4,8 +4,15 @@
 // ============================================================
 
 import { db, save } from './db.js';
-import { abrirModalExclusao, gerarId, escapeHtml, textoSituacaoEditorial } from './utils.js';
+import {
+    abrirModalExclusao,
+    gerarId,
+    escapeHtml,
+    textoSituacaoEditorial,
+    mostrarAviso,
+} from './utils.js';
 import { salvarCapa, deletarCapa } from './capas.js';
+import { normalizarLinkImagem } from './imagem-link.js';
 import { toggleModal, garantirModal } from './ui.js';
 
 // ─── Estado local ─────────────────────────────────────────────
@@ -288,6 +295,7 @@ export async function prepararNovaParte(livroId) {
     document.getElementById('cp-titulo').value = '';
     document.getElementById('cp-sequencia').value = '';
     document.getElementById('cp-capa-desc').value = '';
+    document.getElementById('cp-imagem-url').value = '';
     document.getElementById('cp-abertura').value = '';
     document.getElementById('cp-nota').value = '';
     document.getElementById('cp-remover-capa').checked = false;
@@ -306,6 +314,7 @@ export async function editarParteColetanea(id) {
     document.getElementById('cp-titulo').value = p.titulo;
     document.getElementById('cp-sequencia').value = p.sequencia || '';
     document.getElementById('cp-capa-desc').value = p.capaDesc || '';
+    document.getElementById('cp-imagem-url').value = p.imagemUrl || '';
     document.getElementById('cp-abertura').value = p.abertura || '';
     document.getElementById('cp-nota').value = p.nota || '';
     document.getElementById('cp-remover-capa').checked = false;
@@ -375,6 +384,10 @@ export function initFormColParte() {
         const id = idInput ? parseInt(idInput) : gerarId();
         const refIdRaw = document.getElementById('cp-ref').value;
 
+        const imagemUrl = normalizarLinkImagem(document.getElementById('cp-imagem-url').value);
+        if (imagemUrl === null) {
+            return mostrarAviso('O link da imagem precisa começar com http:// ou https://.');
+        }
         const capaFile = document.getElementById('cp-capa').files[0];
         const removerCapa = document.getElementById('cp-remover-capa').checked;
         const capaAtual = idInput ? db.partes.find((x) => x.id == parseInt(idInput))?.capa : null;
@@ -394,6 +407,7 @@ export function initFormColParte() {
             sequencia: parseInt(document.getElementById('cp-sequencia').value) || 0,
             capaDesc: document.getElementById('cp-capa-desc').value.trim() || null,
             capa: capaFinal,
+            imagemUrl,
             abertura: document.getElementById('cp-abertura').value.trim() || null,
             nota: document.getElementById('cp-nota').value,
             refId: refIdRaw ? parseInt(refIdRaw) : null,

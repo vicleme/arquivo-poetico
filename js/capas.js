@@ -11,6 +11,7 @@
 //   db.livros[n].capa     → string ID  ex: "capa_1748123456789"  ou null
 //   db.partes[n].capa     → idem
 //   db.secoes[n].capa     → idem
+//   db.autores[n].imagem  → idem (21/10/2026; o link da imagem é à parte, ver imagem-link.js)
 //   db.elementos[n].imagem → idem (migrado de base64-no-db; ver
 //   migrarImagensLegadasParaIndexedDB em db.js)
 //   IndexedDB store "capas": { id (string, keyPath), blob (Blob) }

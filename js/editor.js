@@ -2751,6 +2751,13 @@ const listaLojasLivro = criarListaDeEntradas({
     nomeFuncaoEditar: 'editarLoja',
 });
 
+// Adicionar, salvar edição e remover loja não passam por nenhum campo do
+// formulário, então não disparam 'input' sozinhos: o aviso é manual, pro
+// rastreador de alterações do Livro (olho do cabeçalho) saber que mudou.
+function avisarAlteracaoLojas() {
+    document.getElementById('l-lojas-lista')?.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 function atualizarBotaoLoja() {
     const btnAdd = document.getElementById('l-loja-btn-add');
     const btnCancelar = document.getElementById('l-loja-btn-cancelar');
@@ -2771,6 +2778,7 @@ export function adicionarLoja() {
     if (nomeEl) nomeEl.value = '';
     if (urlEl) urlEl.value = '';
     atualizarBotaoLoja();
+    avisarAlteracaoLojas();
 }
 export function editarLoja(indice) {
     const item = listaLojasLivro.iniciarEdicao(indice);
@@ -2792,6 +2800,7 @@ export function cancelarEdicaoLoja() {
 export function removerLoja(indice) {
     listaLojasLivro.remover(indice);
     atualizarBotaoLoja();
+    avisarAlteracaoLojas();
 }
 export function obterLojas() {
     return listaLojasLivro.obterItens();

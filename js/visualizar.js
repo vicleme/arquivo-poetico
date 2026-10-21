@@ -456,6 +456,16 @@ function preencherVisualizacao(tipo, id) {
     return true;
 }
 
+// Função que roda uma vez quando o Ver fechar, pedida por `opcoes.retorno`. Fica
+// guardada enquanto o Ver estiver no caminho (inclusive no desvio pelo Editar).
+let retornoDoVer = null;
+
+function dispararRetornoDoVer() {
+    const fn = retornoDoVer;
+    retornoDoVer = null;
+    fn?.();
+}
+
 // `opcoes.ids`: com `navegar`, usa essa lista em vez de pedir outra à aba (volta do
 // Editar, que reabre o Ver na mesma lista que a pessoa vinha percorrendo).
 // `opcoes.navegar`: liga os botões Anterior/Próximo, seguindo a lista que a aba
@@ -463,6 +473,13 @@ function preencherVisualizacao(tipo, id) {
 // (por exemplo, dentro de um período) não tem lista de referência.
 export async function abrirVisualizacao(tipo, id, opcoes = {}) {
     if (itensDaSelecao(tipo, [id]).length === 0) return;
+
+    // Retorno pedido por quem abriu o Ver (o Ver do Livro, ao clicar num título da
+    // Estrutura): roda quando este Ver fechar. Sem `retorno`, uma abertura nova
+    // limpa o combinado antigo, exceto a volta do Editar (`manterRetorno`), que
+    // reabre o mesmo Ver no meio do caminho.
+    if (opcoes.retorno) retornoDoVer = opcoes.retorno;
+    else if (!opcoes.manterRetorno) retornoDoVer = null;
 
     await garantirModal('modal-visualizar');
     if (!preencherVisualizacao(tipo, id)) return;
@@ -476,6 +493,7 @@ export async function abrirVisualizacao(tipo, id, opcoes = {}) {
     atualizarControlesNavegacao();
 
     montarControlesIncluirOcultos();
+    if (retornoDoVer) aoFecharModalUmaVez('modal-visualizar', dispararRetornoDoVer);
     await toggleModal('modal-visualizar');
 }
 
@@ -547,7 +565,10 @@ function registrarVoltaAoVer(volta) {
     voltaAoVer = volta;
     aoFecharModalUmaVez(volta.tipo === 'prosa' ? 'modal-prosa' : 'modal-poema', () => {
         voltaAoVer = null;
-        abrirVisualizacao(volta.tipo, volta.id, volta.ids ? { navegar: true, ids: volta.ids } : {});
+        abrirVisualizacao(volta.tipo, volta.id, {
+            manterRetorno: true,
+            ...(volta.ids ? { navegar: true, ids: volta.ids } : {}),
+        });
     });
 }
 
@@ -621,6 +642,9 @@ export async function editarDoModalVisualizacao() {
     // pessoa volta ao Ver do mesmo texto, na mesma lista de navegação.
     const ids = navegacao.pos >= 0 ? [...navegacao.ids] : null;
     registrarVoltaAoVer({ tipo, id, ids });
+    // Se o Ver veio do Ver do Livro, a volta ao livro espera: primeiro o Editar,
+    // depois o Ver de novo, e só ao fechar este é que o livro reabre.
+    cancelarAoFecharModal('modal-visualizar');
     await toggleModal('modal-visualizar');
     await (tipo === 'prosa' ? editarProsa(id) : editarPoema(id));
 }

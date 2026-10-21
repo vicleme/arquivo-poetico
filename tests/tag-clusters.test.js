@@ -18,6 +18,7 @@ import {
     editarCluster,
     excluirCluster,
     atribuirEtiquetasAoCluster,
+    limparNomeCluster,
 } from '../js/tag-clusters.js';
 
 function montar() {
@@ -254,7 +255,53 @@ describe('Tag clusters: sincronizar', () => {
         };
         sincronizarTagClusters(dbRef);
         assert.equal(dbRef.tagClusters.length, 1);
-        assert.equal(dbRef.tagClusters[0].nome, 'a b');
+        // F20-D16: a vírgula agora é permitida em nome de cluster; só espaços se juntam.
+        assert.equal(dbRef.tagClusters[0].nome, 'a, b');
         assert.equal(dbRef.tagClusters[0].notas, '');
+    });
+});
+
+describe('Tag clusters: nome com vírgula (F20-D16)', () => {
+    it('limparNomeCluster mantém a vírgula e só junta espaços', () => {
+        assert.equal(limparNomeCluster('  Arte,   cultura e jogo '), 'Arte, cultura e jogo');
+        assert.equal(limparNomeCluster(null), '');
+    });
+
+    it('cria e renomeia cluster com vírgula sem trocar por espaço', () => {
+        const { dbRef } = montar();
+        const r = criarCluster(dbRef, 'Arte, cultura e jogo', 'dominioImagetico');
+        assert.equal(r.ok, true);
+        assert.equal(r.cluster.nome, 'Arte, cultura e jogo');
+        const e = editarCluster(dbRef, r.cluster.id, { nome: 'Lei, crime e economia' });
+        assert.equal(e.ok, true);
+        assert.equal(r.cluster.nome, 'Lei, crime e economia');
+    });
+
+    it('com e sem vírgula são nomes diferentes (sem duplicar por engano)', () => {
+        const { dbRef } = montar();
+        assert.equal(criarCluster(dbRef, 'Arte, cultura e jogo', 'dominioImagetico').ok, true);
+        assert.equal(criarCluster(dbRef, 'Arte cultura e jogo', 'dominioImagetico').ok, true);
+        assert.equal(
+            criarCluster(dbRef, 'arte, CULTURA e jogo', 'dominioImagetico').motivo,
+            'duplicado',
+        );
+    });
+
+    it('o ">" continua proibido no nome', () => {
+        const { dbRef } = montar();
+        assert.equal(criarCluster(dbRef, 'A > B', 'tom').motivo, 'caractere-invalido');
+    });
+
+    it('sincronizarTagClusters não tira a vírgula de um cluster já salvo', () => {
+        const dbRef = {
+            etiquetas: [],
+            tagClusters: [
+                { id: 'c1', nome: 'Arte, cultura e jogo', categoria: 'dominioImagetico' },
+            ],
+            poemas: [],
+            prosas: [],
+        };
+        sincronizarTagClusters(dbRef);
+        assert.equal(dbRef.tagClusters[0].nome, 'Arte, cultura e jogo');
     });
 });

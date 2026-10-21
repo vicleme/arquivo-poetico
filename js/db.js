@@ -3831,8 +3831,10 @@ export function mesclarMovimentosEscolas(dbRef, origemId, destinoId) {
 // inteiro em vez de um por item.
 let _pendingExclusao = null;
 
+// `capa` (Livro, Parte, Seção) e `imagem` (Elemento, Autor): os dois campos
+// guardam o id de uma imagem no IndexedDB e descartam do mesmo jeito.
 function _capasDoItem(item) {
-    return item?.capa ? [item.capa] : [];
+    return [item?.capa, item?.imagem].filter(Boolean);
 }
 
 // Remove o item (e a cascata de Coletânea, se for o caso) dos arrays do

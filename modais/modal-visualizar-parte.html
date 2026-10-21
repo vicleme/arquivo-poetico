@@ -1,0 +1,139 @@
+<div
+    id="modal-visualizar-parte"
+    class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-visualizar-parte-titulo"
+    tabindex="-1"
+>
+    <div
+        class="bg-white dark:bg-slate-900 rounded-lg w-full max-w-3xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+    >
+        <div
+            class="flex items-center justify-between px-8 pt-6 pb-3 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0"
+        >
+            <h3 id="modal-visualizar-parte-titulo" class="text-xl font-bold truncate pr-4">
+                Parte
+            </h3>
+            <div
+                id="visualizar-parte-nav"
+                class="hidden flex items-center gap-1 ml-auto mr-3 flex-shrink-0"
+            >
+                <button
+                    type="button"
+                    id="visualizar-parte-anterior"
+                    onclick="navegarVisualizacaoParteSecao('parte', -1)"
+                    title="Parte anterior (←)"
+                    aria-label="Parte anterior"
+                    class="text-xs font-semibold px-2.5 py-1.5 rounded bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                    ‹<span class="hidden sm:inline"> Anterior</span>
+                </button>
+                <span
+                    class="flex items-center gap-1 text-[11px] text-gray-500 dark:text-slate-400 whitespace-nowrap px-1"
+                >
+                    <input
+                        type="number"
+                        id="visualizar-parte-posicao"
+                        min="1"
+                        step="1"
+                        inputmode="numeric"
+                        aria-label="Ir para a parte de número"
+                        title="Digite o número da parte e tecle Enter"
+                        onchange="irParaPosicaoVisualizacaoParteSecao('parte', this.value)"
+                        onkeydown="
+                            if (event.key === 'Enter') {
+                                event.preventDefault();
+                                irParaPosicaoVisualizacaoParteSecao('parte', this.value);
+                            }
+                        "
+                        class="w-16 text-xs text-center py-1 px-1 mb-0 tabular-nums"
+                    />
+                    <span id="visualizar-parte-total" aria-live="polite"></span>
+                </span>
+                <button
+                    type="button"
+                    id="visualizar-parte-proximo"
+                    onclick="navegarVisualizacaoParteSecao('parte', 1)"
+                    title="Próxima parte (→)"
+                    aria-label="Próxima parte"
+                    class="text-xs font-semibold px-2.5 py-1.5 rounded bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                    <span class="hidden sm:inline">Próxima </span>›
+                </button>
+            </div>
+            <button
+                type="button"
+                onclick="toggleModal('modal-visualizar-parte')"
+                title="Fechar (Esc)"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-600 dark:hover:text-slate-300 transition-colors border border-gray-200 dark:border-slate-700 flex-shrink-0"
+                aria-label="Fechar"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    class="w-4 h-4"
+                >
+                    <path
+                        d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"
+                    />
+                </svg>
+            </button>
+        </div>
+        <div id="visualizar-parte-conteudo" class="overflow-y-auto flex-1 px-8 py-6"></div>
+        <div
+            class="flex items-center justify-end gap-2 px-8 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0"
+        >
+            <button
+                type="button"
+                id="visualizar-parte-editar"
+                onclick="editarParteSecaoDoVisualizador('parte')"
+                title="Editar esta parte"
+                aria-label="Editar"
+                class="inline-flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 p-1.5 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+            >
+                <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="w-3.5 h-3.5 inline-block"
+                    aria-hidden="true"
+                >
+                    <path d="M12.5 3.5l4 4L6.5 17.5H2.5v-4L12.5 3.5Z" />
+                    <path d="M10.5 5.5l4 4" />
+                </svg>
+            </button>
+            <button
+                type="button"
+                id="visualizar-parte-excluir"
+                onclick="excluirParteSecaoDoVisualizador('parte')"
+                title="Excluir esta parte"
+                aria-label="Excluir"
+                class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40"
+            >
+                <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.4"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    class="w-3.5 h-3.5 inline-block"
+                    aria-hidden="true"
+                >
+                    <path d="M4 6h12" />
+                    <path d="M8 6V4.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V6" />
+                    <path
+                        d="M5.5 6l.6 9.5a1.5 1.5 0 0 0 1.5 1.4h4.8a1.5 1.5 0 0 0 1.5-1.4L14.5 6"
+                    />
+                    <path d="M8.5 9v5" />
+                    <path d="M11.5 9v5" />
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>

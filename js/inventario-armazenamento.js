@@ -88,6 +88,11 @@ export const CHAVES_LOCALSTORAGE = Object.freeze([
         nota: 'Agrupar no topo o que for igual em todos os textos exportados, ligado ou desligado',
     },
     {
+        chave: 'arquivoPoetico_previasImagem',
+        categoria: 'preferencia',
+        nota: 'Exibir prévias de imagem nos cards de Livros, Partes, Seções, Elementos e Autores, por aba',
+    },
+    {
         chave: 'arquivoPoetico_downloadAbrangente',
         categoria: 'preferencia',
         nota: 'Download abrangente ligado ou desligado',

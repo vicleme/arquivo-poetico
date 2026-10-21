@@ -235,6 +235,7 @@ npm run format:check   # prettier --check .
 │   │                           Tônica, Modo Rima, mapeamento/classificação de
 │   │                           pares de rima e a grade somente-leitura
 │   │                           reaproveitada pelo modal "Ver"
+│   ├── visualizar-livro.js     → Modal "Ver" do Livro (somente leitura, com anterior/próximo)
 │   ├── visualizar-sonoridade.js → Modal "Ver" de uma escansão (somente
 │   │                           leitura, mesma grade de editor-sonoridade.js)
 │   ├── exportar-sonoridade.js → Exportação de uma escansão em .md/.pdf/.docx/
@@ -298,7 +299,7 @@ npm run format:check   # prettier --check .
 │   │     sugestao-ecos.js, ui-sugestao-ecos.js, grupo-personagens.js
 │   │   · Estatísticas: estatisticas-dados*.js (agregações),
 │   │     estatisticas-tela-*.js (uma tela por aba), estatisticas-filtros.js
-│   │   · Exportação, importação e backup: exportar-csv.js, exportar-assuntos.js, exportar-tag-clusters.js, importar-tag-clusters.js,
+│   │   · Exportação, importação e backup: exportar-csv.js, exportar-assuntos.js, exportar-tag-clusters.js, exportar-tag-clusters-png.js (o desenho do .png e do .pdf), selecao-tag-clusters.js, rasterizar-svg.js, importar-tag-clusters.js,
 │   │     exportar-autores.js, exportar-estrutura-textual.js,
 │   │     ocultos-exportacao.js, download-abrangente.js, importar-aditivo.js,
 │   │     ui-importar-aditivo.js, importar-campos.js, importar-campos-extras.js,

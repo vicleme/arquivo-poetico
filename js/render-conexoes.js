@@ -44,11 +44,13 @@ import {
     ESCOPOS_CONEXOES,
     NOME_ARQUIVO_CONEXOES,
 } from './exportar-conexoes.js';
+import { montarSvgRelatorio, PALETA_RELATORIO } from './exportar-conexoes-png.js';
 import {
-    montarSvgRelatorio,
-    calcularEscalaExport,
-    PALETA_RELATORIO,
-} from './exportar-conexoes-png.js';
+    svgTextoParaCanvas,
+    svgTextoParaPngBlob,
+    baixarBlob,
+    fatiasDoPlano,
+} from './rasterizar-svg.js';
 import { planejarPdf, gerarPdfConexoes } from './exportar-conexoes-pdf.js';
 import {
     chaveBuraco,
@@ -889,49 +891,6 @@ function aplicarPaleta(svg, paleta) {
     }
 }
 
-// Rasteriza um SVG já serializado (com fundo opaco) num canvas, na
-// escala que o navegador aguenta. Devolve { canvas, escala }.
-function svgTextoParaCanvas(svgTexto, largura, altura) {
-    const escala = calcularEscalaExport(largura, altura);
-    if (!escala) {
-        return Promise.reject(
-            new Error('A imagem ficaria grande demais para exportar. Baixe um escopo menor.'),
-        );
-    }
-    const svgBlob = new Blob([svgTexto], { type: 'image/svg+xml;charset=utf-8' });
-    const svgUrl = URL.createObjectURL(svgBlob);
-
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => {
-            URL.revokeObjectURL(svgUrl);
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.floor(largura * escala);
-            canvas.height = Math.floor(altura * escala);
-            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-            resolve({ canvas, escala: canvas.width / largura });
-        };
-        img.onerror = () => {
-            URL.revokeObjectURL(svgUrl);
-            reject(new Error('Falha ao carregar o diagrama pra exportação.'));
-        };
-        img.src = svgUrl;
-    });
-}
-
-async function svgTextoParaPngBlob(svgTexto, largura, altura) {
-    const { canvas } = await svgTextoParaCanvas(svgTexto, largura, altura);
-    return new Promise((resolve, reject) => {
-        canvas.toBlob((blob) => {
-            if (!blob) {
-                reject(new Error('Falha ao gerar PNG do diagrama.'));
-                return;
-            }
-            resolve(blob);
-        }, 'image/png');
-    });
-}
-
 function svgParaPngBlob(svgOriginal) {
     const clone = svgOriginal.cloneNode(true);
     const paleta = paletaDoTema();
@@ -948,15 +907,6 @@ function svgParaPngBlob(svgOriginal) {
     const largura = Number(svgOriginal.getAttribute('width'));
     const altura = Number(svgOriginal.getAttribute('height'));
     return svgTextoParaPngBlob(new XMLSerializer().serializeToString(clone), largura, altura);
-}
-
-function baixarBlob(blob, nomeArquivo) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = nomeArquivo;
-    a.click();
-    URL.revokeObjectURL(url);
 }
 
 // Chamado pelo listener delegado em main.js (data-action="baixar-diagrama-ecos").
@@ -1073,20 +1023,7 @@ export async function baixarConexoesPdf(escopo = 'tudo') {
             relatorio.altura,
         );
         const plano = planejarPdf(relatorio);
-        // Uma fatia do desenho por página. Início e fim arredondados do mesmo
-        // jeito nas duas pontas, para duas páginas seguidas não deixarem uma
-        // linha de pixels de fora nem repetida.
-        const fatias = plano.paginas.map((p) => {
-            const topo = Math.round(p.de * escala);
-            const altura = Math.max(1, Math.round(p.ate * escala) - topo);
-            const fatia = document.createElement('canvas');
-            fatia.width = canvas.width;
-            fatia.height = altura;
-            fatia
-                .getContext('2d')
-                .drawImage(canvas, 0, topo, canvas.width, altura, 0, 0, canvas.width, altura);
-            return fatia.toDataURL('image/png');
-        });
+        const fatias = fatiasDoPlano(canvas, escala, plano);
         gerarPdfConexoes({ JsPdf, plano, fatias }).save(`${NOME_ARQUIVO_CONEXOES[e]}.pdf`);
     } catch (err) {
         console.error(err);

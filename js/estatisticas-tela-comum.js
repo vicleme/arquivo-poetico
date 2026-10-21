@@ -197,11 +197,20 @@ export function criarBarChartEmpilhado(canvasId, labels, valores, cor, total = n
         },
     ].map((c) => ({ ...c, borderWidth: 0 }));
     const pct = (n) => (total ? ((n / total) * 100).toFixed(1) : '0.0');
+    const somaDaBarra = (i) =>
+        [valores.principal, valores.secundario, valores.semPapel].reduce(
+            (acc, v) => acc + (v?.[i] || 0),
+            0,
+        );
     graficos[canvasId] = new Chart(canvas, {
         type: 'bar',
         data: { labels, datasets: conjuntos },
         plugins: [pluginContornoTracejado],
         options: {
+            // O tooltip vale para a barra inteira (e não só para o segmento sob o
+            // mouse): lista os três papéis e fecha com o total. O clique do
+            // drill-down continua pedindo o segmento (bindDrillDownBarra).
+            interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: {
                     display: true,
@@ -228,8 +237,10 @@ export function criarBarChartEmpilhado(canvasId, labels, valores, cor, total = n
                         label: (ctx) =>
                             `${ctx.dataset.label}: ${ctx.raw} texto(s)${total ? ` - ${pct(ctx.raw)}%` : ''}`,
                         footer: (itens) => {
-                            const soma = itens.reduce((acc, it) => acc + (it.raw || 0), 0);
-                            return `Total visível: ${soma} texto(s)${total ? ` - ${pct(soma)}%` : ''}`;
+                            const i = itens[0]?.dataIndex;
+                            if (i == null) return '';
+                            const soma = somaDaBarra(i);
+                            return `Total (todos os papéis): ${soma} texto(s)${total ? ` - ${pct(soma)}%` : ''}`;
                         },
                     },
                 },

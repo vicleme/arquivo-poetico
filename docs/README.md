@@ -233,6 +233,7 @@ npm run format:check   # prettier --check .
 │   │                           Syllable Mode, Rhyme Mode, rhyme pair
 │   │                           mapping/classification, and the read-only
 │   │                           grid reused by the "View" modal
+│   ├── visualizar-livro.js     → Livro "View" modal (read-only, with prev/next)
 │   ├── visualizar-sonoridade.js → "View" modal for a scansion (read-only,
 │   │                           same grid as editor-sonoridade.js)
 │   ├── exportar-sonoridade.js → Exports a scansion as .md/.pdf/.docx/.json

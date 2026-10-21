@@ -674,6 +674,85 @@
                         Novo Livro
                     </button>
                 </div>
+                <div class="previas-imagem-slot mb-4" data-aba="livros"></div>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
+                    <input
+                        type="search"
+                        id="filtro-busca-livros"
+                        oninput="setBuscaLivros(this.value)"
+                        placeholder="Buscar por título, sigla ou ISBN"
+                        title="Buscar por título, sigla ou ISBN (ignora maiúsculas, acentos, hífen e espaço no ISBN)"
+                        aria-label="Buscar livro por título, sigla ou ISBN"
+                        autocomplete="off"
+                        style="width: 16rem; margin-bottom: 0"
+                    />
+                    <select
+                        id="filtro-tipo-livros"
+                        onchange="setFiltroTipoLivros(this.value)"
+                        aria-label="Filtrar por tipo de livro"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="">-- Todos os tipos --</option>
+                        <option value="Inéditos">Inéditos</option>
+                        <option value="Coletânea">Coletânea</option>
+                    </select>
+                    <select
+                        id="filtro-fase-livros"
+                        onchange="setFiltroFaseLivros(this.value)"
+                        aria-label="Filtrar por fase de vida"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="">-- Todas as fases --</option>
+                    </select>
+                    <select
+                        id="filtro-situacao-livros"
+                        onchange="setFiltroSituacaoLivros(this.value)"
+                        aria-label="Filtrar por situação editorial"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="">-- Todas as situações --</option>
+                        <option value="em-circulacao">Em circulação</option>
+                        <option value="esgotado">Esgotado</option>
+                        <option value="fora-de-catalogo">Fora de catálogo</option>
+                        <option value="reeditado">Reeditado</option>
+                        <option value="nao-especificada">Não especificada</option>
+                    </select>
+                    <select
+                        id="filtro-publicacao-livros"
+                        onchange="setFiltroPublicacaoLivros(this.value)"
+                        aria-label="Filtrar por publicação (data de primeira publicação)"
+                        title="Publicado: a data de primeira publicação já chegou. Programado: ainda não chegou. Não publicado: sem data."
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="">-- Publicados ou não --</option>
+                        <option value="publicado">Publicados</option>
+                        <option value="programado">Programados</option>
+                        <option value="nao-publicado">Não publicados</option>
+                    </select>
+                    <input
+                        type="text"
+                        id="filtro-data-livros"
+                        oninput="setFiltroDataLivros(this.value)"
+                        placeholder="Data: 2020 · 03/2020 · 15/03/2020 · 2020-2023"
+                        title="Data de primeira publicação: só o ano, mês e ano, dia completo ou um período de anos (2020-2023). Livro com data menos precisa que o filtro continua aparecendo."
+                        aria-label="Filtrar por data de primeira publicação"
+                        autocomplete="off"
+                        style="width: 20rem; margin-bottom: 0"
+                    />
+                    <button
+                        type="button"
+                        id="limpar-filtros-livros"
+                        onclick="limparFiltrosLivros()"
+                        class="hidden text-sm text-blue-600 dark:text-blue-400 underline"
+                    >
+                        Limpar filtros
+                    </button>
+                    <span
+                        id="contagem-livros"
+                        class="text-xs text-gray-500 dark:text-slate-400"
+                        aria-live="polite"
+                    ></span>
+                </div>
                 <div
                     id="lista-livros"
                     class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
@@ -732,6 +811,7 @@
                         Nova Parte
                     </button>
                 </div>
+                <div class="previas-imagem-slot mb-4" data-aba="partes"></div>
                 <select
                     id="filtro-livro-partes"
                     onchange="setFiltroLivroPartes(this.value)"
@@ -752,6 +832,7 @@
                         Nova Seção
                     </button>
                 </div>
+                <div class="previas-imagem-slot mb-4" data-aba="secoes"></div>
                 <div class="flex flex-wrap gap-3 mb-4">
                     <select
                         id="filtro-livro-secoes"
@@ -1094,6 +1175,7 @@
                 <div
                     class="flex flex-wrap gap-x-4 gap-y-1 mb-4 items-center text-xs text-gray-600 dark:text-slate-400"
                 >
+                    <span class="previas-imagem-slot" data-aba="autores"></span>
                     <label class="flex items-center gap-1.5">
                         <input
                             type="checkbox"
@@ -2016,12 +2098,46 @@
                         >
                             Importar clusters
                         </button>
+                        <select
+                            id="tag-clusters-baixar-escopo"
+                            aria-label="O que baixar"
+                            title="Quais tag clusters entram no arquivo"
+                            class="text-sm py-2 px-2"
+                            style="width: auto; margin-bottom: 0"
+                        >
+                            <option value="tela">O que a tela mostra (busca e categoria)</option>
+                            <option value="tudo">Todo o cadastro</option>
+                            <option value="selecao" hidden disabled>Só selecionados</option>
+                        </select>
+                        <select
+                            id="tag-clusters-baixar-formato"
+                            aria-label="Formato do download"
+                            title="Formato do arquivo baixado"
+                            class="text-sm py-2 px-2"
+                            style="width: auto; margin-bottom: 0"
+                        >
+                            <option value="md">.md (Markdown)</option>
+                            <option value="png">.png (imagem)</option>
+                            <option value="pdf">.pdf</option>
+                        </select>
                         <button
-                            onclick="baixarTagClustersMd()"
-                            title="Baixa um .md com os tag clusters (subclusters aninhados), as etiquetas de cada um e as etiquetas sem cluster, útil para colar numa IA e pedir ajuda para agrupar"
+                            type="button"
+                            id="tag-clusters-baixar"
+                            data-action="baixar-tag-clusters"
+                            title="Baixa o cadastro de tag clusters no formato escolhido ao lado. O .md traz os tag clusters (subclusters aninhados), as etiquetas de cada um e as etiquetas sem cluster, útil para colar numa IA; o .png e o .pdf trazem o mesmo visual da aba (o .pdf sempre em fundo claro, em páginas A4)"
                             class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
                         >
-                            Baixar .md
+                            ⬇ Baixar
+                        </button>
+                        <button
+                            type="button"
+                            id="tag-clusters-modo-selecao"
+                            data-action="alternar-modo-selecao-tag-clusters"
+                            aria-pressed="false"
+                            title="Mostra uma caixinha em cada tag cluster e em cada bloco de etiquetas sem cluster para baixar só os que você marcar"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            ☐ Selecionar
                         </button>
                         <button
                             onclick="novoTagCluster()"
@@ -2029,6 +2145,34 @@
                         >
                             Novo Tag cluster
                         </button>
+                    </div>
+                </div>
+                <div id="tag-clusters-selecao-barra" class="hidden mb-4">
+                    <div
+                        class="flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-slate-900 px-3 py-2 text-xs"
+                    >
+                        <span
+                            id="tag-clusters-selecao-contagem"
+                            class="font-bold text-blue-700 dark:text-blue-300"
+                        ></span>
+                        <button
+                            type="button"
+                            data-action="marcar-todos-tag-clusters"
+                            class="underline text-gray-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                        >
+                            Marcar todos
+                        </button>
+                        <button
+                            type="button"
+                            data-action="limpar-selecao-tag-clusters"
+                            class="underline text-gray-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                        >
+                            Limpar
+                        </button>
+                        <span class="text-gray-400 dark:text-slate-500"
+                            >Marcar um tag cluster marca os subclusters dele junto. Depois de
+                            marcar, escolha "Só selecionados" no primeiro menu e baixe.</span
+                        >
                     </div>
                 </div>
                 <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
@@ -4039,13 +4183,33 @@
                         Novo Elemento
                     </button>
                 </div>
-                <select
-                    id="filtro-livro-elementos"
-                    onchange="setFiltroLivroElementos(this.value)"
-                    style="width: auto; margin-bottom: 1rem"
-                >
-                    <option value="">-- Todos os livros --</option>
-                </select>
+                <div class="previas-imagem-slot mb-4" data-aba="elementos"></div>
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <select
+                        id="filtro-livro-elementos"
+                        onchange="setFiltroLivroElementos(this.value)"
+                        style="width: auto"
+                    >
+                        <option value="">-- Todos os livros --</option>
+                    </select>
+                    <select
+                        id="filtro-tipo-elementos"
+                        onchange="setFiltroTipoElementos(this.value)"
+                        aria-label="Filtrar por tipo de elemento"
+                        style="width: auto"
+                    >
+                        <option value="">-- Todos os tipos --</option>
+                        <option value="Introdução">Introdução</option>
+                        <option value="Epígrafe">Epígrafe</option>
+                        <option value="Pórtico">Pórtico</option>
+                        <option value="Ficha catalográfica">Ficha catalográfica</option>
+                        <option value="Sumário">Sumário</option>
+                        <option value="Conteúdo Multimídia">Conteúdo Multimídia</option>
+                        <option value="Comentário">Comentário</option>
+                        <option value="Respiro (Imagem)">Respiro (Imagem)</option>
+                        <option value="Posfácio">Posfácio</option>
+                    </select>
+                </div>
                 <div id="lista-elementos" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
             </section>
 
@@ -4072,6 +4236,18 @@
                         class="text-[10px] font-bold text-red-400 uppercase hover:underline"
                     >
                         Limpar seleção
+                    </button>
+                    <button
+                        onclick="expandirTodosEstrutura(true)"
+                        class="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase hover:underline"
+                    >
+                        Expandir tudo
+                    </button>
+                    <button
+                        onclick="expandirTodosEstrutura(false)"
+                        class="text-[10px] font-bold text-gray-500 dark:text-slate-400 uppercase hover:underline"
+                    >
+                        Recolher tudo
                     </button>
                     <button
                         onclick="
@@ -5443,6 +5619,10 @@
                         </div>
                         <div id="painel-modo-temas-assuntos" class="flex gap-1"></div>
                     </div>
+                    <div
+                        id="painel-ordem-temas-assuntos"
+                        class="flex items-center gap-1 flex-wrap mb-2"
+                    ></div>
                     <button
                         type="button"
                         onclick="togglePainel('painel-ocultos-temas-assuntos', this)"

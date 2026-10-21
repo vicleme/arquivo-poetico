@@ -217,3 +217,7 @@ Reversão: só restaurando o backup.
 6. Fase 2b (ver `plano-central.md`), em sessões próprias, nunca na mesma sessão da Etapa 5.
 
 Cada sessão termina, como de costume, entregando o zip só com o que mudou e o "Estado atual" do `status.md` reescrito, mesmo que incompleta.
+
+## Resumo que estava no painel (movido do `plano-central.md` em 20/10/2026, sem reescrever)
+
+Etapa 0 rede de segurança (teste de paridade), 1 função única de leitura, 2 leitores genéricos, 3 escritores, 4 migração única, 5 parar de gravar e apagar o campo (sem volta fácil), 6 limpeza e documentação. Ganha: um dado em um lugar só, `save()` mais leve e a correção de um defeito conhecido (Localizar e Substituir no campo Tema perde o papel). A leitura única da Etapa 1 é `valorDaCategoria(item, categoria, cadastros)`, com os cadastros num objeto (`{ temas }`), para a Fase 2b acrescentar `locais` sem mexer nos chamadores.

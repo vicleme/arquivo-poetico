@@ -191,3 +191,16 @@ describe('importarTagClusters', () => {
         );
     });
 });
+
+describe('importarTagClusters: nome de cluster com vírgula (F20-D16)', () => {
+    it('lê "Arte, cultura e jogo: a, b" com a vírgula no nome do cluster e do pai', () => {
+        const { itens } = lerListaDeClusters(
+            'Arte, cultura e jogo > Música, dança e som: x, y',
+            'dominioImagetico',
+        );
+        assert.equal(itens.length, 1);
+        assert.equal(itens[0].pai, 'Arte, cultura e jogo');
+        assert.equal(itens[0].cluster, 'Música, dança e som');
+        assert.deepEqual(itens[0].nomes, ['x', 'y']);
+    });
+});

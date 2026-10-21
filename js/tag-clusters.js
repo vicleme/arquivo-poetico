@@ -25,12 +25,7 @@
 // Toda operação que muda algo devolve `desfazer`.
 
 import { chaveTema, gerarId } from './utils.js';
-import {
-    ETIQUETAS_CATEGORIAS,
-    ROTULOS_ETIQUETAS,
-    idsDeEtiquetasDoTexto,
-    limparNomeEtiqueta,
-} from './etiquetas.js';
+import { ETIQUETAS_CATEGORIAS, ROTULOS_ETIQUETAS, idsDeEtiquetasDoTexto } from './etiquetas.js';
 
 // Para abrir outra categoria depois, basta acrescentar a chave aqui.
 export const CATEGORIAS_COM_CLUSTER = [
@@ -54,6 +49,17 @@ export function categoriaAceitaCluster(categoria) {
 
 export function rotuloDaCategoriaDeCluster(categoria) {
     return ROTULOS_ETIQUETAS[categoria] || '';
+}
+
+// Limpeza do nome de cluster: junta espaços e apara as pontas. Diferente do
+// nome de etiqueta, **mantém a vírgula**: nela a vírgula é o separador do
+// campo de etiquetas, mas no cluster o único caractere reservado é o ">"
+// (pai e subcluster; ver `nomeTemSeparador`). Na lista colada da importação
+// o nome vem antes do primeiro ":", então a vírgula também não atrapalha.
+export function limparNomeCluster(nome) {
+    return String(nome ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 function achar(dbRef, id) {
@@ -119,7 +125,7 @@ export function sincronizarTagClusters(dbRef) {
         return true;
     });
     dbRef.tagClusters.forEach((c) => {
-        c.nome = limparNomeEtiqueta(c.nome);
+        c.nome = limparNomeCluster(c.nome);
         c.notas = typeof c.notas === 'string' ? c.notas : '';
     });
     // Subclusters: solta `paiId` que não vale (pai inexistente, ele mesmo ou
@@ -273,7 +279,7 @@ function nomeTemSeparador(nome) {
 // pai precisa existir, ser da mesma categoria e não ter pai.
 export function criarCluster(dbRef, nome, categoria, paiId = null) {
     if (!categoriaAceitaCluster(categoria)) return { ok: false, motivo: 'categoria-invalida' };
-    const limpo = limparNomeEtiqueta(nome);
+    const limpo = limparNomeCluster(nome);
     if (!limpo) return { ok: false, motivo: 'vazio' };
     if (nomeTemSeparador(limpo)) return { ok: false, motivo: 'caractere-invalido' };
     if (paiId != null) {
@@ -306,7 +312,7 @@ export function editarCluster(dbRef, id, { nome, notas } = {}) {
     if (!c) return { ok: false, motivo: 'inexistente' };
     const antes = { nome: c.nome, notas: c.notas };
     if (nome !== undefined) {
-        const limpo = limparNomeEtiqueta(nome);
+        const limpo = limparNomeCluster(nome);
         if (!limpo) return { ok: false, motivo: 'vazio' };
         if (nomeTemSeparador(limpo)) return { ok: false, motivo: 'caractere-invalido' };
         const duplicado = acharPorNome(dbRef, c.categoria, limpo, c.paiId ?? null, id);
@@ -443,4 +449,39 @@ export function atribuirEtiquetasAoCluster(dbRef, etiquetaIds, clusterId) {
             });
         },
     };
+}
+
+// ─── Filtro da aba (busca e categoria) ──────────────────────────
+// Regra única da tela e das exportações (.md, .png), para o que se baixa
+// nunca divergir do que a aba mostra.
+
+// Árvore filtrada, na ordem da tela: `[{ categoria, topo, subs }]`. O cluster
+// casa pelo nome ou por uma etiqueta direta dele. O topo aparece se ele ou um
+// subcluster casa; com busca, os subclusters mostrados são os que casam, ou
+// todos se o próprio topo casa. Sem filtro, devolve o cadastro inteiro.
+export function arvoreTagClusters(dbRef, { busca = '', categoria = '' } = {}) {
+    const b = chaveTema(busca || '');
+    const casa = (c) =>
+        !b ||
+        chaveTema(c.nome).includes(b) ||
+        etiquetasDoCluster(dbRef, c.id).some((e) => chaveTema(e.nome).includes(b));
+    const arvore = [];
+    CATEGORIAS_EM_ORDEM.filter((cat) => !categoria || cat === categoria).forEach((cat) => {
+        clustersDeTopoDaCategoria(dbRef, cat).forEach((topo) => {
+            const subs = subclustersDoCluster(dbRef, topo.id);
+            const topoCasa = casa(topo);
+            const mostrados = b && !topoCasa ? subs.filter(casa) : subs;
+            if (!topoCasa && mostrados.length === 0) return;
+            arvore.push({ categoria: cat, topo, subs: mostrados });
+        });
+    });
+    return arvore;
+}
+
+// Etiquetas sem cluster que passam pelo mesmo filtro.
+export function soltasTagClusters(dbRef, { busca = '', categoria = '' } = {}) {
+    const b = chaveTema(busca || '');
+    return etiquetasSemCluster(dbRef).filter(
+        (e) => (!categoria || e.categoria === categoria) && (!b || chaveTema(e.nome).includes(b)),
+    );
 }

@@ -139,7 +139,7 @@ Vários Períodos Biográficos por texto (14/10/2026). `periodos` é a lista (0 
 - Lógica pura em `js/tag-clusters.js` (criar, editar, excluir, atribuir em lote, etiquetas sem cluster, textos e contagem por cluster, `sincronizarTagClusters`); tela em `js/tag-clusters-aba.js` e `modais/modal-tag-cluster.html`; exportação em `js/exportar-tag-clusters.js`.
 - **Migração/saneamento:** `sincronizarTagClusters` roda no load, no `save()` e no `importarDB`. Descarta cluster de categoria que não aceita cluster e id repetido, descarta `paiId` inexistente, de outra categoria, em cadeia ou em ciclo (o cluster vira de topo), e solta `clusterId` que aponta para cluster inexistente ou de outra categoria. Nunca apaga cluster. Backup antigo, sem `tagClusters`, abre com lista vazia.
 - **Efeitos nas etiquetas:** mover de categoria solta a etiqueta do cluster (Desfazer devolve); mesclar faz o destino herdar o `clusterId` da origem quando não tem o seu; excluir cluster só solta as etiquetas.
-- **Saídas:** o backup (`JSON.stringify(db)`) leva `tagClusters` e `clusterId`. `db.tagClusters` entra em `esvaziar-acervo.js` e `inventario-armazenamento.js`. O `.md` do cadastro é `tag-clusters.md` (botão "Baixar .md" da aba), com o cluster de topo em `###` e os subclusters aninhados em `####`. Os `.json` de textos não levam cluster. Estatísticas: a Fase 8 lê o cadastro.
+- **Saídas:** o backup (`JSON.stringify(db)`) leva `tagClusters` e `clusterId`. `db.tagClusters` entra em `esvaziar-acervo.js` e `inventario-armazenamento.js`. O `.md` do cadastro é `tag-clusters.md` (botão "Baixar .md" da aba), com o cluster de topo em `###` e os subclusters aninhados em `####`; o mesmo botão baixa também `.png` e `.pdf`, no cadastro inteiro, no que a tela mostra ou só na seleção (nada disso é dado novo: a seleção fica só em memória). Os `.json` de textos não levam cluster. Estatísticas: a Fase 8 lê o cadastro.
 
 **Sinalizações antigas (8 categorias, cada uma string por vírgula).** O que segue vale para os dois campos que não são etiquetas, `sinalizacoesTema` e `sinalizacoesTerritorialidade` (espelhos derivados), e como histórico das categorias.
 
@@ -213,6 +213,10 @@ Coletânea é um Livro com `tipo: 'Coletânea'`, então o campo vive em `db.livr
 - Código: `SITUACOES_EDITORIAIS`, `situacaoEditorialDoLivro`, `livroForaDeCirculacao`, `textoSituacaoEditorial`, `htmlSeloSituacaoEditorial` em `utils.js`; modal em `modais/modal-livro.html` (ids `l-situacao-editorial`, `l-situacao-desde-*`, `l-situacao-nota`); salvar/editar em `forms.js` (`initFormLivro`, `MAPA_LIVRO`, `editarLivro`).
 - Aparece: selo e nota no card do livro (`renderLivros`); texto na lista e no cabeçalho da aba Coletâneas; aviso nas Lojas ("confira se os links de compra ainda funcionam") quando esgotado, fora de catálogo ou reeditado e há link de compra. Os exports (`buildNesting`) espalham o objeto do livro, então os três campos saem sem código extra.
 - Não existe (ainda): filtro, coluna ou busca por situação editorial; vínculo estruturado do livro reeditado com a nova edição (hoje a nova edição vai na nota).
+
+### Sobre (Parte e Seção)
+
+- `sobre` em `db.partes` e `db.secoes` (21/10/2026): texto livre e opcional, com quebras de linha preservadas, no mesmo formato do `sobre` do Autor. Item sem o campo vale `''`, sem migração. Modais `modal-parte.html` (`part-sobre`) e `modal-secao.html` (`sec-sobre`), antes dos versos de Abertura; seção "Sobre" no Ver, antes da Abertura, só quando há texto. A Parte de Coletânea (`modal-col-parte.html`) não tem o campo. Vai no `.json` e no backup (o aninhamento espalha o objeto); não vai em card, busca, coluna, `.md` nem `.csv`.
 
 ## Aba "Conexões"
 
@@ -453,3 +457,19 @@ Nenhum campo novo. `movimentosEscolasIds` (Poema, Prosa e Autor) continua uma li
 ## Versão dos padrões de colunas de fábrica (16/10/2026)
 
 `db.padroesColunasFabricaVersao`: número, ausente ou 0 = nenhum padrão de fábrica semeado ainda. Vai no backup `.json` e é lido pelo `importarDB`. Os padrões semeados são entradas comuns de `db.padroesColunas` (`{ nome, colunas }`), sem marca de "fábrica": depois de semeados, são da pessoa. Lista e regra em `js/padroes-colunas-fabrica.js`.
+
+## Elemento: Ficha catalográfica e Sumário (21/10/2026)
+
+Dois tipos novos de `db.elementos[].tipo`: `Ficha catalográfica` e `Sumário` (no select do modal depois de Pórtico, e no filtro da aba). Epígrafe e Pórtico também são tipos novos, mas só rótulo, sem campos próprios.
+
+- **Ficha catalográfica:** `fichaUrl`, `fichaCdd`, `fichaNumeroControle`, `fichaBibliotecario`, `fichaCrb` (todos texto, gravados só quando o tipo é Ficha e o valor não é vazio; `camposDaFicha` em `ficha-catalografica.js`). ISBN, editora, local e ano ficam no Livro. `fichaUrl` só vale com a ficha ligada direto a um Livro e anda junto com `livro.fichaCatalograficaUrl` (mudar um muda o outro; só o salvar dos dois modais sincroniza).
+- **Sumário:** `itensSumario`, lista de `{ nivel, item, pagina }` (`nivel` inteiro de 1 a 9, `item` texto, `pagina` texto, porque pode ser "xii"), gravada só quando o tipo é Sumário e há itens (`camposDoSumario` em `sumario.js`). Máximo de 2000 itens na importação. Arquivo de modelo para IA: `modelo-sumario.json` (`tipo: 'sumario'`, `versao: 1`, `instrucoes`, `itens`).
+- Trocar o tipo de um Elemento apaga os campos do tipo antigo ao salvar. Nenhum desses campos entra em exportação `.md`, `.csv` ou `.json` de textos (Elemento não está nesses caminhos), só na exportação da seleção da aba Estrutura, que despeja o Elemento inteiro.
+
+## Imagem e link da imagem (21/10/2026)
+
+- **Imagem exibida:** `autores[].imagem` (novo), `elementos[].imagem`, `livros[].capa`, `partes[].capa`, `secoes[].capa`: id de uma imagem no IndexedDB (`capas.js`), ou `null`. Só upload. O descarte (`_capasDoItem` em `db.js`) cobre `capa` e `imagem`.
+- **Link da imagem:** `imagemUrl`, texto, em Autor, Elemento, Livro (link da capa), Parte (inclusive Parte de Coletânea) e Seção. Vazio (`''`) ou `http(s)://...`; outro texto é recusado ao salvar (`normalizarLinkImagem` em `imagem-link.js`). Só de acesso: aparece como "Abrir imagem original" (outra aba) no card e, onde existe, no Ver (Autor, Livro). Nunca é baixado nem exibido como imagem.
+- Dado antigo ou importado sem o campo vale como vazio; valor que não for http/https não é mostrado (`linkImagemExibivel`).
+- **Exportação:** só Autor leva o link (`.md`: "Link da imagem"; `.csv`: coluna `link_imagem`); o id interno da imagem não sai no `.csv`. Elemento, Parte e Seção não entram nessas exportações. Todos eles vão no backup `.json`, que grava o acervo inteiro.
+- O link da Ficha catalográfica (`fichaCatalograficaUrl`, `fichaUrl`) continua à parte: pode ser PDF e não é tratado como imagem.

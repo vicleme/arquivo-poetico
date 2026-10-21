@@ -66,6 +66,27 @@
                     <input type="text" id="au-isni" placeholder="Ex: 0000 0000 0000 0000" />
                 </div>
                 <div class="md:col-span-2">
+                    <label class="form-label">Imagem</label>
+                    <input type="file" id="au-imagem" accept="image/*" />
+                    <div class="flex items-center gap-2 mt-1">
+                        <input type="checkbox" id="au-remover-imagem" />
+                        <label for="au-remover-imagem" class="text-sm">Remover imagem atual</label>
+                    </div>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="form-label">Link da imagem</label>
+                    <input
+                        type="url"
+                        id="au-imagem-url"
+                        placeholder="Link (opcional, só para acesso)"
+                    />
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                        A imagem exibida vem só do arquivo enviado acima. Este link serve apenas
+                        para você abrir a imagem original em outra aba (Drive, imgbb etc.); o app
+                        não baixa nem exibe o que está nele.
+                    </p>
+                </div>
+                <div class="md:col-span-2">
                     <label class="form-label">Heterônimos e Pseudônimos</label>
                     <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
                         Outros nomes sob os quais este Autor publicou — Heterônimo (identidade

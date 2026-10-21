@@ -775,6 +775,24 @@ export function agregarPorPapel({ base = 'tema' } = {}) {
     };
 }
 
+// Reordena `labels` (os nomes que sobraram dos cortes) pelo critério escolhido:
+// 'total' mantém a ordem recebida (agregarPorPapel já ordena pelo total); um dos
+// papéis ('principal', 'secundario', 'semPapel') põe primeiro quem tem mais textos
+// naquele papel. Empate: maior total e, por fim, ordem alfabética, para a ordem
+// não depender da ordem em que os textos foram lidos. Valor desconhecido vale
+// 'total'. `resultado` é o retorno de agregarPorPapel.
+export function ordenarRotulosPorPapel(resultado, labels, ordem = 'total') {
+    if (!PAPEIS_EMPILHADOS.includes(ordem)) return [...labels];
+    const indice = new Map(resultado.labels.map((l, i) => [l, i]));
+    const valor = (vetor, l) => vetor[indice.get(l)] ?? 0;
+    return [...labels].sort(
+        (a, b) =>
+            valor(resultado[ordem], b) - valor(resultado[ordem], a) ||
+            valor(resultado.data, b) - valor(resultado.data, a) ||
+            a.localeCompare(b, 'pt-BR'),
+    );
+}
+
 // Recorta o resultado de agregarPorPapel para os `labels` pedidos, na ordem
 // pedida (depois de corte por mínimo, ocultos e Top N, feitos sobre `labels`/`data`).
 export function recortarPorPapel(resultado, labels) {

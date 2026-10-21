@@ -44,6 +44,7 @@ const {
     abrirImportarTagClusters,
     initFormImportarTagClusters,
     colocarEtiquetaNoCluster,
+    avisoDoNomeDeCluster,
 } = await import('../js/tag-clusters-aba.js');
 const { renderEtiquetas } = await import('../js/etiquetas-aba.js');
 const { sincronizarEtiquetas } = await import('../js/etiquetas.js');
@@ -262,5 +263,41 @@ describe('aba Tag clusters com subclusters (DOM real via happy-dom)', () => {
         const texto = $('itc-relatorio').textContent;
         assert.match(texto, /linha 1: o subcluster teria o nome de um cluster de topo/);
         assert.match(texto, /linha 2: só há um nível/);
+    });
+});
+
+describe('aviso do ">" na digitação do nome (F20-D16)', () => {
+    beforeEach(() => {
+        preparar();
+        initFormTagCluster();
+    });
+
+    it('avisoDoNomeDeCluster só reage ao ">"', () => {
+        assert.match(avisoDoNomeDeCluster('A > B'), /não pode estar no nome/);
+        assert.equal(avisoDoNomeDeCluster('Arte, cultura e jogo'), '');
+        assert.equal(avisoDoNomeDeCluster(null), '');
+    });
+
+    it('mostra o aviso ao digitar o ">" e some ao tirá-lo', async () => {
+        await novoTagCluster();
+        assert.equal($('tc-nome-dica').classList.contains('hidden'), true);
+        $('tc-nome').value = 'Jogos > sons';
+        $('tc-nome').dispatchEvent(new Event('input'));
+        assert.equal($('tc-nome-dica').classList.contains('hidden'), false);
+        assert.match($('tc-nome-dica').textContent, /separa o pai do subcluster/);
+        $('tc-nome').value = 'Jogos e sons';
+        $('tc-nome').dispatchEvent(new Event('input'));
+        assert.equal($('tc-nome-dica').classList.contains('hidden'), true);
+    });
+
+    it('reabrir o cadastro limpa o aviso, e o salvar continua recusando o ">"', async () => {
+        await novoTagCluster();
+        $('tc-nome').value = 'A > B';
+        $('tc-nome').dispatchEvent(new Event('input'));
+        const antes = db.tagClusters.length;
+        enviar();
+        assert.equal(db.tagClusters.length, antes);
+        await novoTagCluster();
+        assert.equal($('tc-nome-dica').classList.contains('hidden'), true);
     });
 });

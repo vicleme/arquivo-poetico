@@ -78,6 +78,12 @@ export const CATEGORIAS_FAQ = [
                     'Cada cartão selecionado é lembrado pelos poemas que ele reúne, e não pela posição ("Grafo 2" muda de número quando entra um item novo, por isso a posição não serve). Ao ligar outro poema a um grafo de Ecos, o conjunto de poemas do cartão muda, o app o enxerga como outro cartão e a seleção do antigo se perde. É raro e fácil de notar: basta selecionar de novo. O mesmo vale se você apagar um poema ou desfizer um vínculo, o item que deixou de existir sai da seleção sozinho. A seleção vale só enquanto o modo Selecionar está ligado e não fica guardada entre sessões.',
             },
             {
+                id: 'faq-livro-ver',
+                pergunta: 'Como vejo um livro inteiro, sem abrir o formulário de edição?',
+                resposta:
+                    'Na aba Livros, clique no olho do card. O Ver mostra a capa, as datas, o ISBN, a situação editorial, a Abertura, a Sinopse, as Orelhas, a Contracapa, as lojas e os links, e no fim quantas partes, seções e textos o livro contém. No cabeçalho, Anterior e Próximo (ou as setas do teclado) andam pelos livros na ordem dos cards, e a caixa de número leva direto a um livro. Dentro do formulário de edição, o olho azul do cabeçalho abre o Ver do mesmo livro: se houver alteração não salva, ele pergunta se você quer salvar antes.',
+            },
+            {
                 id: 'faq-anotacao-descricao-visual',
                 pergunta: 'Qual a diferença entre Anotação Marginal e Descrição Visual?',
                 resposta:
@@ -119,6 +125,12 @@ export const CATEGORIAS_FAQ = [
                 pergunta: 'Como importar vários tag clusters de uma vez?',
                 resposta:
                     'Na aba Tag clusters, clique em Importar clusters, escolha a categoria e cole uma linha por cluster, no formato “Cluster: etiqueta, etiqueta”. Para um subcluster, escreva o caminho: “Cluster > Subcluster: etiqueta, etiqueta” (um nível só; o pai é criado se não existir). Um título como “## Tom” troca a categoria dali em diante. O app cria os clusters e põe as etiquetas, reaproveita o cluster ou subcluster que já existe e não cria etiqueta nova: o que não existir na categoria aparece no relatório. Tudo tem Desfazer.',
+            },
+            {
+                id: 'faq-tag-clusters-baixar',
+                pergunta: 'Como baixar os tag clusters em .md, .png ou .pdf, e só alguns deles?',
+                resposta:
+                    'Na aba Tag clusters, o primeiro menu escolhe o que entra: o que a tela mostra (respeita a busca e o filtro de categoria), todo o cadastro ou, depois de marcar, só os selecionados. O segundo menu escolhe o formato. O .md é texto simples, bom para colar numa IA. O .png é uma imagem com o mesmo visual da aba, nas cores do tema ligado. O .pdf leva o mesmo desenho do .png, sempre em tema claro, dividido em páginas A4 sem cortar cartão ao meio; como é imagem, o texto dele não pode ser selecionado nem pesquisado. Para escolher cartões, clique em Selecionar: cada tag cluster e cada bloco de etiquetas sem cluster ganha uma caixinha. Marcar um cluster marca os subclusters dele junto, e dá para desmarcar um. Um subcluster marcado sem o pai sai como cartão solto, com o nome “Pai > Subcluster”. A seleção vale por si, passa por cima da busca e do filtro, e some ao desligar o modo. Quando o arquivo não é o cadastro inteiro, o nome ganha -filtrado ou -selecao e uma linha no topo diz o recorte.',
             },
             {
                 id: 'faq-importar-campos',

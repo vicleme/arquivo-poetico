@@ -1,6 +1,7 @@
 import {
     agregarPorTema,
     agregarPorPapel,
+    ordenarRotulosPorPapel,
     recortarPorPapel,
     agregarTemasPorAno,
     contarTextosFiltrados,
@@ -14,6 +15,9 @@ import {
     PAPEIS_TEMA_ESTATISTICAS,
     ROTULOS_PAPEL_TEMA_ESTATISTICAS,
     getModoTemasAssuntos,
+    getOrdemTemasAssuntos,
+    ORDENS_TEMAS_ASSUNTOS,
+    ROTULOS_ORDEM_TEMAS_ASSUNTOS,
     getOcultosGrafico,
     filtrarOcultos,
     getSelecaoTemporal,
@@ -58,6 +62,7 @@ const CONFIG_TEMAS_ASSUNTOS = {
         topN: 12,
         prefixos: ['temaprincipal:', 'temasecundario:', 'temasempapel:'],
         titulo: 'Temas mais frequentes',
+        tituloPorPapel: 'Temas com mais',
         texto: 'Número de textos que possuem cada tema, dividido pelo papel do tema no texto.',
     },
     assunto: {
@@ -66,6 +71,7 @@ const CONFIG_TEMAS_ASSUNTOS = {
         topN: null,
         prefixos: ['assuntoprincipal:', 'assuntosecundario:', 'assuntoindefinido:'],
         titulo: 'Assuntos mais frequentes',
+        tituloPorPapel: 'Assuntos com mais',
         texto: 'Textos por Assunto (Cadastros → Assunto), derivado dos Temas que cada texto tem. Um texto com temas de mais de um Assunto conta em cada um; o papel é o do Assunto naquele texto.',
     },
 };
@@ -80,6 +86,23 @@ function seletorModoTemasAssuntos() {
         .join('');
 }
 
+// Ordem das barras: Total (padrão) ou o papel com mais textos. Guardada entre
+// sessões; o título do gráfico diz qual ordem está valendo.
+function seletorOrdemTemasAssuntos() {
+    const atual = getOrdemTemasAssuntos();
+    const botoes = ORDENS_TEMAS_ASSUNTOS.map(
+        (v) =>
+            `<button type="button" onclick="definirOrdemTemasAssuntos('${v}')" class="px-2 py-0.5 rounded text-[11px] font-semibold ${atual === v ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'}">${ROTULOS_ORDEM_TEMAS_ASSUNTOS[v]}</button>`,
+    ).join('');
+    return `<span class="text-[11px] text-gray-500 dark:text-slate-400 mr-1">Ordenar por mais:</span>${botoes}`;
+}
+
+const TITULO_POR_PAPEL = {
+    principal: 'principais',
+    secundario: 'secundários',
+    semPapel: 'indefinidos',
+};
+
 export function renderTemasAssuntos() {
     renderFiltrosCompartilhados();
 
@@ -93,14 +116,19 @@ export function renderTemasAssuntos() {
     const papeisBase = agregarPorPapel({ base: modo });
     const papeisCortados = filtrarPorIntervalo(papeisBase, getMinimoAparicoes(cfg.chave) || '', '');
     const papeisVisiveis = filtrarOcultos(papeisCortados, getOcultosGrafico(cfg.chave));
-    const rotulosBarra = cfg.topN
-        ? papeisVisiveis.labels.slice(0, cfg.topN)
-        : papeisVisiveis.labels;
+    // A ordem escolhida vale antes do Top N: "mais secundários" mostra os Temas
+    // com mais secundários, não os mesmos de sempre em outra ordem.
+    const ordem = getOrdemTemasAssuntos();
+    const rotulosOrdenados = ordenarRotulosPorPapel(papeisBase, papeisVisiveis.labels, ordem);
+    const rotulosBarra = cfg.topN ? rotulosOrdenados.slice(0, cfg.topN) : rotulosOrdenados;
     const barras = recortarPorPapel(papeisBase, rotulosBarra);
     criarBarChartEmpilhado('grafico-temas-assuntos', barras.labels, barras, cfg.cor, total);
     montarPainel('painel-modo-temas-assuntos', seletorModoTemasAssuntos());
+    montarPainel('painel-ordem-temas-assuntos', seletorOrdemTemasAssuntos());
     const titulo = document.getElementById('titulo-temas-assuntos');
-    if (titulo) titulo.textContent = cfg.titulo;
+    if (titulo)
+        titulo.textContent =
+            ordem === 'total' ? cfg.titulo : `${cfg.tituloPorPapel} ${TITULO_POR_PAPEL[ordem]}`;
     const texto = document.getElementById('texto-temas-assuntos');
     if (texto) texto.textContent = cfg.texto;
     montarPainel(

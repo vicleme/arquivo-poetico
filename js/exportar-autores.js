@@ -20,6 +20,7 @@
 // ============================================================
 
 import { db, calcularImpactoExclusaoAutor } from './db.js';
+import { linkImagemExibivel } from './imagem-link.js';
 import {
     formatarDataParcial,
     calcularAnoDominioPublico,
@@ -115,6 +116,7 @@ export function autorParaMarkdown(item) {
     const linhas = [
         linha('Nomes literários', listaTexto(nomesLit)),
         linha('ISNI', item.isni),
+        linha('Link da imagem', linkImagemExibivel(item.imagemUrl)),
         linha('Nacionalidade', item.nacionalidade),
         linha('Nascimento', nasc !== '—' ? nasc : ''),
         linha('Óbito', obito !== '—' ? obito : ''),
@@ -220,6 +222,7 @@ export const COLUNAS_AUTOR = [
     coluna('nome', ['nome'], (a) => a.nome),
     coluna('sou_eu', ['souEu'], (a) => !!a.souEu),
     coluna('isni', ['isni'], (a) => a.isni),
+    coluna('link_imagem', ['imagemUrl'], (a) => linkImagemExibivel(a.imagemUrl)),
     coluna('nomes_literarios', ['nomesLiterarios'], (a) => listaCsv(a.nomesLiterarios)),
     coluna('nacionalidade', ['nacionalidade'], (a) => a.nacionalidade),
     ...colunasData('nascimento', ['nascimento'], (a) => a.nascimento),

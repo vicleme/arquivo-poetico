@@ -24,6 +24,7 @@ import {
     prepararNovo,
     prepararNovoSubgrupo,
     toggleCamposIntroducao,
+    toggleCamposFicha,
     sugerirSequencia,
     filtrarDestinoPoema,
     filtrarDestinoProsa,
@@ -88,6 +89,34 @@ import {
 } from './visualizar.js';
 import { abrirVisualizacaoAutor, editarAutorDoVisualizador } from './visualizar-autor.js';
 import {
+    abrirVisualizacaoLivro,
+    navegarVisualizacaoLivro,
+    irParaPosicaoVisualizacaoLivro,
+    editarLivroDoVisualizador,
+    verDoModalEdicaoLivro,
+    excluirLivroDoVisualizador,
+    registrarListaNavegacaoLivros,
+} from './visualizar-livro.js';
+import {
+    abrirVisualizacaoParteSecao,
+    abrirParteSecaoDaEstrutura,
+    verDoModalEdicaoParteSecao,
+    navegarVisualizacaoParteSecao,
+    irParaPosicaoVisualizacaoParteSecao,
+    editarParteSecaoDoVisualizador,
+    excluirParteSecaoDoVisualizador,
+    registrarListaNavegacaoParteSecao,
+} from './visualizar-parte-secao.js';
+import {
+    abrirVisualizacaoElemento,
+    navegarVisualizacaoElemento,
+    irParaPosicaoVisualizacaoElemento,
+    editarElementoDoVisualizador,
+    excluirElementoDoVisualizador,
+    registrarListaNavegacaoElemento,
+    verDoModalEdicaoElemento,
+} from './visualizar-elemento.js';
+import {
     abrirVisualizacaoMovimentoEscola,
     editarMovimentoEscolaDoVisualizador,
 } from './visualizar-movimento-escola.js';
@@ -138,6 +167,7 @@ import {
     montarControlesIncluirOcultos,
 } from './ocultos-exportacao.js';
 import { toggleAgruparComuns, montarControlesAgruparComuns } from './agrupar-comuns.js';
+import { montarControlesPrevias } from './previas-imagem.js';
 import { exportarEscansao } from './exportar-sonoridade.js';
 import {
     toggleIncluirDadosPessoais,
@@ -209,6 +239,16 @@ import {
     setFiltroLivroSecoes,
     setFiltroParteSecoes,
     setFiltroLivroElementos,
+    setFiltroTipoElementos,
+    setBuscaLivros,
+    setFiltroTipoLivros,
+    setFiltroFaseLivros,
+    setFiltroSituacaoLivros,
+    setFiltroPublicacaoLivros,
+    setFiltroDataLivros,
+    limparFiltrosLivros,
+    alternarPreviasImagem,
+    definirPreviasImagemTodasAbas,
     setFiltroLivroProsa,
     moverLivro,
     setFiltroDataEscritaPoemas,
@@ -241,7 +281,11 @@ import {
     setVisibilidadeGrupos,
     toggleOcultarGrupo,
     getListaVisivelPoemas,
+    getListaVisivelLivros,
     getListaVisivelProsas,
+    getListaVisivelPartes,
+    getListaVisivelSecoes,
+    getListaVisivelElementos,
 } from './render-listas.js';
 import {
     setFiltroAutores,
@@ -317,6 +361,8 @@ import {
     abrirModalMoverNivel,
     toggleSelecaoEstrutura,
     marcarTodosEstrutura,
+    expandirTodosEstrutura,
+    editarPosicaoEstrutura,
     exportarSelecaoEstrutura,
 } from './render-estrutura.js';
 import {
@@ -411,6 +457,7 @@ import {
     toggleIdentidadeFiltroPessoas,
     limparIdentidadesFiltroPessoas,
     definirModoTemasAssuntos,
+    definirOrdemTemasAssuntos,
     definirModoTerceiros,
     toggleGrupoFiltroPessoas,
     toggleOcultoItem,
@@ -691,6 +738,10 @@ import {
     removerEventoTemplateEdicao,
     rastreadorPoema,
     rastreadorProsa,
+    rastreadorLivro,
+    rastreadorParte,
+    rastreadorSecao,
+    rastreadorElemento,
 } from './forms.js';
 import {
     toggleEstrofeItem,
@@ -752,7 +803,11 @@ import {
     recolherTodosTagClusters,
     expandirTodosTagClusters,
     novoTagCluster,
-    baixarTagClustersMd,
+    baixarTagClusters,
+    alternarModoSelecaoTagClusters,
+    toggleSelecaoTagCluster,
+    marcarTodosTagClusters,
+    limparSelecaoTagClusters,
     editarTagCluster,
     initFormTagCluster,
     abrirImportarTagClusters,
@@ -783,9 +838,9 @@ import { abrirSugestaoEcos, initSugestaoEcos } from './ui-sugestao-ecos.js';
 // modal-poema também carrega o editor de formatação (toolbar,
 // tags, pessoas), que só existe dentro desse modal.
 
-registrarModal('modal-livro', 'modal-livro.html', initFormLivro);
-registrarModal('modal-parte', 'modal-parte.html', initFormParte);
-registrarModal('modal-secao', 'modal-secao.html', initFormSecao);
+registrarModal('modal-livro', 'modal-livro.html', initFormLivro, rastreadorLivro);
+registrarModal('modal-parte', 'modal-parte.html', initFormParte, rastreadorParte);
+registrarModal('modal-secao', 'modal-secao.html', initFormSecao, rastreadorSecao);
 registrarModal(
     'modal-poema',
     'modal-poema.html',
@@ -814,7 +869,7 @@ registrarModal(
     },
     rastreadorProsa,
 );
-registrarModal('modal-elemento', 'modal-elemento.html', initFormElemento);
+registrarModal('modal-elemento', 'modal-elemento.html', initFormElemento, rastreadorElemento);
 registrarModal('modal-pessoa', 'modal-pessoa.html', initFormPessoa);
 registrarModal('modal-grupo', 'modal-grupo.html', initFormGrupo);
 registrarModal('modal-autor', 'modal-autor.html', initFormAutor);
@@ -879,6 +934,20 @@ registrarListaNavegacaoVisualizacao('prosa', () => getListaVisivelProsas().map((
 registrarModal('modal-visualizar-sonoridade', 'modal-visualizar-sonoridade.html', () => {});
 // Idem, pro Autor (ver visualizar-autor.js) — botão "Ver" do card em Autores.
 registrarModal('modal-visualizar-autor', 'modal-visualizar-autor.html', () => {});
+// Idem, pro Livro (ver visualizar-livro.js) — botão "Ver" do card em Livros e olho
+// do modal de edição. Anterior/Próximo seguem a ordem dos cards.
+registrarModal('modal-visualizar-livro', 'modal-visualizar-livro.html', () => {});
+registrarListaNavegacaoLivros(() => getListaVisivelLivros());
+// Idem, pra Parte e Seção (ver visualizar-parte-secao.js) — botão "Ver" do card em
+// Partes e em Seções. Anterior/Próximo seguem a ordem e os filtros dos cards.
+registrarModal('modal-visualizar-parte', 'modal-visualizar-parte.html', () => {});
+registrarModal('modal-visualizar-secao', 'modal-visualizar-secao.html', () => {});
+registrarListaNavegacaoParteSecao('parte', () => getListaVisivelPartes());
+registrarListaNavegacaoParteSecao('secao', () => getListaVisivelSecoes());
+// Idem, pro Elemento textual (ver visualizar-elemento.js) — botão "Ver" do card em
+// Elementos Textuais. Anterior/Próximo seguem a ordem e os filtros dos cards.
+registrarModal('modal-visualizar-elemento', 'modal-visualizar-elemento.html', () => {});
+registrarListaNavegacaoElemento(() => getListaVisivelElementos());
 // Idem, pro Movimento/Escola (ver visualizar-movimento-escola.js) —
 // botão "Ver" do card em Movimentos/Escolas.
 registrarModal(
@@ -956,6 +1025,25 @@ const ACOES_LISTA = {
     'toggle-grupo-colapso': (el) => toggleColapsoGrupo(Number(el.dataset.id)),
     'editar-autor': (el) => editarAutor(Number(el.dataset.id)),
     'ver-autor': (el) => abrirVisualizacaoAutor(Number(el.dataset.id)),
+    'ver-livro': (el) => abrirVisualizacaoLivro(Number(el.dataset.id)),
+    'ver-parte': (el) => abrirVisualizacaoParteSecao('parte', Number(el.dataset.id)),
+    'ver-secao': (el) => abrirVisualizacaoParteSecao('secao', Number(el.dataset.id)),
+    'ver-elemento': (el) => abrirVisualizacaoElemento(Number(el.dataset.id)),
+    // Título de Elemento na aba Estrutura: abre o Ver sem lista de navegação.
+    'ver-elemento-estrutura': (el) =>
+        abrirVisualizacaoElemento(Number(el.dataset.id), { navegar: false }),
+    // Título de Parte e de Seção na aba Estrutura: abre o Ver sem lista de navegação.
+    // O título fica dentro do <summary>: sem preventDefault o clique recolheria.
+    'ver-parte-estrutura': (el, e) => {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        abrirParteSecaoDaEstrutura('parte', Number(el.dataset.id));
+    },
+    'ver-secao-estrutura': (el, e) => {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        abrirParteSecaoDaEstrutura('secao', Number(el.dataset.id));
+    },
     'editar-epoca': (el) => editarEpoca(Number(el.dataset.id)),
     'editar-periodo-historico': (el) => editarPeriodoHistorico(Number(el.dataset.id)),
     'editar-assunto': (el) => editarAssunto(Number(el.dataset.id)),
@@ -975,6 +1063,11 @@ const ACOES_LISTA = {
     'recolher-todos-tag-clusters': () => recolherTodosTagClusters(),
     'expandir-todos-tag-clusters': () => expandirTodosTagClusters(),
     'importar-tag-clusters': () => abrirImportarTagClusters(),
+    'baixar-tag-clusters': () => baixarTagClusters(),
+    'alternar-modo-selecao-tag-clusters': () => alternarModoSelecaoTagClusters(),
+    'toggle-selecao-tag-cluster': (el) => toggleSelecaoTagCluster(el),
+    'marcar-todos-tag-clusters': () => marcarTodosTagClusters(),
+    'limpar-selecao-tag-clusters': () => limparSelecaoTagClusters(),
     'abrir-importar-campos': () => abrirImportarCampos(),
     'aplicar-importar-campos': () => aplicarImportacaoCampos(),
     'desfazer-importar-campos': () => desfazerImportacaoCampos(),
@@ -1051,6 +1144,9 @@ const ACOES_LISTA = {
     // Ver um poema sem lista de navegação (usado nas Conexões, onde não há
     // uma tabela de referência para o Anterior/Próximo).
     'ver-poema': (el) => abrirVisualizacao('poema', Number(el.dataset.id)),
+    // Idem para prosa (títulos da aba Estrutura).
+    'editar-posicao-estrutura': (el, e) => editarPosicaoEstrutura(el, e),
+    'ver-prosa': (el) => abrirVisualizacao('prosa', Number(el.dataset.id)),
     'baixar-item': (el) =>
         exportarItem(el.dataset.tipo, Number(el.dataset.id), getFormatoBaixar(el.dataset.tabela)),
     'mover-livro': (el) => moverLivro(Number(el.dataset.id), el.dataset.dir),
@@ -1180,6 +1276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     sincronizarChecksDadosPessoaisComEstadoSalvo();
     montarControlesIncluirOcultos();
     montarControlesAgruparComuns();
+    montarControlesPrevias();
 
     // Lembra a última escolha de "incluir capas" no backup (padrão: marcado,
     // já que o botão "Baixar JSON" é o backup "de verdade" — melhor pecar
@@ -1541,7 +1638,6 @@ window.baixarEtiquetasMd = baixarEtiquetasMd;
 window.moverEtiquetaDoCartao = moverEtiquetaDoCartao;
 window.renderTagClusters = renderTagClusters;
 window.novoTagCluster = novoTagCluster;
-window.baixarTagClustersMd = baixarTagClustersMd;
 window.colocarEtiquetaNoCluster = colocarEtiquetaNoCluster;
 window.adicionarEtiquetaAoClusterDoCartao = adicionarEtiquetaAoClusterDoCartao;
 window.definirClusterDaEtiqueta = definirClusterDaEtiqueta;
@@ -1768,6 +1864,21 @@ window.editarDoModalVisualizacao = editarDoModalVisualizacao;
 window.verDoModalEdicao = verDoModalEdicao;
 window.excluirDoModalVisualizacao = excluirDoModalVisualizacao;
 window.editarAutorDoVisualizador = editarAutorDoVisualizador;
+window.navegarVisualizacaoLivro = navegarVisualizacaoLivro;
+window.irParaPosicaoVisualizacaoLivro = irParaPosicaoVisualizacaoLivro;
+window.editarLivroDoVisualizador = editarLivroDoVisualizador;
+window.verDoModalEdicaoLivro = verDoModalEdicaoLivro;
+window.navegarVisualizacaoParteSecao = navegarVisualizacaoParteSecao;
+window.irParaPosicaoVisualizacaoParteSecao = irParaPosicaoVisualizacaoParteSecao;
+window.editarParteSecaoDoVisualizador = editarParteSecaoDoVisualizador;
+window.verDoModalEdicaoParteSecao = verDoModalEdicaoParteSecao;
+window.excluirParteSecaoDoVisualizador = excluirParteSecaoDoVisualizador;
+window.navegarVisualizacaoElemento = navegarVisualizacaoElemento;
+window.irParaPosicaoVisualizacaoElemento = irParaPosicaoVisualizacaoElemento;
+window.editarElementoDoVisualizador = editarElementoDoVisualizador;
+window.excluirElementoDoVisualizador = excluirElementoDoVisualizador;
+window.verDoModalEdicaoElemento = verDoModalEdicaoElemento;
+window.excluirLivroDoVisualizador = excluirLivroDoVisualizador;
 window.editarMovimentoEscolaDoVisualizador = editarMovimentoEscolaDoVisualizador;
 window.editarPeriodoHistoricoDoVisualizador = editarPeriodoHistoricoDoVisualizador;
 window.editarPeriodoBiograficoDoVisualizador = editarPeriodoBiograficoDoVisualizador;
@@ -1840,6 +1951,16 @@ window.setFiltroLivroPartes = setFiltroLivroPartes;
 window.setFiltroLivroSecoes = setFiltroLivroSecoes;
 window.setFiltroParteSecoes = setFiltroParteSecoes;
 window.setFiltroLivroElementos = setFiltroLivroElementos;
+window.setFiltroTipoElementos = setFiltroTipoElementos;
+window.setBuscaLivros = setBuscaLivros;
+window.setFiltroTipoLivros = setFiltroTipoLivros;
+window.setFiltroFaseLivros = setFiltroFaseLivros;
+window.setFiltroSituacaoLivros = setFiltroSituacaoLivros;
+window.setFiltroPublicacaoLivros = setFiltroPublicacaoLivros;
+window.setFiltroDataLivros = setFiltroDataLivros;
+window.limparFiltrosLivros = limparFiltrosLivros;
+window.alternarPreviasImagem = alternarPreviasImagem;
+window.definirPreviasImagemTodasAbas = definirPreviasImagemTodasAbas;
 window.previsualizarExportacaoSeletiva = previsualizarExportacaoSeletiva;
 window.executarExportacaoSeletiva = executarExportacaoSeletiva;
 window.executarExportacaoSeletivaMarkdown = executarExportacaoSeletivaMarkdown;
@@ -1855,6 +1976,7 @@ window.limparGenerosFiltroPessoas = limparGenerosFiltroPessoas;
 window.toggleIdentidadeFiltroPessoas = toggleIdentidadeFiltroPessoas;
 window.limparIdentidadesFiltroPessoas = limparIdentidadesFiltroPessoas;
 window.definirModoTemasAssuntos = definirModoTemasAssuntos;
+window.definirOrdemTemasAssuntos = definirOrdemTemasAssuntos;
 window.definirModoTerceiros = definirModoTerceiros;
 window.toggleGrupoFiltroPessoas = toggleGrupoFiltroPessoas;
 window.toggleOcultoItem = toggleOcultoItem;
@@ -1889,9 +2011,11 @@ window.adicionarCriterioFormulario = adicionarCriterioFormulario;
 
 window.toggleSelecaoEstrutura = toggleSelecaoEstrutura;
 window.marcarTodosEstrutura = marcarTodosEstrutura;
+window.expandirTodosEstrutura = expandirTodosEstrutura;
 window.exportarSelecaoEstrutura = exportarSelecaoEstrutura;
 
 window.toggleCamposIntroducao = toggleCamposIntroducao;
+window.toggleCamposFicha = toggleCamposFicha;
 
 window.selecionarColetanea = selecionarColetanea;
 window.prepararNovaParte = prepararNovaParte;

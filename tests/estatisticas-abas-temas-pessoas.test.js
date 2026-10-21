@@ -29,6 +29,7 @@ const IDS_POR_ABA = {
     'estatisticas-temas-assuntos': [
         'grafico-temas-assuntos',
         'painel-modo-temas-assuntos',
+        'painel-ordem-temas-assuntos',
         'painel-ocultos-temas-assuntos',
         'grafico-tema-tempo',
         'painel-temporal-temas',

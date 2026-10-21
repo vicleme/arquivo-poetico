@@ -466,7 +466,7 @@ O plano deixava estes pontos abertos; escolhi o mais conservador. Se algum não 
 
 ## Fase 13, etapa 13-0: decisões (07/10/2026)
 
-- **F13-D1 a F13-D6: aprovadas como estavam sugeridas** (pelo Victor, em 07/10/2026). Texto completo em `plano-central.md` (seção "Decisões tomadas (07/10/2026, Esvaziar o acervo)").
+- **F13-D1 a F13-D6: aprovadas como estavam sugeridas** (pelo Victor, em 07/10/2026). Texto completo em `planejamento/plano-concluido.md` (seção "Decisões tomadas das fases concluídas", "Decisões tomadas (07/10/2026, Esvaziar o acervo)").
 - **F13-D7 (aprovada em 07/10/2026): Versões Alternativas na caixa "Dados".** O inventário mostrou que `arquivoPoetico_versoesFiltradas_v1` (tela `filtrar.html`) guarda texto escrito pela pessoa, mas **não vai no JSON do "Baixar JSON" nem nos retratos automáticos** (só a própria tela exporta, em `versoes_filtradas_banco.json`). Com F13-D6 (backup obrigatório com Dados marcado), apagar Dados perderia as versões mesmo com o backup baixado. Sugestão: tratar como Dados e, quando existir ao menos uma versão, a janela baixar também `versoes_filtradas_banco.json` junto com o backup, sem mudar o formato do JSON do acervo. Alternativa: passar a incluir as versões no JSON (mexe em exportar e importar). O plano as listava como preferência; mantive `dado` no inventário até a resposta.
 - **F13-D8 (aprovada em 07/10/2026): `templatesEstrutura` entra nos pré-prontos.** Tem o mesmo mecanismo de Período Histórico e Movimento/Escola (registros `embutido: true` mais a lista `templatesEstruturaOcultos`, migração aditiva em `migrarTemplatesEstruturaEmbutidos`), mas F13-D1 restringiu os pré-prontos a esses dois. Sugestão: incluir, na mesma caixa. Na 13a, checar se `moldes` ou `estruturasTextuais` apontam para template, porque a regra de F13-D2 (apagar só o que nenhum texto usa) teria de valer aqui também.
 - **O que classifiquei sozinho no inventário:** `padroesColunas` é `dado` (mora no `db` e vai no backup, apesar de parecer preferência); `arquivoPoetico_tagsFiltro_v1` é `preferencia`; `arquivoPoetico_ultimoBackup` e `programaDeFabricaAplicado` são `estado`; `periodosHistoricosOcultos`, `movimentosEscolasOcultos` e `templatesEstruturaOcultos` seguem o cadastro a que pertencem. Em `periodosHistoricos` e `movimentosEscolas` os registros de fábrica e os criados pela pessoa moram no mesmo array (distinguidos por `embutido`), então a 13a precisa separar por esse campo, não apagar o array inteiro.
@@ -770,7 +770,7 @@ Pedido do Victor: filtrar a aba por Região e categorizar os períodos (revoluç
 
 ## Fase 1: decisões F1-D1 a F1-D6 (01/10/2026)
 
-Movidas em 16/10/2026 do antigo `planejamento/fase-01-estatisticas-temas-pessoas.md` (fase concluída; as etapas 1a a 1d estão em "Fechado" no `status.md`). Os códigos e a versão resumida continuam em `plano-central.md`.
+Movidas em 16/10/2026 do antigo `planejamento/fase-01-estatisticas-temas-pessoas.md` (fase concluída; as etapas 1a a 1d estão em "Fechado" no `status.md`). Os códigos e a versão resumida estão em `planejamento/plano-concluido.md` (desde 20/10/2026; antes ficavam em `plano-central.md`).
 
 Respondidas pelo Victor em **(01/10/2026 às 00:10)**. Nenhuma decisão desta fase está em aberto.
 
@@ -980,7 +980,7 @@ Pedido fora de fase do Victor, em 5 entregas (dado e migração; modal e salvar;
 - **O que não é:** Registro da Sonoridade (formalidade geral da língua, um valor por poema; marcas de oralidade comum como "pra" e "tô" ficam lá), Domínio Imagético (campo do saber usado como metáfora), Tema ou Referência (citar memes, streamings ou apps é falar DE algo) e Dialeto (pertence a uma língua; "cringe" é palavra inglesa dentro de texto em pt-BR).
 - **Escolhas do Victor (D1 a D6):** campo novo no grupo Idioma e não etiqueta (o universo é o de Idioma e Dialeto, e as etiquetas são diversas entre si); campo irmão no nível do texto, **fora de `idiomas[]`** (dialeto é por idioma, gíria e jargão não); nome "Jargão e gíria" (evita colisão com Registro, com "Vocabulário" do modelo de importação e com Domínio Imagético; "Léxico especializado" foi descartado por sugerir área de conhecimento); quatro sementes só como sugestão, nunca gravadas sozinhas ("Gíria juvenil" entrou porque "Vulgarize!" usa gíria de balada); cadeia inteira em entregas pequenas; opcional e esparso como o Dialeto (uma varredura por palavras-chave só achou uso claro em "Gen Z" e "Vulgarize!", sem ler o acervo inteiro).
 - **Escolhas do Claude a confirmar:** (1) **pacote de texto não leva o campo**: ele deixa passar só título, texto, tipo, idioma e fonte, de propósito (pacote público), e os dialetos também ficam de fora; (2) **importação de campos por `.json`: o Victor decidiu em 18/10/2026 que aceita `jargaoGiria`** (mais prático para classificar o acervo em lote; ver a entrega 6 abaixo); Idioma e dialetos continuam de fora dela; (3) no `.md` e na Visualização os itens saem separados por vírgula, e no `.csv` pelo separador de listas (`|`), como as outras listas; (4) a coluna da tabela vem desligada por padrão e logo depois de Idioma, espelhando o modal; (5) a Importação Aditiva copia o item inteiro e não normaliza a lista na chegada (repetidos de um arquivo escrito à mão só são juntados no próximo carregamento, por `migrarJargaoGiria`); (6) o `.csv` precisou de teste próprio, porque o teste-guarda de `exportar-csv.test.js` só vê chaves escritas direto em `dados` e este campo entra por espalhamento (`tests/jargao-giria-saidas.test.js`).
-- **Entrega 6, importação de campos por `.json` (decisão do Victor, 18/10/2026):** `jargaoGiria` entra em `js/importar-campos-extras.js` (`lerJargaoGiria`, `aplicarJargaoGiria`), no relatório (`ui-importar-campos.js`), no modelo baixável (`modelo-importar-campos.js`) e nos dois `importar-campos-for-ai`. **Escolhas do Claude a confirmar:** (a) **só soma**, como etiquetas e territorialidade: o arquivo nunca tira nem troca rótulo de um texto; (b) **sem cadastro**: o rótulo é texto livre e entra como está escrito, então o risco é grafia ("Giria juvenil" ao lado de "Gíria juvenil"); a mitigação é o relatório marcar como *novo* o termo que não é semente nem já aparece em nenhum Poema ou Prosa ("Jargão e gíria (termos novos, sem cadastro)"), e o modelo com vocabulário listar sementes e termos já usados; a comparação ignora caixa e acento, então uma variação só de caixa ou acento junta ao rótulo que já existe, mas "Gíria de balada" e "Gíria juvenil" seguem como dois; (c) o arquivo aceita lista ou um texto separado por vírgula ou ponto e vírgula, e as chaves `jargaoGiria`, `jargao_giria`, `jargão e gíria`, `jargao e giria` e `jargao`; item que não é texto vai para o relatório e o resto da lista entra; (d) o guia manda **deixar de fora na dúvida** e repete a pergunta "fala COM ou fala DE", porque uma IA classificando 300 textos tende a marcar qualquer texto que cite meme ou tecnologia; (e) o texto só ganha a chave `jargaoGiria` quando entra algum rótulo, então arquivo sem o campo não muda nada e "Desfazer" devolve o texto inteiro, como nos outros campos. Teste: `tests/importar-campos-jargao-giria.test.js`.
+- **Entrega 6, importação de campos por `.json` (decisão do Victor, 18/10/2026):** `jargaoGiria` entra em `js/importar-campos-extras.js` (`lerJargaoGiria`, `aplicarJargaoGiria`), no relatório (`ui-importar-campos.js`), no modelo baixável (`modelo-importar-campos.js`) e nos dois `importar-campos-for-ai`. **Escolhas do Claude a confirmar:** (a) **só soma**, como etiquetas e territorialidade: o arquivo nunca tira nem troca rótulo de um texto; (b) **sem cadastro**: o rótulo é texto livre e entra como está escrito, então o risco é grafia ("Giria juvenil" ao lado de "Gíria juvenil"); a mitigação é o relatório marcar como _novo_ o termo que não é semente nem já aparece em nenhum Poema ou Prosa ("Jargão e gíria (termos novos, sem cadastro)"), e o modelo com vocabulário listar sementes e termos já usados; a comparação ignora caixa e acento, então uma variação só de caixa ou acento junta ao rótulo que já existe, mas "Gíria de balada" e "Gíria juvenil" seguem como dois; (c) o arquivo aceita lista ou um texto separado por vírgula ou ponto e vírgula, e as chaves `jargaoGiria`, `jargao_giria`, `jargão e gíria`, `jargao e giria` e `jargao`; item que não é texto vai para o relatório e o resto da lista entra; (d) o guia manda **deixar de fora na dúvida** e repete a pergunta "fala COM ou fala DE", porque uma IA classificando 300 textos tende a marcar qualquer texto que cite meme ou tecnologia; (e) o texto só ganha a chave `jargaoGiria` quando entra algum rótulo, então arquivo sem o campo não muda nada e "Desfazer" devolve o texto inteiro, como nos outros campos. Teste: `tests/importar-campos-jargao-giria.test.js`.
 - **Fora do escopo, de propósito:** edição em massa do campo (chips, como os demais), Localizar e Substituir, Estatísticas (por exemplo um gráfico na aba Local e idioma) e o preenchimento do acervo existente ("Gen Z" e "Vulgarize!" são trabalho manual do Victor ou uma rodada de classificação em lote). Casos negativos usados nos testes e exemplos: "Canteiro de Íris", "Ciberamor" (falam de tecnologia com vocabulário comum) e "A validação que eu buscava" ("bater metas" só como contraste).
 
 ## "Baixar .md" nas abas Temas e Etiquetas (19/10/2026)
@@ -1032,3 +1032,116 @@ Pedido do Victor: baixar da aba Conexões um relatório com todas as conexões, 
 - **Troca, não pilha.** Abrir o Ver pelo olho fecha o Editar, e o botão Editar do Ver abre o mesmo poema de novo. Nunca sobra um Editar escondido atrás do Ver, o que evitaria dois editores do mesmo poema, cada um com sua cópia dos campos, onde o último a salvar sobrescreveria o outro.
 - **Fora do escopo, de propósito:** grafo novo só para Elos, Mermaid no `.md`, `.pdf` com texto pesquisável, selecionar uma aresta isolada dentro de um grafo de Ecos, guardar a seleção entre sessões e o olho no Editar de Prosa.
 - **Texto de ajuda:** parágrafo da aba (títulos de Elos e Ecos abrem o Ver, Buracos abrem a edição), FAQ (quatro perguntas novas na categoria Poemas e Prosas), Como faço (duas tarefas novas, "Baixar o relatório das Conexões" e "Baixar só alguns itens das Conexões") e os quatro READMEs (raiz e `docs/`, em inglês e português).
+
+## Baixar a aba Tag clusters em .md, .png e .pdf, com filtros e seleção (20/10/2026)
+
+Pedido do Victor: gostou do visual da aba e quis o mesmo desenho em imagem e em PDF, como nas Conexões; depois de ver o `.png`, pediu que os filtros da aba ajudem a decidir o que sai e que haja seleção. Entregue em cinco partes: (1) `.png`, (2) filtros, (3) seleção, (4) `.pdf`, (5) esta documentação. Código: `js/exportar-tag-clusters-png.js` (dados e desenho em SVG, lógica pura), `js/exportar-tag-clusters.js` (`.md`), `js/selecao-tag-clusters.js` (seleção, lógica pura), `js/rasterizar-svg.js` (do SVG ao PNG e às fatias do PDF, compartilhado com as Conexões), `js/tag-clusters-aba.js` (botões e tela) e `planejarPdf` e `gerarPdfConexoes` de `js/exportar-conexoes-pdf.js`, reaproveitados sem mudança.
+
+- **Um só ponto de dados.** A regra de busca e categoria da tela mora em `arvoreTagClusters` e `soltasTagClusters` (`tag-clusters.js`) e `recorteTagClusters` (`selecao-tag-clusters.js`) escolhe entre ela e a seleção. Tela, `.md`, `.png` e `.pdf` leem dali, então o arquivo nunca diverge do que a aba mostra.
+- **Escolhas do Claude a confirmar, `.png` (entrega 1).** (a) O relatório sem filtro leva o cadastro inteiro, sem depender de cartão recolhido. (b) O `.png` segue o tema da página. (c) A nota do cluster entra inteira, sem o corte em 2 linhas da tela. (d) Os botões dos cartões não entram. (e) As etiquetas sem cluster entram como cartões de chips, por categoria, no fim. (f) O formato é o mesmo select do `.md`, sem botão novo.
+- **Escolhas do Claude a confirmar, filtros (entrega 2).** (g) O padrão do escopo é "O que a tela mostra", então com busca esquecida o arquivo sai filtrado; a linha de filtro e o sufixo `-filtrado` no nome avisam. (h) Com filtro, o `.md` não escreve "nenhuma etiqueta sem cluster", porque seria enganoso. (i) Recolher e expandir cartões não afeta o arquivo.
+- **Escolhas do Claude a confirmar, seleção (entrega 3).** (j) Marcar o pai marca os subclusters junto, e dá para desmarcar um; o pai sai só com os subclusters marcados. (k) Subcluster marcado com o pai desmarcado sai como cartão solto, com o nome "Pai > Sub". (l) A seleção passa por cima da busca e do filtro de categoria; "Marcar todos" marca só o que a tela mostra. (m) Marcar o bloco de soltas de uma categoria leva todas as etiquetas sem cluster dela, mesmo as que a busca esconderia. (n) "Só selecionados" sem nada marcado avisa e não baixa. A chave é `c:<id>` (cluster ou subcluster) e `s:<categoria>` (bloco de soltas); a seleção fica só em memória, é podada a cada redesenho e some ao desligar o modo, como nas Conexões.
+- **Escolhas do Claude a confirmar, `.pdf` (entrega 4).** (o) Sai sempre no tema claro, por ser de papel, como o das Conexões. (p) A página só vira antes de uma categoria ou entre fileiras de cartões; só um cartão mais alto que a página sofre corte seco. (q) É imagem: o texto não é selecionável nem pesquisável, e para isso o `.md` já serve.
+- **Nome do arquivo.** `tag-clusters`, `tag-clusters-filtrado` ou `tag-clusters-selecao`, com a extensão escolhida (`sufixoNomeArquivo`). O topo do relatório traz "Filtro: busca “x” · categoria Tom" ou "seleção de N itens".
+- **Sem teste automático.** A rasterização no canvas e a biblioteca jsPDF reais só rodam no navegador; os testes cobrem dados, desenho em SVG, plano de páginas, seleção e roteamento dos botões.
+
+## Modal Ver do Livro, navegação e olho no Editar (20/10/2026)
+
+Pedido do Victor: o livro não tinha visualização; quer um Ver aberto pelos cards e pelo modal de edição, com a navegação dos textos (Anterior, Próximo e "n de N").
+
+**Decisões do Victor:** acesso pelo card e pelo Editar; mesma navegação dos textos.
+
+**Escolhas do Claude a confirmar:**
+
+- (a) O Ver do livro não tem Baixar no rodapé; só Editar e Excluir.
+- (b) A navegação segue sempre a ordem dos cards (`livrosEmOrdemDaAba` em `render-listas.js`); desde a etapa 3 da Fase 19 a aba Livros tem busca e filtros (`js/filtro-livros.js`), e `getListaVisivelLivros` devolve a lista filtrada, então a navegação segue o filtro.
+- (c) A contagem final usa Partes do livro, Seções ligadas ao livro ou a uma Parte e textos presos a livro, Parte ou Seção ou vinculados por `livrosIds` (cada texto conta uma vez); Coletânea mostra Partes e itens.
+- (d) Só links http e https viram link clicável no Ver; o resto aparece como texto.
+- (e) A aba Coletâneas não ganhou botão Ver.
+- (f) O olho do Editar livro usa um rastreador próprio (`rastreadorLivro`) só para a pergunta "Salvar antes de ver?"; fechar o Editar livro com alteração continua sem pedir confirmação, como antes. Para ligar essa confirmação também, basta passar `rastreadorLivro` como quarto argumento de `registrarModal('modal-livro', ...)` em `main.js`. **Atualização (20/10/2026):** o Victor concordou que devia mudar; a confirmação ao fechar entra na etapa 1 da Fase 19 (`planejamento/fase-19-livros.md`).
+- (g) Adicionar, salvar edição e remover loja avisam o rastreador por um evento `input` manual (`avisarAlteracaoLojas`), porque a lista de lojas não passa por campo do formulário.
+- (h) `editarLivro` passou a esperar o `toggleModal`; sem isso, o olho clicado logo após abrir o formulário disputava a abertura.
+- (i) Salvar o formulário de Livro virou `salvarLivroDoFormulario` (devolve true ou false), e `ultimoEnvioLivro` expõe a promessa para o "Salvar e ver" esperar a gravação da capa.
+
+**Código:** `js/visualizar-livro.js`, `modais/modal-visualizar-livro.html`, `#livro-ver` em `modais/modal-livro.html`.
+
+## Tipos de Elemento: Ficha catalográfica e Sumário (21/10/2026, a pedido do Victor)
+
+**Pedido:** Sumário com modelo .json (nível, item, página) para uma IA adequar um sumário ao formato e o Victor importar; Ficha catalográfica com o link sincronizado com o campo do livro. Feito em 4 entregas (tipos e link da ficha; dado e modelo do Sumário; tela e card; Ver do livro).
+
+**Decidido pelo Victor:** a Ficha só ganha cinco campos próprios (link, CDD, número de controle, bibliotecário(a), CRB), porque autor, título, editora, local, ano e ISBN já estão no livro e a página inteira cabe em Imagem e Conteúdo (Texto); segunda ficha no mesmo livro avisa antes de salvar, com "Salvar mesmo assim"; rótulo "Bibliotecário(a)", masculino como base, no padrão de "Dedicatário(a)".
+
+**Escolhas do Claude a confirmar:**
+
+- (a) Sumário: nível de 1 a 9; item com nível inválido entra no nível 1 com aviso, em vez de ser descartado; `pagina` sempre texto; limite de 2000 itens; importar o modelo sem apagar os exemplos traz os 4 itens de exemplo.
+- (b) Importar com a lista do modal já preenchida pergunta "Substituir" ou "Acrescentar ao fim"; nada é gravado até salvar o elemento.
+- (c) O card mostra só os 6 primeiros itens; o Ver do livro mostra todos, numa lista recolhida na Estrutura.
+- (d) A linha da lista não tem botão de subir e descer.
+- (e) Importação .json, importação aditiva e "Atualizar livro por .json" não sincronizam a ficha nem conhecem `itensSumario`; Elemento não está em exportações .md, .csv e .json nem em importadores, então nada disso foi tocado.
+- (f) Filtro por tipo na aba Elementos: lista fixa no HTML, não salva ao recarregar, Comentário separado de Conteúdo Multimídia.
+
+**Código:** `js/ficha-catalografica.js`, `js/sumario.js` (lógica pura), `js/ui-sumario.js` (tela), `modais/modal-elemento.html`, `salvarElementoDoFormulario` e `editarElemento` em `js/forms.js`, `blocoFichaDoCard` e `blocoSumarioDoCard` em `js/render-listas.js`, `detalhesDoElementoHtml` em `js/visualizar-livro.js`.
+
+## Imagem de Autor e "link da imagem" (21/10/2026, a pedido do Victor)
+
+**Pergunta dele:** por que só upload, e se link também serviria em Autores, Elementos, Partes e Seções. **Achado:** nenhuma razão registrada; a escolha vinha da arquitetura (imagem redimensionada, JPEG, no IndexedDB, dentro do backup, funcionando offline). Exibir o link direto quebraria backup, offline e tamanho, e baixar pelo link esbarra em CORS.
+
+**Decisão dele:** ele guarda imagens no Drive (bloqueia CORS) e no imgbb (álbum não listado exige login), então o link não serve para exibir. A exibição segue só por upload; o campo "link da imagem" é opcional, só de acesso, aparece apenas se preenchido e abre em outra aba. Link de ficha catalográfica não conta como imagem (pode ser PDF). Livros entram (link da capa), junto de Elementos, Partes (inclusive de Coletânea) e Seções.
+
+**Escolhas do Claude a confirmar:**
+
+- (a) Só `http` e `https` são aceitos; qualquer outro texto recusa o salvar com aviso (evita `javascript:` num `href`). Na exibição, dado importado inválido simplesmente não aparece.
+- (b) O nome do campo é `imagemUrl` em todos os tipos, mesmo onde a imagem se chama `capa`.
+- (c) O link do Livro aparece em "Arquivos e documentos" do Ver, não junto da capa.
+- (d) Autor ganhou miniatura redonda no card; Parte, Seção, Livro e Elemento já tinham imagem no card.
+- (e) Só a exportação de Autor leva o link; Elemento, Parte e Seção não entram em exportação por texto.
+- (f) Corrigido de carona: a `imagem` de Elemento nunca era apagada do IndexedDB ao excluir o elemento (só `capa`).
+
+**Código:** `js/imagem-link.js` (lógica pura), `lerLinkImagem` em `js/forms.js`, `js/coletaneas.js`, `modais/modal-autor.html`, `modal-livro.html`, `modal-parte.html`, `modal-col-parte.html`, `modal-secao.html`, `modal-elemento.html`, cards em `js/render-listas.js`, `js/visualizar-autor.js`, `js/visualizar-livro.js`, `js/exportar-autores.js`. Testes: `imagem-autor`, `imagem-link-demais`.
+
+## Modal Ver de Elemento textual, olho no Editar e título na Estrutura (21/10/2026, a pedido do Victor)
+
+**Pedido:** o Ver de Elementos textuais no mesmo modelo do Ver de Parte e de Seção, em duas entregas (o Ver; depois o olho no Editar e o título na Estrutura).
+
+**Decisão que muda uma anterior:** Elemento deixou de ser só rótulo na Estrutura. O título dele abre o Ver na Estrutura do Livro, dos Ver de Parte e de Seção e na aba Estrutura, e a volta em cadeia é a mesma dos outros tipos.
+
+**Escolhas do Claude a confirmar:**
+
+- (a) Os dados próprios de um tipo só aparecem naquele tipo (Aviso e Versos pós-Introdução na Introdução, dados da ficha na Ficha catalográfica, itens no Sumário), como no formulário; um valor que sobrou de um tipo antigo não aparece.
+- (b) O Ver mostra o texto inteiro e todos os itens do Sumário; o card continua cortando (3 linhas e 6 itens).
+- (c) O link da ficha só vira link com `http` ou `https` (o campo é `type="url"`, que aceitaria `javascript:`).
+- (d) O cabeçalho mostra o título, ou o tipo quando não há título. Elemento é folha, então o Ver não tem Estrutura nem contagem.
+- (e) "Salvar e ver" com o aviso de segunda ficha: o envio espera a resposta do aviso. Confirmando, salva e o Ver abre logo depois; cancelando (Cancelar, clique fora ou Esc), nada é gravado, o Editar continua aberto e o combinado de abrir o Ver é desfeito. (Ajustado em 21/10/2026, a pedido do Victor; antes, confirmar o aviso só fechava o formulário.) Para isso `abrirModalConfirmacao` ganhou `onCancelar`, e um aviso substituído por outro conta como cancelado.
+- (f) Adicionar, remover e importar itens do Sumário avisam o rastreador de alterações por um evento `input` na lista, porque esses botões não disparam `input` sozinhos.
+
+**Código:** `js/visualizar-elemento.js` (lógica pura e tela), `modais/modal-visualizar-elemento.html`, `elementosEmOrdemDaAba` e `getListaVisivelElementos` em `js/render-listas.js`, `rastreadorElemento` e `ultimoEnvioElemento` em `js/forms.js`, `js/ui-sumario.js`, `textoAbrivelDoNo` em `js/visualizar-livro.js`, `abrirTextoDaEstrutura` em `js/visualizar-parte-secao.js`, `renderNoEstrutura` em `js/render-estrutura.js`. Testes: `visualizar-elemento`, `olho-editar-elemento`, `estrutura-ver-texto`.
+
+## Campo Sobre em Parte e Seção (21/10/2026, a pedido do Victor)
+
+**Decidido pelo Victor:** Parte e Seção ganham um campo `Sobre`.
+
+**Escolhas do Claude a confirmar:**
+
+- (a) O formato é o do `sobre` do Autor: texto livre, opcional, com quebras de linha preservadas, sem limite.
+- (b) Fica antes dos "Versos de Abertura / Descrição", nos dois modais e no Ver. Raciocínio: o Sobre explica o que a Parte ou a Seção é, e a Abertura é o texto que a inicia.
+- (c) O rótulo é só "Sobre", sem fonte serifada (a Abertura usa serifa por serem versos).
+- (d) A Parte de Coletânea tem modal próprio (`modal-col-parte.html`, `coletaneas.js`) e não ganhou o campo, porque não tem Ver e o pedido falava em Partes e Seções. Se quiser, é o mesmo desenho.
+- (e) O card, a busca, a coluna e os `.md` e `.csv` não mostram o Sobre, como já é com a Abertura. O `.json` e o backup levam o campo sem código extra, porque `nesting.js` espalha o objeto.
+- (f) Sem migração: Parte e Seção antigas ficam sem o campo e o modal as abre vazias.
+
+**Código:** `modais/modal-parte.html`, `modais/modal-secao.html`, `js/forms.js`, `js/visualizar-parte-secao.js`. Teste: `tests/sobre-parte-secao.test.js`.
+
+## Ordem por papel e total no tooltip, em Temas e Assuntos (21/10/2026, a pedido do Victor)
+
+**Decidido pelo Victor:** ver o total da barra junto da porção do papel, e poder ordenar as barras por mais principais, mais secundários ou mais indefinidos (antes, a ordem era sempre a do total).
+
+**Escolhas do Claude a confirmar:**
+
+- (a) O tooltip passou a valer para a barra inteira: lista os três papéis e o total, em vez de só o segmento sob o mouse. Assim também dá para ler uma fatia fina (um Indefinido de 1 texto) passando o mouse em qualquer ponto da coluna. O custo é não destacar qual segmento estava sob o mouse.
+- (b) O rodapé diz "Total (todos os papéis)" e soma sempre os três, mesmo com um papel escondido pela legenda. O antigo "Total visível" mudava com a legenda e, na prática, mostrava só o segmento.
+- (c) A ordem escolhida vale **antes** do Top 12 dos Temas. Com "Secundários", o gráfico mostra os 12 Temas com mais secundários (que podem não ser os 12 do total), e o título passa a "Temas com mais secundários". A alternativa, reordenar os mesmos 12 do total, esconderia justamente os Temas com muitos secundários e total baixo.
+- (d) Empate no papel escolhido: maior total e, por fim, ordem alfabética, para a ordem não variar com a leitura dos textos.
+- (e) O mínimo de aparições, o Ocultar e a lista do painel Ocultar continuam pelo total; só as barras seguem a ordem escolhida.
+- (f) A escolha de ordem vale para Temas e para Assuntos (o gráfico é um só) e fica guardada no navegador, como o modo "Por tema / Por assunto". O rótulo do seletor diz "Ordenar por mais:" e o título do gráfico mostra a ordem ativa, para uma ordem esquecida não passar por "mais frequentes".
+
+**Código:** `js/estatisticas-dados.js` (`ordenarRotulosPorPapel`), `js/estatisticas-filtros.js`, `js/estatisticas-tela-temas.js`, `js/estatisticas-tela-comum.js`, `js/main.js`, `index.html`. Testes: `estatisticas-temas-assuntos-papel`, `estatisticas-abas-temas-pessoas`.

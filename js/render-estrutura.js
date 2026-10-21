@@ -12,6 +12,13 @@
 
 import { db, save } from './db.js';
 import {
+    filhosTopoDoLivro,
+    filhosDaParte,
+    filhosDaSecao,
+    posicoesRepetidas,
+    renumerarIrmaos,
+} from './estrutura-livro.js';
+import {
     reordenarPosicao,
     seqOuNull,
     fecharEspaco,
@@ -64,6 +71,21 @@ function _selecionarCascata(tipo, id, checked) {
         );
     }
     // Poema, prosa e elemento são folhas — não têm filhos
+}
+
+// Abre (true) ou fecha (false) todas as Partes e Seções da árvore de uma vez, com o
+// emoji de pasta certo, e memoriza o estado: um ▲▼ ou "Selecionar tudo" depois
+// re-renderiza a árvore e não desfaz a escolha.
+export function expandirTodosEstrutura(abrir) {
+    const container = document.getElementById('estrutura-arvore');
+    if (!container) return;
+    container.querySelectorAll('details.details-icone[data-key]').forEach((det) => {
+        det.open = !!abrir;
+        const icone = det.querySelector(':scope > summary .icone-details');
+        if (icone) icone.textContent = abrir ? det.dataset.iconeAberto : det.dataset.iconeFechado;
+        if (abrir) _detailsColapsados.delete(det.dataset.key);
+        else _detailsColapsados.add(det.dataset.key);
+    });
 }
 
 export function marcarTodosEstrutura(marcar) {
@@ -133,73 +155,11 @@ export function exportarSelecaoEstrutura() {
     }, 100);
 }
 
-function ordenarPorSeq(lista) {
-    // Itens aqui vêm embrulhados como { tipo, dados } (ver getTopoComTipos,
-    // getDentroParteComTipos, getDentroSecaoComTipos) — a sequência real
-    // está em item.dados.sequencia, não em item.sequencia. Antes essa função
-    // lia item.sequencia (sempre undefined), então todo item caía no
-    // fallback 9999 e a ordenação virava um no-op: os itens ficavam só na
-    // ordem de inserção (Partes, depois Seções, depois Elementos...),
-    // ignorando completamente o campo de sequência.
-    return [...lista].sort((a, b) => {
-        const seqA = a.dados ? a.dados.sequencia : a.sequencia;
-        const seqB = b.dados ? b.dados.sequencia : b.sequencia;
-        return (parseInt(seqA) || 9999) - (parseInt(seqB) || 9999);
-    });
-}
-
-function getTopoComTipos(livroId) {
-    return ordenarPorSeq(
-        [
-            ...db.partes
-                .filter((p) => p.livroId == livroId)
-                .map((p) => ({ tipo: 'parte', dados: p })),
-            ...db.secoes
-                .filter((s) => s.paiTipo === 'livro' && s.paiId == livroId)
-                .map((s) => ({ tipo: 'secao', dados: s })),
-            ...db.elementos
-                .filter((e) => e.paiTipo === 'livro' && e.paiId == livroId)
-                .map((e) => ({ tipo: 'elemento', dados: e })),
-            ...db.poemas
-                .filter((p) => p.paiTipo === 'livro' && p.paiId == livroId)
-                .map((p) => ({ tipo: 'poema', dados: p })),
-            ...db.prosas
-                .filter((p) => p.paiTipo === 'livro' && p.paiId == livroId)
-                .map((p) => ({ tipo: 'prosa', dados: p })),
-        ].map((item) => ({ ...item, dados: item.dados })),
-    );
-}
-
-function getDentroParteComTipos(parteId) {
-    return ordenarPorSeq([
-        ...db.secoes
-            .filter((s) => s.paiTipo === 'parte' && s.paiId == parteId)
-            .map((s) => ({ tipo: 'secao', dados: s })),
-        ...db.elementos
-            .filter((e) => e.paiTipo === 'parte' && e.paiId == parteId)
-            .map((e) => ({ tipo: 'elemento', dados: e })),
-        ...db.poemas
-            .filter((p) => p.paiTipo === 'parte' && p.paiId == parteId)
-            .map((p) => ({ tipo: 'poema', dados: p })),
-        ...db.prosas
-            .filter((p) => p.paiTipo === 'parte' && p.paiId == parteId)
-            .map((p) => ({ tipo: 'prosa', dados: p })),
-    ]);
-}
-
-function getDentroSecaoComTipos(secaoId) {
-    return ordenarPorSeq([
-        ...db.elementos
-            .filter((e) => e.paiTipo === 'secao' && e.paiId == secaoId)
-            .map((e) => ({ tipo: 'elemento', dados: e })),
-        ...db.poemas
-            .filter((p) => p.paiTipo === 'secao' && p.paiId == secaoId)
-            .map((p) => ({ tipo: 'poema', dados: p })),
-        ...db.prosas
-            .filter((p) => (p.paiTipo === 'secao' && p.paiId == secaoId) || p.secaoId == secaoId)
-            .map((p) => ({ tipo: 'prosa', dados: p })),
-    ]);
-}
+// A ordem e o pertencimento da árvore moram em estrutura-livro.js, que o Ver do
+// Livro também lê: as duas telas nunca divergem.
+const getTopoComTipos = (livroId) => filhosTopoDoLivro(db, livroId);
+const getDentroParteComTipos = (parteId) => filhosDaParte(db, parteId);
+const getDentroSecaoComTipos = (secaoId) => filhosDaSecao(db, secaoId);
 
 const ICONE_TIPO = { parte: '📂', secao: '📁', poema: '📝', prosa: '📄', elemento: '🧩' };
 const COR_TIPO = {
@@ -210,8 +170,22 @@ const COR_TIPO = {
     elemento: 'text-amber-600 italic',
 };
 
-function renderNoEstrutura({ tipo, dados }, nivel) {
+// Número da posição. Se outro irmão do mesmo nível tem o mesmo número, a ordem entre
+// eles é ao acaso: o selo fica âmbar, e o ▲▼ passa a renumerar o nível.
+function seloPosicao(seq, repetida, tipo, id) {
+    // Clicar no número edita a posição direto (ação `editar-posicao-estrutura`, em main.js).
+    const base =
+        'text-[10px] font-mono px-1.5 py-0.5 rounded w-8 text-center inline-block cursor-text';
+    const alvo = `data-action="editar-posicao-estrutura" data-tipo="${tipo}" data-id="${id}"`;
+    if (repetida) {
+        return `<span ${alvo} class="${base} bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" title="Outro item deste nível tem a mesma posição, então a ordem entre eles não está definida. Clique para digitar a posição, ou use ▲▼.">${seq}</span>`;
+    }
+    return `<span ${alvo} class="${base} bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" title="Clique para digitar a posição">${seq}</span>`;
+}
+
+function renderNoEstrutura({ tipo, dados }, nivel, repetidas = new Set()) {
     const seq = dados.sequencia !== null && dados.sequencia !== undefined ? dados.sequencia : '—';
+    const selo = seloPosicao(seq, repetidas.has(parseInt(dados.sequencia)), tipo, dados.id);
 
     // Elementos (Respiros etc) só têm "tipo" às vezes, sem título — mostra
     // "Tipo: Título" quando os dois existem, senão só o que tiver.
@@ -256,13 +230,16 @@ function renderNoEstrutura({ tipo, dados }, nivel) {
         const iconeFechado = tipo === 'parte' ? '📁' : '📁';
         const filhos =
             tipo === 'parte' ? getDentroParteComTipos(dados.id) : getDentroSecaoComTipos(dados.id);
-        const filhosHtml = filhos.map((f) => renderNoEstrutura(f, nivel + 1)).join('');
+        const repetidasFilhos = posicoesRepetidas(filhos);
+        const filhosHtml = filhos
+            .map((f) => renderNoEstrutura(f, nivel + 1, repetidasFilhos))
+            .join('');
 
         const conteudoLinha = `
             ${checkbox}
-            <span class="text-[10px] font-mono bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded w-8 text-center inline-block">${seq}</span>
+            ${selo}
             <span class="icone-details">${iconeAberto}</span>
-            <span class="${COR_TIPO[tipo] || ''}">${titulo}</span>
+            <span class="${COR_TIPO[tipo] || ''} cursor-pointer hover:underline" data-action="${tipo === 'parte' ? 'ver-parte-estrutura' : 'ver-secao-estrutura'}" data-id="${dados.id}" title="${tipo === 'parte' ? 'Abrir o Ver desta parte' : 'Abrir o Ver desta seção'}">${titulo}</span>
             <span class="text-[9px] uppercase text-gray-300 dark:text-slate-600 ml-2">${tipo}</span>
             ${botoesMover}`;
 
@@ -275,12 +252,25 @@ function renderNoEstrutura({ tipo, dados }, nivel) {
         </details>`;
     }
 
-    // Poema, Prosa, Elemento: linha simples, sem filhos
+    // Poema, Prosa, Elemento: linha simples, sem filhos. O título abre o Ver (ações
+    // `ver-poema`, `ver-prosa` e `ver-elemento-estrutura`, em main.js).
+    const acaoVer =
+        tipo === 'poema'
+            ? 'ver-poema'
+            : tipo === 'prosa'
+              ? 'ver-prosa'
+              : tipo === 'elemento'
+                ? 'ver-elemento-estrutura'
+                : '';
+    const dicaVer = tipo === 'elemento' ? 'Abrir o Ver deste elemento' : 'Abrir o Ver deste texto';
+    const tituloHtml = acaoVer
+        ? `<span class="${COR_TIPO[tipo] || ''} cursor-pointer hover:underline" data-action="${acaoVer}" data-id="${dados.id}" title="${dicaVer}">${titulo}</span>`
+        : `<span class="${COR_TIPO[tipo] || ''}">${titulo}</span>`;
     const conteudoLinha = `
         ${checkbox}
-        <span class="text-[10px] font-mono bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded w-8 text-center inline-block">${seq}</span>
+        ${selo}
         <span>${ICONE_TIPO[tipo] || '•'}</span>
-        <span class="${COR_TIPO[tipo] || ''}">${titulo}</span>
+        ${tituloHtml}
         <span class="text-[9px] uppercase text-gray-300 dark:text-slate-600 ml-2">${tipo}</span>
         ${botoesMover}`;
 
@@ -311,12 +301,81 @@ export function moverItemEstrutura(tipo, id, direcao) {
     const alvoIdx = direcao === 'up' ? idx - 1 : idx + 1;
     if (alvoIdx < 0 || alvoIdx >= irmaos.length) return;
 
+    // Posições repetidas (ex.: Parte 1, Introdução 1, Conteúdo 2) tornam a troca um
+    // no-op e a ordem ao acaso: antes de trocar, fixa 1..N na ordem que a tela mostra.
+    if (posicoesRepetidas(irmaos).size) renumerarIrmaos(irmaos);
+
     const alvo = irmaos[alvoIdx].dados;
     const seqAtual = dados.sequencia;
     dados.sequencia = alvo.sequencia;
     alvo.sequencia = seqAtual;
 
     save();
+}
+
+function colecaoDoTipo(tipo) {
+    return tipo === 'parte' ? db.partes : colecoesMoviveis()[tipo];
+}
+
+// Grava a posição digitada (inteiro de 1 em diante) só neste item, sem empurrar os
+// vizinhos: assim dá para pôr um número alto e ir arrumando um a um. Se outro irmão
+// ficar com a mesma posição, o selo continua âmbar. Valor inválido não muda nada.
+// Devolve true quando gravou.
+export function definirPosicaoEstrutura(tipo, id, valor) {
+    const texto = String(valor ?? '').trim();
+    if (!/^\d+$/.test(texto)) return false;
+    const n = parseInt(texto, 10);
+    if (n < 1) return false;
+    const dados = colecaoDoTipo(tipo)?.find((x) => String(x.id) === String(id));
+    if (!dados) return false;
+    if (parseInt(dados.sequencia, 10) !== n) {
+        dados.sequencia = n;
+        save();
+    }
+    return true;
+}
+
+// Troca o número do selo por uma caixa. Enter ou sair do campo grava; Esc cancela.
+export function editarPosicaoEstrutura(selo, evento) {
+    if (!selo || selo.querySelector('input')) return;
+    // O selo de Parte e Seção fica dentro do <summary>: sem isto o clique recolheria.
+    evento?.preventDefault?.();
+    evento?.stopPropagation?.();
+    const { tipo, id } = selo.dataset;
+    const atual = selo.textContent.trim();
+    const campo = document.createElement('input');
+    campo.type = 'text';
+    campo.inputMode = 'numeric';
+    campo.value = /^\d+$/.test(atual) ? atual : '';
+    campo.setAttribute('aria-label', 'Posição');
+    campo.className =
+        'w-12 text-[10px] font-mono text-center rounded border border-blue-400 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-100';
+    campo.style.cssText = 'padding:1px 2px;margin:0;height:auto';
+    let encerrado = false;
+    const encerrar = (gravar) => {
+        if (encerrado) return;
+        encerrado = true;
+        if (gravar && !definirPosicaoEstrutura(tipo, id, campo.value) && campo.value.trim()) {
+            mostrarAviso('Digite um número inteiro de 1 em diante.');
+        }
+        renderEstrutura();
+    };
+    campo.addEventListener('click', (e) => e.stopPropagation());
+    campo.addEventListener('keydown', (e) => {
+        e.stopPropagation(); // espaço dentro do <summary> alternaria o <details>
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            encerrar(true);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            encerrar(false);
+        }
+    });
+    campo.addEventListener('blur', () => encerrar(true));
+    selo.textContent = '';
+    selo.appendChild(campo);
+    campo.focus();
+    campo.select();
 }
 
 function colecoesMoviveis() {
@@ -554,7 +613,8 @@ export function renderEstrutura() {
         return;
     }
 
-    container.innerHTML = topo.map((no) => renderNoEstrutura(no, 0)).join('');
+    const repetidasTopo = posicoesRepetidas(topo);
+    container.innerHTML = topo.map((no) => renderNoEstrutura(no, 0, repetidasTopo)).join('');
 
     // Re-renderizar reconstrói o HTML do zero (innerHTML), então todo
     // <details> nasce aberto de novo. Aqui reaplicamos o estado de

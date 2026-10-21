@@ -48,7 +48,8 @@ Cada fato mora em um lugar só. Ao fechar uma etapa, o detalhe vai para um deste
 - `manutencao/schema.md`: forma atual dos dados.
 - `manutencao/licoes-de-sessao.md`: erros de coordenação entre sessões. Ler antes de mexer em schema, migração ou na cadeia de um campo.
 - `manutencao/criacao-molde.md` e `manutencao/progressao-morfofuncional.md`: desenho dessas duas funções. Ler só ao mexer nelas.
-- `planejamento/plano-central.md`: fases futuras e decisões em aberto. O plano de cada fase em andamento ou planejada tem arquivo próprio em `planejamento/`.
+- `planejamento/plano-central.md`: o índice, com uma linha por fase ainda por fazer, a sequência recomendada, os pontos que cruzam fases, o "Do lado do Victor" e o Registro. Sem limite de fases. Resumo, etapas e decisões em aberto de cada fase moram no arquivo dela em `planejamento/` (por exemplo `fase-19-livros.md`); fase ainda sem detalhe fica só com a linha na tabela.
+- `planejamento/plano-concluido.md`: uma linha por fase concluída, com o detalhe antigo preservado. Ao terminar uma fase, na última entrega dela, a fase sai do painel e vira linha aqui (o passo a passo está no próprio arquivo). Não ler no começo da sessão.
 - `docs/`: guias para IAs externas (do uso do app, não do desenvolvimento).
 
 ## Antes de dar uma etapa por pronta

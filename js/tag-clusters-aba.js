@@ -29,7 +29,28 @@ import {
 import { ROTULOS_ETIQUETAS, contarTextosPorEtiqueta } from './etiquetas.js';
 import { PREFIXO_BUSCA } from './etiquetas-aba.js';
 import { baixarTagClustersMarkdown } from './exportar-tag-clusters.js';
+import {
+    dadosTagClusters,
+    montarSvgTagClusters,
+    PALETA_TAG_CLUSTERS,
+    sufixoNomeArquivo,
+} from './exportar-tag-clusters-png.js';
+import {
+    medirTexto,
+    svgTextoParaCanvas,
+    svgTextoParaPngBlob,
+    baixarBlob,
+    fatiasDoPlano,
+} from './rasterizar-svg.js';
+import { planejarPdf, gerarPdfConexoes } from './exportar-conexoes-pdf.js';
 import { importarTagClusters } from './importar-tag-clusters.js';
+import {
+    chaveCluster,
+    chaveSoltas,
+    chavesParaMarcar,
+    chavesDaTela,
+    podarSelecao,
+} from './selecao-tag-clusters.js';
 import {
     CATEGORIAS_COM_CLUSTER,
     CATEGORIAS_EM_ORDEM,
@@ -48,6 +69,8 @@ import {
     subclustersDoCluster,
     textosDoCluster,
     contarTextosPorCluster,
+    arvoreTagClusters,
+    soltasTagClusters,
 } from './tag-clusters.js';
 
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
@@ -92,6 +115,118 @@ export function recolherTodosTagClusters() {
 export function expandirTodosTagClusters() {
     categoriasRecolhidas.clear();
     clustersRecolhidos.clear();
+    renderTagClusters();
+}
+
+// ─── Seleção para baixar ───────────────────────────────────────────────
+// Com o modo ligado, cada cartão de cluster (de topo ou subcluster) e cada
+// bloco de etiquetas sem cluster ganha uma caixinha. "Só selecionados" no
+// select de escopo baixa só os marcados. Só em memória, como o recolher.
+let modoSelecao = false;
+let selecionadas = new Set();
+
+const CLASSES_MARCADO = ['ring-2', 'ring-blue-400', 'dark:ring-blue-500'];
+
+function caixaSelecao(chave, rotulo) {
+    if (!modoSelecao) return '';
+    return `<label class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500 cursor-pointer select-none mb-1">
+            <input type="checkbox" data-action="toggle-selecao-tag-cluster" data-chave="${escapeHtml(chave)}" ${selecionadas.has(chave) ? 'checked' : ''} aria-label="Selecionar ${escapeHtml(rotulo)} para baixar" />
+            Selecionar
+        </label>`;
+}
+
+function marcadoAttr(chave) {
+    return modoSelecao ? ` data-card-selecao="${escapeHtml(chave)}"` : '';
+}
+
+function classeMarcado(chave) {
+    return modoSelecao && selecionadas.has(chave) ? ` ${CLASSES_MARCADO.join(' ')}` : '';
+}
+
+function selectEscopo() {
+    return document.getElementById('tag-clusters-baixar-escopo');
+}
+
+// Itens marcados que já não existem (cluster excluído, categoria sem soltas)
+// saem da seleção a cada redesenho, para a contagem nunca passar do que há.
+function podarSelecaoTagClusters() {
+    if (selecionadas.size) selecionadas = podarSelecao(db, selecionadas);
+}
+
+// Barra de contagem, botão "Selecionar" e a opção "Só selecionados" do
+// select de escopo, que só existe quando há algo marcado.
+function atualizarBarraSelecao() {
+    const n = selecionadas.size;
+    document.getElementById('tag-clusters-selecao-barra')?.classList.toggle('hidden', !modoSelecao);
+    const botao = document.getElementById('tag-clusters-modo-selecao');
+    if (botao) {
+        botao.setAttribute('aria-pressed', String(modoSelecao));
+        botao.textContent = modoSelecao ? '☑ Selecionando' : '☐ Selecionar';
+    }
+    const contagem = document.getElementById('tag-clusters-selecao-contagem');
+    if (contagem) {
+        contagem.textContent = n
+            ? `${n} ${n === 1 ? 'item selecionado' : 'itens selecionados'}`
+            : 'Nada selecionado. Marque as caixinhas dos cartões.';
+    }
+    const select = selectEscopo();
+    const opcao = select?.querySelector('option[value="selecao"]');
+    if (opcao) {
+        opcao.hidden = !n;
+        opcao.disabled = !n;
+        opcao.textContent = n ? `Só selecionados (${n})` : 'Só selecionados';
+    }
+    if (select && !n && select.value === 'selecao') select.value = 'tela';
+}
+
+function usarEscopoSelecao() {
+    const select = selectEscopo();
+    if (select && selecionadas.size) select.value = 'selecao';
+}
+
+// Põe as caixinhas e o anel dos cartões em dia com a seleção, sem redesenhar
+// a aba (redesenhar tiraria o foco da caixinha).
+function sincronizarMarcas() {
+    document.querySelectorAll('#tag-clusters [data-card-selecao]').forEach((card) => {
+        const marcado = selecionadas.has(card.dataset.cardSelecao);
+        CLASSES_MARCADO.forEach((c) => card.classList.toggle(c, marcado));
+        // A caixinha do próprio cartão vem antes das dos subclusters dentro dele.
+        const caixa = card.querySelector('input[data-chave]');
+        if (caixa && caixa.dataset.chave === card.dataset.cardSelecao) caixa.checked = marcado;
+    });
+}
+
+export function alternarModoSelecaoTagClusters() {
+    modoSelecao = !modoSelecao;
+    if (!modoSelecao) selecionadas.clear();
+    renderTagClusters();
+}
+
+// Marca ou desmarca um cartão. Marcar um cluster de topo leva os subclusters
+// junto; desmarcar um cluster tira só ele (e, no topo, os subclusters).
+export function toggleSelecaoTagCluster(caixa) {
+    const chave = caixa?.dataset?.chave;
+    if (!chave) return;
+    const estavaVazia = selecionadas.size === 0;
+    let chaves = [chave];
+    if (chave.startsWith('c:')) {
+        const cluster = achar(Number(chave.slice(2)));
+        chaves = cluster ? chavesParaMarcar(db, cluster) : chaves;
+    }
+    chaves.forEach((c) => (caixa.checked ? selecionadas.add(c) : selecionadas.delete(c)));
+    sincronizarMarcas();
+    atualizarBarraSelecao();
+    if (estavaVazia) usarEscopoSelecao();
+}
+
+export function marcarTodosTagClusters() {
+    chavesDaTela(db, filtroDaTela()).forEach((c) => selecionadas.add(c));
+    renderTagClusters();
+    usarEscopoSelecao();
+}
+
+export function limparSelecaoTagClusters() {
+    selecionadas.clear();
     renderTagClusters();
 }
 
@@ -177,8 +312,9 @@ function cartaoCluster(c, usoClusters, usoEtiquetas, fechado, subsHtml = '', ani
         ? 'Excluir o subcluster (as etiquetas ficam sem cluster; nenhum texto muda)'
         : 'Excluir (as etiquetas ficam sem cluster e os subclusters sobem para clusters de topo; nenhum texto muda)';
     return `
-<div data-cluster-id="${c.id}"${aninhado ? ' data-subcluster="true"' : ''} data-recolhido="${fechado}" class="${caixa} flex justify-between items-start gap-3">
+<div data-cluster-id="${c.id}"${aninhado ? ' data-subcluster="true"' : ''} data-recolhido="${fechado}"${marcadoAttr(chaveCluster(c))} class="${caixa}${classeMarcado(chaveCluster(c))} flex justify-between items-start gap-3">
     <div class="flex-1 min-w-0">
+        ${caixaSelecao(chaveCluster(c), c.nome)}
         <h4 class="${titulo} text-gray-800 dark:text-slate-100">
             <button type="button" data-action="alternar-tag-cluster" data-id="${c.id}" aria-expanded="${!fechado}" title="${fechado ? 'Expandir' : 'Recolher'} o ${rotuloTipo}" class="text-left hover:text-gray-600 dark:hover:text-slate-300 inline-flex items-start gap-1.5"><span class="text-[9px] mt-1.5" aria-hidden="true">${fechado ? '▸' : '▾'}</span><span>${escapeHtml(c.nome)}</span></button>
         </h4>
@@ -219,11 +355,10 @@ function linhaTriagem(e, textos, clusters) {
 function renderTriagem(busca, categoriaFiltro, usoEtiquetas) {
     const alvo = document.getElementById('etiquetas-sem-cluster');
     if (!alvo) return 0;
-    const soltas = etiquetasSemCluster(db).filter(
-        (e) =>
-            (!categoriaFiltro || e.categoria === categoriaFiltro) &&
-            (!busca || chaveTema(e.nome).includes(busca)),
-    );
+    const soltas = soltasTagClusters(db, {
+        busca: document.getElementById('busca-tag-clusters')?.value || '',
+        categoria: categoriaFiltro,
+    });
     if (soltas.length === 0) {
         const total = (db.etiquetas || []).filter((e) =>
             CATEGORIAS_COM_CLUSTER.includes(e.categoria),
@@ -239,7 +374,8 @@ function renderTriagem(busca, categoriaFiltro, usoEtiquetas) {
         if (daCategoria.length === 0) return '';
         const clusters = clustersEmArvoreDaCategoria(db, categoria);
         return `
-<section data-categoria="${categoria}" class="mb-4">
+<section data-categoria="${categoria}"${marcadoAttr(chaveSoltas(categoria))} class="mb-4${classeMarcado(chaveSoltas(categoria))} rounded">
+    ${caixaSelecao(chaveSoltas(categoria), `etiquetas sem cluster de ${ROTULOS_ETIQUETAS[categoria]}`)}
     <h4 class="text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400 mb-1">${escapeHtml(ROTULOS_ETIQUETAS[categoria])} <span class="font-mono text-[10px] normal-case text-gray-400 dark:text-slate-500">${daCategoria.length}</span></h4>
     <ul class="divide-y divide-gray-100 dark:divide-slate-800">${daCategoria
         .map((e) => linhaTriagem(e, usoEtiquetas.get(e.id) || 0, clusters))
@@ -258,6 +394,7 @@ export function renderTagClusters() {
     if (!lista) return;
     ligarArrastarEtiquetas();
     prepararFiltroCategoria();
+    podarSelecaoTagClusters();
 
     const busca = chaveTema(document.getElementById('busca-tag-clusters')?.value || '');
     const categoriaFiltro = document.getElementById('filtro-categoria-tag-clusters')?.value || '';
@@ -265,27 +402,11 @@ export function renderTagClusters() {
     const usoEtiquetas = contarTextosPorEtiqueta(db);
     const todos = db.tagClusters || [];
 
-    // O próprio cluster casa pelo nome ou por uma etiqueta direta dele.
-    const casa = (c) =>
-        !busca ||
-        chaveTema(c.nome).includes(busca) ||
-        etiquetasDoCluster(db, c.id).some((e) => chaveTema(e.nome).includes(busca));
-    // Árvore filtrada: o topo aparece se ele ou um subcluster casa; com busca,
-    // os subclusters mostrados são os que casam, ou todos se o topo casa.
-    const arvore = [];
-    let exibidos = 0;
-    CATEGORIAS_EM_ORDEM.filter((cat) => !categoriaFiltro || cat === categoriaFiltro).forEach(
-        (categoria) => {
-            clustersDeTopoDaCategoria(db, categoria).forEach((topo) => {
-                const subs = subclustersDoCluster(db, topo.id);
-                const topoCasa = casa(topo);
-                const subsMostrados = busca && !topoCasa ? subs.filter(casa) : subs;
-                if (!topoCasa && subsMostrados.length === 0) return;
-                arvore.push({ categoria, topo, subs: subsMostrados });
-                exibidos += 1 + subsMostrados.length;
-            });
-        },
-    );
+    const arvore = arvoreTagClusters(db, {
+        busca: document.getElementById('busca-tag-clusters')?.value || '',
+        categoria: categoriaFiltro,
+    });
+    const exibidos = arvore.reduce((soma, n) => soma + 1 + n.subs.length, 0);
 
     if (arvore.length === 0) {
         lista.innerHTML = `<div class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
@@ -328,6 +449,7 @@ export function renderTagClusters() {
     }
 
     const soltas = renderTriagem(busca, categoriaFiltro, usoEtiquetas);
+    atualizarBarraSelecao();
     const resumo = document.getElementById('resumo-tag-clusters');
     if (resumo) {
         resumo.innerHTML = `${exibidos} de ${escapeHtml(plural(todos.length, 'tag cluster', 'tag clusters'))} · <button type="button" data-action="ir-etiquetas-sem-cluster" title="Ir para a lista de etiquetas sem cluster" class="underline decoration-dotted hover:text-gray-600 dark:hover:text-slate-300">${escapeHtml(plural(soltas, 'etiqueta sem cluster', 'etiquetas sem cluster'))}</button>`;
@@ -375,6 +497,24 @@ function opcoesPai(selectPai, categoria, selecionado = null, ignorarId = null) {
     selectPai.value = selecionado == null ? '' : String(selecionado);
 }
 
+// Aviso na digitação: o ">" separa pai e subcluster, então não pode estar no
+// nome. O salvar recusa do mesmo jeito (`caractere-invalido`); aqui o usuário
+// vê antes de tentar. Devolve '' quando o nome está livre do sinal.
+export function avisoDoNomeDeCluster(nome) {
+    return String(nome ?? '').includes('>')
+        ? 'O sinal “>” não pode estar no nome: ele separa o pai do subcluster. Tire o sinal para salvar.'
+        : '';
+}
+
+function atualizarDicaNome() {
+    const campo = document.getElementById('tc-nome');
+    const dica = document.getElementById('tc-nome-dica');
+    if (!campo || !dica) return;
+    const aviso = avisoDoNomeDeCluster(campo.value);
+    dica.textContent = aviso;
+    dica.classList.toggle('hidden', !aviso);
+}
+
 function atualizarDicaPai({ travado = false, motivo = '' } = {}) {
     const dica = document.getElementById('tc-pai-dica');
     if (!dica) return;
@@ -397,6 +537,7 @@ export async function novoTagCluster(paiId = null) {
     opcoesPai(selectPai, categoria, pai ? pai.id : null);
     selectPai.disabled = false;
     atualizarDicaPai();
+    atualizarDicaNome();
     document.getElementById('tc-categoria-dica').classList.add('hidden');
     document.getElementById('modal-tag-cluster-titulo').innerText = pai
         ? 'Cadastrar Subcluster'
@@ -423,6 +564,7 @@ export async function editarTagCluster(id) {
         travado: temSubs,
         motivo: 'Este tag cluster tem subclusters, então não pode virar subcluster (só há um nível). Mova ou exclua os subclusters antes.',
     });
+    atualizarDicaNome();
     document.getElementById('tc-categoria-dica').classList.remove('hidden');
     document.getElementById('modal-tag-cluster-titulo').innerText =
         c.paiId != null ? 'Editar Subcluster' : 'Editar Tag cluster';
@@ -455,6 +597,9 @@ export function initFormTagCluster() {
         selectCategoria.onchange = () =>
             opcoesPai(document.getElementById('tc-pai'), selectCategoria.value);
     }
+
+    const campoNome = document.getElementById('tc-nome');
+    if (campoNome) campoNome.oninput = atualizarDicaNome;
 
     const avisoDoMotivo = (r, categoria, padrao) => {
         if (r.motivo === 'duplicado') return avisoDuplicado(r.existente, categoria);
@@ -517,8 +662,99 @@ export function initFormTagCluster() {
 }
 
 // Botão "Baixar .md" da aba: o cadastro inteiro, para colar numa IA.
-export function baixarTagClustersMd() {
-    baixarTagClustersMarkdown(db);
+export function baixarTagClustersMd(filtro = {}) {
+    baixarTagClustersMarkdown(db, filtro);
+}
+
+const DICA_IMAGEM_GRANDE = 'Há etiquetas demais para uma imagem só: baixe o .md.';
+
+// Desenho do relatório com as cores do tema da página (ou sempre claro).
+function montarRelatorioTagClusters({ claro = false, filtro = {} } = {}) {
+    const escuro = !claro && document.documentElement.classList.contains('dark');
+    return montarSvgTagClusters({
+        dados: dadosTagClusters(db, filtro),
+        paleta: escuro ? PALETA_TAG_CLUSTERS.escuro : PALETA_TAG_CLUSTERS.claro,
+        medir: medirTexto,
+    });
+}
+
+// .png no tema da página. Sem `filtro`, o cadastro inteiro; com `selecao`,
+// só os cartões marcados.
+export async function baixarTagClustersPng(filtro = {}) {
+    try {
+        const relatorio = montarRelatorioTagClusters({ filtro });
+        const blob = await svgTextoParaPngBlob(
+            relatorio.svg,
+            relatorio.largura,
+            relatorio.altura,
+            DICA_IMAGEM_GRANDE,
+        );
+        baixarBlob(blob, `tag-clusters${sufixoNomeArquivo(filtro)}.png`);
+    } catch (err) {
+        console.error(err);
+        alert(err?.message || 'Não foi possível gerar a imagem dos tag clusters.');
+    }
+}
+
+// .pdf: o mesmo desenho, sempre no tema claro (papel), fatiado em A4 sem
+// cortar cartão ao meio. Reaproveita o plano e a montagem das Conexões.
+export async function baixarTagClustersPdf(filtro = {}) {
+    try {
+        const JsPdf = window.jspdf?.jsPDF;
+        if (!JsPdf) {
+            throw new Error(
+                'A biblioteca de PDF não carregou (verifique a conexão com a internet). Tente novamente em alguns segundos.',
+            );
+        }
+        const relatorio = montarRelatorioTagClusters({ claro: true, filtro });
+        const { canvas, escala } = await svgTextoParaCanvas(
+            relatorio.svg,
+            relatorio.largura,
+            relatorio.altura,
+            DICA_IMAGEM_GRANDE,
+        );
+        const plano = planejarPdf(relatorio);
+        const fatias = fatiasDoPlano(canvas, escala, plano);
+        gerarPdfConexoes({ JsPdf, plano, fatias }).save(
+            `tag-clusters${sufixoNomeArquivo(filtro)}.pdf`,
+        );
+    } catch (err) {
+        console.error(err);
+        alert(err?.message || 'Não foi possível gerar o PDF dos tag clusters.');
+    }
+}
+
+// Filtro que a tela está aplicando agora (busca e categoria).
+function filtroDaTela() {
+    return {
+        busca: document.getElementById('busca-tag-clusters')?.value || '',
+        categoria: document.getElementById('filtro-categoria-tag-clusters')?.value || '',
+    };
+}
+
+// Botão "⬇ Baixar" da aba (data-action="baixar-tag-clusters"): lê o escopo
+// ("Todo o cadastro", "O que a tela mostra" ou "Só selecionados") e o formato
+// dos selects ao lado.
+export function baixarTagClusters() {
+    const escopo = document.getElementById('tag-clusters-baixar-escopo')?.value || 'tela';
+    const formato = document.getElementById('tag-clusters-baixar-formato')?.value || 'md';
+    if (escopo === 'selecao') {
+        podarSelecaoTagClusters();
+        if (!selecionadas.size) {
+            alert('Marque ao menos um item para baixar a seleção.');
+            atualizarBarraSelecao();
+            return;
+        }
+    }
+    const filtro =
+        escopo === 'selecao'
+            ? { selecao: new Set(selecionadas) }
+            : escopo === 'tudo'
+              ? {}
+              : filtroDaTela();
+    if (formato === 'png') return baixarTagClustersPng(filtro);
+    if (formato === 'pdf') return baixarTagClustersPdf(filtro);
+    return baixarTagClustersMd(filtro);
 }
 
 // ─── Importar por lista colada ─────────────────────────────────────────
