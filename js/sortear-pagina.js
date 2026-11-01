@@ -14,6 +14,7 @@ import {
     RECENTES_MAXIMO,
     avisosDoTexto,
     contarPorExtensao,
+    contarPorTipo,
     contarPorUniversal,
     avisoForaPorLeitura,
     avisoForaPorSensivel,
@@ -366,6 +367,13 @@ export function montarSortear(
     const cartao = criar('section', CLASSE_CARTAO);
     cartao.setAttribute('aria-label', 'Critérios do sorteio');
 
+    // Poema ou prosa: o primeiro filtro, o mais amplo. Cada opção traz quantos
+    // textos tem com os outros critérios de agora.
+    const rotuloTipo = criar('label', 'block text-sm font-medium mb-1', 'Poema ou prosa');
+    rotuloTipo.htmlFor = 'sortear-tipo';
+    const selecaoTipo = criar('select', CLASSE_SELECT);
+    selecaoTipo.id = 'sortear-tipo';
+
     const rotuloUniversal = criar(
         'label',
         'block text-sm font-medium mb-1',
@@ -505,6 +513,8 @@ export function montarSortear(
     linhaIdioma.hidden = idiomasOferecidos.length === 0;
 
     cartao.append(
+        rotuloTipo,
+        selecaoTipo,
         rotuloUniversal,
         selecao,
         rotuloExtensao,
@@ -536,6 +546,7 @@ export function montarSortear(
     const pesosMarcados = () => PESOS_SORTEIO.filter((faixa) => caixasPeso.get(faixa).checked);
 
     const criterios = () => ({
+        tipo: selecaoTipo.value === '' ? null : selecaoTipo.value,
         universalId: selecao.value === '' ? null : selecao.value,
         favoritosAutor: caixa.checked,
         extensao: selecaoExtensao.value === '' ? null : selecaoExtensao.value,
@@ -558,8 +569,12 @@ export function montarSortear(
         const valencias = pesosMarcados();
         // Reconhecidos vale para todas as contagens, como o conteúdo sensível.
         const reconhecidos = caixaReconhecidos.checked;
+        // O tipo (poema ou prosa) vale para todas as contagens abaixo.
+        const anteriorTipo = selecaoTipo.value;
+        const tipo = anteriorTipo === '' ? null : anteriorTipo;
         const anterior = selecao.value;
         const contados = contarPorUniversal(db, {
+            tipo,
             favoritosAutor,
             extensao,
             incluirSensiveis,
@@ -569,19 +584,60 @@ export function montarSortear(
         // Os mesmos Temas sem o filtro de favoritos (a extensão fica), para saber
         // se o zero vem da nota; e sem nenhum filtro, para saber se há texto algum.
         const semNota = contarPorUniversal(db, {
+            tipo,
             extensao,
             incluirSensiveis,
             valencias,
             reconhecidos,
         });
-        const semFiltro = contarPorUniversal(db, { incluirSensiveis, valencias, reconhecidos });
+        const semFiltro = contarPorUniversal(db, {
+            tipo,
+            incluirSensiveis,
+            valencias,
+            reconhecidos,
+        });
         const totalAberto = elegiveisPorCriterios(db, {
+            tipo,
             favoritosAutor,
             extensao,
             incluirSensiveis,
             valencias,
             reconhecidos,
         }).length;
+
+        // Tipo: cada opção conta com os outros critérios de agora (Tema, extensão,
+        // favoritos, peso, sensível, reconhecidos). Sem nenhum texto do tipo nem
+        // sem esses critérios, a opção fica desabilitada.
+        const criteriosSemTipo = {
+            universalId: criterios().universalId,
+            favoritosAutor,
+            extensao,
+            incluirSensiveis,
+            valencias,
+            reconhecidos,
+        };
+        const porTipo = contarPorTipo(db, criteriosSemTipo);
+        const totalTipos = contarPorTipo(db, { incluirSensiveis });
+        const totalAmbos = elegiveisPorCriterios(db, criteriosSemTipo).length;
+        selecaoTipo.textContent = '';
+        const ambos = criar('option', CLASSE_OPCAO, `Poemas e prosas (${totalAmbos})`);
+        ambos.value = '';
+        selecaoTipo.append(ambos);
+        const tiposSelecionaveis = new Set();
+        porTipo.forEach((t, i) => {
+            const haTexto = totalTipos[i].total > 0;
+            const opcao = criar(
+                'option',
+                '',
+                `${t.rotulo} (${haTexto ? t.total : 'nenhum texto'})`,
+            );
+            opcao.value = t.id;
+            opcao.disabled = !haTexto;
+            opcao.className = t.total === 0 ? `${CLASSE_OPCAO} opacity-60` : CLASSE_OPCAO;
+            if (haTexto) tiposSelecionaveis.add(t.id);
+            selecaoTipo.append(opcao);
+        });
+        selecaoTipo.value = tiposSelecionaveis.has(anteriorTipo) ? anteriorTipo : '';
 
         selecao.textContent = '';
         const aberta = criar('option', CLASSE_OPCAO, `Qualquer tema (${totalAberto})`);
@@ -610,14 +666,21 @@ export function montarSortear(
         const anteriorExtensao = selecaoExtensao.value;
         const universalAgora = criterios().universalId;
         const porFaixa = contarPorExtensao(db, {
+            tipo,
             universalId: universalAgora,
             favoritosAutor,
             incluirSensiveis,
             valencias,
             reconhecidos,
         });
-        const totalFaixas = contarPorExtensao(db, { incluirSensiveis, valencias, reconhecidos });
+        const totalFaixas = contarPorExtensao(db, {
+            tipo,
+            incluirSensiveis,
+            valencias,
+            reconhecidos,
+        });
         const totalQualquer = elegiveisPorCriterios(db, {
+            tipo,
             universalId: universalAgora,
             favoritosAutor,
             incluirSensiveis,
@@ -650,6 +713,7 @@ export function montarSortear(
         // Peso: cada faixa conta com o Tema, a extensão, os favoritos e o conteúdo
         // sensível de agora (a escolha de peso em si não entra na própria conta).
         const baseCriterios = {
+            tipo,
             universalId: universalAgora,
             favoritosAutor,
             extensao,
@@ -657,7 +721,7 @@ export function montarSortear(
             reconhecidos,
         };
         const porPeso = contarPorValencia(db, baseCriterios);
-        const totalPesos = contarPorValencia(db, { incluirSensiveis, reconhecidos });
+        const totalPesos = contarPorValencia(db, { tipo, incluirSensiveis, reconhecidos });
         porPeso.forEach((f, i) => {
             const caixaPeso = caixasPeso.get(f.id);
             const haTexto = totalPesos[i].total > 0;
@@ -1018,6 +1082,7 @@ export function montarSortear(
     seletorIdioma.addEventListener('change', () => {
         gravarIdiomaPreferido(seletorIdioma.value, armazenamento);
     });
+    selecaoTipo.addEventListener('change', atualizar);
     selecao.addEventListener('change', atualizar);
     selecaoExtensao.addEventListener('change', atualizar);
     caixa.addEventListener('change', atualizar);

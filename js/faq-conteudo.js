@@ -808,6 +808,9 @@ Coluna com menos de 3 textos aparece como indício, e com menos de 10 textos lid
                     'em construção',
                     'só o começo',
                     'reconhecidos',
+                    'só poemas',
+                    'só prosas',
+                    'poema ou prosa',
                     'prêmio',
                     'premiados',
                     'menção honrosa',
@@ -835,6 +838,7 @@ Texto marcado como "Só como início" sai, com "só o começo" junto ao tipo. Te
 
 Todos são opcionais, e as contagens ao lado de cada opção mostram quantos textos ela tem.
 
+- **Poema ou prosa:** "Poemas e prosas" (o padrão), "Só poemas" ou "Só prosas". A escolha não fica guardada.
 - **Sobre o que você quer ler?** É o assunto do convite.
 - **Extensão:** Breve, Curto, Médio, Longo ou Extenso (régua logo abaixo).
 - **Só os meus preferidos:** Classificação de 4 corações ou mais.
@@ -845,6 +849,8 @@ Todos são opcionais, e as contagens ao lado de cada opção mostram quantos tex
 Os critérios se contam uns com os outros: se a combinação não tem texto, a página avisa e não apaga nenhuma escolha.
 
 "Só os reconhecidos" vale também nas contagens de assunto, Extensão e Peso; se ele esvazia a página, ela diz quantos textos sem prêmio nem menção ficaram de fora por escolha sua.
+
+"Poema ou prosa" vale também nas contagens dos outros critérios. Uma obra com tradução em outro tipo (um poema traduzido em prosa) aparece só com a versão do tipo escolhido, e a caixa de outras versões continua oferecendo a outra.
 
 Se um tema não tem nenhum texto com nota alta, a página oferece sortear entre todos os dele.
 

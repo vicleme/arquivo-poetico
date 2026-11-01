@@ -28,6 +28,8 @@ import {
     limitesDaFaixa,
     legendaDaFaixa,
     contarPorExtensao,
+    contarPorTipo,
+    TIPOS_SORTEIO,
     rotuloDeExtensao,
     PALAVRAS_POR_MINUTO,
     ROTULO_EM_CONSTRUCAO,
@@ -1126,5 +1128,74 @@ describe('historicoDosRecentes', () => {
         );
         assert.deepEqual(historicoDosRecentes(db, null), []);
         assert.deepEqual(historicoDosRecentes(null, ['poema:1']), []);
+    });
+});
+
+describe('Poema ou prosa (critério tipo)', () => {
+    const ids = (lista) => lista.map(({ item }) => item.id);
+    const dbTipo = () => ({
+        temas: [],
+        poemas: [t(1), t(2), t(3, { conteudoSensivel: 'x' })],
+        prosas: [t(20), t(21)],
+    });
+
+    it('sem o critério (ausente, nulo ou vazio), entram poemas e prosas', () => {
+        assert.deepEqual(ids(elegiveisPorCriterios(dbTipo(), {})), [1, 2, 3, 20, 21]);
+        assert.equal(elegiveisPorCriterios(dbTipo(), { tipo: null }).length, 5);
+        assert.equal(elegiveisPorCriterios(dbTipo(), { tipo: '' }).length, 5);
+    });
+    it('"poema" e "prosa" separam os dois tipos', () => {
+        assert.deepEqual(ids(elegiveisPorCriterios(dbTipo(), { tipo: 'poema' })), [1, 2, 3]);
+        assert.deepEqual(ids(elegiveisPorCriterios(dbTipo(), { tipo: 'prosa' })), [20, 21]);
+    });
+    it('tipo que não existe devolve lista vazia (nunca cai no sorteio aberto)', () => {
+        assert.deepEqual(elegiveisPorCriterios(dbTipo(), { tipo: 'cronica' }), []);
+    });
+    it('combina por E com os outros critérios', () => {
+        assert.deepEqual(
+            ids(elegiveisPorCriterios(dbTipo(), { tipo: 'poema', incluirSensiveis: false })),
+            [1, 2],
+        );
+        assert.deepEqual(
+            ids(elegiveisPorCriterios(dbTipo(), { tipo: 'prosa', extensao: 'breve' })),
+            [20, 21],
+        );
+    });
+    it('o sorteio só devolve texto do tipo pedido', () => {
+        for (const aleatorio of [() => 0, () => 0.5, () => 0.99]) {
+            assert.equal(sortearTexto(dbTipo(), { tipo: 'prosa' }, { aleatorio }).tipo, 'prosa');
+            assert.equal(sortearTexto(dbTipo(), { tipo: 'poema' }, { aleatorio }).tipo, 'poema');
+        }
+    });
+    it('sem texto do tipo, o resultado é vazio', () => {
+        const db = { temas: [], poemas: [t(1)], prosas: [] };
+        assert.deepEqual(sortearTexto(db, { tipo: 'prosa' }), { ok: false, motivo: 'vazio' });
+    });
+    it('contarPorTipo conta cada tipo e ignora o `tipo` que vier nos critérios', () => {
+        assert.deepEqual(contarPorTipo(dbTipo(), { tipo: 'prosa' }), [
+            { id: 'poema', rotulo: 'Só poemas', total: 3 },
+            { id: 'prosa', rotulo: 'Só prosas', total: 2 },
+        ]);
+        assert.deepEqual(
+            contarPorTipo(dbTipo(), { incluirSensiveis: false }).map((x) => x.total),
+            [2, 2],
+        );
+        assert.deepEqual(
+            TIPOS_SORTEIO.map((x) => x.id),
+            ['poema', 'prosa'],
+        );
+    });
+    it('Elo de tradução entre poema e prosa: com o tipo, só a versão do tipo entra', () => {
+        const db = {
+            temas: [],
+            poemas: [
+                t(1, { conceitos: { elos: [{ id: 20, relacao: 'Tradução', direcao: 'origem' }] } }),
+            ],
+            prosas: [t(20)],
+        };
+        assert.deepEqual(ids(elegiveisPorCriterios(db, {})), [1]);
+        const soProsa = elegiveisPorCriterios(db, { tipo: 'prosa' });
+        assert.deepEqual(ids(soProsa), [20]);
+        assert.equal(sortearTexto(db, { tipo: 'prosa' }).item.id, 20);
     });
 });

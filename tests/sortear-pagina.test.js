@@ -1310,6 +1310,68 @@ describe('Só os reconhecidos na página do sorteio', () => {
     });
 });
 
+describe('Poema ou prosa na página do sorteio', () => {
+    const dbTipo = () => ({
+        temas: [],
+        temasUniversais: [],
+        poemas: [t(1, { titulo: 'Verso A' }), t(2, { titulo: 'Verso B' })],
+        prosas: [t(20, { titulo: 'Prosa A' })],
+    });
+    const escolher = (valor) => {
+        $('sortear-tipo').value = valor;
+        $('sortear-tipo').dispatchEvent(new window.Event('change'));
+    };
+
+    it('o seletor existe, vem em "poemas e prosas" e traz a contagem de cada opção', () => {
+        montar(dbTipo());
+        const rotulos = [...$('sortear-tipo').options].map((o) => o.textContent);
+        assert.deepEqual(rotulos, ['Poemas e prosas (3)', 'Só poemas (2)', 'Só prosas (1)']);
+        assert.equal($('sortear-tipo').value, '');
+    });
+    it('a contagem e as outras listas seguem o tipo escolhido', () => {
+        montar(dbTipo());
+        escolher('prosa');
+        assert.match(raiz.textContent, /1 texto pode ser sorteado/);
+        assert.match($('sortear-extensao').options[0].textContent, /Qualquer tamanho \(1\)/);
+        assert.match($('sortear-universal').options[0].textContent, /Qualquer tema \(1\)/);
+        escolher('poema');
+        assert.match(raiz.textContent, /2 textos podem ser sorteados/);
+    });
+    it('só sai texto do tipo escolhido', () => {
+        const api = montar(dbTipo(), { aleatorio: fixo(0) });
+        escolher('prosa');
+        api.sortear();
+        assert.equal($('sortear-resultado').querySelector('h2').textContent, 'Prosa A');
+        botaoPorTexto('Sortear outro').click();
+        assert.equal($('sortear-resultado').querySelector('h2').textContent, 'Prosa A');
+        escolher('poema');
+        api.sortear();
+        assert.match($('sortear-resultado').querySelector('h2').textContent, /^Verso/);
+    });
+    it('tipo sem nenhum texto no acervo fica desabilitado', () => {
+        montar({ temas: [], temasUniversais: [], poemas: [t(1)], prosas: [] });
+        const prosa = [...$('sortear-tipo').options].find((o) => o.value === 'prosa');
+        assert.equal(prosa.disabled, true);
+        assert.match(prosa.textContent, /nenhum texto/);
+    });
+    it('tipo combinado com outro critério sem texto: contagem zero e botão desligado', () => {
+        montar(dbTipo());
+        escolher('prosa');
+        $('sortear-reconhecidos').checked = true;
+        $('sortear-reconhecidos').dispatchEvent(new window.Event('change'));
+        assert.match(raiz.textContent, /Nenhum texto pode ser sorteado/);
+        assert.equal($('sortear-botao').disabled, true);
+    });
+    it('o tipo não fica guardado entre visitas', () => {
+        const armazenamento = memoria();
+        montar(dbTipo(), { armazenamento });
+        escolher('prosa');
+        assert.deepEqual(Object.keys(armazenamento.dados), []);
+        montar(dbTipo(), { armazenamento });
+        assert.equal($('sortear-tipo').value, '');
+    });
+});
+
 describe('Sortear outro leva a tela ao começo do texto novo', () => {
     // O jsdom não tem layout: troca a posição medida do bloco e conta as rolagens.
     function espiar(topo) {

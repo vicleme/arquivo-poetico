@@ -46,6 +46,7 @@ Um texto com `status: "incompleto"` continua sendo sorteado, e a página mostra 
 
 Todos opcionais, combinados por E:
 
+- **Poema ou prosa** (`tipo`): "Poemas e prosas" (o padrão), "Só poemas" ou "Só prosas". Filtra pelo tipo do registro (Poema ou Prosa), nunca pelo conteúdo. Não fica guardado entre visitas. Uma obra com Elo de tradução entre tipos diferentes entra só com a versão do tipo pedido.
 - **Convite** ("Sobre o que você quer ler?"): o texto tem algum Tema que pertence a esse convite da Vitrine de leitura (qualquer papel do Tema). O texto não guarda convite, só Temas. Ver `temas-assuntos-for-ai-pt-br.md`.
 - **Extensão**: régua fixa, igual para todo acervo. Poema se mede em versos, prosa em palavras. Breve: até 4 versos ou 300 palavras. Curto: de 5 a 14 versos ou de 301 a 1.000 palavras. Médio: de 15 a 40 ou de 1.001 a 7.500. Longo: de 41 a 100 ou de 7.501 a 17.500. Extenso: acima disso.
 - **Só os meus preferidos**: `autoclassificacao` de 4 corações ou mais. 0 ("não avaliado") nunca conta.

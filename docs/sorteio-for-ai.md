@@ -47,6 +47,7 @@ A text with `status: "incompleto"` is still drawn, and the page shows `em constr
 All optional, combined with AND:
 
 - **Invitation** ("Sobre o que você quer ler?"): the text has some Theme that belongs to that invitation of the Vitrine de leitura (any Theme role). The text stores no invitation, only Themes. See `temas-assuntos-for-ai.md`.
+- **Poem or prose** (`tipo`): "Poemas e prosas" (the default), "Só poemas" or "Só prosas". Filters by the record type (Poema or Prosa), never by content. Not kept between visits. A work whose translation link (Elo de tradução) crosses types enters only with the version of the requested type.
 - **Extension**: fixed scale, equal for every archive. Poem is measured in verses, prose in words. Breve: up to 4 verses or 300 words. Curto: 5 to 14 verses or 301 to 1,000 words. Médio: 15 to 40 or 1,001 to 7,500. Longo: 41 to 100 or 7,501 to 17,500. Extenso: above that.
 - **Só os meus preferidos** ("only my favorites", the author's own): `autoclassificacao` of 4 hearts or more. 0 ("not evaluated") never counts.
 - **Only the recognized** ("Só os reconhecidos (com prêmio ou menção)"): the text has at least one entry in `reconhecimentos` with `premio` or `posicao` filled in. Prize and honorable mention live in the same field (e.g. `posicao` "Menção honrosa"); an entry with only a year or a note does not count. Unchecked by default, and not kept between visits. **For suggestions:** fill in `premio` or `posicao` for every recognition, or the text will not count.

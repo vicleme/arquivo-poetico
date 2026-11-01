@@ -13,6 +13,10 @@
 // marca "só o começo" junto ao tipo.
 //
 // Critérios, combinados por E (todos opcionais):
+//   - `tipo`: `'poema'` ou `'prosa'`, só textos desse tipo (ausente, `null` ou
+//     vazio: os dois). Valor que não existe devolve lista vazia, como o universal
+//     inexistente. Vale antes do Elo de tradução: uma obra cuja tradução é de
+//     outro tipo (poema traduzido em prosa) entra só com a versão do tipo pedido;
 //   - `universalId`: só textos com algum Tema desse Tema universal (qualquer
 //     papel do Tema no texto);
 //   - `favoritosAutor`: só textos que o autor avaliou com `minCoracoes` ou mais
@@ -66,6 +70,11 @@ export const PISO_FAVORITO_AUTOR = 4;
 export const PESO_SEM_VALENCIA = 'sem';
 export const PESOS_SORTEIO = Object.freeze([...FAIXAS_VALENCIA_TEXTO, PESO_SEM_VALENCIA]);
 export const RECENTES_MAXIMO = 10;
+// Os tipos de texto que o sorteio separa, com o rótulo que a tela mostra.
+export const TIPOS_SORTEIO = Object.freeze([
+    { id: 'poema', rotulo: 'Só poemas' },
+    { id: 'prosa', rotulo: 'Só prosas' },
+]);
 const STATUS_FORA = new Set(['descartado', 'privado']);
 
 // Extensão (31/10/2026). Régua fixa, igual para todo acervo: o texto não muda
@@ -376,6 +385,12 @@ export function elegiveisPorCriterios(dbRef, criterios = {}) {
     const { universalId = null, favoritosAutor = false, extensao = null } = criterios;
     const min = Number(criterios.minCoracoes) || PISO_FAVORITO_AUTOR;
     let lista = textosElegiveis(dbRef, { ignorarLeitura: criterios.ignorarLeitura === true });
+    // O tipo vem primeiro: é o filtro mais barato e o que mais reduz a lista.
+    const { tipo = null } = criterios;
+    if (tipo != null && tipo !== '') {
+        if (!TIPOS_SORTEIO.some((t) => t.id === tipo)) return [];
+        lista = lista.filter((entrada) => entrada.tipo === tipo);
+    }
     if (criterios.incluirSensiveis === false) lista = lista.filter(({ item }) => !ehSensivel(item));
     if (criterios.reconhecidos === true) lista = lista.filter(({ item }) => ehReconhecido(item));
     const faixas = faixasValidas(criterios.valencias);
@@ -496,6 +511,17 @@ export function contarPorUniversal(dbRef, criterios = {}) {
         id: u.id,
         nome: u.nome,
         total: elegiveisPorCriterios(dbRef, { ...criterios, universalId: u.id }).length,
+    }));
+}
+
+// Quantos textos cada tipo (poema, prosa) tem hoje, com os outros critérios
+// valendo: `[{ id, rotulo, total }]`. O critério `tipo` que vier em `criterios` é
+// ignorado: a contagem de cada tipo é a que ele teria se fosse o escolhido.
+export function contarPorTipo(dbRef, criterios = {}) {
+    return TIPOS_SORTEIO.map((t) => ({
+        id: t.id,
+        rotulo: t.rotulo,
+        total: elegiveisPorCriterios(dbRef, { ...criterios, tipo: t.id }).length,
     }));
 }
 

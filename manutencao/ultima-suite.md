@@ -19,6 +19,7 @@
 
 ## Entregas depois da última rodada
 
+- 01/11/2026: Sorteio, filtro Poema ou prosa: `js/sorteio.js`, `js/sortear-pagina.js`, `js/faq-conteudo.js`, `tests/sorteio.test.js` (+8), `tests/sortear-pagina.test.js` (+6). Rodados `sorteio`, `sortear-pagina`, `paratexto-sorteio` e `sorteavel`, 241 passam, 0 falham (e `sortear-pagina` sozinho, 118 passam); eslint e prettier.
 - 01/11/2026: Correção do "<" solto no texto, que cortava o poema no Ver e no sorteio (`escaparMenorSolto` em `sanitizarTextoRico`): `js/utils.js`, `tests/sanitizar-texto-rico.test.js` (novo, 11 testes). Rodados o novo, `utils.test.js` e `sortear-pagina.test.js`, 374 passam, 0 falham; eslint e prettier. Conferido também no Chromium com o poema inteiro.
 - 01/11/2026: Ajuda legível, revisão de tamanho (27 respostas do FAQ reorganizadas; teste de tamanho mais duro): `js/faq-conteudo.js`, `tests/ajuda-formatar.test.js`. Rodados os 7 arquivos de FAQ e busca da Ajuda e `wiring-onclick`, 247 passam, 0 falham; eslint e prettier.
 - 01/11/2026: Central de Ajuda, Expandir tudo e Recolher tudo: `modais/modal-central-ajuda.html`, `js/central-ajuda.js`, `tests/central-ajuda.test.js` (+2). Rodados os 7 arquivos de FAQ e busca da Ajuda, `wiring-onclick` e `tour-passos`, 256 passam, 0 falham; eslint e prettier.
