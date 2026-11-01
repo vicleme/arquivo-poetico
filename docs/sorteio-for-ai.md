@@ -78,6 +78,10 @@ After the text: the author's **Comentários ao leitor** and the **Notas** marked
 
 **Never shown**: the hyperactivating vocabulary (it quotes the text and would give it away), Elos, Ecos, Referências, Alusão and Menção, Inspiração, Ocultação, private Notas, the writing date, and any Intertextualidade entry marked as personal work. Notes and comments are written for the reader: if you draft them, keep that in mind.
 
+## Downloading the text
+
+At the foot of an open text there are **Baixar .md** and **Baixar .pdf** buttons. The file holds only what the reader sees, in the screen's order: title, type and length, body, Comentários ao leitor, public Inspiração and Notas, the paratext block and the card (before or after the text, as the reader chose). Private fields, the editor's `<!-- -->` comment and the legal name of a secret author never go out. In the PDF the body keeps color, background, bold, italic, underline and alignment. There is no button behind the `conteudoSensivel` warning. This changes nothing about what you suggest: the `sorteavel` mark and the public fields still decide what the reader gets.
+
 ## Quick checklist for suggestions
 
 - Want a text in the draw? Suggest `sorteavel`, never set it.

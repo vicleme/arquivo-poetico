@@ -78,6 +78,10 @@ Depois do texto: os **Comentários ao leitor** do autor e as **Notas** marcadas 
 
 **Nunca aparecem**: o vocabulário hiperacionante (ele cita o texto e o entregaria), Elos, Ecos, Referências, Alusão e Menção, Inspiração, Ocultação, as Notas privadas, a data de escrita e qualquer entrada de Intertextualidade marcada como obra pessoal. Notas e comentários são escritos para quem lê: se você os redigir, tenha isso em mente.
 
+## Baixar o texto
+
+No rodapé do texto aberto há **Baixar .md** e **Baixar .pdf**. O arquivo traz só o que quem lê vê, na mesma ordem da tela: título, tipo e extensão, corpo, Comentários ao leitor, Inspiração e Notas públicas, paratexto e ficha (antes ou depois do texto, como a pessoa escolheu). Campos privados, o comentário `<!-- -->` do editor e o nome civil de autor em sigilo nunca saem. No PDF o corpo mantém cor, fundo, negrito, itálico, sublinhado e alinhamento. Atrás do aviso de `conteudoSensivel` não há botão. Isso não muda o que você sugere: quem define o que o leitor recebe continua sendo a marca `sorteavel` e os campos públicos.
+
 ## Lista rápida para sugestões
 
 - Quer um texto no sorteio? Sugira `sorteavel`, nunca defina.

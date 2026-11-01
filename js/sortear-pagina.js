@@ -36,6 +36,8 @@ import {
     idiomasDasVersoes,
 } from './sorteio.js';
 import { fichaDoTexto } from './ficha-do-texto.js';
+import { baixarArquivo, baixarMarkdownSorteio } from './baixar-sorteio.js';
+import { baixarPdfSorteio } from './baixar-sorteio-pdf.js';
 import { blocosPublicosDoTexto } from './comentarios-publicos.js';
 import { blocosParatextoDoTexto } from './paratexto-publico.js';
 import { chavesDeAutoresSigilosos } from './autoria-publica.js';
@@ -358,7 +360,13 @@ export function montarParatexto(item, autoresCadastro = []) {
 // Devolve `{ sortear, atualizar }` (usados nos testes).
 export function montarSortear(
     raiz,
-    { db, aleatorio = Math.random, armazenamento = globalThis.localStorage } = {},
+    {
+        db,
+        aleatorio = Math.random,
+        armazenamento = globalThis.localStorage,
+        baixar = baixarArquivo,
+        baixarPdf = baixarPdfSorteio,
+    } = {},
 ) {
     raiz.textContent = '';
     let recentes = lerRecentes(armazenamento);
@@ -924,6 +932,51 @@ export function montarSortear(
         return b;
     }
 
+    // "Baixar .md": o texto na tela como arquivo, com o que o leitor vê (ver
+    // baixar-sorteio.js). Só existe com o texto aberto: atrás do aviso de
+    // conteúdo sensível, nada do texto sai. A ficha vai onde a tela a põe.
+    function botaoBaixarMarkdown(r) {
+        const b = criar('button', CLASSE_BOTAO_SECUNDARIO, 'Baixar .md');
+        b.type = 'button';
+        b.id = 'sortear-baixar-md';
+        b.addEventListener('click', () =>
+            baixarMarkdownSorteio(
+                db,
+                r.tipo,
+                r.item,
+                { fichaAntes: posicaoFicha === 'antes' },
+                baixar,
+            ),
+        );
+        return b;
+    }
+
+    // "Baixar .pdf": o mesmo conteúdo do .md, desenhado como no Arquivo (ver
+    // baixar-sorteio-pdf.js). A biblioteca de PDF carrega no primeiro clique; se a
+    // rede falhar, a mensagem aparece ao lado do botão e o clique seguinte tenta de novo.
+    function botaoBaixarPdf(r) {
+        const caixa = criar('span', 'inline-flex flex-wrap items-center gap-2');
+        const b = criar('button', CLASSE_BOTAO_SECUNDARIO, 'Baixar .pdf');
+        b.type = 'button';
+        b.id = 'sortear-baixar-pdf';
+        const erro = criar('span', 'text-sm text-red-600 dark:text-red-400');
+        erro.id = 'sortear-baixar-pdf-erro';
+        erro.setAttribute('role', 'alert');
+        b.addEventListener('click', async () => {
+            erro.textContent = '';
+            b.disabled = true;
+            try {
+                await baixarPdf(db, r.tipo, r.item, { fichaAntes: posicaoFicha === 'antes' });
+            } catch (e) {
+                erro.textContent = e?.message || 'Não foi possível gerar o PDF.';
+            } finally {
+                b.disabled = false;
+            }
+        });
+        caixa.append(b, erro);
+        return caixa;
+    }
+
     // Padrão: título, texto, ficha. Com o conteúdo sensível ainda fechado, a
     // ficha espera o texto abrir (só o aviso aparece). Na escolha "antes": título,
     // ficha, texto; aí a ficha aparece também junto do aviso.
@@ -1002,6 +1055,7 @@ export function montarSortear(
             }
             const rodape = criar('div', 'mt-6 flex flex-wrap items-center gap-4');
             rodape.append(...controlesDoPercurso());
+            rodape.append(botaoBaixarMarkdown(r), botaoBaixarPdf(r));
             if (textoEhLongo(r.item.texto)) rodape.append(botaoVoltarAoInicio(titulo));
             bloco.append(rodape);
         }

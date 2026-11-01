@@ -1372,6 +1372,113 @@ describe('Poema ou prosa na página do sorteio', () => {
     });
 });
 
+describe('Baixar .md na página do sorteio', () => {
+    const dbBaixar = (extra = {}) => ({
+        temas: [],
+        temasUniversais: [],
+        poemas: [t(1, { titulo: 'Horizonte de eventos', ...extra })],
+        prosas: [],
+    });
+    const montarComBaixador = (db) => {
+        const baixados = [];
+        const api = montar(db, { baixar: (...args) => baixados.push(args) });
+        api.sortear();
+        return baixados;
+    };
+
+    it('o botão aparece com o texto aberto e baixa o .md com o nome do título', () => {
+        const baixados = montarComBaixador(dbBaixar());
+        assert.ok($('sortear-baixar-md'));
+        assert.equal($('sortear-baixar-md').textContent, 'Baixar .md');
+        $('sortear-baixar-md').click();
+        assert.equal(baixados.length, 1);
+        const [conteudo, mime, nome] = baixados[0];
+        assert.match(conteudo, /^# Horizonte de eventos\n\n_Poema · 1 verso_/);
+        assert.equal(mime, 'text/markdown');
+        assert.equal(nome, 'horizonte-de-eventos.md');
+    });
+    it('atrás do aviso de conteúdo sensível não há botão; ao ler mesmo assim, ele aparece', () => {
+        const baixados = montarComBaixador(dbBaixar({ conteudoSensivel: 'Luto' }));
+        assert.equal($('sortear-baixar-md'), null);
+        $('sortear-ler-mesmo-assim').click();
+        assert.ok($('sortear-baixar-md'));
+        $('sortear-baixar-md').click();
+        assert.equal(baixados.length, 1);
+    });
+    it('a ficha vai onde a tela a põe (antes ou depois do texto)', () => {
+        const baixados = montarComBaixador(dbBaixar());
+        $('sortear-baixar-md').click();
+        assert.ok(baixados[0][0].indexOf('## Ficha') > baixados[0][0].indexOf('verso 1'));
+        const seletor = $('sortear-ficha-posicao');
+        seletor.value = 'antes';
+        seletor.dispatchEvent(new window.Event('change'));
+        $('sortear-baixar-md').click();
+        assert.ok(baixados[1][0].indexOf('## Ficha') < baixados[1][0].indexOf('verso 1'));
+    });
+    describe('Baixar .pdf', () => {
+        const esperar = () => new Promise((r) => setTimeout(r, 0));
+        const montarComPdf = (db, baixarPdf) => {
+            const api = montar(db, { baixar: () => {}, baixarPdf });
+            api.sortear();
+        };
+
+        it('o botão fica ao lado do .md e baixa o PDF do texto na tela, com a posição da ficha', async () => {
+            const chamadas = [];
+            montarComPdf(dbBaixar(), async (...args) => chamadas.push(args));
+            assert.equal($('sortear-baixar-pdf').textContent, 'Baixar .pdf');
+            $('sortear-baixar-pdf').click();
+            await esperar();
+            assert.equal(chamadas.length, 1);
+            const [, tipo, item, opcoes] = chamadas[0];
+            assert.equal(tipo, 'poema');
+            assert.equal(item.titulo, 'Horizonte de eventos');
+            assert.deepEqual(opcoes, { fichaAntes: false });
+        });
+        it('atrás do aviso de conteúdo sensível não há botão; ao ler mesmo assim, ele aparece', () => {
+            montarComPdf(dbBaixar({ conteudoSensivel: 'Luto' }), async () => {});
+            assert.equal($('sortear-baixar-pdf'), null);
+            $('sortear-ler-mesmo-assim').click();
+            assert.ok($('sortear-baixar-pdf'));
+        });
+        it('falha ao gerar mostra a mensagem ao lado do botão, e o clique seguinte tenta de novo', async () => {
+            let tentativas = 0;
+            montarComPdf(dbBaixar(), async () => {
+                tentativas += 1;
+                if (tentativas === 1) throw new Error('Sem internet para o PDF.');
+            });
+            $('sortear-baixar-pdf').click();
+            await esperar();
+            assert.equal($('sortear-baixar-pdf-erro').textContent, 'Sem internet para o PDF.');
+            assert.equal($('sortear-baixar-pdf').disabled, false);
+            $('sortear-baixar-pdf').click();
+            await esperar();
+            assert.equal(tentativas, 2);
+            assert.equal($('sortear-baixar-pdf-erro').textContent, '');
+        });
+        it('baixar o PDF não é um sorteio novo: os recentes ficam como estavam', async () => {
+            const armazenamento = memoria();
+            const api = montar(dbBaixar(), {
+                armazenamento,
+                baixar: () => {},
+                baixarPdf: async () => {},
+            });
+            api.sortear();
+            const antes = JSON.stringify(armazenamento.dados);
+            $('sortear-baixar-pdf').click();
+            await esperar();
+            assert.equal(JSON.stringify(armazenamento.dados), antes);
+        });
+    });
+    it('baixar não é um sorteio novo: os recentes e o percurso ficam como estavam', () => {
+        const armazenamento = memoria();
+        const api = montar(dbBaixar(), { armazenamento, baixar: () => {} });
+        api.sortear();
+        const antes = JSON.stringify(armazenamento.dados);
+        $('sortear-baixar-md').click();
+        assert.equal(JSON.stringify(armazenamento.dados), antes);
+    });
+});
+
 describe('Sortear outro leva a tela ao começo do texto novo', () => {
     // O jsdom não tem layout: troca a posição medida do bloco e conta as rolagens.
     function espiar(topo) {

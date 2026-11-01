@@ -884,6 +884,16 @@ Junto ao tipo aparece a extensão: a contagem de versos no poema e, na prosa, o 
 
 Em "Ficha do texto", logo abaixo do Sortear, dá para escolher **Antes do texto**, se você prefere saber de cara de onde e de quem é. A escolha fica guardada neste navegador. Texto longo (mais de 25 linhas) ganha "Voltar ao início" no rodapé, que leva ao título, e, com a ficha depois do texto, também "Ir para a ficha".
 
+## Baixar o texto
+
+No rodapé do texto aberto, **Baixar .md** e **Baixar .pdf** guardam o texto que está na tela, com o título no nome do arquivo.
+
+- O arquivo traz só o que quem lê vê: título, tipo e extensão, o texto, os comentários ao leitor, a Inspiração e as Notas públicas, o paratexto e a ficha (antes ou depois do texto, como você escolheu).
+- Campos privados, o comentário do editor e o nome civil de autor em sigilo nunca saem.
+- No PDF, o texto mantém cor, fundo, negrito, itálico, sublinhado e alinhamento do editor.
+
+Atrás do aviso de conteúdo sensível não há botão: ele aparece depois de "Ler mesmo assim". A biblioteca do PDF vem da internet no primeiro clique; sem conexão, um aviso aparece ao lado do botão. Baixar não conta como sorteio novo.
+
 ## Sobre o paratexto
 
 O paratexto não tem marca própria: quem decide o que o leitor vê é a marca "Pode ser sorteado", texto a texto. As obras citadas são as Citações e Paráfrases de Intertextualidade e toda a Hipertextualidade (tradução, adaptação, paródia), cada uma só com relação, obra e autor.
