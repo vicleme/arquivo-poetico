@@ -23,6 +23,7 @@ import { renderLinguagem } from './estatisticas-tela-linguagem.js';
 import { renderLocalIdioma } from './estatisticas-tela-local-idioma.js';
 import { renderCorrentes } from './estatisticas-tela-correntes.js';
 import { renderDatasObras } from './estatisticas-tela-datas-obras.js';
+import { renderLeituras } from './estatisticas-tela-leituras.js';
 
 // Abas que redesenham quando os filtros, os dados ou o tema claro/escuro mudam.
 const ABAS_ESTATISTICAS = [
@@ -36,6 +37,7 @@ const ABAS_ESTATISTICAS = [
     'estatisticas-correntes',
     'estatisticas-datas-obras',
     'estatisticas-linguagem',
+    'estatisticas-leituras',
 ];
 
 export function renderEstatisticas() {
@@ -50,6 +52,7 @@ export function renderEstatisticas() {
     renderCorrentes();
     renderDatasObras();
     renderLinguagem();
+    renderLeituras();
 }
 
 if (typeof window !== 'undefined') {

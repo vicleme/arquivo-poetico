@@ -314,3 +314,56 @@ describe('Central de Ajuda: caixa de busca', () => {
         tour.encerrarTour();
     });
 });
+
+describe('Central de Ajuda: resposta do FAQ em blocos', () => {
+    it('a resposta reformatada vira parágrafos, lista e negrito, sem HTML solto', async () => {
+        await ca.abrirCentralAjuda();
+        const detalhes = Array.from(el('ca-faq-lista').querySelectorAll('details')).find((d) =>
+            d.querySelector('summary').textContent.startsWith('Como funciona a Leitura avaliativa'),
+        );
+        assert.ok(detalhes, 'pergunta não encontrada');
+        const corpo = detalhes.querySelector('.campo-grupo-corpo');
+        assert.ok(corpo.querySelectorAll('p').length > 3, 'parágrafos');
+        assert.ok(corpo.querySelectorAll('ul li').length > 5, 'itens de lista');
+        assert.ok(corpo.querySelector('strong'), 'negrito');
+        assert.ok(corpo.querySelector('code'), 'código');
+        assert.ok(!corpo.textContent.includes('**'), 'sinal de negrito aparecendo');
+    });
+});
+
+describe('Central de Ajuda: Expandir tudo e Recolher tudo', () => {
+    const abertos = (lista) =>
+        Array.from(el(lista).querySelectorAll('details')).filter((d) => d.open).length;
+    const total = (lista) => el(lista).querySelectorAll('details').length;
+
+    it('cada lista expande e recolhe só os próprios itens', async () => {
+        await ca.abrirCentralAjuda();
+        assert.equal(abertos('ca-faq-lista'), 0);
+        assert.equal(abertos('ca-como-faco-lista'), 0);
+
+        el('ca-faq-expandir').click();
+        assert.equal(abertos('ca-faq-lista'), total('ca-faq-lista'));
+        assert.equal(abertos('ca-como-faco-lista'), 0, 'a outra lista não mexe');
+
+        el('ca-faq-recolher').click();
+        assert.equal(abertos('ca-faq-lista'), 0);
+
+        el('ca-como-faco-expandir').click();
+        assert.equal(abertos('ca-como-faco-lista'), total('ca-como-faco-lista'));
+        assert.equal(abertos('ca-faq-lista'), 0);
+        el('ca-como-faco-recolher').click();
+        assert.equal(abertos('ca-como-faco-lista'), 0);
+    });
+
+    it('com a busca ativa, expandir só alcança os achados', async () => {
+        await ca.abrirCentralAjuda();
+        const caixa = el('ca-busca');
+        caixa.value = 'sorteio';
+        caixa.dispatchEvent(new Event('input'));
+        el('ca-faq-recolher').click();
+        assert.equal(abertos('ca-faq-lista'), 0);
+        el('ca-faq-expandir').click();
+        assert.equal(abertos('ca-faq-lista'), total('ca-faq-lista'));
+        assert.ok(total('ca-faq-lista') < CATEGORIAS_FAQ.flatMap((c) => c.perguntas).length);
+    });
+});

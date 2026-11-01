@@ -232,7 +232,7 @@ acervo), com estas regras de contagem:
 - Nos Ecos, um Eco com duas âncoras conta uma vez para cada âncora, então a
   soma por âncora pode passar do total de Ecos. "Personagem em comum" sem
   âncora é um grupo à parte.
-- Em Cruzamentos, "Temas × personagens" usa o papel de Tema escolhido na
+- Em Cruzamentos (Temas), "Temas × personagens" usa o papel de Tema escolhido na
   aba, e o Personagem conta em **qualquer** papel.
 
 ## Resumo para uso prático

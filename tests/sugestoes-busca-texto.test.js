@@ -32,8 +32,8 @@ const sug = (q, opcoes) => sugerirBuscaTexto(q, FONTES, opcoes);
 const textos = (q, opcoes) => sug(q, opcoes)?.itens.map((i) => i.texto);
 
 describe('cobertura da tabela de prefixos', () => {
-    it('os 110 prefixos canônicos da busca têm descrição', () => {
-        assert.equal(PREFIXOS_CANONICOS_TEXTO.length, 110);
+    it('os 115 prefixos canônicos da busca têm descrição', () => {
+        assert.equal(PREFIXOS_CANONICOS_TEXTO.length, 115);
         const sem = PREFIXOS_CANONICOS_TEXTO.filter((p) => !DESCRICAO_PREFIXO_TEXTO[p]);
         assert.deepEqual(sem, []);
     });

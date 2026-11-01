@@ -4608,6 +4608,7 @@ export function initFormPoema() {
             anotacoesMarginais: obterAnotacoes(),
             descricaoVisual: document.getElementById('p-visual').value,
             contextoHistorico: document.getElementById('p-contexto').value,
+            inspiracaoPublica: document.getElementById('p-inspiracao-publica')?.checked === true,
             ocultacao: document.getElementById('p-ocultacao').value,
             conteudoSensivel: document.getElementById('p-sensivel').value,
             vocabularioHiperacionante: document.getElementById('p-hiperacionante').value,
@@ -4704,6 +4705,7 @@ const MAPA_POEMA = {
     status: 'p-status', // select — preencherCampos seta .value por já não ser checkbox
     descricaoVisual: 'p-visual',
     contextoHistorico: 'p-contexto',
+    inspiracaoPublica: 'p-inspiracao-publica', // checkbox: preencherCampos usa .checked
     ocultacao: 'p-ocultacao',
     conteudoSensivel: 'p-sensivel',
     vocabularioHiperacionante: 'p-hiperacionante',
@@ -4963,6 +4965,7 @@ export function initFormProsa() {
             anexos: obterAnexos('prosas'),
             anexosNotaGeral: document.getElementById('pr-anexos-nota-geral').value,
             contextoHistorico: document.getElementById('pr-contexto').value,
+            inspiracaoPublica: document.getElementById('pr-inspiracao-publica')?.checked === true,
             ocultacao: document.getElementById('pr-ocultacao').value,
             conteudoSensivel: document.getElementById('pr-sensivel').value,
             vocabularioHiperacionante: document.getElementById('pr-hiperacionante').value,
@@ -5053,6 +5056,7 @@ const MAPA_PROSA = {
     publicado: 'pr-pub',
     anexosNotaGeral: 'pr-anexos-nota-geral',
     contextoHistorico: 'pr-contexto',
+    inspiracaoPublica: 'pr-inspiracao-publica', // checkbox: preencherCampos usa .checked
     ocultacao: 'pr-ocultacao',
     conteudoSensivel: 'pr-sensivel',
     vocabularioHiperacionante: 'pr-hiperacionante',

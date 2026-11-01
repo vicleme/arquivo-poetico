@@ -13,6 +13,7 @@ import {
     contarPorUniversal,
     avisosDoTexto,
     registrarRecente,
+    historicoDosRecentes,
     recentesAEvitar,
     RECENTES_MAXIMO,
     chaveDoTexto,
@@ -1094,5 +1095,36 @@ describe('Só os reconhecidos (prêmio ou menção)', () => {
             prosas: [],
         };
         assert.equal(elegiveisPorCriterios(db, { reconhecidos: true }).length, 1);
+    });
+});
+
+describe('historicoDosRecentes', () => {
+    const db = {
+        poemas: [
+            { id: 1, titulo: 'A' },
+            { id: 2, titulo: 'B' },
+        ],
+        prosas: [{ id: 7, titulo: 'C' }],
+    };
+
+    it('devolve os textos do mais novo para o mais velho', () => {
+        const h = historicoDosRecentes(db, ['poema:1', 'prosa:7', 'poema:2']);
+        assert.deepEqual(
+            h.map((e) => [e.chave, e.tipo, e.item.titulo]),
+            [
+                ['poema:2', 'poema', 'B'],
+                ['prosa:7', 'prosa', 'C'],
+                ['poema:1', 'poema', 'A'],
+            ],
+        );
+    });
+
+    it('ignora texto apagado, chave estranha e entrada que não é lista', () => {
+        assert.deepEqual(
+            historicoDosRecentes(db, ['poema:99', 'livro:1', 'x', 'poema:1']).map((e) => e.chave),
+            ['poema:1'],
+        );
+        assert.deepEqual(historicoDosRecentes(db, null), []);
+        assert.deepEqual(historicoDosRecentes(null, ['poema:1']), []);
     });
 });

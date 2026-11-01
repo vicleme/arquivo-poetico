@@ -17,7 +17,9 @@
 // escolheu nada nas novas fica com as duas ligadas.
 // ============================================================
 
-import { getEscansaoDoPoema, getEstruturaDoPoema } from './db.js';
+import { getEscansaoDoPoema, getEstruturaDoPoema, getLeiturasDoTexto } from './db.js';
+import { isDownloadLeiturasAtivo } from './leituras-download.js';
+import { leiturasParaMarkdown } from './leituras-saida.js';
 import { escansaoParaMarkdown } from './exportar-sonoridade.js';
 import { estruturaParaMarkdown } from './exportar-estrutura-textual.js';
 
@@ -131,14 +133,20 @@ export function renderCheckboxDownloadAbrangenteAcoes() {
 // correspondente simplesmente não entra (mesmo espírito de "não
 // posicionado" já usado em outros lugares do app).
 function enriquecerItemComExtras(item) {
-    if (item.tipo !== 'poema') return item;
+    // As leituras avaliativas valem para Poema e Prosa; Sonoridade e
+    // Progressão, só para Poema.
+    const leituras = isDownloadLeiturasAtivo()
+        ? getLeiturasDoTexto(item.id, item.tipo === 'prosa' ? 'prosa' : 'poema')
+        : [];
+    const comLeituras = leituras.length ? { ...item, leituras } : item;
+    if (item.tipo !== 'poema') return comLeituras;
 
     const sonoridade = isDownloadSonoridadeAtivo() ? getEscansaoDoPoema(item.id) : null;
     const estruturaTextual = isDownloadProgressaoAtivo() ? getEstruturaDoPoema(item.id) : null;
-    if (!sonoridade && !estruturaTextual) return item;
+    if (!sonoridade && !estruturaTextual) return comLeituras;
 
     return {
-        ...item,
+        ...comLeituras,
         ...(sonoridade ? { sonoridade } : {}),
         ...(estruturaTextual ? { estruturaTextual } : {}),
     };
@@ -159,12 +167,18 @@ export function enriquecerItensComExtras(itens) {
 // (exportar-md.js) pra cada item já enriquecido (item.sonoridade/
 // item.estruturaTextual, anexados por enriquecerItensComExtras acima).
 export function blocosExtrasMarkdown(item) {
-    if (!item.sonoridade && !item.estruturaTextual) return '';
     const poemaRef = { titulo: item.titulo };
     let md = '';
     if (item.sonoridade) md += escansaoParaMarkdown(item.sonoridade, poemaRef);
     if (item.estruturaTextual) md += estruturaParaMarkdown(item.estruturaTextual, poemaRef);
+    md += blocoLeiturasMarkdown(item);
     return md;
+}
+
+// Só as leituras avaliativas (Poema e Prosa): vazio quando o item não as traz.
+// Usado também pelo PDF, que trata a Sonoridade à parte.
+export function blocoLeiturasMarkdown(item) {
+    return leiturasParaMarkdown(item.leituras);
 }
 
 // Só a Morfofuncionalidade — usado pelo PDF abrangente (exportar-pdf.js),

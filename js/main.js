@@ -44,6 +44,31 @@ import {
 import { registrarModal } from './modais.js';
 import { adicionarFonteCorrente, removerFonteCorrente } from './fontes-corrente-ui.js';
 import {
+    aoSelecionarTextoLeitura,
+    aoVoltarListaLeitura,
+    aoBuscarLeitura,
+    aoFiltrarLeitura,
+    aoFiltrarClassificacaoLeitura,
+    aoFiltrarTipoLeitura,
+    aoFiltrarPegouLeitura,
+    aoAbrirItemPegouLeitura,
+    aoFiltrarIncomodouLeitura,
+    aoFiltrarReleriaLeitura,
+    aoFiltrarMostrariaLeitura,
+    aoAbrirItemIncomodouLeitura,
+    aoAlternarPadraoLeitura,
+    aoNavegarLeitura,
+    aoMarcarPegouLeitura,
+    aoAlternarIncomodouLeitura,
+    aoResponderLeitura,
+    aoEscolherCoracoesLeitura,
+    aoDigitarAvaliacaoLeitura,
+    aoPartirDaUltimaLeitura,
+    aoConcluirLeitura,
+    aoVerTextoLeitura,
+    aoBaixarTextoLeitura,
+} from './leitura-avaliativa-ui.js';
+import {
     adicionarFontePeriodoHistorico,
     removerFontePeriodoHistorico,
 } from './fontes-periodo-historico-ui.js';
@@ -180,6 +205,7 @@ import {
 } from './ocultos-exportacao.js';
 import { toggleAgruparComuns, montarControlesAgruparComuns } from './agrupar-comuns.js';
 import { toggleDownloadMetadados, montarControlesMetadados } from './metadados-download.js';
+import { toggleDownloadLeituras, montarControlesLeituras } from './leituras-download.js';
 import { toggleInfosPapel, montarControlesInfosPapel } from './infos-papel.js';
 import { montarControlesPrevias } from './previas-imagem.js';
 import { exportarEscansao } from './exportar-sonoridade.js';
@@ -506,6 +532,13 @@ import {
     limparFiltrosCompartilhados,
     definirContarEuComoPessoa,
 } from './estatisticas.js';
+import {
+    escolherVistaLeituras,
+    escolherCategoriaLeituras,
+    escolherMedidaLeituras,
+    abrirClusterLeituras,
+    fecharClusterLeituras,
+} from './estatisticas-tela-leituras.js';
 import {
     renderConexoes,
     baixarDiagramaEcos,
@@ -1402,6 +1435,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // abrir — visualizar.js).
     montarCaixasSonoridadeProgressao();
     montarControlesMetadados();
+    montarControlesLeituras();
     sincronizarChecksDadosPessoaisComEstadoSalvo();
     montarControlesIncluirOcultos();
     montarControlesAgruparComuns();
@@ -1604,6 +1638,29 @@ window.importarJSON = function (event) {
 
 window.openTab = openTab;
 window.abrirAba = abrirAba;
+window.leituraSelecionarTexto = aoSelecionarTextoLeitura;
+window.leituraVoltarLista = aoVoltarListaLeitura;
+window.leituraBuscar = aoBuscarLeitura;
+window.leituraFiltrar = aoFiltrarLeitura;
+window.leituraFiltrarClassificacao = aoFiltrarClassificacaoLeitura;
+window.leituraFiltrarTipo = aoFiltrarTipoLeitura;
+window.leituraFiltrarPegou = aoFiltrarPegouLeitura;
+window.leituraAbrirItemPegou = aoAbrirItemPegouLeitura;
+window.leituraFiltrarIncomodou = aoFiltrarIncomodouLeitura;
+window.leituraFiltrarReleria = aoFiltrarReleriaLeitura;
+window.leituraFiltrarMostraria = aoFiltrarMostrariaLeitura;
+window.leituraAbrirItemIncomodou = aoAbrirItemIncomodouLeitura;
+window.leituraPadraoAberto = aoAlternarPadraoLeitura;
+window.leituraNavegar = aoNavegarLeitura;
+window.leituraMarcarPegou = aoMarcarPegouLeitura;
+window.leituraAlternarIncomodou = aoAlternarIncomodouLeitura;
+window.leituraResponder = aoResponderLeitura;
+window.leituraEscolherCoracoes = aoEscolherCoracoesLeitura;
+window.leituraAvaliacao = aoDigitarAvaliacaoLeitura;
+window.leituraPartirDaUltima = aoPartirDaUltimaLeitura;
+window.leituraConcluir = aoConcluirLeitura;
+window.leituraVerTexto = aoVerTextoLeitura;
+window.leituraBaixarTexto = aoBaixarTextoLeitura;
 window.toggleMenuMobile = toggleMenuMobile;
 window.toggleModal = toggleModal;
 window.prepararNovo = prepararNovo;
@@ -2017,6 +2074,7 @@ window.resetarAcoesColuna = resetarAcoesColuna;
 window.toggleDownloadSonoridade = toggleDownloadSonoridade;
 window.toggleDownloadProgressao = toggleDownloadProgressao;
 window.toggleDownloadMetadados = toggleDownloadMetadados;
+window.toggleDownloadLeituras = toggleDownloadLeituras;
 window.toggleIncluirDadosPessoais = toggleIncluirDadosPessoais;
 window.toggleIncluirOcultos = toggleIncluirOcultos;
 window.toggleLembrarIncluirOcultos = toggleLembrarIncluirOcultos;
@@ -2164,6 +2222,11 @@ window.definirPapelAssuntoEstatisticas = definirPapelAssuntoEstatisticas;
 window.definirFiltrosCompartilhados = definirFiltrosCompartilhados;
 window.limparFiltrosCompartilhados = limparFiltrosCompartilhados;
 window.definirContarEuComoPessoa = definirContarEuComoPessoa;
+window.leiturasEscolherVista = escolherVistaLeituras;
+window.leiturasEscolherCategoria = escolherCategoriaLeituras;
+window.leiturasEscolherMedida = escolherMedidaLeituras;
+window.leiturasAbrirCluster = abrirClusterLeituras;
+window.leiturasFecharCluster = fecharClusterLeituras;
 window.renderConexoes = renderConexoes;
 window.setFiltroForaDoAcervo = setFiltroForaDoAcervo;
 window.setOrdemForaDoAcervo = setOrdemForaDoAcervo;

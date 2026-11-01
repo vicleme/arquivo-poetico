@@ -30,7 +30,7 @@ Adiadas de propósito (decisão do Victor, 22/10/2026): o sistema tem ganhado po
 1. **Contagens por entrada e por texto.** Cada tag, gênero, orientação e cor/raça conta quantas referências (entradas) e em quantos textos distintos, por exemplo "Escritor(a): 14 referências em 9 textos".
 2. **O não informado aparece à parte.** Gênero, orientação e cor/raça mostram sempre uma categoria "Sem informação", separada das demais, e os percentuais dizem em cima de quê foram calculados.
 3. **Orientação em duas contagens, nunca uma.** "Marcadas como LGBT" e "marcadas como hétero" são contadas cada uma por si, mais "Sem informação". Nenhuma conta é feita como "LGBT contra o resto".
-4. **Cruzamentos**, por exemplo Conhecido(a) como por gênero, por cor/raça e por orientação, e gênero por cor/raça. Sempre mostrando o "Sem informação" de cada eixo.
+4. **Cruzamentos**, por exemplo Conhecido(a) como por gênero, por cor/raça e por orientação, e gênero por cor/raça. Sempre mostrando o "Sem informação" de cada eixo. **Tela (decidido em 01/11/2026):** Pessoas e Grupos, e não a aba Cruzamentos (Temas), que guarda só matrizes com Tema na linha (`decisoes.md`).
 5. A sugestão automática por nome repetido (entrega 3) faz a mesma pessoa tender a ter a mesma caracterização em todas as citações, o que ajuda a contagem por entrada. As tags de Conhecido(a) como continuam valendo só por entrada.
 
 **Decisão F-PP-D1 (Victor, 22/10/2026):** oferecer as duas contagens, por citação (cada entrada, como acima, **padrão**) e por pessoa distinta (nome normalizado), porque citar 5 vezes a mesma autora diz algo diferente de citar 5 autoras.

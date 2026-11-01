@@ -37,6 +37,7 @@
 import { normalizarBusca } from './utils.js';
 import { GRUPOS_COMO_FACO, TAREFAS_COMO_FACO } from './como-faco-passos.js';
 import { CATEGORIAS_FAQ } from './faq-conteudo.js';
+import { respostaSemMarcas } from './ajuda-formatar.js';
 
 // Espaços repetidos (e quebras de linha) viram um só, para a frase casar
 // mesmo que o texto do item tenha espaçamento diferente.
@@ -107,7 +108,10 @@ export function buscarNaAjuda(texto, dados = {}) {
         }
         for (const c of categorias) {
             for (const p of c.perguntas) {
-                pontos.set(p, acertos(termos, alvoDe(p.pergunta, p.resposta, p.palavras)));
+                pontos.set(
+                    p,
+                    acertos(termos, alvoDe(p.pergunta, respostaSemMarcas(p.resposta), p.palavras)),
+                );
             }
         }
     }

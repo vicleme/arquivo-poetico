@@ -154,6 +154,8 @@ Vários Períodos Biográficos por texto (14/10/2026). `periodos` é a lista (0 
 
 ### Autoavaliação / Autoclassificação
 
+> A aba "Leitura avaliativa" grava nestes dois campos e guarda as leituras em `db.leituras` (seção "Leituras avaliativas", mais abaixo).
+
 `autoavaliacao`: string livre (opiniões sobre o texto). `autoclassificacao`: número de 0,5 a 5, passo 0,5 — "quantos corações" a pessoa dá pro próprio texto, campo puramente afetivo/qualitativo, sem pretensão de nota técnica. `0` (ou ausente) é o valor especial "não avaliado", nunca uma nota — a nota mínima de verdade já é 0,5. `autoclassificacaoValida`/`formatarAutoclassificacaoTexto`/`renderCoracoesHtml` (`utils.js`) centralizam validação/formatação ("3,5 corações")/renderização (compartilhada entre o widget clicável do modal e as exibições somente-leitura da tabela e da Visualização). Exportação (`.md`/docx/pdf, que reaproveitam `blocoTexto`) é só texto — "3,5 corações" — sem o emoji de coração, pra não depender de suporte a emoji na geração do PDF.
 
 ### Etiquetas (7 categorias, listas de ids do cadastro `db.etiquetas`) e Sinalizações
@@ -557,6 +559,46 @@ Dois campos em Poema e Prosa, para o que o texto diz a quem o lê (`js/comentari
 - `notasPublicas` (booleano; caixa "Pública" sob as Notas). Só `true` conta; ausente e qualquer outro valor valem `false`. Desligar grava `false`. As Notas continuam podendo guardar conteúdo privativo: só as marcadas saem.
 
 **Onde aparecem:** página `sortear.html` (bloco `#sortear-comentarios`, texto puro, depois do texto e antes da ficha; atrás do aviso de Conteúdo sensível, como o corpo; `blocosPublicosDoTexto` devolve "Comentários ao leitor" e depois "Notas", e nota privada nunca entra). Modais de Poema e Prosa (`p-notas-publicas`, `p-comentarios-publicos`, `pr-...`, depois de Notas), colunas `notasPublicas` ("Notas públicas", selo "Sim") e `comentariosPublicos`, busca `notapublica:*`/`-notapublica:*` (só asterisco) e `comentarioleitor:`, "Preencher campo" (`notasPublicas` booleano, `comentariosPublicos` texto), Importar campos (`notasPublicas` só `true`; `comentariosPublicos` ou `comentariosAoLeitor`, só preenche vazio salvo "substituir"). Saídas: `.md`, `.pdf` e `.docx` (blocos "Notas públicas: Sim" e "Comentários ao leitor", logo depois de Notas), Ver (mesmos blocos), `.csv` (`notas_publicas` com "sim" ou vazio e `comentarios_ao_leitor`), `.json` e backup pelo próprio registro (spread do item) e Importação Aditiva (clona o item). O pacote da Biblioteca (`pacote-texto.js`) não leva nenhum dos dois: reconstrói o item pelo molde neutro. Não entram em `contarCamposPreenchidos` nem na ficha do sorteio.
+
+## Inspiração pública (01/11/2026)
+
+Um campo a mais em Poema e Prosa, no mesmo molde das Notas públicas (`js/comentarios-publicos.js`, sem migração: ausente vale "Inspiração privada"):
+
+- `inspiracaoPublica` (booleano; caixa "Pública" sob a Inspiração, ids `p-inspiracao-publica` e `pr-inspiracao-publica`). Só `true` conta; ausente e qualquer outro valor valem `false`. Desligar grava `false`. O texto da Inspiração continua em `contextoHistorico` (nome legado) e só sai quando a marca está ligada (`inspiracaoPublicaDe`). Não tem relação com o papel "Inspiração para" de `pessoas`, que nunca sai.
+
+**Onde aparece:** `blocosPublicosDoTexto` devolve "Comentários ao leitor", "Inspiração" e "Notas", nessa ordem (bloco sem texto não entra; Inspiração privada nunca entra), e a página `sortear.html` já monta tudo por essa função. Coluna `inspiracaoPublica` ("Inspiração pública", selo "Sim", logo depois de Inspiração), busca `inspiracaopublica:*`/`-inspiracaopublica:*` (só asterisco; campo interno `_buscaInspiracaoPublica`), "Preencher campo" (booleano), Importar campos (só `true`, nunca desmarca). Saídas: `.md`, `.pdf` e `.docx` e o Ver ("Inspiração pública: Sim" logo depois de Inspiração), `.csv` (`inspiracao_publica`, "sim" ou vazio, depois de `inspiracao`), `.json` e backup pelo spread do item. O pacote da Biblioteca (`pacote-texto.js`) não leva o campo. Não entra em `contarCamposPreenchidos`.
+
+## Leituras avaliativas (`db.leituras`, Fase 22, 31/10 e 01/11/2026)
+
+Tabela própria, como `db.escansoes`, com uma linha por leitura; um texto pode ter várias (F22-D7, F22-D10). Código em `js/leitura-avaliativa.js` (listas, pesos, validação e sugestão de corações, puro), `js/leitura-avaliativa-acoes.js` (ações da aba), `js/leitura-avaliativa-padrao.js` (faixas e padrão), `js/leitura-avaliativa-cruzamento.js` e `js/leitura-avaliativa-cruzamento-vista.js` (cruzamento com etiquetas), `js/leitura-avaliativa-graficos.js` (séries dos gráficos) e `js/leitura-avaliativa-busca.js` (prefixos de busca). `db.leituras` é criada vazia na carga (`if (!db.leituras) db.leituras = []`) e está em `CHAVES_DB`.
+
+```json
+// db.leituras
+{
+    "id": 123,
+    "textoId": 456,
+    "tipo": "poema",
+    "data": "2026-11-01",
+    "pegou": [{ "item": "voz", "peso": "centro" }],
+    "incomodou": ["cliche"],
+    "releria": "sim",
+    "mostraria": null,
+    "sugerido": 3.5,
+    "escolhido": 4
+}
+```
+
+- **`tipo`** é `'poema'` ou `'prosa'`; o texto é achado por `tipo` mais `textoId` (poema 1 e prosa 1 são textos diferentes).
+- **`pegou`** (13 itens de fábrica): `som`, `palavra`, `imagem`, `ideia`, `voz`, `atmosfera`, `surpresa`, `graca`, `identificacao`, `comocao`, `construcao`, `engenho`, `originalidade` (minúsculas e sem acento; a ordem de tela está na F22-D21). **`peso`**: `leve`, `forte` ou `centro`, que a tela chama de Pontual, Marcante e Central (F22-D23); valem 1, 2 e 3. Só os rótulos mudaram, os ids gravados não.
+- **`incomodou`** (12 itens de fábrica, sem peso): lista de ids: `cliche`, `previsivel`, `explica_demais`, `obscuro_demais` e os demais de `ITENS_INCOMODOU`.
+- **`releria`** e **`mostraria`**: `'sim'`, `'talvez'`, `'nao'` ou `null` (sem resposta).
+- **`sugerido`** e **`escolhido`**: corações de 0,5 a 5, passo 0,5, ou `null`. **Nunca 0**: 0 é "não avaliado" em `autoclassificacao`, e terminar uma leitura sem escolher corações não grava nada por cima. `sugerido` fica guardado ao lado do `escolhido` para mostrar as divergências.
+- **A linha livre não mora aqui**: é `autoavaliacao` do texto (rótulo "Avaliação"), lida e gravada no mesmo lugar, sem cópia. O `escolhido` grava na `autoclassificacao` do texto (rótulo "Classificação") quando a pessoa confirma.
+- **Vale a leitura mais recente** de cada texto em tudo o que é derivado: filtros e prefixos de busca, bloco "Padrão das leituras", tela Leituras das Estatísticas. A faixa do padrão vem da Classificação atual do texto, e não do `escolhido` (F22-D19).
+
+**Cadeia do dado:** exclusão de poema ou prosa leva as leituras do mesmo `tipo` e `textoId` (`_removerParaExclusao`, em `js/db.js`, com `leiturasRemovidas` no registro para o Desfazer); o Mesclar do app só junta cadastros, nunca textos, então não se aplica; backup e restauração (`importarDB`), Esvaziar acervo (`ROTULOS_DADOS`) e o inventário de armazenamento cobrem a chave; a Importação Aditiva lê `leituras` dentro do texto, dá id novo e o `textoId` do texto criado, e ignora a leitura que não passa em `validarLeitura`; as saídas (`js/leituras-saida.js`, `js/leituras-download.js`) só levam as leituras com a caixa "Leituras" ligada (preferência `arquivoPoetico_downloadLeituras`, desligada por padrão): `.json` com a leitura inteira, `.md`, `.pdf` e `.docx` com o bloco "Leituras avaliativas"; o `.csv` não muda; o modal Ver mostra o bloco sempre.
+
+**Derivados, sem dado novo:** o cruzamento com etiquetas (F22-D27) lê `db.leituras`, `db.etiquetas` e `db.tagClusters`; nada do cruzamento é gravado. A escolha de vista, categoria e medida da tela Leituras vive só em memória.
 
 ## `db.locais`: cadastro de Local (etapa 1, 30/09/2026)
 

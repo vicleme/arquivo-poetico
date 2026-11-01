@@ -25,6 +25,7 @@ import { garantirModal, toggleModal } from './modais.js';
 import { iniciarTour } from './tour.js';
 import { tarefaComoFaco } from './como-faco-passos.js';
 import { buscarNaAjuda } from './busca-ajuda.js';
+import { blocosDaResposta, trechosDaLinha } from './ajuda-formatar.js';
 import { lerPerfilModoAprendizado, abrirModoAprendizado } from './modo-aprendizado.js';
 
 const $ = (id) => document.getElementById(id);
@@ -91,6 +92,50 @@ function renderComoFaco(grupos, abrir) {
     );
 }
 
+// Desenha uma linha de texto com negrito, itálico e código (ajuda-formatar.js).
+// Tudo entra por textContent: a resposta nunca é lida como HTML.
+const CLASSE_TRECHO = {
+    b: 'font-semibold text-gray-800 dark:text-slate-100',
+    code: 'px-1 rounded bg-gray-100 dark:bg-slate-800 text-xs',
+};
+function trechosEm(pai, linha) {
+    for (const { texto, estilo } of trechosDaLinha(linha)) {
+        if (!estilo) {
+            pai.append(document.createTextNode(texto));
+            continue;
+        }
+        const tag = { b: 'strong', i: 'em', code: 'code' }[estilo];
+        pai.append(criar(tag, { classe: CLASSE_TRECHO[estilo], texto }));
+    }
+}
+
+// Resposta do FAQ em blocos curtos: parágrafos, listas e subtítulos, em vez
+// de um <p> só. Texto sem marcação sai como um parágrafo, como antes.
+const COR_TEXTO = 'text-sm text-gray-600 dark:text-slate-300';
+function blocosDaRespostaEm(corpo, resposta) {
+    for (const bloco of blocosDaResposta(resposta)) {
+        if (bloco.tipo === 'ul') {
+            const lista = criar('ul', { classe: `${COR_TEXTO} list-disc pl-5 space-y-1 mb-3` });
+            for (const item of bloco.itens) {
+                const li = criar('li');
+                trechosEm(li, item);
+                lista.append(li);
+            }
+            corpo.append(lista);
+        } else if (bloco.tipo === 'h') {
+            const h = criar('h6', {
+                classe: 'text-xs font-semibold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1',
+            });
+            trechosEm(h, bloco.texto);
+            corpo.append(h);
+        } else {
+            const p = criar('p', { classe: `${COR_TEXTO} mb-3` });
+            trechosEm(p, bloco.texto);
+            corpo.append(p);
+        }
+    }
+}
+
 function renderFaq(categorias, abrir) {
     const container = $('ca-faq-lista');
     if (!container) return;
@@ -107,12 +152,7 @@ function renderFaq(categorias, abrir) {
                     detalhes.open = abrir;
                     const resumo = criar('summary', { texto: p.pergunta });
                     const corpo = criar('div', { classe: 'campo-grupo-corpo' });
-                    corpo.append(
-                        criar('p', {
-                            classe: 'text-sm text-gray-600 dark:text-slate-300',
-                            texto: p.resposta,
-                        }),
-                    );
+                    blocosDaRespostaEm(corpo, p.resposta);
                     detalhes.append(resumo, corpo);
                     return detalhes;
                 }),
@@ -167,6 +207,29 @@ function aoTeclarNaBusca(e) {
     }
 }
 
+// "Expandir tudo" e "Recolher tudo" de cada lista (Como eu faço e Perguntas
+// frequentes): abrem ou fecham todos os itens que estão na tela, inclusive
+// com a busca ativa (aí só os achados existem). Cada botão mexe só na sua lista.
+function ligarExpansao() {
+    for (const [prefixo, lista] of [
+        ['ca-como-faco', 'ca-como-faco-lista'],
+        ['ca-faq', 'ca-faq-lista'],
+    ]) {
+        for (const [acao, abrir] of [
+            ['expandir', true],
+            ['recolher', false],
+        ]) {
+            $(`${prefixo}-${acao}`)?.addEventListener('click', () => {
+                $(lista)
+                    ?.querySelectorAll('details')
+                    .forEach((d) => {
+                        d.open = abrir;
+                    });
+            });
+        }
+    }
+}
+
 function ligarBusca() {
     const caixa = $('ca-busca');
     if (!caixa) return;
@@ -190,6 +253,7 @@ function atualizarTextoBotaoApresentacao() {
 // de apresentação, recalculado.
 export function initCentralAjuda() {
     ligarBusca();
+    ligarExpansao();
     aplicarBusca('');
 }
 

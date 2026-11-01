@@ -25,7 +25,7 @@ import { itemParaMarkdownPartes, linhasComunsDosItens } from './exportar-md.js';
 import { blocoLinhasComuns } from './exportar-comuns.js';
 import { resolverAgruparComuns } from './agrupar-comuns.js';
 import { corpoParaLinhasRicas, linhaTemFundoUniforme, blocosDeFundoContinuos } from './utils.js';
-import { blocoEstruturaMarkdown } from './download-abrangente.js';
+import { blocoEstruturaMarkdown, blocoLeiturasMarkdown } from './download-abrangente.js';
 import {
     escansaoCabecalhoMarkdown,
     escansaoParesEcosMarkdown,
@@ -892,6 +892,8 @@ export function gerarPdfExportacao(itens, opcoes = {}) {
         // sempre (estruturaParaMarkdown não tem nenhuma tabela pra
         // desenhar, então continua pelo caminho de Markdown genérico).
         renderizarLinhasSimples(blocoEstruturaMarkdown(item));
+        // Leituras avaliativas (Poema e Prosa), só com a caixa "Leituras" ligada.
+        renderizarLinhasSimples(blocoLeiturasMarkdown(item));
         renderizarLinhasSimples('---\n\n');
     });
 

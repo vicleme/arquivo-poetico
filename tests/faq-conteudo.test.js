@@ -51,3 +51,23 @@ describe('FAQ: categorias e perguntas', () => {
         }
     });
 });
+
+describe('FAQ: Leitura avaliativa (Fase 22, entrega 5a)', () => {
+    const p = perguntaFaq('faq-leitura-avaliativa');
+
+    it('existe e cobre a aba, os prefixos de busca e as duas vistas da tela Leituras', () => {
+        assert.ok(p, 'pergunta ausente');
+        [
+            'De que maneira te pegou',
+            '`pegou:`',
+            '`mostraria:`',
+            'Cruzamento com etiquetas',
+            'Contraste',
+        ].forEach((trecho) => assert.ok(p.resposta.includes(trecho), trecho));
+    });
+
+    it('diz que as colunas do cruzamento somam mais que o total e explica "Sem etiqueta"', () => {
+        assert.match(p.resposta, /As colunas somam mais que o total/);
+        assert.match(p.resposta, /"Sem etiqueta"/);
+    });
+});

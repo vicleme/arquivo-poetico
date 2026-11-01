@@ -545,6 +545,23 @@ export function registrarRecente(recentes, chave, maximo = RECENTES_MAXIMO) {
     return [...sem, chave].slice(-maximo);
 }
 
+// Histórico do sorteio: os textos das chaves de `recentes` ("poema:12"), do mais
+// novo para o mais velho, como `[{ chave, tipo, item }]`. Chave de um texto que
+// não existe mais no acervo (apagado) é ignorada.
+export function historicoDosRecentes(dbRef, recentes) {
+    const saida = [];
+    const lista = Array.isArray(recentes) ? recentes : [];
+    for (let i = lista.length - 1; i >= 0; i--) {
+        const chave = lista[i];
+        const [tipo, ...resto] = String(chave).split(':');
+        const tabela = tipo === 'poema' ? dbRef?.poemas : tipo === 'prosa' ? dbRef?.prosas : null;
+        const id = resto.join(':');
+        const item = (tabela || []).find((t) => mesmoId(t?.id, id));
+        if (item) saida.push({ chave, tipo, item });
+    }
+    return saida;
+}
+
 // Quantos dos últimos sorteados o sorteio evita, em função de quantos textos
 // há para escolher: metade do conjunto (arredondada para baixo), no máximo
 // `maximo` (10). Assim a regra nunca esvazia o sorteio: com 6 elegíveis evita

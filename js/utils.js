@@ -133,7 +133,7 @@ export function formatarAutoclassificacaoTexto(valor) {
 // metade é um <button> de verdade, com título próprio).
 export function renderCoracoesHtml(valor, { tabela = '', somenteLeitura = false } = {}) {
     const n = autoclassificacaoValida(valor) ? Number(valor) : 0;
-    const rotulo = formatarAutoclassificacaoTexto(n) || 'Sem autoclassificação';
+    const rotulo = formatarAutoclassificacaoTexto(n) || 'Sem classificação';
     let html = `<span class="corar-container" role="${somenteLeitura ? 'img' : 'radiogroup'}" aria-label="${escapeHtml(rotulo)}">`;
     for (let i = 1; i <= 5; i++) {
         const preenchido = Math.max(0, Math.min(1, n - (i - 1))) * 100; // 0 / 50 / 100
@@ -210,19 +210,40 @@ const VALOR_DE_ESTILO_PERIGOSO = /url\s*\(|expression\s*\(|javascript:/i;
 // que a pessoa volta a editá-lo depois).
 const COMENTARIO_REGEX = /<!--[\s\S]*?-->/g;
 
+// "<" que o parser de HTML não leria como tag de verdade: o "<" que não
+// vem seguido de letra ou de "/letra" (por exemplo ">Amor<?" ou "a < b"),
+// ou que parece tag mas não tem nenhum ">" depois (um "<" solto no fim do
+// texto). O parser trata "<?", "<!" e "</" sem letra como o começo de um
+// comentário e descarta tudo até o próximo ">" (ou até o fim do texto,
+// quando não há mais nenhum ">"): o poema inteiro depois do "<" some da
+// tela, sem erro. Escapado como "&lt;", ele vira o caractere que a pessoa
+// digitou. As tags de verdade (<div style="...">, <u>, </div>) ficam
+// intactas, para o DOMPurify seguir filtrando como antes.
+const MENOR_SOLTO_REGEX = /<(?!(?:[A-Za-z]|\/[A-Za-z])[^>]*>)/g;
+
+export function escaparMenorSolto(valor) {
+    if (valor === null || valor === undefined) return '';
+    return String(valor).replace(MENOR_SOLTO_REGEX, '&lt;');
+}
+
 export function sanitizarTextoRico(valor) {
     if (valor === null || valor === undefined) return '';
-    const bruto = String(valor).replace(COMENTARIO_REGEX, '');
+    // `original` é o texto como foi digitado (sem os comentários); `bruto` é o
+    // mesmo texto com os "<" soltos já escapados, o que vai para o DOMPurify.
+    // Os caminhos de "texto puro" abaixo usam `original`, para o "<" não ser
+    // escapado duas vezes.
+    const original = String(valor).replace(COMENTARIO_REGEX, '');
+    const bruto = escaparMenorSolto(original);
 
     // Nada de "<" no texto — não há o que sanitizar, e evita qualquer
     // efeito colateral de passar texto puro por um parser de HTML.
-    if (!bruto.includes('<')) return bruto;
+    if (!original.includes('<')) return original;
 
     if (typeof window === 'undefined' || !window.DOMPurify) {
         // DOMPurify não carregou (ex.: script bloqueado) — melhor
         // perder a formatação do que arriscar HTML não filtrado.
         console.warn('DOMPurify indisponível — texto exibido sem formatação.');
-        return escapeHtml(bruto);
+        return escapeHtml(original);
     }
 
     let limpo = window.DOMPurify.sanitize(bruto, {
@@ -265,9 +286,9 @@ export function sanitizarTextoRico(valor) {
     if (textoPlanoAntes.length > 20 && textoPlanoDepois.length < textoPlanoAntes.length * 0.5) {
         console.warn(
             'sanitizarTextoRico: HTML possivelmente malformado — formatação removida, texto original preservado como texto puro.',
-            bruto.slice(0, 80),
+            original.slice(0, 80),
         );
-        return escapeHtml(bruto);
+        return escapeHtml(original);
     }
 
     return limpo;
@@ -3303,9 +3324,18 @@ export const CAMPOS_ATRIBUTO = {
     leitura: '_buscaLeituraAutonoma',
     // Valência do texto (valencia-texto.js): `valencia:leve`, `valencia:*`.
     valencia: '_buscaValencia',
+    // Leitura avaliativa (leitura-avaliativa-busca.js), pela leitura mais recente do texto:
+    // `pegou:originalidade`, `pegou:"originalidade centro"`, `incomodou:clichê`, `pegou:*`.
+    pegou: '_buscaPegou',
+    incomodou: '_buscaIncomodou',
+    // Resposta da leitura mais recente: `releria:sim`, `mostraria:não`, `releria:*`.
+    releria: '_buscaReleria',
+    mostraria: '_buscaMostraria',
     // Notas públicas e Comentários ao leitor (comentarios-publicos.js):
     // `notapublica:*` e `-notapublica:*`; `comentarioleitor:` busca no texto do comentário.
     notapublica: '_buscaNotaPublica',
+    // Inspiração pública: `inspiracaopublica:*` e `-inspiracaopublica:*`.
+    inspiracaopublica: '_buscaInspiracaoPublica',
     comentarioleitor: 'comentariosPublicos',
     datareferencia: '_buscaDataReferencia',
     distanciaobra: '_buscaDistanciaObra',
@@ -3480,7 +3510,12 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaAutorEmSigilo: 'autoremsigilo',
     _buscaLeituraAutonoma: 'leitura',
     _buscaValencia: 'valencia',
+    _buscaPegou: 'pegou',
+    _buscaIncomodou: 'incomodou',
+    _buscaReleria: 'releria',
+    _buscaMostraria: 'mostraria',
     _buscaNotaPublica: 'notapublica',
+    _buscaInspiracaoPublica: 'inspiracaopublica',
     comentariosPublicos: 'comentarioleitor',
     _buscaDataReferencia: 'datareferencia',
     _buscaDistanciaObra: 'distanciaobra',

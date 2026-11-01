@@ -289,9 +289,10 @@ Três campos parecidos, detalhados em `pessoas-papeis-for-ai.md`:
 ## Notas, avaliação e status
 
 - **`notas`**: campo de notas livres sobre o texto.
-- **`autoavaliacao`**: texto livre — opinião sobre o próprio texto.
-- **`autoclassificacao`**: número de 0,5 a 5 (passo 0,5) — "corações" que
-  o autor dá ao próprio texto, puramente afetivo, sem pretensão de nota
+- **`autoavaliacao`** (aparece como "Avaliação", no grupo "Avaliação pessoal"):
+  texto livre — opinião de quem organiza o acervo sobre o texto.
+- **`autoclassificacao`** (aparece como "Classificação"): número de 0,5 a 5
+  (passo 0,5) — "corações" que quem organiza o acervo dá ao texto, puramente afetivo, sem pretensão de nota
   técnica. `0`/ausente é o estado especial "não avaliado" (não é a nota
   mínima — a nota mínima de verdade é 0,5).
 - **`sorteavel`**: booleano, se o autor permite que este texto seja
@@ -324,6 +325,13 @@ Três campos parecidos, detalhados em `pessoas-papeis-for-ai.md`:
   só as marcadas podem aparecer para leitores (hoje: a página do sorteio de
   leitura). Desligado por padrão; ausente vale `false`. Quem decide é o autor:
   nunca ponha `true` por conta própria, ofereça como sugestão para ele revisar.
+- **`inspiracaoPublica`**: booleano, se o autor marca o `contextoHistorico`
+  (Inspiração) como publicável (a caixa "Pública" sob a Inspiração). Como as
+  `notas`, a Inspiração pode guardar coisa privada, então só a marcada pode
+  aparecer para leitores (hoje: a página do sorteio de leitura). Não tem
+  relação com o papel "Inspiração para" de `pessoas`, que nunca aparece.
+  Desligado por padrão; ausente vale `false`. Quem decide é o autor: nunca
+  ponha `true` por conta própria, ofereça como sugestão para ele revisar.
 - **`comentariosPublicos`** ("Comentários ao leitor" na interface): texto livre
   escrito para quem lê a obra; aparece para o leitor sempre que preenchido. Ao
   contrário de `notas`, escreva pensando em quem lê. Não é o comentário

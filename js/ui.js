@@ -47,6 +47,7 @@ import {
     atualizarDatalistTemasAssunto,
 } from './editor.js';
 import { resetFontesCorrente } from './fontes-corrente-ui.js';
+import { renderLeituraAvaliativa } from './leitura-avaliativa-ui.js';
 import { resetFontesPeriodoHistorico } from './fontes-periodo-historico-ui.js';
 import { preencherCamposPeriodoHistorico } from './periodo-historico-campos-ui.js';
 import {
@@ -141,6 +142,7 @@ export const GRUPOS_NAV = [
             { id: 'conexoes', rotulo: 'Conexões' },
             { id: 'sonoridade', rotulo: 'Sonoridade' },
             { id: 'morfofuncionalidade', rotulo: 'Morfofuncionalidade' },
+            { id: 'leitura-avaliativa', rotulo: 'Leitura avaliativa' },
         ],
     },
     {
@@ -152,11 +154,12 @@ export const GRUPOS_NAV = [
             { id: 'estatisticas-temas-assuntos', rotulo: 'Temas e Assuntos' },
             { id: 'estatisticas-pessoas-grupos', rotulo: 'Pessoas e Grupos' },
             { id: 'estatisticas-personagens', rotulo: 'Personagens' },
-            { id: 'estatisticas-cruzamentos', rotulo: 'Cruzamentos' },
+            { id: 'estatisticas-cruzamentos', rotulo: 'Cruzamentos (Temas)' },
             { id: 'estatisticas-local-idioma', rotulo: 'Local e idioma' },
             { id: 'estatisticas-correntes', rotulo: 'Correntes literárias' },
             { id: 'estatisticas-datas-obras', rotulo: 'Obras citadas' },
             { id: 'estatisticas-linguagem', rotulo: 'Linguagem' },
+            { id: 'estatisticas-leituras', rotulo: 'Leituras' },
         ],
     },
     {
@@ -207,6 +210,7 @@ export function abrirAba(tabName) {
     if (tabName.startsWith('estatisticas')) renderEstatisticas();
     if (tabName === 'exportacoes-frequentes') renderExportacoesFrequentes();
     if (tabName === 'biblioteca') renderBiblioteca();
+    if (tabName === 'leitura-avaliativa') renderLeituraAvaliativa();
     atualizarRotuloAbaAtual(tabName);
     atualizarGrupoAtivoNavDesktop(tabName);
     fecharDropdownNavDesktop(tabName);

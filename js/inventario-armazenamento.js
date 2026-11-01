@@ -143,6 +143,11 @@ export const CHAVES_LOCALSTORAGE = Object.freeze([
         nota: 'Download de Poemas com a Sonoridade, ligado ou desligado',
     },
     {
+        chave: 'arquivoPoetico_downloadLeituras',
+        categoria: 'preferencia',
+        nota: 'Download de Poemas e Prosas com as leituras avaliativas, ligado ou desligado',
+    },
+    {
         chave: 'arquivoPoetico_downloadMetadados',
         categoria: 'preferencia',
         nota: 'Download de Poemas e Prosas com Metadados (desligado leva só título e texto)',
@@ -254,6 +259,7 @@ export const CHAVES_DB = Object.freeze([
         'ecosIgnorados',
         'escansoes',
         'estruturasTextuais',
+        'leituras',
         'moldes',
     ].map((chave) => ({ chave, categoria: 'dado', nota: '' })),
     {

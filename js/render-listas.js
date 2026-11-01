@@ -9,8 +9,9 @@
 // ============================================================
 
 import { faixaDeValencia, ordemDaValencia, rotuloValenciaTexto } from './valencia-texto.js';
+import { camposBuscaDeLeitura } from './leitura-avaliativa-busca.js';
 import { ehSorteavel } from './sorteavel.js';
-import { ehNotaPublica } from './comentarios-publicos.js';
+import { ehNotaPublica, ehInspiracaoPublica } from './comentarios-publicos.js';
 import { ehAutorEmSigilo } from './autor-em-sigilo.js';
 import {
     leituraAutonomaDe,
@@ -273,6 +274,7 @@ import {
     celulaLeituraAutonoma,
     celulaValencia,
     celulaNotaPublica,
+    celulaInspiracaoPublica,
     celulaAutoclassificacao,
     celulaCamposPreenchidos,
     montarPaginacao,
@@ -914,7 +916,12 @@ export function setFiltroProsas(valor) {
 // substituir, pra permitir combinar com outros termos.
 // Prefixos que só valem com `*` (ver PREFIXOS_SO_ASTERISCO_TEXTO): a lupa do cabeçalho
 // já escreve o asterisco. As datas ficam de fora, porque aceitam valores além do `*`.
-const PREFIXOS_SO_COM_ASTERISCO = ['sorteavel', 'notapublica', 'autoremsigilo'];
+const PREFIXOS_SO_COM_ASTERISCO = [
+    'sorteavel',
+    'notapublica',
+    'inspiracaopublica',
+    'autoremsigilo',
+];
 
 export function buscarPorPrefixo(tabela, campoItem) {
     const prefixo = PREFIXOS_CANONICOS_POR_CAMPO[campoItem];
@@ -1874,6 +1881,9 @@ export function decorarCamposBusca(item, extraLivros = '', tipo = undefined) {
         _numerosAutoclassificacao: autoclassificacaoValida(item.autoclassificacao)
             ? [Number(item.autoclassificacao)]
             : [],
+        // Leitura avaliativa: `pegou:`, `incomodou:`, `releria:` e `mostraria:` leem a
+        // leitura mais recente do texto (ver leitura-avaliativa-busca.js). Sem leitura, os campos ficam vazios.
+        ...camposBuscaDeLeitura(db.leituras, tipo, item.id),
         // `sorteavel:*` acha os marcados para o sorteio de leitura, `-sorteavel:*` os demais.
         _buscaSorteavel: ehSorteavel(item) ? 'sim' : '',
         // `leitura:` busca pelo rótulo (Só em sequência, Só em conjunto, Só como
@@ -1889,6 +1899,8 @@ export function decorarCamposBusca(item, extraLivros = '', tipo = undefined) {
         _buscaAutorEmSigilo: ehAutorEmSigilo(item) ? 'sim' : '',
         // `notapublica:*` acha os textos com as Notas marcadas como públicas.
         _buscaNotaPublica: ehNotaPublica(item) ? 'sim' : '',
+        // `inspiracaopublica:*` acha os textos com a Inspiração marcada como pública.
+        _buscaInspiracaoPublica: ehInspiracaoPublica(item) ? 'sim' : '',
         // periodoHistoricoId guarda só o id (nome mora no cadastro central
         // db.periodosHistoricos — ver migrarPeriodosHistoricos em db.js);
         // nome entra na busca geral e no prefixo "periodohistorico:" (ver
@@ -2721,6 +2733,7 @@ const COMPARADORES_ORDENACAO = {
     leituraAutonoma: compararPorTexto((p) => rotuloLeituraAutonoma(leituraAutonomaDe(p))),
     valencia: compararPorNumero((p) => ordemDaValencia(p, db.temas)),
     notasPublicas: compararPorNumero((p) => (ehNotaPublica(p) ? 1 : 0)),
+    inspiracaoPublica: compararPorNumero((p) => (ehInspiracaoPublica(p) ? 1 : 0)),
     comentariosPublicos: compararPorTexto((p) => p.comentariosPublicos),
     fonte: compararPorTexto((p) => p.fonteTexto?.origem),
     grafia: compararPorTexto((p) => p.fonteTexto?.grafia),
@@ -3372,6 +3385,7 @@ export function renderPoemas() {
         leituraAutonoma: (p) => celulaLeituraAutonoma(p),
         valencia: (p) => celulaValencia(p),
         notasPublicas: (p) => celulaNotaPublica(p),
+        inspiracaoPublica: (p) => celulaInspiracaoPublica(p),
         comentariosPublicos: (p) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.comentariosPublicos)}</td>`,
         epocaRetratada: (p) => {
@@ -3691,6 +3705,7 @@ export function renderProsas() {
         leituraAutonoma: (pr) => celulaLeituraAutonoma(pr),
         valencia: (pr) => celulaValencia(pr),
         notasPublicas: (pr) => celulaNotaPublica(pr),
+        inspiracaoPublica: (pr) => celulaInspiracaoPublica(pr),
         comentariosPublicos: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.comentariosPublicos)}</td>`,
         epocaRetratada: (pr) => {

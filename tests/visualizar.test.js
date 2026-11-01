@@ -302,18 +302,18 @@ describe('renderVisualizacaoHtml — Reconhecimentos (item 8, faltava na Visuali
     });
 });
 
-describe('renderVisualizacaoHtml — Autoavaliação (campo novo, texto livre)', () => {
-    it('mostra o bloco "Autoavaliação" com o texto digitado', () => {
+describe('renderVisualizacaoHtml — Avaliação (campo novo, texto livre)', () => {
+    it('mostra o bloco "Avaliação" com o texto digitado', () => {
         const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x', autoavaliacao: 'Gostei.' };
         const html = renderVisualizacaoHtml(item);
-        assert.match(html, /<h4[^>]*>Autoavaliação<\/h4>/);
+        assert.match(html, /<h4[^>]*>Avaliação<\/h4>/);
         assert.match(html, /Gostei\./);
     });
 
-    it('não mostra o bloco "Autoavaliação" quando o campo está ausente ou vazio', () => {
+    it('não mostra o bloco "Avaliação" quando o campo está ausente ou vazio', () => {
         const item = { id: 1, tipo: 'poema', titulo: 'T', texto: 'x', autoavaliacao: '   ' };
         const html = renderVisualizacaoHtml(item);
-        assert.ok(!html.includes('Autoavaliação'));
+        assert.doesNotMatch(html, /<h4[^>]*>Avaliação<\/h4>/);
     });
 });
 

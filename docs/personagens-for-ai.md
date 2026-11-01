@@ -248,7 +248,7 @@ whole archive), with these counting rules:
 - For Ecos, an Eco with two anchors counts once for each anchor, so the sum
   by anchor can exceed the total number of Ecos. "Personagem em comum"
   without an anchor is a separate group.
-- In Cruzamentos (Cross-tabs), "Temas × personagens" uses the Theme role
+- In Cruzamentos (Temas) (Cross-tabs), "Temas × personagens" uses the Theme role
   chosen on the tab, and the Character counts in **any** role.
 
 ## Quick summary for practical use

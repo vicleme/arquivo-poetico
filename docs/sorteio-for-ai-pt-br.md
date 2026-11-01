@@ -6,7 +6,7 @@ Este documento não pede nenhuma tarefa. Explica como a página "Sortear leitura
 
 ## O que a página faz
 
-Quem lê pergunta "sobre o que você quer ler hoje?", escolhe (ou não) um convite da Vitrine de leitura, uma extensão e "só os preferidos do autor", e a página sorteia **um texto** do acervo do autor. Ela lê o acervo do navegador em que é aberta e não grava nada nele, a não ser a lista dos últimos sorteados e a posição da ficha do texto.
+Quem lê pergunta "sobre o que você quer ler hoje?", escolhe (ou não) um convite da Vitrine de leitura, uma extensão e "só os meus preferidos" (o rótulo fala na voz de quem organiza o acervo), e a página sorteia **um texto** do acervo do autor. Ela lê o acervo do navegador em que é aberta e não grava nada nele, a não ser a lista dos últimos sorteados e a posição da ficha do texto.
 
 ## Quem pode ser sorteado
 
@@ -48,7 +48,7 @@ Todos opcionais, combinados por E:
 
 - **Convite** ("Sobre o que você quer ler?"): o texto tem algum Tema que pertence a esse convite da Vitrine de leitura (qualquer papel do Tema). O texto não guarda convite, só Temas. Ver `temas-assuntos-for-ai-pt-br.md`.
 - **Extensão**: régua fixa, igual para todo acervo. Poema se mede em versos, prosa em palavras. Breve: até 4 versos ou 300 palavras. Curto: de 5 a 14 versos ou de 301 a 1.000 palavras. Médio: de 15 a 40 ou de 1.001 a 7.500. Longo: de 41 a 100 ou de 7.501 a 17.500. Extenso: acima disso.
-- **Só os preferidos do autor**: `autoclassificacao` de 4 corações ou mais. 0 ("não avaliado") nunca conta.
+- **Só os meus preferidos**: `autoclassificacao` de 4 corações ou mais. 0 ("não avaliado") nunca conta.
 - **Só os reconhecidos** ("Só os reconhecidos (com prêmio ou menção)"): o texto tem ao menos uma entrada em `reconhecimentos` com `premio` ou `posicao` preenchidos. Prêmio e menção moram no mesmo campo (por exemplo `posicao` "Menção honrosa"); entrada só com ano ou nota não conta. Desmarcada por padrão, e não fica guardada entre visitas. **Para sugestões:** preencha `premio` ou `posicao` em todo reconhecimento, senão o texto não conta.
 - **Peso do texto**: quatro caixas (Leve, Neutro ou ambivalente, Pesado e Sem valência), nenhuma marcada por padrão, que valem como OU entre si e E com os outros critérios. O peso de um texto é o `valenciaAjuste` do autor, quando preenchido, e senão a valência calculada pelos Temas do texto (o mesmo índice das Estatísticas: temas desagradáveis menos agradáveis, sobre agradáveis, neutros e desagradáveis; até -1/3 é leve, a partir de +1/3 é pesado; Tema ambivalente fica fora da conta). O texto **sem valência** (nenhum Tema classificado e sem ajuste) só sai quando "Sem valência" é uma das caixas marcadas; marcando só faixas de peso, ele fica de fora. A valência do texto nunca é guardada. Ao sugerir, classifique a valência dos **Temas** (é o que alimenta o peso de vários textos de uma vez); `valenciaAjuste` só quando o texto pesa diferente dos Temas dele. Ver `campos-poema-prosa-for-ai-pt-br.md`.
 - **Conteúdo sensível**: uma caixa, marcada por padrão ("Incluir textos com conteúdo sensível"). Desmarcada, o texto com `conteudoSensivel` preenchido não sai e não entra nas contagens; marcada, ele sai com o aviso antes do texto. A escolha fica guardada no navegador de quem lê. O que vale como sensível é só o campo `conteudoSensivel` (texto livre): um texto sem ele é sorteado de qualquer jeito, então preencha esse campo ao sugerir um texto delicado, descrevendo o que há (e não o trecho).

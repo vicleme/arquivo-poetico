@@ -74,17 +74,53 @@
 
             <!-- 2. Procedimental: cada item vira um mini-tour (montado em JS). -->
             <section id="ca-secao-como-faco" class="space-y-2">
-                <h4 class="text-sm font-bold uppercase text-gray-500 dark:text-slate-400">
-                    Como eu faço para...
-                </h4>
+                <div class="flex items-baseline justify-between gap-3">
+                    <h4 class="text-sm font-bold uppercase text-gray-500 dark:text-slate-400">
+                        Como eu faço para...
+                    </h4>
+                    <span class="text-xs flex-shrink-0 space-x-2">
+                        <button
+                            type="button"
+                            id="ca-como-faco-expandir"
+                            class="text-blue-600 dark:text-blue-400 underline"
+                        >
+                            Expandir tudo
+                        </button>
+                        <button
+                            type="button"
+                            id="ca-como-faco-recolher"
+                            class="text-blue-600 dark:text-blue-400 underline"
+                        >
+                            Recolher tudo
+                        </button>
+                    </span>
+                </div>
                 <div id="ca-como-faco-lista" class="space-y-2"></div>
             </section>
 
             <!-- 3. Conceitual: só texto, agrupado por categoria (montado em JS). -->
             <section id="ca-secao-faq" class="space-y-2">
-                <h4 class="text-sm font-bold uppercase text-gray-500 dark:text-slate-400">
-                    Perguntas frequentes
-                </h4>
+                <div class="flex items-baseline justify-between gap-3">
+                    <h4 class="text-sm font-bold uppercase text-gray-500 dark:text-slate-400">
+                        Perguntas frequentes
+                    </h4>
+                    <span class="text-xs flex-shrink-0 space-x-2">
+                        <button
+                            type="button"
+                            id="ca-faq-expandir"
+                            class="text-blue-600 dark:text-blue-400 underline"
+                        >
+                            Expandir tudo
+                        </button>
+                        <button
+                            type="button"
+                            id="ca-faq-recolher"
+                            class="text-blue-600 dark:text-blue-400 underline"
+                        >
+                            Recolher tudo
+                        </button>
+                    </span>
+                </div>
                 <div id="ca-faq-lista" class="space-y-4"></div>
             </section>
         </div>

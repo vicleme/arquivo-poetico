@@ -21,6 +21,7 @@
 import { ETIQUETAS_CATEGORIAS, ROTULOS_ETIQUETAS } from './etiquetas.js';
 import { extrairOrigensUnicas } from './intertextualidade.js';
 import { programaEfetivoDaCorrente } from './correntes-hierarquia.js';
+import { itensEmUsoParaBusca } from './leitura-avaliativa-busca.js';
 import { nomesPapeisPessoa, papeisUsadosNosTextos } from './papeis-pessoa.js';
 import {
     extrairDialetosUnicos,
@@ -183,6 +184,12 @@ export function montarFontesBuscaTexto(dbRef, tabela) {
     fontes.movimentodireto = fontes.movimento;
     fontes.escola = () => correntesDoPrograma(dbRef, 'Escola');
     fontes.escoladireta = fontes.escola;
+
+    // Leitura avaliativa: só os itens que a leitura mais recente de algum texto da aba marcou.
+    fontes.pegou = () => itensEmUsoParaBusca(dbRef, tabela, 'pegou');
+    fontes.incomodou = () => itensEmUsoParaBusca(dbRef, tabela, 'incomodou');
+    fontes.releria = () => itensEmUsoParaBusca(dbRef, tabela, 'releria');
+    fontes.mostraria = () => itensEmUsoParaBusca(dbRef, tabela, 'mostraria');
 
     // Gênero só existe em Prosa (em Poemas o prefixo fica oculto).
     fontes.genero = () =>

@@ -23,7 +23,7 @@
 import { valenciaDoTexto, rotuloValenciaTexto } from './valencia-texto.js';
 import { db } from './db.js';
 import { ehSorteavel } from './sorteavel.js';
-import { ehNotaPublica } from './comentarios-publicos.js';
+import { ehNotaPublica, ehInspiracaoPublica } from './comentarios-publicos.js';
 import { ehAutorEmSigilo } from './autor-em-sigilo.js';
 import { leituraAutonomaDe, rotuloLeituraAutonoma } from './leitura-autonoma.js';
 import {
@@ -62,6 +62,7 @@ import {
 import { opcoesOcultasDosPeriodos } from './ocultas-periodos.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
 import { renderCheckboxDownloadAbrangenteAcoes } from './download-abrangente.js';
+import { renderLeiturasAcoes } from './leituras-download.js';
 import { renderMetadadosAcoes } from './metadados-download.js';
 import { renderIncluirOcultosAcoes } from './ocultos-exportacao.js';
 import { renderInfosPapelAcoes } from './infos-papel.js';
@@ -618,6 +619,13 @@ export function celulaNotaPublica(item) {
         : '<td class="p-4 text-xs text-gray-400 dark:text-slate-500">·</td>';
 }
 
+// Célula da coluna "Inspiração pública": o selo só aparece nos textos marcados.
+export function celulaInspiracaoPublica(item) {
+    return ehInspiracaoPublica(item)
+        ? '<td class="p-4"><span class="text-xs font-semibold text-indigo-700 dark:text-indigo-300">Sim</span></td>'
+        : '<td class="p-4 text-xs text-gray-400 dark:text-slate-500">·</td>';
+}
+
 // Célula da coluna "Campos Preenchidos" (ver contarCamposPreenchidos em
 // exportar-md.js) — compartilhada entre Poemas e Prosas. Mostra "N/TOTAL"
 // mais uma barrinha de preenchimento, pra bater o olho e comparar a
@@ -795,6 +803,7 @@ const COLUNA_CAMPO_BUSCA = {
         temas: '_buscaTema',
         notas: 'notas',
         notasPublicas: '_buscaNotaPublica',
+        inspiracaoPublica: '_buscaInspiracaoPublica',
         comentariosPublicos: 'comentariosPublicos',
         sorteavel: '_buscaSorteavel',
         autorEmSigilo: '_buscaAutorEmSigilo',
@@ -850,6 +859,7 @@ const COLUNA_CAMPO_BUSCA = {
         temas: '_buscaTema',
         notas: 'notas',
         notasPublicas: '_buscaNotaPublica',
+        inspiracaoPublica: '_buscaInspiracaoPublica',
         comentariosPublicos: 'comentariosPublicos',
         sorteavel: '_buscaSorteavel',
         autorEmSigilo: '_buscaAutorEmSigilo',
@@ -1042,9 +1052,11 @@ export function atualizarPainelAcoes(tabela, painelId) {
     const infosPapel = tabela === 'poemas' || tabela === 'prosas' ? renderInfosPapelAcoes() : '';
     // "Metadados" também vale só para os textos (Poemas e Prosas).
     const metadados = tabela === 'poemas' || tabela === 'prosas' ? renderMetadadosAcoes() : '';
+    // "Leituras" (leituras avaliativas) vale para Poemas e Prosas.
+    const leituras = tabela === 'poemas' || tabela === 'prosas' ? renderLeiturasAcoes() : '';
     // Os checks convivem num bloco só, em ordem alfabética (Dados ocultados,
-    // Infos de papel, Metadados, Progressão, Sonoridade).
-    const checks = ocultos + infosPapel + metadados + extra;
+    // Infos de papel, Leituras, Metadados, Progressão, Sonoridade).
+    const checks = ocultos + infosPapel + leituras + metadados + extra;
     const blocoChecks = checks
         ? `<div class="mt-3 pt-3 border-t border-gray-100 dark:border-slate-700 flex flex-wrap items-center gap-x-5 gap-y-2">${checks}</div>`
         : '';

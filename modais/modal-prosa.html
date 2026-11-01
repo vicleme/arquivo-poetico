@@ -448,6 +448,19 @@
                                 class="text-sm h-20"
                                 placeholder="O que inspirou o texto — um gatilho pontual, uma circunstância específica..."
                             ></textarea>
+                            <label
+                                class="mt-1 flex items-start gap-2 text-sm cursor-pointer"
+                                title="Marque quando o conteúdo da Inspiração não for comprometedor. Só a Inspiração marcada pode aparecer no sorteio de leitura. Desligado por padrão."
+                            >
+                                <input type="checkbox" id="pr-inspiracao-publica" class="mt-1" />
+                                <span
+                                    ><strong>Pública</strong>
+                                    <span class="block text-xs text-gray-500 dark:text-slate-400"
+                                        >A Inspiração pode aparecer para quem lê no sorteio. Sem a
+                                        marca, fica só no cadastro.</span
+                                    ></span
+                                >
+                            </label>
                         </div>
                     </details>
 
@@ -1045,11 +1058,11 @@
                     </details>
 
                     <details class="campo-grupo">
-                        <summary>Autoavaliação</summary>
+                        <summary>Avaliação pessoal</summary>
                         <div class="campo-grupo-corpo">
                             <div>
                                 <label class="form-label"
-                                    >Autoclassificação
+                                    >Classificação
                                     <span
                                         class="font-normal normal-case text-gray-400 dark:text-slate-500"
                                         >(quanto você gosta deste texto — não é nota técnica)</span
@@ -1061,7 +1074,7 @@
                                     <span
                                         id="pr-autoclassificacao-legenda"
                                         class="text-xs text-gray-400 dark:text-slate-500"
-                                        >Sem autoclassificação</span
+                                        >Sem classificação</span
                                     >
                                     <button
                                         type="button"
@@ -1073,7 +1086,7 @@
                                 </div>
                             </div>
                             <label class="form-label"
-                                >Autoavaliação
+                                >Avaliação
                                 <span
                                     class="font-normal normal-case text-gray-400 dark:text-slate-500"
                                     >(opiniões livres sobre o texto)</span

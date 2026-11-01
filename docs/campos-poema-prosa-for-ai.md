@@ -252,7 +252,8 @@ coletanea, principal }` (titles already resolved; `posicao` is `null` for
 - **`contextoHistorico`** (label **Inspiração**, Inspiration): free text
   about what inspired the text (a specific trigger or circumstance). The
   internal name is legacy; the content is NOT historical context, it is
-  inspiration. Don't confuse it with `periodosHistoricosIds`.
+  inspiration. Don't confuse it with `periodosHistoricosIds`. It is private
+  unless `inspiracaoPublica` is `true`.
 
 ## Intratextuality — Elos (Links) and Ecos (Echoes)
 
@@ -312,10 +313,11 @@ papel }`, `papel` ("role") is a single value (not an array) from
 ## Notes, self-assessment, and status
 
 - **`notas`** ("notes"): free notes field about the text.
-- **`autoavaliacao`** ("self-assessment"): free text — the author's
-  opinion of their own text.
-- **`autoclassificacao`** ("self-rating"): number from 0.5 to 5 (0.5
-  steps) — "hearts" the author gives their own text, purely affective,
+- **`autoavaliacao`** (shown as "Avaliação", in the "Avaliação pessoal"
+  group): free text — the opinion of the person who organizes the archive
+  about the text.
+- **`autoclassificacao`** (shown as "Classificação"): number from 0.5 to 5
+  (0.5 steps) — "hearts" given to the text by whoever organizes the archive, purely affective,
   no claim to technical scoring. `0`/absent is the special "not rated"
   state (it's not the minimum score — the real minimum is 0.5).
 - **`sorteavel`** ("drawable"): boolean, whether the author allows this
@@ -351,6 +353,14 @@ papel }`, `papel` ("role") is a single value (not an array) from
   (today: the reading draw page). Off by default; absent means `false`.
   The author decides, so never set it to `true` on your own: offer it as a
   suggestion for them to review.
+- **`inspiracaoPublica`** ("public inspiration"): boolean, whether the author
+  marks `contextoHistorico` (Inspiração) as publishable (the "Public"
+  checkbox under Inspiração). Like `notas`, it may hold private material, so
+  only the marked one can be shown to readers (today: the reading draw page).
+  It has nothing to do with the "Inspiração para" role of `pessoas`, which is
+  never shown. Off by default; absent means `false`. The author decides, so
+  never set it to `true` on your own: offer it as a suggestion for them to
+  review.
 - **`comentariosPublicos`** ("comments to the reader", shown as "Comentários
   ao leitor"): free text written for people who read the work; shown to
   readers whenever filled in. Unlike `notas`, write it with a reader in

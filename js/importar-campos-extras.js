@@ -9,6 +9,7 @@
 //   - pessoas: lista de { pessoa, papeis } (papéis do registro, ver papeis-pessoa.js);
 //   - pendencia: texto livre;
 //   - notasPublicas: marca as Notas como públicas (só `true` conta);
+//   - inspiracaoPublica: o mesmo para a Inspiração (só `true` conta);
 //   - leituraAutonoma: Lê-se sozinho, Só em sequência, Só em conjunto ou Só como
 //     início (aceita o valor, o rótulo ou uma forma solta; "sozinho" é ignorado);
 //   - autorEmSigilo: liga o sigilo do autor no texto (só `true` conta: um
@@ -305,6 +306,24 @@ function lerCamposSimples(bruta, problemas) {
             });
         } else if (b.valor) {
             saida.push({ chave: 'notasPublicas', valor: true });
+        }
+    }
+
+    // Inspiração pública: como `notasPublicas`, só `true` conta (nunca desmarca).
+    if (
+        bruta.inspiracaoPublica !== undefined &&
+        bruta.inspiracaoPublica !== null &&
+        bruta.inspiracaoPublica !== ''
+    ) {
+        const b = lerBooleano(bruta.inspiracaoPublica);
+        if (!b.ok) {
+            problemas.push({
+                campo: 'inspiracaoPublica',
+                valor: String(bruta.inspiracaoPublica),
+                motivo: 'valor-invalido',
+            });
+        } else if (b.valor) {
+            saida.push({ chave: 'inspiracaoPublica', valor: true });
         }
     }
 

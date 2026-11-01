@@ -50,6 +50,7 @@ import { completarPessoaComFicha } from './pessoas-viagem.js';
 import { ecosImportados } from './ancora-eco.js';
 import { importarLigacoes } from './ligacoes-tema-pessoa.js';
 import { montarContextoAlvos, remapearAlvosDoConceitos } from './alvos-conceitos.js';
+import { limparLeitura, validarLeitura } from './leitura-avaliativa.js';
 
 // Sobrescritas de papel do Assunto vindas do JSON → [{ assuntoId, papel }] do
 // acervo de destino (ver a chamada, em aplicarImportacaoAditiva).
@@ -614,6 +615,7 @@ function remontarItem(itemOrigem, novoId, referencias) {
     delete novo.periodosHistoricosIds; // ids de outro acervo, refeitos abaixo
     delete novo.sonoridade; // vira registro próprio em db.escansoes, ver aplicarImportacaoAditiva
     delete novo.estruturaTextual; // idem, em db.estruturasTextuais
+    delete novo.leituras; // idem, em db.leituras (Fase 22)
 
     novo.id = novoId;
     novo.paiId = null;
@@ -738,6 +740,7 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
     const novasProsas = [];
     const novasEscansoes = [];
     const novasEstruturasTextuais = [];
+    const novasLeituras = [];
     let duplicatasPuladas = 0;
     // Pais de período criados pelo caminho e quantos tinham homônimo no destino.
     const periodos = { paisCriados: 0, homonimos: 0 };
@@ -884,6 +887,20 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
         if (itemOrigem.sonoridade) {
             novasEscansoes.push({ ...itemOrigem.sonoridade, id: gerarId(), poemaId: novoId });
         }
+        // Leituras avaliativas (Fase 22): viajam dentro do texto, ganham id novo e
+        // o textoId do texto recém-criado. Leitura quebrada é ignorada.
+        if (Array.isArray(itemOrigem.leituras)) {
+            const tipoLeitura = rel.tipo === 'poemas' ? 'poema' : 'prosa';
+            itemOrigem.leituras.forEach((bruta) => {
+                const leitura = limparLeitura({
+                    ...bruta,
+                    id: gerarId(),
+                    textoId: novoId,
+                    tipo: tipoLeitura,
+                });
+                if (validarLeitura(leitura).ok) novasLeituras.push(leitura);
+            });
+        }
         if (itemOrigem.estruturaTextual) {
             novasEstruturasTextuais.push({
                 ...itemOrigem.estruturaTextual,
@@ -917,6 +934,10 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
     dbRef.prosas.push(...novasProsas);
     dbRef.escansoes.push(...novasEscansoes);
     dbRef.estruturasTextuais.push(...novasEstruturasTextuais);
+    if (novasLeituras.length) {
+        if (!Array.isArray(dbRef.leituras)) dbRef.leituras = [];
+        dbRef.leituras.push(...novasLeituras);
+    }
     deps.save();
 
     return {
@@ -926,6 +947,7 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
             prosas: novasProsas.length,
             escansoes: novasEscansoes.length,
             estruturasTextuais: novasEstruturasTextuais.length,
+            leituras: novasLeituras.length,
         },
         duplicatasPuladas,
         soltos,

@@ -138,6 +138,10 @@ npm run format:check   # prettier --check .
 │   │                          → Elos e Ecos (Intratextualidade): como se
 │   │                            diferenciam, como escolher Relação, Direção e
 │   │                            Tipo, e como não confundi-los com campos vizinhos
+│   ├── leitura-avaliativa-for-ai.md / leitura-avaliativa-for-ai-pt-br.md
+│   │                          → Roteiro para uma IA entrevistar a pessoa sobre
+│   │                            um texto (o que pegou, o que incomodou,
+│   │                            corações) sem preencher nada por conta própria
 │   ├── morfofuncionalidade-for-ai.md / morfofuncionalidade-for-ai-pt-br.md
 │   │                          → Campos do registro de Morfofuncionalidade
 │   │                            (Unidades/Eventos, posição no texto,
@@ -499,13 +503,15 @@ npm run format:check   # prettier --check .
   Históricos e Correntes têm seleção por cartão ou linha e uma barra de ação
   (Acrescentar, Remover, Definir ou Limpar, conforme o campo), sempre com
   **Desfazer**. Campos de lista usam etiquetas, como nos modais.
-- **Estatísticas**: várias abas, entre elas Cruzamentos (matriz de Temas por
+- **Estatísticas**: várias abas, entre elas Cruzamentos (Temas) (matriz de Temas por
   Pessoas ou Grupos que só conta os pares Tema × Pessoa ligados, com tela de
   análise por texto e a escolha do que fazer com os textos ainda não analisados), Local e idioma, Correntes literárias, Personagens e
   **Obras citadas** (textos por século e década das obras que citam, a
   distância entre a obra e o texto e as origens delas; fonte: Obras,
   Referências ou Todas); clicar numa barra abre a lista de textos
-  correspondente.
+  correspondente. **Leituras** mostra o padrão das leituras feitas na aba
+  Leitura avaliativa, em duas vistas (faixas de Classificação e cruzamento
+  com clusters de etiquetas).
 - **Dados**: aba Biblioteca (pacotes de textos em domínio público para
   importar), Importação Aditiva (soma ao acervo sem apagar nada) e Backup e
   recuperação (retratos automáticos, arquivo de extras e **Esvaziar o acervo**,
@@ -837,6 +843,23 @@ npm run format:check   # prettier --check .
     - Ver `docs/morfofuncionalidade-for-ai-pt-br.md` para o detalhamento
       completo dos campos, incluindo a diferença com o botão de nome
       parecido "Estrutura" (a hierarquia Livro/Parte/Seção do acervo).
+- **Leitura avaliativa** (Análise > Leitura avaliativa): aba para descobrir
+  por que um texto pegou ou não pegou. Escolha um poema ou uma prosa e
+  responda, ao lado do texto, um formulário só de seleção: **"De que maneira
+  te pegou"** (13 itens, cada um com um nível: Pontual, Marcante ou
+  Central), **"O que incomodou"** (12 itens, sem nível), "Releria?" e
+  "Mostraria a alguém?" (sim, talvez ou não) e uma linha livre, que é o campo
+  Avaliação do próprio texto. No fim a aba sugere os corações por uma regra
+  visível e você decide; o valor escolhido é a Classificação do texto. Um
+  texto pode ter várias leituras, cada uma com data (`db.leituras`), e a mais
+  recente é a que os filtros e as estatísticas usam. A busca de Poemas e
+  Prosas aceita `pegou:`, `incomodou:`, `releria:` e `mostraria:`, e
+  Estatísticas > Leituras mostra o padrão. As leituras vão no backup e na
+  Importação Aditiva e, com a caixa "Leituras" ligada, nos downloads `.json`,
+  `.md`, `.pdf` e `.docx`.
+    - Ver `docs/leitura-avaliativa-for-ai-pt-br.md` para um roteiro que uma IA
+      pode seguir para entrevistar você sobre um texto, sem preencher nada
+      por conta própria.
 - **Localizar e Substituir** (`localizar-substituir.html`): ferramenta
   separada (grupo "Ferramentas" na nav) para buscar um trecho em
   Poemas e/ou Prosas — com opção de diferenciar maiúsculas/minúsculas,

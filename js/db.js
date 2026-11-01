@@ -131,6 +131,7 @@ import {
     sincronizarAparicoesComCamposAntigos,
 } from './aparicoes-dado.js';
 import { guardarAvisoDeAparicoes } from './aviso-aparicoes.js';
+import { ordenarLeiturasRecentes } from './leitura-avaliativa.js';
 
 const DB_KEY = 'arquivoPoetico_v3';
 // Guarda quando o último "Baixar JSON" foi de fato clicado — usado pra
@@ -1337,6 +1338,10 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // por enquanto sem cálculo de divergência (isso é o sub-passo 2 do
     // Molde, replicado aqui por simetria).
     escansoes: [],
+    // Leituras avaliativas (Fase 22, aba "Leitura avaliativa"): uma linha por leitura,
+    // várias por texto. { id, textoId, tipo, data, pegou, incomodou, releria, mostraria,
+    // sugerido, escolhido } — forma completa em leitura-avaliativa.js.
+    leituras: [],
     // Análise de Progressão Morfofuncional (menu "Morfofuncionalidade") —
     // Unidades (forma+função de uma seção do texto: unidadeEstrofica +
     // unidadeDiscursiva) e Eventos (movimento pontual: progressaoDialetica)
@@ -1436,6 +1441,7 @@ if (!db.ecosIgnorados) db.ecosIgnorados = [];
 if (!db.padroesColunas || typeof db.padroesColunas !== 'object') db.padroesColunas = {};
 aplicarPadroesColunasDeFabrica(db);
 if (!db.escansoes) db.escansoes = [];
+if (!db.leituras) db.leituras = [];
 if (!db.estruturasTextuais) db.estruturasTextuais = [];
 if (!db.templatesEstrutura) db.templatesEstrutura = [];
 if (!db.templatesEstruturaOcultos) db.templatesEstruturaOcultos = [];
@@ -3285,6 +3291,7 @@ export async function importarDB(novoDb) {
     aplicarPadroesColunasDeFabrica(db);
     sincronizarAncorasEco(db);
     sincronizarParesIgnorados(db);
+    db.leituras = Array.isArray(novoDb.leituras) ? novoDb.leituras : [];
     db.escansoes = novoDb.escansoes || [];
     migrarRegistroTomSonoridade(db.escansoes);
     db.estruturasTextuais = novoDb.estruturasTextuais || [];
@@ -4405,6 +4412,16 @@ function _removerParaExclusao(col, id) {
         });
     }
 
+    // Excluir Poema ou Prosa: as leituras avaliativas dele vão junto (Fase 22,
+    // entrega 3). Ficam guardadas aqui para o "Desfazer" devolver.
+    let leiturasRemovidas = [];
+    if (col === 'poemas' || col === 'prosas') {
+        const tipoTexto = col === 'poemas' ? 'poema' : 'prosa';
+        const ehDoTexto = (l) => l.tipo === tipoTexto && l.textoId == id;
+        leiturasRemovidas = (db.leituras || []).filter(ehDoTexto);
+        if (leiturasRemovidas.length) db.leituras = db.leituras.filter((l) => !ehDoTexto(l));
+    }
+
     // Excluir Grupo: some do cadastro e some de `grupoIds` de toda
     // Pessoa que pertencia a ele — a Pessoa continua existindo, só deixa
     // de fazer parte desse grupo específico (ela pode estar em outros).
@@ -4604,6 +4621,7 @@ function _removerParaExclusao(col, id) {
         vinculosMovimentoEscolaRemovidos,
         filhosReligados,
         vinculosMoldeRemovidos,
+        leiturasRemovidas,
         capasParaDescartar,
         posicaoRemovida,
         irmaos,
@@ -4650,6 +4668,7 @@ function _restaurar(removido) {
         vinculosMovimentoEscolaRemovidos,
         filhosReligados,
         vinculosMoldeRemovidos,
+        leiturasRemovidas,
         posicaoRemovida,
         irmaos,
         aparicoesFechadas,
@@ -4770,6 +4789,7 @@ function _restaurar(removido) {
         filho.divisao = divisaoAnterior;
         filho.generoDivisao = generoAnterior;
     });
+    if (leiturasRemovidas?.length) (db.leituras ||= []).push(...leiturasRemovidas);
     (vinculosMoldeRemovidos || []).forEach(({ moldeId, statusAnterior, poemaIdAnterior }) => {
         const m = db.moldes?.find((i) => i.id == moldeId);
         if (m) {
@@ -4838,6 +4858,15 @@ export function getEscansaoDoPoema(poemaId) {
 // pelo modal de cadastro/edição.
 export function getEstruturaDoPoema(poemaId) {
     return db.estruturasTextuais.find((e) => e.poemaId == poemaId) || null;
+}
+
+// Leituras avaliativas de um texto (poema ou prosa), da mais recente para a mais
+// antiga. `tipo` é 'poema' ou 'prosa': ids de poema e prosa não são garantidos
+// distintos entre si.
+export function getLeiturasDoTexto(textoId, tipo) {
+    return ordenarLeiturasRecentes(
+        db.leituras.filter((l) => l.textoId == textoId && l.tipo === tipo),
+    );
 }
 
 export function deleteItem(col, id, aposConfirmar = null) {
@@ -5087,6 +5116,14 @@ export function deleteItem(col, id, aposConfirmar = null) {
         if (usos > 0) {
             const n = livrosIds.length;
             rotulo = `${rotulo}${rotulo.includes(' · ') ? '; ' : ' · '}o vínculo com o Uso de IA de ${n} livro${n !== 1 ? 's' : ''} será desfeito`;
+        }
+    }
+
+    // Poema ou Prosa com leituras avaliativas: elas saem junto (o Desfazer devolve).
+    if (col === 'poemas' || col === 'prosas') {
+        const n = getLeiturasDoTexto(id, col === 'poemas' ? 'poema' : 'prosa').length;
+        if (n > 0) {
+            rotulo = `${rotulo}${rotulo.includes(' · ') ? '; ' : ' · '}${n} leitura${n !== 1 ? 's avaliativas serão apagadas' : ' avaliativa será apagada'} junto`;
         }
     }
 

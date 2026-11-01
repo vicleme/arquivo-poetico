@@ -2233,8 +2233,7 @@ export function renderAutoclassificacao(tabela) {
     const valor = Number(hidden.value) || 0;
     container.innerHTML = renderCoracoesHtml(valor, { tabela });
     const legenda = document.getElementById(`${p}-autoclassificacao-legenda`);
-    if (legenda)
-        legenda.textContent = formatarAutoclassificacaoTexto(valor) || 'Sem autoclassificação';
+    if (legenda) legenda.textContent = formatarAutoclassificacaoTexto(valor) || 'Sem classificação';
 }
 
 // Clicar num coração (ou numa das metades) chama isto com o valor

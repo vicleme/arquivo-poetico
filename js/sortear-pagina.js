@@ -28,6 +28,7 @@ import {
     legendaDaFaixa,
     linhaDoTipo,
     registrarRecente,
+    historicoDosRecentes,
     sortearTexto,
     chaveDoTexto,
     versoesDeTraducaoDoSorteio,
@@ -59,6 +60,9 @@ export function lerAcervoDoNavegador(armazenamento = globalThis.localStorage) {
 // de chaves ("poema:12"), nunca o texto. Guardar é opcional: se o navegador
 // recusar (modo privado, armazenamento cheio), o sorteio segue só na memória.
 export const CHAVE_RECENTES = 'arquivoPoetico_sorteioRecentes';
+
+// Quantos textos o "Anterior" e o "Próximo" alcançam na sessão (só na memória).
+export const PERCURSO_MAXIMO = 50;
 
 // Lê a lista de recentes. Devolve `[]` para ausente, inválido ou de outro
 // formato; descarta o que não for texto e mantém só os últimos `RECENTES_MAXIMO`.
@@ -387,7 +391,7 @@ export function montarSortear(
     caixa.id = 'sortear-favoritos';
     linhaFavoritos.append(
         caixa,
-        criar('span', '', `Só os preferidos do autor (${PISO_FAVORITO_AUTOR} corações ou mais)`),
+        criar('span', '', `Só os meus preferidos (${PISO_FAVORITO_AUTOR} corações ou mais)`),
     );
 
     // Só os reconhecidos: textos com prêmio ou menção cadastrados. Prêmio e menção
@@ -448,6 +452,13 @@ export function montarSortear(
     const botao = criar('button', CLASSE_BOTAO_PRIMARIO, 'Sortear');
     botao.type = 'button';
     botao.id = 'sortear-botao';
+    // Ao lado do Sortear ficam também o Anterior e o Próximo (o mesmo par do
+    // rodapé do texto, com ids terminados em "-topo"), para voltar sem rolar até
+    // o fim de um texto longo.
+    const controlesTopo = criar('div', 'flex flex-wrap items-center gap-2');
+    controlesTopo.id = 'sortear-controles-topo';
+    const linhaSortear = criar('div', 'flex flex-wrap items-center gap-2');
+    linhaSortear.append(botao, controlesTopo);
 
     // Exibição (não é critério do sorteio): onde a ficha aparece.
     const linhaPosicao = criar(
@@ -504,7 +515,7 @@ export function montarSortear(
         grupoPeso,
         linhaSensiveis,
         contagem,
-        botao,
+        linhaSortear,
         linhaPosicao,
         linhaIdioma,
     );
@@ -514,7 +525,13 @@ export function montarSortear(
     resultado.tabIndex = -1;
     resultado.setAttribute('aria-live', 'polite');
 
-    raiz.append(cartao, resultado);
+    // Histórico: os últimos sorteados (a lista de recentes, guardada no navegador),
+    // do mais novo para o mais velho. Fica fechado e some quando não há nada.
+    const historico = criar('details', CLASSE_CARTAO);
+    historico.id = 'sortear-historico';
+    historico.hidden = true;
+
+    raiz.append(cartao, historico, resultado);
 
     const pesosMarcados = () => PESOS_SORTEIO.filter((faixa) => caixasPeso.get(faixa).checked);
 
@@ -678,6 +695,7 @@ export function montarSortear(
         bloco.append(criar('p', 'text-sm mb-3', texto));
         botoes.forEach((b) => bloco.append(b));
         resultado.append(bloco);
+        mostrarInicio(bloco);
     }
 
     function botaoSortearOutro() {
@@ -687,8 +705,125 @@ export function montarSortear(
         return b;
     }
 
+    // Percurso da sessão: os textos que passaram pela tela, na ordem, para
+    // "Anterior" e "Próximo". Fica só na memória (some ao fechar a página) e não
+    // mexe nos recentes: voltar a um texto não é um sorteio novo, então a regra de
+    // evitar repetição segue como estava. Um sorteio novo, ou a troca de versão
+    // (Elo de tradução), entra no fim e a tela vai para ele, sem apagar o que
+    // havia à frente.
+    let percurso = [];
+    let posicao = -1;
+
+    // Refaz a lista do histórico. Clicar num título reabre o texto (aviso sensível
+    // fechado) e o põe no fim do percurso, para o "Anterior" funcionar. Não é um
+    // sorteio novo: os recentes ficam como estão.
+    function atualizarHistorico() {
+        const entradas = historicoDosRecentes(db, recentes);
+        historico.hidden = entradas.length === 0;
+        historico.textContent = '';
+        if (!entradas.length) return;
+        historico.append(
+            criar(
+                'summary',
+                'cursor-pointer text-sm font-medium',
+                `Últimos sorteados (${entradas.length})`,
+            ),
+        );
+        const lista = criar('ul', 'mt-3 space-y-1');
+        entradas.forEach(({ chave, tipo, item }) => {
+            const li = criar('li');
+            const b = criar(
+                'button',
+                'text-left text-sm text-blue-600 dark:text-blue-400 underline',
+                item.titulo || 'Sem título',
+            );
+            b.type = 'button';
+            b.addEventListener('click', () => {
+                const r = { ok: true, tipo, item, chave };
+                if (percurso[posicao]?.chave !== chave) registrarNoPercurso(r);
+                mostrarTexto(percurso[posicao], false, { rolar: true });
+            });
+            li.append(
+                b,
+                criar(
+                    'span',
+                    'ml-2 text-xs uppercase text-gray-500 dark:text-slate-400',
+                    tipo === 'prosa' ? 'Prosa' : 'Poema',
+                ),
+            );
+            lista.append(li);
+        });
+        historico.append(lista);
+    }
+
+    function registrarNoPercurso(r) {
+        percurso.push(r);
+        if (percurso.length > PERCURSO_MAXIMO) percurso = percurso.slice(-PERCURSO_MAXIMO);
+        posicao = percurso.length - 1;
+    }
+
+    // Abre um texto do percurso. O aviso de conteúdo sensível volta fechado, como
+    // numa abertura nova.
+    function irParaNoPercurso(n) {
+        if (n < 0 || n >= percurso.length) return;
+        posicao = n;
+        mostrarTexto(percurso[n], false, { rolar: true });
+    }
+
+    // Refaz o par de cima. Chamado a cada texto mostrado, para os dois pares
+    // ficarem sempre iguais.
+    function atualizarControlesTopo() {
+        controlesTopo.textContent = '';
+        controlesTopo.append(...controlesDoPercurso('-topo', false));
+    }
+
+    function botaoDoPercurso(id, rotulo, destino) {
+        const b = criar('button', CLASSE_BOTAO_SECUNDARIO, rotulo);
+        b.type = 'button';
+        b.id = id;
+        b.addEventListener('click', () => irParaNoPercurso(destino()));
+        return b;
+    }
+
+    // "Anterior" e "Próximo" só aparecem quando há para onde ir, e "2 de 5" só
+    // quando há mais de um texto no percurso. Vêm antes do "Sortear outro".
+    // `sufixo` separa os ids do par de cima ("-topo") dos do rodapé; `comSortearOutro`
+    // é falso no par de cima, que já tem o Sortear.
+    function controlesDoPercurso(sufixo = '', comSortearOutro = true) {
+        const nos = [];
+        if (posicao > 0) {
+            nos.push(botaoDoPercurso(`sortear-anterior${sufixo}`, 'Anterior', () => posicao - 1));
+        }
+        if (posicao >= 0 && posicao < percurso.length - 1) {
+            nos.push(botaoDoPercurso(`sortear-proximo${sufixo}`, 'Próximo', () => posicao + 1));
+        }
+        if (comSortearOutro) nos.push(botaoSortearOutro());
+        if (percurso.length > 1) {
+            const quantos = criar(
+                'span',
+                'text-xs text-gray-500 dark:text-slate-400',
+                `${posicao + 1} de ${percurso.length}`,
+            );
+            quantos.id = `sortear-posicao${sufixo}`;
+            nos.push(quantos);
+        }
+        return nos;
+    }
+
     // O último texto na tela, para trocar a posição da ficha sem sortear de novo.
     let ultimoMostrado = null;
+
+    // Texto novo na tela: se o começo dele não está à vista (quem clicou em
+    // "Sortear outro" no fim de um texto longo), leva a tela até ele. Sem
+    // animação, porque o conteúdo acabou de ser trocado. Começo já à vista, a
+    // tela não se mexe.
+    function mostrarInicio(no) {
+        const topo = no.getBoundingClientRect?.().top ?? 0;
+        const alto = globalThis.innerHeight || 0;
+        if (topo < 0 || (alto && topo >= alto)) {
+            no.scrollIntoView?.({ behavior: 'auto', block: 'start' });
+        }
+    }
 
     // Rola até o nó e leva o foco para ele (leitor de tela), sem animação para
     // quem desliga o movimento no sistema.
@@ -728,8 +863,9 @@ export function montarSortear(
     // Padrão: título, texto, ficha. Com o conteúdo sensível ainda fechado, a
     // ficha espera o texto abrir (só o aviso aparece). Na escolha "antes": título,
     // ficha, texto; aí a ficha aparece também junto do aviso.
-    function mostrarTexto(r, corpoVisivel, { focar = true } = {}) {
+    function mostrarTexto(r, corpoVisivel, { focar = true, rolar = false } = {}) {
         ultimoMostrado = { r, corpoVisivel };
+        atualizarControlesTopo();
         resultado.textContent = '';
         const bloco = criar('article', CLASSE_CARTAO);
         const titulo = criar('h2', 'text-xl font-semibold mb-3', r.item.titulo || 'Sem título');
@@ -765,13 +901,15 @@ export function montarSortear(
                 p.append(criar('strong', '', `${a.rotulo}: `), document.createTextNode(a.texto));
                 caixaAviso.append(p);
             });
-            const ler = criar('button', CLASSE_BOTAO_PRIMARIO + ' mr-2 mt-2', 'Ler mesmo assim');
+            const ler = criar('button', CLASSE_BOTAO_PRIMARIO, 'Ler mesmo assim');
             ler.type = 'button';
             ler.id = 'sortear-ler-mesmo-assim';
             ler.addEventListener('click', () => mostrarTexto(r, true));
-            const outro = botaoSortearOutro();
-            outro.classList.add('mt-2');
-            caixaAviso.append(ler, outro);
+            // Linha própria com espaçamento uniforme (gap), para o "2 de 2" não
+            // colar no último botão.
+            const acoes = criar('div', 'mt-2 flex flex-wrap items-center gap-2');
+            acoes.append(ler, ...controlesDoPercurso());
+            caixaAviso.append(acoes);
             bloco.append(caixaAviso);
         } else {
             const corpo = montarCorpo(r.item.texto);
@@ -799,12 +937,14 @@ export function montarSortear(
                 if (paratexto) bloco.append(paratexto);
             }
             const rodape = criar('div', 'mt-6 flex flex-wrap items-center gap-4');
-            rodape.append(botaoSortearOutro());
+            rodape.append(...controlesDoPercurso());
             if (textoEhLongo(r.item.texto)) rodape.append(botaoVoltarAoInicio(titulo));
             bloco.append(rodape);
         }
         resultado.append(bloco);
-        if (focar) resultado.focus();
+        // preventScroll: quem leva a tela ao começo do texto é `mostrarInicio`.
+        if (focar) resultado.focus({ preventScroll: true });
+        if (rolar) mostrarInicio(bloco);
     }
 
     // Abre a outra versão (Elo de tradução) no lugar do texto na tela. Não é um
@@ -819,7 +959,9 @@ export function montarSortear(
         };
         recentes = registrarRecente(recentes, r.chave);
         gravarRecentes(recentes, armazenamento);
-        mostrarTexto(r, false);
+        registrarNoPercurso(r);
+        atualizarHistorico();
+        mostrarTexto(r, false, { rolar: true });
     }
 
     function sortear() {
@@ -831,7 +973,9 @@ export function montarSortear(
         if (r.ok) {
             recentes = registrarRecente(recentes, r.chave);
             gravarRecentes(recentes, armazenamento);
-            mostrarTexto(r, false);
+            registrarNoPercurso(r);
+            atualizarHistorico();
+            mostrarTexto(r, false, { rolar: true });
             return;
         }
         if (r.motivo === 'sem-favoritos') {
@@ -847,7 +991,7 @@ export function montarSortear(
                 atualizar();
                 sortear();
             });
-            mensagem('Nenhum texto desse tema tem nota alta do autor.', [sem]);
+            mensagem('Nenhum texto desse tema está entre os meus preferidos.', [sem]);
             return;
         }
         const avisos = [
@@ -885,6 +1029,7 @@ export function montarSortear(
     });
     botao.addEventListener('click', sortear);
     atualizar();
+    atualizarHistorico();
 
     return { sortear, atualizar };
 }

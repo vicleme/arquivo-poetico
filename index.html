@@ -482,6 +482,13 @@
                             >
                                 Morfofuncionalidade
                             </button>
+                            <button
+                                id="btn-leitura-avaliativa"
+                                onclick="abrirAba('leitura-avaliativa')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Leitura avaliativa
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -539,7 +546,7 @@
                                 onclick="abrirAba('estatisticas-cruzamentos')"
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
-                                Cruzamentos
+                                Cruzamentos (Temas)
                             </button>
                             <button
                                 id="btn-estatisticas-local-idioma"
@@ -568,6 +575,13 @@
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
                                 Linguagem
+                            </button>
+                            <button
+                                id="btn-estatisticas-leituras"
+                                onclick="abrirAba('estatisticas-leituras')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Leituras
                             </button>
                         </div>
                     </div>
@@ -3772,6 +3786,7 @@
                         <span class="agrupar-comuns-slot"></span>
                         <span class="incluir-ocultos-slot"></span>
                         <span class="infos-papel-slot"></span>
+                        <span class="leituras-slot"></span>
                         <span class="metadados-slot"></span>
                         <span class="sonoridade-progressao-slot"></span>
                     </div>
@@ -4754,6 +4769,7 @@
                         <span class="agrupar-comuns-slot"></span>
                         <span class="incluir-ocultos-slot"></span>
                         <span class="infos-papel-slot"></span>
+                        <span class="leituras-slot"></span>
                         <span class="metadados-slot"></span>
                     </div>
 
@@ -5636,6 +5652,17 @@
                     </table>
                 </div>
                 <div id="paginacao-estrutura-textual"></div>
+            </section>
+
+            <section id="leitura-avaliativa" class="tab-content">
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold">Leitura avaliativa</h2>
+                    <p class="text-sm text-gray-600 dark:text-slate-300 mt-1">
+                        Para entender por que um texto pegou ou não. Escolha um texto, responda o
+                        formulário e decida os corações no fim.
+                    </p>
+                </div>
+                <div id="leitura-conteudo"></div>
             </section>
 
             <section id="biblioteca" class="tab-content">
@@ -6830,9 +6857,10 @@
 
             <section id="estatisticas-cruzamentos" class="tab-content">
                 <div class="mb-5">
-                    <h2 class="text-xl font-semibold">Cruzamentos</h2>
+                    <h2 class="text-xl font-semibold">Cruzamentos (Temas)</h2>
                     <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
                         Quais temas aparecem junto com quais pessoas ou grupos nos mesmos textos.
+                        Esta aba guarda os cruzamentos com Tema na linha.
                     </p>
                 </div>
                 <div class="est-filtros-compartilhados mb-6"></div>
@@ -6853,7 +6881,7 @@
                             <div id="painel-inverter-coocorrencia"></div>
                             <select
                                 id="cruzamentos-baixar-formato"
-                                aria-label="Formato do download da matriz de Cruzamentos"
+                                aria-label="Formato do download da matriz de Cruzamentos (Temas)"
                                 title="Formato do arquivo baixado"
                                 class="text-xs py-1.5 px-2 w-auto"
                                 style="margin: 0"
@@ -6901,7 +6929,7 @@
                     <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
                         Quem aparece nos textos, em que papel e com que centralidade, e quais
                         Personagens sustentam mais Ecos. Para cruzar Personagem com Tema, use a aba
-                        Cruzamentos.
+                        Cruzamentos (Temas).
                     </p>
                 </div>
                 <div class="est-filtros-compartilhados mb-6"></div>
@@ -7354,6 +7382,186 @@
                         <canvas id="grafico-datas-origem" height="200"></canvas>
                         <div id="mapa-datas-origem" class="hidden"></div>
                     </div>
+                </div>
+            </section>
+
+            <section id="estatisticas-leituras" class="tab-content">
+                <div class="mb-5">
+                    <h2 class="text-xl font-semibold">Leituras</h2>
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        O que costuma pegar e o que costuma incomodar nos textos que você leu na
+                        Leitura avaliativa, separados em três faixas pela Classificação atual de
+                        cada texto. Cada texto conta uma vez, pela leitura mais recente, e cada
+                        versão (por exemplo a pt-br e a francesa) conta como um texto, porque Som e
+                        ritmo e Palavra mudam de uma língua para outra. As divergências entre
+                        sugerido e escolhido continuam na aba Leitura avaliativa.
+                    </p>
+                </div>
+                <div class="est-filtros-compartilhados mb-6"></div>
+
+                <div
+                    class="flex flex-wrap gap-2 mb-5"
+                    role="group"
+                    aria-label="Vista da tela Leituras"
+                >
+                    <button
+                        type="button"
+                        id="est-leituras-btn-vista-padrao"
+                        onclick="leiturasEscolherVista('padrao')"
+                        class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 dark:border-slate-600"
+                    >
+                        Padrão
+                    </button>
+                    <button
+                        type="button"
+                        id="est-leituras-btn-vista-cruzamento"
+                        onclick="leiturasEscolherVista('cruzamento')"
+                        class="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 dark:border-slate-600"
+                    >
+                        Cruzamento com etiquetas
+                    </button>
+                </div>
+
+                <div id="est-leituras-vista-padrao">
+                    <div class="mb-4">
+                        <p
+                            id="est-leituras-aviso"
+                            class="text-xs text-gray-600 dark:text-slate-300"
+                        ></p>
+                        <p id="est-leituras-faixas" class="text-[10px] text-gray-400 mt-1"></p>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-6">
+                        <div
+                            class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                        >
+                            <div class="mb-3">
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    Contraste: o que separa os textos que você mais ama dos que
+                                    menos ama
+                                </h3>
+                                <p
+                                    id="est-leituras-contraste-contexto"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                ></p>
+                            </div>
+                            <div class="relative hidden">
+                                <canvas id="grafico-leituras-contraste"></canvas>
+                            </div>
+                        </div>
+
+                        <div
+                            class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                        >
+                            <div class="mb-3">
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    De que maneira te pegou, por faixa
+                                </h3>
+                                <p
+                                    id="est-leituras-peso-contexto"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                ></p>
+                            </div>
+                            <div class="relative hidden">
+                                <canvas id="grafico-leituras-peso"></canvas>
+                            </div>
+                        </div>
+
+                        <div
+                            class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                        >
+                            <div class="mb-3">
+                                <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                    O que incomodou, em proporção da faixa
+                                </h3>
+                                <p
+                                    id="est-leituras-incomodou-contexto"
+                                    class="text-[10px] text-gray-400 mt-1"
+                                ></p>
+                            </div>
+                            <div class="relative hidden">
+                                <canvas id="grafico-leituras-incomodou"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div
+                                class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                            >
+                                <div class="mb-3">
+                                    <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                        Releria?
+                                    </h3>
+                                    <p
+                                        id="est-leituras-releria-contexto"
+                                        class="text-[10px] text-gray-400 mt-1"
+                                    ></p>
+                                </div>
+                                <div class="relative hidden">
+                                    <canvas id="grafico-leituras-releria"></canvas>
+                                </div>
+                            </div>
+
+                            <div
+                                class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                            >
+                                <div class="mb-3">
+                                    <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                        Mostraria a alguém?
+                                    </h3>
+                                    <p
+                                        id="est-leituras-mostraria-contexto"
+                                        class="text-[10px] text-gray-400 mt-1"
+                                    ></p>
+                                </div>
+                                <div class="relative hidden">
+                                    <canvas id="grafico-leituras-mostraria"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="est-leituras-vista-cruzamento" class="hidden">
+                    <div class="flex flex-wrap items-end gap-4 mb-3">
+                        <label class="text-xs text-gray-600 dark:text-slate-300">
+                            Categoria
+                            <select
+                                id="est-leituras-cruz-categoria"
+                                onchange="leiturasEscolherCategoria(this.value)"
+                                class="block mt-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                            ></select>
+                        </label>
+                        <label class="text-xs text-gray-600 dark:text-slate-300">
+                            Medida
+                            <select
+                                id="est-leituras-cruz-medida"
+                                onchange="leiturasEscolherMedida(this.value)"
+                                class="block mt-1 px-2 py-1 text-xs rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                            ></select>
+                        </label>
+                    </div>
+                    <p
+                        id="est-leituras-cruz-aviso"
+                        class="text-xs text-gray-600 dark:text-slate-300 mb-1"
+                    ></p>
+                    <p
+                        id="est-leituras-cruz-medida-texto"
+                        class="text-[10px] text-gray-400 mb-4"
+                    ></p>
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div id="est-leituras-cruz-tabela"></div>
+                        <p
+                            id="est-leituras-cruz-legenda"
+                            class="text-[10px] text-gray-400 mt-2"
+                        ></p>
+                    </div>
+                    <div
+                        id="est-leituras-cruz-detalhe"
+                        class="hidden mt-6 min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    ></div>
                 </div>
             </section>
 

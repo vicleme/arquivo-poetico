@@ -479,6 +479,47 @@ describe('aplicarImportacaoAditiva', () => {
         assert.equal(db.poemas.length, 1);
     });
 
+    it('Leituras avaliativas acompanham o texto, com id novo, textoId remapeado e tipo do destino', async () => {
+        const db = dbVazio();
+        const boa = {
+            id: 7,
+            textoId: 42,
+            tipo: 'poema',
+            data: '2026-10-31',
+            pegou: [{ item: 'som', peso: 'forte' }],
+            incomodou: ['cliche'],
+            releria: 'sim',
+            mostraria: 'talvez',
+            sugerido: 3.5,
+            escolhido: 4,
+        };
+        const quebrada = { ...boa, id: 8, data: 'ontem' };
+        const payload = {
+            itens: [poemaExportado({ tipo: 'prosa', leituras: [boa, quebrada] })],
+        };
+        const relatorio = classificarImportacaoAditiva(payload, db);
+        const r = await aplicarImportacaoAditiva(payload, relatorio, db, depsFake(db));
+
+        assert.equal(r.criados.leituras, 1);
+        assert.equal(db.leituras.length, 1);
+        const l = db.leituras[0];
+        assert.equal(l.textoId, db.prosas[0].id);
+        assert.equal(l.tipo, 'prosa');
+        assert.notEqual(l.id, 7);
+        assert.deepEqual(l.pegou, [{ item: 'som', peso: 'forte' }]);
+        assert.equal(l.escolhido, 4);
+        assert.equal(db.prosas[0].leituras, undefined);
+    });
+
+    it('sem leituras no arquivo, o db do destino não ganha a lista', async () => {
+        const db = dbVazio();
+        const payload = { itens: [poemaExportado()] };
+        const relatorio = classificarImportacaoAditiva(payload, db);
+        const r = await aplicarImportacaoAditiva(payload, relatorio, db, depsFake(db));
+        assert.equal(r.criados.leituras, 0);
+        assert.equal(db.leituras, undefined);
+    });
+
     it('Prosa é criada em db.prosas, não em db.poemas', async () => {
         const db = dbVazio();
         const payload = { itens: [poemaExportado({ tipo: 'prosa' })] };

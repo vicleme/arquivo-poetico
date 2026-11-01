@@ -16,7 +16,7 @@ import { textoDaValencia } from './valencia-texto.js';
 import { ehSorteavel } from './sorteavel.js';
 import { rotuloLeituraCondicionada } from './leitura-autonoma.js';
 import { ehAutorEmSigilo } from './autor-em-sigilo.js';
-import { ehNotaPublica } from './comentarios-publicos.js';
+import { ehNotaPublica, ehInspiracaoPublica } from './comentarios-publicos.js';
 import { textoDaDataDaEntrada } from './data-da-entrada-texto.js';
 import { rotuloEco } from './ancora-eco.js';
 import { textoAutoresDaEntrada } from './autores-da-obra.js';
@@ -632,6 +632,7 @@ function itemParaMarkdownDepoisDoTexto(item) {
     });
     md += blocoTexto('Descrição Visual', item.descricaoVisual);
     md += blocoTexto('Inspiração', item.contextoHistorico);
+    md += blocoTexto('Inspiração pública', ehInspiracaoPublica(item) ? 'Sim' : '');
     md += blocoTexto('Ocultação', item.ocultacao);
 
     if (Array.isArray(item.intertextualidade) && item.intertextualidade.length) {
@@ -772,8 +773,8 @@ function itemParaMarkdownDepoisDoTexto(item) {
         md += '\n';
     }
 
-    md += blocoTexto('Autoclassificação', formatarAutoclassificacaoTexto(item.autoclassificacao));
-    md += blocoTexto('Autoavaliação', item.autoavaliacao);
+    md += blocoTexto('Classificação', formatarAutoclassificacaoTexto(item.autoclassificacao));
+    md += blocoTexto('Avaliação', item.autoavaliacao);
     md += blocoTexto('Sorteio de leitura', ehSorteavel(item) ? 'Pode ser sorteado' : '');
     md += blocoTexto('Leitura autônoma', rotuloLeituraCondicionada(item));
     md += blocoTexto('Valência', textoDaValencia(item, db.temas));

@@ -15,6 +15,7 @@ const {
     gravarRecentes,
     CHAVE_ACERVO,
     CHAVE_RECENTES,
+    PERCURSO_MAXIMO,
     CHAVE_POSICAO_FICHA,
     CHAVE_SENSIVEIS,
     lerEscolhaSensiveis,
@@ -324,7 +325,10 @@ describe('extensão', () => {
         $('sortear-favoritos').checked = true;
         $('sortear-favoritos').dispatchEvent(new window.Event('change'));
         $('sortear-botao').click();
-        assert.match($('sortear-resultado').textContent, /Nenhum texto desse tema tem nota alta/);
+        assert.match(
+            $('sortear-resultado').textContent,
+            /Nenhum texto desse tema está entre os meus preferidos/,
+        );
         $('sortear-sem-favoritos').click();
         assert.equal($('sortear-favoritos').checked, false);
         assert.equal($('sortear-extensao').value, 'curto');
@@ -658,7 +662,10 @@ describe('sortear', () => {
         $('sortear-universal').value = '11';
         $('sortear-universal').dispatchEvent(new window.Event('change'));
         api.sortear();
-        assert.match($('sortear-resultado').textContent, /Nenhum texto desse tema tem nota alta/);
+        assert.match(
+            $('sortear-resultado').textContent,
+            /Nenhum texto desse tema está entre os meus preferidos/,
+        );
         $('sortear-sem-favoritos').click();
         assert.equal($('sortear-favoritos').checked, false);
         assert.equal($('sortear-resultado').querySelector('h2').textContent, 'T3');
@@ -1300,5 +1307,286 @@ describe('Só os reconhecidos na página do sorteio', () => {
         montar(dbRec());
         marcar(true);
         assert.match($('sortear-extensao').options[0].textContent, /Qualquer tamanho \(2\)/);
+    });
+});
+
+describe('Sortear outro leva a tela ao começo do texto novo', () => {
+    // O jsdom não tem layout: troca a posição medida do bloco e conta as rolagens.
+    function espiar(topo) {
+        const proto = window.HTMLElement.prototype;
+        const original = {
+            rect: proto.getBoundingClientRect,
+            rolar: proto.scrollIntoView,
+        };
+        const rolagens = [];
+        proto.getBoundingClientRect = function () {
+            return { top: topo.valor, bottom: topo.valor + 100, left: 0, right: 0 };
+        };
+        proto.scrollIntoView = function (opcoes) {
+            rolagens.push({ no: this.tagName, opcoes });
+        };
+        return {
+            rolagens,
+            restaurar() {
+                proto.getBoundingClientRect = original.rect;
+                proto.scrollIntoView = original.rolar;
+            },
+        };
+    }
+
+    it('começo do texto acima da tela (fim de um texto longo): rola até ele, sem animação', () => {
+        const topo = { valor: -900 };
+        const e = espiar(topo);
+        try {
+            const api = montar(dbBase());
+            api.sortear();
+            botaoPorTexto('Sortear outro').click();
+            assert.ok(e.rolagens.length >= 1);
+            const ultima = e.rolagens[e.rolagens.length - 1];
+            assert.equal(ultima.no, 'ARTICLE');
+            assert.equal(ultima.opcoes.block, 'start');
+            assert.equal(ultima.opcoes.behavior, 'auto');
+        } finally {
+            e.restaurar();
+        }
+    });
+
+    it('começo do texto já à vista: a tela não se mexe', () => {
+        const e = espiar({ valor: 120 });
+        try {
+            const api = montar(dbBase());
+            api.sortear();
+            botaoPorTexto('Sortear outro').click();
+            assert.equal(e.rolagens.length, 0);
+        } finally {
+            e.restaurar();
+        }
+    });
+
+    it('trocar a posição da ficha não rola, mesmo com o começo fora da tela', () => {
+        const topo = { valor: 120 };
+        const e = espiar(topo);
+        try {
+            const api = montar(dbBase());
+            api.sortear();
+            topo.valor = -900;
+            const sel = $('sortear-ficha-posicao');
+            sel.value = 'antes';
+            sel.dispatchEvent(new window.Event('change'));
+            assert.equal(e.rolagens.length, 0);
+        } finally {
+            e.restaurar();
+        }
+    });
+});
+
+describe('rótulo da caixa de favoritos', () => {
+    it('diz "Só os meus preferidos" com o piso de corações', () => {
+        montar(dbBase());
+        const rotulo = $('sortear-favoritos').closest('label').textContent;
+        assert.equal(rotulo, 'Só os meus preferidos (4 corações ou mais)');
+    });
+
+    it('sem texto entre os preferidos do tema, a mensagem fala em "meus preferidos"', () => {
+        const api = montar(dbBase());
+        $('sortear-universal').value = '11';
+        $('sortear-universal').dispatchEvent(new window.Event('change'));
+        $('sortear-favoritos').checked = true;
+        $('sortear-favoritos').dispatchEvent(new window.Event('change'));
+        api.sortear();
+        assert.match($('sortear-resultado').textContent, /entre os meus preferidos/);
+        assert.doesNotMatch($('sortear-resultado').textContent, /do autor/);
+    });
+});
+
+describe('Anterior e Próximo no sorteio', () => {
+    const titulo = () => $('sortear-resultado').querySelector('h2').textContent;
+
+    it('com um só texto na tela, não aparece nada de percurso', () => {
+        const api = montar(dbBase());
+        api.sortear();
+        assert.equal($('sortear-anterior'), null);
+        assert.equal($('sortear-proximo'), null);
+        assert.equal($('sortear-posicao'), null);
+    });
+
+    it('Anterior reabre o texto de antes, e Próximo volta ao seguinte, com "2 de 2"', () => {
+        const api = montar(dbBase());
+        api.sortear();
+        botaoPorTexto('Sortear outro').click();
+        assert.equal(titulo(), 'T2');
+        assert.equal($('sortear-proximo'), null);
+        assert.equal($('sortear-posicao').textContent, '2 de 2');
+        $('sortear-anterior').click();
+        assert.equal(titulo(), 'T1');
+        assert.equal($('sortear-anterior'), null);
+        assert.equal($('sortear-posicao').textContent, '1 de 2');
+        $('sortear-proximo').click();
+        assert.equal(titulo(), 'T2');
+    });
+
+    it('os botões ficam no rodapé, junto do Sortear outro', () => {
+        const api = montar(dbBase());
+        api.sortear();
+        botaoPorTexto('Sortear outro').click();
+        assert.equal(
+            $('sortear-anterior').parentElement,
+            botaoPorTexto('Sortear outro').parentElement,
+        );
+    });
+
+    it('voltar e avançar não mexem nos recentes guardados', () => {
+        const mem = memoria();
+        const api = montar(dbBase(), { armazenamento: mem });
+        api.sortear();
+        botaoPorTexto('Sortear outro').click();
+        const antes = mem.dados[CHAVE_RECENTES];
+        $('sortear-anterior').click();
+        $('sortear-proximo').click();
+        assert.equal(mem.dados[CHAVE_RECENTES], antes);
+    });
+
+    it('Sortear outro, depois de voltar, entra no fim do percurso e não apaga o que havia', () => {
+        const api = montar(dbBase());
+        api.sortear();
+        botaoPorTexto('Sortear outro').click();
+        $('sortear-anterior').click();
+        botaoPorTexto('Sortear outro').click();
+        assert.equal($('sortear-posicao').textContent, '3 de 3');
+        assert.equal($('sortear-proximo'), null);
+        $('sortear-anterior').click();
+        $('sortear-anterior').click();
+        assert.equal(titulo(), 'T1');
+        $('sortear-proximo').click();
+        assert.equal(titulo(), 'T2');
+    });
+
+    it('o percurso guarda no máximo PERCURSO_MAXIMO textos', () => {
+        const db = dbBase();
+        db.poemas = Array.from({ length: PERCURSO_MAXIMO + 5 }, (_, i) => t(i + 1));
+        db.prosas = [];
+        const api = montar(db);
+        api.sortear();
+        for (let i = 0; i < PERCURSO_MAXIMO + 3; i++) botaoPorTexto('Sortear outro').click();
+        assert.equal($('sortear-posicao').textContent, `${PERCURSO_MAXIMO} de ${PERCURSO_MAXIMO}`);
+    });
+
+    it('voltar a um texto com conteúdo sensível abre com o aviso fechado, e o Anterior continua lá', () => {
+        const db = dbBase();
+        db.poemas[1].conteudoSensivel = 'luto';
+        const api = montar(db);
+        api.sortear();
+        botaoPorTexto('Sortear outro').click();
+        assert.equal(titulo(), 'T2');
+        assert.ok($('sortear-ler-mesmo-assim'));
+        assert.ok($('sortear-anterior'));
+        $('sortear-anterior').click();
+        $('sortear-proximo').click();
+        assert.ok($('sortear-ler-mesmo-assim'));
+        assert.ok($('sortear-anterior'));
+    });
+});
+
+describe('Histórico do sorteio', () => {
+    const titulo = () => $('sortear-resultado').querySelector('h2').textContent;
+    const titulos = () =>
+        [...$('sortear-historico').querySelectorAll('li button')].map((b) => b.textContent);
+
+    it('começa escondido e aparece com o que foi sorteado, do mais novo para o mais velho', () => {
+        const api = montar(dbBase());
+        assert.equal($('sortear-historico').hidden, true);
+        api.sortear();
+        botaoPorTexto('Sortear outro').click();
+        assert.equal($('sortear-historico').hidden, false);
+        assert.match(
+            $('sortear-historico').querySelector('summary').textContent,
+            /Últimos sorteados \(2\)/,
+        );
+        assert.deepEqual(titulos(), ['T2', 'T1']);
+    });
+
+    it('sobrevive a fechar e reabrir a página, pelos recentes guardados', () => {
+        const mem = memoria();
+        const api = montar(dbBase(), { armazenamento: mem });
+        api.sortear();
+        botaoPorTexto('Sortear outro').click();
+        montar(dbBase(), { armazenamento: mem });
+        assert.deepEqual(titulos(), ['T2', 'T1']);
+    });
+
+    it('clicar num título reabre o texto, entra no percurso e não mexe nos recentes', () => {
+        const mem = memoria();
+        const api = montar(dbBase(), { armazenamento: mem });
+        api.sortear();
+        botaoPorTexto('Sortear outro').click();
+        const antes = mem.dados[CHAVE_RECENTES];
+        [...$('sortear-historico').querySelectorAll('li button')]
+            .find((b) => b.textContent === 'T1')
+            .click();
+        assert.equal(titulo(), 'T1');
+        assert.equal($('sortear-posicao').textContent, '3 de 3');
+        assert.ok($('sortear-anterior'));
+        assert.equal(mem.dados[CHAVE_RECENTES], antes);
+    });
+
+    it('clicar no texto que já está na tela não repete no percurso', () => {
+        const api = montar(dbBase());
+        api.sortear();
+        botaoPorTexto('Sortear outro').click();
+        [...$('sortear-historico').querySelectorAll('li button')]
+            .find((b) => b.textContent === 'T2')
+            .click();
+        assert.equal($('sortear-posicao').textContent, '2 de 2');
+    });
+
+    it('texto apagado do acervo some do histórico', () => {
+        const mem = memoria({ [CHAVE_RECENTES]: JSON.stringify(['poema:999', 'poema:1']) });
+        montar(dbBase(), { armazenamento: mem });
+        assert.deepEqual(titulos(), ['T1']);
+    });
+});
+
+describe('Anterior e Próximo também ao lado do Sortear', () => {
+    const titulo = () => $('sortear-resultado').querySelector('h2').textContent;
+
+    it('ficam no mesmo bloco do botão Sortear, só quando há para onde ir', () => {
+        const api = montar(dbBase());
+        assert.equal($('sortear-anterior-topo'), null);
+        api.sortear();
+        assert.equal($('sortear-anterior-topo'), null);
+        assert.equal($('sortear-proximo-topo'), null);
+        assert.equal($('sortear-posicao-topo'), null);
+        botaoPorTexto('Sortear outro').click();
+        assert.equal($('sortear-anterior-topo').parentElement, $('sortear-controles-topo'));
+        assert.equal($('sortear-controles-topo').parentElement, $('sortear-botao').parentElement);
+        assert.equal($('sortear-posicao-topo').textContent, '2 de 2');
+    });
+
+    it('funcionam como os do rodapé e os dois pares ficam sempre iguais', () => {
+        const api = montar(dbBase());
+        api.sortear();
+        botaoPorTexto('Sortear outro').click();
+        $('sortear-anterior-topo').click();
+        assert.equal(titulo(), 'T1');
+        assert.equal($('sortear-anterior-topo'), null);
+        assert.equal($('sortear-anterior'), null);
+        assert.ok($('sortear-proximo-topo'));
+        assert.ok($('sortear-proximo'));
+        assert.equal($('sortear-posicao-topo').textContent, $('sortear-posicao').textContent);
+        $('sortear-proximo-topo').click();
+        assert.equal(titulo(), 'T2');
+        assert.equal($('sortear-proximo-topo'), null);
+    });
+
+    it('o par de cima não traz outro "Sortear outro"', () => {
+        const api = montar(dbBase());
+        api.sortear();
+        botaoPorTexto('Sortear outro').click();
+        assert.equal(
+            [...document.querySelectorAll('button')].filter(
+                (b) => b.textContent === 'Sortear outro',
+            ).length,
+            1,
+        );
     });
 });

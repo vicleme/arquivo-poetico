@@ -345,6 +345,8 @@ export async function aplicarImportacaoAditivaClick() {
     if (resultado.criados.poemas) partes.push(`${resultado.criados.poemas} poema(s)`);
     if (resultado.criados.prosas) partes.push(`${resultado.criados.prosas} prosa(s)`);
     if (resultado.criados.escansoes) partes.push(`${resultado.criados.escansoes} escansão(ões)`);
+    if (resultado.criados.leituras)
+        partes.push(`${resultado.criados.leituras} leitura(s) avaliativa(s)`);
     if (resultado.criados.estruturasTextuais)
         partes.push(`${resultado.criados.estruturasTextuais} estrutura(s) textual(is)`);
     let mensagem = partes.length ? `Importado: ${partes.join(' + ')}.` : 'Nada novo foi importado.';

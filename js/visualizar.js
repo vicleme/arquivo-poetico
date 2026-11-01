@@ -19,7 +19,7 @@ import { textoDaValencia } from './valencia-texto.js';
 import { ehSorteavel } from './sorteavel.js';
 import { rotuloLeituraCondicionada } from './leitura-autonoma.js';
 import { ehAutorEmSigilo } from './autor-em-sigilo.js';
-import { ehNotaPublica } from './comentarios-publicos.js';
+import { ehNotaPublica, ehInspiracaoPublica } from './comentarios-publicos.js';
 import { textoDaDataDaEntrada } from './data-da-entrada-texto.js';
 import {
     garantirModal,
@@ -29,7 +29,9 @@ import {
 } from './modais.js';
 import { textoAutoresDaEntrada } from './autores-da-obra.js';
 import { rotuloDaOrigem } from './origem-da-obra.js';
-import { db, deleteItem } from './db.js';
+import { db, deleteItem, getLeiturasDoTexto } from './db.js';
+import { leiturasParaHtml } from './leituras-saida.js';
+import { montarControlesLeituras } from './leituras-download.js';
 import { titulosDeColetaneasDoTexto } from './coletaneas-do-texto.js';
 import { textosApareceEm } from './aparicoes-do-texto.js';
 import { editarPoema, editarProsa, rastreadorPoema } from './forms.js';
@@ -420,6 +422,7 @@ export function renderVisualizacaoHtml(item) {
     });
     paratexto += blocoTextoHtml('Descrição Visual', item.descricaoVisual);
     paratexto += blocoTextoHtml('Inspiração', item.contextoHistorico);
+    paratexto += blocoTextoHtml('Inspiração pública', ehInspiracaoPublica(item) ? 'Sim' : '');
     paratexto += blocoTextoHtml('Ocultação', item.ocultacao);
     paratexto += listaHtml('Anexos', item.anexos, (a) => {
         const prefixo = a.tipo ? `<strong>${escapeHtml(a.tipo)}:</strong> ` : '';
@@ -476,14 +479,21 @@ export function renderVisualizacaoHtml(item) {
     let avaliacao = '';
     if (autoclassificacaoValida(item.autoclassificacao)) {
         avaliacao += `
-            <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1">Autoclassificação</h4>
+            <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1">Classificação</h4>
             <div class="text-sm flex items-center gap-2">${renderCoracoesHtml(item.autoclassificacao, { somenteLeitura: true })}<span class="text-xs text-gray-400 dark:text-slate-500">${escapeHtml(formatarAutoclassificacaoTexto(item.autoclassificacao))}</span></div>`;
     }
-    avaliacao += blocoTextoHtml('Autoavaliação', item.autoavaliacao);
+    avaliacao += blocoTextoHtml('Avaliação', item.autoavaliacao);
     if (ehSorteavel(item)) avaliacao += blocoTextoHtml('Sorteio de leitura', 'Pode ser sorteado');
     avaliacao += blocoTextoHtml('Leitura autônoma', rotuloLeituraCondicionada(item));
     avaliacao += blocoTextoHtml('Valência', textoDaValencia(item, db.temas));
     if (ehAutorEmSigilo(item)) avaliacao += blocoTextoHtml('Autor em sigilo', 'Sim');
+    // Leituras avaliativas (Fase 22): sempre à vista no Ver, sem depender da
+    // caixa "Leituras", que só vale para o que é baixado.
+    if (item.id !== undefined && item.id !== null) {
+        avaliacao += leiturasParaHtml(
+            getLeiturasDoTexto(item.id, item.tipo === 'prosa' ? 'prosa' : 'poema'),
+        );
+    }
 
     let controle = '';
     // Descartado: o "Cortado de" já está na linha de lugar, na Identificação.
@@ -508,7 +518,7 @@ export function renderVisualizacaoHtml(item) {
         grupoVerHtml('paratexto', 'Paratexto', paratexto) +
         grupoVerHtml('relacoes', 'Relações', relacoes) +
         grupoVerHtml('recepcao', 'Recepção', recepcao) +
-        grupoVerHtml('avaliacao', 'Avaliação do autor', avaliacao) +
+        grupoVerHtml('avaliacao', 'Avaliação pessoal', avaliacao) +
         grupoVerHtml('controle', 'Controle do acervo', controle);
 
     const controles =
@@ -627,6 +637,7 @@ function preencherVisualizacao(tipo, id) {
     // poemaId): pra Prosa as caixas ficam escondidas (ver acoes-coluna.js e
     // index.html pro mesmo recorte nos outros dois lugares).
     montarControlesMetadados();
+    montarControlesLeituras();
     const wrapExtras = document.getElementById('download-extras-modal-visualizar-wrap');
     if (wrapExtras) {
         wrapExtras.classList.toggle('hidden', tipo !== 'poema');

@@ -38,7 +38,12 @@ import {
     valenciaAjusteDe,
 } from './valencia-texto.js';
 import { ehSorteavel, definirSorteavel } from './sorteavel.js';
-import { ehNotaPublica, definirNotaPublica } from './comentarios-publicos.js';
+import {
+    ehNotaPublica,
+    definirNotaPublica,
+    ehInspiracaoPublica,
+    definirInspiracaoPublica,
+} from './comentarios-publicos.js';
 import { ehAutorEmSigilo, definirAutorEmSigilo } from './autor-em-sigilo.js';
 import {
     OPCOES_LEITURA_AUTONOMA,
@@ -221,6 +226,17 @@ export const CAMPOS_PREENCHIVEIS = [
             definirNotaPublica(item, !!valor);
         },
     },
+    // Inspiração pública (comentarios-publicos.js): booleano, como `notasPublicas`.
+    // Marcar não mexe no texto da Inspiração.
+    {
+        chave: 'inspiracaoPublica',
+        rotulo: 'Inspiração pública',
+        tipo: 'booleano',
+        ler: (item) => ehInspiracaoPublica(item),
+        gravar: (item, valor) => {
+            definirInspiracaoPublica(item, !!valor);
+        },
+    },
     // Comentários ao leitor (comentarios-publicos.js): texto livre, o mesmo
     // do campo "Comentários ao leitor" do modal.
     {
@@ -238,7 +254,7 @@ export const CAMPOS_PREENCHIVEIS = [
     // o mesmo que o modal faz ao salvar sem corações.
     {
         chave: 'autoclassificacao',
-        rotulo: 'Autoclassificação',
+        rotulo: 'Classificação',
         tipo: 'opcoes',
         opcoes: OPCOES_AUTOCLASSIFICACAO,
         ler: (item) =>

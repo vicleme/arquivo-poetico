@@ -152,6 +152,13 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'alfabetico',
         },
+        // Inspiração marcada como pública (ver comentarios-publicos.js): ordena os marcados primeiro.
+        {
+            key: 'inspiracaoPublica',
+            label: 'Inspiração pública',
+            default: false,
+            sortType: 'numero',
+        },
         // Notas — logo depois do campo Texto no modal.
         { key: 'notas', label: 'Notas', default: false, sortType: 'alfabetico' },
         // Notas marcadas como públicas e comentário escrito para o leitor (ver
@@ -170,12 +177,12 @@ export const DEFINICAO_COLUNAS = {
         // Reconhecimentos — item 8, prêmios/menções recebidos pelo texto.
         { key: 'reconhecimentos', label: 'Reconhecimentos', default: false },
         // Autoavaliação — grupo novo, logo depois de Reconhecimentos no modal.
-        { key: 'autoavaliacao', label: 'Autoavaliação', default: false, sortType: 'alfabetico' },
+        { key: 'autoavaliacao', label: 'Avaliação', default: false, sortType: 'alfabetico' },
         // Autoclassificação — corações (0,5 a 5), dentro do mesmo grupo do
         // modal, logo acima do campo de texto livre Autoavaliação.
         {
             key: 'autoclassificacao',
-            label: 'Autoclassificação',
+            label: 'Classificação',
             default: false,
             sortType: 'numero',
         },
@@ -444,6 +451,13 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'alfabetico',
         },
+        // Inspiração marcada como pública (ver comentarios-publicos.js): ordena os marcados primeiro.
+        {
+            key: 'inspiracaoPublica',
+            label: 'Inspiração pública',
+            default: false,
+            sortType: 'numero',
+        },
         // 'vinculo' é o mesmo dado estrutural (paiTipo/paiId nos 3 níveis
         // Livro/Parte/Seção) que 'estrutura' representa em Poemas — mesmo
         // sortType 'estrutura' (ordem já vem assim do array-base, ver
@@ -475,12 +489,12 @@ export const DEFINICAO_COLUNAS = {
         { key: 'envios', label: 'Envios', default: false },
         { key: 'reconhecimentos', label: 'Reconhecimentos', default: false },
         // Autoavaliação — grupo novo, logo depois de Reconhecimentos no modal.
-        { key: 'autoavaliacao', label: 'Autoavaliação', default: false, sortType: 'alfabetico' },
+        { key: 'autoavaliacao', label: 'Avaliação', default: false, sortType: 'alfabetico' },
         // Autoclassificação — corações (0,5 a 5), dentro do mesmo grupo do
         // modal, logo acima do campo de texto livre Autoavaliação.
         {
             key: 'autoclassificacao',
-            label: 'Autoclassificação',
+            label: 'Classificação',
             default: false,
             sortType: 'numero',
         },

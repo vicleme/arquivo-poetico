@@ -644,6 +644,7 @@ export function itensParaDownload(tipo, ids) {
         ...reduzirParaTituloETexto(r),
         ...(r.sonoridade ? { sonoridade: r.sonoridade } : {}),
         ...(r.estruturaTextual ? { estruturaTextual: r.estruturaTextual } : {}),
+        ...(r.leituras ? { leituras: r.leituras } : {}),
     }));
 }
 

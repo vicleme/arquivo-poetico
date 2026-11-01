@@ -38,7 +38,7 @@ import {
     rotuloLeituraAutonoma,
     temLeituraCondicionada,
 } from './leitura-autonoma.js';
-import { ehNotaPublica } from './comentarios-publicos.js';
+import { ehNotaPublica, ehInspiracaoPublica } from './comentarios-publicos.js';
 import { textoDaDataDaEntrada, textosDasPontasDaEntrada } from './data-da-entrada-texto.js';
 import { rotuloEco } from './ancora-eco.js';
 import { autoresDaEntrada, textoAutoresDaEntrada } from './autores-da-obra.js';
@@ -819,6 +819,9 @@ export function colunasTexto(tipo) {
         coluna('comentarios_ao_leitor', ['comentariosPublicos'], (r) => r.comentariosPublicos),
         // Inspiração (campo interno: contextoHistorico)
         coluna('inspiracao', ['contextoHistorico'], (r) => r.contextoHistorico),
+        coluna('inspiracao_publica', ['inspiracaoPublica'], (r) =>
+            ehInspiracaoPublica(r) ? 'sim' : '',
+        ),
         coluna('ocultacao', ['ocultacao'], (r) => r.ocultacao),
         coluna('conteudo_sensivel', ['conteudoSensivel'], (r) => r.conteudoSensivel),
         coluna(

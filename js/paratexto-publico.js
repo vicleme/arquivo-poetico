@@ -8,8 +8,8 @@
 //   - Obras citadas e adaptadas (créditos);
 //   - Reconhecimentos.
 // O que o Ver chama de Paratexto, menos o que é interno ao autor: Notas e
-// Comentários ao leitor seguem em comentarios-publicos.js; Inspiração e Ocultação
-// nunca saem.
+// Comentários ao leitor e a Inspiração marcada como pública seguem em
+// comentarios-publicos.js; a Ocultação nunca sai.
 //
 // Forma de um bloco:
 //   { rotulo, texto }                    prosa livre (quebras de linha preservadas);

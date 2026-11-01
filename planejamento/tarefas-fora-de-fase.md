@@ -190,6 +190,23 @@ Concluída em 27/10/2026 (etapas 21-0 a 21-5). Resumo em `plano-concluido.md`; d
 
 Pedido do Victor: (1) na busca de Fora do acervo (fora do Modo revisão), filtrar por campo e trazer sugestões, como no Modo revisão; (2) além das listagens por Obras e por Autores, uma por Origem; (3) os subtítulos (inclusive Hipertextualidade e Referências recorrentes) recolhíveis, porque só crescem. **Decisão dele:** o estado de aberto e fechado fica guardado de vez. **Entregas, a mais fácil primeiro:** 1 blocos recolhíveis (FEITA em 29/10/2026: `js/blocos-recolhiveis.js`, contagem no título, Expandir tudo e Recolher tudo, busca ativa abre Obras e Autores); 2 listagem por Origem (FEITA em 29/10/2026: `agruparOrigens`, bloco "Origens", botão `abrir-lista-origem`, escopo "Só Origens" no relatório; plano original: a contagem já existe em `agregarTextosPorOrigem`; cada origem com textos, obras e autores, "Desconhecida" no fim, clique abrindo a lista `origem:`, entrando também no relatório baixado e na ordenação; vira o sexto bloco recolhível, com chave nova em `BLOCOS_CONEXOES`); 3 busca por campo com sugestões (FEITA em 29/10/2026: `js/busca-campos-conexoes.js`, filtro `campo:valor` nas três listas e no relatório baixado, sugestões pelo núcleo compartilhado `js/sugestoes-busca-campos.js`; no mesmo dia, as obras do cartão da origem e do autor viraram chips; plano original, campos sugeridos: `origem:`, `autor:`, `tipo:`, `relacao:`, `texto:`, `data:`, `pessoal:`; reaproveitar o interpretador e as sugestões do Modo revisão; o relatório baixado hoje usa só o texto simples, `consulta`, e precisa receber a busca por campo; na prática ele já chamava os mesmos filtros, então bastou mudar os filtros).
 
+## T16. Rótulo "Cruzamentos (Temas)" e regra de onde moram os cruzamentos (combinada em 01/11/2026; FEITA em 01/11/2026, falta conferir no navegador)
+
+Surgiu do cruzamento das leituras com as etiquetas (F22-D27): o Victor perguntou o que a aba Cruzamentos é, de fato, no plano, e se o nome e a aba se justificam. Os porquês e os caminhos descartados estão em `decisoes.md` ("Onde moram os cruzamentos nas Estatísticas"); aqui só o que fazer.
+
+**Decidido (Victor, 01/11/2026):** a matriz continua em aba própria; o rótulo vira **"Cruzamentos (Temas)"**; a regra é que a aba guarda as matrizes com Tema na linha, e os demais cruzamentos moram na tela da entidade a que seus eixos pertencem.
+
+**Entrega única, pequena (só o que aparece).** Levantado no código em 01/11/2026 (busca por "Cruzamentos" fora de testes e planejamento):
+
+1. `index.html`: o rótulo do botão do menu de Estatísticas (`btn-estatisticas-cruzamentos`, por volta da linha 549), o `<h2>` da seção (por volta da 6853) e o subtítulo, que passa a dizer que a aba guarda os cruzamentos com Tema na linha; o `aria-label` do download (por volta da 6876) pode dizer "matriz de Cruzamentos (Temas)"; e a frase do subtítulo de Personagens que manda "use a aba Cruzamentos" (por volta da 6924).
+2. `README.md` (linha 497) e `README.pt-br.md` (linha 502), onde a lista de Estatísticas cita a aba.
+3. Id da aba, funções (`renderCruzamentos`, `baixarCruzamentos`) e nomes de arquivo não mudam. Os títulos das exportações ("Cruzamentos: Temas × pessoas") já dizem Tema e ficam.
+4. Testes: conferir só se algum lê o rótulo do botão; a busca não achou nenhum que leia.
+
+**Feito (01/11/2026).** O rótulo passou a "Cruzamentos (Temas)" em: o menu de Estatísticas, que nasce de `GRUPOS_NAV` em `js/ui.js` (**ponto que o levantamento acima não trazia**); o botão `btn-estatisticas-cruzamentos` e o `<h2>` em `index.html`, com o subtítulo ganhando a frase "Esta aba guarda os cruzamentos com Tema na linha."; o `aria-label` do download; a frase do subtítulo de Personagens; os dois READMEs; e, além do combinado, os dois `docs/personagens-for-ai` (a frase "Em Cruzamentos" passou a "Em Cruzamentos (Temas)"), para o guia das IAs usar o nome que aparece na tela. Comentários de código que dizem "aba Cruzamentos" não mudaram, porque não aparecem para ninguém. Teste novo em `tests/estatisticas-abas-temas-pessoas.test.js` (menu, botão, título e subtítulo; o id e a seção não mudam). Nenhum outro teste lia o rótulo.
+
+**Ainda por decidir:** Esfera × pessoa (Fase 6, "se couber"), quando a Fase 6 chegar. Autor × Pessoa (F1-D6) e os cruzamentos de Pessoa pública (`referencias-pessoa-publica.md`) ficam em Pessoas e Grupos.
+
 ## Itens antigos que continuam abertos (fora desta fila curta)
 
 Não foram reconferidos nesta arrumação e não perderam o lugar: estão no `plano-central.md` ("Pendências soltas" e a tabela de fases) e no `status.md`. Entre eles, as Estatísticas de Pessoa pública (entrega 5, adiada de propósito) e a Fase 19b (filiações do Autor).

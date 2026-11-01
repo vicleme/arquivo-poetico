@@ -140,7 +140,7 @@ describe('Fase 1a: as três abas novas no HTML', () => {
         assert.ok(!HTML.includes('estatisticas-temas-pessoas'));
     });
 
-    it('o menu de Estatísticas tem 10 itens, na ordem combinada', () => {
+    it('o menu de Estatísticas tem 11 itens, na ordem combinada', () => {
         const ui = readFileSync(new URL('../js/ui.js', import.meta.url), 'utf8');
         const bloco = ui.match(
             /id: 'estatisticas',\s*rotulo: 'Estatísticas',\s*abas: \[([\s\S]*?)\],\s*\}/,
@@ -157,12 +157,24 @@ describe('Fase 1a: as três abas novas no HTML', () => {
             'estatisticas-correntes',
             'estatisticas-datas-obras',
             'estatisticas-linguagem',
+            'estatisticas-leituras',
         ]);
         // Todo id do menu tem seção e botão no HTML.
         for (const id of ids) {
             assert.ok(HTML.includes(`<section id="${id}"`), `seção ${id}`);
             assert.ok(HTML.includes(`id="btn-${id}"`), `botão ${id}`);
         }
+    });
+
+    it('a aba se chama "Cruzamentos (Temas)" no menu, no botão e no título (T16)', () => {
+        const ui = readFileSync(new URL('../js/ui.js', import.meta.url), 'utf8');
+        assert.match(ui, /id: 'estatisticas-cruzamentos', rotulo: 'Cruzamentos \(Temas\)'/);
+        const botao = HTML.match(/id="btn-estatisticas-cruzamentos"[\s\S]*?<\/button>/)[0];
+        assert.match(botao, /Cruzamentos \(Temas\)/);
+        assert.match(SECOES['estatisticas-cruzamentos'], /<h2[^>]*>Cruzamentos \(Temas\)<\/h2>/);
+        assert.match(SECOES['estatisticas-cruzamentos'], /cruzamentos com Tema na linha/);
+        // O id e as funções não mudam: só o que aparece.
+        assert.ok(HTML.includes('<section id="estatisticas-cruzamentos"'));
     });
 
     it('o despachante redesenha quando qualquer das abas novas está ativa', () => {

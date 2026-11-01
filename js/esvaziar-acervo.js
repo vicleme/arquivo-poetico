@@ -86,6 +86,7 @@ export const ROTULOS_DADOS = Object.freeze({
     ecosIgnorados: 'pares de ecos ignorados',
     escansoes: 'escansões',
     estruturasTextuais: 'estruturas textuais',
+    leituras: 'leituras avaliativas',
     moldes: 'moldes',
     padroesColunas: 'padrões de colunas',
 });

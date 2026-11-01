@@ -414,15 +414,15 @@ describe('gerarMarkdownExportacao — Reconhecimentos (item 8, lista prêmio+pos
     });
 });
 
-describe('gerarMarkdownExportacao — Autoavaliação (campo novo, texto livre)', () => {
+describe('gerarMarkdownExportacao — Avaliação (campo novo, texto livre)', () => {
     beforeEach(resetarDb);
 
-    it('inclui o bloco "### Autoavaliação" com o texto digitado', () => {
+    it('inclui o bloco "### Avaliação" com o texto digitado', () => {
         db.poemas = [
             { id: 1, titulo: 'Solo', texto: 'x', autoavaliacao: 'Gostei bastante deste.' },
         ];
         const md = gerarMarkdownExportacao(db.poemas);
-        assert.match(md, /### Autoavaliação\n\nGostei bastante deste\./);
+        assert.match(md, /### Avaliação\n\nGostei bastante deste\./);
     });
 
     it('omite o bloco quando não há autoavaliação (campo ausente ou vazio)', () => {
@@ -431,7 +431,7 @@ describe('gerarMarkdownExportacao — Autoavaliação (campo novo, texto livre)'
             { id: 2, titulo: 'Vazio', texto: 'x', autoavaliacao: '   ' },
         ];
         const md = gerarMarkdownExportacao(db.poemas);
-        assert.doesNotMatch(md, /### Autoavaliação/);
+        assert.doesNotMatch(md, /### Avaliação/);
     });
 
     it('conta em Campos Preenchidos', () => {
@@ -446,7 +446,7 @@ describe('gerarMarkdownExportacao — Autoavaliação (campo novo, texto livre)'
     it('funciona igual em Prosa', () => {
         db.prosas = [{ id: 1, titulo: 'Conto', texto: 'x', autoavaliacao: 'Podia ser melhor.' }];
         const md = gerarMarkdownExportacao(db.prosas);
-        assert.match(md, /### Autoavaliação\n\nPodia ser melhor\./);
+        assert.match(md, /### Avaliação\n\nPodia ser melhor\./);
     });
 });
 

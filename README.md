@@ -135,6 +135,10 @@ npm run format:check   # prettier --check .
 │   │                          → Elos and Ecos (Intratextualidade): how they differ,
 │   │                            how to pick Relation, Direction and Type, and
 │   │                            how not to confuse them with neighboring fields
+│   ├── leitura-avaliativa-for-ai.md / leitura-avaliativa-for-ai-pt-br.md
+│   │                          → Script for an AI to interview the person about
+│   │                            a text (what got to them, what bothered them,
+│   │                            hearts) without filling anything in on its own
 │   ├── morfofuncionalidade-for-ai.md / morfofuncionalidade-for-ai-pt-br.md
 │   │                          → Fields of the Morfofuncionalidade record
 │   │                            (Units/Events, position in the text,
@@ -494,13 +498,15 @@ npm run format:check   # prettier --check .
   Periods and Currents have per-card or per-row selection and an action bar
   (Add, Remove, Set or Clear, depending on the field), always with **Undo**.
   List fields use tags, as in the modals.
-- **Statistics**: several tabs, including Cruzamentos (a Themes by People or
+- **Statistics**: several tabs, including Cruzamentos (Temas) (a Themes by People or
   Groups matrix that counts only the Theme × Person pairs you linked, with a
   per-text analysis screen and a choice for texts not yet analysed), Place and language, Literary Currents, Characters and
   **Dates of the works** (texts by century and decade of the works they cite,
   and the distance between the work and the text; source: Works, References or
   All); clicking a bar opens the matching list of texts, except in Dates of the
-  works for now.
+  works for now. **Leituras** shows the pattern of the readings made in the
+  Leitura avaliativa tab, in two views (bands of Classificação, and a
+  crossing with tag clusters).
 - **Data**: a Library tab (public-domain text packages to import), Additive
   Import (adds to the collection without erasing anything) and Backup and
   recovery (automatic snapshots, an extras file and **Empty the collection**,
@@ -840,6 +846,22 @@ npm run format:check   # prettier --check .
     - See `docs/morfofuncionalidade-for-ai.md` for the full field
       breakdown, including how this differs from the similarly-named
       "Estrutura" button (the archive's Book/Part/Section hierarchy).
+- **Leitura avaliativa** (Analysis > Leitura avaliativa): a tab to find out
+  why a text got to you or didn't. Pick a Poem or Prose and answer a
+  selection-only form beside the text: **"De que maneira te pegou"** (13
+  items, each with a level: Pontual, Marcante or Central), **"O que
+  incomodou"** (12 items, no level), "Releria?" and "Mostraria a alguém?"
+  (yes, maybe or no) and a free line, which is the text's own Avaliação
+  field. At the end the tab suggests hearts by a visible rule and you decide;
+  the chosen value is the text's Classificação. A text can have several
+  readings, each with a date (`db.leituras`), and the latest one is the one
+  that filters and statistics use. The Poems and Prose search accepts
+  `pegou:`, `incomodou:`, `releria:` and `mostraria:`, and
+  Statistics > Leituras shows the pattern. Readings travel in the backup and
+  in Additive Import and, with the "Leituras" box checked, in the `.json`,
+  `.md`, `.pdf` and `.docx` downloads.
+    - See `docs/leitura-avaliativa-for-ai.md` for a script an AI can follow to
+      interview you about a text, without filling anything in on its own.
 - **Find and Replace** (`localizar-substituir.html`): a separate tool
   (reachable from the "Tools" nav group) to search for a text snippet in
   Poems and/or Prose — with case-sensitivity, scoping to Poems, Prose, or
