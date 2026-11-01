@@ -63,25 +63,29 @@ function listaDeStrings(valor) {
 function listaComTipo(valor) {
     if (Array.isArray(valor)) {
         return valor
-            .map((i) =>
-                typeof i === 'string'
-                    ? { nome: i.trim(), tipo: '' }
-                    : { nome: (i?.nome || '').trim(), tipo: i?.tipo || '' },
-            )
+            .map((i) => {
+                if (typeof i === 'string') return { nome: i.trim(), tipo: '' };
+                const item = { nome: (i?.nome || '').trim(), tipo: i?.tipo || '' };
+                if (i?.anonimizar === true) item.anonimizar = true;
+                return item;
+            })
             .filter((i) => i.nome);
     }
     return listaDeStrings(valor).map((nome) => ({ nome, tipo: '' }));
 }
 
-function chipHtml(nome, tipo, cor) {
-    const sufixo = tipo ? ` <span class="opacity-75">· ${escapeHtml(tipo)}</span>` : '';
+function chipHtml(nome, tipo, cor, anonimiza = false) {
+    const notas = [tipo, anonimiza ? 'anonimiza o autor' : ''].filter(Boolean);
+    const sufixo = notas.length
+        ? ` <span class="opacity-75">· ${notas.map(escapeHtml).join(' · ')}</span>`
+        : '';
     return `<span class="${cor} text-white text-[11px] px-2 py-0.5 rounded-full inline-block mr-1 mb-1">${escapeHtml(nome)}${sufixo}</span>`;
 }
 
 // Bloco "Rótulo: [chip] [chip]" — vazio se não houver itens.
 function linhaChipsHtml(rotulo, itens, cor) {
     if (!itens.length) return '';
-    return `<div class="mb-1.5"><strong class="text-gray-600 dark:text-slate-300 mr-1">${escapeHtml(rotulo)}:</strong>${itens.map((i) => chipHtml(i.nome, i.tipo, cor)).join('')}</div>`;
+    return `<div class="mb-1.5"><strong class="text-gray-600 dark:text-slate-300 mr-1">${escapeHtml(rotulo)}:</strong>${itens.map((i) => chipHtml(i.nome, i.tipo, cor, i.anonimizar === true)).join('')}</div>`;
 }
 
 function pluralizar(n, singular, plural) {
@@ -115,6 +119,7 @@ export function renderVisualizacaoAutorHtml(autor, { totalPoemas = 0, totalProsa
     const anoDominioPublico = calcularAnoDominioPublico(a.obito);
 
     html += linhaChipsHtml('Heterônimos e Pseudônimos', nomesLiterarios, 'bg-indigo-600');
+    html += linhaMetaHtml('Autor sigiloso', a.sigiloso === true ? 'sim' : '');
     html += linhaMetaHtml('ISNI', a.isni);
     const linkImagem = linkImagemHtml(a.imagemUrl);
     if (linkImagem) {

@@ -4,8 +4,14 @@
 // ============================================================
 
 import { db } from './db.js';
+import { atualizarTravaOndeAparece } from './onde-aparece-ui.js';
+import { livroIdDoDestino as livroIdDoDestinoDoItem } from './aparicoes-do-texto.js';
 import { TIPO_FICHA, linkDoLivroParaFicha } from './ficha-catalografica.js';
 import { toggleCamposSumario, limparSumarioDoModal } from './ui-sumario.js';
+import { limparAutoriaDoModal } from './ui-autoria-livro.js';
+import { limparEquipeDoModal } from './ui-equipe-livro.js';
+import { limparUsoIaDoModal } from './ui-uso-ia-livro.js';
+import { atualizarContadorSinopseCurta } from './contador-sinopse-livro.js';
 import { resetPersonagens } from './grupo-personagens.js';
 import {
     resetSinalizacoes,
@@ -98,6 +104,7 @@ export const GRUPOS_NAV = [
             { id: 'partes', rotulo: 'Partes' },
             { id: 'secoes', rotulo: 'Seções' },
             { id: 'autores', rotulo: 'Autores' },
+            { id: 'colaboradores', rotulo: 'Colaboradores' },
             { id: 'estrutura', rotulo: 'Estrutura' },
         ],
     },
@@ -148,6 +155,7 @@ export const GRUPOS_NAV = [
             { id: 'estatisticas-cruzamentos', rotulo: 'Cruzamentos' },
             { id: 'estatisticas-local-idioma', rotulo: 'Local e idioma' },
             { id: 'estatisticas-correntes', rotulo: 'Correntes literárias' },
+            { id: 'estatisticas-datas-obras', rotulo: 'Obras citadas' },
             { id: 'estatisticas-linguagem', rotulo: 'Linguagem' },
         ],
     },
@@ -169,7 +177,8 @@ export const GRUPOS_NAV = [
     },
 ];
 
-// Grupo "Ferramentas" (Localizar e Substituir, Versões Alternativas): fora
+// Grupo "Ferramentas" (Localizar e Substituir, Versões Alternativas, Sortear
+// leitura): fora
 // do GRUPOS_NAV porque são links pra páginas separadas, não abas trocadas
 // via abrirAba/openTab dentro desta SPA — por isso ficam de fora de
 // TODAS_ABAS e de atualizarGrupoAtivoNavDesktop (não há "aba ativa" pra
@@ -177,9 +186,10 @@ export const GRUPOS_NAV = [
 // renderMenuMobile logo abaixo — senão ficam inacessíveis abaixo do
 // breakpoint md, já que a nav desktop (onde moram como dropdown por CSS
 // puro) some inteira no mobile.
-const FERRAMENTAS_NAV = [
+export const FERRAMENTAS_NAV = [
     { href: 'localizar-substituir.html', rotulo: 'Localizar e Substituir' },
     { href: 'filtrar.html', rotulo: 'Versões Alternativas' },
+    { href: 'sortear.html', rotulo: 'Sortear leitura' },
 ];
 
 const TODAS_ABAS = GRUPOS_NAV.flatMap((g) => g.abas);
@@ -317,178 +327,13 @@ export function initNav() {
 
 // ─── Helpers de hierarquia (pra saber a qual Livro algo pertence) ──
 
-function livroIdDaParte(parteId) {
-    const parte = db.partes.find((p) => p.id == parteId);
-    return parte ? parte.livroId : null;
-}
-
-function livroIdDaSecao(secaoId) {
-    const secao = db.secoes.find((s) => s.id == secaoId);
-    if (!secao) return null;
-    return secao.paiTipo === 'parte' ? livroIdDaParte(secao.paiId) : secao.paiId;
-}
-
-// Exportada para uso de auto-preenchimento de data de publicação
+// Exportada para uso de auto-preenchimento de data de publicação. Recebe o
+// destino como texto (`livro:1`, `parte:2`, `secao:3`); a escada Livro, Parte,
+// Seção mora em `aparicoes-do-texto.js`.
 export function livroIdDoDestino(destinoStr) {
     if (!destinoStr) return null;
-    const [tipo, id] = destinoStr.split(':');
-    if (tipo === 'livro') return id;
-    if (tipo === 'parte') return livroIdDaParte(id);
-    if (tipo === 'secao') return livroIdDaSecao(id);
-    return null;
-}
-
-// Monta a lista de Partes/Seções de um livro já na ORDEM da estrutura
-// real do livro: Parte 1 (e suas Seções), Parte 2 (e suas Seções), e
-// Seções soltas direto no Livro entram na posição certa pela sequência.
-function construirEstruturaLivro(livroId) {
-    const partesDoLivro = db.partes.filter((p) => String(p.livroId) === String(livroId));
-    const secoesDiretas = db.secoes.filter(
-        (s) => s.paiTipo === 'livro' && String(s.paiId) === String(livroId),
-    );
-
-    const topo = [
-        ...partesDoLivro.map((item) => ({ tipo: 'parte', item })),
-        ...secoesDiretas.map((item) => ({ tipo: 'secao', item })),
-    ].sort((a, b) => (parseInt(a.item.sequencia) || 9999) - (parseInt(b.item.sequencia) || 9999));
-
-    let html = '';
-    topo.forEach(({ tipo, item }) => {
-        if (tipo === 'parte') {
-            html += `<option value="parte:${item.id}">▸ ${escapeHtml(item.titulo)}</option>`;
-            db.secoes
-                .filter((s) => s.paiTipo === 'parte' && String(s.paiId) === String(item.id))
-                .sort((a, b) => (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999))
-                .forEach((s) => {
-                    html += `<option value="secao:${s.id}">　↳ ${escapeHtml(s.titulo)}</option>`;
-                });
-        } else {
-            html += `<option value="secao:${item.id}">↳ ${escapeHtml(item.titulo)}</option>`;
-        }
-    });
-    return html;
-}
-
-// Monta as opções de destino de Poema/Prosa. Coletâneas são excluídas:
-// o vínculo poema↔coletânea é gerido pela aba Coletâneas via itensColetanea.
-// Sem filtro: grupos planos (Livros / Partes / Seções).
-// Com livro filtrado: só aquele livro + sua estrutura interna ordenada.
-function construirOptionsDestino(livroFiltroId, formatoSimples = true) {
-    const livrosNormais = db.livros.filter((l) => l.tipo !== 'Coletânea');
-    const livroIdsNormais = new Set(livrosNormais.map((l) => String(l.id)));
-    const partesNormais = db.partes.filter((p) => livroIdsNormais.has(String(p.livroId)));
-    const secoesNormais = db.secoes.filter((s) => {
-        if (s.paiTipo === 'livro') return livroIdsNormais.has(String(s.paiId));
-        if (s.paiTipo === 'parte') {
-            const pt = db.partes.find((p) => p.id == s.paiId);
-            return pt ? livroIdsNormais.has(String(pt.livroId)) : false;
-        }
-        return false;
-    });
-
-    if (!livroFiltroId) {
-        if (formatoSimples) {
-            return (
-                '<option value="">Poema Avulso (Sem Vínculo)</option>' +
-                '<optgroup label="Livros">' +
-                livrosNormais
-                    .map((l) => `<option value="livro:${l.id}">${escapeHtml(l.titulo)}</option>`)
-                    .join('') +
-                '</optgroup>' +
-                '<optgroup label="Partes">' +
-                partesNormais
-                    .map((p) => `<option value="parte:${p.id}">${escapeHtml(p.titulo)}</option>`)
-                    .join('') +
-                '</optgroup>' +
-                '<optgroup label="Seções">' +
-                secoesNormais
-                    .map((s) => `<option value="secao:${s.id}">${escapeHtml(s.titulo)}</option>`)
-                    .join('') +
-                '</optgroup>'
-            );
-        }
-        const opcoes = [
-            ...livrosNormais.map((l) => ({
-                id: `livro:${l.id}`,
-                texto: `[Livro] ${escapeHtml(l.titulo)}`,
-            })),
-            ...partesNormais.map((p) => ({
-                id: `parte:${p.id}`,
-                texto: `[Parte] ${escapeHtml(p.titulo)}`,
-            })),
-            ...secoesNormais.map((s) => ({
-                id: `secao:${s.id}`,
-                texto: `[Seção] ${escapeHtml(s.titulo)}`,
-            })),
-        ];
-        return (
-            '<option value="">-- Sem vínculo (Avulso) --</option>' +
-            opcoes.map((o) => `<option value="${o.id}">${o.texto}</option>`).join('')
-        );
-    }
-
-    const livro = db.livros.find((l) => String(l.id) === String(livroFiltroId));
-    const estrutura = construirEstruturaLivro(livroFiltroId);
-
-    if (formatoSimples) {
-        return (
-            '<option value="">Poema Avulso (Sem Vínculo)</option>' +
-            `<option value="livro:${livroFiltroId}">📖 ${escapeHtml(livro?.titulo) || ''} (o livro inteiro)</option>` +
-            `<optgroup label="Estrutura: ${escapeHtml(livro?.titulo) || ''}">${estrutura}</optgroup>`
-        );
-    }
-    return (
-        '<option value="">-- Sem vínculo (Avulso) --</option>' +
-        `<option value="livro:${livroFiltroId}">[Livro] ${escapeHtml(livro?.titulo) || ''}</option>` +
-        estrutura
-    );
-}
-
-function popularFiltroLivro(selectId) {
-    const sel = document.getElementById(selectId);
-    if (!sel) return;
-    // Coletâneas excluídas: o filtro de destino é só para livros normais.
-    sel.innerHTML =
-        '<option value="">-- Todos os livros --</option>' +
-        db.livros
-            .filter((l) => l.tipo !== 'Coletânea')
-            .map((l) => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`)
-            .join('');
-}
-
-// Reconstrói o select de Destino do Poema, filtrado pelo livro escolhido.
-// Tenta preservar o valor atualmente selecionado, se ele ainda for válido.
-export function filtrarDestinoPoema(livroId) {
-    const sel = document.getElementById('p-destino');
-    if (!sel) return;
-    const valorAtual = sel.value;
-    sel.innerHTML = construirOptionsDestino(livroId, true);
-    const aindaExiste = Array.from(sel.options).some((o) => o.value === valorAtual);
-    if (aindaExiste) sel.value = valorAtual;
-}
-
-export function filtrarDestinoProsa(livroId) {
-    const sel = document.getElementById('pr-destino');
-    if (!sel) return;
-    const valorAtual = sel.value;
-    sel.innerHTML = construirOptionsDestino(livroId, false);
-    const aindaExiste = Array.from(sel.options).some((o) => o.value === valorAtual);
-    if (aindaExiste) sel.value = valorAtual;
-}
-
-// Usado por forms.js ao abrir um Poema/Prosa existente para edição:
-// pré-seleciona o filtro de livro de acordo com o destino atual,
-// pra não esconder o vínculo que o item já tinha.
-export function sincronizarFiltroDestino(filtroSelectId, destinoSelectId, destinoStr) {
-    const livroId = livroIdDoDestino(destinoStr);
-    const filtroSel = document.getElementById(filtroSelectId);
-    if (filtroSel) filtroSel.value = livroId || '';
-
-    if (destinoSelectId === 'p-destino') filtrarDestinoPoema(livroId || '');
-    else filtrarDestinoProsa(livroId || '');
-
-    const destinoSel = document.getElementById(destinoSelectId);
-    if (destinoSel) destinoSel.value = destinoStr || '';
+    const [paiTipo, paiId] = destinoStr.split(':');
+    return livroIdDoDestinoDoItem({ paiTipo, paiId }, db);
 }
 
 export function renderDropdowns() {
@@ -593,11 +438,6 @@ export function renderDropdowns() {
             .map((l) => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`)
             .join('');
 
-    // 2. Destino de Poemas (Livro, Parte ou Seção) — sem filtro por padrão
-    const sPoemaDestino = document.getElementById('p-destino');
-    if (sPoemaDestino) sPoemaDestino.innerHTML = construirOptionsDestino('', true);
-    popularFiltroLivro('p-destino-filtro');
-
     // 3. Vínculo de Seções (Livro ou Parte) — coletâneas excluídas dos dois grupos:
     //    livros-coletânea não aceitam seções; partes-de-coletânea também não.
     const sSecVinculo = document.getElementById('sec-vinculo');
@@ -652,15 +492,6 @@ export function renderDropdowns() {
             '</optgroup>';
     }
 
-    // 5. Livros múltiplos no Modal de Poemas — etiqueta editorial paralela;
-    //    coletâneas excluídas: o vínculo poema↔coletânea já vive em itensColetanea.
-    const sPoemaLivros = document.getElementById('p-livros');
-    if (sPoemaLivros)
-        sPoemaLivros.innerHTML = db.livros
-            .filter((l) => l.tipo !== 'Coletânea')
-            .map((l) => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`)
-            .join('');
-
     // 6. Elos e Ecos entre poemas — selects de poema-alvo (single),
     //    usados pela linha de "adicionar" de cada lista (ver editor.js:
     //    adicionarElo/adicionarEco). Repovoados a cada render pra
@@ -699,15 +530,6 @@ export function renderDropdowns() {
                 '',
             );
     }
-
-    // 6b. Livros múltiplos no Modal de Prosas (item 4 — mesmo campo de
-    //     Poema, etiqueta editorial paralela, coletâneas excluídas).
-    const sProsaLivros = document.getElementById('pr-livros');
-    if (sProsaLivros)
-        sProsaLivros.innerHTML = db.livros
-            .filter((l) => l.tipo !== 'Coletânea')
-            .map((l) => `<option value="${l.id}">${escapeHtml(l.titulo)}</option>`)
-            .join('');
 
     // 6c. Elos e Ecos no Modal de Prosas (item 4) — selects de
     //     texto-alvo (single), mas agora com Poemas E Prosas juntos num
@@ -751,11 +573,6 @@ export function renderDropdowns() {
                 '',
             );
     }
-
-    // 7. Destino de Prosas (Livro, Parte ou Seção) — sem filtro por padrão
-    const destinoProsa = document.getElementById('pr-destino');
-    if (destinoProsa) destinoProsa.innerHTML = construirOptionsDestino('', false);
-    popularFiltroLivro('pr-destino-filtro');
 
     // 8. Grupos → checkboxes do Modal de Pessoa. Sempre reconstruído
     // (e portanto sempre desmarcado) — editarPessoa() marca de volta os
@@ -873,6 +690,13 @@ export async function prepararNovo(tipo) {
     const form = document.getElementById(`form-${tipo}`);
     if (!form) return;
     form.reset();
+    if (tipo === 'poema' || tipo === 'prosa') {
+        // O aviso da Leitura autônoma vive fora do form.reset() nativo.
+        const tabelaAviso = tipo === 'poema' ? 'poemas' : 'prosas';
+        import('./editor.js').then(({ atualizarAvisoLeituraSorteio }) =>
+            atualizarAvisoLeituraSorteio(tabelaAviso),
+        );
+    }
     renderDropdowns();
 
     const idFields = {
@@ -1002,6 +826,11 @@ export async function prepararNovo(tipo) {
     if (tipo === 'livro') {
         // Livro novo ainda não tem o que ver: esconde o olho do cabeçalho.
         document.getElementById('livro-ver')?.classList.add('hidden');
+        // A lista de Autoria também vive fora do form.reset() nativo.
+        limparAutoriaDoModal();
+        limparEquipeDoModal();
+        limparUsoIaDoModal();
+        atualizarContadorSinopseCurta();
         // Import dinâmico pra evitar ciclo (ui → editor não existe hoje,
         // mesmo motivo do bloco 'prosa' acima) — só zera o estado
         // transitório da lista de Lojas (onde comprar), já que ela vive
@@ -1171,21 +1000,34 @@ export function toggleCamposFicha() {
     }
 }
 
-export function sugerirSequencia() {
-    const destino = document.getElementById('p-destino')?.value;
-    const campo = document.getElementById('p-sequencia');
-    if (!destino || !campo) return;
+// Campos de migração e de descarte do modal (Poema e Prosa): cada pedaço
+// declara em `data-status-visivel` os status em que aparece ("migrado",
+// "descartado", "outro" = qualquer status que não seja esses dois). Migrado
+// mostra Cortado de, Lançado em e a justificativa da migração; Descartado
+// mostra só Cortado de e a justificativa do descarte; os demais status não
+// mostram nada. Pendência fica fora da caixa e aparece sempre.
+//
+// Rede de segurança: um pedaço marcado `data-guarda-dado` que já tem texto
+// continua visível mesmo fora do seu status (texto que mudou de status sem
+// esvaziar os campos). Esconder um dado que o app ainda grava deixaria a
+// pessoa sem como vê-lo ou apagá-lo. Só é reavaliado quando o status muda ou
+// o modal carrega, nunca a cada tecla.
+export function atualizarCamposDoStatus(prefixo = 'p') {
+    atualizarTravaOndeAparece(prefixo);
+    const caixa = document.getElementById(`${prefixo}-status-campos`);
+    if (!caixa) return;
+    const status = document.getElementById(`${prefixo}-status`)?.value;
+    const efetivo = status === 'migrado' || status === 'descartado' ? status : 'outro';
 
-    const [tipo, id] = destino.split(':');
-    const textos = [
-        ...db.poemas.filter((p) => String(p.paiTipo) === tipo && String(p.paiId) === id),
-        ...(db.prosas || []).filter((pr) => String(pr.paiTipo) === tipo && String(pr.paiId) === id),
-    ];
-
-    if (textos.length === 0) {
-        campo.value = 1;
-    } else {
-        const max = Math.max(...textos.map((t) => parseInt(t.sequencia) || 0));
-        campo.value = max + 1;
-    }
+    let algumDadoVisivel = false;
+    caixa.querySelectorAll('[data-status-visivel]').forEach((el) => {
+        const casa = el.dataset.statusVisivel.split(' ').includes(efetivo);
+        const guardaDado =
+            !casa &&
+            el.hasAttribute('data-guarda-dado') &&
+            Array.from(el.querySelectorAll('input, textarea')).some((c) => c.value.trim());
+        if (guardaDado) algumDadoVisivel = true;
+        el.classList.toggle('hidden', !casa && !guardaDado);
+    });
+    caixa.classList.toggle('hidden', efetivo === 'outro' && !algumDadoVisivel);
 }

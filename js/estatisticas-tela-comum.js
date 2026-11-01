@@ -19,12 +19,14 @@ import {
     selecionarTodosTemporal,
     limparSelecaoTemporal,
     getGruposFiltroPessoas,
+    getContarEuComoPessoa,
 } from './estatisticas-filtros.js';
 import {
     contarTextosFiltrados,
     agregarPorTema,
     agregarPorPessoa,
     filtrarPorIntervalo,
+    haPessoaDeAutor,
     anosDistintosPorTema,
     anosDistintosPorPessoa,
     filtrarPorAnosDistintos,
@@ -71,7 +73,17 @@ export function campoMinimoAnos(chave, totalAntes, totalDepois) {
 // `titulos` (opcional): Map(rótulo → texto) com o que o tooltip mostra como
 // título no lugar do rótulo (ex.: o nome completo de um Local que aparece
 // pelo apelido). Rótulo ausente do Map mantém o próprio rótulo.
-export function criarBarChart(canvasId, labels, data, cor, total = null, titulos = null) {
+// `opcoes.rotuloClicavel(rotulo)`: os rótulos do eixo x para os quais devolve
+// true aparecem em azul (ver bindDrillDownBarra, que trata o clique neles).
+export function criarBarChart(
+    canvasId,
+    labels,
+    data,
+    cor,
+    total = null,
+    titulos = null,
+    opcoes = {},
+) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     if (typeof Chart === 'undefined') {
@@ -80,7 +92,7 @@ export function criarBarChart(canvasId, labels, data, cor, total = null, titulos
             tentativas++;
             if (typeof Chart !== 'undefined') {
                 clearInterval(espera);
-                criarBarChart(canvasId, labels, data, cor, total, titulos);
+                criarBarChart(canvasId, labels, data, cor, total, titulos, opcoes);
             } else if (tentativas >= 30) {
                 clearInterval(espera);
                 console.warn('Chart.js não carregou a tempo para', canvasId);
@@ -112,7 +124,16 @@ export function criarBarChart(canvasId, labels, data, cor, total = null, titulos
             },
             scales: {
                 x: {
-                    ticks: { color: escuro ? '#94a3b8' : '#374151' },
+                    ticks: {
+                        color: (ctx) =>
+                            opcoes.rotuloClicavel?.(labels[ctx.index])
+                                ? escuro
+                                    ? '#60a5fa'
+                                    : '#2563eb'
+                                : escuro
+                                  ? '#94a3b8'
+                                  : '#374151',
+                    },
                     grid: { color: escuro ? 'rgba(148,163,184,0.15)' : 'rgba(0,0,0,0.08)' },
                 },
                 y: {
@@ -426,6 +447,19 @@ export function renderFiltrosCompartilhados() {
                 `<option value="${a.id}" ${String(f.autorId) === String(a.id) ? 'selected' : ''}>${escapeHtml(a.nome)}</option>`,
         )
         .join('');
+    // Interruptor global "Contar o próprio autor como pessoa": só aparece quando há
+    // Pessoa ligada a um Autor (ou marcada "sou eu"). Desligado, uma nota curta
+    // avisa que as contagens não incluem a Pessoa nos textos do próprio autor.
+    const contarAutor = getContarEuComoPessoa();
+    const blocoEu = haPessoaDeAutor()
+        ? `<div class="basis-full text-xs text-gray-600 dark:text-slate-300">
+                    <label class="inline-flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" id="est-contar-eu" ${contarAutor ? 'checked' : ''} onchange="definirContarEuComoPessoa(this.checked)">
+                        Contar o próprio autor como pessoa
+                    </label>
+                    ${contarAutor ? '' : '<span class="ml-2 text-[10px] text-amber-600 dark:text-amber-400">Contagens de pessoas, grupos, gênero e identidade sem a Pessoa ligada ao autor, nos textos dele.</span>'}
+                </div>`
+        : '';
     container.forEach((el) => {
         el.innerHTML = `
             <div class="bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex flex-wrap items-end gap-3">
@@ -458,6 +492,7 @@ export function renderFiltrosCompartilhados() {
                 </div>
                 <button type="button" onclick="limparFiltrosCompartilhados()" class="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline">Limpar filtros</button>
                 <div class="ml-auto text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">N textos nesta visão: <strong class="text-gray-700 dark:text-slate-200">${n.total}</strong> (${n.poemas} poemas · ${n.prosas} prosas)</div>
+                ${blocoEu}
             </div>`;
     });
 }
@@ -522,11 +557,43 @@ export function tipoDestino() {
 // (getElementsAtEventForMode) pra não repetir esse trecho em cada tela
 // que precisa de drill-down — usar isso + navegarParaLista é o padrão
 // pra qualquer gráfico de barras novo que precisar ficar clicável.
-export function bindDrillDownBarra(canvasId, aoClicarLabel) {
+// O rótulo do eixo x sob o ponto do evento, ou null se o ponto não está sobre o
+// eixo (a faixa entre a base da área do gráfico e a borda do canvas).
+function rotuloDoEixoNoPonto(chart, event) {
+    const escala = chart?.scales?.x;
+    if (!escala || typeof Chart === 'undefined') return null;
+    const { x, y } = Chart.helpers.getRelativePosition(event, chart);
+    if (y <= chart.chartArea.bottom || y > chart.height) return null;
+    if (x < escala.left || x > escala.right) return null;
+    const indice = escala.getValueForPixel(x);
+    return Number.isInteger(indice) ? (chart.data.labels[indice] ?? null) : null;
+}
+
+// `aoClicarRotulo` (opcional): clique no rótulo do eixo x, em vez de na barra
+// (usado pelo zoom do gráfico de distância). `opcoes.rotuloClicavel(rotulo)` diz
+// quais rótulos respondem; neles o ponteiro vira mão e aparece `opcoes.dica`.
+export function bindDrillDownBarra(canvasId, aoClicarLabel, aoClicarRotulo = null, opcoes = {}) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
+    const chartDe = () => (typeof Chart !== 'undefined' ? Chart.getChart(canvas) : null);
+    const rotuloValido = (rotulo) =>
+        rotulo !== null && (opcoes.rotuloClicavel ? opcoes.rotuloClicavel(rotulo) : true);
+    canvas.onmousemove = aoClicarRotulo
+        ? (event) => {
+              const sobre = rotuloValido(rotuloDoEixoNoPonto(chartDe(), event));
+              canvas.style.cursor = sobre ? 'pointer' : '';
+              canvas.title = sobre ? opcoes.dica || '' : '';
+          }
+        : null;
     canvas.onclick = (event) => {
-        const chart = typeof Chart !== 'undefined' ? Chart.getChart(canvas) : null;
+        const chart = chartDe();
+        if (aoClicarRotulo) {
+            const rotulo = rotuloDoEixoNoPonto(chart, event);
+            if (rotulo !== null) {
+                if (rotuloValido(rotulo)) aoClicarRotulo(rotulo);
+                return;
+            }
+        }
         const pts =
             chart?.getElementsAtEventForMode(event, 'nearest', { intersect: true }, true) || [];
         if (!pts.length) return;

@@ -31,8 +31,9 @@ const { registrarModal, toggleModal } = await import('../js/modais.js');
 const ma = await import('../js/modo-aprendizado.js');
 const ca = await import('../js/central-ajuda.js');
 const tour = await import('../js/tour.js');
-const { TAREFAS_COMO_FACO } = await import('../js/como-faco-passos.js');
+const { TAREFAS_COMO_FACO, tarefasPorGrupo } = await import('../js/como-faco-passos.js');
 const { CATEGORIAS_FAQ } = await import('../js/faq-conteudo.js');
+const { buscarNaAjuda } = await import('../js/busca-ajuda.js');
 
 registrarModal('modal-modo-aprendizado', 'modal-modo-aprendizado.html', ma.initModoAprendizado);
 registrarModal('modal-central-ajuda', 'modal-central-ajuda.html', ca.initCentralAjuda);
@@ -63,6 +64,17 @@ describe('Central de Ajuda — modal', () => {
         assert.equal(detalhesFaq.length, totalPerguntas);
     });
 
+    it('o Como eu faço para... mostra um rótulo por grupo, com as tarefas dele logo abaixo', async () => {
+        await ca.abrirCentralAjuda();
+        const blocos = Array.from(el('ca-como-faco-lista').children);
+        const esperado = tarefasPorGrupo();
+        assert.equal(blocos.length, esperado.length);
+        blocos.forEach((bloco, i) => {
+            assert.equal(bloco.querySelector('h5').textContent, esperado[i].rotulo);
+            assert.equal(bloco.querySelectorAll('details').length, esperado[i].tarefas.length);
+        });
+    });
+
     it('cada tarefa mostra a descrição acima do botão "Mostrar na tela"', async () => {
         await ca.abrirCentralAjuda();
         const itens = el('ca-como-faco-lista').querySelectorAll('details');
@@ -70,7 +82,9 @@ describe('Central de Ajuda — modal', () => {
         itens.forEach((item, i) => {
             const paragrafo = item.querySelector('p');
             const botao = item.querySelector('button');
-            assert.equal(paragrafo.textContent, TAREFAS_COMO_FACO[i].descricao);
+            // na tela as tarefas seguem a ordem dos grupos
+            const naOrdemDaTela = tarefasPorGrupo().flatMap((g) => g.tarefas);
+            assert.equal(paragrafo.textContent, naOrdemDaTela[i].descricao);
             // a descrição vem antes do botão no corpo do item
             assert.ok(paragrafo.compareDocumentPosition(botao) & 4, 'descrição depois do botão');
         });
@@ -102,6 +116,197 @@ describe('Central de Ajuda — modal', () => {
         // toggleModal e iniciarTour são assíncronos/imediatos o bastante pra
         // já refletir no próximo tick de microtarefas (mesmo padrão dos
         // outros testes de clique deste arquivo).
+        await Promise.resolve();
+        await Promise.resolve();
+        assert.ok(!aberto('modal-central-ajuda'));
+        assert.ok(tour.tourAtivo());
+        tour.encerrarTour();
+    });
+});
+
+describe('Central de Ajuda: caixa de busca', () => {
+    function digitar(texto) {
+        const caixa = el('ca-busca');
+        caixa.value = texto;
+        caixa.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    function teclar(tecla) {
+        el('ca-busca').dispatchEvent(
+            new KeyboardEvent('keydown', { key: tecla, bubbles: true, cancelable: true }),
+        );
+    }
+    const visivel = (id) => !el(id).classList.contains('hidden');
+
+    beforeEach(() => {
+        localStorage.clear();
+        el('modal-central-ajuda').classList.add('hidden');
+    });
+
+    it('sem busca mostra tudo recolhido, sem aviso', async () => {
+        await ca.abrirCentralAjuda();
+        assert.ok(visivel('ca-secao-apresentacao'));
+        assert.ok(visivel('ca-secao-como-faco'));
+        assert.ok(visivel('ca-secao-faq'));
+        assert.ok(!visivel('ca-busca-status'));
+        const abertos = el('modal-central-ajuda').querySelectorAll('details[open]');
+        assert.equal(abertos.length, 0);
+    });
+
+    it('digitar filtra as duas listas e abre o que casa', async () => {
+        await ca.abrirCentralAjuda();
+        const esperado = buscarNaAjuda('backup');
+        assert.ok(esperado.total > 0, 'o termo de teste precisa achar algo');
+        digitar('backup');
+        const itens = el('modal-central-ajuda').querySelectorAll(
+            '#ca-como-faco-lista details, #ca-faq-lista details',
+        );
+        assert.equal(itens.length, esperado.total);
+        assert.ok(Array.from(itens).every((d) => d.open));
+        assert.equal(el('ca-busca-status').textContent, `${esperado.total} resultados`);
+        assert.ok(visivel('ca-busca-status'));
+    });
+
+    it('com busca ativa a apresentação some', async () => {
+        await ca.abrirCentralAjuda();
+        digitar('backup');
+        assert.ok(!visivel('ca-secao-apresentacao'));
+    });
+
+    it('grupo e categoria sem achado somem', async () => {
+        await ca.abrirCentralAjuda();
+        digitar('backup');
+        const r = buscarNaAjuda('backup');
+        assert.equal(el('ca-como-faco-lista').children.length, r.grupos.length);
+        assert.equal(el('ca-faq-lista').children.length, r.categorias.length);
+        assert.ok(r.grupos.length < tarefasPorGrupo().length);
+    });
+
+    it('seção sem nenhum achado some por inteiro', async () => {
+        await ca.abrirCentralAjuda();
+        // pergunta inteira da FAQ: acha a própria pergunta; confere o lado vazio pela lógica
+        const faq = CATEGORIAS_FAQ[0].perguntas[0].pergunta;
+        const r = buscarNaAjuda(faq);
+        digitar(faq);
+        assert.equal(visivel('ca-secao-como-faco'), r.grupos.length > 0);
+        assert.ok(visivel('ca-secao-faq'));
+    });
+
+    it('frase entre aspas funciona na tela', async () => {
+        await ca.abrirCentralAjuda();
+        const titulo = TAREFAS_COMO_FACO[0].titulo;
+        digitar(`"${titulo}"`);
+        const resumos = Array.from(el('ca-como-faco-lista').querySelectorAll('summary')).map(
+            (s) => s.textContent,
+        );
+        assert.ok(resumos.includes(titulo));
+    });
+
+    it('um resultado usa o singular', async () => {
+        await ca.abrirCentralAjuda();
+        digitar(`"${CATEGORIAS_FAQ[0].perguntas[0].pergunta}"`);
+        const r = buscarNaAjuda(`"${CATEGORIAS_FAQ[0].perguntas[0].pergunta}"`);
+        if (r.total === 1) assert.equal(el('ca-busca-status').textContent, '1 resultado');
+        else assert.equal(el('ca-busca-status').textContent, `${r.total} resultados`);
+    });
+
+    it('nada casando mostra a mensagem e esconde as duas seções', async () => {
+        await ca.abrirCentralAjuda();
+        digitar('zzqxwv');
+        assert.ok(visivel('ca-busca-status'));
+        assert.match(el('ca-busca-status').textContent, /Nada encontrado/);
+        assert.ok(!visivel('ca-secao-como-faco'));
+        assert.ok(!visivel('ca-secao-faq'));
+        assert.ok(!visivel('ca-secao-apresentacao'));
+    });
+
+    it('acha pelo sinônimo das palavras-chave, sem mostrá-lo na tela', async () => {
+        await ca.abrirCentralAjuda();
+        digitar('zerar');
+        const resumos = Array.from(el('ca-como-faco-lista').querySelectorAll('summary')).map(
+            (s) => s.textContent,
+        );
+        assert.ok(
+            resumos.some((r) => /recome/i.test(r)),
+            'esvaziar o acervo deveria aparecer',
+        );
+        // a palavra-chave não é texto de tela
+        assert.ok(!el('ca-como-faco-lista').textContent.includes('zerar'));
+    });
+
+    it('sem item com todas as palavras, avisa e mostra os parciais', async () => {
+        await ca.abrirCentralAjuda();
+        const consulta = 'esvaziar xyzabc';
+        const r = buscarNaAjuda(consulta);
+        assert.equal(r.parcial, true);
+        digitar(consulta);
+        assert.match(
+            el('ca-busca-status').textContent,
+            /^Nenhum item tem todas as palavras\. Mostrando /,
+        );
+        assert.match(el('ca-busca-status').textContent, / 1 de 2\.$/);
+        const itens = el('modal-central-ajuda').querySelectorAll(
+            '#ca-como-faco-lista details, #ca-faq-lista details',
+        );
+        assert.equal(itens.length, r.total);
+    });
+
+    it('apagar o texto à mão volta ao estado de sempre', async () => {
+        await ca.abrirCentralAjuda();
+        digitar('backup');
+        digitar('');
+        assert.ok(visivel('ca-secao-apresentacao'));
+        assert.ok(visivel('ca-secao-como-faco'));
+        assert.ok(visivel('ca-secao-faq'));
+        assert.ok(!visivel('ca-busca-status'));
+        assert.equal(el('modal-central-ajuda').querySelectorAll('details[open]').length, 0);
+        assert.equal(
+            el('modal-central-ajuda').querySelectorAll('#ca-como-faco-lista details').length,
+            TAREFAS_COMO_FACO.length,
+        );
+    });
+
+    it('Esc com texto limpa a caixa e restaura as listas', async () => {
+        await ca.abrirCentralAjuda();
+        digitar('zzqxwv');
+        teclar('Escape');
+        assert.equal(el('ca-busca').value, '');
+        assert.ok(visivel('ca-secao-como-faco'));
+        assert.ok(visivel('ca-secao-faq'));
+        assert.ok(!visivel('ca-busca-status'));
+    });
+
+    it('Esc com a caixa vazia fecha a Central, uma vez só', async () => {
+        await ca.abrirCentralAjuda();
+        teclar('Escape');
+        await Promise.resolve();
+        await Promise.resolve();
+        assert.ok(!aberto('modal-central-ajuda'));
+    });
+
+    it('Esc com texto limpa a caixa e não fecha a Central', async () => {
+        await ca.abrirCentralAjuda();
+        digitar('zzqxwv');
+        teclar('Escape');
+        await Promise.resolve();
+        assert.ok(aberto('modal-central-ajuda'));
+    });
+
+    it('reabrir a Central zera a busca', async () => {
+        await ca.abrirCentralAjuda();
+        digitar('zzqxwv');
+        await toggleModal('modal-central-ajuda'); // fecha
+        await ca.abrirCentralAjuda();
+        assert.equal(el('ca-busca').value, '');
+        assert.ok(visivel('ca-secao-como-faco'));
+        assert.ok(visivel('ca-secao-faq'));
+        assert.ok(!visivel('ca-busca-status'));
+    });
+
+    it('"Mostrar na tela" continua funcionando num resultado de busca', async () => {
+        await ca.abrirCentralAjuda();
+        digitar(`"${TAREFAS_COMO_FACO[0].titulo}"`);
+        const botao = el('ca-como-faco-lista').querySelector('button');
+        botao.dispatchEvent(new Event('click', { bubbles: true }));
         await Promise.resolve();
         await Promise.resolve();
         assert.ok(!aberto('modal-central-ajuda'));

@@ -69,3 +69,52 @@ describe('gerarMarkdownTemas', () => {
         assert.equal(md, '# Temas\n\n_Nenhum tema cadastrado ainda._\n');
     });
 });
+
+describe('gerarMarkdownTemas: valência e Vitrine de leitura', () => {
+    const base = () => {
+        const db = montar();
+        db.temas[0].valencia = 'desagradavel'; // Machismo
+        db.temas[3].valencia = 'ambivalente'; // Saudade
+        db.temasUniversais = [
+            { id: 'u1', nome: 'Corpo e gênero', temaIds: [1, 3] },
+            { id: 'u2', nome: 'Saudade e memória', temaIds: [4] },
+        ];
+        return db;
+    };
+
+    it('cada tema mostra a vitrine depois dos assuntos, na ordem da tela', () => {
+        const md = gerarMarkdownTemas(base());
+        assert.match(
+            md,
+            /- Machismo \(2\)\. Valência: Desagradável\. Assuntos: Gênero, Sociedade\. Vitrine: Corpo e gênero/,
+        );
+        assert.match(md, /- Saudade \(1\)\. Valência: Ambivalente\. Vitrine: Saudade e memória/);
+        assert.doesNotMatch(md, /- Polarização[^\n]*Vitrine/);
+    });
+
+    it('o resumo conta os temas sem valência e sem vitrine', () => {
+        assert.match(
+            gerarMarkdownTemas(base()),
+            /4 temas, 2 sem assunto, 2 sem valência, 1 sem vitrine\./,
+        );
+    });
+
+    it('o resumo não fala de valência nem de vitrine quando não são usadas', () => {
+        const md = gerarMarkdownTemas(montar());
+        assert.match(md, /4 temas, 2 sem assunto\./);
+        assert.doesNotMatch(md, /Vitrine/);
+    });
+
+    it('lista os convites com os temas que reúnem, em ordem alfabética', () => {
+        const md = gerarMarkdownTemas(base());
+        const vitrine = md.split('## Vitrine de leitura')[1];
+        assert.match(vitrine, /- Corpo e gênero \(2 temas\): Água, Machismo/);
+        assert.match(vitrine, /- Saudade e memória \(1 tema\): Saudade/);
+    });
+
+    it('convite sem tema aparece com zero e sem dois pontos', () => {
+        const db = base();
+        db.temasUniversais.push({ id: 'u3', nome: 'Vazio', temaIds: [] });
+        assert.match(gerarMarkdownTemas(db), /- Vazio \(0 temas\)\n/);
+    });
+});

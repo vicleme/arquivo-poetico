@@ -2,6 +2,8 @@
 
 Plano da Fase 19 e da Fase 19b. Criado em 20/10/2026, a partir da conversa do Victor sobre o que fazer depois do modal Ver do Livro. O painel (`plano-central.md`) guarda só a linha da fase; o detalhe mora aqui. Cada etapa fecha sozinha: o app continua funcionando sem as próximas, os testes direcionados passam e sai um zip só com o que mudou (regra "Tarefas grandes" do `CLAUDE.md`).
 
+> **Fase 19 concluída em 23/10/2026 (etapas 1 a 9).** Arquivada em `plano-concluido.md`. Este arquivo fica porque guarda a seção "Fase 19b" (filiações do Autor), que ainda é plano. O que foi feito e os porquês estão em `manutencao/decisoes.md` (seções da Fase 19) e `manutencao/schema.md`.
+
 ## Ponto de partida
 
 O modal **Ver do Livro** foi entregue em 20/10/2026, em três entregas (modal e navegação, olho no Editar livro, documentação). Detalhe em `manutencao/status.md` (entrada de 20/10/2026) e em `manutencao/decisoes.md` (seção "Ver do Livro", escolhas (a) a (i) a confirmar). Pendem de confirmação do Victor, entre elas: o Ver do livro não tem "Baixar" no rodapé (a etapa 7 resolve), só links http e https viram link clicável e a aba Coletâneas não ganhou botão Ver.
@@ -66,7 +68,7 @@ A ordem é a combinada na conversa. Autoria, IA e Colaboradores vêm antes do do
     3. **Modelo e versão**, opcional, texto livre com sugestão (a "raiz": GPT-4o, Gemini 2.5, Claude Sonnet, Stable Diffusion XL, Flux, ou o arquivo do modelo local). Fica em campo separado da ferramenta, porque o mesmo produto troca de modelo com o tempo e o mesmo modelo aparece em produtos diferentes. Quem só sabe "ChatGPT" deixa em branco sem prejuízo.
     4. **Descrição** livre.
     5. **Data aproximada**, opcional, em data parcial (só o ano, ou mês e ano), porque o modelo muda rápido.
-    6. **Como foi usada**, seletor opcional: Gerou do zero, Editou ou refinou algo meu, Sugeriu ideias, Corrigiu ou revisou, Traduziu.
+    6. **Como foi usada**, seletor opcional: Gerou do zero, Gerou quase pronto, Gerou uma base (as duas últimas a pedido do Victor, 23/10/2026), Editou ou refinou algo meu, Sugeriu ideias, Corrigiu ou revisou, Traduziu.
 - **Uma nota geral livre** para o livro.
 - **Fora de propósito:** a empresa do modelo (dá para deduzir da ferramenta e criaria dado redundante), o texto do prompt (grande e raramente útil; se importar numa obra, cabe na descrição) e o campo "Local ou nuvem" (pode entrar depois, se fizer falta).
 - **Quando o uso for num texto específico**, a sugestão é poder apontar para ele pelo cadastro de textos (campo opcional do item; confirmar ao começar, ver F19-D12).
@@ -106,29 +108,29 @@ A ordem é a combinada na conversa. Autoria, IA e Colaboradores vêm antes do do
 
 Código, decisão e origem. "Aprovada com o plano" quer dizer que o Claude propôs e o Victor aceitou o plano em etapas sem objetar.
 
-| Código  | Decisão                                                                                                                                                   | Origem                 |
-| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| F19-D1  | Fechar o Editar livro com alteração passa a pedir confirmação, como Poema e Prosa                                                                         | Aprovada com o plano   |
-| F19-D2  | Estrutura no Ver: seção recolhível no fim, fechada ao abrir, com níveis recolhíveis e a mesma ordenação da aba Estrutura                                  | Aprovada com o plano   |
-| F19-D3  | Cada título da Estrutura abre o Ver do texto, em etapa própria e adiável                                                                                  | Victor                 |
-| F19-D4  | Filtros da aba Livros antes do download; começam por busca, tipo, fase e situação editorial                                                               | Aprovada com o plano   |
-| F19-D5  | Autoria é campo próprio do livro, ligado a Autores, com papéis desde o começo (Autor, Coautor, Organizador, Tradutor, Prefaciador, Posfaciador, Outro)    | Victor                 |
-| F19-D6  | Colaboradores é um cadastro novo, separado de Pessoas e de Autores; nome escolhido pelo Victor                                                            | Victor                 |
-| F19-D7  | Regra de fronteira: conteúdo da obra em Autoria, objeto livro em Colaboradores. Ilustrador fica em Colaboradores                                          | Victor ("faz sentido") |
-| F19-D8  | Escopo opcional em todos os papéis de Colaboradores, texto livre com sugestão; um papel só de Ilustrador. Não filtrar com precisão é aceito               | Victor                 |
-| F19-D9  | Uso de IA estruturado: estado (padrão "Não informado"), lista de usos com ferramenta e modelo e versão em campos separados, e "Como foi usada" por último | Victor                 |
-| F19-D10 | Download só com as informações do livro, na aba (Todos, Filtrados, Selecionados) e no Ver; `.json`, `.md`, `.csv` primeiro, `.pdf` e `.docx` depois       | Victor                 |
-| F19-D11 | Limite de 10 fases ativas no painel; fase concluída sai do painel para `plano-concluido.md`; esta fase tem arquivo próprio                                | Victor, 20/10/2026     |
+| Código  | Decisão                                                                                                                                                                                                                                           | Origem                 |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| F19-D1  | Fechar o Editar livro com alteração passa a pedir confirmação, como Poema e Prosa                                                                                                                                                                 | Aprovada com o plano   |
+| F19-D2  | Estrutura no Ver: seção recolhível no fim, fechada ao abrir, com níveis recolhíveis e a mesma ordenação da aba Estrutura                                                                                                                          | Aprovada com o plano   |
+| F19-D3  | Cada título da Estrutura abre o Ver do texto, em etapa própria e adiável                                                                                                                                                                          | Victor                 |
+| F19-D4  | Filtros da aba Livros antes do download; começam por busca, tipo, fase e situação editorial                                                                                                                                                       | Aprovada com o plano   |
+| F19-D5  | Autoria é campo próprio do livro, ligado a Autores, com papéis desde o começo (Autor, Coautor, Organizador, Tradutor, Prefaciador, Posfaciador, Outro)                                                                                            | Victor                 |
+| F19-D6  | Colaboradores é um cadastro novo, separado de Pessoas e de Autores; nome escolhido pelo Victor                                                                                                                                                    | Victor                 |
+| F19-D7  | Regra de fronteira: conteúdo da obra em Autoria, objeto livro em Colaboradores. Ilustrador fica em Colaboradores                                                                                                                                  | Victor ("faz sentido") |
+| F19-D8  | Escopo opcional em todos os papéis de Colaboradores, texto livre com sugestão; um papel só de Ilustrador. Não filtrar com precisão é aceito                                                                                                       | Victor                 |
+| F19-D9  | Uso de IA estruturado: estado (padrão "Não informado"), lista de usos com ferramenta e modelo e versão em campos separados, e "Como foi usada" por último                                                                                         | Victor                 |
+| F19-D10 | Download só com as informações do livro, na aba (Todos, Filtrados, Selecionados) e no Ver; `.json`, `.md`, `.csv` primeiro, `.pdf` e `.docx` depois                                                                                               | Victor                 |
+| F19-D11 | Limite de 10 fases ativas no painel; fase concluída sai do painel para `plano-concluido.md`; esta fase tem arquivo próprio                                                                                                                        | Victor, 20/10/2026     |
+| F19-D12 | O item de Uso de IA pode apontar para um texto específico do acervo (poema ou prosa), para dizer que aquele texto foi feito com IA; campo opcional, um texto por item; se o texto for excluído, o uso fica e o vínculo some, com aviso e Desfazer | Victor, 22/10/2026     |
 
-## Decisões em aberto (sugestão ao lado; nenhuma bloqueia a etapa 1)
+## Decisões em aberto (sugestão ao lado; todas aplicadas, F19-D15 e F19-D16 ainda a confirmar)
 
-| Código  | Pergunta                                                                         | Sugestão                                                                                                         | Bloqueia |
-| ------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------- |
-| F19-D12 | O item de Uso de IA pode apontar para um texto específico do acervo?             | Sim, como campo opcional do item (um texto só); se o texto for excluído, o item fica e o vínculo some, com aviso | etapa 5  |
-| F19-D13 | Ligar um Colaborador a um Autor ou a uma Pessoa, quando for a mesma pessoa?      | Deixar fora da primeira versão; abrir depois como vínculo opcional, sem fundir os cadastros                      | etapa 6  |
-| F19-D14 | Excluir um Autor ou um Colaborador usado em livros: aviso ou bloqueio?           | Aviso com a contagem de livros e Desfazer, como nos textos                                                       | 4 e 6    |
-| F19-D15 | Na etapa 2, como o Ver do texto devolve ao Ver do livro?                         | Fechar o Ver do texto reabre o Ver do livro na mesma lista e com a Estrutura no mesmo estado                     | etapa 2  |
-| F19-D16 | Papéis em Autoria e Colaboradores: lista fixa no código ou editável pelo Victor? | Fixa agora, com "Outro" livre. Se um papel novo se repetir, vira item da lista numa revisão                      | 4 e 6    |
+| Código  | Pergunta                                                                         | Sugestão                                                                                                                               | Bloqueia |
+| ------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| F19-D13 | Ligar um Colaborador a um Autor ou a uma Pessoa, quando for a mesma pessoa?      | **Decidido (23/10/2026):** vínculo opcional Colaborador→Autor; sem ligação direta com Pessoa (o Autor é a ponte)                       | etapa 6  |
+| F19-D14 | Excluir um Autor ou um Colaborador usado em livros: aviso ou bloqueio?           | **Decidido (23/10/2026):** aviso com a contagem de livros e Desfazer (Autor na etapa 4, Colaborador na 6)                              | 4 e 6    |
+| F19-D15 | Na etapa 2, como o Ver do texto devolve ao Ver do livro?                         | **Aplicada como sugerida (a confirmar):** fechar o Ver do texto reabre o Ver do livro na mesma lista e com a Estrutura no mesmo estado | etapa 2  |
+| F19-D16 | Papéis em Autoria e Colaboradores: lista fixa no código ou editável pelo Victor? | **Aplicada como sugerida (a confirmar):** fixa agora, com "Outro" livre. Se um papel novo se repetir, vira item da lista numa revisão  | 4 e 6    |
 
 ## Fase 19b: filiações do Autor (por exemplo, a Academia Brasileira de Letras)
 

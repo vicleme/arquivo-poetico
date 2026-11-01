@@ -33,16 +33,18 @@ import {
 } from './utils.js';
 import { coluna, colunasData, gerarCsv, baixarCsv, juntar } from './exportar-csv.js';
 
-// Lista de {nome, tipo} (ou string legada "a, b") → [{nome, tipo}].
+// Lista de {nome, tipo} (ou string legada "a, b") → [{nome, tipo}]. A marca
+// `anonimizar` (só nos Nomes Literários) viaja quando é `true`.
 function listaComTipo(valor) {
     if (!valor) return [];
     const lista = Array.isArray(valor) ? valor : String(valor).split(',');
     return lista
-        .map((i) =>
-            typeof i === 'string'
-                ? { nome: i.trim(), tipo: '' }
-                : { nome: (i?.nome || '').trim(), tipo: i?.tipo || '' },
-        )
+        .map((i) => {
+            if (typeof i === 'string') return { nome: i.trim(), tipo: '' };
+            const item = { nome: (i?.nome || '').trim(), tipo: i?.tipo || '' };
+            if (i?.anonimizar === true) item.anonimizar = true;
+            return item;
+        })
         .filter((i) => i.nome);
 }
 
@@ -100,7 +102,12 @@ function linha(rotulo, valor) {
 }
 
 function listaTexto(itens) {
-    return itens.map((i) => (i.tipo ? `${i.nome} (${i.tipo})` : i.nome)).join(', ');
+    return itens
+        .map((i) => {
+            const notas = [i.tipo, i.anonimizar ? 'anonimiza o autor' : ''].filter(Boolean);
+            return notas.length ? `${i.nome} (${notas.join(', ')})` : i.nome;
+        })
+        .join(', ');
 }
 
 function listaTextoComAno(itens) {
@@ -115,6 +122,7 @@ export function autorParaMarkdown(item) {
     const d = item.derivados || {};
     const linhas = [
         linha('Nomes literários', listaTexto(nomesLit)),
+        linha('Autor sigiloso', item.sigiloso === true ? 'sim' : ''),
         linha('ISNI', item.isni),
         linha('Link da imagem', linkImagemExibivel(item.imagemUrl)),
         linha('Nacionalidade', item.nacionalidade),
@@ -221,9 +229,17 @@ export const COLUNAS_AUTOR = [
     coluna('id', ['id'], (a) => a.id),
     coluna('nome', ['nome'], (a) => a.nome),
     coluna('sou_eu', ['souEu'], (a) => !!a.souEu),
+    coluna('sigiloso', ['sigiloso'], (a) => a.sigiloso === true),
     coluna('isni', ['isni'], (a) => a.isni),
     coluna('link_imagem', ['imagemUrl'], (a) => linkImagemExibivel(a.imagemUrl)),
     coluna('nomes_literarios', ['nomesLiterarios'], (a) => listaCsv(a.nomesLiterarios)),
+    coluna('nomes_anonimizam_autor', ['nomesLiterarios'], (a) =>
+        juntar(
+            listaComTipo(a.nomesLiterarios)
+                .filter((n) => n.anonimizar)
+                .map((n) => n.nome),
+        ),
+    ),
     coluna('nacionalidade', ['nacionalidade'], (a) => a.nacionalidade),
     ...colunasData('nascimento', ['nascimento'], (a) => a.nascimento),
     ...colunasData('obito', ['obito'], (a) => a.obito),

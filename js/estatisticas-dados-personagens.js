@@ -16,12 +16,12 @@ import { db } from './db.js';
 import { chaveTema } from './utils.js';
 import { textosDasEstatisticas } from './estatisticas-dados.js';
 import {
-    PAPEIS_PERSONAGEM,
     ROTULOS_CENTRALIDADE_PERSONAGEM,
     centralidadeAplicavel,
     normalizarCentralidadePersonagem,
     normalizarPapeisPersonagem,
 } from './personagens.js';
+import { nomesPapeisPersonagem } from './papeis-personagem.js';
 import { TIPO_ECO_PERSONAGEM } from './ancora-eco.js';
 
 // Prefixo de busca de cada papel (o clique na barra abre `prefixo:*`).
@@ -95,7 +95,8 @@ export function agregarPorPersonagem() {
 // conta em cada papel em que algum Personagem aparece. Todos os papéis saem,
 // também os de zero, para a escala não mudar conforme o recorte.
 export function agregarPersonagensPorPapel() {
-    const contagem = new Map(PAPEIS_PERSONAGEM.map((p) => [p, 0]));
+    const nomes = nomesPapeisPersonagem();
+    const contagem = new Map(nomes.map((p) => [p, 0]));
     textosDasEstatisticas().forEach((t) => {
         const papeisDoTexto = new Set();
         vinculosValidos(t).forEach((v) =>
@@ -103,7 +104,7 @@ export function agregarPersonagensPorPapel() {
         );
         papeisDoTexto.forEach((p) => contagem.set(p, contagem.get(p) + 1));
     });
-    return { labels: [...PAPEIS_PERSONAGEM], data: PAPEIS_PERSONAGEM.map((p) => contagem.get(p)) };
+    return { labels: [...nomes], data: nomes.map((p) => contagem.get(p)) };
 }
 
 // Textos por centralidade: um texto conta em cada categoria que algum Personagem

@@ -12,7 +12,15 @@
 // volta pro acervo.
 // ============================================================
 
+import { textoDaValencia } from './valencia-texto.js';
+import { ehSorteavel } from './sorteavel.js';
+import { rotuloLeituraCondicionada } from './leitura-autonoma.js';
+import { ehAutorEmSigilo } from './autor-em-sigilo.js';
+import { ehNotaPublica } from './comentarios-publicos.js';
+import { textoDaDataDaEntrada } from './data-da-entrada-texto.js';
 import { rotuloEco } from './ancora-eco.js';
+import { textoAutoresDaEntrada } from './autores-da-obra.js';
+import { rotuloDaOrigem } from './origem-da-obra.js';
 import {
     formatarDataParcial,
     formatarEpocaRetratada,
@@ -23,12 +31,12 @@ import {
     jargaoGiriaDoItem,
     textoAssuntosComPapel,
     agruparIntertextualidadePorTipo,
+    agruparIntertextualidadePorRelacao,
+    partesEntradaIntertexto,
     corpoEntradaHipertextualidade,
     rotuloElo,
     paresGrupoPessoa,
     agruparParesGrupoPessoa,
-    paresAutoria,
-    nomeAutoriaExibido,
     linhasFonteTexto,
     corpoParaLinhasRicas,
     formatarAutoclassificacaoTexto,
@@ -36,26 +44,33 @@ import {
     periodosHistoricosIdsDoItem,
     periodosBiograficosDoItem,
     rotuloAcessoEm,
+    tipoObraDaEntrada,
+    textoLocalizacaoDoTexto,
+    rotuloLocalizacaoDoTexto,
+    livroSecaoStr,
+    INFO_STATUS,
+    textoAutoriaDe,
 } from './utils.js';
 import { db } from './db.js';
+import { textosApareceEm } from './aparicoes-do-texto.js';
+import { titulosDeColetaneasDoTexto } from './coletaneas-do-texto.js';
 import { separarLinhasComuns, blocoLinhasComuns } from './exportar-comuns.js';
 import { resolverAgruparComuns } from './agrupar-comuns.js';
+import { resolverInfosPapel } from './infos-papel.js';
 import { blocosExtrasMarkdown } from './download-abrangente.js';
+import { ehSomenteTituloTexto } from './metadados-download.js';
 import { incluirOcultosNaExportacao } from './ocultos-exportacao.js';
+import { descricaoPessoaPublica } from './caracterizacao-pessoa-publica.js';
 import { textoLocalEscrita, textoTerritorialidadeComCaminho } from './locais.js';
 import { textoPersonagensComPapel } from './personagens.js';
+import { legendaDosItens, legendaParaMarkdown } from './legenda-papeis-pessoa.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
 import { classificacaoDosPeriodosHistoricosDoTexto } from './periodos-historicos-campos.js';
 import { caminhoDaCorrente, idsDeCorrentesDeTopo, idsDeDivisoes } from './correntes-hierarquia.js';
 
-export const INFO_STATUS = {
-    publicado: { emoji: '🟢', titulo: 'Publicado' },
-    incompleto: { emoji: '🟡', titulo: 'Incompleto' },
-    migrado: { emoji: '🔵', titulo: 'Migrado' },
-    descartado: { emoji: '🔴', titulo: 'Descartado' },
-    privado: { emoji: '🔒', titulo: 'Privado' },
-    completo: { emoji: '⚪', titulo: 'Completo' },
-};
+// Definido em utils.js (a tela do sorteio também usa, sem carregar o `db`);
+// reexportado para quem já importava daqui.
+export { INFO_STATUS };
 
 // ─── Corpo do texto: HTML da textarea rica → Markdown legível ─────────────
 // A textarea já guarda **negrito**/_itálico_/~~tachado~~ como Markdown puro
@@ -202,11 +217,9 @@ export function legendaCorParaMarkdown(textoOriginal) {
 
 // ─── Campos auxiliares ─────────────────────────────────────────────────
 
-export function livroSecaoStr(ls) {
-    if (!ls) return null;
-    const partes = [ls.livro, ls.secao].filter(Boolean);
-    return partes.length ? partes.join(' / ') : null;
-}
+// Definida em utils.js (a Localização do descartado também usa); reexportada
+// aqui porque outros módulos importam daqui.
+export { livroSecaoStr };
 
 // Contexto da geração em andamento (ver itemParaMarkdownPartes): `omitir`
 // é o Set de rótulos que não devem sair no texto (porque subiram para o
@@ -249,9 +262,9 @@ function blocoTexto(titulo, texto) {
 // igual titulosPoemasPorId em render-listas.js, só que em texto puro
 // (sem HTML) pro Markdown. O rótulo entra como prefixo quando existe, e
 // a nota livre (texto) vai entre parênteses no fim.
-export function titulosPorIds(lista) {
-    if (!Array.isArray(lista) || !lista.length) return null;
-    const partes = lista
+export function itensPorIds(lista) {
+    if (!Array.isArray(lista) || !lista.length) return [];
+    return lista
         .map((entrada) => {
             // Item 4: o alvo pode ser Poema ou Prosa (ver resolverItemVinculado
             // em editor.js / resolverTituloPoemaOuProsa em render-listas.js —
@@ -270,6 +283,11 @@ export function titulosPorIds(lista) {
             return s;
         })
         .filter(Boolean);
+}
+
+// Mesma lista, numa linha só separada por vírgula (Markdown, CSV e contagem).
+export function titulosPorIds(lista) {
+    const partes = itensPorIds(lista);
     return partes.length ? partes.join(', ') : null;
 }
 
@@ -284,7 +302,7 @@ export function titulosPorIds(lista) {
 function verificacoesDeCampos(item) {
     const ctx = item.contexto || {};
     return [
-        !!(ctx.livro || ctx.parte || ctx.secao),
+        !!(ctx.livro || ctx.parte || ctx.secao || ctx.aparece_em?.some((a) => !a.coletanea)),
         !!item.status,
         !!item.dataEscrita,
         !!item.dataPublicacao,
@@ -293,7 +311,7 @@ function verificacoesDeCampos(item) {
         Array.isArray(item.movimentosEscolasIds) && item.movimentosEscolasIds.length > 0,
         !!textoPessoas(item),
         !!textoGrupos(item),
-        !!sinalizacoesCombinadas(item),
+        !!sinalizacoesCombinadas(item, { temas: db.temas }),
         !!item.genero,
         !!titulosPorIds(item.conceitos?.elos),
         !!titulosPorIds(item.conceitos?.ecos),
@@ -348,9 +366,17 @@ export const TOTAL_CAMPOS_CONSIDERADOS = verificacoesDeCampos({}).length;
 export function textoPessoas(item) {
     if (!Array.isArray(item.pessoas)) return null;
     const partes = item.pessoas
-        .map((p) => ({ nome: db.pessoas.find((x) => x.id == p.pessoaId)?.nome, papeis: p.papeis }))
+        .map((p) => ({
+            nome: db.pessoas.find((x) => x.id == p.pessoaId)?.nome,
+            papeis: p.papeis,
+            nota: typeof p.nota === 'string' ? p.nota.trim().replace(/\s*\n\s*/g, ' ') : '',
+        }))
         .filter((p) => p.nome)
-        .map((p) => (p.papeis && p.papeis.length ? `${p.nome} (${p.papeis.join(', ')})` : p.nome));
+        .map((p) => {
+            const base =
+                p.papeis && p.papeis.length ? `${p.nome} (${p.papeis.join(', ')})` : p.nome;
+            return p.nota ? `${base} [nota: ${p.nota}]` : base;
+        });
     return partes.length ? partes.join(', ') : null;
 }
 
@@ -423,24 +449,19 @@ export function textoGrupos(item) {
 // celulas-tabela.js, que continua só com o nome exibido, sem a nota).
 
 // " (acesso em dd/mm/aaaa)" depois do link, ou '' (ver rotuloAcessoEm em utils.js).
+// " · 1972" depois da obra (ou do texto da referência), ou '' sem data.
+function dataEm(it) {
+    const texto = textoDaDataDaEntrada(it);
+    return texto ? ` · ${texto}` : '';
+}
+
 function acessoEm(it) {
     const rotulo = rotuloAcessoEm(it);
     return rotulo ? ` (${rotulo})` : '';
 }
 
 export function textoAutoria(item) {
-    const pares = paresAutoria(item, db.autores);
-    if (!pares.length) return null;
-    return pares
-        .map(({ autor, papel, assinatura, nomeLiterario }) => {
-            const nome = nomeAutoriaExibido({ autor, assinatura, nomeLiterario });
-            const nota =
-                assinatura && assinatura !== 'Ortônimo' && nomeLiterario
-                    ? `, ${assinatura.toLowerCase()} de ${autor.nome}`
-                    : '';
-            return `${nome} (${papel}${nota})`;
-        })
-        .join(', ');
+    return textoAutoriaDe(item, db.autores);
 }
 
 // `indice` é opcional — omitido (ou falsy), o cabeçalho sai sem
@@ -460,9 +481,20 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
     const prefixoNumero = indice ? `${indice}. ` : '';
     let md = `## ${prefixoNumero}"${item.titulo || '(sem título)'}" *(${tipoLabel})*\n\n`;
 
-    const ctx = item.contexto || {};
-    const caminho = [ctx.livro, ctx.parte, ctx.secao].filter(Boolean).join(' → ');
-    md += linhaMeta('Localização', caminho || null);
+    // Download sem Metadados: só o cabeçalho, o Texto e a legenda de cores do
+    // texto (ver metadados-download.js).
+    if (ehSomenteTituloTexto(item)) {
+        md += blocoTexto('Texto', corpoParaMarkdown(item.texto));
+        md += legendaCorParaMarkdown(item.texto);
+        return md;
+    }
+
+    md += linhaMeta(rotuloLocalizacaoDoTexto(item), textoLocalizacaoDoTexto(item));
+    md += linhaMeta(
+        'Coletâneas',
+        titulosDeColetaneasDoTexto(db, item.tipo, item.id).join(', ') || null,
+    );
+    md += linhaMeta('Aparece em', textosApareceEm(item).join('; ') || null);
     md += linhaMeta('Idioma', textoIdiomasComPapel(item) || null);
     md += linhaMeta('Jargão e gíria', jargaoGiriaDoItem(item).join(', ') || null);
     md += linhaMeta('Local onde foi escrito', textoLocalEscrita(db, item) || null);
@@ -590,7 +622,10 @@ function itemParaMarkdownAntesDoTexto(item, indice) {
 
 function itemParaMarkdownDepoisDoTexto(item) {
     let md = '';
+    if (ehSomenteTituloTexto(item)) return md;
     md += blocoTexto('Notas', item.notas);
+    md += blocoTexto('Notas públicas', ehNotaPublica(item) ? 'Sim' : '');
+    md += blocoTexto('Comentários ao leitor', item.comentariosPublicos);
     md += linhaMeta('Autoria', textoAutoria(item));
     linhasFonteTexto(item, db.autores).forEach(({ rotulo, valor }) => {
         md += linhaMeta(rotulo, valor);
@@ -602,40 +637,56 @@ function itemParaMarkdownDepoisDoTexto(item) {
     if (Array.isArray(item.intertextualidade) && item.intertextualidade.length) {
         md += '### Intertextualidade\n\n';
         const linhaEntrada = (it) => {
+            const p = partesEntradaIntertexto(it);
             const link = it.link ? ` — [${it.linkTexto || it.link}](${it.link})` : '';
             const nota = it.nota ? ` *(${it.nota.replace(/\s*\n\s*/g, ' ')})*` : '';
-            return `${it.texto || ''}${link}${acessoEm(it)}${nota}`;
+            const descricao = p.descricao ? `, ${p.descricao}` : '';
+            const trecho = p.trecho ? ` *“${p.trecho}”*` : '';
+            const traduzido = p.traduzido ? ' (traduzido)' : '';
+            const pessoal = p.obraPessoal ? ' (obra pessoal)' : '';
+            return `${p.corpo}${descricao}${dataEm(it)}${trecho}${traduzido}${pessoal}${link}${acessoEm(it)}${nota}`;
         };
-        agruparIntertextualidadePorTipo(item.intertextualidade).forEach(
-            ({ tipo, entradas, subBullet }) => {
-                if (!tipo) {
-                    // Sem tipo: sem rótulo pra agrupar embaixo, cada entrada
-                    // continua solta como já era antes do agrupamento.
-                    entradas.forEach((it) => {
-                        md += `- ${linhaEntrada(it)}\n`;
-                    });
-                    return;
-                }
-                if (subBullet) {
-                    md += `- **${tipo}:**\n`;
-                    entradas.forEach((it) => {
-                        md += `  - ${linhaEntrada(it)}\n`;
-                    });
-                } else {
-                    md += `- **${tipo}:** ${entradas.map(linhaEntrada).join(', ')}\n`;
-                }
-            },
-        );
+        // Dois níveis: relação por fora, tipo de obra por dentro. Entrada
+        // antiga, sem relação, vai num bloco no fim, só por tipo de obra.
+        const linhasGrupo = ({ tipo, entradas, subBullet }, recuo) => {
+            if (!tipo) {
+                // Sem tipo: sem rótulo pra agrupar embaixo, cada entrada
+                // continua solta como já era antes do agrupamento.
+                return entradas.map((it) => `${recuo}- ${linhaEntrada(it)}\n`).join('');
+            }
+            if (subBullet) {
+                return (
+                    `${recuo}- **${tipo}:**\n` +
+                    entradas.map((it) => `${recuo}  - ${linhaEntrada(it)}\n`).join('')
+                );
+            }
+            return `${recuo}- **${tipo}:** ${entradas.map(linhaEntrada).join(', ')}\n`;
+        };
+        const { relacoes, semRelacao } = agruparIntertextualidadePorRelacao(item.intertextualidade);
+        relacoes.forEach(({ relacao, tipos }) => {
+            md += `- **${relacao}:**\n`;
+            tipos.forEach((grupo) => {
+                md += linhasGrupo(grupo, '  ');
+            });
+        });
+        semRelacao.forEach((grupo) => {
+            md += linhasGrupo(grupo, '');
+        });
         md += '\n';
     }
 
     if (Array.isArray(item.hipertextualidade) && item.hipertextualidade.length) {
         md += '### Hipertextualidade\n\n';
         item.hipertextualidade.forEach((h) => {
-            const prefixo = h.tipo ? `**${h.tipo}:** ` : '';
+            const prefixo = tipoObraDaEntrada(h) ? `**${tipoObraDaEntrada(h)}:** ` : '';
             const link = h.link ? ` — [${h.linkTexto || h.link}](${h.link})` : '';
             const nota = h.nota ? ` *(${h.nota.replace(/\s*\n\s*/g, ' ')})*` : '';
-            md += `- ${prefixo}${corpoEntradaHipertextualidade(h)}${link}${acessoEm(h)}${nota}\n`;
+            const quem = [textoAutoresDaEntrada(h), rotuloDaOrigem(h)].filter(Boolean).join('; ');
+            const autor = quem ? ` (${quem})` : '';
+            const descricao = String(h.descricao || '').trim()
+                ? `, ${String(h.descricao).trim()}`
+                : '';
+            md += `- ${prefixo}${corpoEntradaHipertextualidade(h)}${autor}${descricao}${dataEm(h)}${h.obraPessoal === true ? ' (obra pessoal)' : ''}${link}${acessoEm(h)}${nota}\n`;
         });
         md += '\n';
     }
@@ -645,7 +696,8 @@ function itemParaMarkdownDepoisDoTexto(item) {
         const linhaEntrada = (it) => {
             const link = it.link ? ` — [${it.linkTexto || it.link}](${it.link})` : '';
             const nota = it.nota ? ` *(${it.nota.replace(/\s*\n\s*/g, ' ')})*` : '';
-            return `${it.texto || ''}${link}${acessoEm(it)}${nota}`;
+            const pessoa = descricaoPessoaPublica(it);
+            return `${it.texto || ''}${pessoa ? ` (${pessoa})` : ''}${dataEm(it)}${link}${acessoEm(it)}${nota}`;
         };
         agruparIntertextualidadePorTipo(item.referenciasExternas).forEach(
             ({ tipo, entradas, subBullet }) => {
@@ -722,6 +774,10 @@ function itemParaMarkdownDepoisDoTexto(item) {
 
     md += blocoTexto('Autoclassificação', formatarAutoclassificacaoTexto(item.autoclassificacao));
     md += blocoTexto('Autoavaliação', item.autoavaliacao);
+    md += blocoTexto('Sorteio de leitura', ehSorteavel(item) ? 'Pode ser sorteado' : '');
+    md += blocoTexto('Leitura autônoma', rotuloLeituraCondicionada(item));
+    md += blocoTexto('Valência', textoDaValencia(item, db.temas));
+    md += blocoTexto('Autor em sigilo', ehAutorEmSigilo(item) ? 'Sim' : '');
 
     // Conteúdo Sensível / Vocabulário Hiperacionante em destaque (blockquote),
     // já que sinalizam algo que quem lê deveria notar antes do texto em si.
@@ -732,7 +788,8 @@ function itemParaMarkdownDepoisDoTexto(item) {
         md += `### ⚠️ Vocabulário Hiperacionante\n\n> ${item.vocabularioHiperacionante.trim().split('\n').join('\n> ')}\n\n`;
     }
 
-    const cortado = livroSecaoStr(item.cortadoDe);
+    // Descartado: o "Cortado de" já está na linha de lugar, lá em cima.
+    const cortado = item.status === 'descartado' ? null : livroSecaoStr(item.cortadoDe);
     const lancado = livroSecaoStr(item.lancadoEm);
     if (cortado || lancado) {
         md += '### Migração entre livros\n\n';
@@ -795,6 +852,16 @@ export function gerarMarkdownItem(item) {
     return itemParaMarkdown(item);
 }
 
+// Só os vínculos de Pessoa que o .md mostra (os com cadastro), para a legenda
+// não listar papel que nenhuma linha do documento usa.
+function itemSoComPessoasDoCadastro(item) {
+    return {
+        pessoas: (Array.isArray(item.pessoas) ? item.pessoas : []).filter((p) =>
+            db.pessoas.some((x) => x.id == p.pessoaId),
+        ),
+    };
+}
+
 // ─── Documento completo ─────────────────────────────────────────────────
 // `opcoes.agruparComuns` (padrão: a preferência guardada, ligada se nunca mexida): as linhas de metadado iguais em todos
 // os textos sobem uma vez para o topo (ver exportar-comuns.js). Com false, ou
@@ -809,6 +876,9 @@ export function gerarMarkdownExportacao(itens, opcoes = {}) {
     let md = `# Exportação Poética\n\n`;
     md += `_Gerado em ${dataStr} — ${itens.length} texto(s)._\n\n`;
     md += blocoLinhasComuns(comuns);
+    if (resolverInfosPapel(opcoes)) {
+        md += legendaParaMarkdown(legendaDosItens(itens.map(itemSoComPessoasDoCadastro)));
+    }
     md += `---\n\n`;
 
     itens.forEach((item, i) => {
@@ -824,8 +894,8 @@ export function gerarMarkdownExportacao(itens, opcoes = {}) {
     return md;
 }
 
-export function baixarMarkdown(itens, nomeArquivo) {
-    const conteudo = gerarMarkdownExportacao(itens);
+export function baixarMarkdown(itens, nomeArquivo, opcoes = {}) {
+    const conteudo = gerarMarkdownExportacao(itens, opcoes);
     const blob = new Blob([conteudo], { type: 'text/markdown;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

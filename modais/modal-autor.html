@@ -93,7 +93,9 @@
                         literária com voz própria, ex.: Fernando Pessoa / Álvaro de Campos) ou
                         Pseudônimo (só um nome diferente de assinatura). Marque o tipo em cada um;
                         ficam disponíveis pra escolher na Assinatura da Autoria de Poemas e Prosas
-                        assim que este Autor for selecionado ali.
+                        assim que este Autor for selecionado ali. Marque "Anonimizar autor" no nome
+                        que deve proteger a identidade: os textos assinados com ele saem, nas telas
+                        públicas, só com esse nome, sem o nome real.
                     </p>
                     <div class="flex gap-2 mb-2">
                         <input
@@ -135,6 +137,24 @@
                         Ao adicionar este autor a um texto com a Fonte vazia, a Fonte é preenchida
                         com "Obra própria".
                     </p>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" id="au-sigiloso" />
+                        Autor sigiloso
+                    </label>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                        Desligada, o nome do autor aparece nas telas públicas. Ligada, aparece só o
+                        nome literário (heterônimo ou pseudônimo); sem nenhum cadastrado, a autoria
+                        não é exibida. A caixa vale para todos os textos do Autor; "Anonimizar
+                        autor", em cada nome literário, vale só para os textos assinados com ele.
+                        Seus arquivos (.md, .csv, .json) e o Ver continuam com o nome real.
+                    </p>
+                    <p
+                        id="au-sigiloso-aviso"
+                        class="hidden mt-2 text-xs border border-amber-400 dark:border-amber-500 bg-amber-50 dark:bg-amber-950 text-amber-900 dark:text-amber-200 rounded p-2"
+                        role="status"
+                    ></p>
                 </div>
                 <div class="grid grid-cols-2 gap-4 md:col-span-2">
                     <div>

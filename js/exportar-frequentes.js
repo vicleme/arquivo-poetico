@@ -44,6 +44,7 @@ import { buildNesting } from './nesting.js';
 import { exportarColetaneaResolvida } from './coletaneas.js';
 import { montarRegistro, listaDeCampo } from './exportar.js';
 import { gerarMarkdownExportacao } from './exportar-md.js';
+import { comLegendaPapeis } from './legenda-papeis-pessoa.js';
 import { exportarTodasCapasBase64 } from './capas.js';
 import {
     gerarId,
@@ -51,6 +52,7 @@ import {
     mostrarAviso,
     nomesPessoas,
     SINALIZACOES_CATEGORIAS,
+    nomesTemasDoTexto,
     textoDeEtiquetas,
 } from './utils.js';
 
@@ -233,11 +235,11 @@ function gerarFlatItens() {
 }
 
 function gerarFlatJsonBlob() {
-    const saida = {
-        export_format: 'tudo_flat',
-        itens: gerarFlatItens(),
-        coletaneas: montarColetaneas(),
-    };
+    const itens = gerarFlatItens();
+    const saida = comLegendaPapeis(
+        { export_format: 'tudo_flat', itens, coletaneas: montarColetaneas() },
+        itens,
+    );
     return new Blob([JSON.stringify(saida, null, 4)], { type: 'application/json;charset=utf-8' });
 }
 
@@ -450,6 +452,15 @@ function itemAtendeCriterio(item, criterio) {
             .map((n) => n.toLowerCase())
             .includes(valor);
     }
+    // Tema vem do cadastro por id (Fase 2); as demais categorias, do campo próprio.
+    const categoria = Object.keys(SINALIZACOES_CATEGORIAS).find(
+        (k) => SINALIZACOES_CATEGORIAS[k] === criterio.campo,
+    );
+    if (categoria === 'tema') {
+        return nomesTemasDoTexto(item, db.temas)
+            .map((t) => t.trim().toLowerCase())
+            .includes(valor);
+    }
     return listaDeCampo(textoDeEtiquetas(item[criterio.campo])).includes(valor);
 }
 
@@ -484,7 +495,10 @@ function blobsDoTemplate(tpl) {
     const itens = itensParaTemplate(tpl);
     const arquivos = [];
     if (tpl.formatos?.json) {
-        const saida = { export_format: 'template_export', nome: tpl.nome, itens };
+        const saida = comLegendaPapeis(
+            { export_format: 'template_export', nome: tpl.nome, itens },
+            itens,
+        );
         arquivos.push({
             nome: nomeArquivoTemplate(tpl, 'json'),
             blob: new Blob([JSON.stringify(saida, null, 4)], {

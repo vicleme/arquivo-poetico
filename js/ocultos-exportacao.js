@@ -87,18 +87,20 @@ const TITULO_INCLUIR =
 const TITULO_LEMBRAR =
     'Marcada, a escolha de "Dados ocultados" fica guardada neste navegador. Desmarcada, a caixa volta desmarcada a cada recarga da página.';
 
-// HTML dos dois controles (a caixa e o "lembrar"), no mesmo estilo das demais
-// caixas de exportação. Usado pelo painel Ações e pelos pontos de montagem
-// (`.incluir-ocultos-slot`) do HTML estático.
+// HTML dos dois controles, juntos num grupo com borda: "Dados ocultados" na
+// frente e "lembrar" colado a ele num painel de fundo mais claro, no mesmo
+// desenho do "Baixar JSON" + "capas" do cabeçalho. Assim fica à vista que o
+// "lembrar" pertence a "Dados ocultados". Usado pelo painel Ações e pelos
+// pontos de montagem (`.incluir-ocultos-slot`) do HTML estático.
 export function renderControlesIncluirOcultos() {
     return `
-        <span class="inline-flex items-center gap-2 whitespace-nowrap">
-            <label class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 cursor-pointer" title="${TITULO_INCLUIR}">
+        <span class="inline-flex items-stretch rounded-md overflow-hidden border border-gray-300 dark:border-slate-600 whitespace-nowrap">
+            <label class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 cursor-pointer px-2.5 py-1" title="${TITULO_INCLUIR}">
                 <input type="checkbox" class="incluir-ocultos-check" ${incluir ? 'checked' : ''}
                     onchange="toggleIncluirOcultos(this.checked)">
                 🔒 Dados ocultados
             </label>
-            <label class="inline-flex items-center gap-1 text-[11px] font-normal text-gray-500 dark:text-slate-400 cursor-pointer" title="${TITULO_LEMBRAR}">
+            <label class="inline-flex items-center gap-1 text-[11px] font-normal text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 cursor-pointer border-l border-gray-300 dark:border-slate-600" title="${TITULO_LEMBRAR}">
                 <input type="checkbox" class="incluir-ocultos-lembrar-check" ${lembrar ? 'checked' : ''}
                     onchange="toggleLembrarIncluirOcultos(this.checked)">
                 lembrar
@@ -106,12 +108,9 @@ export function renderControlesIncluirOcultos() {
         </span>`;
 }
 
-// Bloco do painel "⚙️ Ações ▾" (Poemas e Prosas).
+// Controle do painel "⚙️ Ações ▾" (Poemas e Prosas); o painel os agrupa.
 export function renderIncluirOcultosAcoes() {
-    return `
-        <div class="mt-3 pt-3 border-t border-gray-100 dark:border-slate-700">
-            ${renderControlesIncluirOcultos()}
-        </div>`;
+    return renderControlesIncluirOcultos();
 }
 
 // Preenche os pontos de montagem do HTML estático. Chamado no carregamento

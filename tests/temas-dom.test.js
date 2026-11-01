@@ -3,6 +3,7 @@ import './helpers/dom-real.js';
 import fs from 'node:fs';
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { nomesDosTemas } from './helpers/temas-do-texto.js';
 
 // Aba Temas (renderTemas em render-listas.js) e modal de Tema
 // (modais/modal-tema.html + initFormTema em forms.js).
@@ -78,7 +79,8 @@ describe('renderTemas (DOM real via happy-dom)', () => {
         const card = [...$('lista-temas').children].find((c) => c.textContent.includes('Machismo'));
         const link = card.querySelector('[data-action="editar-assunto"]');
         assert.equal(link.dataset.id, '10');
-        assert.equal(card.querySelector('select'), null); // já está no único Assunto
+        // já está no único Assunto (o seletor de valência não conta)
+        assert.equal(card.querySelector('select:not([data-valencia])'), null);
         const outro = [...$('lista-temas').children].find((c) => c.textContent.includes('Amor'));
         assert.ok(outro.querySelector('select[data-tema="Amor"]'));
     });
@@ -121,7 +123,7 @@ describe('modal de Tema (DOM real via happy-dom)', () => {
         $('te-nome').value = 'Misoginia';
         $('te-notas').value = 'nota nova';
         enviar();
-        assert.equal(db.poemas[0].sinalizacoesTema, 'Misoginia, Brasil');
+        assert.equal(nomesDosTemas(db.poemas[0], db), 'Misoginia, Brasil');
         assert.deepEqual(nomesTemasDoAssunto(db.assuntos[0], db.temas), ['Misoginia']);
         assert.equal(db.temas.find((t) => t.id === id).notas, 'nota nova');
     });

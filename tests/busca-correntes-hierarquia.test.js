@@ -4,9 +4,9 @@ import './helpers/dom-real.js';
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-// Busca por corrente literária com divisões: `movimento:Romantismo` acha
-// também o que está ligado a uma geração ou vertente dele; `movimento:
-// "Romantismo no Brasil"` não acha o que é de Portugal; e `movimentodireto:`
+// Busca por corrente literária com divisões: `corrente:Romantismo` acha
+// também o que está ligado a uma geração ou vertente dele; `corrente:
+// "Romantismo no Brasil"` não acha o que é de Portugal; e `correntedireta:`
 // restringe ao que foi ligado diretamente.
 const { db } = await import('../js/db.js');
 const { filtrarTextos } = await import('../js/utils.js');
@@ -64,7 +64,7 @@ describe('nomesDeBuscaDasCorrentes', () => {
     });
 });
 
-describe('movimento: em textos', () => {
+describe('corrente: em textos', () => {
     let itens;
     beforeEach(() => {
         zerar();
@@ -79,38 +79,34 @@ describe('movimento: em textos', () => {
     });
 
     it('a corrente-mãe acha o que está nas divisões', () => {
-        assert.deepEqual(ids(filtrarTextos(itens, 'movimento:Romantismo')), [1, 2, 3, 4]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'corrente:Romantismo')), [1, 2, 3, 4]);
     });
 
     it('a variante regional não mistura os países', () => {
-        assert.deepEqual(ids(filtrarTextos(itens, 'movimento:"Romantismo no Brasil"')), [1, 2]);
-        assert.deepEqual(ids(filtrarTextos(itens, 'movimento:"Romantismo em Portugal"')), [3]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'corrente:"Romantismo no Brasil"')), [1, 2]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'corrente:"Romantismo em Portugal"')), [3]);
     });
 
     it('a divisão acha só a si mesma', () => {
-        assert.deepEqual(ids(filtrarTextos(itens, 'movimento:condoreira')), [1]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'corrente:condoreira')), [1]);
     });
 
-    it('escola: é sinônimo de movimento:', () => {
-        assert.deepEqual(ids(filtrarTextos(itens, 'escola:"Romantismo no Brasil"')), [1, 2]);
-    });
-
-    it('movimentodireto: só acha o que foi ligado diretamente', () => {
-        assert.deepEqual(ids(filtrarTextos(itens, 'movimentodireto:condoreira')), [1]);
-        assert.deepEqual(ids(filtrarTextos(itens, 'movimentodireto:Realismo')), [5]);
+    it('correntedireta: só acha o que foi ligado diretamente', () => {
+        assert.deepEqual(ids(filtrarTextos(itens, 'correntedireta:condoreira')), [1]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'correntedireta:Realismo')), [5]);
         // O nome do pai só aparece na busca hierárquica.
-        assert.deepEqual(ids(filtrarTextos(itens, 'movimentodireto:"Romantismo no Brasil"')), []);
+        assert.deepEqual(ids(filtrarTextos(itens, 'correntedireta:"Romantismo no Brasil"')), []);
     });
 
     it('exclusão e combinação funcionam', () => {
         assert.deepEqual(
-            ids(filtrarTextos(itens, 'movimento:Romantismo -movimento:"Romantismo em Portugal"')),
+            ids(filtrarTextos(itens, 'corrente:Romantismo -corrente:"Romantismo em Portugal"')),
             [1, 2, 4],
         );
     });
 });
 
-describe('movimento: em autores', () => {
+describe('corrente: em autores', () => {
     beforeEach(() => {
         zerar();
         db.autores = [
@@ -121,13 +117,13 @@ describe('movimento: em autores', () => {
     });
 
     it('o autor de uma geração acha pela corrente-mãe, sem misturar países', () => {
-        assert.deepEqual(ids(filtrarAutores(db.autores, 'movimento:Romantismo')), [1, 2]);
-        assert.deepEqual(ids(filtrarAutores(db.autores, 'movimento:"Romantismo no Brasil"')), [1]);
+        assert.deepEqual(ids(filtrarAutores(db.autores, 'corrente:Romantismo')), [1, 2]);
+        assert.deepEqual(ids(filtrarAutores(db.autores, 'corrente:"Romantismo no Brasil"')), [1]);
     });
 
-    it('movimentodireto: restringe ao vínculo exato', () => {
-        assert.deepEqual(ids(filtrarAutores(db.autores, 'movimentodireto:condoreira')), [1]);
-        assert.deepEqual(ids(filtrarAutores(db.autores, 'movimentodireto:Romantismo')), []);
+    it('correntedireta: restringe ao vínculo exato', () => {
+        assert.deepEqual(ids(filtrarAutores(db.autores, 'correntedireta:condoreira')), [1]);
+        assert.deepEqual(ids(filtrarAutores(db.autores, 'correntedireta:Romantismo')), []);
     });
 });
 
@@ -146,5 +142,80 @@ describe('impactoDaCorrente com divisões (base do "Ver textos" e "Ver autores")
         assert.deepEqual(todo.autoresIds, [1]);
         assert.deepEqual(todo.poemasIds, [10]);
         assert.deepEqual(todo.prosasIds, [20]);
+    });
+});
+
+// T4: `corrente:` não olha o Programa; `movimento:` e `escola:` só acham
+// correntes cujo Programa (com a herança do pai) é Movimento ou Escola.
+describe('movimento: e escola: respeitam o Programa da corrente', () => {
+    let itens;
+    beforeEach(() => {
+        zerar();
+        const comPrograma = (id, programa) => {
+            db.movimentosEscolas.find((m) => m.id === id).programa = programa;
+        };
+        comPrograma(1, 'Movimento'); // Romantismo; as divisões herdam
+        comPrograma(7, 'Escola'); // Realismo
+        db.movimentosEscolas.push({ ...corrente(8, 'Parnasianismo'), programa: 'Escola' });
+        db.movimentosEscolas.push({ ...corrente(9, 'Fase própria', 7), programa: 'Movimento' });
+        itens = [
+            texto(1, [3]), // geração brasileira, herda Movimento
+            texto(2, [1]), // Romantismo
+            texto(3, [7]), // Realismo, Escola
+            texto(4, [8]), // Parnasianismo, Escola
+            texto(5, [9]), // divisão de Realismo com Programa próprio (Movimento)
+            texto(6, [2, 8]), // Romantismo no Brasil e Parnasianismo
+            texto(7, []),
+        ].map((i) => decorarCamposBusca(i));
+    });
+
+    it('movimento: acha só correntes de Programa Movimento, com o que está dentro', () => {
+        assert.deepEqual(ids(filtrarTextos(itens, 'movimento:Romantismo')), [1, 2, 6]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'movimento:Parnasianismo')), []);
+    });
+
+    it('a divisão herda o Programa do pai', () => {
+        assert.deepEqual(ids(filtrarTextos(itens, 'movimento:condoreira')), [1]);
+    });
+
+    it('escola: acha só correntes de Programa Escola', () => {
+        assert.deepEqual(ids(filtrarTextos(itens, 'escola:Parnasianismo')), [4, 6]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'escola:Realismo')), [3, 5]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'escola:Romantismo')), []);
+    });
+
+    it('a divisão com Programa próprio vale pelo próprio, e o pai Escola continua Escola', () => {
+        assert.deepEqual(ids(filtrarTextos(itens, 'movimento:"Fase própria"')), [5]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'escola:"Fase própria"')), []);
+        // Só a própria divisão conta como Movimento; o pai Realismo é Escola e acha
+        // o texto da divisão pela hierarquia.
+        assert.deepEqual(ids(filtrarTextos(itens, 'movimento:Realismo')), []);
+        assert.deepEqual(ids(filtrarTextos(itens, 'escola:Realismo')), [3, 5]);
+    });
+
+    it('corrente: não olha o Programa', () => {
+        assert.deepEqual(ids(filtrarTextos(itens, 'corrente:Parnasianismo')), [4, 6]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'corrente:Romantismo')), [1, 2, 6]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'corrente:Realismo')), [3, 5]);
+    });
+
+    it('movimentodireto: e escoladireta: pedem o vínculo exato e o Programa', () => {
+        // A busca é por trecho do nome: "Romantismo no Brasil" também contém "Romantismo".
+        assert.deepEqual(ids(filtrarTextos(itens, 'movimentodireto:Romantismo')), [2, 6]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'movimentodireto:condoreira')), [1]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'escoladireta:Parnasianismo')), [4, 6]);
+        assert.deepEqual(ids(filtrarTextos(itens, 'escoladireta:Romantismo')), []);
+    });
+
+    it('vale também para autores', () => {
+        db.autores = [
+            { id: 1, nome: 'Castro Alves', movimentosEscolasIds: [3] },
+            { id: 2, nome: 'Olavo Bilac', movimentosEscolasIds: [8] },
+        ];
+        assert.deepEqual(ids(filtrarAutores(db.autores, 'movimento:Romantismo')), [1]);
+        assert.deepEqual(ids(filtrarAutores(db.autores, 'escola:Parnasianismo')), [2]);
+        assert.deepEqual(ids(filtrarAutores(db.autores, 'movimento:Parnasianismo')), []);
+        assert.deepEqual(ids(filtrarAutores(db.autores, 'corrente:Parnasianismo')), [2]);
+        assert.deepEqual(ids(filtrarAutores(db.autores, 'escoladireta:Parnasianismo')), [2]);
     });
 });

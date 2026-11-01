@@ -22,6 +22,8 @@
 
 import { violaOrdemDeDatas } from './utils.js';
 import { especieDoTipoEco, tipoEcoDaEspecie, normalizarAncorasEco } from './ancora-eco.js';
+import { papelEhSuperficie } from './papeis-pessoa.js';
+import { papelPersonagemSemCentralidade } from './papeis-personagem.js';
 
 export const ESPECIES_SUGESTAO = ['personagem', 'pessoa'];
 
@@ -32,11 +34,11 @@ const CAMPO_LISTA_TEXTO = { personagem: 'personagens', pessoa: 'pessoas' };
 // Papéis "de superfície": o texto só cita ou evoca, sem a figura estar em
 // cena (ou, no caso da pessoa, sem ser tema do texto). Par em que os DOIS
 // lados só têm isso é a recorrência geral que a F11-D7 manda não sugerir
-// por padrão.
-const PAPEIS_SUPERFICIE = {
-    personagem: ['Menção', 'Alusão'],
-    pessoa: ['Mencionado(a)', 'Aludido(a)'],
-};
+// por padrão. Quem diz qual papel é de superfície é o registro, não o nome:
+// a flag `superficie` em papeis-pessoa.js (Pessoa) e a `semCentralidade` em
+// papeis-personagem.js (Personagem).
+const ehSuperficie = (especie, papel) =>
+    especie === 'pessoa' ? papelEhSuperficie(papel) : papelPersonagemSemCentralidade(papel);
 
 // ─── Textos do sujeito ───────────────────────────────────────
 
@@ -46,7 +48,7 @@ const PAPEIS_SUPERFICIE = {
 export function vinculoForte(especie, papeis) {
     const lista = Array.isArray(papeis) ? papeis : [];
     if (!lista.length) return true;
-    return lista.some((p) => !PAPEIS_SUPERFICIE[especie].includes(p));
+    return lista.some((p) => !ehSuperficie(especie, p));
 }
 
 /**

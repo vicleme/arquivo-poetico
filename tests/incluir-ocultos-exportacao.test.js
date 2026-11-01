@@ -188,6 +188,16 @@ describe('controles e inventário', () => {
         assert.match(html, /incluir-ocultos-lembrar-check[^>]*checked/);
     });
 
+    it('"lembrar" fica no mesmo grupo com borda de "Dados ocultados", como o "capas" do Baixar JSON', () => {
+        const html = renderIncluirOcultosAcoes();
+        const grupo = html.match(
+            /^\s*<span class="inline-flex items-stretch[^>]*border[^>]*>([\s\S]*)<\/span>\s*$/,
+        );
+        assert.ok(grupo, 'um único grupo com borda envolve as duas caixas');
+        assert.ok(grupo[1].indexOf('Dados ocultados') < grupo[1].indexOf('lembrar'));
+        assert.match(grupo[1], /border-l/);
+    });
+
     it('as duas chaves do localStorage estão classificadas como preferência', () => {
         assert.equal(classificarChaveLocalStorage(LS_VALOR), 'preferencia');
         assert.equal(classificarChaveLocalStorage(LS_LEMBRAR), 'preferencia');

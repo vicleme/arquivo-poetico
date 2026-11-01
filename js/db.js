@@ -45,11 +45,51 @@ import {
     migrarOpcoesPeriodoHistorico,
     mesclarClassificacaoDosPeriodosHistoricos,
 } from './periodos-historicos-campos.js';
+import {
+    papeisPessoaDeFabrica,
+    migrarRegistroPapeisPessoa,
+    definirRegistroPapeisPessoa,
+    somarNotas,
+} from './papeis-pessoa.js';
+import {
+    papeisPersonagemDeFabrica,
+    migrarRegistroPapeisPersonagem,
+    definirRegistroPapeisPersonagem,
+} from './papeis-personagem.js';
+import { migrarTranstextualidadeDosItens } from './intertextualidade.js';
 import { sincronizarTemas } from './temas.js';
+import {
+    removerAutorDosLivros,
+    restaurarAutorNosLivros,
+    impactoExclusaoAutorNosLivros,
+} from './autoria-livro.js';
+import {
+    desligarAutorDosColaboradores,
+    religarAutorAosColaboradores,
+    colaboradoresDoAutor,
+    impactoExclusaoColaboradorNosLivros,
+    removerColaboradorDosLivros,
+    restaurarColaboradorNosLivros,
+} from './colaboradores-livro.js';
+import {
+    impactoExclusaoTextoNosUsosIa,
+    removerTextoDosUsosIa,
+    restaurarTextoNosUsosIa,
+} from './uso-ia-livro.js';
+import {
+    avisoDaExclusaoNoLugar,
+    desvincularTextosDoLugar,
+    restaurarTextosDoLugar,
+} from './textos-do-lugar-excluido.js';
+import { fecharFilasDasAparicoes, reabrirFilasDasAparicoes } from './aparicoes-salvar.js';
+import { chaveDeOrdemDoTexto } from './aparicoes-do-texto.js';
+import { migrarLigacoesTemaPessoa, remapearLigacoesDosTextos } from './ligacoes-tema-pessoa.js';
 import { sincronizarEtiquetas } from './etiquetas.js';
 import { sincronizarTagClusters } from './tag-clusters.js';
 import { normalizarRegiao, mesmaRegiao } from './regiao.js';
 import { sincronizarLocais } from './locais.js';
+import { sanearTemasUniversais } from './temas-universais.js';
+import { sincronizarOrigemComLivros } from './origem-livro.js';
 import { fontesDeFabricaDaCorrente, normalizarFontes, unirFontes } from './fontes-corrente.js';
 import { fontesDeFabricaDoPeriodoHistorico } from './fontes-periodo-historico.js';
 import {
@@ -84,7 +124,13 @@ import {
     importarCapasBase64,
     base64ParaBlob,
 } from './capas.js';
+import { valenciaSugeridaDoTema } from './valencia-seed.js';
 import { tirarSnapshotSeNecessario } from './autobackup.js';
+import {
+    contarTextosSemAparicoes,
+    sincronizarAparicoesComCamposAntigos,
+} from './aparicoes-dado.js';
+import { guardarAvisoDeAparicoes } from './aviso-aparicoes.js';
 
 const DB_KEY = 'arquivoPoetico_v3';
 // Guarda quando o último "Baixar JSON" foi de fato clicado — usado pra
@@ -1154,7 +1200,8 @@ export function semearTemasEAssuntos() {
             if (!idPorChave.has(chave)) {
                 const id = gerarId();
                 idPorChave.set(chave, id);
-                temas.push({ id, nome: nomeTema, notas: '' });
+                const valencia = valenciaSugeridaDoTema(nomeTema);
+                temas.push({ id, nome: nomeTema, notas: '', ...(valencia ? { valencia } : {}) });
             }
             return idPorChave.get(chave);
         }),
@@ -1174,9 +1221,10 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     elementos: [],
     coletaneas: [], // legado, não usado pela aba Coletâneas atual — mantido só por compatibilidade na importação de backups antigos
     itensColetanea: [], // itens de Coletânea de fato (ver coletaneas.js); cada item referencia uma Parte via parteId
-    pessoas: [], // cadastro central de Pessoas ({ id, nome, grupoIds, autorIds, oculto }) — ver migrarPessoasParaCadastro/migrarPessoasAutorIds/migrarPessoasOculto
+    pessoas: [], // cadastro central de Pessoas ({ id, nome, grupoIds, autorIds, oculto, souEu }) — ver migrarPessoasParaCadastro/migrarPessoasAutorIds/migrarPessoasOculto
     grupos: [], // cadastro central de Grupos ({ id, nome, oculto }) — quem uma Pessoa é na vida de quem escreve, constante entre poemas
     autores: [], // cadastro central de Autores ({ id, nome, sobre }) — quem escreveu o item, ver migrarAutoria
+    colaboradores: [], // cadastro de Colaboradores ({ id, nome, papeisHabituais, contato, autorId? }) — quem produz o objeto livro (capista, revisor...); a equipe de cada livro mora em `livro.equipeLivro`, ver colaboradores-livro.js
     epocas: [], // cadastro central de Período Biográfico (rótulo na interface; nome interno "epocas" mantido por compatibilidade — { id, nome, notas }) — a que período pessoal um poema se refere, ver migrarEpocas
     // cadastro central de Período Histórico ({ id, nome, notas, regiao,
     // inicio, fim, embutido? }) — período histórico (não pessoal) que um poema
@@ -1216,10 +1264,14 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // este objeto); instalação existente e backup importado, nunca.
     assuntos: [],
     // cadastro central de Tema ({ id, nome, notas }) — ver temas.js. O
-    // texto guarda `temas: [{ temaId, papel }]` (fonte da verdade) e o
-    // espelho `sinalizacoesTema`; o cadastro é mantido em sincronia
-    // (sincronizarTemas), que também migra Assunto de nomes para ids.
+    // texto guarda `temas: [{ temaId, papel }]` (única fonte; o campo antigo
+    // `sinalizacoesTema` é apagado por sincronizarTemas); o cadastro é mantido
+    // em sincronia (sincronizarTemas), que também migra Assunto de nomes para ids.
     temas: [],
+    // Temas universais ({ id, nome, temaIds: [id, ...] }, no máximo 12): a
+    // vitrine do sorteio de texto, ver temas-universais.js. Não é Assunto e
+    // não vai no texto; instalação nova e backup antigo começam vazios.
+    temasUniversais: [],
     // cadastro central de Local ({ id, nome, tipo, pertenceA: [id, ...],
     // notas }), ver locais.js. `pertenceA` é uma lista (vários pais; o
     // primeiro é o principal). O texto guarda `territorialidade: [id]`
@@ -1252,6 +1304,14 @@ export let db = JSON.parse(localStorage.getItem(DB_KEY)) || {
     // próprio, separado do biográfico, editável pelo "Gerenciar". Ver
     // periodos-historicos-campos.js.
     opcoesPeriodoHistorico: opcoesDeFabricaPeriodoHistorico(),
+    // Registro de papéis de Pessoa ({ nome, apelido, descricao, grupoExclusao,
+    // exclusivoComTodos, superficie, fabrica }), editável pela pessoa. O valor
+    // gravado nos textos continua sendo o nome. Ver papeis-pessoa.js.
+    papeisPessoa: papeisPessoaDeFabrica(),
+    // Registro de papéis de Personagem ({ nome, apelido, descricao,
+    // grupoExclusao, exclusivoComTodos, semCentralidade, fabrica }), no mesmo
+    // molde do de Pessoa. Ver papeis-personagem.js.
+    papeisPersonagem: papeisPersonagemDeFabrica(),
     // Análise de escansão/métrica/rimas de um poema (aba Sonoridade).
     // Um poema pode ter no máximo uma escansão vinculada (não é histórico
     // de versões) — ver getEscansaoDoPoema. Bloco 1 (dados + tabela) cobre
@@ -1345,6 +1405,7 @@ if (!db.coletaneas) db.coletaneas = [];
 if (!db.pessoas) db.pessoas = [];
 if (!db.grupos) db.grupos = [];
 if (!db.autores) db.autores = [];
+if (!db.colaboradores) db.colaboradores = [];
 if (!db.epocas) db.epocas = [];
 if (!db.periodosHistoricos) db.periodosHistoricos = [];
 if (!db.periodosHistoricosOcultos) db.periodosHistoricosOcultos = [];
@@ -1356,6 +1417,7 @@ if (!db.movimentosEscolas) db.movimentosEscolas = SEED_MOVIMENTOS_ESCOLAS();
 if (!db.movimentosEscolasOcultos) db.movimentosEscolasOcultos = [];
 if (!db.assuntos) db.assuntos = [];
 if (!db.temas) db.temas = [];
+if (!Array.isArray(db.temasUniversais)) db.temasUniversais = [];
 // cadastro central de Etiqueta ({ id, nome, categoria, notas }), ver
 // etiquetas.js. Tradição, Estilo, Relação, Sensibilidade, Tom, Domínio
 // Imagético e Outros guardam, no Poema e na Prosa, listas de ids deste
@@ -1538,6 +1600,10 @@ function migrarIntertextualidadePoemas(poemas) {
     });
 }
 migrarIntertextualidadePoemas(db.poemas);
+// Formato novo de Intertextualidade e Hipertextualidade (tipoObra, obra, autor...):
+// ver intertextualidade.js.
+migrarTranstextualidadeDosItens(db.poemas);
+migrarTranstextualidadeDosItens(db.prosas);
 
 // Migração: Sinalizações era um único campo `sinalizacoes` (string,
 // separada por vírgula) misturando 4 categorias semanticamente
@@ -1802,6 +1868,19 @@ export function migrarNomesDePapel(itens) {
 migrarNomesDePapel(db.poemas);
 migrarNomesDePapel(db.prosas);
 
+// Registro de papéis de Pessoa: semeia os de fábrica (com Alocutário(a) e
+// Relacionado(a)) e acrescenta os nomes usados nos textos que o registro não
+// conhece. Roda depois da renomeação acima, para os nomes antigos já estarem
+// nos finais. O getter lê `db` a cada chamada porque importarDB e esvaziar
+// trocam campos (mesmo cuidado de definirCadastroEtiquetas).
+migrarRegistroPapeisPessoa(db);
+definirRegistroPapeisPessoa(() => db.papeisPessoa);
+
+// Registro de papéis de Personagem: semeia os 5 de fábrica (backup antigo, sem
+// a chave) e normaliza apelido e regras. Mesmo cuidado do getter acima.
+migrarRegistroPapeisPersonagem(db);
+definirRegistroPapeisPersonagem(() => db.papeisPersonagem);
+
 // Migração: Pessoa passa a ser entidade própria em `db.pessoas`
 // ({ id, nome, grupoIds, autorIds }), em vez de nome solto repetido em
 // cada poema/prosa. `papel`/`papeis` é vínculo do texto com a pessoa
@@ -1916,6 +1995,65 @@ export function migrarAnoParaDataEscrita(itens) {
 }
 migrarAnoParaDataEscrita(db.poemas);
 migrarAnoParaDataEscrita(db.prosas);
+
+// Posição começa em 1; "sem posição" é sempre `null`. Backups e itens antigos
+// podem ter `sequencia` 0 (ou "0", ou vazio em texto) de quando o campo
+// aceitava 0; a ordenação já tratava isso como "sem lugar" (vai para o fim),
+// então a ordem na tela não muda. Idempotente; backups antigos continuam abrindo.
+export const COLECOES_COM_SEQUENCIA = [
+    'livros',
+    'partes',
+    'secoes',
+    'elementos',
+    'poemas',
+    'prosas',
+    'itensColetanea',
+];
+export function migrarSequenciaZero(dbRef) {
+    let corrigidos = 0;
+    COLECOES_COM_SEQUENCIA.forEach((col) => {
+        (dbRef[col] || []).forEach((item) => {
+            const s = item.sequencia;
+            if (s === 0 || s === '0' || s === '') {
+                item.sequencia = null;
+                corrigidos++;
+            }
+        });
+    });
+    return corrigidos;
+}
+migrarSequenciaZero(db);
+sincronizarOrigemComLivros(db);
+
+// Fase 21, 21-1b-2 (entrega 1): cada Poema e Prosa passa a guardar `aparicoes`
+// (lista de onde o texto aparece), calculada dos campos antigos, que seguem
+// como estão. Nenhuma tela lê a lista ainda. No primeiro carregamento depois da
+// mudança (textos sem a lista), pede uma cópia automática ANTES, sem as listas,
+// e guarda um aviso para o main.js mostrar uma vez. Roda no load e no importarDB.
+export function prepararAparicoesDosTextos(dbRef, { copiaAntes = false } = {}) {
+    const faltam = contarTextosSemAparicoes(dbRef);
+    let copia;
+    if (faltam > 0 && copiaAntes) {
+        const semListas = (itens) => (itens || []).map(({ aparicoes: _a, ...resto }) => resto);
+        const retrato = {
+            ...dbRef,
+            poemas: semListas(dbRef.poemas),
+            prosas: semListas(dbRef.prosas),
+        };
+        copia = tirarSnapshotSeNecessario(retrato, true);
+    }
+    const resultado = sincronizarAparicoesComCamposAntigos(dbRef);
+    return { ...resultado, faltavam: faltam, copia };
+}
+// O que a migração do carregamento fez, para o main.js avisar uma vez e salvar.
+// `copia` é uma promessa (true quando a cópia automática foi guardada).
+export const migracaoDeAparicoesDoCarregamento = (() => {
+    const r = prepararAparicoesDosTextos(db, { copiaAntes: !_instalacaoNova });
+    return {
+        faltavam: _instalacaoNova ? 0 : r.faltavam,
+        copia: Promise.resolve(r.copia),
+    };
+})();
 
 // Bloco 2e: `periodoHistoricoId` (um só) virou `periodosHistoricosIds` (lista,
 // sem período principal). Com valor vira `[valor]`, sem valor vira `[]`, e o
@@ -2101,6 +2239,34 @@ export function migrarPeriodosBiograficosMultiplos(itens, cadastro = null) {
 // sem chute).
 export function obterAutorSouEuId(dbRef) {
     return (dbRef.autores || []).find((a) => a.souEu)?.id ?? null;
+}
+
+// Pessoa marcada "Esta pessoa sou eu" (db.pessoas[].souEu): a ponte entre quem
+// escreve (o Autor `souEu`) e quem aparece nos textos como Pessoa. Só uma
+// Pessoa pode ser "eu". Devolve `null` se ninguém estiver marcado.
+export function obterPessoaSouEuId(dbRef) {
+    return (dbRef.pessoas || []).find((p) => p.souEu)?.id ?? null;
+}
+
+// Marca `pessoaId` como "eu" e desmarca as outras (exclusivo). Se existe um Autor
+// "sou eu", ele entra nos Autores da Pessoa (sem tirar os que já estavam). Passar
+// `false` só desmarca. Devolve `true` se a Pessoa existe. Não chama save().
+export function definirPessoaSouEu(dbRef, pessoaId, valor = true) {
+    const pessoa = (dbRef.pessoas || []).find((p) => p.id == pessoaId);
+    if (!pessoa) return false;
+    if (!valor) {
+        pessoa.souEu = false;
+        return true;
+    }
+    (dbRef.pessoas || []).forEach((p) => {
+        p.souEu = p.id == pessoaId;
+    });
+    const autorId = obterAutorSouEuId(dbRef);
+    if (autorId != null) {
+        if (!Array.isArray(pessoa.autorIds)) pessoa.autorIds = [];
+        if (!pessoa.autorIds.some((id) => id == autorId)) pessoa.autorIds.push(autorId);
+    }
+    return true;
 }
 
 function obterOuCriarAutorPadraoId(dbRef) {
@@ -2754,6 +2920,8 @@ export function migrarAssuntos(assuntos) {
 }
 migrarAssuntos(db.assuntos);
 sincronizarTemas(db);
+sanearTemasUniversais(db);
+migrarLigacoesTemaPessoa(db);
 sincronizarEtiquetas(db);
 sincronizarTagClusters(db);
 sincronizarLocais(db);
@@ -2822,6 +2990,19 @@ export function migrarPessoasOculto(pessoas) {
     });
 }
 migrarPessoasOculto(db.pessoas);
+
+// `souEu` (boolean) na Pessoa: só uma pode ser "eu". Idempotente: preenche `false`
+// onde falta e, se o dado trouxer mais de uma marcada (backup editado à mão), fica
+// a primeira. Roda no load e no importarDB.
+export function migrarPessoasSouEu(pessoas) {
+    let achou = false;
+    (pessoas || []).forEach((p) => {
+        const marcada = p.souEu === true && !achou;
+        p.souEu = marcada;
+        if (marcada) achou = true;
+    });
+}
+migrarPessoasSouEu(db.pessoas);
 
 // `oculto` (boolean) em Período Biográfico (`db.epocas`) — mesmo eixo da
 // Pessoa: esconde o período das listas, seletores, busca e exportações sem
@@ -2912,56 +3093,31 @@ export function sortSecoes(secoes, livros, partes) {
     return secoes;
 }
 
-// Núcleo comum de ordenação hierárquica (Livro → Parte → Seção → própria
-// sequência), reaproveitado por sortPoemas e sortProsas — Poema e Prosa usam
-// exatamente o mesmo esquema de encaixe (paiTipo/paiId nos mesmos 3 níveis,
-// ver DEFINICAO_COLUNAS.prosas.vinculo em colunas.js e o comentário de
-// livroDaProsa em utils.js), então a lógica de caminho não muda entre os
-// dois — só a lista de itens ordenada é que difere.
-function sortItensPorEstrutura(itens, livros, partes, secoes) {
+// Núcleo comum de ordenação hierárquica (Livro → Parte → Seção → posição),
+// reaproveitado por sortPoemas e sortProsas. Desde a Fase 21 (21-4d, F21-D9) o
+// lugar do texto é o da sua aparição PRINCIPAL (a do livro de publicação mais
+// antiga, ver `aparicaoPrincipal`), não mais só o Destino; a posição é a da
+// própria aparição. `dbRef` serve para ler as aparições (livros, partes,
+// seções, `aparicoes`, Coletâneas); sem ele, usa só as três listas recebidas
+// (o que basta para texto com Destino, como nos testes de lógica pura).
+function sortItensPorEstrutura(itens, livros, partes, secoes, tipo, dbRef) {
+    const ref = dbRef || { livros, partes, secoes };
+    const chaves = new Map(itens.map((item) => [item, chaveDeOrdemDoTexto(ref, tipo, item)]));
     itens.sort((a, b) => {
-        const getPath = (p) => {
-            let livroIdx = 999,
-                parteIdx = 999,
-                secaoIdx = 999;
-            const pad = (n) => String(n + 1).padStart(3, '0');
-
-            if (p.paiTipo === 'secao') {
-                const s = secoes.find((x) => x.id == p.paiId);
-                if (s) {
-                    secaoIdx = secoes.findIndex((x) => x.id == s.id);
-                    if (s.paiTipo === 'parte') {
-                        parteIdx = partes.findIndex((x) => x.id == s.paiId);
-                        const pt = partes.find((x) => x.id == s.paiId);
-                        livroIdx = livros.findIndex((x) => x.id == pt?.livroId);
-                    } else {
-                        livroIdx = livros.findIndex((x) => x.id == s.paiId);
-                    }
-                }
-            } else if (p.paiTipo === 'parte') {
-                parteIdx = partes.findIndex((x) => x.id == p.paiId);
-                const pt = partes.find((x) => x.id == p.paiId);
-                livroIdx = livros.findIndex((x) => x.id == pt?.livroId);
-                secaoIdx = -1;
-            } else if (p.paiTipo === 'livro') {
-                livroIdx = livros.findIndex((x) => x.id == p.paiId);
-                parteIdx = -1;
-                secaoIdx = -1;
-            }
-
-            return `${pad(livroIdx)}_${pad(parteIdx)}_${pad(secaoIdx)}`;
-        };
-
-        const pathA = getPath(a),
-            pathB = getPath(b);
-        if (pathA !== pathB) return pathA.localeCompare(pathB);
-        return (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999);
+        const ka = chaves.get(a);
+        const kb = chaves.get(b);
+        return (
+            ka.livro - kb.livro ||
+            ka.parte - kb.parte ||
+            ka.secao - kb.secao ||
+            ka.sequencia - kb.sequencia
+        );
     });
     return itens;
 }
 
-export function sortPoemas(poemas, livros, partes, secoes) {
-    return sortItensPorEstrutura(poemas, livros, partes, secoes);
+export function sortPoemas(poemas, livros, partes, secoes, dbRef) {
+    return sortItensPorEstrutura(poemas, livros, partes, secoes, 'poema', dbRef);
 }
 
 // Item 1 do plano de integração Poemas/Prosas: Prosa usa o mesmo esquema de
@@ -2969,8 +3125,8 @@ export function sortPoemas(poemas, livros, partes, secoes) {
 // hierárquica em save() — antes disso, prosas espalhadas em partes/seções
 // diferentes só ficavam agrupadas por `sequencia` isolada, ignorando onde
 // cada uma está encaixada (ver Prosa e Poema.md, item 4).
-export function sortProsas(prosas, livros, partes, secoes) {
-    return sortItensPorEstrutura(prosas, livros, partes, secoes);
+export function sortProsas(prosas, livros, partes, secoes, dbRef) {
+    return sortItensPorEstrutura(prosas, livros, partes, secoes, 'prosa', dbRef);
 }
 
 export function sortElementos(elementos, dbRef) {
@@ -3010,8 +3166,8 @@ export function save() {
     sortLivros(db.livros);
     sortPartes(db.partes, db.livros);
     sortSecoes(db.secoes, db.livros, db.partes);
-    sortPoemas(db.poemas, db.livros, db.partes, db.secoes);
-    sortProsas(db.prosas, db.livros, db.partes, db.secoes);
+    sortPoemas(db.poemas, db.livros, db.partes, db.secoes, db);
+    sortProsas(db.prosas, db.livros, db.partes, db.secoes, db);
     sortElementos(db.elementos, db);
 
     sincronizarTemas(db);
@@ -3021,6 +3177,15 @@ export function save() {
     sincronizarPersonagens(db);
     sincronizarAncorasEco(db);
     sincronizarParesIgnorados(db);
+    // Fase 21 (21-2): a lista `aparicoes` é a verdade. As telas antigas ainda
+    // gravam só os campos antigos; a cada gravação a lista recebe a diferença
+    // que elas fizeram e guarda o resto (texto novo ganha a lista). Ver
+    // `reconciliarAparicoesDoTexto`.
+    sincronizarAparicoesComCamposAntigos(db);
+    // A ordem dos textos lê as aparições (F21-D9), e a lista só fica em dia
+    // depois da linha acima: ordena de novo, agora com ela atualizada.
+    sortPoemas(db.poemas, db.livros, db.partes, db.secoes, db);
+    sortProsas(db.prosas, db.livros, db.partes, db.secoes, db);
 
     try {
         localStorage.setItem(DB_KEY, JSON.stringify(db));
@@ -3071,9 +3236,16 @@ export async function importarDB(novoDb) {
     db.pessoas = novoDb.pessoas || [];
     db.grupos = novoDb.grupos || [];
     db.autores = novoDb.autores || [];
+    // Backup antigo (sem a chave) vira [].
+    db.colaboradores = Array.isArray(novoDb.colaboradores) ? novoDb.colaboradores : [];
     db.epocas = novoDb.epocas || [];
     db.opcoesPeriodoBiografico = novoDb.opcoesPeriodoBiografico || null;
     db.opcoesPeriodoHistorico = novoDb.opcoesPeriodoHistorico || null;
+    // Backup antigo (sem a chave) vira [] e é semeado por migrarRegistroPapeisPessoa.
+    db.papeisPessoa = Array.isArray(novoDb.papeisPessoa) ? novoDb.papeisPessoa : [];
+    // Idem para Personagem: backup antigo vira [] e é semeado por
+    // migrarRegistroPapeisPersonagem.
+    db.papeisPersonagem = Array.isArray(novoDb.papeisPersonagem) ? novoDb.papeisPersonagem : [];
     // `|| SEED_PERIODOS_HISTORICOS()` (não `|| []`) de propósito, mesmo
     // raciocínio do comentário de movimentosEscolas logo abaixo: um
     // backup tirado antes deste item do roadmap não tem a chave e deve
@@ -3094,6 +3266,10 @@ export async function importarDB(novoDb) {
     migrarAssuntos(db.assuntos);
     db.temas = novoDb.temas || [];
     sincronizarTemas(db);
+    db.temasUniversais = Array.isArray(novoDb.temasUniversais) ? novoDb.temasUniversais : [];
+    sanearTemasUniversais(db);
+    // Ligações Tema × Pessoa (campo do texto): forma limpa, como no load.
+    migrarLigacoesTemaPessoa(db);
     // Só cadastro aqui; a conversão dos textos acontece depois de
     // migrarSinalizacoes e migrarReconhecimentos (mais abaixo), porque um
     // backup antigo ainda traz o campo `sinalizacoes` único.
@@ -3119,6 +3295,8 @@ export async function importarDB(novoDb) {
     migrarCamposBloco3Molde(db.moldes);
     migrarStatusPoemas(db.poemas);
     migrarIntertextualidadePoemas(db.poemas);
+    migrarTranstextualidadeDosItens(db.poemas);
+    migrarTranstextualidadeDosItens(db.prosas);
     migrarReferenciasParaEcos(db.poemas);
     migrarElosReferencias(db.poemas);
     migrarReferenciasExternas(db.poemas);
@@ -3129,8 +3307,16 @@ export async function importarDB(novoDb) {
     migrarPessoas(db.prosas);
     migrarPapeisPessoa(db.poemas);
     migrarPapeisPessoa(db.prosas);
+    migrarSequenciaZero(db);
+    sincronizarOrigemComLivros(db);
+    {
+        const r = prepararAparicoesDosTextos(db);
+        if (r.faltavam > 0) guardarAvisoDeAparicoes({ textos: r.faltavam });
+    }
     migrarNomesDePapel(db.poemas);
     migrarNomesDePapel(db.prosas);
+    migrarRegistroPapeisPessoa(db);
+    migrarRegistroPapeisPersonagem(db);
     migrarPessoasParaCadastro(db);
     migrarIdioma(db.poemas);
     migrarIdioma(db.prosas);
@@ -3183,6 +3369,7 @@ export async function importarDB(novoDb) {
     migrarGruposAutorId(db);
     migrarEpocasAutorId(db);
     migrarPessoasOculto(db.pessoas);
+    migrarPessoasSouEu(db.pessoas);
     migrarEpocasOculto(db.epocas);
     migrarPessoasIdentidade(db.pessoas);
     migrarGruposOculto(db.grupos);
@@ -3314,6 +3501,7 @@ const ROTULOS_COL = {
     pessoas: 'Pessoa',
     grupos: 'Grupo',
     autores: 'Autor',
+    colaboradores: 'Colaborador',
     epocas: 'Período Biográfico',
     periodosHistoricos: 'Período Histórico',
     movimentosEscolas: 'Corrente literária',
@@ -3561,6 +3749,8 @@ export function mesclarPessoas(dbRef, origemId, destinoId) {
                 entradaDestino.papeis = [
                     ...new Set([...(entradaDestino.papeis || []), ...(entradaOrigem.papeis || [])]),
                 ];
+                const notaSomada = somarNotas(entradaDestino.nota, entradaOrigem.nota);
+                if (notaSomada) entradaDestino.nota = notaSomada;
                 it.pessoas = it.pessoas.filter((p) => p.pessoaId != origemId);
             } else {
                 entradaOrigem.pessoaId = destinoId;
@@ -3570,11 +3760,15 @@ export function mesclarPessoas(dbRef, origemId, destinoId) {
 
     // A âncora de Eco que apontava para a origem passa para o destino.
     redirecionarAncora(dbRef, 'pessoa', origemId, destinoId);
+    // Ligações Tema × Pessoa já analisadas: a origem vira o destino nos pares.
+    remapearLigacoesDosTextos(dbRef, 'pessoa', origemId, destinoId);
     // Bloco 3: a origem também vira o destino nas Pessoas envolvidas dos períodos.
     mesclarPessoaNosPeriodos(dbRef, origemId, destinoId);
 
     destino.grupoIds = [...new Set([...(destino.grupoIds || []), ...(origem.grupoIds || [])])];
     destino.autorIds = [...new Set([...(destino.autorIds || []), ...(origem.autorIds || [])])];
+    // Se a origem era "eu", o destino passa a ser (a marca nunca se perde).
+    if (origem.souEu) destino.souEu = true;
     // Identidade e cor/raça: o destino nunca é sobrescrito; só preenche o que
     // estava vazio.
     ['orientacao', 'identidadeCisTrans', 'corRaca'].forEach((campo) => {
@@ -3956,6 +4150,17 @@ function _removerParaExclusao(col, id) {
         });
     }
 
+    // Excluir Livro: as aparições dos textos naquele livro saem (quem só estava
+    // nele fica avulso). Excluir Parte ou Seção: o conteúdo (Seções, Elementos e
+    // a aparição de cada texto naquele lugar) sobe um nível, para o fim da fila
+    // do novo pai, e as aparições se fundem se o texto já está lá. Nada é
+    // excluído (T7, F21-D10, subir nível e 21-3a por aparição). Guarda tudo
+    // (lista e espelho de cada texto) para o Desfazer.
+    const textosDoLugarRemovidos =
+        col === 'livros' || col === 'partes' || col === 'secoes'
+            ? desvincularTextosDoLugar(db, col, id, item)
+            : null;
+
     // Excluir Autor: some do cadastro e precisa deixar de aparecer em
     // todo poema/prosa que o referenciava — senão sobra um autorId
     // órfão apontando pra ninguém. Mesmo padrão de vinculosPessoaRemovidos
@@ -3977,6 +4182,42 @@ function _removerParaExclusao(col, id) {
                 }
             });
         });
+    }
+
+    // Excluir Poema ou Prosa: o uso de IA de um Livro que apontava para ele
+    // continua, só perde o vínculo (F19-D12). Guarda para o Desfazer.
+    let vinculosUsoIaRemovidos = [];
+    if (col === 'poemas' || col === 'prosas') {
+        vinculosUsoIaRemovidos = removerTextoDosUsosIa(
+            db,
+            col === 'poemas' ? 'poema' : 'prosa',
+            id,
+        );
+    }
+
+    // Excluir Autor (continuação): tira o Autor da autoria dos Livros e
+    // Coletâneas (`autoriaLivro`, Fase 19 etapa 4). Só desvincula: o livro
+    // continua existindo. Guarda a entrada inteira, com os papéis e a posição,
+    // para o Desfazer (`restaurarAutorNosLivros`).
+    let vinculosAutoriaLivroRemovidos = [];
+    if (col === 'autores') {
+        vinculosAutoriaLivroRemovidos = removerAutorDosLivros(db, id);
+    }
+
+    // Excluir Autor (continuação): os Colaboradores ligados a ele ficam no
+    // cadastro, só perdem o vínculo `autorId` (F19-D13). Guarda para o Desfazer.
+    let vinculosColaboradorAutorRemovidos = [];
+    if (col === 'autores') {
+        vinculosColaboradorAutorRemovidos = desligarAutorDosColaboradores(db, id);
+    }
+
+    // Excluir Colaborador: tira ele da equipe dos Livros e Coletâneas
+    // (`equipeLivro`, Fase 19 etapa 6). Só desvincula: o livro continua
+    // existindo (F19-D14). Guarda a entrada inteira, com papéis, escopos e
+    // posição, para o Desfazer (`restaurarColaboradorNosLivros`).
+    let vinculosEquipeLivroRemovidos = [];
+    if (col === 'colaboradores') {
+        vinculosEquipeLivroRemovidos = removerColaboradorDosLivros(db, id);
     }
 
     // Excluir Autor (continuação): tira o id de `autorIds` de toda
@@ -4326,6 +4567,11 @@ function _removerParaExclusao(col, id) {
     }
     if (irmaos) fecharEspaco(irmaos, posicaoRemovida);
 
+    // Fase 21 (21-2): as outras aparições do texto (as que o Destino não mostra)
+    // também deixam um buraco na fila do lugar delas. O Desfazer reabre.
+    const aparicoesFechadas =
+        col === 'poemas' || col === 'prosas' ? fecharFilasDasAparicoes(db, item) : [];
+
     return {
         col,
         item,
@@ -4336,7 +4582,12 @@ function _removerParaExclusao(col, id) {
         vinculosPersonagemRemovidos,
         ancorasEcoRemovidas,
         participacoesPersonagemRemovidas,
+        textosDoLugarRemovidos,
         vinculosAutoriaRemovidos,
+        vinculosAutoriaLivroRemovidos,
+        vinculosColaboradorAutorRemovidos,
+        vinculosEquipeLivroRemovidos,
+        vinculosUsoIaRemovidos,
         vinculosPessoaAutorRemovidos,
         gruposAutorRemovidos,
         vinculosGrupoAutorRemovidos,
@@ -4356,6 +4607,7 @@ function _removerParaExclusao(col, id) {
         capasParaDescartar,
         posicaoRemovida,
         irmaos,
+        aparicoesFechadas,
         ocultoAdicionado,
         ocultoMovimentoAdicionado,
         ocultoPeriodoHistoricoAdicionado,
@@ -4376,7 +4628,12 @@ function _restaurar(removido) {
         vinculosPersonagemRemovidos,
         ancorasEcoRemovidas,
         participacoesPersonagemRemovidas,
+        textosDoLugarRemovidos,
         vinculosAutoriaRemovidos,
+        vinculosAutoriaLivroRemovidos,
+        vinculosColaboradorAutorRemovidos,
+        vinculosEquipeLivroRemovidos,
+        vinculosUsoIaRemovidos,
         vinculosPessoaAutorRemovidos,
         gruposAutorRemovidos,
         vinculosGrupoAutorRemovidos,
@@ -4395,12 +4652,14 @@ function _restaurar(removido) {
         vinculosMoldeRemovidos,
         posicaoRemovida,
         irmaos,
+        aparicoesFechadas,
         ocultoAdicionado,
         ocultoMovimentoAdicionado,
         ocultoPeriodoHistoricoAdicionado,
     } = removido;
 
     if (irmaos) abrirEspaco(irmaos, posicaoRemovida);
+    reabrirFilasDasAparicoes(db, aparicoesFechadas);
 
     if (ocultoAdicionado) {
         const idx = db.templatesEstruturaOcultos.indexOf(ocultoAdicionado);
@@ -4434,10 +4693,15 @@ function _restaurar(removido) {
         if (p) (p.participacoes ||= []).push(entrada);
     });
     restaurarAncoras(db, ancorasEcoRemovidas || []);
+    restaurarTextosDoLugar(db, textosDoLugarRemovidos);
     (vinculosAutoriaRemovidos || []).forEach(({ itemCol, itemId, entrada }) => {
         const it = db[itemCol]?.find((i) => i.id == itemId);
         if (it) (it.autoria ||= []).push(entrada);
     });
+    restaurarAutorNosLivros(db, vinculosAutoriaLivroRemovidos || []);
+    religarAutorAosColaboradores(db, vinculosColaboradorAutorRemovidos || []);
+    restaurarColaboradorNosLivros(db, vinculosEquipeLivroRemovidos || []);
+    restaurarTextoNosUsosIa(db, vinculosUsoIaRemovidos || []);
     (vinculosPessoaAutorRemovidos || []).forEach(({ pessoaId, autorId }) => {
         const p = db.pessoas?.find((i) => i.id == pessoaId);
         if (p) (p.autorIds ||= []).push(autorId);
@@ -4598,6 +4862,13 @@ export function deleteItem(col, id, aposConfirmar = null) {
         }
     }
 
+    // Livro, Parte ou Seção: avisa quantos textos mudam de lugar (a aparição
+    // sobe ou sai; o texto nunca é excluído). O Desfazer devolve tudo.
+    if (col === 'livros' || col === 'partes' || col === 'secoes') {
+        const aviso = avisoDaExclusaoNoLugar(db, col, id);
+        if (aviso) rotulo = `${rotulo}${rotulo.includes(' · ') ? '; ' : ' · '}${aviso}`;
+    }
+
     // Para Pessoa, avisa em quantos poemas/prosas ela vai deixar de
     // aparecer (o vínculo some, o texto em si não é afetado).
     if (col === 'pessoas') {
@@ -4679,6 +4950,18 @@ export function deleteItem(col, id, aposConfirmar = null) {
                 `deixará de aparecer em ${totalTextos} texto${totalTextos !== 1 ? 's' : ''}`,
             );
         }
+        const { livrosIds } = impactoExclusaoAutorNosLivros(db, id);
+        if (livrosIds.length > 0) {
+            partes.push(
+                `sairá da autoria de ${livrosIds.length} livro${livrosIds.length !== 1 ? 's' : ''}`,
+            );
+        }
+        const totalColaboradores = colaboradoresDoAutor(db.colaboradores, id).length;
+        if (totalColaboradores > 0) {
+            partes.push(
+                `${totalColaboradores} Colaborador${totalColaboradores !== 1 ? 'es' : ''} deixará${totalColaboradores !== 1 ? 'ão' : ''} de estar ligado${totalColaboradores !== 1 ? 's' : ''} a ele`,
+            );
+        }
         if (pessoasIds.length > 0) {
             partes.push(
                 `${pessoasIds.length} Pessoa${pessoasIds.length !== 1 ? 's' : ''} deixará${pessoasIds.length !== 1 ? 'ão' : ''} de estar associada${pessoasIds.length !== 1 ? 's' : ''} a ele`,
@@ -4695,6 +4978,16 @@ export function deleteItem(col, id, aposConfirmar = null) {
             );
         }
         rotulo = partes.length ? `Autor · ${partes.join(', ')}` : 'Autor';
+    }
+
+    // Para Colaborador, avisa em quantos livros ele sai da equipe (o livro
+    // continua, só perde o crédito). F19-D14: aviso com a contagem e Desfazer.
+    if (col === 'colaboradores') {
+        const { livrosIds } = impactoExclusaoColaboradorNosLivros(db, id);
+        rotulo =
+            livrosIds.length > 0
+                ? `Colaborador · sairá da equipe de ${livrosIds.length} livro${livrosIds.length !== 1 ? 's' : ''}`
+                : 'Colaborador';
     }
 
     // Para Época, avisa em quantos poemas/prosas ela vai deixar de
@@ -4781,6 +5074,20 @@ export function deleteItem(col, id, aposConfirmar = null) {
     if (col === 'templatesEstrutura' && item?.embutido) {
         rotulo =
             'Template de Progressão · é um dos templates padrão do app; excluído, não volta sozinho';
+    }
+
+    // Poema ou Prosa apontado por um uso de IA de Livro: o uso fica, só o vínculo
+    // some (F19-D12). Avisa antes, o Desfazer devolve.
+    if (col === 'poemas' || col === 'prosas') {
+        const { livrosIds, usos } = impactoExclusaoTextoNosUsosIa(
+            db,
+            col === 'poemas' ? 'poema' : 'prosa',
+            id,
+        );
+        if (usos > 0) {
+            const n = livrosIds.length;
+            rotulo = `${rotulo}${rotulo.includes(' · ') ? '; ' : ' · '}o vínculo com o Uso de IA de ${n} livro${n !== 1 ? 's' : ''} será desfeito`;
+        }
     }
 
     abrirModalExclusao(titulo, rotulo, () => {

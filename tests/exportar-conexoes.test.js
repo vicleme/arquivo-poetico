@@ -45,7 +45,7 @@ describe('gerarMarkdownConexoes (dados do acervo)', () => {
         const md = gerarMarkdownConexoes(dadosConexoes(), 'tudo');
         assert.match(
             md,
-            /^# Conexões\n\n3 Elos em 2 pares e 0 clusters, 1 buraco; 4 Ecos em 1 cadeia e 1 grafo\.\n/,
+            /^# Conexões dentro do acervo\n\n3 Elos em 2 pares e 0 clusters, 1 buraco; 4 Ecos em 1 cadeia e 1 grafo\.\n/,
         );
         const pos = ['## Buracos', '## Elos (pares e clusters)', '## Ecos (cadeias e grafos)'].map(
             (t) => md.indexOf(t),
@@ -83,9 +83,9 @@ describe('gerarMarkdownConexoes (dados do acervo)', () => {
         const dados = dadosConexoes();
         const elos = gerarMarkdownConexoes(dados, 'elos');
         const ecos = gerarMarkdownConexoes(dados, 'ecos');
-        assert.match(elos, /^# Conexões: Elos/);
+        assert.match(elos, /^# Conexões dentro do acervo: Elos/);
         assert.ok(!elos.includes('## Ecos'));
-        assert.match(ecos, /^# Conexões: Ecos/);
+        assert.match(ecos, /^# Conexões dentro do acervo: Ecos/);
         assert.ok(!ecos.includes('## Elos') && !ecos.includes('## Buracos'));
     });
 
@@ -112,7 +112,7 @@ describe('gerarMarkdownConexoes (casos de borda)', () => {
     });
 
     it('sem argumento nenhum não quebra', () => {
-        assert.match(gerarMarkdownConexoes(undefined), /^# Conexões\n/);
+        assert.match(gerarMarkdownConexoes(undefined), /^# Conexões dentro do acervo\n/);
     });
 
     it('cluster de 3 poemas ou mais ganha o tamanho no título', () => {
@@ -142,7 +142,7 @@ describe('gerarMarkdownConexoes (casos de borda)', () => {
             linear: true,
         };
         const md = gerarMarkdownConexoes({ grafos: [grafo] }, 'ecos');
-        assert.match(md, /^# Conexões: Ecos\n\n1 Eco em 1 cadeia e 0 grafos\./);
+        assert.match(md, /^# Conexões dentro do acervo: Ecos\n\n1 Eco em 1 cadeia e 0 grafos\./);
         assert.match(md, /### Cadeia 1 \(2 poemas\)\n\nP → Q\n/);
     });
 
@@ -193,9 +193,9 @@ describe('baixarConexoes (botão da aba)', () => {
 
     it('baixa o escopo escolhido, com o nome do escopo', async () => {
         for (const [escopo, nome, titulo] of [
-            ['tudo', 'conexoes.md', '# Conexões\n'],
-            ['elos', 'conexoes-elos.md', '# Conexões: Elos\n'],
-            ['ecos', 'conexoes-ecos.md', '# Conexões: Ecos\n'],
+            ['tudo', 'conexoes.md', '# Conexões dentro do acervo\n'],
+            ['elos', 'conexoes-elos.md', '# Conexões dentro do acervo: Elos\n'],
+            ['ecos', 'conexoes-ecos.md', '# Conexões dentro do acervo: Ecos\n'],
         ]) {
             selects(escopo, 'md');
             baixarConexoes();

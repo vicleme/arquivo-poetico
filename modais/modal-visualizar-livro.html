@@ -85,6 +85,70 @@
         <div
             class="flex items-center justify-end gap-2 px-8 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 flex-shrink-0"
         >
+            <div class="mr-auto flex items-center gap-2">
+                <label
+                    for="visualizar-livro-baixar-formato"
+                    class="text-[10px] text-gray-400 dark:text-slate-500"
+                    >Baixar como:</label
+                >
+                <select
+                    id="visualizar-livro-baixar-formato"
+                    aria-label="Formato do download"
+                    title="Formato do arquivo baixado com as informações deste livro"
+                    class="text-xs py-1.5 px-2 w-auto mb-0"
+                >
+                    <option value="json">.json</option>
+                    <option value="csv">.csv</option>
+                    <option value="md">.md (Markdown)</option>
+                    <option value="pdf">.pdf</option>
+                    <option value="docx">.docx (Word)</option>
+                </select>
+                <label
+                    class="inline-flex items-center gap-1 text-[10px] text-gray-400 dark:text-slate-500 cursor-pointer"
+                >
+                    <input
+                        type="checkbox"
+                        id="visualizar-livro-baixar-estrutura"
+                        data-incluir-estrutura
+                        class="w-auto mb-0"
+                    />
+                    Incluir estrutura
+                </label>
+                <label
+                    class="inline-flex items-center gap-1 text-[10px] text-gray-400 dark:text-slate-500 cursor-pointer"
+                >
+                    <input
+                        type="checkbox"
+                        id="visualizar-livro-baixar-fora-de-escopo"
+                        data-incluir-fora-de-escopo
+                        class="w-auto mb-0"
+                    />
+                    Incluir Fora de escopo
+                </label>
+                <button
+                    type="button"
+                    id="visualizar-livro-baixar"
+                    onclick="baixarDoModalVisualizacaoLivro()"
+                    title="Baixar as informações deste livro (sem o conteúdo dos textos)"
+                    aria-label="Baixar"
+                    class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700"
+                >
+                    <svg
+                        viewBox="0 0 20 20"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="w-3.5 h-3.5 inline-block"
+                        aria-hidden="true"
+                    >
+                        <path d="M10 3v9.5" />
+                        <path d="M6 9l4 4 4-4" />
+                        <path d="M3.5 15.5h13" />
+                    </svg>
+                </button>
+            </div>
             <button
                 type="button"
                 id="visualizar-livro-editar"

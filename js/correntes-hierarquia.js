@@ -411,12 +411,20 @@ export function impactoDaCorrente(dbRef, id, { comDivisoes = false } = {}) {
 // ancestrais: um texto ligado à "3ª geração: Condoreira (Brasil)" também
 // acha por "Romantismo no Brasil" e por "Romantismo", mas não por
 // "Romantismo em Portugal". Sem repetição, na ordem em que aparecem.
-export function nomesDeBuscaDasCorrentes(lista, ids, { comAncestrais = false } = {}) {
+// Com `programa` ('Movimento', 'Escola'...), só entram as correntes cujo
+// Programa efetivo (com a herança do pai) é esse: é o que separa `movimento:`
+// de `escola:` na busca, enquanto `corrente:` não filtra.
+export function nomesDeBuscaDasCorrentes(
+    lista,
+    ids,
+    { comAncestrais = false, programa = '' } = {},
+) {
     const vistos = new Set();
     const nomes = [];
     const somar = (m) => {
         if (!m || vistos.has(String(m.id))) return;
         vistos.add(String(m.id));
+        if (programa && programaEfetivoDaCorrente(lista, m).valor !== programa) return;
         if (m.nome) nomes.push(m.nome);
     };
     (ids || []).forEach((id) => {

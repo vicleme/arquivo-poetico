@@ -33,10 +33,31 @@
             </button>
         </div>
 
+        <!-- Busca (T10): filtra as duas listas ao digitar; a lógica mora em
+             busca-ajuda.js e a ligação em central-ajuda.js. -->
+        <div
+            class="px-8 py-3 border-b border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0 space-y-1"
+        >
+            <input
+                type="search"
+                id="ca-busca"
+                class="w-full mb-0"
+                placeholder='Buscar na ajuda... ("frase exata" entre aspas)'
+                aria-label="Buscar na Central de Ajuda"
+                autocomplete="off"
+            />
+            <p
+                id="ca-busca-status"
+                class="text-xs text-gray-500 dark:text-slate-400 hidden"
+                role="status"
+                aria-live="polite"
+            ></p>
+        </div>
+
         <div class="overflow-y-auto flex-1 px-8 py-6 space-y-6">
             <!-- 1. Apresentação: o texto do botão ("Ver"/"Rever") é definido em
                  central-ajuda.js conforme já existe perfil salvo. -->
-            <section class="space-y-2">
+            <section id="ca-secao-apresentacao" class="space-y-2">
                 <p class="text-sm text-gray-600 dark:text-slate-300">
                     Novo por aqui, ou faz tempo que não abre o app? A apresentação mostra o
                     essencial pelo seu perfil.
@@ -52,7 +73,7 @@
             </section>
 
             <!-- 2. Procedimental: cada item vira um mini-tour (montado em JS). -->
-            <section class="space-y-2">
+            <section id="ca-secao-como-faco" class="space-y-2">
                 <h4 class="text-sm font-bold uppercase text-gray-500 dark:text-slate-400">
                     Como eu faço para...
                 </h4>
@@ -60,7 +81,7 @@
             </section>
 
             <!-- 3. Conceitual: só texto, agrupado por categoria (montado em JS). -->
-            <section class="space-y-2">
+            <section id="ca-secao-faq" class="space-y-2">
                 <h4 class="text-sm font-bold uppercase text-gray-500 dark:text-slate-400">
                     Perguntas frequentes
                 </h4>

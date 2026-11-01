@@ -32,7 +32,9 @@ import {
     podarExcecoesAssunto,
     periodosHistoricosIdsDoItem,
 } from './utils.js';
-import { resolverTemasEditados } from './temas.js';
+import { vinculoComNota } from './papeis-pessoa.js';
+import { CHAVE_LEGENDA_PAPEIS, incorporarPapeisImportados } from './legenda-papeis-pessoa.js';
+import { resolverTemasEditados, temasDeEspelhoAntigo } from './temas.js';
 import {
     ETIQUETAS_CATEGORIAS,
     nomesDeEtiquetasDaOrigem,
@@ -46,6 +48,7 @@ import { exibindoOcultasDosPeriodos } from './ocultas-periodos.js';
 import { importarPersonagensDoTexto } from './personagens.js';
 import { completarPessoaComFicha } from './pessoas-viagem.js';
 import { ecosImportados } from './ancora-eco.js';
+import { importarLigacoes } from './ligacoes-tema-pessoa.js';
 import { montarContextoAlvos, remapearAlvosDoConceitos } from './alvos-conceitos.js';
 
 // Sobrescritas de papel do Assunto vindas do JSON → [{ assuntoId, papel }] do
@@ -617,7 +620,12 @@ function remontarItem(itemOrigem, novoId, referencias) {
     novo.paiTipo = null;
 
     novo.pessoas = (itemOrigem.pessoas || [])
-        .map((p) => ({ pessoaId: destinoDe('pessoas', p.pessoaId), papeis: p.papeis || [] }))
+        .map((p) =>
+            vinculoComNota(
+                { pessoaId: destinoDe('pessoas', p.pessoaId), papeis: p.papeis || [] },
+                p.nota,
+            ),
+        )
         .filter((p) => p.pessoaId != null);
 
     novo.gruposDiretos = (itemOrigem.gruposDiretosResolvidos || [])
@@ -803,16 +811,25 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
         const novoItem = remontarItem(itemOrigem, novoId, rel.referencias);
         // Tema por id (fase 2): o id de origem não vale aqui; casa/cria o
         // Tema pelo NOME (a `nome` que montarRegistro grava) e mantém o
-        // papel. JSON antigo (sem `temas`) cai no espelho `sinalizacoesTema`,
-        // que a reconciliação de temas.js migra no save().
-        if (Array.isArray(itemOrigem.temas)) {
-            const { temas, espelho } = resolverTemasEditados(
-                dbRef,
-                itemOrigem.temas.map((t) => ({ nome: t?.nome, papel: t?.papel })),
-            );
-            novoItem.temas = temas;
-            novoItem.sinalizacoesTema = espelho;
-        }
+        // papel. JSON antigo (sem `temas`, ou com `temas` vazio e só o
+        // campo antigo `sinalizacoesTema`) vira `temas` na hora, sem papel
+        // (`temasDeEspelhoAntigo`), em vez de esperar a reconciliação do
+        // save(). O campo antigo nunca entra no acervo (Etapa 5): sai do
+        // texto novo logo abaixo.
+        const temasDoArquivo = Array.isArray(itemOrigem.temas)
+            ? resolverTemasEditados(
+                  dbRef,
+                  itemOrigem.temas.map((t) => ({
+                      nome: t?.nome,
+                      papel: t?.papel,
+                      valencia: t?.valencia,
+                  })),
+              ).temas
+            : [];
+        novoItem.temas = temasDoArquivo.length
+            ? temasDoArquivo
+            : temasDeEspelhoAntigo(dbRef, itemOrigem);
+        delete novoItem.sinalizacoesTema;
         // Papel do Assunto fixado no texto de origem: o id de origem não vale
         // aqui, então casa o Assunto do destino pelo NOME (sem caixa/acento) e
         // descarta o que não existe. JSON antigo (sem `assuntosPapel`) vira [].
@@ -842,6 +859,11 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
         // Personagem: casa/cria pelo NOME (o id de origem não vale aqui). JSON
         // antigo, sem `personagens`, vira [].
         novoItem.personagens = importarPersonagensDoTexto(dbRef, itemOrigem);
+        // Análise Tema × Pessoa: viaja em nomes; recasa com os Temas e as Pessoas
+        // do texto novo (depois dos dois acima). JSON antigo vira "não analisado".
+        const ligacoesImportadas = importarLigacoes(dbRef, itemOrigem.ligacoesTemaPessoa, novoItem);
+        if (ligacoesImportadas) novoItem.ligacoesTemaPessoa = ligacoesImportadas;
+        else delete novoItem.ligacoesTemaPessoa;
         // Âncora do Eco: recasa pelo nome com o que já existe (depois dos vínculos
         // do texto acima, que são quem cria Pessoa/Personagem). Nunca cria ninguém.
         if (novoItem.conceitos && Array.isArray(novoItem.conceitos.ecos)) {
@@ -884,6 +906,13 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
     });
 
     // Só no fim: um único push por coleção, seguido de um único save().
+    // Papéis de Pessoa que os textos novos usam e o acervo ainda não tem: entram
+    // no cadastro com apelido e descrição da legenda do arquivo (se houver).
+    const papeisNovos = incorporarPapeisImportados(dbRef, payload?.[CHAVE_LEGENDA_PAPEIS], [
+        ...novosPoemas,
+        ...novasProsas,
+    ]);
+
     dbRef.poemas.push(...novosPoemas);
     dbRef.prosas.push(...novasProsas);
     dbRef.escansoes.push(...novasEscansoes);
@@ -901,5 +930,6 @@ export async function aplicarImportacaoAditiva(payload, relatorio, dbRef, deps) 
         duplicatasPuladas,
         soltos,
         periodos,
+        papeisNovos,
     };
 }

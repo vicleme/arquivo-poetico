@@ -8,10 +8,12 @@ import {
     resolverTemasEditados,
     temasDoTextoResolvidos,
     reconciliarTemasDoTexto,
+    migrarEspelhoParaTemas,
     sincronizarTemas,
     renomearTema,
 } from '../js/temas.js';
-import { espelhoDeTemas, normalizarPapelTema, ROTULOS_PAPEL_TEMA } from '../js/utils.js';
+import { normalizarPapelTema, ROTULOS_PAPEL_TEMA } from '../js/utils.js';
+import { nomesDosTemas } from './helpers/temas-do-texto.js';
 
 function dbBase() {
     return {
@@ -35,16 +37,6 @@ describe('helpers de papel do Tema', () => {
         assert.equal(normalizarPapelTema(undefined), '');
         assert.equal(ROTULOS_PAPEL_TEMA[''], 'Indefinido');
     });
-
-    it('espelho ordena principal, secundário, sem papel, estável dentro do papel', () => {
-        const espelho = espelhoDeTemas([
-            { nome: 'C', papel: '' },
-            { nome: 'B', papel: 'secundario' },
-            { nome: 'A', papel: 'principal' },
-            { nome: 'D', papel: '' },
-        ]);
-        assert.equal(espelho, 'A, B, C, D');
-    });
 });
 
 describe('garantirTema / resolverTemasEditados', () => {
@@ -57,13 +49,14 @@ describe('garantirTema / resolverTemasEditados', () => {
         assert.equal(garantirTema(db, '   '), null);
     });
 
-    it('tira vírgula do nome (é o separador do espelho)', () => {
-        assert.equal(limparNomeTema('  Amor,  perda '), 'Amor perda');
+    it('mantém a vírgula e tira só os separadores `;` e `|` do nome', () => {
+        assert.equal(limparNomeTema('  Amor,  perda '), 'Amor, perda');
+        assert.equal(limparNomeTema('Amor; perda | luto'), 'Amor perda luto');
     });
 
-    it('resolve entradas do editor: dedupe por chave, papel normalizado, espelho pronto', () => {
+    it('resolve entradas do editor: dedupe por chave, papel normalizado', () => {
         const db = { temas: [] };
-        const { temas, espelho } = resolverTemasEditados(db, [
+        const { temas, ...resto } = resolverTemasEditados(db, [
             { nome: 'Amor', papel: '' },
             { nome: 'Machismo', papel: 'principal' },
             { nome: 'amor', papel: 'secundario' },
@@ -78,7 +71,7 @@ describe('garantirTema / resolverTemasEditados', () => {
                 ['Luto', ''],
             ],
         );
-        assert.equal(espelho, 'Machismo, Amor, Luto');
+        assert.deepEqual(Object.keys(resto), [], 'o espelho não sai mais daqui');
     });
 });
 
@@ -93,16 +86,16 @@ describe('reconciliarTemasDoTexto', () => {
             p1.temas.map((t) => nomeDe(db, t.temaId)),
             ['Machismo', 'Brasil'],
         );
-        assert.equal(p1.sinalizacoesTema, 'Machismo, Brasil');
+        assert.equal(nomesDosTemas(p1, db), 'Machismo, Brasil');
     });
 
     it('texto sem tema ganha temas vazio; grafias diferentes viram o mesmo id', () => {
         const db = dbBase();
         sincronizarTemas(db);
         assert.deepEqual(db.prosas[1].temas, []);
-        assert.equal(db.prosas[1].sinalizacoesTema, '');
+        assert.equal(nomesDosTemas(db.prosas[1], db), '');
         assert.equal(db.poemas[1].temas[0].temaId, db.poemas[0].temas[0].temaId);
-        assert.equal(db.poemas[1].sinalizacoesTema, 'Machismo');
+        assert.equal(nomesDosTemas(db.poemas[1], db), 'Machismo');
     });
 
     it('é idempotente e devolve false quando nada muda', () => {
@@ -121,33 +114,59 @@ describe('reconciliarTemasDoTexto', () => {
         p1.temas[1].papel = 'principal'; // Brasil principal
         reconciliarTemasDoTexto(db, p1);
         assert.equal(p1.temas[1].papel, 'principal');
-        assert.equal(p1.sinalizacoesTema, 'Brasil, Machismo');
+        assert.equal(nomesDosTemas(p1, db), 'Brasil, Machismo');
     });
 
-    it('espelho editado por fora vence e preserva o papel de quem ficou', () => {
+    it('os `temas` mandam: espelho editado por fora é refeito e o papel fica', () => {
         const db = dbBase();
         sincronizarTemas(db);
         const p1 = db.poemas[0];
         p1.temas[0].papel = 'principal'; // Machismo principal
-        p1.sinalizacoesTema = 'Machismo, Luto'; // edição em massa tirou Brasil, pôs Luto
+        p1.sinalizacoesTema = 'Machismo, Luto'; // alguém mexeu só no espelho
         reconciliarTemasDoTexto(db, p1);
         assert.deepEqual(
             p1.temas.map((t) => [nomeDe(db, t.temaId), t.papel]),
             [
                 ['Machismo', 'principal'],
-                ['Luto', ''],
+                ['Brasil', ''],
             ],
         );
-        assert.equal(p1.sinalizacoesTema, 'Machismo, Luto');
-        assert.ok(db.temas.some((t) => t.nome === 'Luto'));
+        assert.equal(nomesDosTemas(p1, db), 'Machismo, Brasil');
+        assert.equal(
+            db.temas.some((t) => t.nome === 'Luto'),
+            false,
+        );
     });
 
-    it('id que não existe no cadastro (ex.: importado de outro acervo) é descartado', () => {
+    it('migrarEspelhoParaTemas: só o texto de formato antigo, sem papel, e é idempotente', () => {
+        const db = dbBase();
+        db.poemas[1].temas = [];
+        assert.equal(migrarEspelhoParaTemas(db), 3);
+        assert.deepEqual(
+            db.poemas[0].temas.map((t) => [nomeDe(db, t.temaId), t.papel]),
+            [
+                ['Machismo', ''],
+                ['Brasil', ''],
+            ],
+        );
+        assert.deepEqual(db.prosas[1].temas ?? [], []);
+        assert.equal(migrarEspelhoParaTemas(db), 0);
+        // texto que já tem `temas` não é tocado, mesmo com o espelho diferente
+        db.poemas[0].temas[0].papel = 'principal';
+        db.poemas[0].sinalizacoesTema = 'Outro';
+        assert.equal(migrarEspelhoParaTemas(db), 0);
+        assert.equal(db.poemas[0].temas[0].papel, 'principal');
+    });
+
+    it('id que não existe no cadastro (ex.: importado de outro acervo) é descartado e, sem nada sobrando, o espelho é a fonte', () => {
         const db = dbBase();
         sincronizarTemas(db);
         const p1 = db.poemas[0];
+        // Formato antigo reposto à mão: o `sincronizarTemas` acima já apagou o campo.
+        p1.sinalizacoesTema = 'Machismo, Brasil';
         p1.temas = [{ temaId: 999999, papel: 'principal' }];
         reconciliarTemasDoTexto(db, p1);
+        assert.equal('sinalizacoesTema' in p1, false);
         assert.deepEqual(
             p1.temas.map((t) => nomeDe(db, t.temaId)),
             ['Machismo', 'Brasil'],
@@ -163,7 +182,7 @@ describe('reconciliarTemasDoTexto', () => {
         assert.equal(r.ok, true);
         sincronizarTemas(db);
         assert.equal(db.temas.length, total);
-        assert.equal(db.poemas[0].sinalizacoesTema, 'Misoginia, Brasil');
+        assert.equal(nomesDosTemas(db.poemas[0], db), 'Misoginia, Brasil');
         assert.equal(nomeDe(db, db.poemas[0].temas[0].temaId), 'Misoginia');
         assert.deepEqual(nomesTemasDoAssunto(db.assuntos[0], db.temas), ['Misoginia']);
     });

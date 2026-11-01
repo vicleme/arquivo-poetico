@@ -20,6 +20,7 @@ import {
     sinalizacoesAgrupadas,
     contarTextosPorAssunto,
 } from '../js/utils.js';
+import { nomesDosTemas } from './helpers/temas-do-texto.js';
 
 function dbBase() {
     return {
@@ -129,9 +130,9 @@ describe('mesclarTemas', () => {
             { temaId: 1, papel: 'secundario' },
             { temaId: 2, papel: 'principal' },
         ]);
-        assert.equal(db.poemas[1].sinalizacoesTema, 'Machismo, Amor');
+        assert.equal(nomesDosTemas(db.poemas[1], db), 'Machismo, Amor');
         assert.deepEqual(db.prosas[0].temas, [{ temaId: 2, papel: '' }]);
-        assert.equal(db.prosas[0].sinalizacoesTema, 'Machismo');
+        assert.equal(nomesDosTemas(db.prosas[0], db), 'Machismo');
         // Assunto 10 tinha os dois: fica um só; 11 troca a origem pelo destino
         assert.deepEqual(db.assuntos[0].temaIds, [2]);
         assert.deepEqual(db.assuntos[1].temaIds, [2]);
@@ -144,7 +145,7 @@ describe('mesclarTemas', () => {
         const doDestino = db.poemas[0].temas.filter((e) => e.temaId === 2);
         assert.equal(doDestino.length, 1);
         assert.equal(doDestino[0].papel, 'principal');
-        assert.equal(db.poemas[0].sinalizacoesTema, 'Amor, Machismo, Brasil');
+        assert.equal(nomesDosTemas(db.poemas[0], db), 'Amor, Machismo, Brasil');
     });
     it('não repete a nota quando é igual e ignora nota vazia', () => {
         const db = dbBase();
@@ -209,11 +210,11 @@ describe('Tema por papel nas saídas', () => {
         assert.equal(textoTemasComPapel(antigo, []), 'Amor, Brasil');
         assert.deepEqual(nomesTemasPorPapel(antigo, [], 'principal'), []);
     });
-    it('sinalizacoesAgrupadas: com cadastro traz o papel; sem cadastro, o espelho', () => {
+    it('sinalizacoesAgrupadas: com cadastro traz o papel; sem cadastro, sem Tema', () => {
         const db = dbBase();
         const com = sinalizacoesAgrupadas(db.poemas[0], db.temas).find((b) => b.rotulo === 'Tema');
         assert.equal(com.valor, 'Amor (principal), Machismo (secundário), Brasil');
         const sem = sinalizacoesAgrupadas(db.poemas[0]).find((b) => b.rotulo === 'Tema');
-        assert.equal(sem.valor, 'Amor, Machismo, Brasil');
+        assert.equal(sem, undefined);
     });
 });

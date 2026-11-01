@@ -176,6 +176,20 @@ describe('.md e Visualização', () => {
         assert.match(md, /\*\*Territorialidade:\*\* Lapa \(São Paulo › São Paulo › Brasil\)/);
     });
 
+    it('.md lê o Local de escrita também no registro montado para exportar (ficha, não id)', () => {
+        const base = poemaCompleto();
+        const item = {
+            ...base,
+            localEscrita: { localId: base.localEscrita, nome: 'Estação Lapa', tipo: '' },
+        };
+        db.poemas = [item];
+        const md = gerarMarkdownExportacao(db.poemas);
+        assert.match(
+            md,
+            /\*\*Local onde foi escrito:\*\* Estação Lapa \(Lapa › São Paulo › São Paulo › Brasil\)/,
+        );
+    });
+
     it('.md de texto antigo (só espelho) mantém a Territorialidade pelos nomes e Idioma simples', () => {
         db.poemas = [
             {
@@ -253,6 +267,19 @@ describe('.csv', () => {
         assert.equal(
             linha.territorialidade_caminho,
             ['Brasil › São Paulo › São Paulo › Lapa', 'Brasil'].join(SEPARADOR_LISTA),
+        );
+    });
+
+    it('Local de escrita no registro montado para exportar (ficha, não id) também sai no CSV', () => {
+        const l = montarLocais();
+        const linha = linhaCsv({
+            id: 4,
+            localEscrita: { localId: l.estacao, nome: 'Estação Lapa', tipo: '' },
+        });
+        assert.equal(linha.local_escrita, 'Estação Lapa');
+        assert.equal(
+            linha.local_escrita_caminho,
+            'Brasil › São Paulo › São Paulo › Lapa › Estação Lapa',
         );
     });
 
@@ -369,7 +396,7 @@ describe('colunas da tabela de Poemas', () => {
             Idioma: 'idioma:',
             'Local de escrita': 'localescrita:',
             Territorialidade: 'territorialidade:',
-            'Corrente literária': 'movimento:',
+            'Corrente literária': 'corrente:',
         };
         const ths = Array.from(document.querySelectorAll('#cabecalho-poemas th'));
         Object.entries(esperado).forEach(([rotulo, prefixo]) => {

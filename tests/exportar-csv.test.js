@@ -267,7 +267,7 @@ function montarBanco() {
                     observacoes: 'diagonal',
                 },
             ],
-            cortadoDe: { livro: 'Livro Velho', secao: 'Sec Velha' },
+            cortadoDe: { livro: 'Livro Velho', secao: 'Sec Velha', posicao: 4 },
             lancadoEm: null,
             fonteTexto: {
                 origem: 'Obra própria',
@@ -384,6 +384,7 @@ describe('CSV de Poemas', () => {
         assert.equal(l.periodo_biografico_nao_se_aplica, 'false');
         assert.equal(l.cortado_de_livro, 'Livro Velho');
         assert.equal(l.cortado_de_secao, 'Sec Velha');
+        assert.equal(l.cortado_de_posicao, '4');
         assert.equal(l.lancado_em_livro, '');
         assert.equal(l.fonte_origem, 'Obra própria');
         assert.equal(l.fonte_conferido, 'true');
@@ -428,6 +429,113 @@ describe('CSV de Poemas', () => {
     it('cabeçalhos únicos', () => {
         const nomes = colunasTexto('poema').map((c) => c.cabecalho);
         assert.equal(new Set(nomes).size, nomes.length);
+    });
+});
+
+describe('CSV de Poemas: Intertextualidade e Hipertextualidade no formato novo', () => {
+    beforeEach(montarBanco);
+
+    function linhaCom(extra) {
+        const item = { ...db.poemas.find((p) => p.id === 100), ...extra };
+        const csv = gerarCsvTextos('poema', [montarRegistro('poema', item)], db);
+        return registros(csv)[0];
+    }
+
+    it('a coluna de leitura traz relação, tipo de obra, autor, descrição, trecho e traduzido', () => {
+        const l = linhaCom({
+            intertextualidade: [
+                {
+                    relacao: 'Citação',
+                    tipoObra: 'Música',
+                    obra: 'Construção',
+                    autor: 'Chico Buarque',
+                    personagem: '',
+                    descricao: 'canção de 1971',
+                    trecho: 'Amou daquela vez',
+                    traduzido: true,
+                    link: 'https://x.test',
+                    nota: 'n',
+                },
+            ],
+        });
+        assert.equal(
+            l.intertextualidade,
+            'Citação, Música: Construção (Chico Buarque), canção de 1971 “Amou daquela vez” (traduzido) [https://x.test] (n)',
+        );
+    });
+
+    it('vários autores de uma entrada saem na mesma célula, separados por "; "', () => {
+        const l = linhaCom({
+            intertextualidade: [
+                {
+                    relacao: 'Citação',
+                    tipoObra: 'Música',
+                    obra: 'Garota',
+                    autores: ['Tom Jobim', 'Vinicius de Moraes'],
+                },
+                { relacao: 'Alusão', tipoObra: 'Filme', obra: 'B', autor: 'Y' },
+            ],
+            hipertextualidade: [{ tipoObra: 'Livro', hipotexto: 'H', autores: ['A', 'B'] }],
+        });
+        assert.equal(l.intertextualidade_autor, 'Tom Jobim; Vinicius de Moraes | Y');
+        assert.equal(l.hipertextualidade_autor, 'A; B');
+        assert.match(l.intertextualidade, /Garota \(Tom Jobim e Vinicius de Moraes\)/);
+        assert.match(l.hipertextualidade, /autor A e B/);
+    });
+
+    it('as colunas paralelas guardam um valor por entrada, na mesma ordem, com lugar vazio mantido', () => {
+        const l = linhaCom({
+            intertextualidade: [
+                { relacao: 'Citação', tipoObra: 'Livro', obra: 'A', autor: 'X', traduzido: true },
+                { relacao: 'Alusão', tipoObra: 'Filme', obra: 'B', personagem: 'Medusa' },
+            ],
+        });
+        assert.equal(l.intertextualidade_relacao, 'Citação | Alusão');
+        assert.equal(l.intertextualidade_tipo_obra, 'Livro | Filme');
+        assert.equal(l.intertextualidade_obra, 'A | B');
+        assert.equal(l.intertextualidade_autor, 'X | ');
+        assert.equal(l.intertextualidade_personagem, ' | Medusa');
+        assert.equal(l.intertextualidade_traduzido, 'sim | ');
+        assert.equal(l.intertextualidade_descricao, '');
+        assert.equal(l.intertextualidade_trecho, '');
+    });
+
+    it('entrada antiga (tipo e texto) cai nas colunas de tipo de obra e obra', () => {
+        const l = linhaCom({ intertextualidade: [{ tipo: 'Notícia', texto: 'Algo' }] });
+        assert.equal(l.intertextualidade, 'Notícia: Algo');
+        assert.equal(l.intertextualidade_tipo_obra, 'Notícia');
+        assert.equal(l.intertextualidade_obra, 'Algo');
+        assert.equal(l.intertextualidade_relacao, '');
+    });
+
+    it('Hipertextualidade traz autor e descrição na leitura e nas colunas paralelas', () => {
+        const l = linhaCom({
+            hipertextualidade: [
+                {
+                    tipoObra: 'Livro',
+                    relacao: 'Paródia',
+                    hipotexto: 'Dom Casmurro',
+                    autor: 'Machado de Assis',
+                    descricao: 'romance de 1899',
+                },
+            ],
+        });
+        assert.equal(
+            l.hipertextualidade,
+            'Livro: Dom Casmurro (Paródia; autor Machado de Assis), romance de 1899',
+        );
+        assert.equal(l.hipertextualidade_relacao, 'Paródia');
+        assert.equal(l.hipertextualidade_tipo_obra, 'Livro');
+        assert.equal(l.hipertextualidade_hipotexto, 'Dom Casmurro');
+        assert.equal(l.hipertextualidade_autor, 'Machado de Assis');
+        assert.equal(l.hipertextualidade_descricao, 'romance de 1899');
+    });
+
+    it('trecho de vários versos fica numa linha só na célula', () => {
+        const l = linhaCom({
+            intertextualidade: [{ relacao: 'Citação', obra: 'A', trecho: 'um\ndois' }],
+        });
+        assert.equal(l.intertextualidade_trecho, 'um / dois');
     });
 });
 

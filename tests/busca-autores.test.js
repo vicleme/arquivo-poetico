@@ -73,6 +73,37 @@ describe('filtrarAutores', () => {
         assert.deepEqual(ids(filtrarAutores(AUTORES, 'voce:*')), [3]);
     });
 
+    it('sigiloso:* acha os autores com a caixa ligada; -sigiloso:* os demais', () => {
+        const lista = [...AUTORES, { id: 4, nome: 'Anônima', sigiloso: true }];
+        assert.deepEqual(ids(filtrarAutores(lista, 'sigiloso:*')), [4]);
+        assert.deepEqual(ids(filtrarAutores(lista, '-sigiloso:*')), [1, 2, 3]);
+        assert.deepEqual(ids(filtrarAutores(lista, 'sigiloso:*')), [4]);
+        // sigiloso: false ou ausente não conta como presença
+        const falso = [{ id: 9, nome: 'X', sigiloso: false }];
+        assert.deepEqual(ids(filtrarAutores(falso, 'sigiloso:*')), []);
+    });
+
+    it('anonimiza:* acha os autores com ao menos um nome literário marcado', () => {
+        const lista = [
+            ...AUTORES,
+            {
+                id: 4,
+                nome: 'Maria Real',
+                nomesLiterarios: [
+                    { nome: 'Álvaro', tipo: 'Heterônimo' },
+                    { nome: 'Job', tipo: 'Pseudônimo', anonimizar: true },
+                ],
+            },
+            {
+                id: 5,
+                nome: 'Marca falsa',
+                nomesLiterarios: [{ nome: 'X', tipo: 'Pseudônimo', anonimizar: false }],
+            },
+        ];
+        assert.deepEqual(ids(filtrarAutores(lista, 'anonimiza:*')), [4]);
+        assert.deepEqual(ids(filtrarAutores(lista, '-anonimiza:*')), [1, 2, 3, 5]);
+    });
+
     it('heterônimo e pseudônimo separam pelo tipo do nome literário', () => {
         assert.deepEqual(ids(filtrarAutores(AUTORES, 'heteronimo:*')), [1]);
         assert.deepEqual(ids(filtrarAutores(AUTORES, 'pseudonimo:job')), [2]);

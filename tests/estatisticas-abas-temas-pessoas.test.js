@@ -140,7 +140,7 @@ describe('Fase 1a: as três abas novas no HTML', () => {
         assert.ok(!HTML.includes('estatisticas-temas-pessoas'));
     });
 
-    it('o menu de Estatísticas tem 9 itens, na ordem combinada', () => {
+    it('o menu de Estatísticas tem 10 itens, na ordem combinada', () => {
         const ui = readFileSync(new URL('../js/ui.js', import.meta.url), 'utf8');
         const bloco = ui.match(
             /id: 'estatisticas',\s*rotulo: 'Estatísticas',\s*abas: \[([\s\S]*?)\],\s*\}/,
@@ -155,6 +155,7 @@ describe('Fase 1a: as três abas novas no HTML', () => {
             'estatisticas-cruzamentos',
             'estatisticas-local-idioma',
             'estatisticas-correntes',
+            'estatisticas-datas-obras',
             'estatisticas-linguagem',
         ]);
         // Todo id do menu tem seção e botão no HTML.

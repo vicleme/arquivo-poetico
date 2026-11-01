@@ -279,9 +279,9 @@ describe('moverColuna', () => {
             'programa',
             'notas',
             'contextoHistorico',
+            'notasPublicas',
+            'comentariosPublicos',
             'autoria',
-            'envios',
-            'reconhecimentos',
         ]);
     });
 

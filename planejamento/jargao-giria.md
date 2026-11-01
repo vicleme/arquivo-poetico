@@ -2,7 +2,9 @@
 
 Pedido fora de fase, aberto em 18/10/2026. Este arquivo é o plano vivo da tarefa: decisões, forma do dado, entregas e o que falta. O resumo curto fica no "Estado atual" de `manutencao/status.md`, que aponta para cá.
 
-## Como retomar em um chat novo
+> **Tarefa concluída (as 6 entregas, em 18/10/2026).** Não há entrega pendente: a seção "Como retomar" abaixo é do tempo em que o plano estava aberto e **não deve ser seguida**. O que sobra é trabalho manual do Victor: classificar os textos do acervo com o campo (ver o fim deste arquivo). O arquivo fica como registro das decisões e da forma do dado; falta arquivá-lo em `plano-concluido.md`, se o Victor quiser.
+
+## Como retomar em um chat novo (histórico, não seguir)
 
 1. Mandar o zip do projeto atualizado e este arquivo.
 2. Pedir ao Claude para ler o `CLAUDE.md` da raiz, depois só a seção "Estado atual" do `manutencao/status.md`, depois este plano e `manutencao/licoes-de-sessao.md` (a tarefa mexe na cadeia de um campo).
@@ -41,10 +43,10 @@ O que ele **não** é, e por quê:
 
 ## Textos reais como referência
 
-| Texto | Jargão e gíria | Observação |
-|---|---|---|
-| "Gen Z" (poema 188) | Gíria de internet | "cringe", "vibe", "trends", "Ok, Boomer", "redpills". No select Registro seria Misto/Híbrido. |
-| "Vulgarize!" (poema 53) | Gíria juvenil | "recalcados", "dar PT", "pegação", "vaza", mais "haters". |
+| Texto                   | Jargão e gíria    | Observação                                                                                    |
+| ----------------------- | ----------------- | --------------------------------------------------------------------------------------------- |
+| "Gen Z" (poema 188)     | Gíria de internet | "cringe", "vibe", "trends", "Ok, Boomer", "redpills". No select Registro seria Misto/Híbrido. |
+| "Vulgarize!" (poema 53) | Gíria juvenil     | "recalcados", "dar PT", "pegação", "vaza", mais "haters".                                     |
 
 Não entram (usar como casos negativos em exemplos e testes): "Canteiro de Íris" e "Ciberamor" (falam de tecnologia, vocabulário comum), "A validação que eu buscava" ("bater metas" só como contraste). Um bloco de poemas tardios com muita oralidade ("16º-17º", "A meu ex rancoroso", "Dança das sombras", "tento corrigir", "O mais amargo", "deserto mundano") é matéria do select Registro, não deste campo.
 

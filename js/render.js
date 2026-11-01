@@ -36,7 +36,9 @@ import { renderLocais } from './ui-locais.js';
 import { renderPersonagens } from './ui-personagens.js';
 import { renderEtiquetas } from './etiquetas-aba.js';
 import { renderTagClusters } from './tag-clusters-aba.js';
+import { renderColaboradores } from './colaboradores-aba.js';
 import { popularSeletorEstrutura, renderEstrutura } from './render-estrutura.js';
+import { renderTemasUniversais } from './temas-universais-ui.js';
 
 export function renderLists() {
     renderLivros();
@@ -46,10 +48,12 @@ export function renderLists() {
     renderPersonagens();
     renderGrupos();
     renderAutores();
+    renderColaboradores();
     renderEpocas();
     renderPeriodosHistoricos();
     renderMovimentosEscolas();
     renderAssuntos();
+    renderTemasUniversais();
     renderLocais();
     renderTemas();
     renderEtiquetas();

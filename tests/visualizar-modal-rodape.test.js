@@ -6,9 +6,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// Rodapé do modal "Ver" de Poema e Prosa: Abrangente (só Poema) antes de
-// Dados ocultados, e o download por select (json, csv, md, pdf, docx) mais um
-// botão "Baixar", no lugar dos quatro botões soltos.
+// Rodapé do modal "Ver" de Poema e Prosa: os checks em ordem alfabética (Dados ocultados,
+// Infos de papel, Metadados, Progressão e Sonoridade; as duas últimas só Poema), e o download
+// por select (json, csv, md, pdf, docx) mais um botão "Baixar", no lugar dos quatro botões soltos.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const lerModal = (arquivo) =>
@@ -27,6 +27,7 @@ const { db } = await import('../js/db.js');
 const { abrirVisualizacao, baixarDoModalVisualizacao } = await import('../js/visualizar.js');
 const { setFormatoBaixarColuna } = await import('../js/acoes-coluna.js');
 const { montarControlesIncluirOcultos } = await import('../js/ocultos-exportacao.js');
+const download = await import('../js/download-abrangente.js');
 
 registrarModal('modal-visualizar', 'modal-visualizar.html', () => {});
 
@@ -42,22 +43,32 @@ if (!URL.revokeObjectURL) URL.revokeObjectURL = () => {};
 const html = lerModal('modal-visualizar.html');
 
 describe('modal Ver: rodapé (marcação)', () => {
-    it('o rótulo é "Abrangente", sem "Download"', () => {
-        assert.match(html, /📦 Abrangente\s*<\/label>/);
-        assert.doesNotMatch(html, /Download abrangente/);
+    it('tem os pontos de montagem de Metadados e de Sonoridade e Progressão, sem o antigo Abrangente', () => {
+        assert.match(html, /class="metadados-slot"/);
+        assert.match(html, /class="sonoridade-progressao-slot"/);
+        assert.doesNotMatch(html, /Abrangente/);
     });
 
-    it('Abrangente vem antes de Dados ocultados e usa o mesmo tamanho (text-xs) e cor', () => {
-        const iAbr = html.indexOf('download-abrangente-modal-visualizar-wrap');
-        const iOcultos = html.indexOf('incluir-ocultos-slot');
-        assert.ok(iAbr > 0 && iOcultos > iAbr, 'Abrangente deve vir primeiro');
-        const rotulo = html.slice(iAbr, html.indexOf('>', iAbr));
-        assert.match(rotulo, /text-xs/);
-        assert.match(rotulo, /text-gray-600/);
-        assert.doesNotMatch(rotulo, /text-\[11px\]/);
+    it('os pontos de montagem seguem a ordem alfabética e Sonoridade e Progressão usam text-xs e a mesma cor', () => {
+        const ordem = [
+            'incluir-ocultos-slot',
+            'infos-papel-slot',
+            'metadados-slot',
+            'download-extras-modal-visualizar-wrap',
+        ].map((nome) => html.indexOf(nome));
+        assert.ok(ordem[0] > 0, 'Dados ocultados presente');
+        assert.deepEqual(
+            ordem,
+            [...ordem].sort((a, b) => a - b),
+            'ordem alfabética',
+        );
+        const caixa = download.renderCaixasSonoridadeProgressao();
+        assert.match(caixa, /text-xs/);
+        assert.match(caixa, /text-gray-600/);
+        assert.doesNotMatch(caixa, /text-\[11px\]/);
     });
 
-    it('a caixa do Abrangente não usa width: auto (1rem do CSS global, como as outras)', () => {
+    it('as caixas não usam width: auto (1rem do CSS global, como as outras)', () => {
         assert.doesNotMatch(html, /width: auto/);
     });
 
@@ -83,28 +94,34 @@ describe('modal Ver: abrir e baixar', () => {
         document.querySelectorAll('.fixed[id^="modal-"]').forEach((m) => m.classList.add('hidden'));
     });
 
-    it('Abrangente aparece só para Poema', async () => {
+    it('Sonoridade e Progressão aparecem só para Poema; Metadados, nos dois', async () => {
         await abrirVisualizacao('poema', 1);
-        const wrap = () => document.getElementById('download-abrangente-modal-visualizar-wrap');
+        const wrap = () => document.getElementById('download-extras-modal-visualizar-wrap');
         assert.ok(!wrap().classList.contains('hidden'));
+        assert.ok(wrap().querySelector('.download-sonoridade-check'));
+        assert.ok(wrap().querySelector('.download-progressao-check'));
+        assert.ok(document.querySelector('.download-metadados-check'));
         document.getElementById('modal-visualizar').classList.add('hidden');
         await abrirVisualizacao('prosa', 2);
         assert.ok(wrap().classList.contains('hidden'));
+        assert.ok(document.querySelector('.download-metadados-check'));
     });
 
-    it('Abrangente e Dados ocultados ficam lado a lado, o Abrangente primeiro', async () => {
+    it('Dados ocultados, Infos de papel, Metadados, Progressão e Sonoridade seguem a ordem alfabética', async () => {
         await abrirVisualizacao('poema', 1);
         montarControlesIncluirOcultos();
-        const rodape = document.getElementById(
-            'download-abrangente-modal-visualizar-wrap',
-        ).parentElement;
-        const filhos = [...rodape.children];
-        const iAbr = filhos.findIndex(
-            (el) => el.id === 'download-abrangente-modal-visualizar-wrap',
-        );
-        const iOcultos = filhos.findIndex((el) => el.classList.contains('incluir-ocultos-slot'));
-        assert.ok(iAbr >= 0 && iOcultos > iAbr);
+        const wrap = document.getElementById('download-extras-modal-visualizar-wrap');
+        const filhos = [...wrap.parentElement.children];
+        const indice = (classe) => filhos.findIndex((el) => el.classList.contains(classe));
+        const iOcultos = indice('incluir-ocultos-slot');
+        const iInfos = indice('infos-papel-slot');
+        const iMeta = indice('metadados-slot');
+        const iExtras = filhos.indexOf(wrap);
+        assert.ok(iOcultos >= 0 && iInfos > iOcultos && iMeta > iInfos && iExtras > iMeta);
         assert.match(filhos[iOcultos].innerHTML, /Dados ocultados/);
+        const ordemExtras = [...wrap.querySelectorAll('input')].map((el) => el.className);
+        assert.match(ordemExtras[0], /progressao/);
+        assert.match(ordemExtras[1], /sonoridade/);
     });
 
     it('o select começa no "Formato do Baixar" da coluna Ações da aba', async () => {

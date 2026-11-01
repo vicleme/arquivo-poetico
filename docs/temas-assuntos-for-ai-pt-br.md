@@ -40,10 +40,33 @@ Antes de qualquer regra, o que cada palavra quer dizer neste app:
 - **Não é etiqueta.** Etiquetas descrevem **como** o texto é feito ou de onde vem (Tradição, Estilo, Tom, Domínio Imagético e outras). Tema é **do que** ele trata. "Astrologia" como vocabulário usado é Domínio Imagético; "destino" ou "determinismo", se o texto discute isso, é Tema. "Irônico" é Tom, nunca Tema.
 - **Não é resumo.** Tema não é uma frase sobre o texto. É um rótulo curto que outros textos também poderiam ter, porque o valor do campo está em agrupar, contar e comparar.
 
+## Valência do Tema
+
+Cada Tema do cadastro pode ter uma **valência**: o quanto o assunto dele é agradável ou desagradável. É um campo do **cadastro de Temas**, não do texto: vale igual para todo texto que tem o Tema. Os valores são `agradavel`, `neutro`, `desagradavel` e `ambivalente`; sem valência quer dizer "ainda não classificado".
+
+- **Descreve o afeto do tema, não um juízo moral.** Luto e violência são desagradáveis; amizade é agradável. Luto é desagradável sem ser "ruim", e um poema de denúncia sobre violência continua tratando de um tema desagradável.
+- **Ambivalente** é o que pesa e alivia ao mesmo tempo (saudade, amor, memória, desejo). Não use Neutro para isso: Neutro é o que de fato não pesa nem alivia (cotidiano, paisagem).
+- A valência **não diz como o texto trata** o tema (isso é Tom, uma etiqueta). "Amizade" num poema de traição segue agradável no cadastro.
+- Ao sugerir valência para vários Temas, trate como **sugestão para a pessoa revisar**, nunca como dado pronto. Na dúvida entre dois valores, prefira Ambivalente a forçar Agradável ou Desagradável, e deixe sem valência o Tema que você não conhece.
+- **Formato para entregar valências à pessoa.** Quando ela pedir valência para vários Temas, devolva uma lista de blocos `Valência: Tema; Tema`, um bloco por valência, com os nomes exatamente como o cadastro os escreve, para ela colar em "Definir por lista" (campo Valência) na aba Temas. Exemplo: `Desagradável: Luto; Violência simbólica` e, na linha de baixo, `Agradável: Cotidiano; Amizade`. Os cabeçalhos aceitos são Agradável, Neutro, Desagradável e Ambivalente (com ou sem acento e maiúscula), e `Sem valência:` limpa a valência. Coloque cada Tema em **um bloco só**: um Tema em duas valências é conflito e o app o deixa de fora. O app **nunca cria Tema**: um nome que não está no cadastro vai para o relatório e nada é gravado para ele. Um Tema com vírgula no nome ("Amor, perda") vale como foi escrito, sem vírgula sobrando no fim.
+- **Lista por assunto ou por vitrine.** O mesmo bloco "Definir por lista" tem o campo Assunto e o campo Vitrine. Para ligar Temas a Assuntos, devolva blocos `Nome do assunto: Tema; Tema` (um bloco por assunto, com os nomes exatamente como o cadastro os escreve); para a vitrine, `Nome do convite: Tema; Tema`. Nesses dois campos a lista **só acrescenta**: o Tema entra no assunto ou no convite sem sair de nenhum outro, e o mesmo Tema pode aparecer em mais de um bloco. O app não cria Tema, assunto nem convite: o que não existe vai para o relatório.
+- Os arquivos de **Importar campos** não trazem valência: ela se define na aba Temas (um a um, em massa, por lista ou pelo botão "Aplicar valências sugeridas"). O JSON de exportação a leva em cada tema do texto e a Importação Aditiva só preenche a valência de um Tema que ainda não tem uma.
+
+## Vitrine de leitura e o sorteio de leitura
+
+A **Vitrine de leitura** é o conjunto de **convites** para quem lê; cada convite (por exemplo "Quando o amor acaba") reúne vários Temas do cadastro. Antes se chamava "tema universal", e a chave do dado continua `temasUniversais`. Existe só para o sorteio de leitura (a página "Sortear leitura", em Ferramentas).
+
+- **Não é Assunto nem é campo do texto.** O Assunto organiza o cadastro e não tem limite; o convite pertence à vitrine, são no máximo 12, e o texto nunca o guarda: o texto continua tendo só Temas, e o universal os alcança pelos Temas que reúne. Um Tema pode estar em mais de um universal.
+- Um convite é só um nome e uma lista de Temas **que já existem no cadastro**. Nunca invente um Tema para encaixar num convite.
+- Ao sugerir convites ou os Temas de cada um, trate como **sugestão para a pessoa revisar**. Prefira nomes de convite curtos e em linguagem de leitor, não de catálogo.
+- Quem decide quais textos podem ser sorteados é o autor, pela marca `sorteavel` do texto (ver `campos-poema-prosa-for-ai`). Nunca marque por conta própria.
+- Na aba **Temas**, cada cartão tem o seletor "Adicionar à vitrine…" (só com os convites que ainda não reúnem o Tema) e um selo por convite em que o Tema já está; o filtro **Só sem vitrine** (só aparece quando existe algum convite) lista os Temas que nenhum convite reúne, com a mesma triagem do "Só sem assunto", e a edição em massa tem "Adicionar à vitrine". Tudo isso só acrescenta Temas a convites existentes, nunca cria convite nem Tema.
+- Arquivos de **Importar campos** e a Importação Aditiva não trazem convites: eles se montam no bloco "Vitrine de leitura" da aba Assuntos. O JSON de backup os leva (`temasUniversais`).
+
 ## Como nomear
 
 - Escreva o nome como o cadastro já escreve: primeira letra maiúscula, resto em minúsculas ("Resiliência emocional", "Pressão estética"). Para dois conceitos que andam juntos, uma barra, sem espaços ("Luto/Finitude", "Desigualdade social/Pobreza").
-- **Vírgula não pode existir em nome de Tema** (é o separador interno). Use barra ou reformule.
+- **A vírgula é aceita no nome de um Tema, mas prefira barra ou reformule.** O nome vale como foi escrito: "Amor, perda" é um Tema só, nunca dois. Os únicos caracteres que um nome não pode ter são `;` e `|`, que o app troca por espaço porque são os separadores: o `;` separa vários Temas na digitação (e nos filtros de Tema da aba Exportação), e o `|` separa os Temas na coluna `sinal_tema` do `.csv`. No `.md` e na Visualização do texto os Temas vêm separados por vírgula, e por ponto e vírgula quando algum deles tem vírgula no nome, então uma vírgula no nome deixa essas linhas mais difíceis de ler. No JSON, `temas` é uma lista, e nada fica ambíguo.
 - A comparação ignora caixa e acento: "saudade" e "Saudade" são o mesmo Tema.
 - **Reaproveite o que existe.** O app só reconhece igualdade por caixa e acento. Plural ("Memória" e "Memórias"), hífen, sinônimo ("Efemeridade" e "Transitoriedade") e variação de grafia viram **Temas duplicados**, que depois precisam ser mesclados à mão.
 - "Luto" e "Luto/Finitude" não são duplicata: um é o geral e o outro o específico. Mesmo assim, não crie o específico se o cadastro já tem um que serve.
@@ -68,7 +91,7 @@ Orientação padrão. A pessoa pode calibrar, normalmente com uma amostra de tex
 ## Duas tarefas diferentes
 
 1. **Classificar textos** (preencher Temas e Assuntos de textos que já existem): entregar o `.json` de "Importar campos", com os nomes do vocabulário.
-2. **Organizar Temas soltos** (agrupar em Assuntos os Temas que ainda não pertencem a nenhum): a aba Assuntos tem o botão **Baixar .md**, que exporta cada Assunto com seus Temas (e a contagem de textos de cada um) e a seção "Temas sem assunto". A aba Temas tem o seu próprio **Baixar .md**, com cada Tema, a contagem de textos, os Assuntos a que pertence e a nota, separados em "Temas com assunto" e "Temas sem assunto". Com esse arquivo, a resposta útil é um `.json` só com `ligacoes` (e `textos` vazio), que a importação lê e mostra na prévia. Um Tema que não cabe em nenhum Assunto existente fica de fora, listado à parte.
+2. **Organizar Temas soltos** (agrupar em Assuntos os Temas que ainda não pertencem a nenhum): a aba Assuntos tem o botão **Baixar .md**, que exporta cada Assunto com seus Temas (e a contagem de textos de cada um) e a seção "Temas sem assunto". A aba Temas tem o seu próprio **Baixar .md**, com cada Tema, a contagem de textos, a valência (quando classificada), os Assuntos a que pertence, os convites da Vitrine de leitura em que está ("Vitrine:") e a nota, separados em "Temas com assunto" e "Temas sem assunto", e termina com a seção "Vitrine de leitura" (cada convite e os Temas que reúne), quando existe algum convite. O bloco "Vitrine de leitura" da aba Assuntos tem o seu próprio **Baixar .md** (`vitrine.md`): cada convite com os Temas que reúne e, no fim, "Temas fora da vitrine", os mais usados primeiro, com a contagem de textos de cada Tema; serve para pedir a uma IA em que convite cada Tema solto caberia. Com esse arquivo, a resposta útil é um `.json` só com `ligacoes` (e `textos` vazio), que a importação lê e mostra na prévia. Um Tema que não cabe em nenhum Assunto existente fica de fora, listado à parte.
 
 Em qualquer das duas, nada é gravado sem a pessoa ver a prévia, e a importação tira um snapshot de segurança e permite desfazer.
 
@@ -81,4 +104,4 @@ Em qualquer das duas, nada é gravado sem a pessoa ver a prévia, e a importaç�
 - Pôr no campo `assuntos` um Assunto que não existe, ou que nenhum Tema do texto alcança: vai para o relatório e fica de fora.
 - Criar um Tema novo e usá-lo em `assuntos` sem ligá-lo em `ligacoes`: o Tema ainda não pertence a Assunto algum, e o Assunto vai para o relatório.
 - Pôr em `ligacoes` um Assunto que não existe: a importação não cria Assunto, e a ligação fica de fora.
-- Vírgula dentro do nome de um Tema.
+- `;` ou `|` dentro do nome de um Tema (o app troca por espaço), ou vírgula onde uma barra ou uma reformulação resolveria.

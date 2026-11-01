@@ -84,12 +84,24 @@ describe('modal Ver do Livro: marcação', () => {
         for (const id of idsLivro) assert.ok(!idsTexto.includes(id), `id repetido: ${id}`);
     });
 
-    it('rodapé tem só Editar e Excluir, como ícone, nessa ordem', () => {
+    it('rodapé tem Baixar (formato e botão), Editar e Excluir, nessa ordem', () => {
+        const iBaixar = html.indexOf('baixarDoModalVisualizacaoLivro()');
         const iEditar = html.indexOf('editarLivroDoVisualizador()');
         const iExcluir = html.indexOf('excluirLivroDoVisualizador()');
-        assert.ok(iEditar > 0 && iExcluir > iEditar);
-        assert.doesNotMatch(html, /baixarDoModalVisualizacao|visualizar-baixar/);
-        for (const id of ['visualizar-livro-editar', 'visualizar-livro-excluir']) {
+        assert.ok(iBaixar > 0 && iEditar > iBaixar && iExcluir > iEditar);
+        const select = html.match(
+            /<select[^>]*id="visualizar-livro-baixar-formato"[\s\S]*?<\/select>/,
+        );
+        assert.ok(select, 'select de formato');
+        const valores = [...select[0].matchAll(/value="([^"]+)"/g)].map((m) => m[1]);
+        assert.deepEqual(valores, ['json', 'csv', 'md', 'pdf', 'docx']);
+        // O Baixar do texto continua só no Ver do texto.
+        assert.doesNotMatch(html, /baixarDoModalVisualizacao\(|visualizar-baixar/);
+        for (const id of [
+            'visualizar-livro-baixar',
+            'visualizar-livro-editar',
+            'visualizar-livro-excluir',
+        ]) {
             const m = html.match(new RegExp(`<button[^>]*id="${id}"[\\s\\S]*?</button>`));
             assert.ok(m, id);
             assert.match(m[0], /aria-label=/);

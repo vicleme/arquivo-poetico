@@ -159,7 +159,7 @@ const TIPOS = {
         form: 'form-parte',
         rastreador: rastreadorParte,
         editar: (id) => editarParte(id),
-        arvore: (id) => montarArvoreDaParte(db, id),
+        arvore: (id) => montarArvoreDaParte(db, id, { semDescartados: true }),
         contexto(parte) {
             return { livro: db.livros.find((l) => String(l.id) === String(parte.livroId)) || null };
         },
@@ -175,7 +175,7 @@ const TIPOS = {
         form: 'form-secao',
         rastreador: rastreadorSecao,
         editar: (id) => editarSecao(id),
-        arvore: (id) => montarArvoreDaSecao(db, id),
+        arvore: (id) => montarArvoreDaSecao(db, id, { semDescartados: true }),
         contexto(secao) {
             const pai =
                 secao.paiTipo === 'parte'

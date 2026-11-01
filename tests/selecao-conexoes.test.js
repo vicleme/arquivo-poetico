@@ -122,7 +122,7 @@ describe('escopo "selecao"', () => {
     it('está nas listas de escopos, nomes e títulos', () => {
         assert.ok(ESCOPOS_CONEXOES.includes('selecao'));
         assert.equal(NOME_ARQUIVO_CONEXOES.selecao, 'conexoes-selecao');
-        assert.equal(TITULOS_CONEXOES.selecao, 'Conexões: seleção');
+        assert.equal(TITULOS_CONEXOES.selecao, 'Conexões dentro do acervo: seleção');
     });
 
     it('secoesDoEscopo: na seleção só entra a seção com item marcado', () => {
@@ -165,7 +165,7 @@ describe('escopo "selecao"', () => {
             chaveGrafo(d.grafos[0]),
         ]);
         const md = gerarMarkdownConexoes(f, 'selecao');
-        assert.match(md, /^# Conexões: seleção\n\n/);
+        assert.match(md, /^# Conexões dentro do acervo: seleção\n\n/);
         assert.match(md, /- P5 \(Reescrita de\) → P6\. Falta o vínculo de volta\./);
         assert.ok(!md.includes('P3'), 'buraco não marcado ficou de fora');
         assert.match(md, /### Par 1\n\n- P7 \(Resposta a\) ↔ P8/);
@@ -211,7 +211,7 @@ describe('escopo "selecao"', () => {
             const d = DADOS();
             const f = filtrarSelecionados(d, [chaveCluster(d.clusters[0])]);
             const { svg } = montarSvgRelatorio({ dados: f, escopo: 'selecao', medir });
-            assert.ok(svg.includes('Conexões: seleção'));
+            assert.ok(svg.includes('Conexões dentro do acervo: seleção'));
             assert.ok(svg.includes('Elos (pares e clusters)'));
             assert.ok(!svg.includes('Buracos (Elos'));
             assert.ok(!svg.includes('Ecos (cadeias'));
@@ -460,7 +460,10 @@ describe('baixar a seleção (botão da aba)', () => {
         tela.baixarConexoes();
         assert.equal(baixado.nome, 'conexoes-selecao.md');
         const md = await baixado.blob.text();
-        assert.match(md, /^# Conexões: seleção\n\n1 buraco; 1 Eco em 1 cadeia e 0 grafos\./);
+        assert.match(
+            md,
+            /^# Conexões dentro do acervo: seleção\n\n1 buraco; 1 Eco em 1 cadeia e 0 grafos\./,
+        );
         assert.ok(md.includes('## Buracos') && md.includes('## Ecos'));
         assert.ok(!md.includes('## Elos'));
         assert.match(md, /- C \(Reescrita de\) → D\./);

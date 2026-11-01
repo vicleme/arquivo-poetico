@@ -303,7 +303,7 @@ describe('salvar: temasParaSalvar grava só as sobrescritas que valem', () => {
     });
 
     it('outro Tema do mesmo Assunto mantém a sobrescrita', () => {
-        E.adicionarTemaTexto('poemas', 'Amor, Perda');
+        E.adicionarTemaTexto('poemas', 'Amor; Perda');
         E.mudarPapelAssuntoTexto('poemas', '10', 'principal');
         E.removerTemaTexto('poemas', 0);
         assert.deepEqual(temasParaSalvar('poemas').assuntosPapel, [

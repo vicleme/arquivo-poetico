@@ -33,10 +33,26 @@ import { db, deleteItem, calcularCascataColetanea } from './db.js';
 import { editarLivro, rastreadorLivro, ultimoEnvioLivro, zerarUltimoEnvioLivro } from './forms.js';
 import { preencherCapas } from './render-lightbox.js';
 import { linkImagemExibivel } from './imagem-link.js';
+import { textoApareceNoLivro } from './aparicoes-do-texto.js';
 import { abrirVisualizacao } from './visualizar.js';
+import {
+    baixarLivro,
+    getFormatoBaixarLivros,
+    salvarFormatoBaixarLivros,
+    sincronizarCaixaEstruturaLivros,
+} from './baixar-livros.js';
 import { abrirParteSecaoDaEstrutura } from './visualizar-parte-secao.js';
 import { abrirElementoDaEstrutura } from './visualizar-elemento.js';
-import { montarArvoreDoLivro, contarNosDaArvore } from './estrutura-livro.js';
+import { dadosForaDeEscopoDaTela, textoDaEntradaForaDeEscopo } from './fora-de-escopo.js';
+import {
+    montarArvoreDoLivro,
+    contarNosDaArvore,
+    tituloDoNo,
+    rotuloTipoDoNo,
+} from './estrutura-livro.js';
+import { paresAutoriaLivro, autoresDosTextosDoLivro } from './autoria-livro.js';
+import { paresEquipeLivro, textoPapelEquipe } from './colaboradores-livro.js';
+import { rotuloEstado, textoDoUso, tituloDoTextoDoUso, usoIaDoLivro } from './uso-ia-livro.js';
 import {
     escapeHtml,
     abrirModalConfirmacao,
@@ -108,20 +124,14 @@ export function contarConteudoDoLivro(dbRef, livroId) {
             (s.paiTipo === 'livro' && String(s.paiId) === id) ||
             (s.paiTipo === 'parte' && partesIds.has(String(s.paiId))),
     );
-    const secoesIds = new Set(secoes.map((s) => String(s.id)));
-
-    const doLivro = (t) =>
-        (t.paiTipo === 'livro' && String(t.paiId) === id) ||
-        (t.paiTipo === 'parte' && partesIds.has(String(t.paiId))) ||
-        (t.paiTipo === 'secao' && secoesIds.has(String(t.paiId))) ||
-        (Array.isArray(t.livrosIds) && t.livrosIds.some((x) => String(x) === id));
-
     return {
         coletanea: false,
         partes: partes.length,
         secoes: secoes.length,
-        poemas: (dbRef.poemas || []).filter(doLivro).length,
-        prosas: (dbRef.prosas || []).filter(doLivro).length,
+        poemas: (dbRef.poemas || []).filter((t) => textoApareceNoLivro(dbRef, 'poema', t, livroId))
+            .length,
+        prosas: (dbRef.prosas || []).filter((t) => textoApareceNoLivro(dbRef, 'prosa', t, livroId))
+            .length,
     };
 }
 
@@ -153,20 +163,6 @@ function textoContagem(c) {
 // handler inline.
 const ICONE_NO = { parte: '📂', secao: '📁', poema: '📝', prosa: '📄', elemento: '🧩', item: '📝' };
 
-function tituloDoNo(no) {
-    const d = no.dados || {};
-    if (no.tipo === 'elemento') {
-        const rotulo = d.tipo || 'Elemento';
-        return d.titulo ? `${rotulo}: ${d.titulo}` : rotulo;
-    }
-    return d.titulo || '(sem título)';
-}
-
-function rotuloTipoDoNo(no) {
-    if (no.tipo === 'item') return no.dados.refId ? no.dados.refTipo || '?' : 'inédito';
-    return no.tipo;
-}
-
 // Poema, Prosa, Parte, Seção e Elemento abrem o Ver ao clicar no título. Item de
 // Coletânea também, quando aponta para um poema ou uma prosa do acervo (a existência
 // é conferida no clique); item inédito não tem Ver.
@@ -189,18 +185,54 @@ function tituloDoNoHtml(no) {
     return `<span class="${classe} cursor-pointer hover:underline" data-estrutura-ver data-tipo="${alvo.tipo}" data-id="${escapeHtml(String(alvo.id))}" title="${no.tipo === 'parte' ? 'Abrir o Ver desta parte' : no.tipo === 'secao' ? 'Abrir o Ver desta seção' : no.tipo === 'elemento' ? 'Abrir o Ver deste elemento' : 'Abrir o Ver deste texto'}">${texto}</span>`;
 }
 
-function noEstruturaHtml(no, nivel) {
+// Selo "veio de ..." do migrado que está neste livro (de `selosDeMigracaoDoLivro`).
+function seloMigracaoHtml(no, selos) {
+    const selo = selos?.get?.(`${no.tipo}-${no.dados?.id}`);
+    if (!selo) return '';
+    return `<span data-estrutura-selo class="text-[10px] text-blue-600 dark:text-blue-400 ml-1">${escapeHtml(selo.texto)}</span>`;
+}
+
+// Fora de escopo: o que o livro perdeu, em dois grupos (migrados e descartados),
+// cada texto com o que aconteceu com ele e de onde saiu. O aviso (migrados que
+// citam um livro fora do cadastro) vale para o acervo todo e vem no topo.
+function entradaForaDeEscopoHtml(e) {
+    const no = { tipo: e.tipo, dados: { id: e.id, titulo: e.titulo } };
+    return `<div data-fora-entrada data-tipo="${e.tipo}" style="margin-left:16px" class="py-1.5 flex flex-wrap items-baseline gap-x-2 text-sm border-b border-gray-50 dark:border-slate-800"><span>${ICONE_NO[e.tipo] || '•'}</span>${tituloDoNoHtml(no)}<span class="text-[11px] text-gray-500 dark:text-slate-400">${escapeHtml(textoDaEntradaForaDeEscopo(e))}</span></div>`;
+}
+
+function foraDeEscopoHtml(fora, aviso) {
+    const migrados = fora?.migrados || [];
+    const descartados = fora?.descartados || [];
+    if (!migrados.length && !descartados.length && !aviso) return '';
+    const grupo = (chave, rotulo, entradas) =>
+        entradas.length
+            ? `<details data-estrutura-no data-estrutura-chave="${chave}" class="mt-1 border-b border-gray-50 dark:border-slate-800">
+                <summary class="py-1 flex items-center gap-2 text-sm cursor-pointer list-none"><span>${rotulo}</span><span class="text-[10px] text-gray-400 dark:text-slate-500 ml-auto">${pluralizar(entradas.length, 'texto', 'textos')}</span></summary>
+                <div>${entradas.map(entradaForaDeEscopoHtml).join('')}</div>
+            </details>`
+            : '';
+    const avisoHtml = aviso
+        ? `<p data-fora-aviso class="text-[11px] text-amber-700 dark:text-amber-400 py-1">⚠️ ${escapeHtml(aviso)}</p>`
+        : '';
+    const total = migrados.length + descartados.length;
+    return `<details data-estrutura-no data-estrutura-chave="fora-de-escopo" data-estrutura-fora class="mt-2 border-b border-gray-50 dark:border-slate-800">
+        <summary class="py-1.5 flex items-center gap-2 text-sm cursor-pointer list-none"><span class="font-semibold">Fora de escopo</span><span class="text-[10px] text-gray-400 dark:text-slate-500 ml-auto">${pluralizar(total, 'texto', 'textos')}</span></summary>
+        <div>${avisoHtml}${grupo('fora-migrados', '🔵 Migrados', migrados)}${grupo('fora-descartados', '🔴 Descartados', descartados)}</div>
+    </details>`;
+}
+
+function noEstruturaHtml(no, nivel, selos = null) {
     const d = no.dados || {};
     const seq = d.sequencia != null && d.sequencia !== '' ? d.sequencia : '—';
     const recuo = `margin-left:${nivel * 16}px`;
     const linha = `<span class="text-[10px] font-mono bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded w-8 text-center inline-block">${escapeHtml(String(seq))}</span>
         <span>${ICONE_NO[no.tipo] || '•'}</span>
         ${tituloDoNoHtml(no)}
-        <span class="text-[9px] uppercase text-gray-300 dark:text-slate-600 ml-1">${escapeHtml(rotuloTipoDoNo(no))}</span>`;
+        <span class="text-[9px] uppercase text-gray-300 dark:text-slate-600 ml-1">${escapeHtml(rotuloTipoDoNo(no))}</span>${seloMigracaoHtml(no, selos)}`;
     if (no.filhos) {
         const n = no.filhos.length;
         const corpo = no.filhos.length
-            ? no.filhos.map((f) => noEstruturaHtml(f, nivel + 1)).join('')
+            ? no.filhos.map((f) => noEstruturaHtml(f, nivel + 1, selos)).join('')
             : '<p class="text-[10px] text-gray-300 dark:text-slate-600 italic pl-8 pb-1">(vazio)</p>';
         return `<details data-estrutura-no data-estrutura-chave="${no.tipo}-${escapeHtml(String(d.id))}" data-tipo="${no.tipo}" style="${recuo}" class="border-b border-gray-50 dark:border-slate-800">
             <summary class="py-1.5 flex items-center gap-2 text-sm cursor-pointer list-none">${linha}<span class="text-[10px] text-gray-400 dark:text-slate-500 ml-auto">${pluralizar(n, 'item', 'itens')}</span></summary>
@@ -258,23 +290,24 @@ function resumoEstruturaTexto(c) {
 
 // Recebe { arvore, vinculados } (de `montarArvoreDoLivro`). Sem nada, devolve ''.
 export function renderEstruturaLivroHtml(estrutura) {
-    const { arvore = [], vinculados = [] } = estrutura || {};
-    if (!arvore.length && !vinculados.length) return '';
+    const { arvore = [], vinculados = [], fora = null, selos = null, aviso = '' } = estrutura || {};
+    const foraHtml = foraDeEscopoHtml(fora, aviso);
+    if (!arvore.length && !vinculados.length && !foraHtml) return '';
     const resumo = resumoEstruturaTexto(contarNosDaArvore({ arvore, vinculados }));
-    const arvoreHtml = arvore.map((n) => noEstruturaHtml(n, 0)).join('');
+    const arvoreHtml = arvore.map((n) => noEstruturaHtml(n, 0, selos)).join('');
     const vinculadosHtml = vinculados.length
         ? `<details data-estrutura-no data-estrutura-chave="vinculados" data-estrutura-vinculados class="mt-2 border-b border-gray-50 dark:border-slate-800">
             <summary class="py-1.5 flex items-center gap-2 text-sm cursor-pointer list-none"><span class="font-semibold">Vinculados, sem posição</span><span class="text-[10px] text-gray-400 dark:text-slate-500 ml-auto">${pluralizar(vinculados.length, 'item', 'itens')}</span></summary>
-            <div>${vinculados.map((n) => noEstruturaHtml(n, 1)).join('')}</div>
+            <div>${vinculados.map((n) => noEstruturaHtml(n, 1, selos)).join('')}</div>
         </details>`
         : '';
     return `<details data-estrutura-livro class="mt-5">
-        <summary class="cursor-pointer text-[11px] font-bold uppercase text-gray-500 dark:text-slate-400 pb-1 border-b border-gray-100 dark:border-slate-700">Estrutura <span class="font-normal normal-case text-gray-400 dark:text-slate-500">(${escapeHtml(resumo)})</span></summary>
+        <summary class="cursor-pointer text-[11px] font-bold uppercase text-gray-500 dark:text-slate-400 pb-1 border-b border-gray-100 dark:border-slate-700">Estrutura <span class="font-normal normal-case text-gray-400 dark:text-slate-500">(${escapeHtml(resumo || 'só fora de escopo')})</span></summary>
         <div class="flex gap-3 text-[11px] my-2">
             <button type="button" data-estrutura-acao="expandir" class="text-blue-600 dark:text-blue-400 underline">Expandir tudo</button>
             <button type="button" data-estrutura-acao="recolher" class="text-blue-600 dark:text-blue-400 underline">Recolher tudo</button>
         </div>
-        <div data-estrutura-arvore>${arvoreHtml}${vinculadosHtml}</div>
+        <div data-estrutura-arvore>${arvoreHtml}${vinculadosHtml}${foraHtml}</div>
     </details>`;
 }
 
@@ -331,7 +364,102 @@ export function aplicarEstadoEstruturaLivro(conteudo, estado) {
 
 // Recebe o Livro, a contagem (de `contarConteudoDoLivro`) e a estrutura (de
 // `montarArvoreDoLivro`), devolve HTML.
-export function renderVisualizacaoLivroHtml(livro, contagem = null, estrutura = null) {
+// ── Autoria (própria do livro e derivada dos textos) ─────────
+// `autoria` = { propria: [{ autor, papeis }], dosTextos: [{ autor, textos }] }
+// (de `paresAutoriaLivro` e `autoresDosTextosDoLivro`). A primeira é o que o livro
+// registra (quem assina a capa, com os papéis); a segunda é derivada e somente
+// leitura: de quem são os textos de dentro, sem decidir nada pelo livro.
+export function renderAutoriaLivroHtml(autoria) {
+    const propria = autoria?.propria || [];
+    const dosTextos = autoria?.dosTextos || [];
+    let html = '';
+    if (propria.length) {
+        const itens = propria
+            .map(({ autor, papeis }) => {
+                const papeisTexto = papeis.length
+                    ? ` <span class="text-gray-500 dark:text-slate-400">(${escapeHtml(papeis.join(', '))})</span>`
+                    : '';
+                return `<li class="mb-1">${escapeHtml(autor.nome)}${papeisTexto}</li>`;
+            })
+            .join('');
+        html += secaoHtml(
+            'Autoria',
+            `<ul data-autoria-propria class="text-sm list-none p-0">${itens}</ul>`,
+        );
+    }
+    if (dosTextos.length) {
+        const itens = dosTextos
+            .map(
+                ({ autor, textos }) =>
+                    `<li class="mb-1">${escapeHtml(autor.nome)} <span class="text-gray-500 dark:text-slate-400">(${textos} ${textos === 1 ? 'texto' : 'textos'})</span></li>`,
+            )
+            .join('');
+        html += secaoHtml(
+            'Autores dos textos deste livro',
+            `<ul data-autoria-dos-textos class="text-sm list-none p-0">${itens}</ul><p class="text-[11px] text-gray-400 dark:text-slate-500 mt-1">Vem dos próprios textos; não muda a autoria do livro.</p>`,
+        );
+    }
+    return html;
+}
+
+// ── Equipe e créditos ────────────────────────────────────────
+// `equipe` = [{ colaborador, papeis: [{ papel, escopo? }] }] (de `paresEquipeLivro`).
+// Quem fez o livro como objeto, com o papel e o escopo de cada um ("Ilustrador:
+// Capa"). Sem equipe, a seção não aparece.
+export function renderEquipeLivroHtml(equipe) {
+    if (!equipe?.length) return '';
+    const itens = equipe
+        .map(({ colaborador, papeis }) => {
+            const papeisTexto = papeis.length
+                ? ` <span class="text-gray-500 dark:text-slate-400">(${escapeHtml(papeis.map(textoPapelEquipe).join(', '))})</span>`
+                : '';
+            return `<li class="mb-1">${escapeHtml(colaborador.nome)}${papeisTexto}</li>`;
+        })
+        .join('');
+    return secaoHtml(
+        'Equipe e créditos',
+        `<ul data-equipe-livro class="text-sm list-none p-0">${itens}</ul>`,
+    );
+}
+
+// ── Uso de IA ────────────────────────────────────────────────
+// `usoIa` = { uso, titulos } (`uso` de `usoIaDoLivro`; `titulos[i]` é o título do
+// texto ligado ao uso i, ou null). "Não informado" não aparece, como a situação
+// editorial "Não especificado". Nota geral aparece mesmo sem estado.
+export function renderUsoIaLivroHtml(usoIa) {
+    const uso = usoIa?.uso;
+    if (!uso || (!uso.estado && !uso.nota)) return '';
+    const titulos = usoIa.titulos || [];
+    let corpo = '';
+    if (uso.estado) {
+        corpo += `<p data-uso-ia-estado class="text-sm mb-1"><strong class="text-gray-600 dark:text-slate-300 mr-1">Estado:</strong>${escapeHtml(rotuloEstado(uso.estado))}</p>`;
+    }
+    if (uso.usos?.length) {
+        const itens = uso.usos
+            .map((u, i) => {
+                const desc = u.descricao
+                    ? `<div class="text-xs text-gray-600 dark:text-slate-300 whitespace-pre-wrap">${escapeHtml(u.descricao)}</div>`
+                    : '';
+                const txt = titulos[i]
+                    ? `<div class="text-xs text-gray-500 dark:text-slate-400">Texto do acervo: ${escapeHtml(titulos[i])}</div>`
+                    : '';
+                return `<li class="mb-1.5">${escapeHtml(textoDoUso(u))}${desc}${txt}</li>`;
+            })
+            .join('');
+        corpo += `<ul data-uso-ia-usos class="text-sm list-none p-0">${itens}</ul>`;
+    }
+    if (uso.nota) corpo += blocoTextoHtml(uso.nota, 'italic text-xs mt-1');
+    return secaoHtml('Uso de IA', corpo);
+}
+
+export function renderVisualizacaoLivroHtml(
+    livro,
+    contagem = null,
+    estrutura = null,
+    autoria = null,
+    usoIa = null,
+    equipe = null,
+) {
     const l = livro || {};
     let html = '';
 
@@ -360,8 +488,14 @@ export function renderVisualizacaoLivroHtml(livro, contagem = null, estrutura = 
         }
     }
 
+    // ── Autoria (do livro) e Autores dos textos (derivado)
+    html += renderAutoriaLivroHtml(autoria);
+    html += renderEquipeLivroHtml(equipe);
+    html += renderUsoIaLivroHtml(usoIa);
+
     // ── Texto do livro
     html += secaoHtml('Abertura', blocoTextoHtml(l.abertura, 'font-serif'));
+    html += secaoHtml('Sinopse curta', blocoTextoHtml(l.sinopseCurta));
     html += secaoHtml('Sinopse', blocoTextoHtml(l.sinopse));
     html += secaoHtml(
         'Capa',
@@ -491,10 +625,25 @@ function preencherVisualizacaoLivro(id) {
 
     const conteudo = document.getElementById('visualizar-livro-conteudo');
     if (conteudo) {
+        // Descartado sai da árvore e vive só no Fora de escopo; o migrado fica na
+        // árvore do destino, com o selo "veio de" (fora-de-escopo.js).
+        const estrutura = {
+            ...montarArvoreDoLivro(db, livro.id, { semDescartados: true }),
+            ...dadosForaDeEscopoDaTela(db, livro.id),
+        };
         conteudo.innerHTML = renderVisualizacaoLivroHtml(
             livro,
             contarConteudoDoLivro(db, livro.id),
-            montarArvoreDoLivro(db, livro.id),
+            estrutura,
+            {
+                propria: paresAutoriaLivro(livro, db.autores),
+                dosTextos: autoresDosTextosDoLivro(db, estrutura),
+            },
+            {
+                uso: usoIaDoLivro(livro),
+                titulos: (usoIaDoLivro(livro).usos || []).map((u) => tituloDoTextoDoUso(u, db)),
+            },
+            paresEquipeLivro(livro, db.colaboradores),
         );
         ligarEstruturaLivro(conteudo);
         conteudo.scrollTop = 0;
@@ -517,6 +666,7 @@ export async function abrirVisualizacaoLivro(id, opcoes = {}) {
 
     await garantirModal('modal-visualizar-livro');
     if (!preencherVisualizacaoLivro(id)) return;
+    prepararFormatoBaixarLivro();
 
     const conteudo = document.getElementById('visualizar-livro-conteudo');
     aplicarEstadoEstruturaLivro(conteudo, opcoes.estrutura);
@@ -688,6 +838,33 @@ export async function verDoModalEdicaoLivro() {
             }
         },
     });
+}
+
+// Formato do Baixar: abre sempre no último escolhido (o mesmo da aba Livros) e
+// guarda a escolha ao trocar. A caixa "Incluir estrutura" também abre na
+// escolha lembrada e fica desabilitada nos formatos que ainda não a levam.
+function prepararFormatoBaixarLivro() {
+    const sel = document.getElementById('visualizar-livro-baixar-formato');
+    if (!sel) return;
+    const rodape = sel.parentElement;
+    sel.value = getFormatoBaixarLivros();
+    sincronizarCaixaEstruturaLivros(rodape, sel.value);
+    sel.onchange = () => {
+        salvarFormatoBaixarLivros(sel.value);
+        sincronizarCaixaEstruturaLivros(rodape, sel.value);
+    };
+}
+
+// Botão "Baixar" do rodapé: as informações deste livro (sem o conteúdo dos
+// textos) no formato do select ao lado. Aceita o formato direto como argumento
+// (usado pelos testes).
+export function baixarDoModalVisualizacaoLivro(formato) {
+    if (livroAtualId == null) return;
+    const escolhido =
+        formato ||
+        document.getElementById('visualizar-livro-baixar-formato')?.value ||
+        getFormatoBaixarLivros();
+    baixarLivro(livroAtualId, escolhido);
 }
 
 // Botão "Editar" do rodapé: fecha o Ver e abre o formulário do mesmo livro.

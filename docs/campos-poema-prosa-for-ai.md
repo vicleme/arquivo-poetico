@@ -31,18 +31,18 @@ dedicated doc whenever the task actually depends on getting that
 distinction right.
 
 - **Etiquetas** (formerly "Sinalizações"; keys `sinalizacoesTradicao`,
-  `sinalizacoesEstilo`, `sinalizacoesTema`, `sinalizacoesTerritorialidade`,
+  `sinalizacoesEstilo`, `sinalizacoesTerritorialidade`,
   `sinalizacoesRelacao`, `sinalizacoesSensibilidade`, `sinalizacoesTom`,
-  `sinalizacoesDominioImagetico`, `sinalizacoesOutros`) — 9 tag fields, each a
-  different category. The 7 that are real tags store ids from the
+  `sinalizacoesDominioImagetico`, `sinalizacoesOutros`) — 8 tag fields, each a
+  different category (Theme is no longer one of them: it lives in `temas`). The 7 that are real tags store ids from the
   `db.etiquetas` registry (in text `.json` exports they come out as a list of
-  names). Two of them, `sinalizacoesTema` and
-  `sinalizacoesTerritorialidade`, are derived mirrors and are no longer
-  typed in the tag group. See `etiquetas-sinalizacoes-for-ai.md`.
+  names). One of them,
+  `sinalizacoesTerritorialidade`, is a derived mirror and is no longer
+  typed in the tag group. See `etiquetas-for-ai.md`.
 - **Temas** (`temas`: list of `{ temaId, papel, nome }` in exports) — the
   text's themes by id, with `papel` `principal`, `secundario`, or empty
-  (no role defined). `sinalizacoesTema` is a derived mirror (comma-separated
-  names, principal first); do not edit it on its own.
+  (no role defined). The old `sinalizacoesTema` field no longer
+  exists: read and write only `temas`.
 - **Subject role** (`assuntosPapel`: list of `{ assuntoId, papel, nome }` in
   exports) — overrides only. A Subject inherits the role of the text's Themes;
   an entry exists when the person pinned a different role for that Subject in
@@ -150,7 +150,7 @@ How to read them:
   about Lisbon has `localEscrita` Santos and `territorialidade` Lisbon.
 - **Territorialidade is not Tema.** Tema is the broad subject; a place
   named in the text goes in `territorialidade`. See
-  `etiquetas-sinalizacoes-for-ai.md`.
+  `etiquetas-for-ai.md`.
 - **`sinalizacoesTerritorialidade`** is a derived mirror: place names only,
   without type or hierarchy. Do not edit it and do not use it to tell
   same-named places apart; use `territorialidade`.
@@ -158,16 +158,41 @@ How to read them:
 
 ## Where the text lives (hierarchy and collections)
 
-- **`paiTipo`** / **`paiId`** ("parent type"/"parent id"): polymorphic
-  position link — which Livro (Book), Parte (Part), Seção (Section) (or
-  directly under another Elemento) the text sits under in the archive's
-  tree. It's structural position — one single place.
-- **`sequencia`** ("sequence"): manual ordering of the text within its
-  parent, for when ordering isn't purely chronological.
-- **`livrosIds`**: different from `paiTipo`/`paiId` — these are the
-  Livros/Coletâneas (Books/Collections) where this text is **listed**
-  (it can be listed in more than one), without changing where it
-  structurally lives in the tree.
+- **`aparicoes`** ("appearances"): the source of truth for where the text
+  appears. A list of `{ livroId, parteId, secaoId, sequencia }`, one per
+  place (Livro, Parte or Seção, with its position in that place's queue).
+  `sequencia` is `null` when the text only "consta" (is listed) in the
+  Livro, with no position. The same text can appear in several Livros, each
+  with its own position. Coletâneas are not in this list: they stay in the
+  Coletâneas' items. The list travels in the full backup `.json`; the text
+  exports (selective, flat, `.csv`, `.md`) carry the mirror below plus
+  `contexto.aparece_em`.
+- **`paiTipo`** / **`paiId`** / **`sequencia`** / **`livrosIds`**: the older
+  format, kept as a **mirror** of `aparicoes` for older screens. `paiTipo`/
+  `paiId` point to the first appearance that has a place (Livro, Parte or
+  Seção), `sequencia` is its position, and `livrosIds` lists the other
+  Livros. The mirror cannot say everything the list says (for example a
+  second appearance with a position), so in a conflict trust `aparicoes`.
+- **Main appearance**: the one in the Livro with the oldest publication
+  date (a tie, or no date, keeps the first in the list). It is only used to
+  sort and label: the Poemas/Prosas tables are sorted by Livro, Parte,
+  Seção and position of the main appearance, one row per text, with the
+  others in the tooltip.
+- **`contexto.coletaneas`** ("context.collections", exports only, never
+  edited): list of the titles of the Coletâneas (Collections) that carry
+  the text, in archive order, each one once. It comes from the
+  Coletâneas' items, not from `livrosIds`. In `.csv` it is the
+  `coletaneas` column (titles separated by " | "); in `.md`, `.pdf` and
+  `.docx`, the "Coletâneas" line right after "Localização". The Additive
+  Import ignores this field.
+- **`contexto.aparece_em`** ("context.appears_in", exports only, never
+  edited): one entry per appearance, `{ livro, parte, secao, posicao,
+coletanea, principal }` (titles already resolved; `posicao` is `null` for
+  "consta" only; `principal` marks the main one). `contexto.livro`, `parte`
+  and `secao` are still only the first place (the mirror). In `.csv` it is
+  the `aparece_em` column (appearances separated by " | ", empty with only
+  one); in `.md`, `.pdf` and `.docx` and in the Ver, the "Aparece em" line,
+  only for texts in two or more Livros. The Additive Import ignores it.
 
 ## Dates, periods, movement and inspiration
 
@@ -293,6 +318,44 @@ papel }`, `papel` ("role") is a single value (not an array) from
   steps) — "hearts" the author gives their own text, purely affective,
   no claim to technical scoring. `0`/absent is the special "not rated"
   state (it's not the minimum score — the real minimum is 0.5).
+- **`sorteavel`** ("drawable"): boolean, whether the author allows this
+  text to be picked by the reading draw ("what do you want to read
+  today?"). Off by default; absent means `false`. The author marks it by
+  hand, so never set it to `true` on your own suggestion: offer it as a
+  suggestion for them to review.
+- **`leituraAutonoma`** ("autonomous reading"): string, whether the text reads
+  on its own. `""` or absent is the default (reads on its own);
+  `"sequencia"` (only in sequence), `"conjunto"` (only as a set) and
+  `"inicio"` (only as a starting point: the first text of a sequence or set).
+  It is not a link to Elos or Ecos, and Incompleto, Díptico and Resposta do
+  not set it. In the reading draw, `"sequencia"` and `"conjunto"` are never
+  drawn; `"inicio"` is drawn, marked "só o começo". The author decides, so
+  never set it on your own: offer it as a suggestion for them to review.
+  Details in `sorteio-for-ai.md`.
+- **`valenciaAjuste`** ("valence adjustment"): string, the author's own
+  judgement of how heavy the text is, used instead of the value derived from
+  the text's Temas. `""` or absent follows the Temas (the default); `"leve"`
+  (lighter), `"neutro"` (neutral or ambivalent) and `"pesado"` (heavier). The
+  text's valence itself is never stored: it is computed from the Temas'
+  valence (same index as the Estatísticas) unless this field is set. The
+  author decides, so never set it on your own: offer it as a suggestion for
+  them to review, saying why the text weighs differently from its Temas.
+- **`autorEmSigilo`** ("author in secrecy"): boolean, whether the author
+  wants their name kept out of the public screens (today: the reading draw
+  page) for this text. Off by default; absent means `false`. The author
+  decides, so never set it to `true` on your own: offer it as a suggestion
+  for them to review.
+- **`notasPublicas`** ("public notes"): boolean, whether the author marks
+  `notas` as publishable (the "Public" checkbox under Notes). Notes may
+  hold private material, so only the marked ones can be shown to readers
+  (today: the reading draw page). Off by default; absent means `false`.
+  The author decides, so never set it to `true` on your own: offer it as a
+  suggestion for them to review.
+- **`comentariosPublicos`** ("comments to the reader", shown as "Comentários
+  ao leitor"): free text written for people who read the work; shown to
+  readers whenever filled in. Unlike `notas`, write it with a reader in
+  mind. It is not the `<!-- -->` comment of the text editor, which stays
+  invisible in every output.
 - **`status`**: closed list — `incompleto` (incomplete), `completo`
   (complete), `publicado` (published), `migrado` (migrated),
   `descartado` (discarded), `privado` (private). `privado` differs from
@@ -326,7 +389,7 @@ papel }`, `papel` ("role") is a single value (not an array) from
   no separately stored boolean flag; it's always derived from the
   string. Different from `sinalizacoesSensibilidade` (loose, categorizable
   tags, e.g. "Linguagem obscena" — see
-  `etiquetas-sinalizacoes-for-ai.md`): this field is the descriptive
+  `etiquetas-for-ai.md`): this field is the descriptive
   paragraph, that one is a short tag.
 - **`vocabularioHiperacionante`** ("hyper-triggering vocabulary"): free
   text — a note about vocabulary in the text that may be especially
@@ -362,7 +425,15 @@ from one Book/Section and "launched" in another), or discarded in that
 process:
 
 - **`cortadoDe`** ("cut from") / **`lancadoEm`** ("launched in"):
-  `{ livro, secao }` — where the text left from / where it landed.
+  `{ livro, secao }` — where the text left from / where it landed. The app
+  adds `livroId` (the book's registry id, when the book exists there); **do
+  not fill `livroId`**, the app writes it, and `livro` should be the book's
+  title. `secao` is `"Part / Section"`, shown on screen as
+  `Book › Part › Section`.
+  `cortadoDe` also takes an optional `posicao` (the number the text had
+  there back then, a snapshot that is never recalculated). It applies to
+  `migrado` and `descartado`; for a discarded text it is filled in when
+  the text is discarded, and `sequencia` becomes `null`.
 - **`justificativaMigracao`** ("migration justification"): free text
   justifying the migration.
 - **`descarte`** ("discard"): free text — the reason for discarding,
@@ -376,8 +447,9 @@ process:
 2. Don't confuse `conceitos.ecos` (link between archive texts,
    Intratextuality) with Sonoridade's `es.ecos` (sound echoes) — same
    name, different fields, different docs.
-3. `paiTipo`/`paiId` is where the text **lives** in the tree;
-   `livrosIds` is where it **appears listed** — not the same thing.
+3. `aparicoes` is where the text **appears** (one or more Livros, each with
+   its own position); `paiTipo`/`paiId`/`livrosIds` are only its mirror.
+   Prefer `contexto.aparece_em` in exports.
 4. A missing `epocaRetratada` (`null`) ≠ `epocaRetratada.na === true` —
    the former is "not assessed", the latter is "assessed as not
    applicable".

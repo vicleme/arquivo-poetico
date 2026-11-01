@@ -9,6 +9,7 @@ import {
     marcarTemasNaoIguais,
     mesclarTemas,
 } from '../js/temas.js';
+import { nomesDosTemas } from './helpers/temas-do-texto.js';
 
 function dbBase() {
     return {
@@ -26,7 +27,9 @@ function dbBase() {
         poemas: [
             {
                 id: 1,
-                sinalizacoesTema: 'Auto-acolhimento, Autoacolhimento',
+                // Espelho já derivado (principal, secundário): o Desfazer da
+                // mesclagem o refaz pelos `temas`, não por cópia de string.
+                sinalizacoesTema: 'Autoacolhimento, Auto-acolhimento',
                 temas: [
                     { temaId: 1, papel: 'secundario' },
                     { temaId: 2, papel: 'principal' },
@@ -125,7 +128,7 @@ describe('mesclarTemas: Desfazer', () => {
         );
         assert.deepEqual(db.assuntos[0].temaIds, [2]);
         assert.deepEqual(db.poemas[0].temas, [{ temaId: 2, papel: 'principal' }]);
-        assert.equal(db.poemas[0].sinalizacoesTema, 'Autoacolhimento');
+        assert.equal(nomesDosTemas(db.poemas[0], db), 'Autoacolhimento');
         assert.match(db.temas.find((t) => t.id == 2).notas, /nota 1/);
 
         r.desfazer();

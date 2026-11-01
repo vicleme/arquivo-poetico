@@ -316,7 +316,7 @@ describe('tela Correntes literárias', () => {
         clicar('grafico-correntes-postura', rotulos.indexOf('Iconoclasta'));
         assert.equal(consultas.at(-1), 'postura:"Iconoclasta"');
         clicar('grafico-correntes-postura', rotulos.indexOf('Sem classificação'));
-        assert.equal(consultas.at(-1), 'movimento:* -postura:*');
+        assert.equal(consultas.at(-1), 'corrente:* -postura:*');
         const prog = graficos['grafico-correntes-programa'].data.labels;
         clicar('grafico-correntes-programa', prog.indexOf('Movimento'));
         assert.equal(consultas.at(-1), 'programa:"Movimento"');

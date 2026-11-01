@@ -8,7 +8,43 @@
 // via preencherCapas).
 // ============================================================
 
+import { faixaDeValencia, ordemDaValencia, rotuloValenciaTexto } from './valencia-texto.js';
+import { ehSorteavel } from './sorteavel.js';
+import { ehNotaPublica } from './comentarios-publicos.js';
+import { ehAutorEmSigilo } from './autor-em-sigilo.js';
+import {
+    leituraAutonomaDe,
+    rotuloLeituraAutonoma,
+    temLeituraCondicionada,
+} from './leitura-autonoma.js';
+import { itemTemObraPessoal, ehObraPessoal } from './intertextualidade.js';
+import {
+    livroIdDoDestino,
+    estruturaDoTextoNaTabela,
+    camposDeBuscaDasAparicoes,
+    textoApareceNoLivro,
+    textoEhAvulso,
+} from './aparicoes-do-texto.js';
 import { nomesDasAncoras } from './ancora-eco.js';
+import { textoAutoresDaEntrada } from './autores-da-obra.js';
+import { personagensDaEntrada, textoPersonagensDaEntrada } from './personagens-da-obra.js';
+import {
+    normalizarOrigens,
+    origensDaEntrada,
+    rotuloDaOrigem,
+    textoOrigemDaEntrada,
+} from './origem-da-obra.js';
+
+// As origens (sem repetir, pela chave) de todas as entradas de Inter e Hiper do texto.
+// `pessoal`: undefined = todas as entradas; true = só as marcadas como obra
+// pessoal; false = só as sem a marca.
+function origensDasObrasDoTexto(item, pessoal) {
+    const entradas = [
+        ...(item?.intertextualidade || []),
+        ...(item?.hipertextualidade || []),
+    ].filter((e) => pessoal === undefined || ehObraPessoal(e) === pessoal);
+    return normalizarOrigens(entradas.flatMap(origensDaEntrada));
+}
 import { opcoesDuracao, hojeDoUsuario } from './fuso-horario.js';
 import {
     db,
@@ -68,7 +104,11 @@ import {
     textosDoTema,
     temasCadastradosSemAssunto,
     sugerirTemasDuplicados,
+    normalizarValenciaTema,
+    ROTULOS_VALENCIA_TEMA,
 } from './temas.js';
+import { selecaoTemas, definirTemasVisiveis } from './temas-massa.js';
+import { listarTemasUniversais, universaisDoTema } from './temas-universais.js';
 import {
     getElementHierarchy,
     getPosicaoElemento,
@@ -109,6 +149,8 @@ import {
     sinalizacoesCombinadas,
     textoDeEtiquetas,
     PREFIXOS_CANONICOS_POR_CAMPO,
+    autoclassificacaoValida,
+    formatarAutoclassificacaoTexto,
     rotuloElo,
     nomesPessoas,
     paresGrupoPessoa,
@@ -116,7 +158,6 @@ import {
     pontoCorGrupo,
     paresAutoria,
     estaPublicado,
-    PAPEIS_PESSOA,
     corpoEntradaHipertextualidade,
     OPCOES_GRAFIA,
     simboloGeneroPessoa,
@@ -130,6 +171,8 @@ import {
     resumoTemas,
     nomesTemasDoAssunto,
     nomesTemasPorPapel,
+    nomesTemasDoTexto,
+    SEPARADOR_SAIDA_TEMAS,
     nomesIdiomasPorPapel,
     textoIdiomasComPapel,
     dialetosDoItem,
@@ -142,7 +185,11 @@ import {
     periodosBiograficosDoItem,
     escaparAspasBusca,
     htmlAcessoEm,
+    tipoObraDaEntrada,
+    obraDaEntrada,
+    anoDeEscritaDoTexto,
 } from './utils.js';
+import { camposDeBuscaDeDatas } from './busca-data-obra.js';
 import {
     FILTRO_PERIODO_HISTORICO_SEM_VALOR,
     filtrarPeriodosHistoricosPorClassificacao,
@@ -152,6 +199,9 @@ import {
     classificacaoDosPeriodosHistoricosDoTexto,
 } from './periodos-historicos-campos.js';
 import { regiaoVazia, textoDaRegiao } from './regiao.js';
+import { nomesPapeisPessoa } from './papeis-pessoa.js';
+import { papelComVariantes } from './vinculo-busca.js';
+import { renderPapeisPessoa } from './papeis-pessoa-ui.js';
 import {
     exibindoOcultasDosPeriodos,
     definirExibirOcultasDosPeriodos,
@@ -184,12 +234,18 @@ import { preencherCapas } from './render-lightbox.js';
 import { linkImagemExibivel, linkImagemHtml } from './imagem-link.js';
 import {
     FASE_SEM_FASE,
+    ROTULOS_TEM_LIVROS,
+    estadoTem,
+    proximoEstadoTem,
     filtrarLivros,
     filtrosLivrosAtivos,
     filtrosLivrosVazios,
     fasesDosLivros,
     haLivroSemFase,
 } from './filtro-livros.js';
+import { textoAutoriaLivro } from './autoria-livro.js';
+import { textoEquipeLivro } from './colaboradores-livro.js';
+import { textoUsoIa } from './uso-ia-livro.js';
 import {
     previasAtivas,
     definirPreviasImagem,
@@ -203,7 +259,7 @@ import {
     registroContavel,
     renderOpcoesCampoContagem,
 } from './colunas-contagem.js';
-import { contarCamposPreenchidos } from './exportar-md.js';
+import { contarCamposPreenchidos, livroSecaoStr } from './exportar-md.js';
 import { isAcaoAtiva, temAcoesVisiveis } from './acoes-coluna.js';
 import {
     celulaAcoesItem,
@@ -212,6 +268,11 @@ import {
     rotuloEntradaElo,
     rotuloEntradaEco,
     trechoNota,
+    celulaSorteavel,
+    celulaAutorEmSigilo,
+    celulaLeituraAutonoma,
+    celulaValencia,
+    celulaNotaPublica,
     celulaAutoclassificacao,
     celulaCamposPreenchidos,
     montarPaginacao,
@@ -241,6 +302,14 @@ import { atualizarBarraSelecao } from './selecao-massa.js';
 // no header de lá: usado só dentro de verAutoresMovimentoEscola abaixo,
 // nunca no topo do módulo.
 import { setFiltroAutores } from './autores-acoes.js';
+// Circular com selecao-livros-aba.js (mesmo padrão): usado só dentro de
+// renderLivros, nunca no topo do módulo.
+import {
+    selecaoLivros,
+    CLASSES_MARCADO_LIVRO,
+    modoSelecaoLivrosAtivo,
+    atualizarControlesDownloadLivros,
+} from './selecao-livros-aba.js';
 import { abrirPorAtalho } from './faixa-origem.js';
 import {
     selecaoAutores,
@@ -280,6 +349,19 @@ import {
     podarSelecaoCorrentes,
     atualizarBarraSelecaoCorrentes,
 } from './correntes-acoes.js';
+import { descricaoPessoaPublica, selinhosPessoaPublica } from './caracterizacao-pessoa-publica.js';
+
+// Selinhos (tags de Conhecido(a) como, gênero, orientação e cor/raça) de uma
+// Referência de Pessoa pública, na célula da coluna Referências.
+function selinhosPessoaPublicaHtml(entrada) {
+    const html = selinhosPessoaPublica(entrada)
+        .map(
+            (r) =>
+                `<span title="${escapeHtml(r.titulo)}" class="inline-block px-1.5 py-0.5 mr-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] align-middle">${escapeHtml(r.texto)}</span>`,
+        )
+        .join('');
+    return html ? ` ${html}` : '';
+}
 
 // Sempre que uma coluna é ligada/desligada (ver colunas.js) a tabela
 // correspondente precisa recalcular cabeçalho + linhas.
@@ -571,6 +653,61 @@ export function setFiltroDataLivros(texto) {
     renderLivros();
 }
 
+export function setFiltroUsoIaLivros(valor) {
+    filtrosLivros.usoIa = valor || '';
+    renderLivros();
+}
+
+// Botões "Capa", "ISBN" e "Loja" (chave: temCapa, temIsbn ou temLoja), de 3 estados.
+// Sem `estado`, o clique gira: tanto faz, com, sem, tanto faz.
+const CLASSES_TEM_LIVROS = {
+    '': ['border-gray-300', 'dark:border-slate-600', 'text-gray-600', 'dark:text-slate-300'],
+    com: [
+        'border-green-500',
+        'bg-green-50',
+        'text-green-700',
+        'dark:border-green-500',
+        'dark:bg-green-950',
+        'dark:text-green-200',
+    ],
+    sem: [
+        'border-red-400',
+        'bg-red-50',
+        'text-red-700',
+        'dark:border-red-500',
+        'dark:bg-red-950',
+        'dark:text-red-200',
+    ],
+};
+const SIMBOLO_TEM_LIVROS = { '': '', com: '✓ ', sem: '✕ ' };
+
+function pintarBotoesTemLivros() {
+    Object.entries(ROTULOS_TEM_LIVROS).forEach(([chave, rotulos]) => {
+        const botao = document.querySelector(
+            `[data-action="filtro-tem-livros"][data-chave="${chave}"]`,
+        );
+        if (!botao) return;
+        const estado = estadoTem(filtrosLivros[chave]);
+        const indice = estado === 'com' ? 1 : estado === 'sem' ? 2 : 0;
+        botao.textContent = `${SIMBOLO_TEM_LIVROS[estado]}${rotulos[indice]}`;
+        botao.dataset.estado = estado;
+        botao.setAttribute(
+            'aria-pressed',
+            estado === '' ? 'false' : estado === 'com' ? 'true' : 'mixed',
+        );
+        Object.values(CLASSES_TEM_LIVROS).forEach((lista) => botao.classList.remove(...lista));
+        botao.classList.add(...CLASSES_TEM_LIVROS[estado]);
+    });
+}
+
+export function setFiltroTemLivros(chave, estado) {
+    if (!(chave in ROTULOS_TEM_LIVROS)) return;
+    filtrosLivros[chave] =
+        estado === undefined ? proximoEstadoTem(filtrosLivros[chave]) : estadoTem(estado);
+    pintarBotoesTemLivros();
+    renderLivros();
+}
+
 export function limparFiltrosLivros() {
     filtrosLivros = filtrosLivrosVazios();
     const busca = document.getElementById('filtro-busca-livros');
@@ -585,10 +722,12 @@ export function limparFiltrosLivros() {
         'filtro-fase-livros',
         'filtro-situacao-livros',
         'filtro-publicacao-livros',
+        'filtro-uso-ia-livros',
     ].forEach((id) => {
         const sel = document.getElementById(id);
         if (sel) sel.value = '';
     });
+    pintarBotoesTemLivros();
     renderLivros();
 }
 
@@ -723,50 +862,10 @@ function popularFiltroParteSecoes() {
         partes.map((p) => `<option value="${p.id}">${escapeHtml(p.titulo)}</option>`).join('');
 }
 
-// Acha a qual Livro uma Seção pertence (direta ou via Parte)
-function livroDaSecao(secao) {
-    if (!secao) return null;
-    if (secao.paiTipo === 'livro') return secao.paiId;
-    const parte = db.partes.find((p) => p.id == secao.paiId);
-    return parte ? parte.livroId : null;
-}
-
-// Acha a qual Livro um Elemento pertence, em qualquer dos 3 níveis
-function livroDoElemento(el) {
-    if (el.paiTipo === 'livro') return el.paiId;
-    if (el.paiTipo === 'parte') {
-        const p = db.partes.find((x) => x.id == el.paiId);
-        return p ? p.livroId : null;
-    }
-    if (el.paiTipo === 'secao') {
-        const s = db.secoes.find((x) => x.id == el.paiId);
-        return s ? livroDaSecao(s) : null;
-    }
-    return null;
-}
-
-// Alias para prosas (mesma lógica)
-const livroDaProsa = livroDoElemento;
-
-// Resolve o livroId de um poema (direto, via parte ou via seção)
-function livroDoPoema(p) {
-    if (!p.paiTipo || !p.paiId) return null;
-    if (p.paiTipo === 'livro') return p.paiId;
-    if (p.paiTipo === 'parte') {
-        const parte = db.partes.find((x) => x.id == p.paiId);
-        return parte ? parte.livroId : null;
-    }
-    if (p.paiTipo === 'secao') {
-        const s = db.secoes.find((x) => x.id == p.paiId);
-        if (!s) return null;
-        if (s.paiTipo === 'parte') {
-            const pt = db.partes.find((x) => x.id == s.paiId);
-            return pt ? pt.livroId : null;
-        }
-        return s.paiId;
-    }
-    return null;
-}
+// A qual Livro um item pertence pelo Destino (Seção, Elemento, Prosa ou Poema,
+// direto, via Parte ou via Seção). A escada mora em `aparicoes-do-texto.js`.
+const livroDaSecao = (secao) => livroIdDoDestino(secao, db);
+const livroDoElemento = (el) => livroIdDoDestino(el, db);
 
 // Combina o resultado da busca por metadados (filtrarTextos) com o da
 // busca por conteúdo (filtrarPorConteudo). Só quando os dois campos têm
@@ -813,13 +912,20 @@ export function setFiltroProsas(valor) {
 // clicar na coluna que já está olhando. Se já houver algo digitado, o
 // prefixo é acrescentado ao final (separado por espaço) em vez de
 // substituir, pra permitir combinar com outros termos.
+// Prefixos que só valem com `*` (ver PREFIXOS_SO_ASTERISCO_TEXTO): a lupa do cabeçalho
+// já escreve o asterisco. As datas ficam de fora, porque aceitam valores além do `*`.
+const PREFIXOS_SO_COM_ASTERISCO = ['sorteavel', 'notapublica', 'autoremsigilo'];
+
 export function buscarPorPrefixo(tabela, campoItem) {
     const prefixo = PREFIXOS_CANONICOS_POR_CAMPO[campoItem];
     if (!prefixo) return;
     const input = document.getElementById(`busca-${tabela}`);
     if (!input) return;
     const atual = input.value.trim();
-    const novo = atual ? `${atual} ${prefixo}:` : `${prefixo}:`;
+    // Selos Sim/Não (Sorteável, Notas públicas, Autor em sigilo) só têm um valor possível, `*`:
+    // o clique já deixa a busca completa, em vez de pela metade.
+    const termo = PREFIXOS_SO_COM_ASTERISCO.includes(prefixo) ? `${prefixo}:*` : `${prefixo}:`;
+    const novo = atual ? `${atual} ${termo}` : termo;
     input.value = novo;
     (tabela === 'prosas' ? setFiltroProsas : setFiltroPoemas)(novo);
     input.focus();
@@ -976,6 +1082,38 @@ export function verTextosPessoa(id) {
     });
 }
 
+// Botão de uso da seção "Pessoas e Papéis": leva a Poemas (ou a Prosas, se
+// nenhum poema usa o papel) já filtrados por esse papel, sem pessoa escolhida.
+export function verTextosComPapel(nome) {
+    const usaPapel = (item) =>
+        (item.pessoas || []).some((v) => Array.isArray(v?.papeis) && v.papeis.includes(nome));
+    const destino =
+        !(db.poemas || []).some(usaPapel) && (db.prosas || []).some(usaPapel) ? 'prosas' : 'poemas';
+    const setPessoa = destino === 'prosas' ? setFiltroPessoaProsas : setFiltroPessoaPoemas;
+    const setPapel = destino === 'prosas' ? setFiltroPapelProsas : setFiltroPapelPoemas;
+    const sincronizar = (pessoa, papel) => {
+        const selPessoa = document.getElementById(`filtro-pessoa-${destino}`);
+        if (selPessoa) selPessoa.value = pessoa;
+        const selPapel = document.getElementById(`filtro-papel-${destino}`);
+        if (selPapel) selPapel.value = papel;
+    };
+    abrirPorAtalho({
+        destino,
+        descricao: `Textos com o papel “${nome}”`,
+        controles: [`filtro-pessoa-${destino}`, `filtro-papel-${destino}`],
+        aplicar: () => {
+            setPessoa('');
+            setPapel(nome);
+            sincronizar('', nome);
+        },
+        limpar: () => {
+            setPessoa('');
+            setPapel('');
+            sincronizar('', '');
+        },
+    });
+}
+
 export function setFiltroPapelProsas(valor) {
     filtroPapelProsas = valor;
     paginaProsas = 1;
@@ -1103,11 +1241,11 @@ export function verTextosMovimentoEscola(id) {
 // direto a Autor — ver calcularImpactoExclusaoMovimentoEscola em
 // db.js): mesmo mecanismo de abrirListaFiltrada acima, mas pra aba
 // Autores, que tem sua própria caixa de busca por prefixo com o mesmo
-// `movimento:` (ver CAMPOS_ATRIBUTO_AUTOR em busca-autores.js).
+// `corrente:` (ver CAMPOS_ATRIBUTO_AUTOR em busca-autores.js).
 export function verAutoresMovimentoEscola(id) {
     const m = db.movimentosEscolas.find((x) => x.id == id);
     if (!m) return;
-    const consulta = `movimento:"${escaparAspasBusca(m.nome)}"`;
+    const consulta = `corrente:"${escaparAspasBusca(m.nome)}"`;
     abrirPorAtalho({
         destino: 'autores',
         descricao: `Autores da corrente literária “${m.nome}”`,
@@ -1411,42 +1549,105 @@ function nomesDeEtiquetasParaBusca(item) {
     return saida;
 }
 
-export function decorarCamposBusca(item, extraLivros = '') {
-    let livroTitulo = '',
-        parteTitulo = '',
-        secaoTitulo = '';
+// ─── Células de Intertextualidade e Hipertextualidade ─────────
+// Mesmo desenho para Poema e Prosa. Intertextualidade: relação e tipo de obra
+// em selos, a obra, quem (autor, personagem), a descrição, o trecho da fonte
+// e se vem traduzido. Hipertextualidade: tipo de obra em selo, a frase
+// "Relação da obra X", autor e descrição. Entrada no formato antigo (tipo e
+// texto) aparece como antes.
+const SELO_CELULA =
+    'inline-block px-1.5 py-0.5 mr-1 rounded text-[10px] font-bold uppercase align-middle';
 
-    if (item.paiTipo === 'livro') {
-        livroTitulo = db.livros.find((l) => l.id == item.paiId)?.titulo || '';
-    } else if (item.paiTipo === 'parte') {
-        const parte = db.partes.find((p) => p.id == item.paiId);
-        parteTitulo = parte?.titulo || '';
-        if (parte) livroTitulo = db.livros.find((l) => l.id == parte.livroId)?.titulo || '';
-    } else if (item.paiTipo === 'secao') {
-        const secao = db.secoes.find((s) => s.id == item.paiId);
-        secaoTitulo = secao?.titulo || '';
-        if (secao?.paiTipo === 'parte') {
-            const parte = db.partes.find((p) => p.id == secao.paiId);
-            parteTitulo = parte?.titulo || '';
-            if (parte) livroTitulo = db.livros.find((l) => l.id == parte.livroId)?.titulo || '';
-        } else if (secao) {
-            livroTitulo = db.livros.find((l) => l.id == secao.paiId)?.titulo || '';
-        }
-    }
+function seloCelula(valor, cor) {
+    return valor ? `<span class="${SELO_CELULA} ${cor}">${escapeHtml(valor)}</span>` : '';
+}
+
+function ligacaoCelula(e) {
+    return e.link
+        ? ` <a href="${escapeHtml(e.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(e.linkTexto || e.link)}</a>`
+        : '';
+}
+
+// "(obra pessoal)" em cinza, depois do corpo da entrada marcada.
+function pessoalCelula(e) {
+    return e && e.obraPessoal === true
+        ? ' <span class="text-[10px] text-gray-400 dark:text-slate-500">(obra pessoal)</span>'
+        : '';
+}
+
+function celulaVaziaTranstexto() {
+    return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+}
+
+function envolverCelulaTranstexto(html) {
+    return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
+}
+
+function mutedCelula(texto) {
+    return texto
+        ? ` <span class="text-gray-400 dark:text-slate-500">(${escapeHtml(texto)})</span>`
+        : '';
+}
+
+export function celulaIntertextualidade(lista) {
+    if (!Array.isArray(lista) || !lista.length) return celulaVaziaTranstexto();
+    const html = lista
+        .map((it) => {
+            const roxo = 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300';
+            const cinza = 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300';
+            const selos = seloCelula(it.relacao, roxo) + seloCelula(tipoObraDaEntrada(it), cinza);
+            const quem = mutedCelula(
+                [textoAutoresDaEntrada(it), rotuloDaOrigem(it), textoPersonagensDaEntrada(it)]
+                    .filter(Boolean)
+                    .join(', '),
+            );
+            const descricao = it.descricao ? `, ${trechoNota(it.descricao)}` : '';
+            const trecho = it.trecho
+                ? ` <span class="italic">“${trechoNota(it.trecho)}”</span>${it.traduzido ? ' <span class="text-[10px] text-gray-400 dark:text-slate-500">(traduzido)</span>' : ''}`
+                : '';
+            const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
+            return `<div>${selos}${trechoNota(obraDaEntrada(it))}${quem}${descricao}${trecho}${pessoalCelula(it)}${ligacaoCelula(it)}${htmlAcessoEm(it, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
+        })
+        .join('');
+    return envolverCelulaTranstexto(html);
+}
+
+export function celulaHipertextualidade(lista) {
+    if (!Array.isArray(lista) || !lista.length) return celulaVaziaTranstexto();
+    const html = lista
+        .map((h) => {
+            const selo = seloCelula(
+                tipoObraDaEntrada(h),
+                'bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300',
+            );
+            const descricao = h.descricao ? `, ${trechoNota(h.descricao)}` : '';
+            const nota = h.nota ? ` — ${trechoNota(h.nota)}` : '';
+            return `<div>${selo}${trechoNota(corpoEntradaHipertextualidade(h))}${mutedCelula([textoAutoresDaEntrada(h), rotuloDaOrigem(h)].filter(Boolean).join(', '))}${descricao}${pessoalCelula(h)}${ligacaoCelula(h)}${htmlAcessoEm(h, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
+        })
+        .join('');
+    return envolverCelulaTranstexto(html);
+}
+
+// `tipo` ('poema' ou 'prosa') deixa a busca achar também as Coletâneas do texto;
+// sem ele só os livros entram. Fase 21, 21-4a: `livro:`, `parte:` e `secao:`
+// olham todas as aparições, não só o Destino.
+export function decorarCamposBusca(item, extraLivros = '', tipo = undefined) {
+    const aparece = camposDeBuscaDasAparicoes(db, tipo, item);
 
     return {
         ...item,
         // Etiquetas guardam ids; a busca por prefixo (`tom:`, `estilo:`...)
         // lê estes campos como texto, então a cópia decorada leva os nomes.
         ...nomesDeEtiquetasParaBusca(item),
-        _buscaLivro: [livroTitulo, extraLivros].filter(Boolean).join(' '),
-        _buscaParte: parteTitulo,
-        _buscaSecao: secaoTitulo,
+        _buscaLivro: [aparece.livro, extraLivros].filter(Boolean).join(' '),
+        _buscaParte: aparece.parte,
+        _buscaSecao: aparece.secao,
+        _buscaColetanea: aparece.coletanea,
         _buscaIntertexto: Array.isArray(item.intertextualidade)
             ? item.intertextualidade
                   .map(
                       (it) =>
-                          `${it.tipo || ''} ${it.texto || ''} ${it.link || ''} ${it.nota || ''}`,
+                          `${it.relacao || ''} ${tipoObraDaEntrada(it)} ${obraDaEntrada(it)} ${textoAutoresDaEntrada(it)} ${textoOrigemDaEntrada(it)} ${personagensDaEntrada(it).join(' ')} ${it.descricao || ''} ${it.trecho || ''} ${it.link || ''} ${it.nota || ''}`,
                   )
                   .join(' ')
             : '',
@@ -1454,7 +1655,7 @@ export function decorarCamposBusca(item, extraLivros = '') {
             ? item.referenciasExternas
                   .map(
                       (it) =>
-                          `${it.tipo || ''} ${it.texto || ''} ${it.link || ''} ${it.nota || ''}`,
+                          `${it.tipo || ''} ${it.texto || ''} ${descricaoPessoaPublica(it)} ${it.link || ''} ${it.nota || ''}`,
                   )
                   .join(' ')
             : '',
@@ -1462,7 +1663,7 @@ export function decorarCamposBusca(item, extraLivros = '') {
             ? item.hipertextualidade
                   .map(
                       (h) =>
-                          `${h.tipo || ''} ${h.relacao || ''} ${h.hipotexto || ''} ${h.link || ''} ${h.nota || ''}`,
+                          `${tipoObraDaEntrada(h)} ${h.relacao || ''} ${h.hipotexto || ''} ${textoAutoresDaEntrada(h)} ${textoOrigemDaEntrada(h)} ${h.descricao || ''} ${h.link || ''} ${h.nota || ''}`,
                   )
                   .join(' ')
             : '',
@@ -1510,7 +1711,8 @@ export function decorarCamposBusca(item, extraLivros = '') {
         // "etiqueta:"; quem quer restringir por categoria usa
         // estilo:/tema:/relacao:/sensibilidade:/tom: direto (ver
         // CAMPOS_ATRIBUTO em utils.js).
-        _buscaSinalizacoes: sinalizacoesCombinadas(item),
+        _buscaSinalizacoes: sinalizacoesCombinadas(item, { temas: db.temas }),
+        _buscaTema: nomesTemasDoTexto(item, db.temas).join(SEPARADOR_SAIDA_TEMAS),
         // pessoas é array de objeto {pessoaId, papeis} (nome mora no
         // cadastro central db.pessoas desde migrarPessoasParaCadastro —
         // ver db.js; papeis: array, desde o multi-select, ver
@@ -1522,16 +1724,31 @@ export function decorarCamposBusca(item, extraLivros = '') {
             ? item.pessoas
                   .map((p) => {
                       const nome = db.pessoas.find((x) => x.id == p.pessoaId)?.nome || '';
-                      return `${nome} ${(p.papeis || []).join(' ')}`;
+                      const papeis = (p.papeis || []).flatMap(papelComVariantes);
+                      return `${nome} ${papeis.join(' ')} ${p.nota || ''}`;
                   })
                   .join(' ')
             : '',
+        // Vínculos texto-pessoa com nome e papéis juntos, para o par exato
+        // `pessoa:Nome@Papel` (T6; ver vinculoPessoaBate em utils.js). As
+        // strings achatadas acima não sabem qual papel é de qual pessoa.
+        _vinculosPessoas: Array.isArray(item.pessoas)
+            ? item.pessoas
+                  .map((p) => ({
+                      nome: db.pessoas.find((x) => x.id == p.pessoaId)?.nome || '',
+                      papeis: p.papeis || [],
+                  }))
+                  .filter((v) => v.nome)
+            : [],
         // Só os papéis (sem nome) — pro prefixo "papel:" (ver
         // CAMPOS_ATRIBUTO em utils.js), pra quem quer restringir por
         // papel especificamente, sem risco de um termo bater só porque é
         // parecido com o nome de alguém marcado no texto.
         _buscaPapeis: Array.isArray(item.pessoas)
-            ? item.pessoas.flatMap((p) => p.papeis || []).join(' ')
+            ? item.pessoas
+                  .flatMap((p) => p.papeis || [])
+                  .flatMap(papelComVariantes)
+                  .join(' ')
             : '',
         // Grupo é característica da Pessoa (constante entre poemas), não
         // do vínculo poema↔pessoa — ver comentário de nomesGrupos/
@@ -1644,6 +1861,34 @@ export function decorarCamposBusca(item, extraLivros = '') {
         // quem tem e quem não tem data. O filtro De/Até continua à parte.
         _buscaDataEscrita: textoDataParaBusca(item.dataEscrita),
         _buscaDataPublicacao: textoDataParaBusca(item.dataPublicacao),
+        // Data da obra e distância até o texto (T9): `dataobra:`,
+        // `datareferencia:`, `distanciaobra:` e `distanciareferencia:`. Os
+        // campos de texto servem a `*`; os números, ao intervalo de anos
+        // (ver busca-data-obra.js).
+        ...camposDeBuscaDeDatas(item, anoDeEscritaDoTexto(item)),
+        // Obra pessoal: `obrapessoal:*` (tem) e `-obrapessoal:*` (não tem).
+        _buscaObraPessoal: itemTemObraPessoal(item) ? 'sim' : '',
+        // Autoclassificação: texto ("3,5 corações") para `*`, número para o intervalo.
+        // 0 ou ausente é "não avaliado": fica de fora das duas.
+        _buscaAutoclassificacao: formatarAutoclassificacaoTexto(item.autoclassificacao),
+        _numerosAutoclassificacao: autoclassificacaoValida(item.autoclassificacao)
+            ? [Number(item.autoclassificacao)]
+            : [],
+        // `sorteavel:*` acha os marcados para o sorteio de leitura, `-sorteavel:*` os demais.
+        _buscaSorteavel: ehSorteavel(item) ? 'sim' : '',
+        // `leitura:` busca pelo rótulo (Só em sequência, Só em conjunto, Só como
+        // início). Lê-se sozinho, o padrão, fica vazio: `-leitura:*` acha os que
+        // se leem sozinhos e `leitura:*` os que não.
+        _buscaLeituraAutonoma: temLeituraCondicionada(item)
+            ? rotuloLeituraAutonoma(leituraAutonomaDe(item))
+            : '',
+        // `valencia:` busca pelo rótulo da faixa final (Leve, Neutro ou ambivalente,
+        // Pesado); `valencia:*` acha os que têm valência e `-valencia:*` os que não.
+        _buscaValencia: rotuloValenciaTexto(faixaDeValencia(item, db.temas)),
+        // `autoremsigilo:*` acha os textos com o autor em sigilo.
+        _buscaAutorEmSigilo: ehAutorEmSigilo(item) ? 'sim' : '',
+        // `notapublica:*` acha os textos com as Notas marcadas como públicas.
+        _buscaNotaPublica: ehNotaPublica(item) ? 'sim' : '',
         // periodoHistoricoId guarda só o id (nome mora no cadastro central
         // db.periodosHistoricos — ver migrarPeriodosHistoricos em db.js);
         // nome entra na busca geral e no prefixo "periodohistorico:" (ver
@@ -1676,12 +1921,12 @@ export function decorarCamposBusca(item, extraLivros = '') {
         ).join(', '),
         // movimentosEscolasIds guarda só os ids (nomes moram no cadastro
         // central db.movimentosEscolas — ver migrarMovimentosEscolasIds em
-        // db.js); nomes entram na busca geral e no prefixo "movimento:"
+        // db.js); nomes entram na busca geral e no prefixo "corrente:"
         // (ver CAMPOS_ATRIBUTO em utils.js), mesmo padrão de
         // _buscaPeriodoHistorico acima, só que é N:N (join com espaço).
-        // Hierárquico (ver nomesDeBuscaDasCorrentes): `movimento:Romantismo`
+        // Hierárquico (ver nomesDeBuscaDasCorrentes): `corrente:Romantismo`
         // acha também o texto ligado a uma geração ou vertente dele.
-        // `movimentodireto:` restringe ao que foi ligado diretamente.
+        // `correntedireta:` restringe ao que foi ligado diretamente.
         _buscaMovimentosEscolas: nomesDeBuscaDasCorrentes(
             db.movimentosEscolas,
             item.movimentosEscolasIds,
@@ -1690,6 +1935,28 @@ export function decorarCamposBusca(item, extraLivros = '') {
         _buscaMovimentosEscolasDireto: nomesDeBuscaDasCorrentes(
             db.movimentosEscolas,
             item.movimentosEscolasIds,
+        ).join(' '),
+        // `movimento:` e `escola:` olham o Programa efetivo da corrente (com a
+        // herança do pai); `corrente:` (acima) não filtra por Programa.
+        _buscaCorrentesMovimento: nomesDeBuscaDasCorrentes(
+            db.movimentosEscolas,
+            item.movimentosEscolasIds,
+            { comAncestrais: true, programa: 'Movimento' },
+        ).join(' '),
+        _buscaCorrentesMovimentoDireto: nomesDeBuscaDasCorrentes(
+            db.movimentosEscolas,
+            item.movimentosEscolasIds,
+            { programa: 'Movimento' },
+        ).join(' '),
+        _buscaCorrentesEscola: nomesDeBuscaDasCorrentes(
+            db.movimentosEscolas,
+            item.movimentosEscolasIds,
+            { comAncestrais: true, programa: 'Escola' },
+        ).join(' '),
+        _buscaCorrentesEscolaDireta: nomesDeBuscaDasCorrentes(
+            db.movimentosEscolas,
+            item.movimentosEscolasIds,
+            { programa: 'Escola' },
         ).join(' '),
         // Postura estética e Programa efetivos (com a herança do pai) das
         // correntes ligadas ao texto: `postura:` e `programa:`.
@@ -1702,7 +1969,7 @@ export function decorarCamposBusca(item, extraLivros = '') {
         ).join(', '),
         // Tema por papel (item.temas[].papel — ver nomesTemasPorPapel em
         // utils.js): alimenta os prefixos temaprincipal:, temasecundario: e
-        // temasempapel:. `tema:` segue lendo o espelho e acha em qualquer papel.
+        // temasempapel:. `tema:` lê `_buscaTema` e acha em qualquer papel.
         // Territorialidade e Local onde foi escrito, hierárquicos (citar a
         // Estação Lapa conta para Lapa, São Paulo e Brasil — ver
         // buscaTerritorialidadeDoTexto em locais.js): alimentam
@@ -1713,13 +1980,22 @@ export function decorarCamposBusca(item, extraLivros = '') {
         _buscaTerritorialidadeDireta: buscaTerritorialidadeDoTexto(db, item, { direta: true }),
         _buscaLocalEscrita: buscaLocalEscritaDoTexto(db, item),
         _buscaLocalEscritaDireta: buscaLocalEscritaDoTexto(db, item, { direta: true }),
+        // Origem (lugar ou cultura) das obras de Intertextualidade e Hipertextualidade,
+        // para o prefixo `origem:` (ver CAMPOS_ATRIBUTO).
+        _buscaOrigemObra: origensDasObrasDoTexto(item).join(', '),
+        _buscaOrigemObraPublica: origensDasObrasDoTexto(item, false).join(', '),
+        _buscaOrigemObraPessoal: origensDasObrasDoTexto(item, true).join(', '),
         _buscaIdiomaPrincipal: nomesIdiomasPorPapel(item, 'principal').join(', '),
         _buscaIdiomaSecundario: nomesIdiomasPorPapel(item, 'secundario').join(', '),
         _buscaDialeto: dialetosDoItem(item).join(', '),
         _buscaJargaoGiria: jargaoGiriaDoItem(item).join(', '),
-        _buscaTemaPrincipal: nomesTemasPorPapel(item, db.temas, 'principal').join(', '),
-        _buscaTemaSecundario: nomesTemasPorPapel(item, db.temas, 'secundario').join(', '),
-        _buscaTemaSemPapel: nomesTemasPorPapel(item, db.temas, '').join(', '),
+        _buscaTemaPrincipal: nomesTemasPorPapel(item, db.temas, 'principal').join(
+            SEPARADOR_SAIDA_TEMAS,
+        ),
+        _buscaTemaSecundario: nomesTemasPorPapel(item, db.temas, 'secundario').join(
+            SEPARADOR_SAIDA_TEMAS,
+        ),
+        _buscaTemaSemPapel: nomesTemasPorPapel(item, db.temas, '').join(SEPARADOR_SAIDA_TEMAS),
         // Assuntos derivados dos Temas do texto (db.assuntos — ver
         // assuntosDoTexto em utils.js); nomes entram na busca geral e no
         // prefixo "assunto:" (ver CAMPOS_ATRIBUTO), mesmo padrão de
@@ -1829,19 +2105,18 @@ function popularSelectPessoaFiltro(id) {
     if (Array.from(sel.options).some((o) => o.value === valorAtual)) sel.value = valorAtual;
 }
 
-// Popula o select de Papel do filtro dedicado Pessoa+Papel — lista
-// fechada PAPEIS_PESSOA (ver utils.js), não muda entre renders, mas
-// populamos aqui mesmo assim pra ficar no mesmo lugar/padrão do select
-// de Pessoa acima.
+// Popula o select de Papel do filtro dedicado Pessoa+Papel com os papéis do
+// registro (papeis-pessoa.js), no mesmo lugar/padrão do select de Pessoa
+// acima. Lê o registro a cada render, porque a lista é do acervo.
 function popularSelectPapelFiltro(id) {
     const sel = document.getElementById(id);
     if (!sel) return;
     const valorAtual = sel.value;
     sel.innerHTML =
         '<option value="">-- Qualquer papel --</option>' +
-        PAPEIS_PESSOA.map(
-            (papel) => `<option value="${escapeHtml(papel)}">${escapeHtml(papel)}</option>`,
-        ).join('');
+        nomesPapeisPessoa()
+            .map((papel) => `<option value="${escapeHtml(papel)}">${escapeHtml(papel)}</option>`)
+            .join('');
     if (Array.from(sel.options).some((o) => o.value === valorAtual)) sel.value = valorAtual;
 }
 
@@ -1869,27 +2144,10 @@ export function getListaVisivelPoemas() {
     let base = aplicarFiltroStatus(db.poemas, statusPoemas);
 
     if (filtroLivroPoemas === '__avulsos__') {
-        base = base.filter((p) => !p.paiTipo || !p.paiId);
+        base = base.filter((p) => textoEhAvulso(db, 'poema', p));
     } else if (filtroLivroPoemas) {
-        const livroSel = db.livros.find((l) => String(l.id) === String(filtroLivroPoemas));
-        if (livroSel?.tipo === 'Coletânea') {
-            // Poemas numa coletânea vivem em itensColetanea (via refId), não em paiId
-            const partesIds = new Set(
-                db.partes
-                    .filter((p) => String(p.livroId) === String(filtroLivroPoemas))
-                    .map((p) => String(p.id)),
-            );
-            const refIds = new Set(
-                (db.itensColetanea || [])
-                    .filter(
-                        (i) => partesIds.has(String(i.parteId)) && i.refTipo === 'poema' && i.refId,
-                    )
-                    .map((i) => String(i.refId)),
-            );
-            base = base.filter((p) => refIds.has(String(p.id)));
-        } else {
-            base = base.filter((p) => String(livroDoPoema(p)) === String(filtroLivroPoemas));
-        }
+        // Qualquer aparição: livro (com ou sem posição) e Coletânea.
+        base = base.filter((p) => textoApareceNoLivro(db, 'poema', p, filtroLivroPoemas));
     }
 
     base = filtrarPorPessoaEPapel(base, filtroPessoaPoemas, filtroPapelPoemas);
@@ -1897,7 +2155,7 @@ export function getListaVisivelPoemas() {
 
     const decorada = base.map((p) => {
         const _livros = nomesLivros(p);
-        return decorarCamposBusca({ ...p, _livros }, _livros);
+        return decorarCamposBusca({ ...p, _livros }, '', 'poema');
     });
     let lista = combinarFiltrosBusca(
         decorada,
@@ -1957,33 +2215,15 @@ export function getListaVisivelPoemas() {
 export function getListaVisivelProsas() {
     let base = aplicarFiltroStatus(db.prosas, statusProsas);
     if (filtroLivroProsa === '__avulsos__') {
-        base = base.filter((pr) => !pr.paiTipo || !pr.paiId);
+        base = base.filter((pr) => textoEhAvulso(db, 'prosa', pr));
     } else if (filtroLivroProsa) {
-        const livroSel = db.livros.find((l) => String(l.id) === String(filtroLivroProsa));
-        if (livroSel?.tipo === 'Coletânea') {
-            // Prosas numa coletânea vivem em itensColetanea (via refId), não em paiId
-            const partesIds = new Set(
-                db.partes
-                    .filter((p) => String(p.livroId) === String(filtroLivroProsa))
-                    .map((p) => String(p.id)),
-            );
-            const refIds = new Set(
-                (db.itensColetanea || [])
-                    .filter(
-                        (i) => partesIds.has(String(i.parteId)) && i.refTipo === 'prosa' && i.refId,
-                    )
-                    .map((i) => String(i.refId)),
-            );
-            base = base.filter((pr) => refIds.has(String(pr.id)));
-        } else {
-            base = base.filter((pr) => String(livroDaProsa(pr)) === String(filtroLivroProsa));
-        }
+        base = base.filter((pr) => textoApareceNoLivro(db, 'prosa', pr, filtroLivroProsa));
     }
 
     base = filtrarPorPessoaEPapel(base, filtroPessoaProsas, filtroPapelProsas);
     base = base.filter((pr) => itemBateFiltrosContagem(pr, 'prosas', db));
 
-    const decorada = base.map((pr) => decorarCamposBusca(pr));
+    const decorada = base.map((pr) => decorarCamposBusca(pr, '', 'prosa'));
     let lista = combinarFiltrosBusca(
         decorada,
         filtroProsas,
@@ -2193,6 +2433,20 @@ function celulaAssuntos(item) {
 function celulaIdioma(item) {
     const texto = textoIdiomasComPapel(item) || 'pt-BR';
     return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono">${escapeHtml(texto)}</td>`;
+}
+
+// Célula da coluna Estrutura (Poemas) e Vínculo (Prosas): uma linha por texto,
+// com o lugar da aparição principal (F21-D9). As outras aparições vão no
+// tooltip, e um "+N" discreto avisa que existem. `vazio` é o texto de quem não
+// tem lugar em livro comum ("Avulso" em Poemas, "Sem vínculo" em Prosas).
+function celulaEstruturaDoTexto(item, tipo, vazio) {
+    const { lugar, outras, extras } = estruturaDoTextoNaTabela(db, tipo, item);
+    const texto = lugar ? `${escapeHtml(lugar.titulo)} [${lugar.rotulo}]` : vazio;
+    const dica = extras
+        ? ` title="${escapeHtml('Também aparece em:\n' + outras.map((o) => '• ' + o).join('\n'))}"`
+        : '';
+    const mais = extras ? ` <span class="text-gray-300 dark:text-slate-600">+${extras}</span>` : '';
+    return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500"${dica}>${texto}${mais}</td>`;
 }
 
 // Célula da coluna Jargão e gíria: os textos livres do campo, separados por
@@ -2433,7 +2687,7 @@ const COMPARADORES_ORDENACAO = {
     ecos: compararPorTexto((p) => textoTitulosPoemasPorId(p.conceitos?.ecos, rotuloEntradaEco)),
     intertextualidade: compararPorTexto((p) =>
         Array.isArray(p.intertextualidade)
-            ? p.intertextualidade.map((it) => it.texto).join(' ')
+            ? p.intertextualidade.map((it) => obraDaEntrada(it)).join(' ')
             : '',
     ),
     hipertextualidade: compararPorTexto((p) =>
@@ -2462,9 +2716,15 @@ const COMPARADORES_ORDENACAO = {
     contextoHistorico: compararPorTexto((p) => p.contextoHistorico),
     autoavaliacao: compararPorTexto((p) => p.autoavaliacao),
     autoclassificacao: compararPorNumero((p) => p.autoclassificacao),
+    sorteavel: compararPorNumero((p) => (ehSorteavel(p) ? 1 : 0)),
+    autorEmSigilo: compararPorNumero((p) => (ehAutorEmSigilo(p) ? 1 : 0)),
+    leituraAutonoma: compararPorTexto((p) => rotuloLeituraAutonoma(leituraAutonomaDe(p))),
+    valencia: compararPorNumero((p) => ordemDaValencia(p, db.temas)),
+    notasPublicas: compararPorNumero((p) => (ehNotaPublica(p) ? 1 : 0)),
+    comentariosPublicos: compararPorTexto((p) => p.comentariosPublicos),
     fonte: compararPorTexto((p) => p.fonteTexto?.origem),
     grafia: compararPorTexto((p) => p.fonteTexto?.grafia),
-    etiquetas: compararPorTexto((p) => sinalizacoesCombinadas(p)),
+    etiquetas: compararPorTexto((p) => sinalizacoesCombinadas(p, { temas: db.temas })),
     notas: compararPorTexto((p) => p.notas),
     ocultacao: compararPorTexto((p) => p.ocultacao),
     conteudoSensivel: compararPorTexto((p) => p.conteudoSensivel),
@@ -2543,7 +2803,7 @@ function aplicarOrdenacao(lista, tabela, estado) {
 export function moverLivro(id, direcao) {
     // Com filtro ligado, ▲▼ trocam com o vizinho que aparece na tela, e não com um
     // livro escondido (senão o clique parecia não fazer nada).
-    const ordenados = filtrarLivros(livrosEmOrdemDaAba(), filtrosLivros, hojeDoUsuario());
+    const ordenados = livrosVisiveisDaAba();
     const idx = ordenados.findIndex((l) => l.id == id);
     if (idx === -1) return;
 
@@ -2562,15 +2822,26 @@ export function moverLivro(id, direcao) {
 // Livros na ordem em que os cards aparecem (por sequência; sem sequência vai
 // pro fim). Fonte única da ordem: o desenho dos cards e o Anterior/Próximo do
 // modal Ver (ver visualizar-livro.js) usam esta mesma lista.
-function livrosEmOrdemDaAba() {
+export function livrosEmOrdemDaAba() {
     return [...db.livros].sort(
         (a, b) => (parseInt(a.sequencia) || 9999) - (parseInt(b.sequencia) || 9999),
     );
 }
 
 // Livros na ordem da aba e com os filtros (busca, tipo, fase, situação editorial).
-function livrosVisiveisDaAba() {
-    return filtrarLivros(livrosEmOrdemDaAba(), filtrosLivros, hojeDoUsuario());
+export function livrosVisiveisDaAba() {
+    return filtrarLivros(
+        livrosEmOrdemDaAba(),
+        filtrosLivros,
+        hojeDoUsuario(),
+        db.autores,
+        db.colaboradores,
+    );
+}
+
+// Há busca ou filtro ligado na aba Livros (o download usa para nomear o arquivo).
+export function filtrandoLivros() {
+    return filtrosLivrosAtivos(filtrosLivros);
 }
 
 // Ids dos livros como aparecem na aba, já filtrados. O Anterior/Próximo do Ver do
@@ -2615,9 +2886,11 @@ export function renderLivros() {
     const container = document.getElementById('lista-livros');
     if (!container) return;
 
+    pintarBotoesTemLivros();
     popularFiltroFaseLivros();
     const ordenados = livrosVisiveisDaAba();
     atualizarBarraFiltrosLivros(ordenados.length, db.livros.length);
+    atualizarControlesDownloadLivros(ordenados.length, db.livros.length);
 
     if (ordenados.length === 0) {
         const mensagem =
@@ -2629,10 +2902,16 @@ export function renderLivros() {
     }
 
     const comPrevia = previasAtivas('livros');
+    const selecionando = modoSelecaoLivrosAtivo();
     container.innerHTML = ordenados
         .map(
             (l) => `
-        <div class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+        <div data-livro-card="${l.id}" class="bg-white dark:bg-slate-900 p-5 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm${selecionando && selecaoLivros.has(l.id) ? ` ${CLASSES_MARCADO_LIVRO.join(' ')}` : ''}">
+            ${
+                selecionando
+                    ? `<label class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500 cursor-pointer select-none mb-2"><input type="checkbox" data-action="toggle-livro" data-id="${l.id}" ${selecaoLivros.has(l.id) ? 'checked' : ''} aria-label="Selecionar ${escapeHtml(l.titulo)} para baixar" />Selecionar</label>`
+                    : ''
+            }
             ${
                 !comPrevia
                     ? ''
@@ -2642,8 +2921,28 @@ export function renderLivros() {
             }
             <div class="flex justify-between items-start">
                 <h4 class="font-bold text-blue-800 dark:text-blue-200">${escapeHtml(l.titulo)}</h4>
-                <span class="text-[10px] bg-blue-50 dark:bg-blue-950 text-blue-500 dark:text-blue-400 px-2 py-0.5 rounded font-mono">SEQ: ${l.sequencia || '0'}</span>
+                <span class="text-[10px] bg-blue-50 dark:bg-blue-950 text-blue-500 dark:text-blue-400 px-2 py-0.5 rounded font-mono">SEQ: ${l.sequencia || '—'}</span>
             </div>
+            ${
+                String(l.sinopseCurta || '').trim()
+                    ? `<p data-sinopse-curta-livro title="${escapeHtml(String(l.sinopseCurta).trim())}" class="text-xs italic text-gray-600 dark:text-slate-300 mt-1 line-clamp-3">${escapeHtml(String(l.sinopseCurta).trim())}</p>`
+                    : ''
+            }
+            ${
+                textoAutoriaLivro(l, db.autores)
+                    ? `<p data-autoria-livro class="text-xs text-gray-600 dark:text-slate-300 mt-0.5">✍️ ${escapeHtml(textoAutoriaLivro(l, db.autores))}</p>`
+                    : ''
+            }
+            ${
+                textoEquipeLivro(l, db.colaboradores)
+                    ? `<p data-equipe-livro class="text-xs text-gray-600 dark:text-slate-300 mt-0.5">🎨 ${escapeHtml(textoEquipeLivro(l, db.colaboradores))}</p>`
+                    : ''
+            }
+            ${
+                textoUsoIa(l)
+                    ? `<p data-uso-ia-livro class="text-xs text-gray-600 dark:text-slate-300 mt-0.5">🤖 IA: ${escapeHtml(textoUsoIa(l))}</p>`
+                    : ''
+            }
             <p class="text-xs font-mono text-gray-500 dark:text-slate-400">${escapeHtml(l.siglaOficial) || '---'} | ${l.data ? (typeof l.data === 'string' ? l.data : formatarDataParcial(l.data)) : 'S/D'}${l.dataUltimaEdicao ? ` <span title="Última edição">· ed. ${formatarDataParcial(l.dataUltimaEdicao)}</span>` : ''}</p>
             ${
                 htmlSeloSituacaoEditorial(l)
@@ -2702,6 +3001,7 @@ export function renderLivros() {
             <div class="flex justify-between items-center mt-4">
                 <div class="flex gap-4">
                     <button data-action="ver-livro" data-id="${l.id}" title="Ver" aria-label="Ver" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_VER}</button>
+                    <button data-action="baixar-livro" data-id="${l.id}" title="Baixar as informações deste livro no formato e com as opções “Incluir estrutura” e “Incluir Fora de escopo” escolhidos na barra acima" aria-label="Baixar" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_BAIXAR}</button>
                     <button data-action="editar-livro" data-id="${l.id}" title="Editar" aria-label="Editar" class="inline-flex items-center justify-center p-1.5 rounded text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40">${ICONE_EDITAR}</button>
                     <button data-action="excluir-item" data-tipo="livros" data-id="${l.id}" title="Excluir" aria-label="Excluir" class="inline-flex items-center justify-center p-1.5 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40">${ICONE_EXCLUIR}</button>
                 </div>
@@ -2795,7 +3095,7 @@ export function renderPartes() {
                     <p class="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">
                         ${livro ? escapeHtml(livro.titulo) : 'Sem livro'}
                     </p>
-                    <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">SEQ: ${p.sequencia || '0'}</p>
+                    <p class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">SEQ: ${p.sequencia || '—'}</p>
                     ${linhaLinkImagemCard(p)}
                 </div>
                 <div class="flex gap-3 flex-shrink-0">
@@ -2898,6 +3198,18 @@ export function renderSecoes() {
 
 // ─── Poemas ──────────────────────────────────────────────────
 
+// Linha de contagem sob o título das abas de textos. Sem filtro mostra o
+// total cadastrado ("305 poemas"); com filtro, "42 de 305 poemas". O total
+// é db.<tipo>.length, então inclui descartados e privados: bate com a soma
+// do que existe no acervo.
+function atualizarContagemDaAba(id, visiveis, total, singular, plural) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const nome = (n) => (n === 1 ? singular : plural);
+    el.textContent =
+        visiveis === total ? `${total} ${nome(total)}` : `${visiveis} de ${total} ${nome(total)}`;
+}
+
 export function renderPoemas() {
     const container = document.getElementById('lista-poemas');
     if (!container) return;
@@ -2932,6 +3244,13 @@ export function renderPoemas() {
     popularSelectPapelFiltro('filtro-papel-poemas');
 
     const listaFiltrada = getListaVisivelPoemas();
+    atualizarContagemDaAba(
+        'contagem-poemas',
+        listaFiltrada.length,
+        db.poemas.length,
+        'poema',
+        'poemas',
+    );
     atualizarAvisoSemData('aviso-sem-data-poemas', semDataPoemas);
     atualizarBarraSelecao('poemas');
 
@@ -3007,21 +3326,7 @@ export function renderPoemas() {
                 dicas.push('Publicação: ' + formatarDataParcial(p.dataPublicacao));
             return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono" title="${dicas.join(' · ')}">${aproximada ? '<span class="text-amber-500 dark:text-amber-400">~</span> ' : ''}${p.dataEscrita ? formatarDataParcial(p.dataEscrita) : p.ano || '—'}</td>`;
         },
-        estrutura: (p) => {
-            const paiObjeto =
-                p.paiTipo === 'secao'
-                    ? db.secoes.find((s) => s.id == p.paiId)
-                    : p.paiTipo === 'parte'
-                      ? db.partes.find((pt) => pt.id == p.paiId)
-                      : db.livros.find((l) => l.id == p.paiId);
-            let infoPai = 'Avulso';
-            if (paiObjeto) {
-                const rotulo =
-                    p.paiTipo === 'secao' ? 'SEC' : p.paiTipo === 'parte' ? 'PART' : 'LIVRO';
-                infoPai = `${escapeHtml(paiObjeto.titulo)} [${rotulo}]`;
-            }
-            return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500">${infoPai}</td>`;
-        },
+        estrutura: (p) => celulaEstruturaDoTexto(p, 'poema', 'Avulso'),
         status: (p) => {
             const INFO_STATUS = {
                 publicado: { emoji: '🟢', titulo: 'Publicado' },
@@ -3062,6 +3367,13 @@ export function renderPoemas() {
         autoavaliacao: (p) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.autoavaliacao)}</td>`,
         autoclassificacao: (p) => celulaAutoclassificacao(p),
+        sorteavel: (p) => celulaSorteavel(p),
+        autorEmSigilo: (p) => celulaAutorEmSigilo(p),
+        leituraAutonoma: (p) => celulaLeituraAutonoma(p),
+        valencia: (p) => celulaValencia(p),
+        notasPublicas: (p) => celulaNotaPublica(p),
+        comentariosPublicos: (p) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(p.comentariosPublicos)}</td>`,
         epocaRetratada: (p) => {
             const epoca = p.epocaRetratada;
             const na = epoca?.na;
@@ -3077,56 +3389,22 @@ export function renderPoemas() {
         assuntos: (p) => celulaAssuntos(p),
         movimentosEscolas: (p) => celulaCorrentesDeTopo(p),
         divisoesCorrentes: (p) => celulaDivisoesDeCorrente(p),
-        intertextualidade: (p) => {
-            const lista = Array.isArray(p.intertextualidade) ? p.intertextualidade : [];
-            if (!lista.length)
-                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
-            const html = lista
-                .map((it) => {
-                    const badge = it.tipo
-                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
-                        : '';
-                    const link = it.link
-                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.linkTexto || it.link)}</a>`
-                        : '';
-                    const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
-                    return `<div>${badge}${trechoNota(it.texto)}${link}${htmlAcessoEm(it, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
-                })
-                .join('');
-            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
-        },
-        hipertextualidade: (p) => {
-            const lista = Array.isArray(p.hipertextualidade) ? p.hipertextualidade : [];
-            if (!lista.length)
-                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
-            const html = lista
-                .map((h) => {
-                    const badge = h.tipo
-                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(h.tipo)}</span>`
-                        : '';
-                    const link = h.link
-                        ? ` <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(h.linkTexto || h.link)}</a>`
-                        : '';
-                    const nota = h.nota ? ` — ${trechoNota(h.nota)}` : '';
-                    return `<div>${badge}${trechoNota(corpoEntradaHipertextualidade(h))}${link}${htmlAcessoEm(h, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
-                })
-                .join('');
-            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
-        },
+        intertextualidade: (p) => celulaIntertextualidade(p.intertextualidade),
+        hipertextualidade: (p) => celulaHipertextualidade(p.hipertextualidade),
         referenciasExternas: (p) => {
             const lista = Array.isArray(p.referenciasExternas) ? p.referenciasExternas : [];
             if (!lista.length)
                 return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
             const html = lista
                 .map((it) => {
-                    const badge = it.tipo
-                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+                    const badge = tipoObraDaEntrada(it)
+                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(tipoObraDaEntrada(it))}</span>`
                         : '';
                     const link = it.link
                         ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.linkTexto || it.link)}</a>`
                         : '';
                     const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
-                    return `<div>${badge}${trechoNota(it.texto)}${link}${htmlAcessoEm(it, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
+                    return `<div>${badge}${trechoNota(obraDaEntrada(it))}${selinhosPessoaPublicaHtml(it)}${link}${htmlAcessoEm(it, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
                 })
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
@@ -3173,14 +3451,14 @@ export function renderPoemas() {
         vocabularioHiperacionante: (p) =>
             `<td class="p-4 text-xs max-w-xs ${p.vocabularioHiperacionante ? 'text-amber-700 dark:text-amber-400 border-l-2 border-amber-300 dark:border-amber-700' : 'text-gray-300 dark:text-slate-600'}">${p.vocabularioHiperacionante ? trechoNota(p.vocabularioHiperacionante) : '—'}</td>`,
         cortadoDe: (p) => {
-            if (!p.cortadoDe || (!p.cortadoDe.livro && !p.cortadoDe.secao))
-                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
-            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${escapeHtml([p.cortadoDe.livro, p.cortadoDe.secao].filter(Boolean).join(' / '))}</td>`;
+            const origem = livroSecaoStr(p.cortadoDe);
+            if (!origem) return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${escapeHtml(origem)}</td>`;
         },
         lancadoEm: (p) => {
-            if (!p.lancadoEm || (!p.lancadoEm.livro && !p.lancadoEm.secao))
-                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
-            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${escapeHtml([p.lancadoEm.livro, p.lancadoEm.secao].filter(Boolean).join(' / '))}</td>`;
+            const destino = livroSecaoStr(p.lancadoEm);
+            if (!destino) return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
+            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${escapeHtml(destino)}</td>`;
         },
         justificativaMigracao: (p) =>
             `<td class="p-4 text-xs max-w-xs ${p.justificativaMigracao ? 'text-blue-700 dark:text-blue-400 border-l-2 border-blue-300 dark:border-blue-700' : 'text-gray-300 dark:text-slate-600'}">${p.justificativaMigracao ? trechoNota(p.justificativaMigracao) : '—'}</td>`,
@@ -3290,6 +3568,13 @@ export function renderProsas() {
     popularSelectPapelFiltro('filtro-papel-prosas');
 
     const listaFiltrada = getListaVisivelProsas();
+    atualizarContagemDaAba(
+        'contagem-prosas',
+        listaFiltrada.length,
+        db.prosas.length,
+        'prosa',
+        'prosas',
+    );
     atualizarAvisoSemData('aviso-sem-data-prosas', semDataProsas);
     atualizarBarraSelecao('prosas');
 
@@ -3362,24 +3647,7 @@ export function renderProsas() {
                 dicas.push('Publicação: ' + formatarDataParcial(pr.dataPublicacao));
             return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500 font-mono" title="${dicas.join(' · ')}">${aproximada ? '<span class="text-amber-500 dark:text-amber-400">~</span> ' : ''}${pr.dataEscrita ? formatarDataParcial(pr.dataEscrita) : pr.ano || '—'}</td>`;
         },
-        vinculo: (pr) => {
-            let paiObjeto = null,
-                rotulo = 'Avulso';
-            if (pr.paiTipo === 'secao') {
-                paiObjeto = db.secoes.find((s) => s.id == pr.paiId);
-                rotulo = 'SEC';
-            } else if (pr.paiTipo === 'parte') {
-                paiObjeto = db.partes.find((p) => p.id == pr.paiId);
-                rotulo = 'PART';
-            } else if (pr.paiTipo === 'livro') {
-                paiObjeto = db.livros.find((l) => l.id == pr.paiId);
-                rotulo = 'LIVRO';
-            }
-            const infoVinc = paiObjeto
-                ? `${escapeHtml(paiObjeto.titulo)} [${rotulo}]`
-                : 'Sem vínculo';
-            return `<td class="p-4 text-xs text-gray-400 dark:text-slate-500">${infoVinc}</td>`;
-        },
+        vinculo: (pr) => celulaEstruturaDoTexto(pr, 'prosa', 'Sem vínculo'),
         // Item 4: Prosa ganha o mesmo círculo de status de Poema (ver
         // CELULAS_POEMAS.status acima) — badgePendencia idêntico, mesmo
         // critério (texto em pr.pendencia, independente do status).
@@ -3418,6 +3686,13 @@ export function renderProsas() {
         autoavaliacao: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.autoavaliacao)}</td>`,
         autoclassificacao: (pr) => celulaAutoclassificacao(pr),
+        sorteavel: (pr) => celulaSorteavel(pr),
+        autorEmSigilo: (pr) => celulaAutorEmSigilo(pr),
+        leituraAutonoma: (pr) => celulaLeituraAutonoma(pr),
+        valencia: (pr) => celulaValencia(pr),
+        notasPublicas: (pr) => celulaNotaPublica(pr),
+        comentariosPublicos: (pr) =>
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.comentariosPublicos)}</td>`,
         epocaRetratada: (pr) => {
             const epoca = pr.epocaRetratada;
             const na = epoca?.na;
@@ -3439,56 +3714,22 @@ export function renderProsas() {
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(pr.conceitos?.elos, rotuloEntradaElo, 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300')}</td>`,
         ecos: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${titulosPoemasPorId(pr.conceitos?.ecos, rotuloEntradaEco, 'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-700 dark:text-fuchsia-300')}</td>`,
-        intertextualidade: (pr) => {
-            const lista = Array.isArray(pr.intertextualidade) ? pr.intertextualidade : [];
-            if (!lista.length)
-                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
-            const html = lista
-                .map((it) => {
-                    const badge = it.tipo
-                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
-                        : '';
-                    const link = it.link
-                        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.linkTexto || it.link)}</a>`
-                        : '';
-                    const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
-                    return `<div>${badge}${trechoNota(it.texto)}${link}${htmlAcessoEm(it, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
-                })
-                .join('');
-            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
-        },
-        hipertextualidade: (pr) => {
-            const lista = Array.isArray(pr.hipertextualidade) ? pr.hipertextualidade : [];
-            if (!lista.length)
-                return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
-            const html = lista
-                .map((h) => {
-                    const badge = h.tipo
-                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(h.tipo)}</span>`
-                        : '';
-                    const link = h.link
-                        ? ` <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(h.linkTexto || h.link)}</a>`
-                        : '';
-                    const nota = h.nota ? ` — ${trechoNota(h.nota)}` : '';
-                    return `<div>${badge}${trechoNota(corpoEntradaHipertextualidade(h))}${link}${htmlAcessoEm(h, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
-                })
-                .join('');
-            return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
-        },
+        intertextualidade: (pr) => celulaIntertextualidade(pr.intertextualidade),
+        hipertextualidade: (pr) => celulaHipertextualidade(pr.hipertextualidade),
         referenciasExternas: (pr) => {
             const lista = Array.isArray(pr.referenciasExternas) ? pr.referenciasExternas : [];
             if (!lista.length)
                 return `<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>`;
             const html = lista
                 .map((it) => {
-                    const badge = it.tipo
-                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+                    const badge = tipoObraDaEntrada(it)
+                        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(tipoObraDaEntrada(it))}</span>`
                         : '';
                     const link = it.link
                         ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline">${escapeHtml(it.linkTexto || it.link)}</a>`
                         : '';
                     const nota = it.nota ? ` — ${trechoNota(it.nota)}` : '';
-                    return `<div>${badge}${trechoNota(it.texto)}${link}${htmlAcessoEm(it, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
+                    return `<div>${badge}${trechoNota(obraDaEntrada(it))}${selinhosPessoaPublicaHtml(it)}${link}${htmlAcessoEm(it, 'text-gray-400 dark:text-slate-500')}${nota}</div>`;
                 })
                 .join('');
             return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${html}</td>`;
@@ -3516,9 +3757,9 @@ export function renderProsas() {
         vocabularioHiperacionante: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.vocabularioHiperacionante)}</td>`,
         cortadoDe: (pr) =>
-            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${pr.cortadoDe ? escapeHtml(`${pr.cortadoDe.livro || ''} ${pr.cortadoDe.secao || ''}`.trim()) : '—'}</td>`,
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${livroSecaoStr(pr.cortadoDe) ? escapeHtml(livroSecaoStr(pr.cortadoDe)) : '—'}</td>`,
         lancadoEm: (pr) =>
-            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${pr.lancadoEm ? escapeHtml(`${pr.lancadoEm.livro || ''} ${pr.lancadoEm.secao || ''}`.trim()) : '—'}</td>`,
+            `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${livroSecaoStr(pr.lancadoEm) ? escapeHtml(livroSecaoStr(pr.lancadoEm)) : '—'}</td>`,
         justificativaMigracao: (pr) =>
             `<td class="p-4 text-xs text-gray-500 dark:text-slate-400 max-w-xs">${trechoNota(pr.justificativaMigracao)}</td>`,
         pendencia: (pr) =>
@@ -3694,6 +3935,13 @@ export function renderElementos() {
     popularFiltroLivro('filtro-livro-elementos');
 
     const ordenados = elementosEmOrdemDaAba();
+    atualizarContagemDaAba(
+        'contagem-elementos',
+        ordenados.length,
+        db.elementos.length,
+        'elemento',
+        'elementos',
+    );
 
     if (ordenados.length === 0) {
         container.innerHTML = `<div class="col-span-full text-center text-gray-400 dark:text-slate-500 text-sm py-6">Nenhum elemento encontrado.</div>`;
@@ -3760,6 +4008,7 @@ export function renderElementos() {
 export function renderPessoas() {
     const container = document.getElementById('lista-pessoas');
     if (!container) return;
+    renderPapeisPessoa();
 
     popularSelectAutores('filtro-autor-pessoas', '-- Todos os autores --');
     popularSelectGrupos('filtro-grupo-pessoas', '-- Todos os grupos --');
@@ -3846,6 +4095,10 @@ export function renderPessoas() {
                 <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(p.nome)}${
                     simboloGenero
                         ? ` <span class="text-gray-400 dark:text-slate-500 font-normal" title="${escapeHtml(p.genero)}">${simboloGenero}</span>`
+                        : ''
+                }${
+                    p.souEu
+                        ? ' <span class="text-[10px] font-normal text-indigo-500 dark:text-indigo-400">(você)</span>'
                         : ''
                 }${
                     destacarOculta
@@ -6412,7 +6665,12 @@ export function filtrarTemasSemAssunto() {
     if (campo) campo.value = '';
     const semAssunto = document.getElementById('filtro-temas-sem-assunto');
     if (semAssunto) semAssunto.checked = true;
+    const semVitrine = document.getElementById('filtro-temas-sem-vitrine');
+    if (semVitrine) semVitrine.checked = false;
+    const valencia = document.getElementById('filtro-temas-valencia');
+    if (valencia) valencia.value = '';
     triagemSemAssunto = null; // entrada nova na triagem: retrato novo
+    triagemSemVitrine = null;
     renderTemas();
 }
 
@@ -6429,6 +6687,10 @@ export function definirBuscaTemas(texto) {
     if (campo) campo.value = texto || '';
     const semAssunto = document.getElementById('filtro-temas-sem-assunto');
     if (semAssunto) semAssunto.checked = false;
+    const semVitrine = document.getElementById('filtro-temas-sem-vitrine');
+    if (semVitrine) semVitrine.checked = false;
+    const valencia = document.getElementById('filtro-temas-valencia');
+    if (valencia) valencia.value = '';
     renderTemas();
 }
 
@@ -6488,11 +6750,24 @@ function renderDuplicatasTemas() {
 // a pessoa clicar em "Atualizar lista" ou desligar e ligar o filtro.
 // null = filtro desligado ou ainda sem retrato.
 let triagemSemAssunto = null;
+// O mesmo retrato para "Só sem vitrine" (temas fora de todos os convites da
+// Vitrine de leitura). Os dois filtros podem ficar ligados juntos; "Atualizar
+// lista" refaz os dois.
+let triagemSemVitrine = null;
 
 export function atualizarListaSemAssunto() {
     triagemSemAssunto = null;
+    triagemSemVitrine = null;
     renderTemas();
 }
+
+// Cores do selo de valência no cartão do Tema (claro e escuro).
+const CLASSES_VALENCIA_TEMA = {
+    agradavel: 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300',
+    neutro: 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300',
+    desagradavel: 'bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300',
+    ambivalente: 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300',
+};
 
 export function renderTemas() {
     const container = document.getElementById('lista-temas');
@@ -6502,8 +6777,18 @@ export function renderTemas() {
     const busca = chaveTema(document.getElementById('busca-temas')?.value || '');
     const soSemAssunto = !!document.getElementById('filtro-temas-sem-assunto')?.checked;
     const ordem = document.getElementById('ordem-temas')?.value || 'alfabetica';
+    // '' = todas; 'sem' = só sem valência; senão, a chave de uma valência.
+    const filtroValencia = document.getElementById('filtro-temas-valencia')?.value || '';
     const contagem = contarTextosPorTema(db);
     const assuntos = [...db.assuntos].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    // A vitrine só entra na tela quando já existe algum convite: sem convite,
+    // o filtro, o seletor e o resumo ficam de fora.
+    const convites = listarTemasUniversais(db);
+    const temVitrine = convites.length > 0;
+    const rotuloSemVitrine = document.getElementById('rotulo-temas-sem-vitrine');
+    if (rotuloSemVitrine) rotuloSemVitrine.classList.toggle('hidden', !temVitrine);
+    const soSemVitrine =
+        temVitrine && !!document.getElementById('filtro-temas-sem-vitrine')?.checked;
 
     const linhas = (db.temas || []).map((t) => {
         const chave = chaveTema(t.nome);
@@ -6511,6 +6796,7 @@ export function renderTemas() {
             tema: t,
             textos: contagem.get(chave) || 0,
             assuntos: assuntos.filter((a) => (a.temaIds || []).some((id) => id == t.id)),
+            convites: universaisDoTema(db, t.id),
         };
     });
 
@@ -6521,14 +6807,22 @@ export function renderTemas() {
             linhas.filter((l) => l.assuntos.length === 0).map((l) => String(l.tema.id)),
         );
     }
-    // Temas que estavam sem assunto no retrato e já ganharam um nesta triagem.
-    const jaAtribuidos = soSemAssunto
-        ? linhas.filter((l) => triagemSemAssunto.has(String(l.tema.id)) && l.assuntos.length > 0)
-              .length
-        : 0;
+    if (!soSemVitrine) {
+        triagemSemVitrine = null;
+    } else if (!triagemSemVitrine) {
+        triagemSemVitrine = new Set(
+            linhas.filter((l) => l.convites.length === 0).map((l) => String(l.tema.id)),
+        );
+    }
+    // Temas que estavam sem assunto (ou sem convite) no retrato e já ganharam
+    // um nesta triagem. Quem ganhou os dois conta uma vez só.
+    const ganhouAlgo = (l) =>
+        (soSemAssunto && triagemSemAssunto.has(String(l.tema.id)) && l.assuntos.length > 0) ||
+        (soSemVitrine && triagemSemVitrine.has(String(l.tema.id)) && l.convites.length > 0);
+    const jaAtribuidos = linhas.filter(ganhouAlgo).length;
     const botaoAtualizar = document.getElementById('atualizar-temas-sem-assunto');
     if (botaoAtualizar) {
-        botaoAtualizar.classList.toggle('hidden', !soSemAssunto);
+        botaoAtualizar.classList.toggle('hidden', !soSemAssunto && !soSemVitrine);
         botaoAtualizar.textContent = jaAtribuidos
             ? `Atualizar lista (${jaAtribuidos} já atribuído${jaAtribuidos !== 1 ? 's saem' : ' sai'})`
             : 'Atualizar lista';
@@ -6538,14 +6832,69 @@ export function renderTemas() {
     const filtradas = linhas
         .filter((l) => !busca || chaveTema(l.tema.nome).includes(busca))
         .filter((l) => !soSemAssunto || triagemSemAssunto.has(String(l.tema.id)))
+        .filter((l) => !soSemVitrine || triagemSemVitrine.has(String(l.tema.id)))
+        .filter((l) => {
+            if (!filtroValencia) return true;
+            const v = normalizarValenciaTema(l.tema.valencia);
+            return filtroValencia === 'sem' ? !v : v === filtroValencia;
+        })
         .sort((a, b) =>
             ordem === 'usados'
                 ? b.textos - a.textos || a.tema.nome.localeCompare(b.tema.nome, 'pt-BR')
                 : a.tema.nome.localeCompare(b.tema.nome, 'pt-BR'),
         );
+    // A lista que a tela mostra é a base do "Selecionar todos" e do
+    // Shift-clique; a barra e a caixa "todos" acompanham a seleção.
+    definirTemasVisiveis(filtradas.map((l) => l.tema.id));
+    const barraTemas = document.getElementById('barra-acoes-temas');
+    if (barraTemas) {
+        const n = selecaoTemas.size;
+        barraTemas.classList.toggle('hidden', n === 0);
+        const contadorTemas = document.getElementById('contador-selecao-temas');
+        if (contadorTemas) {
+            contadorTemas.textContent = `${n} tema${n !== 1 ? 's' : ''} selecionado${n !== 1 ? 's' : ''}`;
+        }
+    }
+    // Select "Adicionar ao assunto" da barra em massa: os assuntos de agora; o
+    // bloco some quando não há assunto. Mantém a escolha se ela ainda existe.
+    const blocoAssuntoMassa = document.getElementById('temas-massa-assunto-bloco');
+    const selectAssuntoMassa = document.getElementById('temas-massa-assunto');
+    if (blocoAssuntoMassa) blocoAssuntoMassa.classList.toggle('hidden', assuntos.length === 0);
+    if (selectAssuntoMassa) {
+        const escolhido = selectAssuntoMassa.value;
+        selectAssuntoMassa.innerHTML = `<option value="">Escolha um assunto…</option>${assuntos
+            .map((a) => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`)
+            .join('')}`;
+        if (assuntos.some((a) => String(a.id) === escolhido)) selectAssuntoMassa.value = escolhido;
+    }
+    // Select "Adicionar à vitrine" da barra em massa: os convites de agora; o
+    // bloco some quando não há convite. Mantém a escolha se ela ainda existe.
+    const blocoVitrineMassa = document.getElementById('temas-massa-vitrine-bloco');
+    const selectVitrineMassa = document.getElementById('temas-massa-vitrine');
+    if (blocoVitrineMassa) blocoVitrineMassa.classList.toggle('hidden', !temVitrine);
+    if (selectVitrineMassa) {
+        const escolhido = selectVitrineMassa.value;
+        selectVitrineMassa.innerHTML = `<option value="">Escolha um convite…</option>${convites
+            .map((u) => `<option value="${u.id}">${escapeHtml(u.nome)}</option>`)
+            .join('')}`;
+        if (convites.some((u) => String(u.id) === escolhido)) selectVitrineMassa.value = escolhido;
+    }
+    const todosTemas = document.getElementById('toggle-todos-temas');
+    if (todosTemas) {
+        todosTemas.checked =
+            filtradas.length > 0 && filtradas.every((l) => selecaoTemas.has(String(l.tema.id)));
+        todosTemas.disabled = filtradas.length === 0;
+    }
     if (resumo) {
         const semAssunto = linhas.filter((l) => l.assuntos.length === 0).length;
+        const semVitrine = linhas.filter((l) => l.convites.length === 0).length;
+        // Só fala de valência quando já há algum Tema classificado, para a
+        // linha não ganhar ruído em quem ainda não usa o campo.
+        const semValencia = linhas.filter((l) => !normalizarValenciaTema(l.tema.valencia)).length;
+        const usaValencia = semValencia < linhas.length;
         resumo.textContent = `${filtradas.length} de ${linhas.length} tema${linhas.length !== 1 ? 's' : ''} · ${semAssunto} sem assunto${
+            temVitrine ? ` · ${semVitrine} sem vitrine` : ''
+        }${usaValencia ? ` · ${semValencia} sem valência` : ''}${
             jaAtribuidos
                 ? ` · ${jaAtribuidos} atribuído${jaAtribuidos !== 1 ? 's' : ''} nesta triagem`
                 : ''
@@ -6556,15 +6905,17 @@ export function renderTemas() {
         container.innerHTML = `<div class="text-center text-gray-400 dark:text-slate-500 text-sm py-6">${
             linhas.length === 0
                 ? 'Nenhum tema cadastrado ainda.'
-                : soSemAssunto && !busca && triagemSemAssunto.size === 0
+                : soSemAssunto && !soSemVitrine && !busca && triagemSemAssunto.size === 0
                   ? 'Todos os temas já têm assunto.'
-                  : 'Nenhum tema bate com o filtro.'
+                  : soSemVitrine && !soSemAssunto && !busca && triagemSemVitrine.size === 0
+                    ? 'Todos os temas já estão na vitrine.'
+                    : 'Nenhum tema bate com o filtro.'
         }</div>`;
         return;
     }
 
     container.innerHTML = filtradas
-        .map(({ tema: t, textos, assuntos: dele }) => {
+        .map(({ tema: t, textos, assuntos: dele, convites: nosConvites }) => {
             const badges = dele
                 .map(
                     (a) =>
@@ -6576,24 +6927,65 @@ export function renderTemas() {
                 disponiveis.length === 0
                     ? ''
                     : `<select data-tema="${escapeHtml(t.nome)}" onchange="atribuirTemaDoPainel(this)" aria-label="Atribuir o tema ${escapeHtml(t.nome)} a um assunto" style="width: auto; margin-bottom: 0">
-                        <option value="">${dele.length ? 'Adicionar a…' : 'Atribuir a…'}</option>
+                        <option value="">${dele.length ? 'Adicionar ao assunto…' : 'Atribuir a assunto…'}</option>
                         ${disponiveis.map((a) => `<option value="${a.id}">${escapeHtml(a.nome)}</option>`).join('')}
+                    </select>`;
+            // Vitrine de leitura: um selo por convite em que o tema já está
+            // e um seletor com os convites que ainda não o têm.
+            const selosVitrine = nosConvites
+                .map(
+                    (u) =>
+                        `<span title="Convite da Vitrine de leitura" class="text-[9px] bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded mr-1 inline-block">◇ ${escapeHtml(u.nome)}</span>`,
+                )
+                .join('');
+            const convitesLivres = convites.filter(
+                (u) => !nosConvites.some((n) => String(n.id) === String(u.id)),
+            );
+            const seletorVitrine =
+                convitesLivres.length === 0
+                    ? ''
+                    : `<select data-tema-id="${t.id}" onchange="adicionarTemaAVitrineDoCard(this)" aria-label="Adicionar o tema ${escapeHtml(t.nome)} à vitrine" style="width: auto; margin-bottom: 0">
+                        <option value="">Adicionar à vitrine…</option>
+                        ${convitesLivres.map((u) => `<option value="${u.id}">${escapeHtml(u.nome)}</option>`).join('')}
                     </select>`;
             const nota = t.notas
                 ? `<p class="text-[11px] text-gray-500 dark:text-slate-400 mt-1 line-clamp-2">${escapeHtml(t.notas)}</p>`
                 : '';
+            const valencia = normalizarValenciaTema(t.valencia);
+            // Seletor no próprio cartão (definirValenciaDoCard): colorido quando
+            // há valência, cinza e discreto quando o tema ainda não tem.
+            const opcoesValencia = [['', 'Sem valência'], ...Object.entries(ROTULOS_VALENCIA_TEMA)]
+                .map(
+                    ([v, rotulo]) =>
+                        `<option value="${v}"${v === valencia ? ' selected' : ''}>${rotulo}</option>`,
+                )
+                .join('');
+            const seloValencia = `<select data-valencia="${valencia}" data-tema-id="${t.id}" onchange="definirValenciaDoCard(this)" title="Valência do tema" aria-label="Valência do tema ${escapeHtml(t.nome)}" class="text-[10px] rounded font-medium cursor-pointer ${valencia ? CLASSES_VALENCIA_TEMA[valencia] : 'bg-transparent text-gray-400 dark:text-slate-500 border border-dashed border-gray-300 dark:border-slate-600'}" style="width: auto; margin-bottom: 0; padding: 1px 4px; font-size: 10px">${opcoesValencia}</select>`;
             // Na triagem, tema que já ganhou assunto continua na lista, marcado.
-            const atribuido = soSemAssunto && dele.length > 0;
+            const ganhouAssunto =
+                soSemAssunto && triagemSemAssunto.has(String(t.id)) && dele.length > 0;
+            const ganhouConvite =
+                soSemVitrine && triagemSemVitrine.has(String(t.id)) && nosConvites.length > 0;
+            const atribuido = ganhouAssunto || ganhouConvite;
+            const textoAtribuido =
+                ganhouAssunto && ganhouConvite
+                    ? '✓ atribuído e na vitrine'
+                    : ganhouConvite
+                      ? '✓ na vitrine'
+                      : '✓ atribuído';
             return `
 <div data-atribuido="${atribuido}" class="bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-gray-200 dark:border-slate-700 ${atribuido ? 'border-l-4 border-l-emerald-400 dark:border-l-emerald-500' : ''} shadow-sm flex justify-between items-start gap-3">
+    <input type="checkbox" data-action="toggle-tema" data-id="${t.id}" ${selecaoTemas.has(String(t.id)) ? 'checked' : ''} aria-label="Selecionar ${escapeHtml(t.nome)}" class="w-4 h-4 flex-shrink-0 mt-1 mb-0" />
     <div class="flex-1 min-w-0">
         <div class="flex flex-wrap items-baseline gap-x-2">
             <h4 class="font-bold text-gray-800 dark:text-slate-100">${escapeHtml(t.nome)}</h4>
             <span class="text-[10px] text-gray-400 dark:text-slate-500 font-mono">${textos} texto${textos !== 1 ? 's' : ''}</span>
-            ${atribuido ? '<span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">✓ atribuído</span>' : ''}
+            ${seloValencia}
+            ${atribuido ? `<span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">${textoAtribuido}</span>` : ''}
         </div>
         ${nota}
         <div class="mt-2 flex flex-wrap items-center gap-y-1">${badges}${seletor}</div>
+        ${selosVitrine || seletorVitrine ? `<div class="mt-1 flex flex-wrap items-center gap-y-1">${selosVitrine}${seletorVitrine}</div>` : ''}
     </div>
     <div class="flex gap-3 flex-shrink-0">
         <button data-action="ver-textos-tema" data-id="${t.id}" title="Ver textos" aria-label="Ver textos" class="inline-flex items-center justify-center p-1.5 rounded text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700">${ICONE_LISTA_TEXTOS}</button>
@@ -6604,6 +6996,11 @@ export function renderTemas() {
 </div>`;
         })
         .join('');
+    // Garante o valor mostrado em cada seletor de valência (o atributo
+    // `selected` das opções nem sempre vale em DOM simulado).
+    container.querySelectorAll('select[data-valencia]').forEach((sel) => {
+        sel.value = sel.dataset.valencia;
+    });
 }
 
 // O "hoje" das durações em andamento depende do fuso (ver fuso-horario.js): ao

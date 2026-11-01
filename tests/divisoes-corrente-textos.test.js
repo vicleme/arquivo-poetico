@@ -323,17 +323,17 @@ describe('colunas Corrente literária e Divisões de corrente', () => {
 describe('busca: continua igual (F14-D8)', () => {
     beforeEach(zerar);
 
-    it('movimento:Romantismo acha também o texto ligado só a uma divisão; a divisão acha só aquela', () => {
+    it('corrente:Romantismo acha também o texto ligado só a uma divisão; a divisão acha só aquela', () => {
         db.poemas = [poema(1, [3]), poema(2, [4]), poema(3, [1]), poema(4, [5])];
         const lista = db.poemas.map((p) => decorarCamposBusca({ ...p }, 'poemas'));
         const ids = (q) => filtrarTextos(lista, q).map((i) => i.id);
-        assert.deepEqual(ids('movimento:Romantismo'), [1, 2, 3]);
-        assert.deepEqual(ids('movimento:"Romantismo em Portugal"'), [2]);
-        assert.deepEqual(ids('movimento:Condoreirismo'), [1]);
-        assert.deepEqual(ids('movimentodireto:Condoreirismo'), [1]);
+        assert.deepEqual(ids('corrente:Romantismo'), [1, 2, 3]);
+        assert.deepEqual(ids('corrente:"Romantismo em Portugal"'), [2]);
+        assert.deepEqual(ids('corrente:Condoreirismo'), [1]);
+        assert.deepEqual(ids('correntedireta:Condoreirismo'), [1]);
         // A busca é por trecho do nome: "Romantismo" também está em "Romantismo em Portugal".
         // É o limite que a tela de Estatísticas avisa (ver `consultaDaCorrente`).
-        assert.deepEqual(ids('movimentodireto:Romantismo'), [2, 3]);
+        assert.deepEqual(ids('correntedireta:Romantismo'), [2, 3]);
     });
 });
 
@@ -505,13 +505,10 @@ describe('Estatísticas: textos por corrente, Agrupado e Separado', () => {
         }
     });
 
-    it('a consulta usa movimento: (hierárquica) no Agrupado e movimentodireto: no Separado', () => {
-        assert.equal(E.consultaDaCorrente('agrupado', 'Romantismo'), 'movimento:"Romantismo"');
-        assert.equal(
-            E.consultaDaCorrente('separado', 'Romantismo'),
-            'movimentodireto:"Romantismo"',
-        );
-        assert.equal(E.consultaDaCorrente('agrupado', 'A "b"'), 'movimento:"A \\"b\\""');
+    it('a consulta usa corrente: (hierárquica) no Agrupado e correntedireta: no Separado', () => {
+        assert.equal(E.consultaDaCorrente('agrupado', 'Romantismo'), 'corrente:"Romantismo"');
+        assert.equal(E.consultaDaCorrente('separado', 'Romantismo'), 'correntedireta:"Romantismo"');
+        assert.equal(E.consultaDaCorrente('agrupado', 'A "b"'), 'corrente:"A \\"b\\""');
     });
 
     it('o resumo diz o modo, o que fica fora e por que a soma passa do total', () => {

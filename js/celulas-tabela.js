@@ -20,12 +20,18 @@
 // `ICONE_EXCLUIR` de lá dentro de corpo de função, nunca no topo.
 // ============================================================
 
+import { valenciaDoTexto, rotuloValenciaTexto } from './valencia-texto.js';
 import { db } from './db.js';
+import { ehSorteavel } from './sorteavel.js';
+import { ehNotaPublica } from './comentarios-publicos.js';
+import { ehAutorEmSigilo } from './autor-em-sigilo.js';
+import { leituraAutonomaDe, rotuloLeituraAutonoma } from './leitura-autonoma.js';
 import {
     ROTULOS_CENTRALIDADE_PERSONAGEM,
     normalizarCentralidadePersonagem,
     normalizarPapeisPersonagem,
 } from './personagens.js';
+import { apelidoDoPapelPersonagem } from './papeis-personagem.js';
 import { rotuloEco } from './ancora-eco.js';
 import {
     formatarDataParcial,
@@ -43,9 +49,11 @@ import {
     nomeAutoriaExibido,
     SINALIZACOES_CATEGORIAS,
     textoDeEtiquetas,
+    valorDaCategoria,
     renderCoracoesHtml,
     OPCOES_GRAFIA,
     temasComPapel,
+    nomesTemasDoTexto,
     assuntosComPapel,
     ROTULOS_PAPEL_TEMA_CURTO,
     rotuloSelecaoEmLote,
@@ -54,7 +62,9 @@ import {
 import { opcoesOcultasDosPeriodos } from './ocultas-periodos.js';
 import { getAcoesAtivas, renderSeletorAcoes } from './acoes-coluna.js';
 import { renderCheckboxDownloadAbrangenteAcoes } from './download-abrangente.js';
+import { renderMetadadosAcoes } from './metadados-download.js';
 import { renderIncluirOcultosAcoes } from './ocultos-exportacao.js';
+import { renderInfosPapelAcoes } from './infos-papel.js';
 import { DEFINICAO_COLUNAS, getColunasAtivas, renderSeletorColunas } from './colunas.js';
 import {
     getColunasContagem,
@@ -182,7 +192,10 @@ export function badgesEtiquetasPorCategoria(
     { semTema = false, semTerritorialidade = false } = {},
 ) {
     const badges = Object.entries(SINALIZACOES_CATEGORIAS).flatMap(([categoria, campo]) => {
-        const valor = textoDeEtiquetas(item[campo]);
+        const valor =
+            categoria === 'tema'
+                ? valorDaCategoria(item, 'tema', { temas: db.temas })
+                : textoDeEtiquetas(item[campo]);
         if (!valor) return [];
         if (semTema && categoria === 'tema') return [];
         if (semTerritorialidade && categoria === 'territorialidade') return [];
@@ -192,14 +205,18 @@ export function badgesEtiquetasPorCategoria(
         if (categoria === 'tema' && Array.isArray(item.temas)) {
             return temasComPapel(item, db.temas).map((e) => badgeTemaComPapel(e, corClasse));
         }
-        return valor
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean)
-            .map(
-                (t) =>
-                    `<span class="text-[9px] ${corClasse} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(t)}</span>`,
-            );
+        // Tema sem `temas` (dado de fora): um nome por item, sem quebrar por vírgula.
+        const nomes =
+            categoria === 'tema'
+                ? nomesTemasDoTexto(item, db.temas)
+                : valor
+                      .split(',')
+                      .map((t) => t.trim())
+                      .filter(Boolean);
+        return nomes.map(
+            (t) =>
+                `<span class="text-[9px] ${corClasse} px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(t)}</span>`,
+        );
     });
     return badges.length
         ? badges.join('')
@@ -258,24 +275,19 @@ export function badgesPessoas(pessoas) {
             if (!nome) return '';
             const papeis = Array.isArray(p.papeis) ? p.papeis.filter(Boolean) : [];
             const iniciais = escapeHtml(iniciaisPapeisPessoa(papeis));
-            const title = papeis.length ? `${nome} (${papeis.join(', ')})` : nome;
+            const base = papeis.length ? `${nome} (${papeis.join(', ')})` : nome;
+            const nota = typeof p.nota === 'string' ? p.nota.trim() : '';
+            const title = nota ? `${base}\n${nota}` : base;
             return `<span title="${escapeHtml(title)}" class="text-[9px] bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded mr-1 mb-1 inline-block">${escapeHtml(nome)}${iniciais ? ` <span class="text-black dark:text-white font-medium">${iniciais}</span>` : ''}</span>`;
         })
         .join('');
 }
 
 // Coluna de Personagens: um chip por vínculo (nome do cadastro db.personagens),
-// com as iniciais dos papéis (Vo/In/Ap/Me/Al) e, na centralidade, o mesmo ★ (protagonista) e ☆
+// com os apelidos dos papéis (do registro `db.papeisPersonagem`; de fábrica Voz/Inter/Apar/Menc/Alus) e, na centralidade, o mesmo ★ (protagonista) e ☆
 // (secundário) do papel de Tema. Personagem só com Menção/Alusão não tem
 // centralidade (não se aplica), então fica sem marcador. O title traz tudo por
 // extenso: "Nome (Papéis; centralidade)". Personagem sem cadastro não gera chip.
-const INICIAIS_PAPEL_PERSONAGEM = {
-    Voz: 'Vo',
-    Interlocutor: 'In',
-    Aparição: 'Ap',
-    Menção: 'Me',
-    Alusão: 'Al',
-};
 export function badgesPersonagens(item) {
     const vazio = '<span class="text-gray-300 dark:text-slate-600">—</span>';
     if (!Array.isArray(item?.personagens) || !item.personagens.length) return vazio;
@@ -285,7 +297,7 @@ export function badgesPersonagens(item) {
             if (!nome) return '';
             const papeis = normalizarPapeisPersonagem(e.papeis);
             const centralidade = normalizarCentralidadePersonagem(e.centralidade, papeis);
-            const iniciais = papeis.map((p) => INICIAIS_PAPEL_PERSONAGEM[p]).join('·');
+            const iniciais = papeis.map((p) => apelidoDoPapelPersonagem(p)).join('·');
             const partes = [];
             if (papeis.length) partes.push(papeis.join(', '));
             if (centralidade)
@@ -568,6 +580,44 @@ export function celulaAutoclassificacao(item) {
     return `<td class="p-4">${renderCoracoesHtml(item.autoclassificacao, { somenteLeitura: true })}</td>`;
 }
 
+// Célula da coluna "Sorteável": o selo só aparece nos textos marcados.
+export function celulaSorteavel(item) {
+    return ehSorteavel(item)
+        ? '<td class="p-4"><span class="text-xs font-semibold text-indigo-700 dark:text-indigo-300">Sim</span></td>'
+        : '<td class="p-4 text-xs text-gray-400 dark:text-slate-500">·</td>';
+}
+
+// Célula da coluna "Valência": a faixa final (ajuste do autor ou derivada dos
+// temas), com "(ajuste)" quando é o juízo do autor, e "—" sem valência.
+export function celulaValencia(item) {
+    const v = valenciaDoTexto(item, db.temas);
+    if (!v.faixa) return '<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>';
+    const marca = v.origem === 'ajuste' ? ' (ajuste)' : '';
+    return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400">${escapeHtml(rotuloValenciaTexto(v.faixa))}${marca}</td>`;
+}
+
+// Célula da coluna "Leitura autônoma": Lê-se sozinho (o padrão) aparece como
+// "—", como a Grafia nunca definida; os outros três mostram o rótulo.
+export function celulaLeituraAutonoma(item) {
+    const valor = leituraAutonomaDe(item);
+    if (!valor) return '<td class="p-4 text-xs text-gray-300 dark:text-slate-600">—</td>';
+    return `<td class="p-4 text-xs text-gray-500 dark:text-slate-400">${escapeHtml(rotuloLeituraAutonoma(valor))}</td>`;
+}
+
+// Célula da coluna "Autor em sigilo": o selo só aparece nos textos marcados.
+export function celulaAutorEmSigilo(item) {
+    return ehAutorEmSigilo(item)
+        ? '<td class="p-4"><span class="text-xs font-semibold text-indigo-700 dark:text-indigo-300">Sim</span></td>'
+        : '<td class="p-4 text-xs text-gray-400 dark:text-slate-500">·</td>';
+}
+
+// Célula da coluna "Notas públicas": o selo só aparece nos textos marcados.
+export function celulaNotaPublica(item) {
+    return ehNotaPublica(item)
+        ? '<td class="p-4"><span class="text-xs font-semibold text-indigo-700 dark:text-indigo-300">Sim</span></td>'
+        : '<td class="p-4 text-xs text-gray-400 dark:text-slate-500">·</td>';
+}
+
 // Célula da coluna "Campos Preenchidos" (ver contarCamposPreenchidos em
 // exportar-md.js) — compartilhada entre Poemas e Prosas. Mostra "N/TOTAL"
 // mais uma barrinha de preenchimento, pra bater o olho e comparar a
@@ -742,8 +792,14 @@ const COLUNA_CAMPO_BUSCA = {
         localEscrita: '_buscaLocalEscrita',
         territorialidade: '_buscaTerritorialidade',
         etiquetas: '_buscaSinalizacoes',
-        temas: 'sinalizacoesTema',
+        temas: '_buscaTema',
         notas: 'notas',
+        notasPublicas: '_buscaNotaPublica',
+        comentariosPublicos: 'comentariosPublicos',
+        sorteavel: '_buscaSorteavel',
+        autorEmSigilo: '_buscaAutorEmSigilo',
+        leituraAutonoma: '_buscaLeituraAutonoma',
+        valencia: '_buscaValencia',
         ocultacao: 'ocultacao',
         conteudoSensivel: 'conteudoSensivel',
         vocabularioHiperacionante: 'vocabularioHiperacionante',
@@ -759,6 +815,7 @@ const COLUNA_CAMPO_BUSCA = {
         envios: '_buscaEnvios',
         reconhecimentos: '_buscaReconhecimentos',
         autoavaliacao: 'autoavaliacao',
+        autoclassificacao: '_buscaAutoclassificacao',
         epocaRetratada: '_buscaEpoca',
         eventosBiograficos: '_buscaEventoBiografico',
         eventosHistoricos: '_buscaEventoHistorico',
@@ -790,12 +847,19 @@ const COLUNA_CAMPO_BUSCA = {
         dataPublicacao: '_buscaDataPublicacao',
         genero: 'genero',
         etiquetas: '_buscaSinalizacoes',
-        temas: 'sinalizacoesTema',
+        temas: '_buscaTema',
         notas: 'notas',
+        notasPublicas: '_buscaNotaPublica',
+        comentariosPublicos: 'comentariosPublicos',
+        sorteavel: '_buscaSorteavel',
+        autorEmSigilo: '_buscaAutorEmSigilo',
+        leituraAutonoma: '_buscaLeituraAutonoma',
+        valencia: '_buscaValencia',
         autoria: '_buscaAutoria',
         envios: '_buscaEnvios',
         reconhecimentos: '_buscaReconhecimentos',
         autoavaliacao: 'autoavaliacao',
+        autoclassificacao: '_buscaAutoclassificacao',
         // Item 4: mesmas entradas de Poemas para os campos que Prosa
         // acabou de ganhar (ver decorarCamposBusca acima — já genérico,
         // roda igual pras duas tabelas, então os campos decorados
@@ -974,5 +1038,15 @@ export function atualizarPainelAcoes(tabela, painelId) {
     // "Incluir dados ocultados" vale para os textos (Poemas e Prosas); as demais
     // tabelas não exportam Pessoa nem Período Biográfico do texto.
     const ocultos = tabela === 'poemas' || tabela === 'prosas' ? renderIncluirOcultosAcoes() : '';
-    painel.innerHTML = renderSeletorAcoes(tabela) + extra + ocultos;
+    // "Infos de papel" (legenda dos papéis de Pessoa) também vale só para os textos.
+    const infosPapel = tabela === 'poemas' || tabela === 'prosas' ? renderInfosPapelAcoes() : '';
+    // "Metadados" também vale só para os textos (Poemas e Prosas).
+    const metadados = tabela === 'poemas' || tabela === 'prosas' ? renderMetadadosAcoes() : '';
+    // Os checks convivem num bloco só, em ordem alfabética (Dados ocultados,
+    // Infos de papel, Metadados, Progressão, Sonoridade).
+    const checks = ocultos + infosPapel + metadados + extra;
+    const blocoChecks = checks
+        ? `<div class="mt-3 pt-3 border-t border-gray-100 dark:border-slate-700 flex flex-wrap items-center gap-x-5 gap-y-2">${checks}</div>`
+        : '';
+    painel.innerHTML = renderSeletorAcoes(tabela) + blocoChecks;
 }

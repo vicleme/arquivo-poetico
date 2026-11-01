@@ -40,10 +40,33 @@ Before any rule, what each word means in this app:
 - **It isn't a tag (etiqueta).** Tags describe **how** the text is made or where it comes from (Tradition, Style, Tone, Imagery Domain and others). A Theme is what the text is **about**. "Astrologia" as vocabulary used is an Imagery Domain; "destino" or "determinismo", if the text discusses it, is a Theme. "Irônico" is a Tone, never a Theme.
 - **It isn't a summary.** A Theme isn't a sentence about the text. It's a short label that other texts could also have, because the field's value lies in grouping, counting and comparing.
 
+## Theme valence
+
+Each Theme in the registry can have a **valence**: how pleasant or unpleasant its subject matter is. It is a field of the **Theme registry**, not of the text: it is the same for every text that has the Theme. The values are `agradavel` (pleasant), `neutro` (neutral), `desagradavel` (unpleasant) and `ambivalente` (ambivalent); no valence means "not classified yet".
+
+- **It describes the affect of the theme, not a moral judgment.** Grief and violence are unpleasant; friendship is pleasant. Grief is unpleasant without being "bad", and a protest poem about violence is still about an unpleasant theme.
+- **Ambivalent** is what weighs and relieves at once (longing, love, memory, desire). Don't use Neutral for that: Neutral is what truly neither weighs nor relieves (everyday life, landscape).
+- Valence does **not say how the text treats** the theme (that is Tone, a tag). "Friendship" in a poem about betrayal stays pleasant in the registry.
+- When suggesting valences for many Themes, treat them as a **suggestion for the person to review**, never as final data. When torn between two values, prefer Ambivalent over forcing Pleasant or Unpleasant, and leave unclassified any Theme you don't know.
+- **Format for handing valences to the person.** When asked for valences for many Themes, return a list of blocks `Valence: Theme; Theme`, one block per valence, with the names exactly as the registry writes them, for the person to paste into "Definir por lista" (Valência field) in the Themes tab. Example: `Desagradável: Luto; Violência simbólica` and, on the next line, `Agradável: Cotidiano; Amizade`. The headers the app accepts are Agradável, Neutro, Desagradável and Ambivalente (with or without accents and capitals), and `Sem valência:` clears the valence. Put each Theme in **one block only**: a Theme in two valences is a conflict and the app leaves it out. The app **never creates a Theme**: a name that is not in the registry goes to the report and nothing is saved for it. A Theme with a comma in its name ("Amor, perda") is kept as written, with no stray comma at the end.
+- **List by Subject or by Vitrine.** The same "Definir por lista" block has an Assunto field and a Vitrine field. To link Themes to Subjects, return blocks `Subject name: Theme; Theme` (one block per Subject, with the names exactly as the registry writes them); for the vitrine, `Invitation name: Theme; Theme`. In these two fields the list **only adds**: the Theme enters the Subject or invitation without leaving any other, and the same Theme can appear in more than one block. The app never creates a Theme, Subject or invitation: whatever does not exist goes to the report.
+- **Import fields** files carry no valence: it is set in the Themes tab (one by one, in bulk, by list, or with the "Aplicar valências sugeridas" button). The JSON export carries it on each theme of a text, and the Additive Import only fills the valence of a Theme that doesn't have one yet.
+
+## Reading showcase (Vitrine de leitura) and the reading draw
+
+The **Vitrine de leitura** (reading showcase) is the set of **invitations** for readers; each invitation (for example "When love ends") groups several Themes from the registry. It was formerly called "universal Theme", and the data key is still `temasUniversais`. It exists only for the reading draw (the "Sortear leitura" page, under Ferramentas).
+
+- **It is not a Subject and not a field of the text.** A Subject organizes the registry and has no limit; an invitation belongs to the showcase, there are at most 12, and the text never stores it: a text still has only Themes, and the invitation reaches it through the Themes it groups. A Theme can be in more than one invitation.
+- An invitation is just a name and a list of Themes **that already exist in the registry**. Never invent a Theme to fit an invitation.
+- When suggesting invitations or the Themes of each, treat it as a **suggestion for the person to review**. Prefer short invitation names in reader language, not catalog language.
+- The author decides which texts can be drawn, through the text's `sorteavel` mark (see `campos-poema-prosa-for-ai`). Never set it on your own.
+- In the **Temas** tab, each card has an "Adicionar à vitrine…" select (only the invitations that do not yet group the Theme) and a badge for each invitation the Theme is already in; the **Só sem vitrine** filter (shown only when some invitation exists) lists the Themes no invitation groups, with the same triage as "Só sem assunto", and bulk editing has "Adicionar à vitrine". All of this only adds Themes to existing invitations; it never creates an invitation or a Theme.
+- **Import fields** files and the Additive Import carry no invitations: they are built in the "Vitrine de leitura" block of the Assuntos tab. The JSON backup carries them (`temasUniversais`).
+
 ## How to name
 
 - Write the name the way the registry already does: first letter capitalised, the rest lowercase ("Resiliência emocional", "Pressão estética"). For two concepts that go together, a slash with no spaces ("Luto/Finitude", "Desigualdade social/Pobreza").
-- **A comma can't exist in a Theme name** (it is the internal separator). Use a slash or rephrase.
+- **A comma is allowed in a Theme name, but prefer a slash or rewording.** The name is kept as written: "Amor, perda" is one Theme, never two. The only characters a name can't have are `;` and `|`, which the app turns into a space, because they are the separators: `;` separates several Themes when typing (and in the Theme filters of the Export tab), and `|` separates them in the `sinal_tema` column of the `.csv`. In the `.md` and in the text view the Themes of a text are separated by commas, and by semicolons when any of them has a comma in its name, so a comma in a name makes those lines harder to read. In the JSON, `temas` is a list, so nothing is ambiguous there.
 - Comparison ignores case and accents: "saudade" and "Saudade" are the same Theme.
 - **Reuse what exists.** The app only recognises equality by case and accent. A plural ("Memória" and "Memórias"), a hyphen, a synonym ("Efemeridade" and "Transitoriedade") and spelling variants become **duplicate Themes**, which later have to be merged by hand.
 - "Luto" and "Luto/Finitude" are not duplicates: one is the general, the other the specific. Even so, don't create the specific one if the registry already has one that works.
@@ -68,7 +91,7 @@ Default guidance. The person can calibrate it, usually with a sample of texts an
 ## Two different tasks
 
 1. **Classify texts** (fill in Themes and Subjects of texts that already exist): deliver the "Importar campos" `.json`, using the names from the vocabulary.
-2. **Organise loose Themes** (group into Subjects the Themes that don't belong to any yet): the Subjects tab has the **Baixar .md** button, which exports each Subject with its Themes (and the count of texts for each) and the "Temas sem assunto" section. The Themes tab has its own **Baixar .md**, with each Theme, its text count, the Subjects it belongs to and its note, split into "Temas com assunto" and "Temas sem assunto". With that file, the useful answer is a `.json` with only `ligacoes` (and `textos` empty), which the import reads and shows in the preview. A Theme that fits no existing Subject stays out, listed separately.
+2. **Organise loose Themes** (group into Subjects the Themes that don't belong to any yet): the Subjects tab has the **Baixar .md** button, which exports each Subject with its Themes (and the count of texts for each) and the "Temas sem assunto" section. The Themes tab has its own **Baixar .md**, with each Theme, its text count, its valence (when classified), the Subjects it belongs to, the Vitrine de leitura invitations it is in ("Vitrine:") and its note, split into "Temas com assunto" and "Temas sem assunto", and ends with a "Vitrine de leitura" section (each invitation and the Themes it groups) when some invitation exists. The "Vitrine de leitura" block of the Assuntos tab has its own **Baixar .md** (`vitrine.md`): each invitation with the Themes it groups and, at the end, "Temas fora da vitrine" (most used first) with the text count of each Theme; useful to ask an AI which invitation each loose Theme would fit. With that file, the useful answer is a `.json` with only `ligacoes` (and `textos` empty), which the import reads and shows in the preview. A Theme that fits no existing Subject stays out, listed separately.
 
 In either task, nothing is saved before the person sees the preview, and the import takes a safety snapshot and can be undone.
 
@@ -81,4 +104,4 @@ In either task, nothing is saved before the person sees the preview, and the imp
 - Putting in `assuntos` a Subject that doesn't exist, or that none of the text's Themes reaches: it goes to the report and stays out.
 - Creating a new Theme and using it in `assuntos` without linking it in `ligacoes`: the Theme doesn't belong to any Subject yet, and the Subject goes to the report.
 - Putting in `ligacoes` a Subject that doesn't exist: the import doesn't create Subjects, and the link stays out.
-- A comma inside a Theme name.
+- A `;` or `|` inside a Theme name (the app turns it into a space), or a comma where a slash or rewording would do.

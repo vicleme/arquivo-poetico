@@ -11,6 +11,7 @@ import {
     excluirTemaDoCadastro,
 } from '../js/temas.js';
 import { nomesTemasDoAssunto } from '../js/utils.js';
+import { nomesDosTemas } from './helpers/temas-do-texto.js';
 
 function dbBase() {
     return {
@@ -74,9 +75,9 @@ describe('renomearTema', () => {
         const id = db.temas.find((t) => t.nome === 'Machismo').id;
         const r = renomearTema(db, id, 'Misoginia');
         assert.deepEqual(r, { ok: true, textos: 3, assuntos: 2 });
-        assert.equal(db.poemas[0].sinalizacoesTema, 'Misoginia, Brasil');
-        assert.equal(db.poemas[1].sinalizacoesTema, 'Misoginia');
-        assert.equal(db.prosas[0].sinalizacoesTema, 'Amor, Misoginia');
+        assert.equal(nomesDosTemas(db.poemas[0], db), 'Misoginia, Brasil');
+        assert.equal(nomesDosTemas(db.poemas[1], db), 'Misoginia');
+        assert.equal(nomesDosTemas(db.prosas[0], db), 'Amor, Misoginia');
         // Assunto guarda ids: o nome novo aparece sem nenhum Assunto ser reescrito.
         assert.deepEqual(nomesTemasDoAssunto(db.assuntos[0], db.temas), ['Misoginia', 'Fantasma']);
         assert.deepEqual(nomesTemasDoAssunto(db.assuntos[1], db.temas), ['Misoginia']);
@@ -89,7 +90,7 @@ describe('renomearTema', () => {
         assert.equal(renomearTema(db, id, '  ').motivo, 'vazio');
         const r = renomearTema(db, id, 'brasil');
         assert.equal(r.motivo, 'duplicado');
-        assert.equal(db.poemas[0].sinalizacoesTema, 'Machismo, Brasil');
+        assert.equal(nomesDosTemas(db.poemas[0], db), 'Machismo, Brasil');
     });
 
     it('permite corrigir só caixa/acento do próprio nome', () => {
@@ -97,7 +98,7 @@ describe('renomearTema', () => {
         sincronizarTemas(db);
         const id = db.temas.find((t) => t.nome === 'Amor').id;
         assert.equal(renomearTema(db, id, 'AMOR').ok, true);
-        assert.equal(db.prosas[0].sinalizacoesTema, 'AMOR, Machismo');
+        assert.equal(nomesDosTemas(db.prosas[0], db), 'AMOR, Machismo');
     });
 });
 

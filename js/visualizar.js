@@ -15,27 +15,39 @@
 // exportarItem() (exportar.js) com o tipo/id guardados aqui.
 // ============================================================
 
+import { textoDaValencia } from './valencia-texto.js';
+import { ehSorteavel } from './sorteavel.js';
+import { rotuloLeituraCondicionada } from './leitura-autonoma.js';
+import { ehAutorEmSigilo } from './autor-em-sigilo.js';
+import { ehNotaPublica } from './comentarios-publicos.js';
+import { textoDaDataDaEntrada } from './data-da-entrada-texto.js';
 import {
     garantirModal,
     toggleModal,
     aoFecharModalUmaVez,
     cancelarAoFecharModal,
 } from './modais.js';
+import { textoAutoresDaEntrada } from './autores-da-obra.js';
+import { rotuloDaOrigem } from './origem-da-obra.js';
 import { db, deleteItem } from './db.js';
+import { titulosDeColetaneasDoTexto } from './coletaneas-do-texto.js';
+import { textosApareceEm } from './aparicoes-do-texto.js';
 import { editarPoema, editarProsa, rastreadorPoema } from './forms.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
 import { caminhoDaCorrente, idsDeCorrentesDeTopo, idsDeDivisoes } from './correntes-hierarquia.js';
 import { textoPersonagensComPapel } from './personagens.js';
 import { itensDaSelecao, exportarItem } from './exportar.js';
-import { isDownloadAbrangenteAtivo } from './download-abrangente.js';
+import { montarCaixasSonoridadeProgressao } from './download-abrangente.js';
+import { montarControlesMetadados } from './metadados-download.js';
 import { getFormatoBaixar } from './acoes-coluna.js';
 import { montarControlesIncluirOcultos } from './ocultos-exportacao.js';
+import { montarControlesInfosPapel } from './infos-papel.js';
 import {
     INFO_STATUS,
     textoPessoas,
     textoGrupos,
     textoAutoria,
-    titulosPorIds,
+    itensPorIds,
     livroSecaoStr,
 } from './exportar-md.js';
 import {
@@ -48,17 +60,24 @@ import {
     jargaoGiriaDoItem,
     textoAssuntosComPapel,
     agruparIntertextualidadePorTipo,
+    agruparIntertextualidadePorRelacao,
+    partesEntradaIntertexto,
     corpoEntradaHipertextualidade,
     escapeHtml,
     abrirModalConfirmacao,
     sanitizarTextoRico,
+    realcarEnfaseMarkdown,
     renderCoracoesHtml,
     formatarAutoclassificacaoTexto,
     autoclassificacaoValida,
     linhasFonteTexto,
     htmlAcessoEm,
+    tipoObraDaEntrada,
+    textoLocalizacaoDoTexto,
+    rotuloLocalizacaoDoTexto,
 } from './utils.js';
 import { textoLocalEscrita, textoTerritorialidadeComCaminho } from './locais.js';
+import { descricaoPessoaPublica } from './caracterizacao-pessoa-publica.js';
 
 // tipo/id do item atualmente aberto no modal — os botões de Baixar do
 // próprio modal usam esse estado em vez de data-attributes, já que o
@@ -66,40 +85,10 @@ import { textoLocalEscrita, textoTerritorialidadeComCaminho } from './locais.js'
 // uma vez, ver modais.js).
 let itemAtual = null;
 
-// item.texto guarda conteúdo HÍBRIDO, não HTML puro: quebras de linha
-// são \n de verdade (uma por verso — por isso o container abaixo leva
-// white-space: pre-wrap, não <br>), negrito/itálico são inseridos pela
-// toolbar como markdown puro (**negrito**/_itálico_ — ver wrapText/
-// applyStyle em editor.js), e só sublinhado/cor/fonte/tamanho/
-// alinhamento são HTML de verdade (<u>, <div style="...">, já cobertos
-// por sanitizarTextoRico). Roda DEPOIS da sanitização, sobre HTML já
-// seguro — os asteriscos/underscores de markdown nunca formam tag
-// nenhuma, então não há risco de reabrir brecha de HTML malicioso.
-//
-// Usa [\s\S]+? em vez de .+? porque "." não bate com quebra de linha
-// em JS — um trecho como "_(frase um\nfrase dois)_" (itálico quebrado
-// em duas linhas, comum em versos) não fechava o par e ficava sem
-// formatar, com os underscores/asteriscos aparecendo literais na tela.
-// [\s\S] casa qualquer caractere, incluindo \n, sem depender da flag
-// "s" (dotAll), então também funciona em engines mais antigas.
-//
-// Também usada por blocoTextoHtml() abaixo — não só no campo Texto —
-// pra que a mesma convenção **negrito**/_itálico_ funcione em Notas,
-// Descrição Visual e demais campos de texto longo.
-function realcarEnfaseMarkdown(html) {
-    return html
-        .replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/~~([\s\S]+?)~~/g, '<s>$1</s>')
-        .replace(/(^|[^\w])_([\s\S]+?)_(?!\w)/g, '$1<em>$2</em>');
-}
-
-// `espacoExtra` adiciona uma margem acima da linha — usado só na linha
-// de Autoria (ver renderVisualizacaoHtml abaixo), que é a única
-// linhaMetaHtml que aparece DEPOIS do bloco de Texto/Notas (uma <div>
-// sem margem inferior), em vez de empilhada com as outras linhas de
-// meta antes do Texto. Sem isso, "Autoria:" ficava colado direto no
-// último verso do poema (ou na última linha de Notas), sem respiro
-// visual nenhum.
+// `espacoExtra` adiciona uma margem acima da linha. Hoje nenhuma linha usa,
+// porque todas as linhas Rótulo: valor ficam dentro de um grupo (a Autoria
+// foi para a Identificação, antes do texto); fica para quem precisar de uma
+// linha solta logo depois de um bloco sem margem inferior.
 function linhaMetaHtml(rotulo, valorTexto, espacoExtra = false) {
     if (!valorTexto) return '';
     const margem = espacoExtra ? 'mt-4 mb-1.5' : 'mb-1.5';
@@ -137,71 +126,192 @@ function listaHtml(titulo, itens, montarLinha) {
         </ul>`;
 }
 
-// Mesmo espírito de listaHtml acima, mas agrupado por tipo (ver
-// agruparIntertextualidadePorTipo em utils.js) — cada grupo vira uma linha
-// só com vírgula ou um <li> com uma sub-lista aninhada, dependendo de
-// subBullet. Entradas sem tipo continuam soltas, sem grupo.
+// " · 1972" depois da obra, ou '' sem data.
+function htmlDataDaEntrada(it) {
+    const texto = textoDaDataDaEntrada(it);
+    return texto ? ` · ${escapeHtml(texto)}` : '';
+}
+
+// Linha de uma entrada com link e nota (Intertextualidade e Referências). Obra
+// com autor e personagem, descrição como aposto, trecho em itálico e
+// "(traduzido)" só aparecem quando preenchidos; entrada antiga sai como sempre.
+function linhaEntradaIntertextoHtml(it) {
+    const p = partesEntradaIntertexto(it);
+    const link = it.link
+        ? ` — <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
+        : '';
+    const nota = it.nota ? ` <em>(${escapeHtml(it.nota)})</em>` : '';
+    const descricao = p.descricao ? `, ${escapeHtml(p.descricao)}` : '';
+    const trecho = p.trecho ? ` <em>“${escapeHtml(p.trecho)}”</em>` : '';
+    const traduzido = p.traduzido ? ' (traduzido)' : '';
+    const pessoal = p.obraPessoal ? ' (obra pessoal)' : '';
+    const pessoa = descricaoPessoaPublica(it);
+    const pessoaHtml = pessoa ? ` (${escapeHtml(pessoa)})` : '';
+    return `${escapeHtml(p.corpo)}${pessoaHtml}${descricao}${htmlDataDaEntrada(it)}${trecho}${traduzido}${pessoal}${link}${htmlAcessoEm(it)}${nota}`;
+}
+
+// Itens <li> de um grupo por tipo (ver agruparIntertextualidadePorTipo em
+// utils.js): uma linha só com vírgula ou um <li> com sub-lista aninhada,
+// conforme subBullet. Entradas sem tipo ficam soltas, sem rótulo.
+function itensGrupoTipoHtml({ tipo, entradas, subBullet }) {
+    if (!tipo) {
+        return entradas
+            .map((it) => `<li class="whitespace-pre-wrap">${linhaEntradaIntertextoHtml(it)}</li>`)
+            .join('');
+    }
+    if (subBullet) {
+        const sub = entradas
+            .map((it) => `<li class="whitespace-pre-wrap">${linhaEntradaIntertextoHtml(it)}</li>`)
+            .join('');
+        return `<li class="whitespace-pre-wrap"><strong>${escapeHtml(tipo)}:</strong><ul class="list-disc list-inside ml-4 space-y-0.5">${sub}</ul></li>`;
+    }
+    return `<li class="whitespace-pre-wrap"><strong>${escapeHtml(tipo)}:</strong> ${entradas.map(linhaEntradaIntertextoHtml).join(', ')}</li>`;
+}
+
+// Referências: agrupado só por tipo (não têm relação).
 function listaIntertextualidadeHtml(titulo, itens) {
     const grupos = agruparIntertextualidadePorTipo(itens);
     if (!grupos.length) return '';
-    const linhaEntrada = (it) => {
-        const link = it.link
-            ? ` — <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
-            : '';
-        const nota = it.nota ? ` <em>(${escapeHtml(it.nota)})</em>` : '';
-        return `${escapeHtml(it.texto || '')}${link}${htmlAcessoEm(it)}${nota}`;
-    };
-    const linhasGrupo = grupos
-        .map(({ tipo, entradas, subBullet }) => {
-            if (!tipo) {
-                return entradas
-                    .map((it) => `<li class="whitespace-pre-wrap">${linhaEntrada(it)}</li>`)
-                    .join('');
-            }
-            if (subBullet) {
-                const sub = entradas
-                    .map((it) => `<li class="whitespace-pre-wrap">${linhaEntrada(it)}</li>`)
-                    .join('');
-                return `<li class="whitespace-pre-wrap"><strong>${escapeHtml(tipo)}:</strong><ul class="list-disc list-inside ml-4 space-y-0.5">${sub}</ul></li>`;
-            }
-            return `<li class="whitespace-pre-wrap"><strong>${escapeHtml(tipo)}:</strong> ${entradas.map(linhaEntrada).join(', ')}</li>`;
-        })
+    return `
+        <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1">${escapeHtml(titulo)}</h4>
+        <ul class="list-disc list-inside text-sm space-y-0.5">${grupos.map(itensGrupoTipoHtml).join('')}</ul>`;
+}
+
+// Intertextualidade em dois níveis: relação por fora, tipo de obra por dentro
+// (ver agruparIntertextualidadePorRelacao em utils.js). Entrada antiga, sem
+// relação, vai num bloco no fim, agrupada só por tipo de obra.
+function listaIntertextualidadeDoisNiveisHtml(titulo, itens) {
+    const { relacoes, semRelacao } = agruparIntertextualidadePorRelacao(itens);
+    if (!relacoes.length && !semRelacao.length) return '';
+    const porRelacao = relacoes
+        .map(
+            ({ relacao, tipos }) =>
+                `<li class="whitespace-pre-wrap"><strong>${escapeHtml(relacao)}:</strong><ul class="list-disc list-inside ml-4 space-y-0.5">${tipos.map(itensGrupoTipoHtml).join('')}</ul></li>`,
+        )
         .join('');
     return `
         <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1">${escapeHtml(titulo)}</h4>
-        <ul class="list-disc list-inside text-sm space-y-0.5">${linhasGrupo}</ul>`;
+        <ul class="list-disc list-inside text-sm space-y-0.5">${porRelacao}${semRelacao.map(itensGrupoTipoHtml).join('')}</ul>`;
 }
 
 // Monta o HTML da prévia — mesma ordem de campos de itemParaMarkdown
 // (exportar-md.js), só que como blocos HTML em vez de linhas Markdown.
+// ─── Grupos recolhíveis do Ver ────────────────────────────────
+// Critério que rege a ordem e os grupos (registrado em decisoes.md):
+//   ANTES do texto vai a ficha: campo curto, em linha "Rótulo: valor", vindo de
+//   cadastro ou lista fechada, que situa o texto antes de ler. Três grupos:
+//   Identificação (quem, onde, quando e em que situação), Contexto retratado
+//   (épocas e correntes) e Conteúdo e classificação (sobre o quê, quem aparece,
+//   como se classifica).
+//   DEPOIS do texto vai o que se consulta depois de ler: prosa livre ou lista de
+//   registros. Cinco grupos: Paratexto (o que o autor escreveu em volta do
+//   texto), Relações (ligações com outros textos e obras), Recepção (o que o
+//   texto provocou), Avaliação do autor e Controle do acervo (migração,
+//   pendência, descarte). Os avisos de Conteúdo Sensível e Vocabulário
+//   Hiperacionante ficam fora dos grupos, sempre à vista, logo após o texto.
+// Todos começam recolhidos, para o texto ficar perto do topo; a escolha de abrir
+// cada grupo é lembrada neste navegador, inclusive ao passar de um texto para
+// outro. Grupo sem nenhum campo preenchido nem aparece.
+const LS_GRUPOS_VER = 'arquivoPoetico_gruposVerAbertos';
+
+function lerGruposAbertos() {
+    try {
+        const lista = JSON.parse(localStorage.getItem(LS_GRUPOS_VER) || '[]');
+        return new Set(Array.isArray(lista) ? lista : []);
+    } catch {
+        return new Set();
+    }
+}
+
+const gruposAbertos = lerGruposAbertos();
+
+function gravarGruposAbertos() {
+    try {
+        localStorage.setItem(LS_GRUPOS_VER, JSON.stringify([...gruposAbertos]));
+    } catch (e) {
+        console.warn('[visualizar.js] Não foi possível salvar os grupos abertos:', e);
+    }
+}
+
+function grupoVerHtml(chave, titulo, conteudo) {
+    if (!conteudo || !conteudo.trim()) return '';
+    const aberto = gruposAbertos.has(chave) ? ' open' : '';
+    return `
+        <details data-grupo-ver="${chave}"${aberto} class="mt-3 border border-gray-200 dark:border-slate-700 rounded-md">
+            <summary class="cursor-pointer select-none px-3 py-2 text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-md">${escapeHtml(titulo)}</summary>
+            <div class="px-3 pt-1 pb-3">${conteudo}</div>
+        </details>`;
+}
+
+if (typeof document !== 'undefined') {
+    // `toggle` não borbulha: escuta na captura, uma vez só, para valer também
+    // para o conteúdo trocado a cada texto.
+    document.addEventListener(
+        'toggle',
+        (e) => {
+            const d = e.target;
+            if (!d || !d.matches || !d.matches('details[data-grupo-ver]')) return;
+            if (d.open) gruposAbertos.add(d.dataset.grupoVer);
+            else gruposAbertos.delete(d.dataset.grupoVer);
+            gravarGruposAbertos();
+        },
+        true,
+    );
+    document.addEventListener('click', (e) => {
+        const botao = e.target && e.target.closest && e.target.closest('[data-grupo-ver-todos]');
+        if (!botao) return;
+        const abrir = botao.dataset.grupoVerTodos === 'abrir';
+        const raiz = botao.closest('#visualizar-conteudo') || document;
+        raiz.querySelectorAll('details[data-grupo-ver]').forEach((d) => {
+            d.open = abrir;
+            if (abrir) gruposAbertos.add(d.dataset.grupoVer);
+            else gruposAbertos.delete(d.dataset.grupoVer);
+        });
+        gravarGruposAbertos();
+    });
+}
+
 export function renderVisualizacaoHtml(item) {
     const tipoLabel = item.tipo === 'prosa' ? 'Prosa' : 'Poema';
-    let html = `<p class="text-xs font-bold uppercase tracking-wide text-indigo-500 dark:text-indigo-400 mb-3">${escapeHtml(tipoLabel)}</p>`;
 
-    const ctx = item.contexto || {};
-    const caminho = [ctx.livro, ctx.parte, ctx.secao].filter(Boolean).join(' → ');
-    html += linhaMetaHtml('Localização', caminho || null);
-    html += linhaMetaHtml('Idioma', textoIdiomasComPapel(item) || null);
-    html += linhaMetaHtml('Jargão e gíria', jargaoGiriaDoItem(item).join(', ') || null);
-    html += linhaMetaHtml('Local onde foi escrito', textoLocalEscrita(db, item) || null);
+    // ── Antes do texto: a ficha ──
+    let identificacao = '';
+    identificacao += linhaMetaHtml(rotuloLocalizacaoDoTexto(item), textoLocalizacaoDoTexto(item));
+    identificacao += linhaMetaHtml(
+        'Coletâneas',
+        titulosDeColetaneasDoTexto(db, item.tipo, item.id).join(', ') || null,
+    );
+    identificacao += linhaMetaHtml('Aparece em', textosApareceEm(item).join('; ') || null);
+    identificacao += linhaMetaHtml('Idioma', textoIdiomasComPapel(item) || null);
+    identificacao += linhaMetaHtml('Jargão e gíria', jargaoGiriaDoItem(item).join(', ') || null);
+    identificacao += linhaMetaHtml('Local onde foi escrito', textoLocalEscrita(db, item) || null);
 
     if (item.status) {
         const info = INFO_STATUS[item.status] || { emoji: '⚪', titulo: item.status };
-        html += linhaMetaHtml('Status', `${info.emoji} ${info.titulo}`);
+        identificacao += linhaMetaHtml('Status', `${info.emoji} ${info.titulo}`);
     } else {
-        html += linhaMetaHtml('Publicado', estaPublicado(item) ? 'Sim' : 'Não (rascunho)');
+        identificacao += linhaMetaHtml('Publicado', estaPublicado(item) ? 'Sim' : 'Não (rascunho)');
     }
 
     if (item.dataEscrita) {
         const aprox = item.dataEscrita.exata ? '' : ' (aproximada)';
-        html += linhaMetaHtml(
+        identificacao += linhaMetaHtml(
             'Data de escrita',
             `${formatarDataParcial(item.dataEscrita)}${aprox}`,
         );
     }
     if (item.dataPublicacao) {
-        html += linhaMetaHtml('Primeira publicação', formatarDataParcial(item.dataPublicacao));
+        identificacao += linhaMetaHtml(
+            'Primeira publicação',
+            formatarDataParcial(item.dataPublicacao),
+        );
     }
+    identificacao += linhaMetaHtml('Autoria', textoAutoria(item));
+    linhasFonteTexto(item, db.autores).forEach(({ rotulo, valor }) => {
+        identificacao += linhaMetaHtml(rotulo, valor);
+    });
+
+    let retratado = '';
     if (item.epocaRetratada) {
         // Períodos e Eventos em linhas separadas (F14-D4); o intervalo De/Até
         // é do texto inteiro e fica na linha dos períodos.
@@ -209,24 +319,28 @@ export function renderVisualizacaoHtml(item) {
             comCaminho: true,
             tipo: 'periodos',
         });
-        if (periodosTxt !== '—') html += linhaMetaHtml('Período Biográfico Retratado', periodosTxt);
+        if (periodosTxt !== '—') {
+            retratado += linhaMetaHtml('Período Biográfico Retratado', periodosTxt);
+        }
         const eventosTxt = formatarEpocaRetratada(item.epocaRetratada, db.epocas, {
             comCaminho: true,
             tipo: 'eventos',
         });
-        if (eventosTxt !== '—') html += linhaMetaHtml('Evento Biográfico Retratado', eventosTxt);
+        if (eventosTxt !== '—') {
+            retratado += linhaMetaHtml('Evento Biográfico Retratado', eventosTxt);
+        }
     }
     const periodosDoTexto = periodosHistoricosIdsDoItem(item, db.periodosHistoricos, 'periodos');
     if (periodosDoTexto.length) {
         // Caminho completo na hierarquia, um por linha (como na tabela).
-        html += linhaMetaListaHtml(
+        retratado += linhaMetaListaHtml(
             'Período Histórico Retratado',
             periodosDoTexto.map((id) => caminhoDoPeriodo(db.periodosHistoricos, id)),
         );
     }
     const eventosDoTexto = periodosHistoricosIdsDoItem(item, db.periodosHistoricos, 'eventos');
     if (eventosDoTexto.length) {
-        html += linhaMetaListaHtml(
+        retratado += linhaMetaListaHtml(
             'Evento Histórico Retratado',
             eventosDoTexto.map((id) => caminhoDoPeriodo(db.periodosHistoricos, id)),
         );
@@ -235,7 +349,7 @@ export function renderVisualizacaoHtml(item) {
     // gravada é uma só, a separação é derivada do pai de cada uma.
     const correntesDeTopo = idsDeCorrentesDeTopo(db.movimentosEscolas, item.movimentosEscolasIds);
     if (correntesDeTopo.length) {
-        html += linhaMetaListaHtml(
+        retratado += linhaMetaListaHtml(
             'Corrente literária',
             correntesDeTopo.map((id) => caminhoDaCorrente(db.movimentosEscolas, id)),
         );
@@ -243,74 +357,104 @@ export function renderVisualizacaoHtml(item) {
     const divisoesDoTexto = idsDeDivisoes(db.movimentosEscolas, item.movimentosEscolasIds);
     if (divisoesDoTexto.length) {
         // Caminho completo na hierarquia, um por linha (como o Período Histórico).
-        html += linhaMetaListaHtml(
+        retratado += linhaMetaListaHtml(
             'Divisões',
             divisoesDoTexto.map((id) => caminhoDaCorrente(db.movimentosEscolas, id)),
         );
     }
+
+    let classificacao = '';
     // Assunto é derivado dos Temas do texto (assuntosDoTexto, utils.js),
     // não um campo gravado — mesmo padrão de Movimento/Escola acima.
     const assuntosTexto = textoAssuntosComPapel(item, db.assuntos, db.temas);
     if (assuntosTexto) {
-        html += linhaMetaHtml('Assunto', assuntosTexto);
+        classificacao += linhaMetaHtml('Assunto', assuntosTexto);
     }
-    html += linhaMetaHtml('Personagens', textoPersonagensComPapel(item, db.personagens) || null);
-    html += linhaMetaHtml('Pessoas', textoPessoas(item));
-    html += linhaMetaHtml('Grupos', textoGrupos(item));
+    classificacao += linhaMetaHtml(
+        'Personagens',
+        textoPersonagensComPapel(item, db.personagens) || null,
+    );
+    classificacao += linhaMetaHtml('Pessoas', textoPessoas(item));
+    classificacao += linhaMetaHtml('Grupos', textoGrupos(item));
     // Uma linha por categoria preenchida, em vez da linha única
     // "Sinalizações" achatada — mesmo padrão de itemParaMarkdown
     // (exportar-md.js), via sinalizacoesAgrupadas() (utils.js).
     sinalizacoesAgrupadas(item, db.temas, {
         territorialidade: textoTerritorialidadeComCaminho(db, item),
     }).forEach(({ rotulo, valor }) => {
-        html += linhaMetaHtml(rotulo, valor);
+        classificacao += linhaMetaHtml(rotulo, valor);
     });
-    if (item.genero) html += linhaMetaHtml('Gênero', item.genero);
-    html += linhaMetaHtml('Elos', titulosPorIds(item.conceitos?.elos));
-    html += linhaMetaHtml('Ecos', titulosPorIds(item.conceitos?.ecos));
+    if (item.genero) classificacao += linhaMetaHtml('Gênero', item.genero);
 
-    html += `
+    // ── O texto e os avisos de leitura ──
+    let texto = `
         <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1">Texto</h4>
         <div class="text-sm leading-relaxed whitespace-pre-wrap">${realcarEnfaseMarkdown(sanitizarTextoRico(item.texto))}</div>`;
 
-    html += blocoTextoHtml('Notas', item.notas);
-    html += linhaMetaHtml('Autoria', textoAutoria(item), true);
-    linhasFonteTexto(item, db.autores).forEach(({ rotulo, valor }) => {
-        html += linhaMetaHtml(rotulo, valor);
-    });
-    html += blocoTextoHtml('Descrição Visual', item.descricaoVisual);
-    html += blocoTextoHtml('Inspiração', item.contextoHistorico);
-    html += blocoTextoHtml('Ocultação', item.ocultacao);
+    if ((item.conteudoSensivel || '').trim()) {
+        texto += `
+            <div class="mt-4 p-3 border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-600">
+                <p class="text-xs font-bold text-amber-700 dark:text-amber-400 mb-1">⚠️ Conteúdo Sensível</p>
+                <div class="text-sm whitespace-pre-wrap">${escapeHtml(item.conteudoSensivel.trim())}</div>
+            </div>`;
+    }
+    if ((item.vocabularioHiperacionante || '').trim()) {
+        texto += `
+            <div class="mt-4 p-3 border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-600">
+                <p class="text-xs font-bold text-amber-700 dark:text-amber-400 mb-1">⚠️ Vocabulário Hiperacionante</p>
+                <div class="text-sm whitespace-pre-wrap">${escapeHtml(item.vocabularioHiperacionante.trim())}</div>
+            </div>`;
+    }
 
-    html += listaIntertextualidadeHtml('Intertextualidade', item.intertextualidade);
-    html += listaHtml('Hipertextualidade', item.hipertextualidade, (h) => {
-        const prefixo = h.tipo ? `<strong>${escapeHtml(h.tipo)}:</strong> ` : '';
-        const link = h.link
-            ? ` — <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(h.linkTexto || h.link)}</a>`
-            : '';
-        const nota = h.nota ? ` <em>(${escapeHtml(h.nota)})</em>` : '';
-        return `${prefixo}${escapeHtml(corpoEntradaHipertextualidade(h))}${link}${htmlAcessoEm(h)}${nota}`;
-    });
-    html += listaIntertextualidadeHtml('Referências', item.referenciasExternas);
-
-    html += listaHtml('Anexos', item.anexos, (a) => {
-        const prefixo = a.tipo ? `<strong>${escapeHtml(a.tipo)}:</strong> ` : '';
-        const link = a.link
-            ? ` — <a href="${escapeHtml(a.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(a.linkTexto || a.link)}</a>`
-            : '';
-        return `${prefixo}${escapeHtml(a.texto || '')}${link}${htmlAcessoEm(a)}`;
-    });
-    html += blocoTextoHtml('Nota sobre o conjunto de anexos', item.anexosNotaGeral);
-
-    html += listaHtml('Anotações Marginais', item.anotacoesMarginais, (a) => {
+    // ── Depois do texto: consulta ──
+    let paratexto = '';
+    paratexto += blocoTextoHtml('Notas', item.notas);
+    paratexto += blocoTextoHtml('Notas públicas', ehNotaPublica(item) ? 'Sim' : '');
+    paratexto += blocoTextoHtml('Comentários ao leitor', item.comentariosPublicos);
+    paratexto += listaHtml('Anotações Marginais', item.anotacoesMarginais, (a) => {
         const meta = [a.posicao, a.fonte].filter(Boolean).join(', ');
         const trecho = a.trecho ? `<em>(${escapeHtml(a.trecho)})</em> ` : '';
         const prefixo = meta ? `<strong>${escapeHtml(meta)}:</strong> ` : '';
         const notas = a.notas ? ` <em>(${escapeHtml(a.notas)})</em>` : '';
         return `${trecho}${prefixo}${escapeHtml(a.texto || '')}${notas}`;
     });
+    paratexto += blocoTextoHtml('Descrição Visual', item.descricaoVisual);
+    paratexto += blocoTextoHtml('Inspiração', item.contextoHistorico);
+    paratexto += blocoTextoHtml('Ocultação', item.ocultacao);
+    paratexto += listaHtml('Anexos', item.anexos, (a) => {
+        const prefixo = a.tipo ? `<strong>${escapeHtml(a.tipo)}:</strong> ` : '';
+        const link = a.link
+            ? ` — <a href="${escapeHtml(a.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(a.linkTexto || a.link)}</a>`
+            : '';
+        return `${prefixo}${escapeHtml(a.texto || '')}${link}${htmlAcessoEm(a)}`;
+    });
+    paratexto += blocoTextoHtml('Nota sobre o conjunto de anexos', item.anexosNotaGeral);
 
-    html += listaHtml('Envios e Reações', item.envios, (e) => {
+    let relacoes = '';
+    // Elos e Ecos em lista, um por linha: cada entrada leva rótulo, título e
+    // nota, e um texto pode ter muitos.
+    relacoes += listaHtml('Elos', itensPorIds(item.conceitos?.elos), escapeHtml);
+    relacoes += listaHtml('Ecos', itensPorIds(item.conceitos?.ecos), escapeHtml);
+    relacoes += listaIntertextualidadeDoisNiveisHtml('Intertextualidade', item.intertextualidade);
+    relacoes += listaHtml('Hipertextualidade', item.hipertextualidade, (h) => {
+        const prefixo = tipoObraDaEntrada(h)
+            ? `<strong>${escapeHtml(tipoObraDaEntrada(h))}:</strong> `
+            : '';
+        const link = h.link
+            ? ` — <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline break-all">${escapeHtml(h.linkTexto || h.link)}</a>`
+            : '';
+        const nota = h.nota ? ` <em>(${escapeHtml(h.nota)})</em>` : '';
+        const quem = [textoAutoresDaEntrada(h), rotuloDaOrigem(h)].filter(Boolean).join('; ');
+        const autor = quem ? ` (${escapeHtml(quem)})` : '';
+        const descricao = String(h.descricao || '').trim()
+            ? `, ${escapeHtml(String(h.descricao).trim())}`
+            : '';
+        return `${prefixo}${escapeHtml(corpoEntradaHipertextualidade(h))}${autor}${descricao}${htmlDataDaEntrada(h)}${h.obraPessoal === true ? ' (obra pessoal)' : ''}${link}${htmlAcessoEm(h)}${nota}`;
+    });
+    relacoes += listaIntertextualidadeHtml('Referências', item.referenciasExternas);
+
+    let recepcao = '';
+    recepcao += listaHtml('Envios e Reações', item.envios, (e) => {
         const partes = [
             e.pessoa,
             e.meio ? `via ${e.meio}` : '',
@@ -322,51 +466,68 @@ export function renderVisualizacaoHtml(item) {
         const notas = e.notas ? ` <em>(${escapeHtml(e.notas)})</em>` : '';
         return `${prefixo}${escapeHtml(e.reacao || '')}${notas}`;
     });
-
-    html += listaHtml('Reconhecimentos', item.reconhecimentos, (r) => {
+    recepcao += listaHtml('Reconhecimentos', item.reconhecimentos, (r) => {
         const ano = r.ano || r.ano === 0 ? String(r.ano) : '';
         const meta = [r.premio, r.posicao, ano].filter(Boolean).join(', ');
         const prefixo = meta ? `<strong>${escapeHtml(meta)}:</strong> ` : '';
         return `${prefixo}${escapeHtml(r.texto || '')}`;
     });
 
+    let avaliacao = '';
     if (autoclassificacaoValida(item.autoclassificacao)) {
-        html += `
+        avaliacao += `
             <h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1">Autoclassificação</h4>
             <div class="text-sm flex items-center gap-2">${renderCoracoesHtml(item.autoclassificacao, { somenteLeitura: true })}<span class="text-xs text-gray-400 dark:text-slate-500">${escapeHtml(formatarAutoclassificacaoTexto(item.autoclassificacao))}</span></div>`;
     }
+    avaliacao += blocoTextoHtml('Autoavaliação', item.autoavaliacao);
+    if (ehSorteavel(item)) avaliacao += blocoTextoHtml('Sorteio de leitura', 'Pode ser sorteado');
+    avaliacao += blocoTextoHtml('Leitura autônoma', rotuloLeituraCondicionada(item));
+    avaliacao += blocoTextoHtml('Valência', textoDaValencia(item, db.temas));
+    if (ehAutorEmSigilo(item)) avaliacao += blocoTextoHtml('Autor em sigilo', 'Sim');
 
-    html += blocoTextoHtml('Autoavaliação', item.autoavaliacao);
-
-    if ((item.conteudoSensivel || '').trim()) {
-        html += `
-            <div class="mt-4 p-3 border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-600">
-                <p class="text-xs font-bold text-amber-700 dark:text-amber-400 mb-1">⚠️ Conteúdo Sensível</p>
-                <div class="text-sm whitespace-pre-wrap">${escapeHtml(item.conteudoSensivel.trim())}</div>
-            </div>`;
-    }
-    if ((item.vocabularioHiperacionante || '').trim()) {
-        html += `
-            <div class="mt-4 p-3 border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-600">
-                <p class="text-xs font-bold text-amber-700 dark:text-amber-400 mb-1">⚠️ Vocabulário Hiperacionante</p>
-                <div class="text-sm whitespace-pre-wrap">${escapeHtml(item.vocabularioHiperacionante.trim())}</div>
-            </div>`;
-    }
-
-    const cortado = livroSecaoStr(item.cortadoDe);
+    let controle = '';
+    // Descartado: o "Cortado de" já está na linha de lugar, na Identificação.
+    const cortado = item.status === 'descartado' ? null : livroSecaoStr(item.cortadoDe);
     const lancado = livroSecaoStr(item.lancadoEm);
     if (cortado || lancado) {
-        html += `<h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1">Migração entre livros</h4>`;
-        html += `<ul class="list-disc list-inside text-sm space-y-0.5">`;
-        if (cortado) html += `<li>Cortado de: ${escapeHtml(cortado)}</li>`;
-        if (lancado) html += `<li>Lançado em: ${escapeHtml(lancado)}</li>`;
-        html += `</ul>`;
+        controle += `<h4 class="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mt-4 mb-1">Migração entre livros</h4>`;
+        controle += `<ul class="list-disc list-inside text-sm space-y-0.5">`;
+        if (cortado) controle += `<li>Cortado de: ${escapeHtml(cortado)}</li>`;
+        if (lancado) controle += `<li>Lançado em: ${escapeHtml(lancado)}</li>`;
+        controle += `</ul>`;
     }
-    html += blocoTextoHtml('Justificativa da Migração', item.justificativaMigracao);
-    html += blocoTextoHtml('Pendência', item.pendencia);
-    html += blocoTextoHtml('Descarte', item.descarte);
+    controle += blocoTextoHtml('Justificativa da Migração', item.justificativaMigracao);
+    controle += blocoTextoHtml('Pendência', item.pendencia);
+    controle += blocoTextoHtml('Descarte', item.descarte);
 
-    return html;
+    const antes =
+        grupoVerHtml('identificacao', 'Identificação', identificacao) +
+        grupoVerHtml('contexto-retratado', 'Contexto retratado', retratado) +
+        grupoVerHtml('conteudo-classificacao', 'Conteúdo e classificação', classificacao);
+    const depois =
+        grupoVerHtml('paratexto', 'Paratexto', paratexto) +
+        grupoVerHtml('relacoes', 'Relações', relacoes) +
+        grupoVerHtml('recepcao', 'Recepção', recepcao) +
+        grupoVerHtml('avaliacao', 'Avaliação do autor', avaliacao) +
+        grupoVerHtml('controle', 'Controle do acervo', controle);
+
+    const controles =
+        antes || depois
+            ? `
+        <p class="text-[11px] text-gray-500 dark:text-slate-400 mb-1 flex gap-2">
+            <button type="button" data-grupo-ver-todos="abrir" class="underline">Expandir tudo</button>
+            <span aria-hidden="true">·</span>
+            <button type="button" data-grupo-ver-todos="recolher" class="underline">Recolher tudo</button>
+        </p>`
+            : '';
+
+    return (
+        `<p class="text-xs font-bold uppercase tracking-wide text-indigo-500 dark:text-indigo-400 mb-3">${escapeHtml(tipoLabel)}</p>` +
+        controles +
+        antes +
+        texto +
+        depois
+    );
 }
 
 // ─── Navegação Anterior/Próximo ───────────────────────────────
@@ -376,39 +537,62 @@ export function renderVisualizacaoHtml(item) {
 // abertura, e fica congelada enquanto o modal estiver aberto: o texto não "foge"
 // do lugar se algo mudar por baixo.
 const provedoresNavegacao = {};
-let navegacao = { ids: [], pos: -1 };
+let navegacao = { itens: [], pos: -1, rotulo: '' };
 
 export function registrarListaNavegacaoVisualizacao(tipo, fn) {
     provedoresNavegacao[tipo] = fn;
 }
 
-function montarNavegacao(tipo, id, idsFixos) {
-    navegacao = { ids: [], pos: -1 };
-    const fn = provedoresNavegacao[tipo];
-    if (!fn && !idsFixos) return;
-    let ids;
-    try {
-        ids = idsFixos || fn();
-    } catch {
-        return;
+const colecaoDoTipo = (tipo) => (tipo === 'prosa' ? db.prosas : db.poemas);
+const itemExiste = (item) =>
+    !!item && colecaoDoTipo(item.tipo).some((x) => String(x.id) === String(item.id));
+
+// A lista pode vir de três jeitos: `opcoes.itens` (lista mista de Poemas e Prosas,
+// cada um com `tipo` e `id`, como as Conexões montam), `opcoes.ids` (só do tipo
+// aberto, na volta do Editar) ou a função que a aba registrou.
+function montarNavegacao(tipo, id, opcoes = {}) {
+    navegacao = { itens: [], pos: -1, rotulo: '' };
+    let itens;
+    if (Array.isArray(opcoes.itens)) {
+        itens = opcoes.itens.map((i) => ({
+            tipo: i.tipo === 'prosa' ? 'prosa' : 'poema',
+            id: i.id,
+        }));
+    } else {
+        const fn = provedoresNavegacao[tipo];
+        if (!fn && !opcoes.ids) return;
+        let ids;
+        try {
+            ids = opcoes.ids || fn();
+        } catch {
+            return;
+        }
+        itens = ids.map((x) => ({ tipo, id: x }));
     }
-    const pos = ids.findIndex((x) => String(x) === String(id));
-    if (pos >= 0) navegacao = { ids, pos };
+    const pos = itens.findIndex((i) => i.tipo === tipo && String(i.id) === String(id));
+    if (pos >= 0) {
+        navegacao = { itens, pos, rotulo: typeof opcoes.rotulo === 'string' ? opcoes.rotulo : '' };
+    }
 }
 
 function atualizarControlesNavegacao() {
     const wrap = document.getElementById('visualizar-nav');
     if (!wrap) return;
-    const ativo = navegacao.pos >= 0 && navegacao.ids.length > 1;
+    const ativo = navegacao.pos >= 0 && navegacao.itens.length > 1;
     wrap.classList.toggle('hidden', !ativo);
+    const rotulo = document.getElementById('visualizar-lista-rotulo');
+    if (rotulo) {
+        rotulo.textContent = ativo ? navegacao.rotulo : '';
+        rotulo.classList.toggle('hidden', !ativo || !navegacao.rotulo);
+    }
     if (!ativo) return;
     const posicao = document.getElementById('visualizar-posicao');
     if (posicao) {
         posicao.value = String(navegacao.pos + 1);
-        posicao.max = String(navegacao.ids.length);
+        posicao.max = String(navegacao.itens.length);
     }
     const total = document.getElementById('visualizar-total');
-    if (total) total.textContent = `de ${navegacao.ids.length}`;
+    if (total) total.textContent = `de ${navegacao.itens.length}`;
     const ant = document.getElementById('visualizar-anterior');
     const prox = document.getElementById('visualizar-proximo');
     if (ant) ant.disabled = proximoIndiceExistente(-1) < 0;
@@ -417,10 +601,9 @@ function atualizarControlesNavegacao() {
 
 // Próxima posição da lista (no sentido de `delta`) cujo texto ainda existe.
 function proximoIndiceExistente(delta) {
-    const { ids, pos, tipo } = navegacao;
-    const colecao = tipo === 'prosa' ? db.prosas : db.poemas;
-    for (let i = pos + delta; i >= 0 && i < ids.length; i += delta) {
-        if (colecao.some((x) => String(x.id) === String(ids[i]))) return i;
+    const { itens, pos } = navegacao;
+    for (let i = pos + delta; i >= 0 && i < itens.length; i += delta) {
+        if (itemExiste(itens[i])) return i;
     }
     return -1;
 }
@@ -440,14 +623,14 @@ function preencherVisualizacao(tipo, id) {
         conteudo.scrollTop = 0;
     }
 
-    // "Abrangente" só existe pra Poema (Sonoridade e Morfofuncionalidade são
-    // sempre ligadas a poemaId) — pra Prosa o checkbox fica escondido (ver
-    // acoes-coluna.js/index.html pro mesmo recorte nos outros dois lugares).
-    const wrapAbrangente = document.getElementById('download-abrangente-modal-visualizar-wrap');
-    if (wrapAbrangente) {
-        wrapAbrangente.classList.toggle('hidden', tipo !== 'poema');
-        const check = wrapAbrangente.querySelector('.download-abrangente-check');
-        if (check) check.checked = isDownloadAbrangenteAtivo();
+    // Sonoridade e Progressão só existem pra Poema (são sempre ligadas a
+    // poemaId): pra Prosa as caixas ficam escondidas (ver acoes-coluna.js e
+    // index.html pro mesmo recorte nos outros dois lugares).
+    montarControlesMetadados();
+    const wrapExtras = document.getElementById('download-extras-modal-visualizar-wrap');
+    if (wrapExtras) {
+        wrapExtras.classList.toggle('hidden', tipo !== 'poema');
+        montarCaixasSonoridadeProgressao(wrapExtras);
     }
 
     // O select de formato começa no "Formato do Baixar" da coluna Ações da aba
@@ -466,8 +649,11 @@ function dispararRetornoDoVer() {
     fn?.();
 }
 
-// `opcoes.ids`: com `navegar`, usa essa lista em vez de pedir outra à aba (volta do
-// Editar, que reabre o Ver na mesma lista que a pessoa vinha percorrendo).
+// `opcoes.ids`: com `navegar`, usa essa lista em vez de pedir outra à aba (só do
+// tipo aberto). `opcoes.itens`: o mesmo, mas lista mista de Poemas e Prosas
+// (`{ tipo, id }`), usada pelas Conexões e pela volta do Editar.
+// `opcoes.rotulo`: texto curto mostrado no cabeçalho dizendo de que lista se trata
+// (por exemplo, a obra cujos textos estão sendo percorridos).
 // `opcoes.navegar`: liga os botões Anterior/Próximo, seguindo a lista que a aba
 // mostra. Só a tabela de Poemas/Prosas liga; quem abre o Ver de outro lugar
 // (por exemplo, dentro de um período) não tem lista de referência.
@@ -487,12 +673,13 @@ export async function abrirVisualizacao(tipo, id, opcoes = {}) {
     const selFormato = document.getElementById('visualizar-baixar-formato');
     if (selFormato) selFormato.value = getFormatoBaixar(tipo === 'prosa' ? 'prosas' : 'poemas');
 
-    navegacao = { ids: [], pos: -1 };
-    if (opcoes.navegar) montarNavegacao(tipo, id, opcoes.ids);
-    navegacao.tipo = tipo;
+    navegacao = { itens: [], pos: -1, rotulo: '' };
+    if (opcoes.navegar) montarNavegacao(tipo, id, opcoes);
     atualizarControlesNavegacao();
 
     montarControlesIncluirOcultos();
+
+    montarControlesInfosPapel();
     if (retornoDoVer) aoFecharModalUmaVez('modal-visualizar', dispararRetornoDoVer);
     await toggleModal('modal-visualizar');
 }
@@ -503,11 +690,12 @@ export function navegarVisualizacao(delta) {
     if (!itemAtual || navegacao.pos < 0) return;
     const alvo = proximoIndiceExistente(delta);
     if (alvo < 0) return;
-    const { tipo } = itemAtual;
-    if (!preencherVisualizacao(tipo, navegacao.ids[alvo])) return;
+    const destino = navegacao.itens[alvo];
+    if (!preencherVisualizacao(destino.tipo, destino.id)) return;
     navegacao.pos = alvo;
     atualizarControlesNavegacao();
     montarControlesIncluirOcultos();
+    montarControlesInfosPapel();
 }
 
 // Caixa de posição do cabeçalho: vai direto ao texto de número `n` da lista
@@ -521,12 +709,9 @@ export function irParaPosicaoVisualizacao(valor) {
         atualizarControlesNavegacao();
         return;
     }
-    const total = navegacao.ids.length;
+    const total = navegacao.itens.length;
     const desejado = Math.min(Math.max(n, 1), total) - 1;
-    const existe = (i) => {
-        const colecao = navegacao.tipo === 'prosa' ? db.prosas : db.poemas;
-        return colecao.some((x) => String(x.id) === String(navegacao.ids[i]));
-    };
+    const existe = (i) => itemExiste(navegacao.itens[i]);
     let alvo = -1;
     for (let d = 0; d < total && alvo < 0; d++) {
         if (desejado + d < total && existe(desejado + d)) alvo = desejado + d;
@@ -536,10 +721,12 @@ export function irParaPosicaoVisualizacao(valor) {
         atualizarControlesNavegacao();
         return;
     }
-    if (!preencherVisualizacao(itemAtual.tipo, navegacao.ids[alvo])) return;
+    const destinoPos = navegacao.itens[alvo];
+    if (!preencherVisualizacao(destinoPos.tipo, destinoPos.id)) return;
     navegacao.pos = alvo;
     atualizarControlesNavegacao();
     montarControlesIncluirOcultos();
+    montarControlesInfosPapel();
 }
 
 // Setas ← e → navegam com o modal aberto, desde que o foco não esteja num campo
@@ -567,7 +754,9 @@ function registrarVoltaAoVer(volta) {
         voltaAoVer = null;
         abrirVisualizacao(volta.tipo, volta.id, {
             manterRetorno: true,
-            ...(volta.ids ? { navegar: true, ids: volta.ids } : {}),
+            ...(volta.itens
+                ? { navegar: true, itens: volta.itens, rotulo: volta.rotulo || '' }
+                : {}),
         });
     });
 }
@@ -590,7 +779,7 @@ export async function verDoModalEdicao() {
         voltaAoVer && voltaAoVer.tipo === 'poema' && String(voltaAoVer.id) === String(id)
             ? voltaAoVer
             : null;
-    const volta = anterior || { tipo: 'poema', id, ids: null };
+    const volta = anterior || { tipo: 'poema', id, itens: null };
     const agendar = () => registrarVoltaAoVer(volta);
     const modalAberto = () => !document.getElementById('modal-poema')?.classList.contains('hidden');
 
@@ -640,8 +829,8 @@ export async function editarDoModalVisualizacao() {
     if (!colecao.some((x) => String(x.id) === String(id))) return;
     // Só quando o formulário vem daqui: ao fechar (salvar, cancelar, X ou Esc) a
     // pessoa volta ao Ver do mesmo texto, na mesma lista de navegação.
-    const ids = navegacao.pos >= 0 ? [...navegacao.ids] : null;
-    registrarVoltaAoVer({ tipo, id, ids });
+    const itens = navegacao.pos >= 0 ? navegacao.itens.map((i) => ({ ...i })) : null;
+    registrarVoltaAoVer({ tipo, id, itens, rotulo: navegacao.rotulo });
     // Se o Ver veio do Ver do Livro, a volta ao livro espera: primeiro o Editar,
     // depois o Ver de novo, e só ao fechar este é que o livro reabre.
     cancelarAoFecharModal('modal-visualizar');
@@ -661,25 +850,26 @@ export function excluirDoModalVisualizacao() {
             // Tira o excluído da lista e procura o próximo existente (a posição
             // dele agora é a do seguinte), senão o anterior.
             const idx = navegacao.pos;
-            navegacao.ids.splice(idx, 1);
-            const colecao = tipo === 'prosa' ? db.prosas : db.poemas;
-            const existe = (i) => colecao.some((x) => String(x.id) === String(navegacao.ids[i]));
-            for (let i = idx; i < navegacao.ids.length && destino < 0; i++) {
+            navegacao.itens.splice(idx, 1);
+            const existe = (i) => itemExiste(navegacao.itens[i]);
+            for (let i = idx; i < navegacao.itens.length && destino < 0; i++) {
                 if (existe(i)) destino = i;
             }
             for (let i = idx - 1; i >= 0 && destino < 0; i--) {
                 if (existe(i)) destino = i;
             }
         }
-        if (destino < 0 || !preencherVisualizacao(tipo, navegacao.ids[destino])) {
+        const alvoExcluir = destino >= 0 ? navegacao.itens[destino] : null;
+        if (!alvoExcluir || !preencherVisualizacao(alvoExcluir.tipo, alvoExcluir.id)) {
             itemAtual = null;
-            navegacao = { ids: [], pos: -1 };
+            navegacao = { itens: [], pos: -1, rotulo: '' };
             await toggleModal('modal-visualizar');
             return;
         }
         navegacao.pos = destino;
         atualizarControlesNavegacao();
         montarControlesIncluirOcultos();
+        montarControlesInfosPapel();
     });
 }
 

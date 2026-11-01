@@ -365,6 +365,10 @@ export async function aplicarImportacaoAditivaClick() {
         if (soltos.elos) lista.push(plural(soltos.elos, 'Elo', 'Elos'));
         mensagem += ` ${lista.join(' e ')} sem texto-alvo ${soltos.ecos + soltos.elos === 1 ? 'foi solto' : 'foram soltos'}.`;
     }
+    const papeisNovos = resultado.papeisNovos || [];
+    if (papeisNovos.length) {
+        mensagem += ` ${plural(papeisNovos.length, 'papel de Pessoa novo cadastrado', 'papéis de Pessoa novos cadastrados')} (${papeisNovos.join(', ')}): confira em Pessoas e Papéis.`;
+    }
     mostrarAviso(mensagem, 'sucesso');
 
     cancelarImportacaoAditiva();

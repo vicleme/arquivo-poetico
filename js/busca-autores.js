@@ -61,10 +61,12 @@ export const CAMPOS_ATRIBUTO_AUTOR = {
     grau: 'grauAcademico',
     instituicao: 'instituicoes',
     ocupacao: 'ocupacoes',
-    movimento: 'movimentosEscolas',
-    escola: 'movimentosEscolas',
-    movimentodireto: 'movimentosEscolasDireto',
-    escoladireta: 'movimentosEscolasDireto',
+    corrente: 'movimentosEscolas',
+    correntedireta: 'movimentosEscolasDireto',
+    movimento: 'correntesMovimento',
+    movimentodireto: 'correntesMovimentoDireto',
+    escola: 'correntesEscola',
+    escoladireta: 'correntesEscolaDireta',
     // Postura estética e Programa efetivos (com a herança do pai) das
     // correntes do autor.
     postura: 'posturas',
@@ -78,6 +80,11 @@ export const CAMPOS_ATRIBUTO_AUTOR = {
     // Só existe (e só faz sentido) como presença: `voce:*` = autores
     // marcados "este autor sou eu".
     voce: 'souEu',
+    // Só como presença: `sigiloso:*` = autores com a caixa "Autor sigiloso" ligada.
+    sigiloso: 'sigiloso',
+    // Só como presença: `anonimiza:*` = autores com ao menos um nome literário
+    // marcado "Anonimizar autor".
+    anonimiza: 'anonimiza',
     id: 'id',
 };
 
@@ -114,6 +121,8 @@ export const PREFIXOS_CANONICOS_AUTOR = [
     'sobre',
     'dominio',
     'voce',
+    'sigiloso',
+    'anonimiza',
     'id',
 ];
 
@@ -200,7 +209,7 @@ export function decorarAutorParaBusca(autor) {
         // Nome resolvido via cadastro central (db.movimentosEscolas) — o
         // Autor só guarda os ids, mesmo padrão de Poema/Prosa.
         // Hierárquico, como em Poema/Prosa: o Autor ligado a uma geração
-        // também acha pela corrente-mãe. `movimentodireto:` só o exato.
+        // também acha pela corrente-mãe. `correntedireta:` só o exato.
         movimentosEscolas: nomesDeBuscaDasCorrentes(
             db.movimentosEscolas,
             autor.movimentosEscolasIds,
@@ -209,6 +218,33 @@ export function decorarAutorParaBusca(autor) {
         movimentosEscolasDireto: nomesDeBuscaDasCorrentes(
             db.movimentosEscolas,
             autor.movimentosEscolasIds,
+        ).join(', '),
+        // `movimento:` e `escola:` olham o Programa efetivo; `corrente:` não.
+        correntesMovimento: nomesDeBuscaDasCorrentes(
+            db.movimentosEscolas,
+            autor.movimentosEscolasIds,
+            {
+                comAncestrais: true,
+                programa: 'Movimento',
+            },
+        ).join(', '),
+        correntesMovimentoDireto: nomesDeBuscaDasCorrentes(
+            db.movimentosEscolas,
+            autor.movimentosEscolasIds,
+            { programa: 'Movimento' },
+        ).join(', '),
+        correntesEscola: nomesDeBuscaDasCorrentes(
+            db.movimentosEscolas,
+            autor.movimentosEscolasIds,
+            {
+                comAncestrais: true,
+                programa: 'Escola',
+            },
+        ).join(', '),
+        correntesEscolaDireta: nomesDeBuscaDasCorrentes(
+            db.movimentosEscolas,
+            autor.movimentosEscolasIds,
+            { programa: 'Escola' },
         ).join(', '),
         posturas: posturasDasCorrentes(db.movimentosEscolas, autor.movimentosEscolasIds).join(', '),
         programas: programasDasCorrentes(db.movimentosEscolas, autor.movimentosEscolasIds).join(
@@ -222,6 +258,8 @@ export function decorarAutorParaBusca(autor) {
         // "livre"/"protegido" (só existe se há óbito) — `dominio:livre`
         dominioPublico: dominio.estado === 'sem-obito' ? '' : dominio.estado,
         souEu: autor.souEu ? 'sim' : '',
+        sigiloso: autor.sigiloso === true ? 'sim' : '',
+        anonimiza: literarios.some((n) => n?.anonimizar === true) ? 'sim' : '',
     };
 }
 

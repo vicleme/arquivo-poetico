@@ -82,18 +82,41 @@ kept apart from the relation with the text.
 (Besides the registry fields described above, which also come on the
 link.)
 
-### `papeis` ("roles"): a closed list, and the order is NOT relevance
+### `papeis` ("roles"): a list from a registry, and the order is NOT relevance
 
-A list of zero, one or several values from a closed list of 5, in the order
-they appear here:
+A list of zero, one or several role names. The possible roles come from a
+registry (`papeisPersonagem` in the backup), in the same mould as the Person
+role registry: each role has a name, a nickname (the column abbreviation), a
+description and its own rules. The value stored on the text is always the
+role's **name**. The five factory roles, in order of presence in the text:
 
-- **Voz** (Voice), **Interlocutor** (Interlocutor) and **Aparição**
-  (Appearance): roles of effective presence in the text. The schema doesn't
-  define each one beyond its label, so read them by name and don't add
-  details the author didn't record.
-- **Menção** (Mention): the Character is named in the text.
-- **Alusão** (Allusion): the Character is evoked without being named. It is
-  kept apart from Menção on purpose, as in `pessoas`.
+- **Voz** (Voice): the Character speaks in the text, in direct speech or as
+  the voice that carries it (a narrator or lyric "I" that is a created
+  figure). Not the Voz role of `pessoas`.
+- **Interlocutor**: the text speaks to this Character; addressed, listened to
+  or answered by whoever speaks, and may or may not answer. If they also
+  speak, they get Voz in addition to this role.
+- **Aparição** (Appearance): on stage, acts or is described in action,
+  whether or not they also speak or are addressed. It is the presence
+  baseline.
+- **Menção** (Mention): the Character is designated in the text, without being
+  on stage, by name, nickname or an epithet that points only to them ("the
+  king," "the woman on the seventh floor"). The criterion is that the text
+  designates them, not that they have a proper name. A generic type ("every
+  king") does not count.
+- **Alusão** (Allusion): the Character is evoked without designation (a
+  pronoun with no antecedent, a metaphorical epithet, an image, a
+  circumstance). It is kept apart from Menção on purpose, as in `pessoas`.
+
+These are the factory definitions; the cataloguer can edit nickname and
+description. Don't add details to a role that the author didn't record.
+
+**Menção and Alusão never coexist on the same link**: if the text designates
+the Character, alluding adds nothing, so Menção wins. Voz, Interlocutor and Aparição coexist
+with each other and with Menção or Alusão (whoever is on stage is usually
+named). The rule lives in the registry, not in the name. Old data that already
+has both is left untouched; treat it as an inconsistency to fix, not a reading
+error.
 
 The same Character can hold several roles on the same text (for example,
 Aparição and Interlocutor).
@@ -101,7 +124,7 @@ Aparição and Interlocutor).
 **Careful, this differs from the `pessoas` field.** In `pessoas`, the order
 of the roles can reflect relevance, because it preserves the order the
 person ticked them. In `personagens`, the system **always reorders** the
-roles into the fixed order above (Voz, Interlocutor, Aparição, Menção,
+roles into the registry order (factory: Voz, Interlocutor, Aparição, Menção,
 Alusão), whatever sequence they were marked in. So:
 
 - The order of `papeis` **carries no relevance information**. Don't say
@@ -120,9 +143,9 @@ A single value per link. Empty (`""`) has **two meanings**, and `papeis` is
 what tells them apart:
 
 - **Undefined**: the link has no role yet, or has at least one effective
-  presence role (Voz, Interlocutor, Aparição), and the centrality hasn't
-  been filled in.
-- **Not applicable**: the link only has Menção and/or Alusão. Someone who is
+  presence role (one that isn't "no centrality": factory Voz, Interlocutor and
+  Aparição), and the centrality hasn't been filled in.
+- **Not applicable**: the link only has "no centrality" roles (factory: Menção and/or Alusão; the mark belongs to the role in the registry). Someone who is
   only mentioned or alluded to is neither protagonist nor secondary, and
   the field is always empty. In Statistics this shows as "Só
   Menção/Alusão" (Mention/Allusion only).
@@ -237,9 +260,10 @@ item:
    archive) and read an empty `origem` as "not defined".
 2. Treat empty identity, dates and characteristics as "not defined", with
    no filling in by inference.
-3. Read `papeis` as a closed list in a fixed order. The order does **not**
-   indicate relevance (unlike `pessoas`). `papeis: []` is a link with no
-   role defined, not the absence of a link.
+3. Read `papeis` as names from the Character role registry, always in the
+   registry order. The order does **not** indicate relevance (unlike
+   `pessoas`). Menção and Alusão never coexist. `papeis: []` is a link with
+   no role defined, not the absence of a link.
 4. For an empty `centralidade`, look at `papeis`: only Menção/Alusão is
    "not applicable"; anything else is "undefined".
 5. Keep apart characteristic (the Character's), relation to the text (tags

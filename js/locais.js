@@ -283,8 +283,18 @@ export function textoTerritorialidadeComCaminho(dbRef, item) {
 
 // Local onde o texto foi escrito, com caminho ('' se não houver ou se o
 // Local não existe mais).
+// Id do Local de escrita de um texto. O texto do acervo guarda o id; o registro
+// montado para exportar (locaisParaExportar) guarda a ficha `{ localId, nome,
+// ... }`. As saídas leem os dois formatos.
+export function idLocalEscrita(item) {
+    const v = item?.localEscrita;
+    if (v && typeof v === 'object') return v.localId ?? null;
+    return v ?? null;
+}
+
 export function textoLocalEscrita(dbRef, item) {
-    return achar(dbRef, item?.localEscrita) ? textoLocalComCaminho(dbRef, item.localEscrita) : '';
+    const id = idLocalEscrita(item);
+    return achar(dbRef, id) ? textoLocalComCaminho(dbRef, id) : '';
 }
 
 // Caminho completo de um Local, do mais alto até ele ("Brasil › São Paulo ›

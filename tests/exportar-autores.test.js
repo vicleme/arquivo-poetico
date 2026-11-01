@@ -4,8 +4,14 @@ import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 const { db } = await import('../js/db.js');
-const { itensDaSelecaoAutores, gerarJsonAutores, gerarMarkdownAutores, montarRegistroAutor } =
-    await import('../js/exportar-autores.js');
+const {
+    itensDaSelecaoAutores,
+    gerarJsonAutores,
+    gerarMarkdownAutores,
+    montarRegistroAutor,
+    gerarCsvAutores,
+    autorParaMarkdown,
+} = await import('../js/exportar-autores.js');
 
 describe('exportar Autores', () => {
     beforeEach(() => {
@@ -76,5 +82,52 @@ describe('exportar Autores', () => {
         // Zé não tem nacionalidade: a linha nem aparece
         const trechoZe = md.split('## Zé')[1];
         assert.doesNotMatch(trechoZe, /Nacionalidade/);
+    });
+    it('Autor sigiloso: sai como dado no .json, no .md e no .csv, sem esconder o nome real', () => {
+        db.autores.push({
+            id: 3,
+            nome: 'Maria Real',
+            sigiloso: true,
+            nomesLiterarios: [{ nome: 'Job', tipo: 'Pseudônimo' }],
+        });
+        const [reg] = itensDaSelecaoAutores([3]);
+        assert.equal(reg.sigiloso, true);
+        assert.equal(reg.nome, 'Maria Real');
+
+        const md = autorParaMarkdown(reg);
+        assert.match(md, /^## Maria Real/);
+        assert.match(md, /- \*\*Autor sigiloso:\*\* sim/);
+        // Autor sem a marca não ganha a linha
+        assert.doesNotMatch(autorParaMarkdown(itensDaSelecaoAutores([1])[0]), /Autor sigiloso/);
+
+        const linhas = gerarCsvAutores(itensDaSelecaoAutores([1, 3])).split('\n');
+        const cab = linhas[0].replace(/^\uFEFF/, '').split(',');
+        const col = cab.indexOf('sigiloso');
+        assert.ok(col > 0, 'coluna sigiloso existe');
+        assert.match(linhas[1], /Fernando Pessoa/);
+        assert.match(linhas[2], /Maria Real/);
+    });
+    it('Anonimizar autor: o nome marcado sai no .md, no .json e numa coluna do .csv', () => {
+        db.autores.push({
+            id: 4,
+            nome: 'Maria Real',
+            nomesLiterarios: [
+                { nome: 'Álvaro', tipo: 'Heterônimo' },
+                { nome: 'Job', tipo: 'Pseudônimo', anonimizar: true },
+            ],
+        });
+        const [reg] = itensDaSelecaoAutores([4]);
+        assert.equal(reg.nomesLiterarios[1].anonimizar, true);
+
+        const md = autorParaMarkdown(reg);
+        assert.match(md, /Job \(Pseudônimo, anonimiza o autor\)/);
+        assert.match(md, /Álvaro \(Heterônimo\)(,|$|\n)/);
+        assert.doesNotMatch(md, /Álvaro \(Heterônimo, anonimiza/);
+
+        const linhas = gerarCsvAutores(itensDaSelecaoAutores([4])).split('\n');
+        const cab = linhas[0].replace(/^\uFEFF/, '').split(',');
+        const col = cab.indexOf('nomes_anonimizam_autor');
+        assert.ok(col > 0, 'coluna nomes_anonimizam_autor existe');
+        assert.match(linhas[1], /Job/);
     });
 });

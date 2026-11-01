@@ -165,10 +165,10 @@ function resumoEcos(grafos) {
 }
 
 export const TITULOS_CONEXOES = {
-    tudo: 'Conexões',
-    elos: 'Conexões: Elos',
-    ecos: 'Conexões: Ecos',
-    selecao: 'Conexões: seleção',
+    tudo: 'Conexões dentro do acervo',
+    elos: 'Conexões dentro do acervo: Elos',
+    ecos: 'Conexões dentro do acervo: Ecos',
+    selecao: 'Conexões dentro do acervo: seleção',
 };
 
 // Frase de contagens que abre o relatório, em qualquer formato.
@@ -208,7 +208,7 @@ export function gerarMarkdownConexoes(dados, escopo = 'tudo') {
 
 // ─── Download ───────────────────────────────────────────────────
 
-function baixarArquivo(conteudo, tipoMime, nomeArquivo) {
+export function baixarArquivo(conteudo, tipoMime, nomeArquivo) {
     const blob = new Blob([conteudo], { type: `${tipoMime};charset=utf-8` });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

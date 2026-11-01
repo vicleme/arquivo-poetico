@@ -12,8 +12,9 @@
 // (`gerarMarkdownTemas`); o download fica à parte.
 // ============================================================
 
-import { contarTextosPorTema } from './temas.js';
+import { contarTextosPorTema, normalizarValenciaTema, ROTULOS_VALENCIA_TEMA } from './temas.js';
 import { chaveTema } from './utils.js';
+import { listarTemasUniversais, universaisDoTema } from './temas-universais.js';
 
 const ordemAlfabetica = (a, b) => a.nome.localeCompare(b.nome, 'pt-BR');
 const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
@@ -25,10 +26,14 @@ const notaEmUmaLinha = (notas) =>
         .replace(/\s+/g, ' ')
         .trim();
 
-// Um tema: nome, contagem de textos e, se houver, os assuntos e a nota.
-function temaParaMarkdown({ tema, textos, assuntos }) {
+// Um tema: nome, contagem de textos e, se houver, a valência, os assuntos, os
+// convites da Vitrine de leitura e a nota.
+function temaParaMarkdown({ tema, textos, assuntos, convites }) {
     let md = `- ${tema.nome} (${textos})`;
+    const valencia = normalizarValenciaTema(tema.valencia);
+    if (valencia) md += `. Valência: ${ROTULOS_VALENCIA_TEMA[valencia]}`;
     if (assuntos.length) md += `. Assuntos: ${assuntos.map((a) => a.nome).join(', ')}`;
+    if (convites.length) md += `. Vitrine: ${convites.map((u) => u.nome).join(', ')}`;
     const nota = notaEmUmaLinha(tema.notas);
     if (nota) md += `\n  Notas: ${nota}`;
     return md;
@@ -48,7 +53,9 @@ export function gerarMarkdownTemas(dbRef) {
         assuntos: assuntos.filter((a) =>
             (a.temaIds || []).some((id) => String(id) === String(tema.id)),
         ),
+        convites: universaisDoTema(dbRef, tema.id),
     }));
+    const convitesDaVitrine = listarTemasUniversais(dbRef);
 
     const comAssunto = linhas.filter((l) => l.assuntos.length > 0);
     const semAssunto = linhas.filter((l) => l.assuntos.length === 0);
@@ -56,7 +63,14 @@ export function gerarMarkdownTemas(dbRef) {
     let md = '# Temas\n\n';
     if (linhas.length === 0) return `${md}_Nenhum tema cadastrado ainda._\n`;
 
-    md += `${plural(linhas.length, 'tema', 'temas')}, ${semAssunto.length} sem assunto. `;
+    // Valência e vitrine só entram no resumo quando a pessoa já usa o recurso
+    // (algum tema classificado, algum convite), como na tela.
+    const semValencia = linhas.filter((l) => !normalizarValenciaTema(l.tema.valencia)).length;
+    const semVitrine = linhas.filter((l) => l.convites.length === 0).length;
+    let resumo = `${plural(linhas.length, 'tema', 'temas')}, ${semAssunto.length} sem assunto`;
+    if (semValencia < linhas.length) resumo += `, ${semValencia} sem valência`;
+    if (convitesDaVitrine.length) resumo += `, ${semVitrine} sem vitrine`;
+    md += `${resumo}. `;
     md += 'O número entre parênteses é a quantidade de textos com o tema.\n';
 
     md += '\n## Temas com assunto\n\n';
@@ -68,6 +82,25 @@ export function gerarMarkdownTemas(dbRef) {
     md += semAssunto.length
         ? semAssunto.map(temaParaMarkdown).join('\n') + '\n'
         : '_Nenhum: todos os temas já pertencem a algum assunto._\n';
+
+    // A Vitrine de leitura (convites do sorteio): cada convite com os temas que
+    // reúne, na ordem da tela. Fica no fim, só quando há convites.
+    if (convitesDaVitrine.length) {
+        const nomePorId = new Map(linhas.map((l) => [String(l.tema.id), l.tema.nome]));
+        md += '\n## Vitrine de leitura\n\n';
+        md += convitesDaVitrine
+            .map((u) => {
+                const nomes = (u.temaIds || [])
+                    .map((id) => nomePorId.get(String(id)))
+                    .filter(Boolean)
+                    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+                return `- ${u.nome} (${plural(nomes.length, 'tema', 'temas')})${
+                    nomes.length ? `: ${nomes.join(', ')}` : ''
+                }`;
+            })
+            .join('\n');
+        md += '\n';
+    }
 
     return md;
 }

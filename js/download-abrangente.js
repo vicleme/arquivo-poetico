@@ -1,71 +1,129 @@
 // ============================================================
-// download-abrangente.js — Preferência única "Download abrangente":
-// quando ligada, o download de um Poema em .md, .pdf, .docx ou .json
-// inclui junto a Sonoridade e a Progressão Morfofuncional cadastradas
-// pra aquele poema, se existirem (getEscansaoDoPoema/getEstruturaDoPoema,
-// db.js). O .csv não muda.
+// download-abrangente.js: preferências "Sonoridade" e "Progressão" do
+// download de Poemas. Cada uma, quando ligada, inclui junto, no download
+// de um Poema em .md, .pdf, .docx ou .json, a Sonoridade (escansão) ou a
+// Progressão Morfofuncional cadastradas para aquele poema, se existirem
+// (getEscansaoDoPoema/getEstruturaDoPoema, db.js). O .csv não muda.
+// (O nome do arquivo vem do antigo "Abrangente", que ligava as duas juntas.)
 //
 // Só existe pra Poemas: Sonoridade e Morfofuncionalidade são sempre
-// ligadas a um `poemaId` (ver db.js) — Prosa não tem nenhuma das duas,
-// então o checkbox nunca aparece nos três lugares de Prosa.
+// ligadas a um `poemaId` (ver db.js), então as caixas nunca aparecem nos
+// lugares de Prosa.
 //
-// Guardado como UM booleano só no localStorage (diferente do formato
-// de acoes-coluna.js, que é por-tabela) — só existe num contexto
-// (Poemas), e os três checkboxes (modal "Ver", painel "⚙️ Ações ▾" e
-// barra de seleção em massa) precisam ler/escrever o mesmo valor, pra
-// não ficarem dessincronizados entre si (marcar num lugar reflete nos
-// outros dois na hora).
+// Cada preferência é UM booleano no localStorage (não por tabela), e as
+// caixas dos três lugares (modal "Ver", painel "⚙️ Ações ▾" e barra de
+// seleção em massa) leem e escrevem o mesmo valor, para ficarem
+// sincronizadas. Quem tinha o antigo "Abrangente" ligado e ainda não
+// escolheu nada nas novas fica com as duas ligadas.
 // ============================================================
 
 import { getEscansaoDoPoema, getEstruturaDoPoema } from './db.js';
 import { escansaoParaMarkdown } from './exportar-sonoridade.js';
 import { estruturaParaMarkdown } from './exportar-estrutura-textual.js';
 
-const LS_KEY = 'arquivoPoetico_downloadAbrangente';
+const LS_ABRANGENTE_ANTIGO = 'arquivoPoetico_downloadAbrangente';
 
-export function isDownloadAbrangenteAtivo() {
-    return localStorage.getItem(LS_KEY) === '1';
+const PREFS = {
+    sonoridade: { chave: 'arquivoPoetico_downloadSonoridade', classe: 'download-sonoridade-check' },
+    progressao: { chave: 'arquivoPoetico_downloadProgressao', classe: 'download-progressao-check' },
+};
+
+function lerLS(chave) {
+    try {
+        return localStorage.getItem(chave);
+    } catch {
+        return null;
+    }
 }
 
-// Classe comum aos três checkboxes (modal, painel de Ações, barra de
-// seleção em massa) — usada aqui só pra sincronizar entre eles, nunca
-// pra estilização.
-function sincronizarCheckboxes(ativo) {
-    document.querySelectorAll('.download-abrangente-check').forEach((el) => {
-        el.checked = ativo;
+function lerPref(nome) {
+    const guardado = lerLS(PREFS[nome].chave);
+    if (guardado !== null) return guardado === '1';
+    return lerLS(LS_ABRANGENTE_ANTIGO) === '1';
+}
+
+export function isDownloadSonoridadeAtivo() {
+    return lerPref('sonoridade');
+}
+
+export function isDownloadProgressaoAtivo() {
+    return lerPref('progressao');
+}
+
+function sincronizarCheckboxes() {
+    if (typeof document === 'undefined') return;
+    Object.keys(PREFS).forEach((nome) => {
+        const ativo = lerPref(nome);
+        document.querySelectorAll(`.${PREFS[nome].classe}`).forEach((el) => {
+            el.checked = ativo;
+        });
     });
 }
 
-// Chamado pelo onchange dos três checkboxes.
-export function toggleDownloadAbrangente(ativo) {
-    localStorage.setItem(LS_KEY, ativo ? '1' : '0');
-    sincronizarCheckboxes(ativo);
+function gravarPref(nome, ativo) {
+    try {
+        localStorage.setItem(PREFS[nome].chave, ativo ? '1' : '0');
+    } catch (e) {
+        console.warn('[download-abrangente.js] Não foi possível salvar a preferência:', e);
+    }
+    sincronizarCheckboxes();
 }
 
-// Aplica o estado salvo aos checkboxes já presentes no DOM — chamado
-// uma vez no carregamento da página (main.js), já que a barra de
-// seleção em massa e o modal de Visualização são HTML estático (não
-// recriado via innerHTML a cada render, diferente do painel de Ações).
+// onchange das caixas.
+export function toggleDownloadSonoridade(ativo) {
+    gravarPref('sonoridade', ativo);
+}
+
+export function toggleDownloadProgressao(ativo) {
+    gravarPref('progressao', ativo);
+}
+
+// Aplica o estado salvo às caixas já presentes no DOM: chamado uma vez no
+// carregamento (main.js), já que a barra em massa e o modal "Ver" são HTML
+// estático (não recriado a cada render, diferente do painel de Ações).
 export function sincronizarCheckboxesComEstadoSalvo() {
-    sincronizarCheckboxes(isDownloadAbrangenteAtivo());
+    sincronizarCheckboxes();
 }
 
-// Bloco extra do painel "⚙️ Ações ▾" — só entra pra tabela 'poemas'
-// (ver celulas-tabela.js/atualizarPainelAcoes). Não é um campo novo em
-// DEFINICAO_ACOES/FORMATOS_BAIXAR (acoes-coluna.js) porque esses são
-// compartilhados com Prosa/Sonoridade/Morfofuncionalidade — isso aqui
-// é renderizado condicionalmente por fora daquele painel compartilhado.
-export function renderCheckboxDownloadAbrangenteAcoes() {
-    const ativo = isDownloadAbrangenteAtivo();
-    return `
-        <div class="mt-3 pt-3 border-t border-gray-100 dark:border-slate-700">
+const TITULO_SONORIDADE =
+    'Inclui a Sonoridade (escansão) dos poemas, quando cadastrada (.md, .pdf, .docx e .json; o .csv não muda)';
+const TITULO_PROGRESSAO =
+    'Inclui a Progressão Morfofuncional dos poemas, quando cadastrada (.md, .pdf, .docx e .json; o .csv não muda)';
+
+// As duas caixas (HTML), para os pontos de montagem dinâmicos.
+export function renderCaixasSonoridadeProgressao() {
+    const caixa = (nome, onchange, titulo, rotulo) => `
             <label class="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 cursor-pointer whitespace-nowrap"
-                title="Download abrangente: inclui a Sonoridade e a Progressão Morfofuncional dos poemas, quando cadastradas">
-                <input type="checkbox" class="download-abrangente-check" ${ativo ? 'checked' : ''}
-                    onchange="toggleDownloadAbrangente(this.checked)">
-                📦 Abrangente (com Sonoridade e Progressão)
-            </label>
-        </div>`;
+                title="${titulo}">
+                <input type="checkbox" class="${PREFS[nome].classe}" ${lerPref(nome) ? 'checked' : ''}
+                    onchange="${onchange}(this.checked)">
+                ${rotulo}
+            </label>`;
+    return (
+        caixa('progressao', 'toggleDownloadProgressao', TITULO_PROGRESSAO, '📈 Progressão') +
+        caixa('sonoridade', 'toggleDownloadSonoridade', TITULO_SONORIDADE, '🎼 Sonoridade')
+    );
+}
+
+// Preenche os pontos de montagem (`.sonoridade-progressao-slot`) do HTML
+// estático. Idempotente; chamado no carregamento (main.js) e ao abrir o Ver.
+export function montarCaixasSonoridadeProgressao(raiz) {
+    if (typeof document === 'undefined') return;
+    (raiz || document).querySelectorAll('.sonoridade-progressao-slot').forEach((slot) => {
+        if (!slot.dataset.montado) {
+            slot.innerHTML = renderCaixasSonoridadeProgressao();
+            slot.dataset.montado = '1';
+        }
+    });
+    sincronizarCheckboxes();
+}
+
+// Controles extras do painel "⚙️ Ações ▾": só entram pra tabela 'poemas' (ver
+// celulas-tabela.js/atualizarPainelAcoes). Não é um campo novo em
+// DEFINICAO_ACOES/FORMATOS_BAIXAR (acoes-coluna.js) porque esses são
+// compartilhados com Prosa/Sonoridade/Morfofuncionalidade.
+export function renderCheckboxDownloadAbrangenteAcoes() {
+    return renderCaixasSonoridadeProgressao();
 }
 
 // ─── Enriquecimento pro JSON ────────────────────────────────────────
@@ -73,10 +131,10 @@ export function renderCheckboxDownloadAbrangenteAcoes() {
 // correspondente simplesmente não entra (mesmo espírito de "não
 // posicionado" já usado em outros lugares do app).
 function enriquecerItemComExtras(item) {
-    if (item.tipo !== 'poema' || !isDownloadAbrangenteAtivo()) return item;
+    if (item.tipo !== 'poema') return item;
 
-    const sonoridade = getEscansaoDoPoema(item.id);
-    const estruturaTextual = getEstruturaDoPoema(item.id);
+    const sonoridade = isDownloadSonoridadeAtivo() ? getEscansaoDoPoema(item.id) : null;
+    const estruturaTextual = isDownloadProgressaoAtivo() ? getEstruturaDoPoema(item.id) : null;
     if (!sonoridade && !estruturaTextual) return item;
 
     return {

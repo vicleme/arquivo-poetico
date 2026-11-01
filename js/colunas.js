@@ -154,6 +154,15 @@ export const DEFINICAO_COLUNAS = {
         },
         // Notas — logo depois do campo Texto no modal.
         { key: 'notas', label: 'Notas', default: false, sortType: 'alfabetico' },
+        // Notas marcadas como públicas e comentário escrito para o leitor (ver
+        // comentarios-publicos.js). A primeira ordena os marcados primeiro.
+        { key: 'notasPublicas', label: 'Notas públicas', default: false, sortType: 'numero' },
+        {
+            key: 'comentariosPublicos',
+            label: 'Comentários ao leitor',
+            default: false,
+            sortType: 'alfabetico',
+        },
         // Autoria — chip logo abaixo de Notas no modal (Autor/Coautor).
         { key: 'autoria', label: 'Autoria', default: false },
         // Envios e Reações — item 7, quando/pra quem o texto foi enviado.
@@ -170,6 +179,22 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'numero',
         },
+        // Marca de leitura: "pode ser sorteado" (ver sorteavel.js). Ordena os
+        // marcados primeiro (ou por último), como a Autoclassificação trata o 0.
+        { key: 'sorteavel', label: 'Sorteável', default: false, sortType: 'numero' },
+        // Sigilo do autor neste texto (ver autor-em-sigilo.js). Ordena os marcados
+        // primeiro (ou por último), como o Sorteável.
+        { key: 'autorEmSigilo', label: 'Autor em sigilo', default: false, sortType: 'numero' },
+        // Leitura autônoma (ver leitura-autonoma.js): Lê-se sozinho aparece como "—".
+        {
+            key: 'leituraAutonoma',
+            label: 'Leitura autônoma',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        // Valência do texto (ver valencia-texto.js): derivada dos temas, ou o ajuste do
+        // autor. Ordena da mais leve à mais pesada; sem valência vai por último.
+        { key: 'valencia', label: 'Valência', default: false, sortType: 'numero' },
         // "Livros e destino" — vínculo estrutural.
         { key: 'estrutura', label: 'Estrutura', default: true, sortType: 'estrutura' },
         // "Intratextualidade" (Elos + Ecos).
@@ -437,6 +462,15 @@ export const DEFINICAO_COLUNAS = {
         { key: 'pessoas', label: 'Pessoas', default: false, sortType: 'alfabetico' },
         { key: 'grupos', label: 'Grupos', default: false, sortType: 'alfabetico' },
         { key: 'notas', label: 'Notas', default: false, sortType: 'alfabetico' },
+        // Notas marcadas como públicas e comentário escrito para o leitor (ver
+        // comentarios-publicos.js). A primeira ordena os marcados primeiro.
+        { key: 'notasPublicas', label: 'Notas públicas', default: false, sortType: 'numero' },
+        {
+            key: 'comentariosPublicos',
+            label: 'Comentários ao leitor',
+            default: false,
+            sortType: 'alfabetico',
+        },
         { key: 'autoria', label: 'Autoria', default: false },
         { key: 'envios', label: 'Envios', default: false },
         { key: 'reconhecimentos', label: 'Reconhecimentos', default: false },
@@ -450,6 +484,22 @@ export const DEFINICAO_COLUNAS = {
             default: false,
             sortType: 'numero',
         },
+        // Marca de leitura: "pode ser sorteado" (ver sorteavel.js). Ordena os
+        // marcados primeiro (ou por último), como a Autoclassificação trata o 0.
+        { key: 'sorteavel', label: 'Sorteável', default: false, sortType: 'numero' },
+        // Sigilo do autor neste texto (ver autor-em-sigilo.js). Ordena os marcados
+        // primeiro (ou por último), como o Sorteável.
+        { key: 'autorEmSigilo', label: 'Autor em sigilo', default: false, sortType: 'numero' },
+        // Leitura autônoma (ver leitura-autonoma.js): Lê-se sozinho aparece como "—".
+        {
+            key: 'leituraAutonoma',
+            label: 'Leitura autônoma',
+            default: false,
+            sortType: 'alfabetico',
+        },
+        // Valência do texto (ver valencia-texto.js): derivada dos temas, ou o ajuste do
+        // autor. Ordena da mais leve à mais pesada; sem valência vai por último.
+        { key: 'valencia', label: 'Valência', default: false, sortType: 'numero' },
         // "Intratextualidade" (Elos + Ecos).
         { key: 'elos', label: 'Elos', default: false, sortType: 'alfabetico' },
         { key: 'ecos', label: 'Ecos', default: false, sortType: 'alfabetico' },
@@ -599,6 +649,31 @@ export const DEFINICAO_COLUNAS = {
         { key: 'registro', label: 'Registro', default: true, sortType: 'alfabetico' },
         { key: 'tom', label: 'Tom', default: true, sortType: 'alfabetico' },
         { key: 'peMetrico', label: 'Pé Métrico', default: false, sortType: 'alfabetico' },
+    ],
+    // "Modo revisão" da seção Fora do acervo (aba Conexões): uma linha por
+    // entrada de Intertextualidade ou de Hipertextualidade, todas as colunas
+    // editáveis. O título do texto (que abre o Ver) é a única coluna fixa. Ligadas
+    // por padrão as que servem à limpeza do dia a dia; as demais (campos que só
+    // a Intertextualidade tem, link e nota) começam desligadas. Sem sortType:
+    // a tabela segue a ordem do título do texto, como em listarLinhasRevisao.
+    'revisao-fora': [
+        { key: 'campo', label: 'Campo', default: true },
+        { key: 'relacao', label: 'Relação', default: true },
+        { key: 'nome', label: 'Obra', default: true },
+        { key: 'autor', label: 'Autor', default: true },
+        { key: 'origem', label: 'Origem', default: false },
+        { key: 'tipoObra', label: 'Tipo de obra', default: true },
+        { key: 'descricao', label: 'Descrição', default: true },
+        { key: 'dataObra', label: 'Data da obra', default: false },
+        { key: 'dataObraAte', label: 'Até', default: false },
+        { key: 'obraPessoal', label: 'Obra pessoal', default: false },
+        { key: 'personagem', label: 'Personagem', default: false },
+        { key: 'trecho', label: 'Trecho', default: false },
+        { key: 'traduzido', label: 'Traduzido', default: false },
+        { key: 'link', label: 'Link', default: false },
+        { key: 'linkTexto', label: 'Texto do link', default: false },
+        { key: 'dataAcesso', label: 'Data de acesso', default: false },
+        { key: 'nota', label: 'Nota', default: false },
     ],
 };
 

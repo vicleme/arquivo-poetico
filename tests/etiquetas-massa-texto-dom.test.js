@@ -5,8 +5,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 // Campo de etiquetas (chips) nas barras de edição em massa das abas de texto
-// (Poemas e Prosas): Pessoas, Sinalizações, Gênero (só Prosa), Temas e o
-// nome em Períodos e movimentos. Usa o HTML de verdade do index.html, para
+// (Poemas e Prosas): Etiquetas (Sinalizações), Gênero (só Prosa), Temas e o
+// nome em Períodos e movimentos. Pessoas não tem campo na barra: vive só no
+// painel "Pessoas e papéis". Usa o HTML de verdade do index.html, para
 // pegar também o markup (bloco com o <div id="{id}-chips" ...> acima do campo).
 const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const secao = (id) => indexHtml.match(new RegExp(`<section id="${id}"[\\s\\S]*?</section>`))[0];
@@ -53,8 +54,6 @@ function selecionarProsas(...ids) {
 }
 
 const CAMPOS = [
-    'bulk-pessoa-input',
-    'bulk-pessoa-input-prosa',
     'bulk-sinal-input',
     'bulk-sinal-input-prosa',
     'bulk-tema-input',
@@ -106,98 +105,66 @@ describe('Barra de Poemas e Prosas: o markup traz o campo de etiquetas', () => {
     });
 });
 
-describe('Pessoas em massa com etiquetas', () => {
+describe('Barra de Poemas e Prosas: Pessoas e Etiquetas ficam em painéis', () => {
+    const lados = [
+        { tabela: 'poemas', sufixo: '' },
+        { tabela: 'prosas', sufixo: '-prosa' },
+    ];
+
+    it('não sobra campo, Dedicar nem Remover de Pessoa solto na barra', () => {
+        lados.forEach(({ tabela, sufixo }) => {
+            assert.equal(el(`bulk-pessoa-input${sufixo}`), null, `${tabela}: campo de Pessoa`);
+            const barra = el(`barra-acoes-${tabela}`).innerHTML;
+            assert.doesNotMatch(barra, /\+ Dedicar/);
+            assert.doesNotMatch(barra, /PessoaEmMassa\(/);
+            assert.match(barra, /Pessoas e papéis ▾/, `${tabela}: o painel de Pessoas continua`);
+        });
+    });
+
+    it('Etiquetas tem botão ▾ e painel próprio, com o seletor de categoria e o campo dentro', () => {
+        lados.forEach(({ tabela, sufixo }) => {
+            const barra = el(`barra-acoes-${tabela}`);
+            const painel = el(`painel-etiquetas-massa${sufixo}`);
+            assert.ok(painel, `${tabela}: falta o painel de Etiquetas`);
+            assert.ok(painel.classList.contains('hidden'), `${tabela}: nasce fechado`);
+            assert.match(
+                barra.innerHTML,
+                new RegExp(`togglePainel\\('painel-etiquetas-massa${sufixo}', this\\)`),
+            );
+            assert.match(barra.innerHTML, /🔖 Etiquetas ▾/);
+            [
+                `bulk-sinal-categoria${sufixo}`,
+                `bulk-sinal-input${sufixo}`,
+                `bulk-sinal-input${sufixo}-chips`,
+            ].forEach((id) => {
+                assert.ok(painel.querySelector(`#${id}`), `${tabela}: ${id} fora do painel`);
+            });
+            assert.match(painel.innerHTML, new RegExp(`aplicarSinalEmMassa\\('${tabela}'\\)`));
+            assert.match(painel.innerHTML, new RegExp(`removerSinalEmMassa\\('${tabela}'\\)`));
+        });
+    });
+});
+
+describe('Etiquetas no painel: o campo de etiquetas continua ligado', () => {
     beforeEach(reset);
 
     it('ligar a barra liga o campo: Enter e vírgula viram etiquetas, o × tira', () => {
         db.poemas.push(poema(1));
         selecionarPoemas(1);
-        digitar('bulk-pessoa-input', 'Ana');
-        digitar('bulk-pessoa-input', 'Bia', ',');
-        assert.deepEqual(chips('bulk-pessoa-input'), ['Ana', 'Bia']);
-        el('bulk-pessoa-input-chips').querySelector('button').click();
-        assert.deepEqual(chips('bulk-pessoa-input'), ['Bia']);
+        digitar('bulk-sinal-input', 'Lírico');
+        digitar('bulk-sinal-input', 'Sombrio', ',');
+        assert.deepEqual(chips('bulk-sinal-input'), ['Lírico', 'Sombrio']);
+        el('bulk-sinal-input-chips').querySelector('button').click();
+        assert.deepEqual(chips('bulk-sinal-input'), ['Sombrio']);
     });
 
-    it('dedica várias pessoas numa confirmação só, sem papéis, criando quem não existe', () => {
-        db.poemas.push(
-            poema(1, { pessoas: [{ pessoaId: 1, papeis: ['Retratado(a)'] }] }),
-            poema(2),
-            poema(3),
-        );
-        selecionarPoemas(1, 2);
-        digitar('bulk-pessoa-input', 'Ana');
-        digitar('bulk-pessoa-input', 'Caio');
-        SM.aplicarPessoaEmMassa('poemas');
-        assert.ok(modalAberto());
-        assert.match(textoDoModal(), /"Ana" e "Caio"/);
-        assert.equal(db.poemas[1].pessoas, undefined, 'nada muda antes de confirmar');
-        confirmar();
-
-        const caio = db.pessoas.find((p) => p.nome === 'Caio');
-        assert.ok(caio, 'Caio foi criado no cadastro');
-        assert.deepEqual(db.poemas[0].pessoas, [
-            { pessoaId: 1, papeis: ['Retratado(a)'] },
-            { pessoaId: caio.id, papeis: [] },
-        ]);
-        assert.deepEqual(db.poemas[1].pessoas, [
-            { pessoaId: 1, papeis: [] },
-            { pessoaId: caio.id, papeis: [] },
-        ]);
-        assert.equal(db.poemas[2].pessoas, undefined);
-        assert.deepEqual(chips('bulk-pessoa-input'), [], 'campo limpo depois de aplicar');
-    });
-
-    it('o que ainda está digitado entra ao clicar em Dedicar', () => {
+    it('o que ainda está digitado entra ao clicar em Marcar', () => {
         db.poemas.push(poema(1));
         selecionarPoemas(1);
-        el('bulk-pessoa-input').value = 'Bia';
-        SM.aplicarPessoaEmMassa('poemas');
+        el('bulk-sinal-input').value = 'Barroco';
+        SM.aplicarSinalEmMassa('poemas');
         confirmar();
-        assert.deepEqual(db.poemas[0].pessoas, [{ pessoaId: 2, papeis: [] }]);
-    });
-
-    it('remove várias pessoas e avisa de quem não está no cadastro', () => {
-        db.poemas.push(
-            poema(1, {
-                pessoas: [
-                    { pessoaId: 1, papeis: [] },
-                    { pessoaId: 2, papeis: [] },
-                ],
-            }),
-        );
-        selecionarPoemas(1);
-        digitar('bulk-pessoa-input', 'Ana');
-        digitar('bulk-pessoa-input', 'Zé');
-        SM.removerPessoaEmMassa('poemas');
-        assert.ok(modalAberto());
-        assert.match(textoDoModal(), /"Zé" não está cadastrada e será ignorada/);
-        confirmar();
-        assert.deepEqual(db.poemas[0].pessoas, [{ pessoaId: 2, papeis: [] }]);
-    });
-
-    it('remover só nomes fora do cadastro não abre confirmação nem cria ninguém', () => {
-        db.poemas.push(poema(1));
-        selecionarPoemas(1);
-        digitar('bulk-pessoa-input', 'Fulano');
-        SM.removerPessoaEmMassa('poemas');
-        assert.ok(!modalAberto());
-        assert.equal(db.pessoas.length, 2);
-        assert.deepEqual(chips('bulk-pessoa-input'), []);
-    });
-
-    it('funciona nas Prosas, com o campo próprio', () => {
-        db.prosas.push(prosa(7));
-        selecionarProsas(7);
-        digitar('bulk-pessoa-input-prosa', 'Ana');
-        digitar('bulk-pessoa-input-prosa', 'Bia');
-        SM.aplicarPessoaEmMassa('prosas');
-        confirmar();
-        assert.deepEqual(
-            db.prosas[0].pessoas.map((p) => p.pessoaId),
-            [1, 2],
-        );
-        assert.deepEqual(chips('bulk-pessoa-input'), [], 'o campo de Poemas não foi tocado');
+        assert.equal(textoDeEtiquetas(db.poemas[0].sinalizacoesTradicao), 'Barroco');
     });
 });
 
@@ -315,6 +282,26 @@ describe('Temas em massa com etiquetas', () => {
         assert.equal(db.poemas[1].temas.length, 2);
         assert.ok(db.temas.some((t) => t.nome === 'Exílio'));
         assert.deepEqual(chips('bulk-tema-input'), []);
+    });
+
+    it('no campo de Tema a vírgula não confirma e o ponto e vírgula confirma', () => {
+        db.poemas.push(poema(1));
+        selecionarPoemas(1);
+        SM.prepararPainelTemasMassa('poemas');
+        digitar('bulk-tema-input', 'Amor, perda', ',');
+        assert.deepEqual(chips('bulk-tema-input'), [], 'a vírgula não vira etiqueta');
+        digitar('bulk-tema-input', 'Amor, perda', ';');
+        assert.deepEqual(chips('bulk-tema-input'), ['Amor, perda']);
+        assert.match(el('bulk-tema-input').placeholder, /Enter ou ; adiciona/);
+    });
+
+    it('no campo de Tema, texto colado só se divide por ponto e vírgula', async () => {
+        db.poemas.push(poema(1));
+        selecionarPoemas(1);
+        SM.prepararPainelTemasMassa('poemas');
+        el('bulk-tema-input').value = 'Amor, perda; Exílio';
+        el('bulk-tema-input').onchange();
+        assert.deepEqual(chips('bulk-tema-input'), ['Amor, perda', 'Exílio']);
     });
 
     it('o datalist traz o cadastro sem encadear texto', () => {

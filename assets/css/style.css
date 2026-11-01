@@ -561,3 +561,28 @@ html.dark .grafo-aresta-rotulo-fundo {
 html.dark .grafo-aresta-rotulo-texto {
     fill: #f0abfc; /* fuchsia-300 */
 }
+
+/* Cabeçalho ordenável da matriz de Cruzamentos. A seta fica no CSS (não no
+   texto) para o nome da coluna continuar limpo para leitor de tela, cópia e
+   testes; o estado vai em aria-sort. */
+.th-ordenavel::after {
+    content: '↕';
+    display: inline-block;
+    width: 0.75rem;
+    color: #d1d5db; /* gray-300 */
+}
+html.dark .th-ordenavel::after {
+    color: #475569; /* slate-600 */
+}
+th[aria-sort='ascending'] .th-ordenavel::after {
+    content: '▲';
+    color: #2563eb; /* blue-600 */
+}
+th[aria-sort='descending'] .th-ordenavel::after {
+    content: '▼';
+    color: #2563eb;
+}
+html.dark th[aria-sort='ascending'] .th-ordenavel::after,
+html.dark th[aria-sort='descending'] .th-ordenavel::after {
+    color: #60a5fa; /* blue-400 */
+}

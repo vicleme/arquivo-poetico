@@ -51,7 +51,7 @@ describe('gerarPdfExportacao', () => {
 
     // ─── Bug original: caracteres fora de Latin-1 quebravam a página inteira ───
 
-    it('substitui a seta "→" (Localização) por "->", sem deixar a seta original passar', () => {
+    it('Localização com "›" (que o jsPDF desenha) sai intacta, sem virar "->"', () => {
         const item = {
             id: 1,
             tipo: 'poema',
@@ -61,8 +61,16 @@ describe('gerarPdfExportacao', () => {
         };
         const doc = gerarPdfExportacao([item]);
         const texto = textoCompleto(doc);
+        assert.match(texto, /Livro A ?› ?Parte B ?› ?Seção C/);
+        assert.ok(!texto.includes('->'));
+    });
+
+    it('substitui a seta "→" (ex.: no Fora de escopo) por "->", sem deixar a seta original passar', () => {
+        const item = { id: 1, tipo: 'poema', titulo: 'T', notas: 'de A → agora em B', texto: 'x' };
+        const doc = gerarPdfExportacao([item]);
+        const texto = textoCompleto(doc);
         assert.ok(!texto.includes('→'), 'a seta original não deveria sobrar em nenhum doc.text()');
-        assert.match(texto, /Livro A ?-> ?Parte B ?-> ?Seção C/);
+        assert.match(texto, /de A ?-> ?agora em B/);
     });
 
     it('remove os emojis de status, sem deixar sobras corrompidas', () => {

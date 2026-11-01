@@ -30,7 +30,7 @@ document.body.innerHTML = `
     <div id="pr-grupos-diretos-container"></div>
     <input id="p-fonte-link" />
     <input id="p-fonte-data-acesso" type="date" />
-    ${bloco('intertexto', '<input id="p-intertexto-texto" />')}
+    ${bloco('intertexto', '<input id="p-intertexto-obra" />')}
     ${bloco('refext', '<input id="p-refext-texto" />')}
     ${bloco(
         'hipertexto',
@@ -85,7 +85,7 @@ describe('Data de acesso — Intertextualidade (Poema)', () => {
     beforeEach(limpar);
 
     it('salva a data junto do link e mostra "(acesso em dd/mm/aaaa)" na lista', () => {
-        val('p-intertexto-texto', 'Águas de Março');
+        val('p-intertexto-obra', 'Águas de Março');
         val('p-intertexto-link', 'https://exemplo.com/a');
         val('p-intertexto-data-acesso', '2026-10-18');
         ed.adicionarIntertexto('poemas');
@@ -97,7 +97,7 @@ describe('Data de acesso — Intertextualidade (Poema)', () => {
     });
 
     it('sem link, a data é descartada (não existe acesso sem link)', () => {
-        val('p-intertexto-texto', 'Só texto');
+        val('p-intertexto-obra', 'Só texto');
         val('p-intertexto-data-acesso', '2026-10-18');
         ed.adicionarIntertexto('poemas');
 
@@ -113,14 +113,14 @@ describe('Data de acesso — Intertextualidade (Poema)', () => {
     });
 
     it('link sem data não grava a chave dataAcesso (formato antigo intacto)', () => {
-        val('p-intertexto-texto', 'X');
+        val('p-intertexto-obra', 'X');
         val('p-intertexto-link', 'https://exemplo.com/a');
         ed.adicionarIntertexto('poemas');
         assert.equal('dataAcesso' in ed.obterIntertextualidade('poemas')[0], false);
     });
 
     it('editar carrega a data no campo e cancelar limpa', () => {
-        val('p-intertexto-texto', 'X');
+        val('p-intertexto-obra', 'X');
         val('p-intertexto-link', 'https://exemplo.com/a');
         val('p-intertexto-data-acesso', '2026-10-18');
         ed.adicionarIntertexto('poemas');

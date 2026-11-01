@@ -119,7 +119,7 @@ npm run format:check   # prettier --check .
 │   │                          → Full map of every field in a Poem/Prose
 │   │                            record, for reading exported data without
 │   │                            opening the code
-│   ├── etiquetas-sinalizacoes-for-ai.md / etiquetas-sinalizacoes-for-ai-pt-br.md
+│   ├── etiquetas-for-ai.md / etiquetas-for-ai-pt-br.md
 │   │                          → Logic of the archive's tags ("Etiquetas"
 │   │                            in the UI; formerly "Sinalizações") — which category each one
 │   │                            represents, and how tags are stored (registry with ids)
@@ -139,6 +139,9 @@ npm run format:check   # prettier --check .
 │   │                          → Fields of the Morfofuncionalidade record
 │   │                            (Units/Events, position in the text,
 │   │                            Templates) — the "Morfofuncionalidade" tab
+│   ├── livro-for-ai.md / livro-for-ai-pt-br.md
+│   │                          → Book fields: Authorship vs. Team and credits, AI use,
+│   │                            what the book export carries, and how to search books
 │   ├── pessoas-papeis-for-ai.md / pessoas-papeis-for-ai-pt-br.md
 │   │                          → Logic of the `pessoas` field on Poems/Prose
 │   │                            — roles assigned to each mentioned person
@@ -157,6 +160,10 @@ npm run format:check   # prettier --check .
 │   │                          → Fields of the Sonoridade record (general
 │   │                            classification, syllable grid, rhymes and
 │   │                            echoes) — complements scansion-for-ai.md
+│   ├── sorteio-for-ai.md / sorteio-for-ai-pt-br.md
+│   │                          → The reading draw ("Sortear leitura"): who can
+│   │                            be drawn, autonomous reading, the three levels
+│   │                            of author secrecy, and what the reader sees
 │   ├── temas-assuntos-for-ai.md / temas-assuntos-for-ai-pt-br.md
 │   │                          → Themes and Subjects: how they connect, roles,
 │   │                            naming, and criteria for choosing them (the
@@ -234,6 +241,13 @@ npm run format:check   # prettier --check .
 │   │                           mapping/classification, and the read-only
 │   │                           grid reused by the "View" modal
 │   ├── visualizar-livro.js     → Livro "View" modal (read-only, with prev/next)
+│   ├── Books tab (Phase 19): filtro-livros.js, busca-livros.js,
+│   │   vinculo-busca.js (shared `name@role`), sugestoes-busca-livros.js, autoria-livro.js, colaboradores-livro.js,
+│   │   uso-ia-livro.js, estrutura-livro.js, fora-de-escopo.js, origem-livro.js, opcoes-origem.js (pure logic); ui-autoria-livro.js,
+│   │   ui-equipe-livro.js, ui-uso-ia-livro.js, colaboradores-aba.js,
+│   │   selecao-livros.js, selecao-livros-aba.js, baixar-livros.js (screens);
+│   │   exportar-livros.js (.json/.csv/.md), exportar-livros-pdf.js,
+│   │   exportar-livros-docx.js, capas-para-exportar.js (covers for .pdf/.docx)
 │   ├── visualizar-sonoridade.js → "View" modal for a scansion (read-only,
 │   │                           same grid as editor-sonoridade.js)
 │   ├── exportar-sonoridade.js → Exports a scansion as .md/.pdf/.docx/.json
@@ -298,6 +312,12 @@ npm run format:check   # prettier --check .
 │   │     *-acoes.js (one pair per tab)
 │   │   · Echo anchors and suggestions: alvos-conceitos.js, ancora-eco*.js,
 │   │     sugestao-ecos.js, ui-sugestao-ecos.js, grupo-personagens.js
+│   │   · Outside the archive (Connections tab): fora-do-acervo.js (logic),
+│   │     render-fora-do-acervo.js, corrigir-fora-do-acervo*.js,
+│   │     revisao-fora-do-acervo*.js (Modo revisão), exportar-fora-do-acervo*.js
+│   │     (.md, .csv and .pdf report), baixar-fora-do-acervo.js
+│   │   · Cited work (authors and date): autores-da-obra.js, campo-tags-autor.js,
+│   │     data-da-obra.js, campo-data-obra.js, data-da-entrada-texto.js
 │   │   · Statistics: estatisticas-dados*.js (aggregations),
 │   │     estatisticas-tela-*.js (one screen per tab), estatisticas-filtros.js
 │   │   · Export, import and backup: exportar-csv.js, exportar-assuntos.js, exportar-tag-clusters.js, exportar-tag-clusters-png.js (the .png and .pdf drawing), selecao-tag-clusters.js, rasterizar-svg.js, importar-tag-clusters.js,
@@ -311,7 +331,32 @@ npm run format:check   # prettier --check .
 │   │   · Creation and Morphofunctionality: editor-molde.js, molde-json.js,
 │   │     ui-molde-json.js, estrutura-textual.js
 │   │   · Help: modo-aprendizado.js, tour*.js, central-ajuda.js,
-│   │     faq-conteudo.js, como-faco-passos.js
+│   │     busca-ajuda.js, faq-conteudo.js, como-faco-passos.js
+│   │   · Where a text appears (Phase 21): aparicoes-dado.js (the `aparicoes`
+│   │     list, pure logic), aparicoes-do-texto.js, aparicoes-salvar.js,
+│   │     aviso-aparicoes.js, onde-aparece-linhas.js and onde-aparece-ui.js
+│   │     (the "Where it appears" group of the Poem/Prose modals),
+│   │     mover-aparicao-na-fila.js, subir-nivel-ao-excluir.js,
+│   │     textos-do-lugar-excluido.js, coletaneas-do-texto.js
+│   │   · Tags and Themes tabs: etiquetas-aba.js, exportar-etiquetas.js,
+│   │     localizar-etiquetas.js (Find and Replace for the 7 tag categories),
+│   │     exportar-temas.js, ligacoes-tema-pessoa.js
+│   │   · People, roles and public figures: papeis-pessoa.js,
+│   │     papeis-pessoa-ui.js, gestao-papeis-pessoa.js, papeis-personagem.js,
+│   │     legenda-papeis-pessoa.js, infos-papel.js, conhecido-como.js,
+│   │     caracterizacao-pessoa-publica.js, intertextualidade.js,
+│   │     ui-locais.js, ui-personagens.js
+│   │   · Books, Elements and images: estrutura-livro-saida.js,
+│   │     contador-sinopse-livro.js, ficha-catalografica.js, sumario.js,
+│   │     ui-sumario.js, imagem-link.js, previas-imagem.js
+│   │   · Search suggestions: sugestoes-busca-texto.js,
+│   │     ui-sugestoes-busca-texto.js, fontes-sugestoes-busca-texto.js
+│   │     (Poems/Prose), ui-sugestoes-busca-livros.js (Books),
+│   │     busca-autores.js (Authors)
+│   │   · Download options: agrupar-comuns.js and exportar-comuns.js (lines
+│   │     common to all texts), metadados-download.js, relatorio-periodos.js,
+│   │     relatorio-pdf.js, ui-relatorio-periodos.js (Periods and Currents
+│   │     report), padroes-colunas-fabrica.js (factory column presets)
 │   │   · Other: fuso-horario.js, ocultas-periodos.js
 │   └── utils.js              → Pure functions with no internal dependencies;
 │                               includes the delete-confirmation modal,
@@ -378,6 +423,33 @@ npm run format:check   # prettier --check .
   reference existing poems/prose (`refId`/`refTipo`) or hold anthology-only
   text (`textoOverride`). Deleting an anthology cascades to its parts and
   items, without affecting the original texts.
+- **Book record (Phase 19)**: besides the basic fields, a Book or Anthology has
+  **Authorship** (links to Authors, each with one or more roles: Author,
+  Co-author, Organizer, Translator, Preface writer, Afterword writer or free
+  text), **Team and credits** (links to the **Collaborators** tab, a registry
+  separate from Authors and People: cover designer, illustrator, layout,
+  proofreader, copy editor, editor, photographer, each role with an optional
+  free-text scope such as Cover or Inside) and **AI use** (a state that
+  defaults to "Not informed", never "Did not use", plus a list of uses with
+  where, tool, model and version, description, approximate date and how it was
+  used; an item can point to a specific poem or prose). The rule that separates
+  the first two: whoever produces the content is in Authorship, whoever
+  produces the book as an object is in Team and credits. See
+  `docs/livro-for-ai.md`.
+- **Book View and tab**: the View ends with a collapsible **Structure** section
+  (Parts, Sections and texts; each poem or prose title opens that text's View
+  and returns to the book). The Books tab has a search with prefixes (`autor:`,
+  `papel:`, `equipe:`, `papelequipe:`, `-` to exclude, `*` for "has", `@` to tie
+  a person to a role in the same book, with suggestions while typing and a `?`
+  help panel) and three-state buttons for Cover, ISBN and Store. Previous and
+  Next in the View follow the filtered list.
+- **Download of book information**: only the book's information, never the
+  texts' content, from the card (that book), the View footer (that book) and
+  the tab bar (scope Filtered, All or Only selected, with a Select mode that
+  puts a checkbox on each card). Formats: `.json`, `.csv`, `.md`, `.pdf` and
+  `.docx`; the chosen format is shared by the three places. In `.pdf` and
+  `.docx` the cover is embedded beside the short fields, the rest goes in full
+  width and links are clickable.
 - **Covers**: Books, Parts, and Sections accept a cover image. Images are
   stored in `IndexedDB` and never end up in the backup JSON. The viewing
   lightbox supports navigation between covers with ◀ ▶ and the ← → keys.
@@ -423,8 +495,12 @@ npm run format:check   # prettier --check .
   (Add, Remove, Set or Clear, depending on the field), always with **Undo**.
   List fields use tags, as in the modals.
 - **Statistics**: several tabs, including Cruzamentos (a Themes by People or
-  Groups matrix), Place and language, Literary Currents and Characters;
-  clicking a bar opens the matching list of texts.
+  Groups matrix that counts only the Theme × Person pairs you linked, with a
+  per-text analysis screen and a choice for texts not yet analysed), Place and language, Literary Currents, Characters and
+  **Dates of the works** (texts by century and decade of the works they cite,
+  and the distance between the work and the text; source: Works, References or
+  All); clicking a bar opens the matching list of texts, except in Dates of the
+  works for now.
 - **Data**: a Library tab (public-domain text packages to import), Additive
   Import (adds to the collection without erasing anything) and Backup and
   recovery (automatic snapshots, an extras file and **Empty the collection**,
@@ -436,18 +512,43 @@ npm run format:check   # prettier --check .
   "How do I..." walkthroughs.
 - **Tags and people**: theme tags and "dedicated to / about whom" as
   reusable labels, with `<datalist>` suggestions. See
-  `docs/etiquetas-sinalizacoes-for-ai.md` for the full logic behind each
+  `docs/etiquetas-for-ai.md` for the full logic behind each
   tag category.
 - **Poem status**: 🟡 Incomplete, ⚪ Complete, 🟢 Published, 🔵 Migrated
   (text moved from one book/section to another), 🔴 Discarded, and 🔒 Private
   (never intended for publication, unlike Discarded).
-- **Migration between books** (Poem): "Cut from" and "Released in" fields
-  (Book + Part/Section), free text with `<datalist>` suggestions drawn from
-  already-registered books/parts/sections — meant for poems with Migrated
-  status, but fillable at any time (the source book may no longer exist as
-  a record in the archive). Choosing an already-registered Section
-  auto-fills the corresponding Book; typing/choosing the Book filters
-  Section suggestions to that book only.
+- **Migration between books** (Poem and Prose): "Cut from" (Book, Part/Section
+  and original position) and "Released in" (Book + Part/Section) fields, free
+  text with `<datalist>` suggestions drawn from already-registered
+  books/parts/sections (the source book may no longer exist as a record in
+  the archive). When the typed book is in the registry the app also stores
+  its id: renaming the book updates the name in those texts and the
+  out-of-scope list keeps them. The path always reads
+  `Book › Part › Section · position N`. The fields only show for the matching status: **Migrated**
+  shows Cut from, Released in and the migration justification; **Discarded**
+  shows only Cut from (the app already proposes where the text came from) and
+  the discard justification; other statuses hide the box, and Pending always
+  stays visible. A text that already holds this data under another status
+  keeps showing what it has, with a notice. Choosing an already-registered
+  Section auto-fills the corresponding Book; typing/choosing the Book filters
+  Section suggestions to that book only. With the **Discarded** status the
+  "Where it appears" group is locked (the data stays stored and returns
+  when the status changes), because the text's origin lives in "Cut from".
+- **Where it appears** (Poem and Prose): the group that says which books the
+  text is in and where. Each appearance is a row with Book, Part or Section
+  and position ("Specific position", "At the end of the queue" or "No position"); "+
+  Appearance" adds another and ✕ removes one. The same text can have a
+  position in more than one book, and saving renumbers the queue of each
+  place. With no place, the text is only listed in the book. Two rows for the
+  same place: the first one wins, with a notice. The Collections the text
+  belongs to are shown right below, read-only: each name is a shortcut that
+  closes the modal and opens the Collections tab on it, with a "Back to
+  Poems" strip (or the tab you came from) that disappears when you leave the
+  tab (with unsaved changes the modal asks for confirmation first). In the
+  Collections tab, the title of each poem or prose from the collection opens
+  that text's View, and closing it brings you back to the same collection;
+  unpublished items have no View. Adding or removing a text in a Collection
+  is still done in the Collections tab.
 - **Links and References** (Poem and Prose): two ways to connect a text to
   another in the collection itself (Prose can point to a Poem or another
   Prose; a Poem can only point to another Poem). **Links** are bilateral —
@@ -460,8 +561,9 @@ npm run format:check   # prettier --check .
   Links, layered graphs for References — convergences and branches become
   single nodes with multiple edges, not duplicate nodes) plus a "gaps"
   panel (a link registered on only one side); each diagram can be
-  downloaded as PNG. The tab also downloads a **report** (all connections,
-  only Links or only References, which the screen labels Elos and Ecos) as `.md` (plain text, handy to paste into
+  downloaded as PNG. The tab also downloads a **report** of the "Dentro do
+  acervo" half (all of it, only Links or only References, which the screen
+  labels Elos and Ecos) as `.md` (plain text, handy to paste into
   an AI), `.png` or `.pdf` (both with the drawings; the PDF is an image, so
   its text is not searchable). A **Select** mode puts a checkbox on each
   gap, Link and Reference card to download only the marked ones
@@ -469,6 +571,22 @@ npm run format:check   # prettier --check .
   modal, and gaps open the editor; in the Poem editor an eye button in the
   header switches to the View of the same poem (asking "Save before
   viewing?" when there are unsaved changes).
+  The tab has a second half, **Fora do acervo** ("outside the archive"),
+  which reads Intertextuality, Hypertextuality and External References from
+  every text: the **works** and the **authors** they cite, with the texts that
+  use each one and the relation; **which work each text derives from**; the
+  references that appear in more than one text; and **warnings** about
+  spellings that may be the same work. A work is identified by its name plus
+  its authors, ignoring accents, case, punctuation and order. The section
+  fixes the data in every text at once (**Corrigir obra**, **Corrigir autor**,
+  **Corrigir referência** and **Manter esta**, each with a forced backup, a confirmation with the
+  count and **Undo**), has a **Modo revisão** (a table with one row per entry,
+  every column editable, with the same column picker as the text tabs, plus `field:value`
+  search with a 🔍 on each column header and a
+  bulk-edit bar that applies one value, such as an origin, to the rows you
+  tick, or to every row the filter shows), and
+  its own **report** as `.md`, `.csv` (one table at a time) or `.pdf` (real,
+  searchable text), which respects the filter and the order on screen.
 - **Sendings and Reactions** (Poem and Prose): a record of when and to
   whom a text was sent (person, date, channel, reaction, notes) —
   `pessoa` and `meio` are free text with `<datalist>` suggestions, with no
@@ -478,28 +596,49 @@ npm run format:check   # prettier --check .
 - **Editorial status for Books/Anthologies**: Unpublished, Out of print,
   Public domain, or Re-edited — a publishing concept for the book as a
   whole, separate from the individual Poem/Prose status.
-- **Intertextuality** (Poem and Prose): a list of external references
-  (song, book, film/series, video, quote...), each with a type + text —
-  a text can reference several different reference types at once. Each
-  item can be edited in-place (click ✎ to reopen a saved item before
-  deleting it).
+- **Intertextuality** (Poem and Prose): a list of external works the text
+  lives alongside in copresence (the text would still exist without
+  them). Each entry has the Relation (Citação, Menção, Alusão, Paráfrase,
+  Bricolagem), the Type of work (song, book, film/series, conversation...),
+  the Work, the Authors (a list of tags, one per author, so a song with a
+  guest or a book by several people fits), the Character, a Description that
+  explains what the work is (the same work repeats its description, and the
+  app suggests and fills it in), the Date of the work (optional, with a
+  start and an "until"; see below), the Source passage, and a "Traduzido"
+  (translated) checkbox. A text can have several entries at once. Each item can be
+  edited in-place (click ✎ to reopen a saved item before deleting it). In
+  View and in the `.md`, entries are grouped by Relation and, inside it, by
+  Type of work.
 - **Hypertextuality** (Poem and Prose): a list of direct transformations
-  of a specific source work — type (same suggestions as Intertextuality)
-    - relation (Rereading, Adapted Translation, Parody, Pastiche,
-      Expansion, Rescaling, Homage, Transposition) + hypotext (the source
-      work's name). A stronger, more structural relationship than
-      Intertextuality: the archive's text isn't just dialoguing with or
-      quoting the source, it's deriving from/transforming it. Editable
-      in-place like Intertextuality.
+  of a specific source work, the one without which the text would not
+  exist as it is. Each entry has the Type of work (same suggestions as
+  Intertextuality), the Relation (Rereading, Adapted Translation, Parody,
+  Pastiche, Expansion, Rescaling, Homage, Transposition), the Hypotext
+  (the source work's name), the Authors (a list of tags), the Description and
+  the Date of the work. The archive's
+  text isn't just dialoguing with or quoting the source, it's deriving
+  from/transforming it. Editable in-place like Intertextuality. See
+  `docs/transtextualidade-referencias-for-ai.md` for the criterion.
 - **External References** (Poem and Prose): a list of real-world anchors
   — a historical landmark, news, or public figure — with no work or
   authorship involved, which is what sets it apart from Intertextuality
   and Hypertextuality. A public figure named here is free text, not a
   link into the central People registry; if the person has a role in
   the text's origin (depicted, dedicatee, etc.) and is already a
-  registered Person, use the `pessoas` field instead. See
+  registered Person, use the `pessoas` field instead. An entry of any
+  type can also carry a date, optional with a start and an "until": a
+  historical landmark has start and end, news has a date, a public figure has
+  birth and death (empty for someone alive). See
   `docs/transtextualidade-referencias-for-ai.md` for the full criteria
   distinguishing these three fields.
+- **Date of the work or of the fact** (Intertextuality, Hypertextuality and
+  External References): each entry can carry a start and an "until", both
+  optional. Each end picks one level at a time (century, decade, year, month
+  or day), with the marks "aprox." and "a.C." (BC), so "séc. XIX" is written as
+  such when that is all the author knows. Underneath, the app keeps the
+  interval of years the level covers. Like the Description, it belongs to the
+  work: the app suggests it when the work repeats, and only fills it in on its
+  own if the field is empty and there is a single date for that work.
 - **Attachments** (Poem): a list of items accompanying the text —
   Illustration, Photo, Lettering, Recited video, Video comments, or Other —
   each with a type + description, and a link (required for video types,
@@ -581,8 +720,9 @@ npm run format:check   # prettier --check .
   only enables once nothing is pending; (3) a forced safety snapshot
   (ignoring the normal 6h throttle) before any write — aborts if it fails;
   (4) in-memory id remapping and atomic write (a single push + save at the
-  end). A matched or created Book only links into `livrosIds` — it never
-  auto-positions inside Parts/Sections. The Poem's Sonoridade and Estrutura
+  end). A matched or created Book only adds an appearance with no position
+  (the text just "consta" in the Book) — it never auto-positions inside
+  Parts/Sections. The Poem's Sonoridade and Estrutura
   Textual (Sound/Textual Structure — only present if the file came from
   "comprehensive download") come along automatically, no decision required —
   they aren't a reference, just records hanging off the Poem's id, remapped
@@ -718,16 +858,17 @@ npm run format:check   # prettier --check .
 
 ## Exported JSON formats
 
-The app generates five distinct JSON formats, each identified by an
+The app generates six distinct JSON formats, each identified by an
 `export_format` field:
 
-| `export_format`       | Generated by                               | Structure                                                                                                                                    |
-| --------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| _(absent)_            | "Download JSON" in the header              | Full backup: `{ livros, partes, secoes, poemas, prosas, ... }`                                                                               |
-| `exportacao_seletiva` | Export tab → "Download selective JSON"     | Enriched flat structure: `{ export_format, itens: [...], coletaneas: [...] }` — each item's `contexto` is already resolved                   |
-| `selecao`             | Poems/Prose listing → selection → "⬇ JSON" | Flat structure: `{ export_format, itens: [...] }` — same item shape as Selective Export (resolved context), just limited to the checked rows |
-| `deep_nesting`        | "Export everything nested"                 | Full tree: `{ export_format, data: [nested books], avulsos, coletaneas }`                                                                    |
-| _(single book)_       | "Download this full book"                  | Single book object with the whole nested tree                                                                                                |
+| `export_format`       | Generated by                               | Structure                                                                                                                                                                                                                                                   |
+| --------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _(absent)_            | "Download JSON" in the header              | Full backup: `{ livros, partes, secoes, poemas, prosas, ... }`                                                                                                                                                                                              |
+| `exportacao_seletiva` | Export tab → "Download selective JSON"     | Enriched flat structure: `{ export_format, itens: [...], coletaneas: [...] }` — each item's `contexto` is already resolved                                                                                                                                  |
+| `selecao`             | Poems/Prose listing → selection → "⬇ JSON" | Flat structure: `{ export_format, itens: [...] }` — same item shape as Selective Export (resolved context), just limited to the checked rows                                                                                                                |
+| `deep_nesting`        | "Export everything nested"                 | Full tree: `{ export_format, data: [nested books], avulsos, coletaneas }`                                                                                                                                                                                   |
+| _(single book)_       | "Download this full book"                  | Single book object with the whole nested tree                                                                                                                                                                                                               |
+| `selecao_livros`      | Books tab / View / card → Download         | Book information only, no texts: `{ export_format, itens: [...] }` with `tem_capa`, `autoria_livro`, `equipe_livro`, `uso_ia`, `estrutura` (and `estrutura_arvore` with "Include structure", plus `fora_de_escopo` inside it with "Include Fora de escopo") |
 
 ---
 
@@ -737,25 +878,29 @@ Data lives in two distinct places in the browser:
 
 ### localStorage (`arquivoPoetico_v3`)
 
-| Field            | Description                                                                                                                |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `livros`         | Books and Anthologies (distinguished by `tipo`). The `capa` field is a reference ID into IndexedDB, not base64.            |
-| `partes`         | Parts of Books and Anthologies (distinguished by `livroId`).                                                               |
-| `secoes`         | Sections linked to a Book or Part (`paiTipo`/`paiId`).                                                                     |
-| `poemas`         | Poems, optionally linked to a Book/Part/Section (`paiTipo`/`paiId`).                                                       |
-| `prosas`         | Prose pieces, same structure as Poems.                                                                                     |
-| `elementos`      | Text Elements (introduction, multimedia, interlude, afterword...).                                                         |
-| `itensColetanea` | Anthology Items: reference an existing Poem/Prose (`refId`/`refTipo`) or carry anthology-exclusive text (`textoOverride`). |
-| `coletaneas`     | **Legacy** — not populated by the current tab; kept only for compatibility when importing old backups.                     |
+| Field            | Description                                                                                                                                                                         |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `livros`         | Books and Anthologies (distinguished by `tipo`). The `capa` field is a reference ID into IndexedDB, not base64.                                                                     |
+| `partes`         | Parts of Books and Anthologies (distinguished by `livroId`).                                                                                                                        |
+| `secoes`         | Sections linked to a Book or Part (`paiTipo`/`paiId`).                                                                                                                              |
+| `poemas`         | Poems. Where each one appears is the `aparicoes` list (Book, Part or Section and position, one row per place); `paiTipo`/`paiId`/`sequencia`/`livrosIds` are only the mirror of it. |
+| `prosas`         | Prose pieces, same structure as Poems (including `aparicoes`).                                                                                                                      |
+| `elementos`      | Text Elements (introduction, multimedia, interlude, afterword...).                                                                                                                  |
+| `itensColetanea` | Anthology Items: reference an existing Poem/Prose (`refId`/`refTipo`) or carry anthology-exclusive text (`textoOverride`).                                                          |
+| `colaboradores`  | Collaborators (cover designers, illustrators, proofreaders...): `{ id, nome, papeisHabituais, contato, autorId? }`. A book's `equipeLivro` points here.                             |
+| `coletaneas`     | **Legacy** — not populated by the current tab; kept only for compatibility when importing old backups.                                                                              |
 
-`db` currently has 30 top-level keys (the official list, with the category of
+`db` currently has 37 top-level keys (the official list, with the category of
 each, is in `js/inventario-armazenamento.js`). Besides those in the table
 above: `pessoas`, `grupos`, `autores`, `epocas` (Biographical Periods),
-`opcoesPeriodoBiografico`, `opcoesPeriodoHistorico`, `assuntos`, `temas`,
-`locais`, `personagens`, `ecosIgnorados`, `escansoes`, `estruturasTextuais`,
-`moldes`, `padroesColunas`, and the factory registries `periodosHistoricos`,
-`movimentosEscolas` (Literary Currents) and `templatesEstrutura`, each with
-its record of deletions (`*Ocultos`), plus `programaDeFabricaAplicado`.
+`opcoesPeriodoBiografico`, `opcoesPeriodoHistorico`, `papeisPessoa` and
+`papeisPersonagem` (role registries), `assuntos`, `temas`, `etiquetas`,
+`tagClusters`, `locais`, `personagens`, `ecosIgnorados`, `escansoes`,
+`estruturasTextuais`, `moldes`, `padroesColunas`, and the factory registries
+`periodosHistoricos`, `movimentosEscolas` (Literary Currents) and
+`templatesEstrutura`, each with its record of deletions (`*Ocultos`), plus
+the markers `programaDeFabricaAplicado`, `eventoDeFabricaAplicado` and
+`padroesColunasFabricaVersao`.
 Field by field: `manutencao/schema.md`.
 
 ### IndexedDB (`arquivoPoetico_capas`)
@@ -818,7 +963,8 @@ other:
 
 1. **Full backup** (`exportarJSON()`, "Download JSON" button in the header)
    — `{ livros, partes, secoes, poemas, prosas, ... }`. Texts come with
-   `paiTipo`/`paiId`, and the book/part/section name is resolved by
+   `paiTipo`/`paiId` (the mirror of the first appearance, see
+   `campos-poema-prosa-for-ai.md`) and the book/part/section name is resolved by
    looking up `db.livros`/`db.partes`/`db.secoes` inside `filtrar.html`
    itself.
 2. **Selective export** (Export tab → "Download selective JSON") —

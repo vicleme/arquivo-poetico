@@ -43,8 +43,8 @@
 // - `personagens: [{ personagemId, papeis: [...], centralidade, papelNarrativo,
 //   arco, tropes, funcaoTematica }]`.
 // - `papeis` é uma LISTA (o mesmo personagem pode ter Aparição e
-//   Interlocutor no mesmo texto), em PAPEIS_PERSONAGEM, já na ordem de
-//   presença: Voz, Interlocutor, Aparição, Menção, Alusão. Lista vazia é
+//   Interlocutor no mesmo texto), do registro `db.papeisPersonagem`, já na ordem de
+//   presença (de fábrica: Voz, Interlocutor, Aparição, Menção, Alusão). Lista vazia é
 //   "papel não definido".
 // - `centralidade` é um valor único por vínculo (texto + personagem):
 //   'protagonista', 'secundario' ou '' (indefinida), igual ao papel de
@@ -68,17 +68,13 @@ import {
     IDENTIDADES_CIS_TRANS,
     violaOrdemDeDatas,
 } from './utils.js';
+import { nomesPapeisPersonagem, papelPersonagemSemCentralidade } from './papeis-personagem.js';
 
 export const ORIGENS_PERSONAGEM = ['Criado', 'Reinterpretado'];
 
-// Na ordem de presença no texto (a mesma ideia de PAPEIS_PESSOA, "já na
-// ordem de hierarquia").
-export const PAPEIS_PERSONAGEM = ['Voz', 'Interlocutor', 'Aparição', 'Menção', 'Alusão'];
-
-// Papéis em que o personagem não está de fato no texto: ele é nomeado
-// (Menção) ou evocado sem nome (Alusão). Para eles a centralidade não se
-// aplica.
-export const PAPEIS_PERSONAGEM_SEM_CENTRALIDADE = ['Menção', 'Alusão'];
+// Os papéis possíveis moram no registro `db.papeisPersonagem` (ver
+// papeis-personagem.js), na ordem de presença no texto. Quem diz que um papel
+// não tem centralidade (Menção, Alusão) é a marca `semCentralidade` do papel.
 
 export const CENTRALIDADES_PERSONAGEM = ['protagonista', 'secundario'];
 
@@ -131,20 +127,19 @@ export function normalizarOrigemPersonagem(origem) {
     return ORIGENS_PERSONAGEM.includes(origem) ? origem : '';
 }
 
-// Mantém só papéis válidos, sem repetição, na ordem de PAPEIS_PERSONAGEM
-// (não na ordem em que foram marcados).
+// Mantém só papéis do registro, sem repetição, na ordem do registro (a ordem
+// de presença, não a ordem em que foram marcados).
 export function normalizarPapeisPersonagem(papeis) {
     const lista = Array.isArray(papeis) ? papeis : [];
-    return PAPEIS_PERSONAGEM.filter((p) => lista.includes(p));
+    return nomesPapeisPersonagem().filter((p) => lista.includes(p));
 }
 
 // A centralidade se aplica quando o vínculo ainda não tem papel marcado ou
-// quando tem ao menos um papel de presença efetiva (Voz, Interlocutor,
-// Aparição).
+// quando tem ao menos um papel que não é "sem centralidade" (presença efetiva).
 export function centralidadeAplicavel(papeis) {
     const lista = normalizarPapeisPersonagem(papeis);
     if (lista.length === 0) return true;
-    return lista.some((p) => !PAPEIS_PERSONAGEM_SEM_CENTRALIDADE.includes(p));
+    return lista.some((p) => !papelPersonagemSemCentralidade(p));
 }
 
 export function normalizarCentralidadePersonagem(centralidade, papeis = []) {
@@ -431,7 +426,7 @@ export function nomesPersonagens(item, cadastro) {
         .filter(Boolean);
 }
 
-// Nomes dos Personagens do texto que têm `papel` (um de PAPEIS_PERSONAGEM)
+// Nomes dos Personagens do texto que têm `papel` (um do registro de papéis de Personagem)
 // no vínculo. Como o vínculo guarda os papéis em lista, o mesmo Personagem
 // aparece em mais de um papel (Voz e Aparição, por exemplo). Alimenta os
 // prefixos personagemvoz:, personageminterlocutor:, personagemaparicao:,

@@ -58,9 +58,9 @@ describe('grupo Temas e Assuntos (editor.js, DOM real)', () => {
         assert.ok(chip.classList.contains('mb-0'), 'select do chip sem margem inferior');
     });
 
-    it('adiciona com o papel escolhido; vírgula separa vários; repetido só troca o papel', () => {
+    it('adiciona com o papel escolhido; ponto e vírgula separa vários; repetido só troca o papel', () => {
         document.getElementById('p-tema-papel').value = 'principal';
-        document.getElementById('p-tema-input').value = 'Amor, Luto';
+        document.getElementById('p-tema-input').value = 'Amor; Luto';
         adicionarTemaTexto('poemas');
         assert.deepEqual(obterTemasTexto('poemas'), [
             { nome: 'Amor', papel: 'principal' },
@@ -84,7 +84,7 @@ describe('grupo Temas e Assuntos (editor.js, DOM real)', () => {
     });
 
     it('troca o papel e remove por índice', () => {
-        document.getElementById('pr-tema-input').value = 'Amor, Luto';
+        document.getElementById('pr-tema-input').value = 'Amor; Luto';
         adicionarTemaTexto('prosas');
         mudarPapelTemaTexto('prosas', 1, 'secundario');
         assert.equal(obterTemasTexto('prosas')[1].papel, 'secundario');

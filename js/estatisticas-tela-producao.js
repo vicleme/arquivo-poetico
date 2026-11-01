@@ -4,6 +4,7 @@ import {
     contarPorMesEscrita,
     distribuicaoPorTrimestre,
     sazonalidadePorAno,
+    resumoTextosEmVariosLivros,
     filtrarPorIntervalo,
 } from './estatisticas-dados.js';
 import {
@@ -84,6 +85,18 @@ function renderTabelaSazonalidade(anos) {
         <p class="text-[11px] text-gray-400 dark:text-slate-500 mt-3">Percentuais calculados apenas entre os textos que têm mês de escrita preenchido. N = textos com mês conhecido naquele ano.</p>`;
 }
 
+// Nota sob o gráfico "Por Livro" (F21-D8): o texto em mais de um livro conta em
+// cada um, e o total de textos conta cada um uma vez.
+function renderNotaPorLivro() {
+    const el = document.getElementById('est-nota-livro');
+    if (!el) return;
+    const { emVarios, total } = resumoTextosEmVariosLivros();
+    const base = 'As Coletâneas contam os próprios itens, à parte.';
+    el.textContent = emVarios
+        ? `${emVarios} ${emVarios === 1 ? 'texto aparece' : 'textos aparecem'} em mais de um livro e ${emVarios === 1 ? 'conta' : 'contam'} em cada um deles, então a soma das barras pode passar do total de textos (${total.toLocaleString('pt-BR')}), que conta cada texto uma vez. ${base}`
+        : `Cada texto conta no livro onde aparece. ${base}`;
+}
+
 export function renderProducao() {
     renderFiltrosCompartilhados();
     const ano = contarPorAno();
@@ -92,6 +105,7 @@ export function renderProducao() {
     const trimestre = distribuicaoPorTrimestre();
     renderGrafico('grafico-ano', ano, 'ano', '#1d4ed8');
     renderGrafico('grafico-livro', livro, 'livro', '#4f46e5');
+    renderNotaPorLivro();
     renderGrafico('grafico-sazonalidade-mes', mes, 'sazonalidade-mes', '#0f766e');
     renderGrafico('grafico-sazonalidade-trimestre', trimestre, 'sazonalidade-trimestre', '#7c3aed');
     renderTabelaSazonalidade(sazonalidadePorAno());

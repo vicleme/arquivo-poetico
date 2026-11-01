@@ -245,9 +245,11 @@ describe('seqOuNull', () => {
         assert.equal(seqOuNull('abc'), null);
     });
 
-    it('zero é um valor de posição válido (não deve virar null)', () => {
-        assert.equal(seqOuNull('0'), 0);
-        assert.equal(seqOuNull(0), 0);
+    it('posição começa em 1: zero e negativos viram null', () => {
+        assert.equal(seqOuNull('0'), null);
+        assert.equal(seqOuNull(0), null);
+        assert.equal(seqOuNull('-2'), null);
+        assert.equal(seqOuNull('1'), 1);
     });
 });
 

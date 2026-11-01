@@ -4,6 +4,8 @@
 // ============================================================
 
 import { db, cadeiaAncestraisGrupo } from './db.js';
+import { aparicoesVigentes, textoApareceNoLivro } from './aparicoes-do-texto.js';
+import { parLigado, estadoAnaliseLigacoes } from './ligacoes-tema-pessoa.js';
 import {
     anoDeDataParcial,
     paresGrupoPessoa,
@@ -13,6 +15,7 @@ import {
     contarTextosPorAssunto,
     assuntosComPapel,
     nomesTemasPorPapel,
+    nomesTemasDoTexto,
     temasComPapel,
     papelMaisForte,
     chaveTema,
@@ -24,6 +27,7 @@ import {
     getPapelTemaEstatisticas,
     getPapelAssuntoEstatisticas,
     getGruposFiltroPessoas,
+    getContarEuComoPessoa,
     textoEntraNoFiltroEstatisticas,
     TIPOS_ETIQUETA,
 } from './estatisticas-filtros.js';
@@ -341,24 +345,30 @@ function itemColetaneaConta(item) {
         : true;
 }
 
-// ─── Resolução de Livro (pra agrupar Por Livro / Por Ano) ──────
+// ─── Resolução de Livro (pra agrupar Por Livro) ────────────────
 
-function livroIdDoItem(item) {
-    if (item.paiTipo === 'livro') return item.paiId;
-    if (item.paiTipo === 'parte') {
-        const p = db.partes.find((x) => x.id == item.paiId);
-        return p ? p.livroId : null;
-    }
-    if (item.paiTipo === 'secao') {
-        const s = db.secoes.find((x) => x.id == item.paiId);
-        if (!s) return null;
-        if (s.paiTipo === 'parte') {
-            const p = db.partes.find((x) => x.id == s.paiId);
-            return p ? p.livroId : null;
-        }
-        return s.paiId;
-    }
-    return null;
+// Livros comuns onde o texto aparece (F21-D8), sem repetir, na ordem das
+// aparições: Destino, "só consta" e lista `aparicoes`. Coletânea fica de fora
+// porque as Coletâneas têm contagem à parte, pelos itens (F21-D3). Texto em
+// duas Partes do mesmo livro conta uma vez nesse livro.
+function livrosComunsDoTexto(tipo, texto) {
+    const ids = [];
+    aparicoesVigentes(db, tipo, texto).forEach((a) => {
+        if (a.origem === 'coletanea') return;
+        const livro = db.livros.find((l) => String(l.id) === String(a.livroId));
+        if (livro && livro.tipo === 'Coletânea') return;
+        if (!ids.some((id) => String(id) === String(a.livroId))) ids.push(a.livroId);
+    });
+    return ids;
+}
+
+// Os textos contados, cada um com o tipo (`poema` ou `prosa`) que a leitura das
+// aparições pede.
+function textosContadosComTipo() {
+    return [
+        ...poemasContados().map((t) => ({ tipo: 'poema', t })),
+        ...prosasContadas().map((t) => ({ tipo: 'prosa', t })),
+    ];
 }
 
 function poemasContados() {
@@ -377,6 +387,16 @@ function todosOsTextos() {
 // aplicados). Os gráficos de Local e Idioma partem daqui.
 export function textosDasEstatisticas() {
     return todosOsTextos();
+}
+
+// Idem, cada texto com os ids dos livros comuns onde aparece (Coletânea fica
+// de fora, como na contagem por livro). Serve ao eixo "Livro" do painel de
+// Valência (estatisticas-dados-valencia.js).
+export function textosDasEstatisticasComLivros() {
+    return textosContadosComTipo().map(({ tipo, t }) => ({
+        texto: t,
+        livroIds: livrosComunsDoTexto(tipo, t),
+    }));
 }
 
 // ─── Agregações ─────────────────────────────────────────────
@@ -473,11 +493,24 @@ export function distribuicaoPorTrimestre() {
 
 export function contarPorLivro() {
     const contagem = {};
-    todosOsTextos().forEach((t) => {
-        const livroId = livroIdDoItem(t);
-        const livro = livroId ? db.livros.find((l) => l.id == livroId) : null;
-        const nome = livro ? livro.siglaOficial || livro.siglaPessoal || livro.titulo : 'Avulso';
+    // F21-D8: o texto conta em CADA livro onde aparece (Destino, "só consta" e
+    // lista de aparições); sem nenhum livro comum, conta em "Avulso". O total
+    // geral de textos (`todosOsTextos`) segue contando cada texto uma vez.
+    const somar = (nome) => {
         contagem[nome] = (contagem[nome] || 0) + 1;
+    };
+    textosContadosComTipo().forEach(({ tipo, t }) => {
+        const ids = livrosComunsDoTexto(tipo, t);
+        if (!ids.length) {
+            somar('Avulso');
+            return;
+        }
+        const nomes = new Set();
+        ids.forEach((id) => {
+            const livro = db.livros.find((l) => String(l.id) === String(id));
+            nomes.add(livro ? livro.siglaOficial || livro.siglaPessoal || livro.titulo : 'Avulso');
+        });
+        nomes.forEach(somar);
     });
     (db.coletaneas || []).forEach((c) => {
         const qtd = (db.itensColetanea || []).filter(
@@ -503,6 +536,15 @@ export function contarPorLivro() {
         });
     const ordenado = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
     return { labels: ordenado.map((o) => o[0]), data: ordenado.map((o) => o[1]) };
+}
+
+// Quantos textos contados aparecem em mais de um livro comum (e por isso contam
+// em cada um deles em `contarPorLivro`), e o total de textos contados, que conta
+// cada texto uma vez. Alimenta a nota sob o gráfico "Por Livro" (F21-D8).
+export function resumoTextosEmVariosLivros() {
+    const comTipo = textosContadosComTipo();
+    const emVarios = comTipo.filter(({ tipo, t }) => livrosComunsDoTexto(tipo, t).length > 1);
+    return { emVarios: emVarios.length, total: comTipo.length };
 }
 
 // Agregação completa (sem corte de Top N) por Etiqueta, só dentre os
@@ -554,6 +596,55 @@ export const SEM_IDENTIDADE_DOCUMENTADA = '(Identidade não documentada)';
 export const CHAVE_SEM_GENERO = '__sem_genero__';
 export const CHAVE_SEM_IDENTIDADE = '__sem_identidade__';
 
+// Interruptor "Contar o próprio autor como pessoa". Desligado, uma Pessoa some
+// das contagens DOS TEXTOS DO AUTOR a que ela está ligada (`autorIds` da
+// Pessoa, ver "Autores" no modal dela): "Victor" nos textos do Victor,
+// "Florbela" nos poemas da Florbela, mas não em texto de outro autor que a
+// cite. Pessoa "sou eu" sem Autor ligado vale para todos os textos (como
+// antes). Só mexe em Pessoa, Grupo, Gênero e Identidade; o corpus não muda.
+export function pessoaEhAutorDoTexto(pessoa, texto) {
+    const ligados = Array.isArray(pessoa?.autorIds) ? pessoa.autorIds : [];
+    if (!ligados.length) return pessoa?.souEu === true;
+    const autores = Array.isArray(texto?.autoria) ? texto.autoria : [];
+    return autores.some((a) => ligados.some((id) => id == a.autorId));
+}
+
+// A Pessoa fica de fora da conta NESTE texto?
+export function pessoaForaDaContagem(pessoa, texto) {
+    return !getContarEuComoPessoa() && pessoaEhAutorDoTexto(pessoa, texto);
+}
+
+// Existe alguma Pessoa que o interruptor possa afetar (ligada a Autor ou "eu")?
+export function haPessoaDeAutor() {
+    return (db.pessoas || []).some(
+        (p) => p.souEu === true || (Array.isArray(p.autorIds) && p.autorIds.length > 0),
+    );
+}
+
+// Cadastro de Pessoas visto pelas contagens NESTE texto.
+export function pessoasParaContagemNoTexto(texto) {
+    if (getContarEuComoPessoa()) return db.pessoas;
+    return db.pessoas.filter((p) => !pessoaEhAutorDoTexto(p, texto));
+}
+
+// Cadastro de Pessoas para listas sem texto (opções do filtro de Gênero):
+// com o interruptor desligado, só entra quem conta em ao menos um texto.
+export function pessoasParaContagem() {
+    if (getContarEuComoPessoa()) return db.pessoas;
+    const contadas = new Set();
+    todosOsTextos().forEach((t) => {
+        (Array.isArray(t.pessoas) ? t.pessoas : []).forEach((v) => {
+            const pessoa = db.pessoas.find((x) => x.id == v.pessoaId);
+            if (pessoa && !pessoaEhAutorDoTexto(pessoa, t)) contadas.add(pessoa.id);
+        });
+    });
+    return db.pessoas.filter((p) => !haAutorLigado(p) || contadas.has(p.id));
+}
+
+function haAutorLigado(p) {
+    return p.souEu === true || (Array.isArray(p.autorIds) && p.autorIds.length > 0);
+}
+
 // Gênero é campo livre ("mulher" e "Mulher" são dois valores literais). A
 // BARRA continua literal, como era no antigo cartão de gênero; o FILTRO
 // compara pela chave normalizada (sem caixa nem acento), então as
@@ -584,7 +675,7 @@ export function rotuloGeneroPessoa(pessoa, considerarCisTrans = false) {
 // usada como rótulo e a quantidade de PESSOAS cadastradas (não de
 // aparições) que ela cobre. "(Sem gênero definido)" só entra se existir
 // alguém assim. Ordem: mais pessoas primeiro, depois alfabética.
-export function opcoesFiltroGenero(pessoas = db.pessoas) {
+export function opcoesFiltroGenero(pessoas = pessoasParaContagem()) {
     const porChave = new Map();
     (pessoas || []).forEach((p) => {
         const chave = chaveGeneroPessoa(p);
@@ -648,7 +739,7 @@ export function agregarPorPessoa(opcoes = {}) {
     const contagem = {};
     if (modo === 'grupo') {
         todosOsTextos().forEach((t) => {
-            paresGrupoPessoa(t, db.pessoas, db.grupos).forEach(({ grupo }) => {
+            paresGrupoPessoa(t, pessoasParaContagemNoTexto(t), db.grupos).forEach(({ grupo }) => {
                 cadeiaAncestraisGrupo(db, grupo.id).forEach((idAncestral) => {
                     const ancestral = db.grupos.find((g) => g.id == idAncestral);
                     if (ancestral) contagem[ancestral.nome] = (contagem[ancestral.nome] || 0) + 1;
@@ -661,7 +752,7 @@ export function agregarPorPessoa(opcoes = {}) {
             if (!Array.isArray(t.pessoas)) return;
             t.pessoas.forEach((p) => {
                 const pessoa = db.pessoas.find((x) => x.id === p.pessoaId);
-                if (!pessoa) return;
+                if (!pessoa || pessoaForaDaContagem(pessoa, t)) return;
                 const gruposEfetivos = (pessoa.grupoIds || []).flatMap((g) =>
                     cadeiaAncestraisGrupo(db, g),
                 );
@@ -813,18 +904,20 @@ function anoDoTexto(texto) {
 }
 
 // Temas do texto para as Estatísticas, já recortados pelo seletor "Papel
-// do tema" (padrão 'todos' = o espelho inteiro, como sempre). Nos papéis
-// específicos usa `texto.temas` (por id) via nomesTemasPorPapel.
+// do tema" (padrão 'todos' = todos os Temas do texto, na ordem principal,
+// secundário, indefinido). Lê por `texto.temas` (por id) via nomesTemasDoTexto
+// e nomesTemasPorPapel; só dado de fora ainda não migrado cai no campo antigo.
 function temasDoTexto(texto, papel = getPapelTemaEstatisticas()) {
-    if (papel === 'todos') return listaDeCampo(texto?.sinalizacoesTema);
+    if (papel === 'todos') return nomesTemasDoTexto(texto, db.temas);
     return nomesTemasPorPapel(texto, db.temas, papel === 'semPapel' ? '' : papel);
 }
 
 function pessoasDoTexto(texto) {
     if (!Array.isArray(texto?.pessoas)) return [];
     return texto.pessoas
-        .map((p) => db.pessoas.find((x) => x.id == p.pessoaId)?.nome)
-        .filter(Boolean);
+        .map((p) => db.pessoas.find((x) => x.id == p.pessoaId))
+        .filter((pessoa) => pessoa && !pessoaForaDaContagem(pessoa, texto))
+        .map((pessoa) => pessoa.nome);
 }
 
 // Nomes dos Personagens do texto (qualquer papel), sem repetição por nome.
@@ -1031,7 +1124,49 @@ export function filtrarPorAnosDistintos(labels, mapaAnos, minimo) {
     return labels.filter((l) => (mapaAnos[l] || 0) >= minimo);
 }
 
-export function coocorrenciaTemasPessoas({ temas = [], pessoas = [] } = {}) {
+// ─── Ligações Tema × Pessoa (T14) ───────────────────────────
+// A matriz trabalha com NOMES; a análise guarda IDS. Estas funções ligam os
+// dois: o nome vira os ids que o próprio texto tem com aquele nome.
+function idsDoTemaNoTexto(texto, nomeTema) {
+    const chave = chaveTema(nomeTema);
+    return (Array.isArray(texto?.temas) ? texto.temas : [])
+        .map((t) => t?.temaId)
+        .filter((id) => id != null && chaveTema(db.temas.find((x) => x.id == id)?.nome) === chave);
+}
+
+function idsDaPessoaNoTexto(texto, nomePessoa) {
+    return (Array.isArray(texto?.pessoas) ? texto.pessoas : [])
+        .map((p) => p?.pessoaId)
+        .filter((id) => id != null && db.pessoas.find((x) => x.id == id)?.nome === nomePessoa);
+}
+
+// O Tema vale para a Pessoa neste texto? Só dá false para par DESLIGADO na
+// análise. Nome que não se resolve em id conta ligado, como a matriz fazia.
+function temaLigadoAPessoa(texto, nomeTema, nomePessoa) {
+    const temas = idsDoTemaNoTexto(texto, nomeTema);
+    const pessoas = idsDaPessoaNoTexto(texto, nomePessoa);
+    if (!temas.length || !pessoas.length) return true;
+    return temas.some((t) => pessoas.some((p) => parLigado(texto, t, p)));
+}
+
+// `ligacoes`: null/undefined ignora a análise (comportamento de sempre);
+// { excluirNaoAnalisados } aplica os pares desligados e, se pedido, tira da
+// conta os textos com ambiguidade que ainda não foram analisados.
+function textoForaPorNaoAnalisado(texto, ligacoes) {
+    return (
+        Boolean(ligacoes?.excluirNaoAnalisados) && estadoAnaliseLigacoes(texto) === 'nao-analisado'
+    );
+}
+
+// `soPessoaSozinha`: só entram textos em que a(s) pessoa(s) pedida(s) são as
+// ÚNICAS pessoas do texto (texto com mais alguém fica fora, mesmo que a pessoa
+// esteja nele). Pensado para uma pessoa só, quando o tema pode remeter a outra.
+export function coocorrenciaTemasPessoas({
+    temas = [],
+    pessoas = [],
+    soPessoaSozinha = false,
+    ligacoes = null,
+} = {}) {
     const matriz = [];
     // Textos DISTINTOS dentro da matriz (Fase 1, etapa 1d): contam um texto
     // uma vez só, ao contrário da soma das células, que conta pares
@@ -1043,24 +1178,38 @@ export function coocorrenciaTemasPessoas({ temas = [], pessoas = [] } = {}) {
     const temaSet = new Set(temas);
     const pessoaSet = new Set(pessoas);
     todosOsTextos().forEach((texto) => {
+        const todasAsPessoas = pessoasDoTexto(texto);
+        if (soPessoaSozinha && todasAsPessoas.some((p) => !pessoaSet.has(p))) return;
+        if (textoForaPorNaoAnalisado(texto, ligacoes)) return;
         const ts = temasDoTexto(texto).filter((t) => !temaSet.size || temaSet.has(t));
-        const ps = pessoasDoTexto(texto).filter((p) => !pessoaSet.size || pessoaSet.has(p));
+        const ps = todasAsPessoas.filter((p) => !pessoaSet.size || pessoaSet.has(p));
         const tsU = [...new Set(ts)];
         const psU = [...new Set(ps)];
-        if (tsU.length && psU.length) {
-            totalTextos += 1;
-            tsU.forEach((t) => (textosTema[t] = (textosTema[t] || 0) + 1));
-            psU.forEach((x) => (textosLinha[x] = (textosLinha[x] || 0) + 1));
-        }
+        // Pares Tema × Pessoa que valem neste texto (sem análise, todos).
+        const pares = [];
         tsU.forEach((tema) => {
             psU.forEach((pessoa) => {
-                let linha = matriz.find((x) => x.pessoa === pessoa);
-                if (!linha) {
-                    linha = { pessoa, valores: {} };
-                    matriz.push(linha);
+                if (!ligacoes || temaLigadoAPessoa(texto, tema, pessoa)) {
+                    pares.push([tema, pessoa]);
                 }
-                linha.valores[tema] = (linha.valores[tema] || 0) + 1;
             });
+        });
+        if (pares.length) {
+            totalTextos += 1;
+            [...new Set(pares.map(([t]) => t))].forEach(
+                (t) => (textosTema[t] = (textosTema[t] || 0) + 1),
+            );
+            [...new Set(pares.map(([, x]) => x))].forEach(
+                (x) => (textosLinha[x] = (textosLinha[x] || 0) + 1),
+            );
+        }
+        pares.forEach(([tema, pessoa]) => {
+            let linha = matriz.find((x) => x.pessoa === pessoa);
+            if (!linha) {
+                linha = { pessoa, valores: {} };
+                matriz.push(linha);
+            }
+            linha.valores[tema] = (linha.valores[tema] || 0) + 1;
         });
     });
     const temasPresentes = temas.length
@@ -1078,6 +1227,87 @@ export function coocorrenciaTemasPessoas({ temas = [], pessoas = [] } = {}) {
         textosPorTema: temasPresentes.map((t) => textosTema[t] || 0),
         textosPorLinha: ordenadas.map((l) => textosLinha[l.pessoa] || 0),
         totalTextos,
+    };
+}
+
+// Tira da matriz as colunas (temas) em que nenhuma linha tem valor. Usada
+// quando a matriz é recortada numa pessoa só: sobram os temas que se aplicam
+// a ela. Mantém o formato de coocorrenciaTemasPessoas.
+export function manterColunasComValor(dados) {
+    const colunas = dados.temas.map((_, j) => j).filter((j) => dados.valores.some((l) => l[j] > 0));
+    return {
+        ...dados,
+        temas: colunas.map((j) => dados.temas[j]),
+        valores: dados.valores.map((l) => colunas.map((j) => l[j])),
+        textosPorTema: colunas.map((j) => dados.textosPorTema[j]),
+    };
+}
+
+// Ordena as linhas da matriz de Cruzamentos pela coluna clicada. `ordem` é
+// { campo, nome, direcao }: campo 'rotulo' (nome da linha), 'total' (soma da
+// linha), 'textos' (textos com a linha) ou 'col' (a coluna `nome`). Na matriz
+// invertida as linhas são os temas e as colunas são pessoas, grupos ou
+// personagens. Empate desempata pelo nome da linha. Devolve { linhas, temas,
+// valores, textosPorLinha, textosPorTema } já reordenados; sem ordem válida,
+// devolve a matriz como veio.
+export function ordenarMatrizCoocorrencia(dados, linhas, ordem, invertida = false) {
+    const original = {
+        linhas,
+        temas: dados.temas,
+        valores: dados.valores,
+        textosPorLinha: dados.textosPorLinha,
+        textosPorTema: dados.textosPorTema,
+    };
+    if (!ordem || !ordem.campo) return original;
+    const rotulos = invertida ? dados.temas : linhas;
+    const colunas = invertida ? linhas : dados.temas;
+    // valor(k, c): célula da linha k na coluna c, no eixo que o usuário vê.
+    const celula = (k, c) => (invertida ? dados.valores[c][k] : dados.valores[k][c]);
+    let valorDe;
+    if (ordem.campo === 'rotulo') {
+        valorDe = (k) => String(rotulos[k]);
+    } else if (ordem.campo === 'total') {
+        valorDe = (k) => colunas.reduce((acc, _, c) => acc + celula(k, c), 0);
+    } else if (ordem.campo === 'textos') {
+        valorDe = invertida ? (k) => dados.textosPorTema[k] : (k) => dados.textosPorLinha[k];
+    } else if (ordem.campo === 'col') {
+        const c = colunas.indexOf(ordem.nome);
+        if (c < 0) return original;
+        valorDe = (k) => celula(k, c);
+    } else {
+        return original;
+    }
+    const sinal = ordem.direcao === 'asc' ? 1 : -1;
+    const indices = rotulos.map((_, k) => k);
+    indices.sort((a, b) => {
+        const va = valorDe(a);
+        const vb = valorDe(b);
+        const cmp =
+            typeof va === 'string'
+                ? va.localeCompare(vb, 'pt-BR')
+                : va === vb
+                  ? 0
+                  : va < vb
+                    ? -1
+                    : 1;
+        if (cmp) return cmp * sinal;
+        return String(rotulos[a]).localeCompare(String(rotulos[b]), 'pt-BR');
+    });
+    if (invertida) {
+        return {
+            linhas,
+            temas: indices.map((k) => dados.temas[k]),
+            valores: dados.valores.map((l) => indices.map((k) => l[k])),
+            textosPorLinha: dados.textosPorLinha,
+            textosPorTema: indices.map((k) => dados.textosPorTema[k]),
+        };
+    }
+    return {
+        linhas: indices.map((k) => linhas[k]),
+        temas: dados.temas,
+        valores: indices.map((k) => dados.valores[k]),
+        textosPorLinha: indices.map((k) => dados.textosPorLinha[k]),
+        textosPorTema: dados.textosPorTema,
     };
 }
 
@@ -1131,7 +1361,7 @@ export function coocorrenciaTemasPersonagens({ temas = [], personagens = [] } = 
     };
 }
 
-export function coocorrenciaTemasGrupos({ temas = [], grupos = [] } = {}) {
+export function coocorrenciaTemasGrupos({ temas = [], grupos = [], ligacoes = null } = {}) {
     // Mesmo repique de subgrupo pro(s) grupo(s) acima (cadeiaAncestraisGrupo,
     // db.js) que agregarPorPessoa usa acima — Estatísticas, não exibição.
     const matriz = [];
@@ -1141,30 +1371,50 @@ export function coocorrenciaTemasGrupos({ temas = [], grupos = [] } = {}) {
     const temaSet = new Set(temas);
     const grupoSet = new Set(grupos);
     todosOsTextos().forEach((texto) => {
+        if (textoForaPorNaoAnalisado(texto, ligacoes)) return;
         const ts = [...new Set(temasDoTexto(texto))].filter((t) => !temaSet.size || temaSet.has(t));
-        const gs = [
+        const paresGP = paresGrupoPessoa(texto, pessoasParaContagemNoTexto(texto), db.grupos);
+        // Grupos (com os de cima) de cada Pessoa do texto, para o Tema contar
+        // só nos grupos das Pessoas a quem ele se liga.
+        const gruposDaPessoa = (pessoa) => [
             ...new Set(
-                paresGrupoPessoa(texto, db.pessoas, db.grupos).flatMap(({ grupo }) =>
-                    cadeiaAncestraisGrupo(db, grupo.id)
-                        .map((id) => db.grupos.find((g) => g.id == id)?.nome)
-                        .filter(Boolean),
-                ),
+                paresGP
+                    .filter((par) => par.pessoa === pessoa)
+                    .flatMap(({ grupo }) =>
+                        cadeiaAncestraisGrupo(db, grupo.id)
+                            .map((id) => db.grupos.find((g) => g.id == id)?.nome)
+                            .filter(Boolean),
+                    ),
             ),
-        ].filter((g) => !grupoSet.size || grupoSet.has(g));
-        if (ts.length && gs.length) {
-            totalTextos += 1;
-            ts.forEach((t) => (textosTema[t] = (textosTema[t] || 0) + 1));
-            gs.forEach((x) => (textosLinha[x] = (textosLinha[x] || 0) + 1));
-        }
+        ];
+        const pessoasDoGrupo = [...new Set(paresGP.map((par) => par.pessoa))];
+        const pares = [];
         ts.forEach((tema) => {
-            gs.forEach((grupo) => {
-                let linha = matriz.find((x) => x.grupo === grupo);
-                if (!linha) {
-                    linha = { grupo, valores: {} };
-                    matriz.push(linha);
-                }
-                linha.valores[tema] = (linha.valores[tema] || 0) + 1;
+            const gsDoTema = new Set();
+            pessoasDoGrupo.forEach((pessoa) => {
+                if (ligacoes && !temaLigadoAPessoa(texto, tema, pessoa.nome)) return;
+                gruposDaPessoa(pessoa).forEach((g) => gsDoTema.add(g));
             });
+            gsDoTema.forEach((g) => {
+                if (!grupoSet.size || grupoSet.has(g)) pares.push([tema, g]);
+            });
+        });
+        if (pares.length) {
+            totalTextos += 1;
+            [...new Set(pares.map(([t]) => t))].forEach(
+                (t) => (textosTema[t] = (textosTema[t] || 0) + 1),
+            );
+            [...new Set(pares.map(([, x]) => x))].forEach(
+                (x) => (textosLinha[x] = (textosLinha[x] || 0) + 1),
+            );
+        }
+        pares.forEach(([tema, grupo]) => {
+            let linha = matriz.find((x) => x.grupo === grupo);
+            if (!linha) {
+                linha = { grupo, valores: {} };
+                matriz.push(linha);
+            }
+            linha.valores[tema] = (linha.valores[tema] || 0) + 1;
         });
     });
     const temasPresentes = temas.length
@@ -1210,7 +1460,10 @@ function textosParaAnaliseLinguagem(livroId = '') {
                 })
                 .filter(Boolean);
         } else {
-            textos = todosOsTextos().filter((t) => String(livroIdDoItem(t)) === String(livroId));
+            // F21-D8: o texto vale em cada livro onde aparece, não só no Destino.
+            const doLivro = (tipo, lista) =>
+                lista.filter((t) => textoApareceNoLivro(db, tipo, t, livroId));
+            textos = [...doLivro('poema', poemasContados()), ...doLivro('prosa', prosasContadas())];
         }
     }
     return textos;

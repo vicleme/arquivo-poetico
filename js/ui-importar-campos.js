@@ -7,7 +7,8 @@
 
 import { db, save } from './db.js';
 import { tirarSnapshotSeNecessario } from './autobackup.js';
-import { escapeHtml, mostrarAviso, mostrarAvisoComAcao, PAPEIS_PESSOA } from './utils.js';
+import { escapeHtml, mostrarAviso, mostrarAvisoComAcao } from './utils.js';
+import { nomesPapeisPessoa } from './papeis-pessoa.js';
 import { garantirModal } from './modais.js';
 import { toggleModal } from './ui.js';
 import { ROTULOS_ETIQUETAS } from './etiquetas.js';
@@ -60,7 +61,9 @@ const MOTIVOS_PROBLEMA = {
     'formato-invalido': (p) => `${p.campo}: formato inesperado${p.valor ? ` (“${p.valor}”)` : ''}`,
     'tipo-invalido': (p) => `tipo “${p.valor}” não é poema nem prosa, então foi ignorado`,
     'papel-pessoa-invalido': (p) =>
-        `Pessoa “${p.valor}”: o papel “${p.detalhe}” não está na lista (${PAPEIS_PESSOA.join(', ')}), então essa pessoa ficou de fora`,
+        `Pessoa “${p.valor}”: o papel “${p.detalhe}” não está na lista (${nomesPapeisPessoa().join(', ')}), então essa pessoa ficou de fora`,
+    'papel-pessoa-conflito': (p) =>
+        `Pessoa “${p.valor}”: o papel “${p.detalhe}” não convive com outro que ela já tem neste texto (ou com outro pedido antes dele), então não entrou`,
     'valor-invalido': (p) =>
         `${p.campo === 'fonte' ? 'Fonte' : p.campo}, ${p.valor}: o valor “${p.detalhe}” não é aceito e foi ignorado`,
     'mais-de-um-local-de-escrita': (p) =>

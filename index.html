@@ -218,7 +218,6 @@
         <datalist id="sugestoes-sinais-outros"></datalist>
         <datalist id="sugestoes-sinais-outros-bulk"></datalist>
         <datalist id="sugestoes-sinais-outros-bulk-prosa"></datalist>
-        <datalist id="sugestoes-pessoas-bulk-prosa"></datalist>
         <datalist id="sugestoes-genero-bulk-prosa"></datalist>
 
         <main class="max-w-6xl mx-auto px-4 relative">
@@ -298,6 +297,13 @@
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
                             >
                                 Autores
+                            </button>
+                            <button
+                                id="btn-colaboradores"
+                                onclick="abrirAba('colaboradores')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Colaboradores
                             </button>
                             <button
                                 id="btn-estrutura"
@@ -550,6 +556,13 @@
                                 Correntes literárias
                             </button>
                             <button
+                                id="btn-estatisticas-datas-obras"
+                                onclick="abrirAba('estatisticas-datas-obras')"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
+                            >
+                                Obras citadas
+                            </button>
+                            <button
                                 id="btn-estatisticas-linguagem"
                                 onclick="abrirAba('estatisticas-linguagem')"
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap"
@@ -659,33 +672,148 @@
                                 class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap block"
                                 >Versões Alternativas</a
                             >
+                            <a
+                                href="sortear.html"
+                                class="tab-btn text-left text-sm py-1.5 px-2 rounded-md whitespace-nowrap block"
+                                >Sortear leitura</a
+                            >
                         </div>
                     </div>
                 </div>
             </nav>
 
             <section id="livros" class="tab-content active">
-                <div class="flex justify-between items-center mb-6">
+                <div class="flex justify-between items-center mb-6 gap-3 flex-wrap">
                     <h2 class="text-xl font-semibold">Obras</h2>
-                    <button
-                        onclick="prepararNovo('livro')"
-                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                    <div class="flex gap-2 flex-wrap items-center">
+                        <select
+                            id="livros-baixar-escopo"
+                            aria-label="O que baixar"
+                            title="Quais livros entram no arquivo"
+                            class="text-sm py-2 px-2"
+                            style="width: auto; margin-bottom: 0"
+                        >
+                            <option value="filtrados">Filtrados, o que a tela mostra</option>
+                            <option value="tudo">Todos os livros</option>
+                            <option value="selecao" hidden disabled>Só selecionados</option>
+                        </select>
+                        <select
+                            id="livros-baixar-formato"
+                            aria-label="Formato do download"
+                            title="Formato do arquivo baixado"
+                            class="text-sm py-2 px-2"
+                            style="width: auto; margin-bottom: 0"
+                        >
+                            <option value="json">.json</option>
+                            <option value="csv">.csv</option>
+                            <option value="md">.md (Markdown)</option>
+                            <option value="pdf">.pdf</option>
+                            <option value="docx">.docx (Word)</option>
+                        </select>
+                        <label
+                            class="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-slate-300 cursor-pointer"
+                        >
+                            <input
+                                type="checkbox"
+                                id="livros-baixar-estrutura"
+                                data-incluir-estrutura
+                                class="w-auto mb-0"
+                            />
+                            Incluir estrutura
+                        </label>
+                        <label
+                            class="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-slate-300 cursor-pointer"
+                        >
+                            <input
+                                type="checkbox"
+                                id="livros-baixar-fora-de-escopo"
+                                data-incluir-fora-de-escopo
+                                class="w-auto mb-0"
+                            />
+                            Incluir Fora de escopo
+                        </label>
+                        <button
+                            type="button"
+                            id="livros-baixar"
+                            data-action="baixar-livros"
+                            title="Baixa as informações dos livros no escopo e no formato escolhidos ao lado (sem o conteúdo dos textos; no .pdf e no .docx a capa vai embutida, nos outros sai só como “tem capa”). Com “Incluir estrutura”, leva também os títulos de Partes, Seções, Elementos, poemas e prosas; com “Incluir Fora de escopo”, também os textos migrados e descartados"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            ⬇ Baixar
+                        </button>
+                        <button
+                            type="button"
+                            id="livros-modo-selecao"
+                            data-action="alternar-modo-selecao-livros"
+                            aria-pressed="false"
+                            title="Mostra uma caixinha em cada livro para baixar só os que você marcar"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-4 py-2 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            ☐ Selecionar
+                        </button>
+                        <button
+                            onclick="prepararNovo('livro')"
+                            class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                        >
+                            Novo Livro
+                        </button>
+                    </div>
+                </div>
+                <div id="livros-selecao-barra" class="hidden mb-4">
+                    <div
+                        class="flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-slate-900 px-3 py-2 text-xs"
                     >
-                        Novo Livro
-                    </button>
+                        <span
+                            id="livros-selecao-contagem"
+                            class="font-bold text-blue-700 dark:text-blue-300"
+                        ></span>
+                        <button
+                            type="button"
+                            data-action="marcar-todos-livros"
+                            class="underline text-gray-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                        >
+                            Marcar os que a tela mostra
+                        </button>
+                        <button
+                            type="button"
+                            data-action="limpar-selecao-livros"
+                            class="underline text-gray-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
+                        >
+                            Limpar
+                        </button>
+                        <span class="text-gray-400 dark:text-slate-500"
+                            >Shift + clique marca um intervalo. Depois de marcar, escolha "Só
+                            selecionados" no primeiro menu e baixe.</span
+                        >
+                    </div>
                 </div>
                 <div class="previas-imagem-slot mb-4" data-aba="livros"></div>
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
-                    <input
-                        type="search"
-                        id="filtro-busca-livros"
-                        oninput="setBuscaLivros(this.value)"
-                        placeholder="Buscar por título, sigla ou ISBN"
-                        title="Buscar por título, sigla ou ISBN (ignora maiúsculas, acentos, hífen e espaço no ISBN)"
-                        aria-label="Buscar livro por título, sigla ou ISBN"
-                        autocomplete="off"
-                        style="width: 16rem; margin-bottom: 0"
-                    />
+                    <div class="relative flex items-center gap-1">
+                        <input
+                            type="search"
+                            id="filtro-busca-livros"
+                            oninput="setBuscaLivros(this.value)"
+                            placeholder="Buscar: título, sigla, ISBN, autor:, papel:, equipe:"
+                            title="Título, sigla, ISBN, autoria e equipe. Com prefixo: autor:, papel:, equipe:, papelequipe:. Clique no ? para ver a sintaxe."
+                            aria-label="Buscar livro por título, sigla, ISBN, autoria ou equipe"
+                            autocomplete="off"
+                            style="width: 22rem; margin-bottom: 0"
+                        />
+                        <button
+                            type="button"
+                            onclick="togglePainel('ajuda-busca-livros', this)"
+                            class="shrink-0 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-600"
+                            aria-label="Como funciona a busca de livros"
+                        >
+                            ?
+                        </button>
+                        <div
+                            id="sugestoes-busca-livros"
+                            role="listbox"
+                            class="hidden absolute left-0 top-full mt-1 w-[22rem] max-h-64 overflow-y-auto z-30 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg py-1"
+                        ></div>
+                    </div>
                     <select
                         id="filtro-tipo-livros"
                         onchange="setFiltroTipoLivros(this.value)"
@@ -729,6 +857,54 @@
                         <option value="programado">Programados</option>
                         <option value="nao-publicado">Não publicados</option>
                     </select>
+                    <select
+                        id="filtro-uso-ia-livros"
+                        onchange="setFiltroUsoIaLivros(this.value)"
+                        aria-label="Filtrar por uso de IA"
+                        title="Uso de IA registrado no livro. Livro antigo sem registro fica em Não informado."
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="">-- Uso de IA --</option>
+                        <option value="usou">Usou IA</option>
+                        <option value="nao-usou">Não usou IA</option>
+                        <option value="nao-informado">Não informado</option>
+                    </select>
+                    <button
+                        type="button"
+                        id="filtro-tem-capa-livros"
+                        data-action="filtro-tem-livros"
+                        data-chave="temCapa"
+                        data-estado=""
+                        aria-pressed="false"
+                        title="Capa: o clique gira entre tanto faz, só com capa enviada e só sem capa."
+                        class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-2.5 py-1.5 rounded-md text-sm whitespace-nowrap hover:bg-gray-50 dark:hover:bg-slate-700 transition"
+                    >
+                        Capa
+                    </button>
+                    <button
+                        type="button"
+                        id="filtro-tem-isbn-livros"
+                        data-action="filtro-tem-livros"
+                        data-chave="temIsbn"
+                        data-estado=""
+                        aria-pressed="false"
+                        title="ISBN: o clique gira entre tanto faz, só com ISBN-13 ou ISBN-10 e só sem nenhum dos dois."
+                        class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-2.5 py-1.5 rounded-md text-sm whitespace-nowrap hover:bg-gray-50 dark:hover:bg-slate-700 transition"
+                    >
+                        ISBN
+                    </button>
+                    <button
+                        type="button"
+                        id="filtro-tem-loja-livros"
+                        data-action="filtro-tem-livros"
+                        data-chave="temLoja"
+                        data-estado=""
+                        aria-pressed="false"
+                        title="Loja: o clique gira entre tanto faz, só com pelo menos uma loja (nome ou link) e só sem loja."
+                        class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-2.5 py-1.5 rounded-md text-sm whitespace-nowrap hover:bg-gray-50 dark:hover:bg-slate-700 transition"
+                    >
+                        Loja
+                    </button>
                     <input
                         type="text"
                         id="filtro-data-livros"
@@ -752,6 +928,87 @@
                         class="text-xs text-gray-500 dark:text-slate-400"
                         aria-live="polite"
                     ></span>
+                </div>
+                <div
+                    id="ajuda-busca-livros"
+                    class="hidden mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-lg space-y-3"
+                >
+                    <div>
+                        <p class="font-bold mb-1">Sintaxe</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>
+                                Espaço = E; <code>ou</code> = alternativa (<code
+                                    >autor:Maria ou autor:João</code
+                                >); aspas = frase exata; <code>-termo</code> exclui. Acento e
+                                maiúsculas não importam.
+                            </li>
+                            <li>
+                                Sem prefixo, a busca olha título, sigla, ISBN, autoria e equipe.
+                            </li>
+                            <li>
+                                Ao digitar um prefixo ou o começo de um nome, aparecem sugestões de
+                                quem e de quais papéis existem nos livros: setas escolhem, Enter ou
+                                Tab aplicam, Esc fecha.
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Restringir a um campo</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>
+                                <code>autor:</code> quem assina o livro (<code>autor:Maria</code>)
+                            </li>
+                            <li>
+                                <code>papel:</code> papel na autoria (<code>papel:Tradutor</code>);
+                                casa a palavra inteira, então <code>papel:Autor</code> não acha
+                                Coautor
+                            </li>
+                            <li>
+                                <code>equipe:</code> pessoa da equipe e créditos
+                                (<code>equipe:Ana</code>)
+                            </li>
+                            <li>
+                                <code>papelequipe:</code> papel na equipe
+                                (<code>papelequipe:Capista</code>); o escopo (Capa, Miolo) não conta
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Com ou sem</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>
+                                <code>autor:*</code> tem autoria; <code>-autor:*</code> não tem.
+                                Vale igual para <code>equipe:*</code>, <code>papel:*</code> e
+                                <code>papelequipe:*</code>.
+                            </li>
+                            <li>
+                                <code>-autor:Pedro</code> tira os livros em que Pedro consta na
+                                autoria.
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="font-bold mb-1">Pessoa com o papel no mesmo livro</p>
+                        <ul class="list-disc pl-4 space-y-1">
+                            <li>
+                                <code>autor:Maria@Tradutor</code> só acha livros em que a própria
+                                Maria é tradutora. Já <code>autor:Maria papel:Tradutor</code> acha
+                                também livros em que Maria assina e outra pessoa traduz.
+                            </li>
+                            <li>
+                                Nome com espaço: aspas em volta de tudo,
+                                <code>autor:"Maria Silva"@Tradutor</code> também vale (aspas só no
+                                nome ou só no papel). Sem prefixo,
+                                <code>"Maria Silva"@Tradutor</code>
+                                procura na autoria e na equipe.
+                            </li>
+                            <li>
+                                <code>autor:@Coautor</code> vale qualquer pessoa com esse papel;
+                                <code>autor:Maria@</code> vale qualquer papel. O mesmo serve para
+                                <code>equipe:Ana@Capista</code>.
+                            </li>
+                        </ul>
+                    </div>
                 </div>
                 <div
                     id="lista-livros"
@@ -854,7 +1111,17 @@
 
             <section id="pessoas" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-semibold">Pessoas</h2>
+                    <div class="flex items-baseline gap-3">
+                        <h2 class="text-xl font-semibold">Pessoas e Papéis</h2>
+                        <button
+                            type="button"
+                            onclick="irParaPapeisPessoa()"
+                            class="text-xs text-blue-600 dark:text-blue-400 underline"
+                            title="Ir para a lista de papéis, mais abaixo"
+                        >
+                            Ir para os papéis ↓
+                        </button>
+                    </div>
                     <button
                         onclick="prepararNovo('pessoa')"
                         class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
@@ -1098,6 +1365,10 @@
                 </div>
 
                 <div id="lista-pessoas" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                <div
+                    id="secao-papeis-pessoa"
+                    class="mt-10 pt-6 border-t border-gray-200 dark:border-slate-700"
+                ></div>
             </section>
 
             <section id="grupos" class="tab-content">
@@ -1266,10 +1537,13 @@
                                 <code>ocupacao:</code> <code>sobre:</code>
                             </li>
                             <li>
-                                <code>movimento:</code> <code>escola:</code> Corrente literária do
-                                autor, incluindo a que a contém. <code>postura:</code>
-                                <code>programa:</code> Postura estética e Programa das correntes
-                                dele, com a herança do pai.
+                                <code>corrente:</code> Corrente literária do autor, de qualquer
+                                Programa, incluindo a que a contém (<code>correntedireta:</code>, só
+                                a exata). <code>movimento:</code> e <code>escola:</code> só acham
+                                correntes de Programa Movimento ou Escola (com a herança do pai;
+                                <code>movimentodireto:</code> e <code>escoladireta:</code>, só a
+                                exata). <code>postura:</code> <code>programa:</code> Postura
+                                estética e Programa das correntes dele, com a herança do pai.
                             </li>
                         </ul>
                     </div>
@@ -1340,6 +1614,59 @@
                 </div>
 
                 <div id="lista-autores" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </section>
+
+            <section id="colaboradores" class="tab-content">
+                <div class="flex justify-between items-center mb-6 gap-3 flex-wrap">
+                    <h2 class="text-xl font-semibold">Colaboradores</h2>
+                    <button
+                        onclick="novoColaborador()"
+                        class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
+                    >
+                        Novo Colaborador
+                    </button>
+                </div>
+                <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
+                    Quem produz o objeto livro: capista, ilustrador, diagramador, revisor,
+                    preparador de texto, editor, fotógrafo. Quem escreve o conteúdo fica em Autores.
+                    Aqui ficam só as pessoas; o papel de cada uma é marcado no próprio livro, e a
+                    mesma pessoa pode ter vários papéis e estar em vários livros. Excluir um
+                    colaborador só o tira da equipe dos livros.
+                </p>
+                <div class="flex flex-wrap items-center gap-3 mb-3">
+                    <input
+                        type="search"
+                        id="busca-colaboradores"
+                        oninput="renderColaboradores()"
+                        placeholder="Buscar por nome, papel, contato ou livro..."
+                        aria-label="Buscar colaborador"
+                        class="text-sm"
+                        style="width: 20rem; margin-bottom: 0"
+                    />
+                    <select
+                        id="filtro-papel-colaboradores"
+                        onchange="renderColaboradores()"
+                        aria-label="Filtrar colaboradores por papel"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="">Todos os papéis</option>
+                    </select>
+                    <select
+                        id="filtro-uso-colaboradores"
+                        onchange="renderColaboradores()"
+                        aria-label="Filtrar colaboradores por uso nos livros"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="todos">Todos</option>
+                        <option value="com-livros">Com livros</option>
+                        <option value="sem-livros">Sem livros</option>
+                    </select>
+                    <span
+                        id="resumo-colaboradores"
+                        class="text-[11px] text-gray-400 dark:text-slate-500"
+                    ></span>
+                </div>
+                <div id="lista-colaboradores" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
             </section>
 
             <section id="epocas" class="tab-content">
@@ -1912,8 +2239,9 @@
                 <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-4">
                     Os temas que aparecem nos seus textos. Renomear aqui muda o nome em todos os
                     textos e assuntos. Dois temas que dizem a mesma coisa podem ser juntados com
-                    Mesclar. Um tema pode pertencer a mais de um assunto. Em "Só sem assunto", o
-                    tema que ganha um assunto continua na lista, marcado, até você clicar em
+                    Mesclar. Um tema pode pertencer a mais de um assunto e a mais de um convite da
+                    Vitrine de leitura. Em "Só sem assunto" e em "Só sem vitrine", o tema que ganha
+                    um assunto ou um convite continua na lista, marcado, até você clicar em
                     "Atualizar lista".
                 </p>
                 <div class="flex flex-wrap items-center gap-3 mb-3">
@@ -1935,11 +2263,23 @@
                         />
                         Só sem assunto
                     </label>
+                    <label
+                        id="rotulo-temas-sem-vitrine"
+                        class="hidden text-sm flex items-center gap-1.5"
+                    >
+                        <input
+                            type="checkbox"
+                            id="filtro-temas-sem-vitrine"
+                            onchange="renderTemas()"
+                            style="width: auto; margin-bottom: 0"
+                        />
+                        Só sem vitrine
+                    </label>
                     <button
                         type="button"
                         id="atualizar-temas-sem-assunto"
                         onclick="atualizarListaSemAssunto()"
-                        title="Refaz a lista: tira os temas que já ganharam assunto e mostra os que ficaram sem"
+                        title="Refaz a lista: tira os temas que já ganharam assunto ou convite e mostra os que ficaram sem"
                         class="hidden text-xs border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
                     >
                         Atualizar lista
@@ -1953,11 +2293,195 @@
                         <option value="alfabetica">Ordem alfabética</option>
                         <option value="usados">Mais usados primeiro</option>
                     </select>
+                    <select
+                        id="filtro-temas-valencia"
+                        onchange="renderTemas()"
+                        aria-label="Filtrar temas por valência"
+                        style="width: auto; margin-bottom: 0"
+                    >
+                        <option value="">Todas as valências</option>
+                        <option value="agradavel">Agradável</option>
+                        <option value="neutro">Neutro</option>
+                        <option value="desagradavel">Desagradável</option>
+                        <option value="ambivalente">Ambivalente</option>
+                        <option value="sem">Sem valência</option>
+                    </select>
+                    <label
+                        class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-400"
+                    >
+                        <input
+                            type="checkbox"
+                            id="toggle-todos-temas"
+                            data-action="toggle-todos-temas"
+                            class="w-3.5 h-3.5"
+                            style="margin-bottom: 0"
+                        />
+                        Selecionar todos os que aparecem
+                    </label>
+                    <button
+                        type="button"
+                        id="btn-valencias-sugeridas"
+                        data-action="aplicar-valencias-sugeridas"
+                        title="Preenche a valência dos temas da amostra de 44 temas que ainda estão sem valência. Não troca a que você já definiu, e dá para desfazer."
+                        class="text-xs border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-slate-800"
+                    >
+                        Aplicar valências sugeridas
+                    </button>
                     <span
                         id="resumo-temas"
                         class="text-[11px] text-gray-400 dark:text-slate-500"
                     ></span>
                 </div>
+                <div
+                    id="barra-acoes-temas"
+                    class="hidden mb-3 p-3 bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900 rounded-lg flex flex-wrap items-end gap-4 text-xs"
+                >
+                    <span
+                        id="contador-selecao-temas"
+                        class="font-bold text-indigo-800 dark:text-indigo-200"
+                    ></span>
+                    <div class="flex flex-col gap-1">
+                        <label
+                            for="temas-massa-valencia"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Definir valência</label
+                        >
+                        <div class="flex gap-1">
+                            <select id="temas-massa-valencia" style="width: auto; margin-bottom: 0">
+                                <option value="__nenhuma__">Escolha…</option>
+                                <option value="agradavel">Agradável</option>
+                                <option value="neutro">Neutro</option>
+                                <option value="desagradavel">Desagradável</option>
+                                <option value="ambivalente">Ambivalente</option>
+                                <option value="">Não classificado (limpar)</option>
+                            </select>
+                            <button
+                                type="button"
+                                data-action="aplicar-valencia-temas"
+                                class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                                Aplicar
+                            </button>
+                        </div>
+                    </div>
+                    <div id="temas-massa-assunto-bloco" class="hidden flex flex-col gap-1">
+                        <label
+                            for="temas-massa-assunto"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Adicionar ao assunto</label
+                        >
+                        <div class="flex gap-1">
+                            <select id="temas-massa-assunto" style="width: auto; margin-bottom: 0">
+                                <option value="">Escolha um assunto…</option>
+                            </select>
+                            <button
+                                type="button"
+                                data-action="adicionar-temas-assunto"
+                                class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                                Adicionar
+                            </button>
+                        </div>
+                    </div>
+                    <div id="temas-massa-vitrine-bloco" class="hidden flex flex-col gap-1">
+                        <label
+                            for="temas-massa-vitrine"
+                            class="text-[10px] text-indigo-700 dark:text-indigo-300"
+                            >Adicionar à vitrine</label
+                        >
+                        <div class="flex gap-1">
+                            <select id="temas-massa-vitrine" style="width: auto; margin-bottom: 0">
+                                <option value="">Escolha um convite…</option>
+                            </select>
+                            <button
+                                type="button"
+                                data-action="adicionar-temas-vitrine"
+                                class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                                Adicionar
+                            </button>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        data-action="limpar-selecao-temas"
+                        class="px-2.5 py-1 rounded border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                    >
+                        Limpar seleção
+                    </button>
+                </div>
+                <details
+                    id="temas-valencia-lista"
+                    class="mb-3 border border-gray-200 dark:border-slate-700 rounded-lg"
+                >
+                    <summary
+                        class="cursor-pointer px-3 py-2 text-xs font-semibold text-gray-700 dark:text-slate-300"
+                    >
+                        Definir por lista
+                    </summary>
+                    <div class="p-3 flex flex-col gap-2 text-xs">
+                        <label
+                            class="flex flex-wrap items-center gap-2 text-gray-700 dark:text-slate-300"
+                        >
+                            Campo
+                            <select
+                                id="temas-lista-campo"
+                                onchange="mudarCampoListaTemas()"
+                                style="width: auto; margin-bottom: 0"
+                            >
+                                <option value="valencia">Valência</option>
+                                <option value="assunto">Assunto</option>
+                                <option value="vitrine">Vitrine</option>
+                            </select>
+                        </label>
+                        <p
+                            id="temas-lista-ajuda"
+                            class="text-[11px] text-gray-500 dark:text-slate-400"
+                        >
+                            Escreva a valência, dois pontos e os temas separados por ponto e
+                            vírgula. Pode ter vários blocos, na mesma linha ou em linhas separadas.
+                            Para limpar a valência, use "Sem valência:". Só entram temas que já
+                            existem no cadastro: nenhum tema é criado.
+                        </p>
+                        <textarea
+                            id="temas-valencia-lista-texto"
+                            rows="5"
+                            aria-label="Lista de valências dos temas"
+                            placeholder="Desagradável: Luto; Violência simbólica&#10;Agradável: Cotidiano; Amizade"
+                            style="margin-bottom: 0"
+                        ></textarea>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                data-action="conferir-valencia-lista"
+                                title="Mostra o que seria aplicado, sem gravar nada"
+                                class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                            >
+                                Conferir
+                            </button>
+                            <button
+                                type="button"
+                                data-action="aplicar-valencia-lista"
+                                title="Grava a lista no campo escolhido. Dá para desfazer."
+                                class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                                Aplicar
+                            </button>
+                            <button
+                                type="button"
+                                data-action="limpar-valencia-lista"
+                                class="px-2.5 py-1 rounded border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
+                            >
+                                Limpar campo
+                            </button>
+                        </div>
+                        <div
+                            id="temas-valencia-lista-relatorio"
+                            class="hidden text-[11px] text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-800 rounded p-2"
+                            aria-live="polite"
+                        ></div>
+                    </div>
+                </details>
                 <div id="duplicatas-temas" class="mb-3"></div>
                 <div id="lista-temas" class="grid grid-cols-1 gap-2"></div>
             </section>
@@ -1992,6 +2516,78 @@
                     Um assunto agrupa temas. O assunto de um texto vem dos temas que ele tem, então
                     não é preciso marcá-lo em cada poema ou prosa.
                 </p>
+                <details
+                    id="universais-bloco"
+                    class="mb-4 border border-gray-200 dark:border-slate-700 rounded-lg"
+                >
+                    <summary
+                        class="cursor-pointer px-3 py-2 text-xs font-semibold text-gray-700 dark:text-slate-300"
+                    >
+                        Vitrine de leitura (convites do sorteio de texto) ·
+                        <span id="universais-resumo"></span>
+                    </summary>
+                    <div class="p-3 flex flex-col gap-3 text-xs">
+                        <p class="text-[11px] text-gray-500 dark:text-slate-400">
+                            A vitrine de leitura reúne convites para quem lê, como "Quando o amor
+                            acaba", e cada convite junta temas do cadastro. Não é um assunto: serve
+                            só ao sorteio de texto e são no máximo 12 convites. Um tema pode estar
+                            em mais de um convite, e o texto não guarda convite nenhum. Para ligar
+                            temas a convites sem abrir cada um, use a aba Temas: "Adicionar à
+                            vitrine…" em cada tema, a barra de edição em massa e o filtro "Só sem
+                            vitrine".
+                        </p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input
+                                id="universais-novo-nome"
+                                type="text"
+                                placeholder="Nome do novo convite"
+                                aria-label="Nome do novo convite"
+                                style="margin-bottom: 0"
+                                class="flex-1 min-w-[12rem]"
+                            />
+                            <button
+                                type="button"
+                                data-action="criar-universal"
+                                class="px-2.5 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                                Criar
+                            </button>
+                            <button
+                                type="button"
+                                data-action="conferir-vitrine"
+                                title="Mostra a vitrine sugerida sem gravar nada"
+                                class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                            >
+                                Conferir vitrine sugerida
+                            </button>
+                            <button
+                                type="button"
+                                data-action="aplicar-vitrine"
+                                title="Cria os convites da vitrine sugerida que ainda não existem. Dá para desfazer."
+                                class="px-2.5 py-1 rounded border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900"
+                            >
+                                Criar vitrine sugerida
+                            </button>
+                            <button
+                                type="button"
+                                data-action="baixar-vitrine-md"
+                                title="Baixa um .md com cada convite e os temas que ele reúne e, no fim, os temas fora da vitrine, com a contagem de textos. Útil para colar numa IA e pedir ajuda para ligar os temas soltos aos convites."
+                                class="px-2.5 py-1 rounded border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800"
+                            >
+                                Baixar .md
+                            </button>
+                        </div>
+                        <div
+                            id="universais-relatorio"
+                            class="hidden text-[11px] text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-800 rounded p-2"
+                            aria-live="polite"
+                        ></div>
+                        <div
+                            id="lista-universais"
+                            class="grid grid-cols-1 md:grid-cols-2 gap-3"
+                        ></div>
+                    </div>
+                </details>
                 <div id="lista-assuntos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                 <div id="temas-sem-assunto" class="mt-6"></div>
             </section>
@@ -2352,7 +2948,14 @@
 
             <section id="poemas" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-semibold">Conteúdo Literário</h2>
+                    <div>
+                        <h2 class="text-xl font-semibold">Poemas</h2>
+                        <p
+                            id="contagem-poemas"
+                            class="text-xs text-gray-500 dark:text-slate-400 mt-0.5"
+                            aria-live="polite"
+                        ></p>
+                    </div>
                     <button
                         id="btn-novo-poema"
                         onclick="prepararNovo('poema')"
@@ -2362,13 +2965,14 @@
                     </button>
                 </div>
                 <div class="flex flex-wrap gap-3 mb-4 items-start">
-                    <div class="flex items-center flex-1 min-w-[220px] gap-1">
+                    <div class="relative flex items-center flex-1 min-w-[220px] gap-1">
                         <input
                             type="search"
                             id="busca-poemas"
                             oninput="setFiltroPoemas(this.value)"
                             placeholder="Metadados: título, ano, tema, pessoa, livro... (-termo exclui, 'ou' alterna)"
                             class="flex-1 mb-0"
+                            autocomplete="off"
                         />
                         <button
                             type="button"
@@ -2378,6 +2982,11 @@
                         >
                             ?
                         </button>
+                        <div
+                            id="sugestoes-busca-poemas"
+                            role="listbox"
+                            class="hidden absolute left-0 right-0 top-full mt-1 max-h-64 overflow-y-auto z-30 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg py-1"
+                        ></div>
                     </div>
                     <button
                         type="button"
@@ -2504,6 +3113,16 @@
                                 diacríticos" esteja marcado, aqui embaixo).
                             </li>
                             <li>
+                                Ao digitar o começo de um prefixo (<code>tem</code>) ou depois dos
+                                dois pontos (<code>tema:</code>), aparece uma caixinha de sugestões
+                                com o que existe no acervo. Setas escolhem,
+                                <strong>Enter</strong> ou <strong>Tab</strong> aplicam,
+                                <strong>Esc</strong> fecha. Só se oferece o que acha algo, e o
+                                <code>*</code> (tem algum) vem primeiro. Depois de
+                                <code>pessoa:Pedro@</code>, a caixinha oferece os papéis que ele
+                                tem.
+                            </li>
+                            <li>
                                 Não inclui data de escrita/publicação — use o filtro de data logo
                                 abaixo.
                             </li>
@@ -2568,12 +3187,45 @@
                                 tem data.
                             </li>
                             <li>
-                                <code>movimento:</code> <code>escola:</code> Corrente literária
-                                ligada ao texto, incluindo a que a contém (<code
-                                    >movimento:Romantismo</code
+                                <code>dataobra:</code> <code>datareferencia:</code> ano da obra
+                                citada: <code>dataobra:</code> olha Intertextualidade e
+                                Hipertextualidade, <code>datareferencia:</code> olha as Referências.
+                                Aceitam um ano (<code>dataobra:1922</code>; a.C. é negativo, como
+                                <code>-44</code>), um intervalo (<code>dataobra:1920..1929</code>,
+                                <code>1920..</code> e <code>..1600</code> ficam abertos) ou uma data
+                                (<code>dataobra:"séc. XX"</code>, <code>dataobra:1920s</code>). A
+                                comparação é pelo ano do começo da data de cada entrada. Com
+                                <code>*</code>, separam quem tem data da obra de quem não tem.
+                                <code>distanciaobra:</code> e
+                                <code>distanciareferencia:</code> contam os anos entre a obra e o
+                                texto (<code>500..</code> = obra 500 anos ou mais antes;
+                                <code>..-1</code> = obra datada depois do texto). É o que as barras
+                                de Estatísticas › Obras citadas abrem. As variantes
+                                <code>dataobrapublica:</code>, <code>dataobrapessoal:</code>,
+                                <code>distanciaobrapublica:</code> e
+                                <code>distanciaobrapessoal:</code> fazem o mesmo só nas entradas sem
+                                (ou com) a marca de obra pessoal, olhando entrada por entrada; as
+                                barras as usam quando o filtro de obra pessoal está ligado.
+                            </li>
+                            <li>
+                                <code>obrapessoal:</code> texto com alguma entrada de
+                                Intertextualidade ou Hipertextualidade marcada como obra pessoal (a
+                                vida particular de quem escreve, não uma obra reconhecida). Só vale
+                                com <code>*</code>: <code>obrapessoal:*</code> acha quem tem,
+                                <code>-obrapessoal:*</code> quem não tem.
+                            </li>
+                            <li>
+                                <code>corrente:</code> Corrente literária ligada ao texto, de
+                                qualquer Programa, incluindo a que a contém (<code
+                                    >corrente:Romantismo</code
                                 >
                                 acha também o texto ligado a uma geração ou vertente dele). Com
-                                <code>movimentodireto:</code>, só a corrente exata.
+                                <code>correntedireta:</code>, só a corrente exata.
+                                <code>movimento:</code> e <code>escola:</code> fazem o mesmo, mas só
+                                para correntes de Programa Movimento ou Escola (a geração ou
+                                vertente herda o Programa do pai); com
+                                <code>movimentodireto:</code> e <code>escoladireta:</code>, só a
+                                corrente exata.
                             </li>
                             <li>
                                 <code>esfera:</code> <code>categoria:</code> <code>natureza:</code>
@@ -2605,6 +3257,13 @@
                                 <code>programa:"não se aplica"</code>).
                             </li>
                             <li>
+                                <code>origem:</code> Lugar ou cultura de origem das obras de
+                                Intertextualidade e Hipertextualidade (<code>origem:Grécia</code>,
+                                <code>origem:*</code> para quem tem alguma origem;
+                                <code>origempublica:</code> e <code>origempessoal:</code> separam
+                                pela marca de obra pessoal).
+                            </li>
+                            <li>
                                 <code>idiomaprincipal:</code> <code>idiomasecundario:</code> Idioma
                                 por papel no texto (<code>idioma:</code> acha o idioma em qualquer
                                 papel). <code>dialeto:</code> busca em qualquer dos dialetos do
@@ -2616,14 +3275,28 @@
                                 >), sem acento no prefixo.
                             </li>
                             <li>
-                                <code>livro:</code> <code>parte:</code> <code>secao:</code> —
-                                posição na estrutura.
+                                <code>livro:</code> <code>parte:</code> <code>secao:</code> — onde o
+                                texto aparece (em qualquer livro ou Coletânea onde esteja).
+                                <code>coletanea:</code> só nas Coletâneas.
                             </li>
                             <li>
                                 <code>papel:</code> — restringe aos papéis marcados nas pessoas do
                                 texto (ex.: <code>papel:dedicatária</code>), sem olhar nome — a
                                 coluna Pessoas (e o prefixo <code>pessoa:</code>) já busca nome e
                                 papel juntos; use este quando quiser só o papel.
+                            </li>
+                            <li>
+                                <code>pessoa:Nome@Papel</code>: nome e papel na mesma pessoa.
+                                <code>pessoa:Pedro@Dedicatária</code> só acha o texto em que o
+                                próprio Pedro é dedicatário;
+                                <code>pessoa:Pedro papel:dedicatária</code> (dois termos soltos)
+                                acha também quando quem dedica é outra pessoa. Feminino ou masculino
+                                tanto faz. <code>pessoa:@Voz</code> vale para qualquer pessoa com
+                                esse papel, e <code>pessoa:Maria@</code> é o mesmo que
+                                <code>pessoa:Maria</code>. Aspas só no pedaço com espaço (<code
+                                    >pessoa:"Maria Silva"@Voz</code
+                                >). <code>-pessoa:Pedro@Voz</code> exclui e <code>ou</code> junta. O
+                                <code>@</code> só vale depois de <code>pessoa:</code>.
                             </li>
                         </ul>
                     </div>
@@ -2988,66 +3661,13 @@
                         id="contador-selecao-poemas"
                         class="text-xs font-bold text-rose-700 dark:text-rose-300 whitespace-nowrap"
                     ></span>
-                    <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
-                        <div id="bulk-pessoa-input-chips" class="flex flex-wrap gap-1"></div>
-                        <input
-                            type="text"
-                            id="bulk-pessoa-input"
-                            list="sugestoes-pessoas"
-                            placeholder="Pessoa: Enter adiciona"
-                            autocomplete="off"
-                            class="mb-0"
-                        />
-                    </div>
                     <button
-                        onclick="aplicarPessoaEmMassa('poemas')"
-                        class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        type="button"
+                        onclick="togglePainel('painel-etiquetas-massa', this)"
+                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        title="Marca ou remove etiquetas (Tradição, Estilo, Tom e as outras categorias) nos textos selecionados"
                     >
-                        + Dedicar
-                    </button>
-                    <button
-                        onclick="removerPessoaEmMassa('poemas')"
-                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        − Remover
-                    </button>
-                    <select
-                        id="bulk-sinal-categoria"
-                        onchange="atualizarListaSinalBulk(this, 'bulk-sinal-input')"
-                        class="text-xs mb-0"
-                        style="max-width: 140px"
-                    >
-                        <option value="sinalizacoesTradicao">Tradição</option>
-                        <option value="sinalizacoesEstilo">Estilo</option>
-                        <option value="sinalizacoesTerritorialidade">Territorialidade</option>
-                        <option value="sinalizacoesRelacao">Relação</option>
-                        <option value="sinalizacoesSensibilidade">Sensibilidade</option>
-                        <option value="sinalizacoesTom">Tom</option>
-                        <option value="sinalizacoesDominioImagetico">Domínio Imagético</option>
-                        <option value="sinalizacoesOutros">Outros</option>
-                    </select>
-                    <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
-                        <div id="bulk-sinal-input-chips" class="flex flex-wrap gap-1"></div>
-                        <input
-                            type="text"
-                            id="bulk-sinal-input"
-                            list="sugestoes-sinais-tradicao-bulk"
-                            placeholder="Etiqueta: Enter adiciona"
-                            autocomplete="off"
-                            class="mb-0"
-                        />
-                    </div>
-                    <button
-                        onclick="aplicarSinalEmMassa('poemas')"
-                        class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        + Marcar
-                    </button>
-                    <button
-                        onclick="removerSinalEmMassa('poemas')"
-                        class="bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        − Remover
+                        🔖 Etiquetas ▾
                     </button>
                     <button
                         type="button"
@@ -3075,7 +3695,7 @@
                         "
                         class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
-                        ✏️ Preencher campo ▾
+                        ✏️ Campos ▾
                     </button>
                     <button
                         type="button"
@@ -3085,12 +3705,22 @@
                         "
                         class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
-                        🏷️ Períodos e movimentos ▾
+                        📜 Períodos e movimentos ▾
+                    </button>
+                    <button
+                        type="button"
+                        onclick="
+                            prepararPainelPessoasPapeisMassa('poemas');
+                            togglePainel('painel-pessoas-papeis-massa', this);
+                        "
+                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                    >
+                        👥 Pessoas e papéis ▾
                     </button>
                     <button
                         type="button"
                         onclick="togglePainel('painel-opcoes-download-poemas', this)"
-                        title="Dados ocultados, agrupar no topo e abrangente: o que vale para o download ao lado"
+                        title="Metadados, dados ocultados, agrupar no topo, Sonoridade e Progressão: o que vale para o download ao lado"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⚙️ Opções de download ▾
@@ -3139,19 +3769,11 @@
                         id="painel-opcoes-download-poemas"
                         class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-teal-200 dark:border-teal-800 rounded-lg flex flex-wrap items-center gap-x-5 gap-y-2"
                     >
-                        <label
-                            class="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 cursor-pointer whitespace-nowrap"
-                            title="Inclui a Sonoridade e a Progressão Morfofuncional dos poemas selecionados, quando cadastradas (.md, .pdf, .docx e .json; o .csv não muda)"
-                        >
-                            <input
-                                type="checkbox"
-                                class="download-abrangente-check"
-                                onchange="toggleDownloadAbrangente(this.checked)"
-                            />
-                            📦 Abrangente
-                        </label>
                         <span class="agrupar-comuns-slot"></span>
                         <span class="incluir-ocultos-slot"></span>
+                        <span class="infos-papel-slot"></span>
+                        <span class="metadados-slot"></span>
+                        <span class="sonoridade-progressao-slot"></span>
                     </div>
 
                     <div
@@ -3160,20 +3782,88 @@
                     ></div>
 
                     <div
+                        id="painel-etiquetas-massa"
+                        class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
+                    >
+                        <div>
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                                >Categoria</label
+                            >
+                            <select
+                                id="bulk-sinal-categoria"
+                                onchange="atualizarListaSinalBulk(this, 'bulk-sinal-input')"
+                                class="text-xs p-2 mb-0"
+                            >
+                                <option value="sinalizacoesTradicao">Tradição</option>
+                                <option value="sinalizacoesEstilo">Estilo</option>
+                                <option value="sinalizacoesTerritorialidade">
+                                    Territorialidade
+                                </option>
+                                <option value="sinalizacoesRelacao">Relação</option>
+                                <option value="sinalizacoesSensibilidade">Sensibilidade</option>
+                                <option value="sinalizacoesTom">Tom</option>
+                                <option value="sinalizacoesDominioImagetico">
+                                    Domínio Imagético
+                                </option>
+                                <option value="sinalizacoesOutros">Outros</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 min-w-[240px]">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                                >Etiquetas (Enter adiciona cada uma)</label
+                            >
+                            <div
+                                id="bulk-sinal-input-chips"
+                                class="flex flex-wrap gap-1 mb-1"
+                            ></div>
+                            <input
+                                type="text"
+                                id="bulk-sinal-input"
+                                list="sugestoes-sinais-tradicao-bulk"
+                                placeholder="Etiqueta: Enter adiciona"
+                                autocomplete="off"
+                                class="w-full text-xs p-2 mb-0"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onclick="aplicarSinalEmMassa('poemas')"
+                            class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        >
+                            + Marcar nos selecionados
+                        </button>
+                        <button
+                            type="button"
+                            onclick="removerSinalEmMassa('poemas')"
+                            class="bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        >
+                            − Remover dos selecionados
+                        </button>
+                        <p class="text-[10px] text-gray-400 dark:text-slate-500 w-full">
+                            As etiquetas valem para a categoria escolhida: trocar de categoria
+                            esvazia o campo. Etiqueta que ainda não existe é criada no cadastro.
+                            Quem já tem a etiqueta não muda, e remover tira só o vínculo (a etiqueta
+                            continua na aba Etiquetas).
+                        </p>
+                    </div>
+
+                    <div
                         id="painel-temas-massa"
                         class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
                     >
                         <div class="flex-1 min-w-[240px]">
                             <label
                                 class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
-                                >Temas (Enter adiciona cada um)</label
+                                >Temas (Enter ou ; adiciona cada um)</label
                             >
                             <div id="bulk-tema-input-chips" class="flex flex-wrap gap-1 mb-1"></div>
                             <input
                                 type="text"
                                 id="bulk-tema-input"
                                 list="sugestoes-temas-bulk"
-                                placeholder="Tema: Enter adiciona"
+                                placeholder="Tema: Enter ou ; adiciona"
                                 autocomplete="off"
                                 class="w-full text-xs p-2 mb-0"
                             />
@@ -3203,6 +3893,11 @@
 
                     <div
                         id="painel-periodos-massa"
+                        class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
+                    ></div>
+
+                    <div
+                        id="painel-pessoas-papeis-massa"
                         class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
                     ></div>
 
@@ -3299,7 +3994,14 @@
             </section>
             <section id="prosas" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-semibold">Prosas Poéticas</h2>
+                    <div>
+                        <h2 class="text-xl font-semibold">Prosas Poéticas</h2>
+                        <p
+                            id="contagem-prosas"
+                            class="text-xs text-gray-500 dark:text-slate-400 mt-0.5"
+                            aria-live="polite"
+                        ></p>
+                    </div>
                     <button
                         onclick="prepararNovo('prosa')"
                         class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
@@ -3308,13 +4010,14 @@
                     </button>
                 </div>
                 <div class="flex flex-wrap gap-3 mb-4 items-start">
-                    <div class="flex items-center flex-1 min-w-[220px] gap-1">
+                    <div class="relative flex items-center flex-1 min-w-[220px] gap-1">
                         <input
                             type="search"
                             id="busca-prosas"
                             oninput="setFiltroProsas(this.value)"
                             placeholder="Metadados: título, ano, etiqueta, pessoa... (-termo exclui, 'ou' alterna)"
                             class="flex-1 mb-0"
+                            autocomplete="off"
                         />
                         <button
                             type="button"
@@ -3324,6 +4027,11 @@
                         >
                             ?
                         </button>
+                        <div
+                            id="sugestoes-busca-prosas"
+                            role="listbox"
+                            class="hidden absolute left-0 right-0 top-full mt-1 max-h-64 overflow-y-auto z-30 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg py-1"
+                        ></div>
                     </div>
                     <button
                         type="button"
@@ -3450,6 +4158,16 @@
                                 diacríticos" esteja marcado, aqui embaixo).
                             </li>
                             <li>
+                                Ao digitar o começo de um prefixo (<code>tem</code>) ou depois dos
+                                dois pontos (<code>tema:</code>), aparece uma caixinha de sugestões
+                                com o que existe no acervo. Setas escolhem,
+                                <strong>Enter</strong> ou <strong>Tab</strong> aplicam,
+                                <strong>Esc</strong> fecha. Só se oferece o que acha algo, e o
+                                <code>*</code> (tem algum) vem primeiro. Depois de
+                                <code>pessoa:Pedro@</code>, a caixinha oferece os papéis que ele
+                                tem.
+                            </li>
+                            <li>
                                 Não inclui data de escrita/publicação — use o filtro de data logo
                                 abaixo.
                             </li>
@@ -3514,12 +4232,45 @@
                                 tem data.
                             </li>
                             <li>
-                                <code>movimento:</code> <code>escola:</code> Corrente literária
-                                ligada ao texto, incluindo a que a contém (<code
-                                    >movimento:Romantismo</code
+                                <code>dataobra:</code> <code>datareferencia:</code> ano da obra
+                                citada: <code>dataobra:</code> olha Intertextualidade e
+                                Hipertextualidade, <code>datareferencia:</code> olha as Referências.
+                                Aceitam um ano (<code>dataobra:1922</code>; a.C. é negativo, como
+                                <code>-44</code>), um intervalo (<code>dataobra:1920..1929</code>,
+                                <code>1920..</code> e <code>..1600</code> ficam abertos) ou uma data
+                                (<code>dataobra:"séc. XX"</code>, <code>dataobra:1920s</code>). A
+                                comparação é pelo ano do começo da data de cada entrada. Com
+                                <code>*</code>, separam quem tem data da obra de quem não tem.
+                                <code>distanciaobra:</code> e
+                                <code>distanciareferencia:</code> contam os anos entre a obra e o
+                                texto (<code>500..</code> = obra 500 anos ou mais antes;
+                                <code>..-1</code> = obra datada depois do texto). É o que as barras
+                                de Estatísticas › Obras citadas abrem. As variantes
+                                <code>dataobrapublica:</code>, <code>dataobrapessoal:</code>,
+                                <code>distanciaobrapublica:</code> e
+                                <code>distanciaobrapessoal:</code> fazem o mesmo só nas entradas sem
+                                (ou com) a marca de obra pessoal, olhando entrada por entrada; as
+                                barras as usam quando o filtro de obra pessoal está ligado.
+                            </li>
+                            <li>
+                                <code>obrapessoal:</code> texto com alguma entrada de
+                                Intertextualidade ou Hipertextualidade marcada como obra pessoal (a
+                                vida particular de quem escreve, não uma obra reconhecida). Só vale
+                                com <code>*</code>: <code>obrapessoal:*</code> acha quem tem,
+                                <code>-obrapessoal:*</code> quem não tem.
+                            </li>
+                            <li>
+                                <code>corrente:</code> Corrente literária ligada ao texto, de
+                                qualquer Programa, incluindo a que a contém (<code
+                                    >corrente:Romantismo</code
                                 >
                                 acha também o texto ligado a uma geração ou vertente dele). Com
-                                <code>movimentodireto:</code>, só a corrente exata.
+                                <code>correntedireta:</code>, só a corrente exata.
+                                <code>movimento:</code> e <code>escola:</code> fazem o mesmo, mas só
+                                para correntes de Programa Movimento ou Escola (a geração ou
+                                vertente herda o Programa do pai); com
+                                <code>movimentodireto:</code> e <code>escoladireta:</code>, só a
+                                corrente exata.
                             </li>
                             <li>
                                 <code>esfera:</code> <code>categoria:</code> <code>natureza:</code>
@@ -3551,6 +4302,13 @@
                                 <code>programa:"não se aplica"</code>).
                             </li>
                             <li>
+                                <code>origem:</code> Lugar ou cultura de origem das obras de
+                                Intertextualidade e Hipertextualidade (<code>origem:Grécia</code>,
+                                <code>origem:*</code> para quem tem alguma origem;
+                                <code>origempublica:</code> e <code>origempessoal:</code> separam
+                                pela marca de obra pessoal).
+                            </li>
+                            <li>
                                 <code>idiomaprincipal:</code> <code>idiomasecundario:</code> Idioma
                                 por papel no texto (<code>idioma:</code> acha o idioma em qualquer
                                 papel). <code>dialeto:</code> busca em qualquer dos dialetos do
@@ -3562,14 +4320,28 @@
                                 >), sem acento no prefixo.
                             </li>
                             <li>
-                                <code>livro:</code> <code>parte:</code> <code>secao:</code> —
-                                posição na estrutura.
+                                <code>livro:</code> <code>parte:</code> <code>secao:</code> — onde o
+                                texto aparece (em qualquer livro ou Coletânea onde esteja).
+                                <code>coletanea:</code> só nas Coletâneas.
                             </li>
                             <li>
                                 <code>papel:</code> — restringe aos papéis marcados nas pessoas do
                                 texto (ex.: <code>papel:dedicatária</code>), sem olhar nome — a
                                 coluna Pessoas (e o prefixo <code>pessoa:</code>) já busca nome e
                                 papel juntos; use este quando quiser só o papel.
+                            </li>
+                            <li>
+                                <code>pessoa:Nome@Papel</code>: nome e papel na mesma pessoa.
+                                <code>pessoa:Pedro@Dedicatária</code> só acha o texto em que o
+                                próprio Pedro é dedicatário;
+                                <code>pessoa:Pedro papel:dedicatária</code> (dois termos soltos)
+                                acha também quando quem dedica é outra pessoa. Feminino ou masculino
+                                tanto faz. <code>pessoa:@Voz</code> vale para qualquer pessoa com
+                                esse papel, e <code>pessoa:Maria@</code> é o mesmo que
+                                <code>pessoa:Maria</code>. Aspas só no pedaço com espaço (<code
+                                    >pessoa:"Maria Silva"@Voz</code
+                                >). <code>-pessoa:Pedro@Voz</code> exclui e <code>ou</code> junta. O
+                                <code>@</code> só vale depois de <code>pessoa:</code>.
                             </li>
                         </ul>
                         <p class="mt-1">
@@ -3849,67 +4621,6 @@
                         class="text-xs font-bold text-rose-700 dark:text-rose-300 whitespace-nowrap"
                     ></span>
                     <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
-                        <div id="bulk-pessoa-input-prosa-chips" class="flex flex-wrap gap-1"></div>
-                        <input
-                            type="text"
-                            id="bulk-pessoa-input-prosa"
-                            list="sugestoes-pessoas-bulk-prosa"
-                            placeholder="Pessoa: Enter adiciona"
-                            autocomplete="off"
-                            class="mb-0"
-                        />
-                    </div>
-                    <button
-                        onclick="aplicarPessoaEmMassa('prosas')"
-                        class="bg-rose-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        + Dedicar
-                    </button>
-                    <button
-                        onclick="removerPessoaEmMassa('prosas')"
-                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-600 dark:text-rose-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        − Remover
-                    </button>
-                    <select
-                        id="bulk-sinal-categoria-prosa"
-                        onchange="atualizarListaSinalBulk(this, 'bulk-sinal-input-prosa', '-prosa')"
-                        class="text-xs mb-0"
-                        style="max-width: 140px"
-                    >
-                        <option value="sinalizacoesTradicao">Tradição</option>
-                        <option value="sinalizacoesEstilo">Estilo</option>
-                        <option value="sinalizacoesTerritorialidade">Territorialidade</option>
-                        <option value="sinalizacoesRelacao">Relação</option>
-                        <option value="sinalizacoesSensibilidade">Sensibilidade</option>
-                        <option value="sinalizacoesTom">Tom</option>
-                        <option value="sinalizacoesDominioImagetico">Domínio Imagético</option>
-                        <option value="sinalizacoesOutros">Outros</option>
-                    </select>
-                    <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
-                        <div id="bulk-sinal-input-prosa-chips" class="flex flex-wrap gap-1"></div>
-                        <input
-                            type="text"
-                            id="bulk-sinal-input-prosa"
-                            list="sugestoes-sinais-tradicao-bulk-prosa"
-                            placeholder="Etiqueta: Enter adiciona"
-                            autocomplete="off"
-                            class="mb-0"
-                        />
-                    </div>
-                    <button
-                        onclick="aplicarSinalEmMassa('prosas')"
-                        class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        + Marcar
-                    </button>
-                    <button
-                        onclick="removerSinalEmMassa('prosas')"
-                        class="bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
-                    >
-                        − Remover
-                    </button>
-                    <div class="flex flex-col gap-1 flex-1 min-w-[160px]">
                         <div id="bulk-genero-input-prosa-chips" class="flex flex-wrap gap-1"></div>
                         <input
                             type="text"
@@ -3931,6 +4642,14 @@
                         class="bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         − Remover
+                    </button>
+                    <button
+                        type="button"
+                        onclick="togglePainel('painel-etiquetas-massa-prosa', this)"
+                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        title="Marca ou remove etiquetas (Tradição, Estilo, Tom e as outras categorias) nos textos selecionados"
+                    >
+                        🔖 Etiquetas ▾
                     </button>
                     <button
                         type="button"
@@ -3958,7 +4677,7 @@
                         "
                         class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
-                        ✏️ Preencher campo ▾
+                        ✏️ Campos ▾
                     </button>
                     <button
                         type="button"
@@ -3968,12 +4687,22 @@
                         "
                         class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
-                        🏷️ Períodos e movimentos ▾
+                        📜 Períodos e movimentos ▾
+                    </button>
+                    <button
+                        type="button"
+                        onclick="
+                            prepararPainelPessoasPapeisMassa('prosas');
+                            togglePainel('painel-pessoas-papeis-massa-prosa', this);
+                        "
+                        class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                    >
+                        👥 Pessoas e papéis ▾
                     </button>
                     <button
                         type="button"
                         onclick="togglePainel('painel-opcoes-download-prosas', this)"
-                        title="Dados ocultados, agrupar no topo e abrangente: o que vale para o download ao lado"
+                        title="Metadados, dados ocultados e agrupar no topo: o que vale para o download ao lado"
                         class="bg-white dark:bg-slate-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
                     >
                         ⚙️ Opções de download ▾
@@ -4024,6 +4753,8 @@
                     >
                         <span class="agrupar-comuns-slot"></span>
                         <span class="incluir-ocultos-slot"></span>
+                        <span class="infos-papel-slot"></span>
+                        <span class="metadados-slot"></span>
                     </div>
 
                     <div
@@ -4032,13 +4763,87 @@
                     ></div>
 
                     <div
+                        id="painel-etiquetas-massa-prosa"
+                        class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
+                    >
+                        <div>
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                                >Categoria</label
+                            >
+                            <select
+                                id="bulk-sinal-categoria-prosa"
+                                onchange="
+                                    atualizarListaSinalBulk(
+                                        this,
+                                        'bulk-sinal-input-prosa',
+                                        '-prosa',
+                                    )
+                                "
+                                class="text-xs p-2 mb-0"
+                            >
+                                <option value="sinalizacoesTradicao">Tradição</option>
+                                <option value="sinalizacoesEstilo">Estilo</option>
+                                <option value="sinalizacoesTerritorialidade">
+                                    Territorialidade
+                                </option>
+                                <option value="sinalizacoesRelacao">Relação</option>
+                                <option value="sinalizacoesSensibilidade">Sensibilidade</option>
+                                <option value="sinalizacoesTom">Tom</option>
+                                <option value="sinalizacoesDominioImagetico">
+                                    Domínio Imagético
+                                </option>
+                                <option value="sinalizacoesOutros">Outros</option>
+                            </select>
+                        </div>
+                        <div class="flex-1 min-w-[240px]">
+                            <label
+                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
+                                >Etiquetas (Enter adiciona cada uma)</label
+                            >
+                            <div
+                                id="bulk-sinal-input-prosa-chips"
+                                class="flex flex-wrap gap-1 mb-1"
+                            ></div>
+                            <input
+                                type="text"
+                                id="bulk-sinal-input-prosa"
+                                list="sugestoes-sinais-tradicao-bulk-prosa"
+                                placeholder="Etiqueta: Enter adiciona"
+                                autocomplete="off"
+                                class="w-full text-xs p-2 mb-0"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onclick="aplicarSinalEmMassa('prosas')"
+                            class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        >
+                            + Marcar nos selecionados
+                        </button>
+                        <button
+                            type="button"
+                            onclick="removerSinalEmMassa('prosas')"
+                            class="bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap"
+                        >
+                            − Remover dos selecionados
+                        </button>
+                        <p class="text-[10px] text-gray-400 dark:text-slate-500 w-full">
+                            As etiquetas valem para a categoria escolhida: trocar de categoria
+                            esvazia o campo. Etiqueta que ainda não existe é criada no cadastro.
+                            Quem já tem a etiqueta não muda, e remover tira só o vínculo (a etiqueta
+                            continua na aba Etiquetas).
+                        </p>
+                    </div>
+
+                    <div
                         id="painel-temas-massa-prosa"
                         class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
                     >
                         <div class="flex-1 min-w-[240px]">
                             <label
                                 class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
-                                >Temas (Enter adiciona cada um)</label
+                                >Temas (Enter ou ; adiciona cada um)</label
                             >
                             <div
                                 id="bulk-tema-input-prosa-chips"
@@ -4048,7 +4853,7 @@
                                 type="text"
                                 id="bulk-tema-input-prosa"
                                 list="sugestoes-temas-bulk-prosa"
-                                placeholder="Tema: Enter adiciona"
+                                placeholder="Tema: Enter ou ; adiciona"
                                 autocomplete="off"
                                 class="w-full text-xs p-2 mb-0"
                             />
@@ -4078,6 +4883,11 @@
 
                     <div
                         id="painel-periodos-massa-prosa"
+                        class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
+                    ></div>
+
+                    <div
+                        id="painel-pessoas-papeis-massa-prosa"
                         class="hidden w-full mt-2 p-3 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-lg flex flex-wrap items-end gap-2"
                     ></div>
 
@@ -4175,7 +4985,14 @@
 
             <section id="elementos" class="tab-content">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-semibold">Elementos e Respiros</h2>
+                    <div>
+                        <h2 class="text-xl font-semibold">Elementos e Respiros</h2>
+                        <p
+                            id="contagem-elementos"
+                            class="text-xs text-gray-500 dark:text-slate-400 mt-0.5"
+                            aria-live="polite"
+                        ></p>
+                    </div>
                     <button
                         onclick="prepararNovo('elemento')"
                         class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 dark:hover:bg-blue-500"
@@ -4299,10 +5116,10 @@
                         <select
                             id="conexoes-baixar-escopo"
                             aria-label="O que baixar"
-                            title="Quais conexões entram no relatório"
+                            title="Quais conexões de dentro do acervo entram no relatório. O Fora do acervo tem o botão dele, mais abaixo"
                             class="text-xs py-1.5 px-2 w-auto"
                         >
-                            <option value="tudo">Todas as conexões</option>
+                            <option value="tudo">Dentro do acervo (Elos e Ecos)</option>
                             <option value="elos">Só Elos</option>
                             <option value="ecos">Só Ecos</option>
                             <option value="selecao" hidden disabled>Só selecionados</option>
@@ -4321,7 +5138,7 @@
                             type="button"
                             id="conexoes-baixar"
                             data-action="baixar-conexoes"
-                            title="Baixa o relatório das conexões, no escopo e no formato escolhidos ao lado"
+                            title="Baixa o relatório das conexões de dentro do acervo (Elos e Ecos), no escopo e no formato escolhidos ao lado"
                             class="text-xs py-1.5 px-3 rounded border border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-800"
                         >
                             ⬇ Baixar
@@ -4373,33 +5190,227 @@
                     Elos e nos Ecos, o título abre a visualização (de lá dá pra ir pra edição).
                 </p>
 
-                <div class="mb-8">
-                    <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300 mb-1">
-                        ⚠️ Buracos (Elos com só um lado cadastrado)
-                    </h3>
-                    <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-3">
-                        Mesmo cálculo do painel derivado do modal de Poema, só que pra todos os
-                        poemas de uma vez.
+                <details id="conexoes-dentro" open class="mb-10">
+                    <summary
+                        class="cursor-pointer text-base font-bold text-gray-700 dark:text-slate-200 mb-4"
+                    >
+                        Dentro do acervo (Elos e Ecos)
+                    </summary>
+                    <div class="flex gap-3 text-xs mb-4">
+                        <button
+                            type="button"
+                            data-bloco-dentro-acao="expandir"
+                            class="text-blue-600 dark:text-blue-400 underline"
+                        >
+                            Expandir tudo
+                        </button>
+                        <button
+                            type="button"
+                            data-bloco-dentro-acao="recolher"
+                            class="text-blue-600 dark:text-blue-400 underline"
+                        >
+                            Recolher tudo
+                        </button>
+                    </div>
+                    <details data-bloco-dentro="buracos" open class="mb-8">
+                        <summary
+                            data-bloco-dentro-resumo
+                            class="cursor-pointer select-none text-sm font-bold text-gray-600 dark:text-slate-300 mb-1"
+                        >
+                            ⚠️ Buracos (Elos com só um lado cadastrado)<span
+                                id="conexoes-buracos-contagem"
+                            ></span>
+                        </summary>
+                        <p class="text-[11px] text-gray-400 dark:text-slate-500 mb-3 mt-1">
+                            Mesmo cálculo do painel derivado do modal de Poema, só que pra todos os
+                            poemas de uma vez.
+                        </p>
+                        <div
+                            id="conexoes-buracos"
+                            class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                        ></div>
+                    </details>
+
+                    <details data-bloco-dentro="elos" open class="mb-8">
+                        <summary
+                            data-bloco-dentro-resumo
+                            class="cursor-pointer select-none text-sm font-bold text-gray-600 dark:text-slate-300 mb-3"
+                        >
+                            Elos (pares e clusters)<span id="conexoes-elos-contagem"></span>
+                        </summary>
+                        <div id="conexoes-elos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    </details>
+
+                    <details data-bloco-dentro="ecos" open>
+                        <summary
+                            data-bloco-dentro-resumo
+                            class="cursor-pointer select-none text-sm font-bold text-gray-600 dark:text-slate-300 mb-3"
+                        >
+                            Ecos (cadeias)<span id="conexoes-ecos-contagem"></span>
+                        </summary>
+                        <div id="conexoes-ecos" class="grid grid-cols-1 gap-4"></div>
+                    </details>
+                </details>
+
+                <details id="conexoes-fora-secao" open>
+                    <summary
+                        class="cursor-pointer text-base font-bold text-gray-700 dark:text-slate-200 mb-4"
+                    >
+                        Fora do acervo (Intertextualidade, Hipertextualidade e Referências)
+                    </summary>
+                    <p class="text-xs text-gray-400 dark:text-slate-500 mb-4">
+                        Obras, autores e fatos do mundo que os textos citam ou de que derivam.
+                        Também é só uma lente: o dado mora nos campos de cada poema e prosa. Clique
+                        no título de um texto para abri-lo na visualização.
                     </p>
-                    <div
-                        id="conexoes-buracos"
-                        class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
-                    ></div>
-                </div>
-
-                <div class="mb-8">
-                    <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300 mb-3">
-                        Elos (pares e clusters)
-                    </h3>
-                    <div id="conexoes-elos" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-                </div>
-
-                <div>
-                    <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300 mb-3">
-                        Ecos (cadeias)
-                    </h3>
-                    <div id="conexoes-ecos" class="grid grid-cols-1 gap-4"></div>
-                </div>
+                    <div id="conexoes-fora-barra" class="mb-4 hidden">
+                        <button
+                            type="button"
+                            id="conexoes-revisao-alternar"
+                            data-action="alternar-modo-revisao-fora"
+                            aria-pressed="false"
+                            title="Uma tabela com uma linha por entrada, para corrigir os campos um a um"
+                            class="px-3 py-1.5 text-sm font-semibold rounded-lg border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800"
+                        >
+                            Modo revisão
+                        </button>
+                    </div>
+                    <div id="conexoes-revisao" class="hidden"></div>
+                    <div id="conexoes-fora-listas">
+                        <div id="conexoes-fora-filtro-caixa" class="mb-4 hidden">
+                            <details
+                                id="conexoes-fora-ajuda-busca"
+                                class="mb-2 text-xs text-gray-600 dark:text-slate-300"
+                            >
+                                <summary class="cursor-pointer select-none font-semibold">
+                                    Como filtrar
+                                </summary>
+                                <div class="mt-1 space-y-1">
+                                    <p>
+                                        Termos soltos valem para o nome, o autor, o tipo, a relação
+                                        e os títulos, e se somam (E). Use
+                                        <code>ou</code> para alternativas, aspas para frase exata e
+                                        <code>-termo</code> para excluir. Acento e caixa não
+                                        importam.
+                                    </p>
+                                    <p>
+                                        Para olhar um campo só, escreva
+                                        <code>campo:valor</code>. Prefixos: <code>texto:</code>
+                                        <code>obra:</code> <code>autor:</code> <code>origem:</code>
+                                        <code>tipo:</code> <code>relacao:</code> <code>data:</code>
+                                        <code>pessoal:</code>. Com <code>campo:*</code> o campo
+                                        precisa estar preenchido; <code>-origem:*</code> deixa só o
+                                        que está sem origem. Vale para Obras, Autores e Origens, e o
+                                        relatório baixado usa o mesmo filtro.
+                                    </p>
+                                    <p>
+                                        Em Autores e Origens, o filtro vale para as obras dentro de
+                                        cada um: <code>-pessoal:*</code> mantém a origem com só as
+                                        obras não pessoais, e ela só some se não sobrar nenhuma. O
+                                        prefixo do próprio nome da lista (<code>autor:</code> em
+                                        Autores, <code>origem:</code> em Origens) e
+                                        <code>pessoal:algumas</code> olham o item inteiro. Em Obras,
+                                        cada obra é testada sozinha.
+                                    </p>
+                                    <p>
+                                        Exemplos: <code>origem:Grécia tipo:Mitologia</code>,
+                                        <code>autor:Homero ou autor:Ovídio</code>,
+                                        <code>relacao:Citação -pessoal:*</code>.
+                                    </p>
+                                </div>
+                            </details>
+                            <div class="flex flex-wrap items-end gap-3">
+                                <div class="relative w-full md:w-96">
+                                    <label
+                                        for="conexoes-fora-filtro"
+                                        class="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1"
+                                    >
+                                        Filtrar obras, autores e origens
+                                    </label>
+                                    <input
+                                        id="conexoes-fora-filtro"
+                                        type="search"
+                                        autocomplete="off"
+                                        placeholder='Obra, autor... (campo:valor, -termo exclui, "frase", ou)'
+                                        oninput="setFiltroForaDoAcervo(this.value)"
+                                        class="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900"
+                                    />
+                                    <div
+                                        id="conexoes-fora-sugestoes"
+                                        role="listbox"
+                                        class="hidden absolute left-0 right-0 top-full mt-1 max-h-64 overflow-y-auto z-30 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg"
+                                    ></div>
+                                </div>
+                                <div>
+                                    <label
+                                        for="conexoes-fora-ordem"
+                                        class="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1"
+                                    >
+                                        Ordenar obras e autores
+                                    </label>
+                                    <select
+                                        id="conexoes-fora-ordem"
+                                        onchange="setOrdemForaDoAcervo(this.value)"
+                                        class="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900"
+                                    >
+                                        <option value="textos">Mais textos primeiro</option>
+                                        <option value="alfabetica">Ordem alfabética (A → Z)</option>
+                                        <option value="data-antiga">
+                                            Data da obra: mais antiga primeiro
+                                        </option>
+                                        <option value="data-recente">
+                                            Data da obra: mais recente primeiro
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <span
+                                        class="block text-xs font-semibold text-gray-500 dark:text-slate-400 mb-1"
+                                    >
+                                        Baixar relatório
+                                    </span>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <select
+                                            id="conexoes-fora-baixar-escopo"
+                                            aria-label="O que baixar do Fora do acervo"
+                                            title="Qual parte da seção entra no relatório. Obras, Autores e Origens respeitam o filtro e a ordem de cima"
+                                            class="text-xs py-1.5 px-2 w-auto"
+                                        >
+                                            <option value="tudo">Tudo</option>
+                                            <option value="obras">Só Obras</option>
+                                            <option value="autores">Só Autores</option>
+                                            <option value="origens">Só Origens</option>
+                                            <option value="derivacoes">Só Derivações</option>
+                                            <option value="referencias">Só Referências</option>
+                                            <option value="avisos">Só Avisos</option>
+                                        </select>
+                                        <select
+                                            id="conexoes-fora-baixar-formato"
+                                            aria-label="Formato do download do Fora do acervo"
+                                            title="Formato do arquivo baixado"
+                                            onchange="atualizarBaixarForaDoAcervo()"
+                                            class="text-xs py-1.5 px-2 w-auto"
+                                        >
+                                            <option value="md">.md (Markdown)</option>
+                                            <option value="csv">.csv (uma tabela)</option>
+                                            <option value="pdf">.pdf</option>
+                                        </select>
+                                        <button
+                                            type="button"
+                                            id="conexoes-fora-baixar"
+                                            onclick="baixarForaDoAcervo()"
+                                            title="Baixa o relatório do Fora do acervo, no escopo e no formato escolhidos ao lado"
+                                            class="text-xs py-1.5 px-3 rounded border border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-800"
+                                        >
+                                            ⬇ Baixar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="conexoes-fora"></div>
+                    </div>
+                </details>
             </section>
 
             <section id="sonoridade" class="tab-content">
@@ -4947,7 +5958,7 @@
                                 type="text"
                                 id="exp-temas-incluir"
                                 list="sugestoes-sinais"
-                                placeholder="Separe vários por vírgula"
+                                placeholder="Separe vários por ponto e vírgula (;)"
                             />
                         </div>
                     </div>
@@ -4958,7 +5969,7 @@
                             type="text"
                             id="exp-temas-excluir"
                             list="sugestoes-sinais"
-                            placeholder="Separe vários por vírgula"
+                            placeholder="Separe vários por ponto e vírgula (;)"
                         />
                     </div>
 
@@ -5086,7 +6097,7 @@
                             >.
                         </p>
                     </div>
-                    <div class="flex items-center gap-4">
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-3">
                         <button
                             onclick="previsualizarExportacaoSeletiva()"
                             class="bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 px-4 py-2 rounded font-bold text-sm"
@@ -5120,8 +6131,8 @@
                         >
                             Baixar .docx seletivo
                         </button>
-                        <span class="incluir-ocultos-slot"></span>
                         <span class="agrupar-comuns-slot"></span>
+                        <span class="incluir-ocultos-slot"></span>
                         <label
                             class="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-slate-300 whitespace-nowrap px-1"
                             title="Gênero, orientação, cis/trans e cor/raça de cada Pessoa vão nos JSON por texto (seletivo, seleção, item avulso, tudo flat e templates). Desligada, saem sem esses campos. O backup completo nunca omite."
@@ -5135,6 +6146,7 @@
                             />
                             Incluir dados pessoais das Pessoas nos JSON
                         </label>
+                        <span class="infos-papel-slot"></span>
                         <span
                             id="exp-resultado"
                             class="text-xs text-gray-500 dark:text-slate-400"
@@ -5550,6 +6562,10 @@
                             class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg flex flex-wrap gap-x-3 max-h-40 overflow-y-auto"
                         ></div>
                         <canvas id="grafico-livro" height="220"></canvas>
+                        <p
+                            id="est-nota-livro"
+                            class="text-[11px] text-gray-400 dark:text-slate-500 mt-3"
+                        ></p>
                     </div>
                 </div>
                 <div class="mt-8">
@@ -5667,6 +6683,38 @@
                         class="hidden mb-3 p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg max-h-48 overflow-y-auto"
                     ></div>
                     <canvas id="grafico-tema-tempo" height="220"></canvas>
+                </div>
+
+                <div
+                    id="card-valencia-temas"
+                    class="bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4 mt-6"
+                >
+                    <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                        Peso dos temas (valência)
+                    </h3>
+                    <p class="text-[10px] text-gray-400 mt-1">
+                        O quanto os temas que aparecem nos textos são agradáveis ou desagradáveis
+                        (Cadastros → Temas). A valência é do tema, não do texto: mostra que temas se
+                        escolhe, não se um poema é alegre ou sombrio. O índice vai de -1 (só temas
+                        agradáveis) a +1 (só desagradáveis); temas ambivalentes aparecem à parte e
+                        ficam fora da média. Respeita os filtros acima.
+                    </p>
+                    <div id="painel-valencia-papel" class="mt-3"></div>
+                    <div id="painel-valencia-resumo" class="mt-3"></div>
+
+                    <h4 class="text-xs font-bold text-gray-600 dark:text-slate-300 mt-5 mb-2">
+                        Por autor
+                    </h4>
+                    <div id="painel-valencia-autores"></div>
+
+                    <div class="flex items-center gap-2 flex-wrap mt-5 mb-2">
+                        <h4 class="text-xs font-bold text-gray-600 dark:text-slate-300">
+                            Ao longo de
+                        </h4>
+                        <div id="painel-valencia-eixo-botoes" class="flex gap-1"></div>
+                    </div>
+                    <p id="texto-valencia-eixo" class="text-[10px] text-gray-400 mb-2"></p>
+                    <div id="painel-valencia-eixo"></div>
                 </div>
             </section>
 
@@ -5801,20 +6849,50 @@
                                 Cruze temas com pessoas, com grupos ou com personagens.
                             </p>
                         </div>
-                        <select
-                            id="est-coocorrencia-modo"
-                            onchange="renderEstatisticas()"
-                            style="width: auto; margin: 0"
-                        >
-                            <option value="pessoas">Temas × pessoas</option>
-                            <option value="grupos">Temas × grupos</option>
-                            <option value="personagens">Temas × personagens</option>
-                        </select>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <div id="painel-inverter-coocorrencia"></div>
+                            <select
+                                id="cruzamentos-baixar-formato"
+                                aria-label="Formato do download da matriz de Cruzamentos"
+                                title="Formato do arquivo baixado"
+                                class="text-xs py-1.5 px-2 w-auto"
+                                style="margin: 0"
+                            >
+                                <option value="csv">.csv</option>
+                                <option value="json">.json</option>
+                                <option value="md">.md (Markdown)</option>
+                                <option value="pdf">.pdf</option>
+                            </select>
+                            <button
+                                type="button"
+                                id="cruzamentos-baixar"
+                                onclick="baixarCruzamentos()"
+                                title="Baixa a matriz como está na tela, no formato escolhido ao lado"
+                                class="text-xs py-1.5 px-3 rounded border border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-800"
+                            >
+                                ⬇ Baixar
+                            </button>
+                            <select
+                                id="est-coocorrencia-modo"
+                                onchange="renderEstatisticas()"
+                                style="width: auto; margin: 0"
+                            >
+                                <option value="pessoas">Temas × pessoas</option>
+                                <option value="grupos">Temas × grupos</option>
+                                <option value="personagens">Temas × personagens</option>
+                            </select>
+                        </div>
                     </div>
                     <div id="painel-papel-tema-cruzamentos" class="mb-3"></div>
+                    <div id="painel-pessoa-coocorrencia"></div>
                     <div id="painel-colunas-coocorrencia"></div>
                     <div id="tabela-coocorrencia"></div>
                 </div>
+
+                <div
+                    id="painel-ligacoes-tema-pessoa"
+                    class="mt-4 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                ></div>
             </section>
 
             <section id="estatisticas-personagens" class="tab-content">
@@ -6182,6 +7260,99 @@
                             </p>
                         </div>
                         <div id="tabela-correntes-cruzamento"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="estatisticas-datas-obras" class="tab-content">
+                <div class="mb-5">
+                    <h2 class="text-xl font-semibold">Obras citadas</h2>
+                    <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        De que épocas e de que lugares ou culturas são as obras que os textos citam,
+                        retomam ou referenciam, e quanto tempo separa cada obra do texto. Conta a
+                        data do começo de cada entrada (uma Pessoa pública entra pelo nascimento).
+                        Clicar numa barra abre a lista de textos.
+                    </p>
+                </div>
+                <div class="est-filtros-compartilhados mb-6"></div>
+
+                <div class="mb-4">
+                    <div id="painel-fonte-datas-obras" class="flex gap-1"></div>
+                    <p id="est-datas-fonte-descricao" class="text-[10px] text-gray-400 mt-1"></p>
+                    <div id="painel-modo-datas-obras" class="flex flex-wrap gap-1 mt-3"></div>
+                    <p id="est-datas-modo-descricao" class="text-[10px] text-gray-400 mt-1"></p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="mb-3">
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Textos por século da obra
+                            </h3>
+                            <p
+                                id="est-datas-seculo-contexto"
+                                class="text-[10px] text-gray-400 mt-1"
+                            ></p>
+                        </div>
+                        <canvas id="grafico-datas-seculo" height="220"></canvas>
+                    </div>
+
+                    <div
+                        class="min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="mb-3">
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Textos por década da obra
+                            </h3>
+                            <p
+                                id="est-datas-decada-contexto"
+                                class="text-[10px] text-gray-400 mt-1"
+                            ></p>
+                        </div>
+                        <canvas id="grafico-datas-decada" height="220"></canvas>
+                    </div>
+
+                    <div
+                        class="md:col-span-2 min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="mb-3">
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Distância temporal entre obra e texto
+                            </h3>
+                            <div
+                                id="est-datas-distancia-zoom"
+                                class="hidden flex flex-wrap items-center gap-2 mt-1"
+                            ></div>
+                            <p
+                                id="est-datas-distancia-contexto"
+                                class="text-[10px] text-gray-400 mt-1"
+                            ></p>
+                        </div>
+                        <canvas id="grafico-datas-distancia" height="160"></canvas>
+                    </div>
+
+                    <div
+                        class="md:col-span-2 min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 p-4"
+                    >
+                        <div class="mb-3">
+                            <h3 class="text-sm font-bold text-gray-600 dark:text-slate-300">
+                                Textos por origem da obra
+                            </h3>
+                            <p class="text-[10px] text-gray-400 mt-1">
+                                De que lugares ou culturas vêm as obras citadas. Só as Obras têm
+                                origem; segue o filtro de obra pessoal acima (a fonte Referências
+                                fica sem barras).
+                            </p>
+                            <p
+                                id="est-datas-origem-contexto"
+                                class="text-[10px] text-gray-400 mt-1"
+                            ></p>
+                        </div>
+                        <div id="est-datas-origem-visao" class="flex gap-1 mb-2 text-[11px]"></div>
+                        <canvas id="grafico-datas-origem" height="200"></canvas>
+                        <div id="mapa-datas-origem" class="hidden"></div>
                     </div>
                 </div>
             </section>

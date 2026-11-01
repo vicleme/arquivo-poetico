@@ -11,6 +11,10 @@
 //   3. "Perguntas frequentes" (faq-conteudo.js) — só texto, sem apontar
 //      pra nada: são perguntas conceituais, não de "onde eu clico".
 //
+// No topo há uma caixa de busca (T10, lógica em busca-ajuda.js): filtra as
+// duas listas ao digitar, abre os itens que casam e esconde grupo, categoria
+// e seção que ficaram vazios. Esc limpa a caixa.
+//
 // As duas listas são montadas por JS a partir dos módulos de dados —
 // o HTML do modal só tem os contêineres vazios — mesmo padrão de
 // selecao-massa.js/campos-preenchiveis.js: pra crescer uma tarefa ou
@@ -19,8 +23,8 @@
 
 import { garantirModal, toggleModal } from './modais.js';
 import { iniciarTour } from './tour.js';
-import { TAREFAS_COMO_FACO, tarefaComoFaco } from './como-faco-passos.js';
-import { CATEGORIAS_FAQ } from './faq-conteudo.js';
+import { tarefaComoFaco } from './como-faco-passos.js';
+import { buscarNaAjuda } from './busca-ajuda.js';
 import { lerPerfilModoAprendizado, abrirModoAprendizado } from './modo-aprendizado.js';
 
 const $ = (id) => document.getElementById(id);
@@ -46,40 +50,52 @@ async function mostrarTarefaNaTela(idTarefa) {
     iniciarTour({ passos: tarefa.passos });
 }
 
-function renderComoFaco() {
+// `abrir`: itens já abertos (busca ativa, para o achado aparecer na hora).
+function renderComoFaco(grupos, abrir) {
     const container = $('ca-como-faco-lista');
     if (!container) return;
     container.replaceChildren(
-        ...TAREFAS_COMO_FACO.map((tarefa) => {
-            const detalhes = criar('details', { classe: 'campo-grupo' });
-            const resumo = criar('summary', { texto: tarefa.titulo });
-            const corpo = criar('div', { classe: 'campo-grupo-corpo' });
-            const botao = criar('button', {
-                classe: 'text-sm text-blue-600 dark:text-blue-400 underline',
-                texto: 'Mostrar na tela',
-                atributos: { type: 'button' },
-            });
-            botao.addEventListener('click', () => mostrarTarefaNaTela(tarefa.id));
-            if (tarefa.descricao) {
-                corpo.append(
-                    criar('p', {
-                        classe: 'text-sm text-gray-600 dark:text-slate-300 mb-2',
-                        texto: tarefa.descricao,
-                    }),
-                );
-            }
-            corpo.append(botao);
-            detalhes.append(resumo, corpo);
-            return detalhes;
+        ...grupos.map((grupo) => {
+            const bloco = criar('div', { classe: 'space-y-2' });
+            bloco.append(
+                criar('h5', {
+                    classe: 'text-xs font-semibold uppercase text-gray-400 dark:text-slate-500',
+                    texto: grupo.rotulo,
+                }),
+                ...grupo.tarefas.map((tarefa) => {
+                    const detalhes = criar('details', { classe: 'campo-grupo' });
+                    detalhes.open = abrir;
+                    const resumo = criar('summary', { texto: tarefa.titulo });
+                    const corpo = criar('div', { classe: 'campo-grupo-corpo' });
+                    const botao = criar('button', {
+                        classe: 'text-sm text-blue-600 dark:text-blue-400 underline',
+                        texto: 'Mostrar na tela',
+                        atributos: { type: 'button' },
+                    });
+                    botao.addEventListener('click', () => mostrarTarefaNaTela(tarefa.id));
+                    if (tarefa.descricao) {
+                        corpo.append(
+                            criar('p', {
+                                classe: 'text-sm text-gray-600 dark:text-slate-300 mb-2',
+                                texto: tarefa.descricao,
+                            }),
+                        );
+                    }
+                    corpo.append(botao);
+                    detalhes.append(resumo, corpo);
+                    return detalhes;
+                }),
+            );
+            return bloco;
         }),
     );
 }
 
-function renderFaq() {
+function renderFaq(categorias, abrir) {
     const container = $('ca-faq-lista');
     if (!container) return;
     container.replaceChildren(
-        ...CATEGORIAS_FAQ.map((categoria) => {
+        ...categorias.map((categoria) => {
             const bloco = criar('div', { classe: 'space-y-2' });
             bloco.append(
                 criar('h5', {
@@ -88,6 +104,7 @@ function renderFaq() {
                 }),
                 ...categoria.perguntas.map((p) => {
                     const detalhes = criar('details', { classe: 'campo-grupo' });
+                    detalhes.open = abrir;
                     const resumo = criar('summary', { texto: p.pergunta });
                     const corpo = criar('div', { classe: 'campo-grupo-corpo' });
                     corpo.append(
@@ -105,6 +122,58 @@ function renderFaq() {
     );
 }
 
+// Texto do aviso sob a caixa de busca; vazio quando a busca está inativa.
+function textoStatusBusca(r) {
+    if (!r.ativa) return '';
+    if (r.vazia) return 'Nada encontrado. Tente menos palavras ou tire as aspas.';
+    if (r.parcial) {
+        const quem = r.total === 1 ? '1 item que tem' : `${r.total} itens que têm`;
+        return `Nenhum item tem todas as palavras. Mostrando ${quem} ${r.acertos} de ${r.totalTermos}.`;
+    }
+    return r.total === 1 ? '1 resultado' : `${r.total} resultados`;
+}
+
+// Redesenha as duas listas para o texto da busca. Sem busca (texto vazio)
+// volta ao estado de sempre: tudo visível e tudo recolhido. Com busca, a
+// apresentação some (os achados sobem para o topo) e uma seção sem nenhum
+// achado também some.
+function aplicarBusca(texto) {
+    const r = buscarNaAjuda(texto);
+    renderComoFaco(r.grupos, r.ativa);
+    renderFaq(r.categorias, r.ativa);
+    $('ca-secao-apresentacao')?.classList.toggle('hidden', r.ativa);
+    $('ca-secao-como-faco')?.classList.toggle('hidden', !r.grupos.length);
+    $('ca-secao-faq')?.classList.toggle('hidden', !r.categorias.length);
+    const status = $('ca-busca-status');
+    if (status) {
+        status.textContent = textoStatusBusca(r);
+        status.classList.toggle('hidden', !r.ativa);
+    }
+}
+
+// Esc na caixa: com texto, limpa; já vazia, fecha a Central (o atalho global
+// de modais ignora Esc enquanto um campo tem foco, então o fechamento é feito
+// aqui). stopPropagation evita o atalho global tratar o mesmo Esc de novo.
+function aoTeclarNaBusca(e) {
+    if (e.key !== 'Escape') return;
+    e.preventDefault();
+    e.stopPropagation();
+    const caixa = e.currentTarget;
+    if (caixa.value) {
+        caixa.value = '';
+        aplicarBusca('');
+    } else {
+        toggleModal('modal-central-ajuda');
+    }
+}
+
+function ligarBusca() {
+    const caixa = $('ca-busca');
+    if (!caixa) return;
+    caixa.addEventListener('input', () => aplicarBusca(caixa.value));
+    caixa.addEventListener('keydown', aoTeclarNaBusca);
+}
+
 // Nasce SEM perfil salvo → "Ver" (nunca passou pela apresentação).
 // Com perfil salvo → "Rever" (já viu antes, está voltando).
 function atualizarTextoBotaoApresentacao() {
@@ -115,17 +184,22 @@ function atualizarTextoBotaoApresentacao() {
 }
 
 // init do registrarModal — roda uma vez, na primeira carga do modal.
-// As listas são estáticas (vêm só dos módulos de dados, nada muda em
-// runtime), então montá-las aqui é suficiente; só o texto do botão de
-// apresentação precisa ser recalculado a cada abertura (ver abrirCentralAjuda).
+// Os dados são estáticos (vêm só dos módulos de dados, nada muda em
+// runtime): a montagem inicial e a ligação da caixa de busca bastam aqui. A
+// cada abertura (ver abrirCentralAjuda) a busca é zerada e o texto do botão
+// de apresentação, recalculado.
 export function initCentralAjuda() {
-    renderComoFaco();
-    renderFaq();
+    ligarBusca();
+    aplicarBusca('');
 }
 
 export async function abrirCentralAjuda() {
     await garantirModal('modal-central-ajuda');
     atualizarTextoBotaoApresentacao();
+    // sempre abre sem busca: a lista inteira, tudo recolhido
+    const caixa = $('ca-busca');
+    if (caixa) caixa.value = '';
+    aplicarBusca('');
     await toggleModal('modal-central-ajuda');
 }
 

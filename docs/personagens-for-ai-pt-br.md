@@ -76,17 +76,38 @@ elas pertencem ao Personagem e ficam separadas da relação com o texto.
 
 (Fora os campos do cadastro descritos acima, que também vêm no vínculo.)
 
-### `papeis`: lista fechada, e a ordem NÃO é relevância
+### `papeis`: lista de um registro, e a ordem NÃO é relevância
 
-Lista de zero, um ou vários valores de uma lista fechada de 5, na ordem em
-que aparecem aqui:
+Lista de zero, um ou vários nomes de papel. Os papéis possíveis vêm de um
+registro (`papeisPersonagem` no backup), no mesmo molde do registro de
+Pessoa: cada papel tem nome, apelido (a abreviação da coluna), descrição e as
+regras dele. O valor gravado no texto é sempre o **nome** do papel. Os cinco
+de fábrica, na ordem de presença no texto:
 
-- **Voz**, **Interlocutor** e **Aparição**: papéis de presença efetiva no
-  texto. O schema não define cada um além do rótulo, então leia pelo nome e
-  não acrescente detalhes que o autor não registrou.
-- **Menção**: o Personagem é nomeado no texto.
-- **Alusão**: o Personagem é evocado sem nome. Fica separada de Menção
-  de propósito, como em `pessoas`.
+- **Voz**: o Personagem fala no texto, em discurso direto ou como a voz que
+  conduz o texto (narrador ou eu lírico que é uma figura criada). Não é o
+  papel Voz de `pessoas`.
+- **Interlocutor**: o texto fala com este Personagem; é interpelado, ouvido ou
+  respondido por quem fala, e pode ou não responder. Se também fala, ganha Voz
+  além deste papel.
+- **Aparição**: está em cena, age ou é descrito em ação, quer também fale, quer
+  seja interpelado, quer não. É a linha de base de presença.
+- **Menção**: o Personagem é designado no texto, sem estar em cena, por nome,
+  apelido ou epíteto que aponte só para ele ("o rei", "a mulher do sétimo
+  andar"). O critério é o texto designá-lo, não ele ter nome próprio. Tipo
+  genérico ("todo rei") não conta.
+- **Alusão**: o Personagem é evocado sem designação (pronome sem antecedente,
+  epíteto metafórico, imagem, circunstância). Fica separada de Menção de
+  propósito, como em `pessoas`.
+
+Essas definições são as de fábrica; quem cataloga pode editar apelido e
+descrição. Não acrescente ao papel detalhes que o autor não registrou.
+
+**Menção e Alusão não convivem no mesmo vínculo**: se o texto designa o
+Personagem, aludir não acrescenta nada, então vale Menção. Voz, Interlocutor e Aparição convivem
+entre si e com Menção ou Alusão (quem aparece costuma ser nomeado). A regra mora
+no registro, não no nome. Dado antigo que já tenha os dois não é alterado; trate
+como inconsistência a corrigir, não como erro de leitura.
 
 O mesmo Personagem pode acumular papéis no mesmo texto (por exemplo,
 Aparição e Interlocutor).
@@ -94,8 +115,8 @@ Aparição e Interlocutor).
 **Atenção, aqui é diferente do campo `pessoas`.** Em `pessoas`, a ordem dos
 papéis pode refletir relevância, porque preserva a ordem em que a pessoa
 marcou. Em `personagens`, o sistema **sempre reordena** os papéis para a
-ordem fixa acima (Voz, Interlocutor, Aparição, Menção, Alusão), não importa
-a sequência em que foram marcados. Logo:
+ordem do registro (de fábrica: Voz, Interlocutor, Aparição, Menção, Alusão),
+não importa a sequência em que foram marcados. Logo:
 
 - A ordem de `papeis` **não carrega informação de relevância**. Não diga que
   "Voz vem primeiro, então é o papel mais forte".
@@ -113,9 +134,9 @@ invente um papel.
 `papeis` é o que os distingue:
 
 - **Indefinido**: o vínculo ainda não tem papel, ou tem ao menos um papel de
-  presença efetiva (Voz, Interlocutor, Aparição), e a centralidade ainda não
-  foi preenchida.
-- **Não se aplica**: o vínculo só tem Menção e/ou Alusão. Quem é só
+  presença efetiva (os que não são "sem centralidade": de fábrica, Voz,
+  Interlocutor e Aparição), e a centralidade ainda não foi preenchida.
+- **Não se aplica**: o vínculo só tem papéis "sem centralidade" (de fábrica, Menção e/ou Alusão; a marca é do papel no registro). Quem é só
   mencionado ou aludido não é protagonista nem secundário, e o campo fica
   sempre vazio. Nas Estatísticas isso aparece como "Só Menção/Alusão".
 
@@ -222,8 +243,9 @@ Ao processar ou comentar o campo `personagens` de um item exportado:
    leia `origem` vazia como "não definida".
 2. Trate vazio em identidade, datas e características como "não definido",
    sem completar por inferência.
-3. Leia `papeis` como lista fechada em ordem fixa. A ordem **não** indica
-   relevância (diferente de `pessoas`). `papeis: []` é vínculo sem papel
+3. Leia `papeis` como nomes do registro de papéis de Personagem, sempre na
+   ordem do registro. A ordem **não** indica relevância (diferente de
+   `pessoas`). Menção e Alusão não convivem. `papeis: []` é vínculo sem papel
    definido, não ausência de vínculo.
 4. Para `centralidade` vazia, olhe `papeis`: só Menção/Alusão é "não se
    aplica"; o resto é "indefinido".

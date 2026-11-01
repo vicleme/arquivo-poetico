@@ -377,3 +377,226 @@ describe('buildNesting + flattenLivroAninhado (ida e volta preserva os itens e o
         assert.equal(poemas.length, 4);
     });
 });
+
+// ─── Autoria do livro no .json aninhado (Fase 19, etapa 4, entrega 3) ──────
+
+describe('buildNesting: autoria do livro por nome', () => {
+    it('livro com autoria sai com autoria_livro por nome e mantém autoriaLivro', () => {
+        const db = dbVazio();
+        db.autores = [
+            { id: 3, nome: 'Ana Souza' },
+            { id: 7, nome: 'Beto Lima' },
+        ];
+        db.livros = [
+            {
+                id: 1,
+                titulo: 'Livro A',
+                autoriaLivro: [
+                    { autorId: 3, papeis: ['Autor', 'Tradutor'] },
+                    { autorId: 7, papeis: ['Prefaciador', 'Revisora convidada'] },
+                ],
+            },
+        ];
+        const [livro] = buildNesting(db).data;
+        assert.deepEqual(livro.autoria_livro, [
+            { autor: 'Ana Souza', papeis: ['Autor', 'Tradutor'] },
+            { autor: 'Beto Lima', papeis: ['Prefaciador', 'Revisora convidada'] },
+        ]);
+        assert.deepEqual(livro.autoriaLivro, db.livros[0].autoriaLivro);
+    });
+
+    it('livro sem autoria não ganha a chave', () => {
+        const db = dbVazio();
+        db.autores = [{ id: 3, nome: 'Ana Souza' }];
+        db.livros = [{ id: 1, titulo: 'Livro A' }];
+        const [livro] = buildNesting(db).data;
+        assert.equal('autoria_livro' in livro, false);
+    });
+
+    it('Autor que não existe mais no cadastro é ignorado, sem quebrar', () => {
+        const db = dbVazio();
+        db.autores = [{ id: 3, nome: 'Ana Souza' }];
+        db.livros = [
+            {
+                id: 1,
+                titulo: 'Livro A',
+                autoriaLivro: [
+                    { autorId: 99, papeis: ['Autor'] },
+                    { autorId: 3, papeis: ['Organizador'] },
+                ],
+            },
+        ];
+        const [livro] = buildNesting(db).data;
+        assert.deepEqual(livro.autoria_livro, [{ autor: 'Ana Souza', papeis: ['Organizador'] }]);
+    });
+
+    it('db sem a lista de autores não quebra', () => {
+        const db = dbVazio();
+        db.livros = [{ id: 1, titulo: 'L', autoriaLivro: [{ autorId: 3, papeis: ['Autor'] }] }];
+        const [livro] = buildNesting(db).data;
+        assert.equal('autoria_livro' in livro, false);
+    });
+
+    it('buildNestingLivro leva a autoria por nome e a cópia não altera o db', () => {
+        const db = dbVazio();
+        db.autores = [{ id: 3, nome: 'Ana Souza' }];
+        db.livros = [{ id: 1, titulo: 'L', autoriaLivro: [{ autorId: 3, papeis: ['Autor'] }] }];
+        const livro = buildNestingLivro(db, 1);
+        assert.deepEqual(livro.autoria_livro, [{ autor: 'Ana Souza', papeis: ['Autor'] }]);
+        livro.autoria_livro[0].papeis.push('X');
+        assert.deepEqual(db.livros[0].autoriaLivro[0].papeis, ['Autor']);
+    });
+});
+
+// ─── Uso de IA no .json aninhado (Fase 19, etapa 5, entrega 3) ──────────────
+
+describe('buildNesting: uso de IA com o título do texto', () => {
+    const dbComUso = () => {
+        const db = dbVazio();
+        db.poemas = [{ id: 4, titulo: 'Vinco' }];
+        db.prosas = [{ id: 4, titulo: 'Rastro' }];
+        db.livros = [
+            {
+                id: 1,
+                titulo: 'Livro A',
+                usoIa: {
+                    estado: 'usou',
+                    usos: [
+                        { onde: 'Texto', texto: { tipo: 'prosa', id: 4 }, como: 'Gerou uma base' },
+                        { onde: 'Capa', texto: { tipo: 'poema', id: 99 } },
+                    ],
+                    nota: 'geral',
+                },
+            },
+            { id: 2, titulo: 'Livro B', usoIa: { estado: 'nao-usou' } },
+            { id: 3, titulo: 'Livro C' },
+        ];
+        return db;
+    };
+
+    it('uso_ia sai com o título (prosa e poema de mesmo id não se misturam) e usoIa fica', () => {
+        const db = dbComUso();
+        const [a] = buildNesting(db).data;
+        assert.deepEqual(a.uso_ia, {
+            estado: 'usou',
+            usos: [
+                {
+                    onde: 'Texto',
+                    como: 'Gerou uma base',
+                    texto: { tipo: 'prosa', titulo: 'Rastro' },
+                },
+                { onde: 'Capa' },
+            ],
+            nota: 'geral',
+        });
+        assert.deepEqual(a.usoIa, db.livros[0].usoIa);
+    });
+
+    it('Não usou sai com o estado; livro sem registro não ganha a chave', () => {
+        const [, b, c] = buildNesting(dbComUso()).data;
+        assert.deepEqual(b.uso_ia, { estado: 'nao-usou' });
+        assert.equal('uso_ia' in c, false);
+    });
+
+    it('buildNestingLivro leva uso_ia e a cópia não altera o db', () => {
+        const db = dbComUso();
+        const livro = buildNestingLivro(db, 1);
+        livro.uso_ia.usos[0].onde = 'X';
+        assert.equal(db.livros[0].usoIa.usos[0].onde, 'Texto');
+    });
+});
+
+// ─── Equipe e créditos no .json aninhado (Fase 19, etapa 6, entrega 4) ──────
+
+describe('buildNesting: equipe do livro por nome', () => {
+    const dbComEquipe = () => {
+        const db = dbVazio();
+        db.colaboradores = [
+            { id: 5, nome: 'Ana Souza', papeisHabituais: ['Capista'], contato: 'ana@exemplo.com' },
+            { id: 6, nome: 'Bruno Lima', papeisHabituais: [], contato: '' },
+        ];
+        db.livros = [
+            {
+                id: 1,
+                titulo: 'Livro A',
+                equipeLivro: [
+                    {
+                        colaboradorId: 6,
+                        papeis: [{ papel: 'Diagramador' }],
+                    },
+                    {
+                        colaboradorId: 5,
+                        papeis: [
+                            { papel: 'Ilustrador', escopo: 'Capa' },
+                            { papel: 'Ilustrador', escopo: 'Miolo' },
+                            { papel: 'Tipógrafo' },
+                        ],
+                    },
+                ],
+            },
+            { id: 2, titulo: 'Livro B' },
+        ];
+        return db;
+    };
+
+    it('livro com equipe sai com equipe_livro por nome, e equipeLivro com ids fica', () => {
+        const db = dbComEquipe();
+        const [livro] = buildNesting(db).data;
+        assert.deepEqual(livro.equipe_livro, [
+            { colaborador: 'Bruno Lima', papeis: [{ papel: 'Diagramador' }] },
+            {
+                colaborador: 'Ana Souza',
+                papeis: [
+                    { papel: 'Ilustrador', escopo: 'Capa' },
+                    { papel: 'Ilustrador', escopo: 'Miolo' },
+                    { papel: 'Tipógrafo' },
+                ],
+            },
+        ]);
+        assert.deepEqual(livro.equipeLivro, db.livros[0].equipeLivro);
+    });
+
+    it('equipe_livro não leva id nem dados do cadastro (contato)', () => {
+        const [livro] = buildNesting(dbComEquipe()).data;
+        const texto = JSON.stringify(livro.equipe_livro);
+        assert.doesNotMatch(texto, /colaboradorId|"id"|ana@exemplo/);
+    });
+
+    it('livro sem equipe não ganha a chave', () => {
+        const livro = buildNesting(dbComEquipe()).data[1];
+        assert.equal('equipe_livro' in livro, false);
+    });
+
+    it('Colaborador que não existe mais no cadastro é ignorado, e sem sobra a chave some', () => {
+        const db = dbComEquipe();
+        db.livros[0].equipeLivro.push({ colaboradorId: 99, papeis: [{ papel: 'Editor' }] });
+        assert.equal(buildNesting(db).data[0].equipe_livro.length, 2);
+        db.livros[0].equipeLivro = [{ colaboradorId: 99, papeis: [{ papel: 'Editor' }] }];
+        assert.equal('equipe_livro' in buildNesting(db).data[0], false);
+    });
+
+    it('db sem a lista de colaboradores não quebra', () => {
+        const db = dbComEquipe();
+        delete db.colaboradores;
+        assert.equal('equipe_livro' in buildNesting(db).data[0], false);
+    });
+
+    it('buildNestingLivro leva a equipe por nome e a cópia não altera o db', () => {
+        const db = dbComEquipe();
+        const livro = buildNestingLivro(db, 1);
+        assert.equal(livro.equipe_livro.length, 2);
+        livro.equipe_livro[1].papeis[0].escopo = 'mudou';
+        assert.equal(db.livros[0].equipeLivro[1].papeis[0].escopo, 'Capa');
+    });
+
+    it('autoria, equipe e uso de IA saem juntos, cada um na sua chave', () => {
+        const db = dbComEquipe();
+        db.autores = [{ id: 3, nome: 'Victor Leme' }];
+        db.livros[0].autoriaLivro = [{ autorId: 3, papeis: ['Autor'] }];
+        db.livros[0].usoIa = { estado: 'nao-usou' };
+        const [livro] = buildNesting(db).data;
+        assert.equal(livro.autoria_livro[0].autor, 'Victor Leme');
+        assert.equal(livro.equipe_livro.length, 2);
+        assert.deepEqual(livro.uso_ia, { estado: 'nao-usou' });
+    });
+});

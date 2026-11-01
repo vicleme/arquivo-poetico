@@ -49,10 +49,11 @@ export function rotuloComValores(singular, plural, valores) {
 }
 
 // Divide o que foi digitado ou colado em etiquetas: vírgula, ponto e vírgula
-// e quebra de linha separam.
-export function etiquetasDoTexto(texto) {
+// e quebra de linha separam. Com `soPontoEVirgula` (campo de Tema, cujo nome
+// pode ter vírgula) só `;` e a quebra de linha separam.
+export function etiquetasDoTexto(texto, soPontoEVirgula = false) {
     return String(texto ?? '')
-        .split(/[,;\n]/)
+        .split(soPontoEVirgula ? /[;\n]/ : /[,;\n]/)
         .map(compactar)
         .filter(Boolean);
 }

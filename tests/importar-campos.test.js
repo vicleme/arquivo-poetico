@@ -13,6 +13,7 @@ import {
     executarImportacaoCampos,
     preverImportacaoCampos,
 } from '../js/importar-campos.js';
+import { nomesDosTemas } from './helpers/temas-do-texto.js';
 
 function texto(id, titulo, extra = {}) {
     return {
@@ -345,7 +346,7 @@ describe('executarImportacaoCampos: temas', () => {
             ['Horizonte', 'secundario'],
             ['Perda', ''],
         ]);
-        assert.equal(db.poemas[0].sinalizacoesTema, 'Saudade, Horizonte, Perda');
+        assert.equal(nomesDosTemas(db.poemas[0], db), 'Saudade, Horizonte, Perda');
         assert.deepEqual(r.cadastroNovo.temas, ['Horizonte']);
         assert.equal(r.resumo.vinculosTema, 3);
     });
@@ -390,7 +391,7 @@ describe('executarImportacaoCampos: temas', () => {
             ['Perda', ''],
             ['Saudade', 'principal'],
         ]);
-        assert.equal(db.poemas[2].sinalizacoesTema, 'Saudade, Perda');
+        assert.equal(nomesDosTemas(db.poemas[2], db), 'Saudade, Perda');
     });
 });
 

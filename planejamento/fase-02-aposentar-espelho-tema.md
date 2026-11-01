@@ -1,5 +1,11 @@
 # Fase 2: Aposentar o espelho `sinalizacoesTema`
 
+> **Fase concluída (30/10/2026): Etapas 0 a 7 feitas** (a Etapa 7 liberou a vírgula no nome do Tema, em 4 entregas). Arquivada em `plano-concluido.md`; este arquivo fica como histórico, e a seção "Etapa 7: vírgula no nome do Tema" de `decisoes.md` guarda o que foi decidido. Onde ele diz que a vírgula continua proibida, vale a Etapa 7.
+>
+> **Atualização anterior (30/10/2026, fim do dia): Etapas 0 a 6 feitas**; falta só a Etapa 7 (vírgula). Detalhe em `manutencao/status.md`, `schema.md` e a seção "Aposentar o espelho `sinalizacoesTema`" de `decisoes.md`. Onde este arquivo diz "nada foi implementado" ou descreve o espelho como existente, é o texto original de 30/09.
+>
+> **Atualização anterior (30/10/2026): Etapas 0 e 1 feitas** (`tests/temas-espelho-paridade.test.js`, `nomesTemasDoTexto` e `valorDaCategoria` em `utils.js`; detalhe em `manutencao/status.md`). A tabela "Leitores" abaixo é de 30/09 e está defasada: para a Etapa 2 vale o inventário refeito em `status.md` (chamadores do `temasDoTexto` de `utils.js`: `assuntosDoTexto`, `resumoTemas`, `contarTextosPorTema`, `textosDoTema`, `renomearTema`). **Nova Etapa 7 (decidida com o Victor em 30/10/2026): liberar a vírgula no nome do Tema**, só depois da Etapa 5: tirar a troca de vírgula por espaço do `limparNomeTema` (e a regra do risco "Vírgula no nome do Tema" abaixo deixa de valer), trocar o separador da digitação de vários Temas (`nomesDeTemasDigitados`, edição em massa) para `;` e o das saídas em texto (CSV `sinal_tema`, `.md`) para `|`. Só o Tema; as outras categorias seguem com vírgula. Enquanto a Etapa 5 não vier, o "Novo tema" (`forms.js`) ainda deixa passar vírgula sem `limparNomeTema`: furo conhecido, evitar vírgula em Tema novo.
+>
 > **Atualização (01/10/2026 às 00:10): D1 a D4 decididas pelo Victor.** D1 = (a), tirar o Tema do Localizar e Substituir (renomear fica na aba Temas, que preserva o papel). D2 = como sugerido (adicionar em massa entra com papel Indefinido; remover tira só aquele Tema). D3 = como sugerido; o Victor confirmou que nada fora do app lê o JSON, então `sinalizacoesTema` pode sair do JSON exportado. D4 = fica com o Claude: `nomesTemasDoTexto(item, temasCadastro)`. A suíte de partida agora é **2339/0**: onde esta página citar 2324 (nota de 30/09) ou 2086 (texto original), leia 2339. A Fase 8 (aba Etiquetas) usa só os 7 tipos que não são Tema nem Territorialidade, então não cria leitor novo do espelho `sinalizacoesTema`.
 >
 > **Nota (01/10/2026, revisão dos espelhos): sequência com a Fase 2b.** O escopo desta fase não muda. Territorialidade (`sinalizacoesTerritorialidade`) e Idioma (`idioma`) têm espelhos do mesmo tipo, mas ficam para a Fase 2b (`plano-central.md`), que vem depois desta.
@@ -191,15 +197,15 @@ Reversão: só restaurando o backup.
 
 ## Riscos e como pegar
 
-| Risco                                                                          | Como pegar                                                                                                             |
-| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| Ordem dos nomes mudar nas saídas (a regra é principal, secundário, indefinido) | teste de paridade da etapa 0                                                                                           |
-| Backup antigo com só o espelho                                                 | fixture na etapa 4 e o backup real em navegador limpo                                                                  |
-| Pacotes da biblioteca (10 JSON com o campo antigo)                             | não regenerar; `biblioteca-pacotes-curados` guarda o conteúdo; importar um pacote e conferir os Temas                  |
-| Comparação de nomes: sempre por `chaveTema` (sem caixa nem acento)             | manter nas funções novas; um caso de teste com acento                                                                  |
-| `localizar-substituir.html` é uma página separada (importa `js/db.js`)         | abrir a página depois das etapas 3 e 5                                                                                 |
-| Vírgula no nome do Tema                                                        | `limparNomeTema` proíbe por causa do separador. **Manter a proibição**: o CSV e o `.md` ainda usam vírgula para listar |
-| Testes que leem o source como texto quebrarem por renomeações                  | rodar a suíte inteira a cada etapa, não só o arquivo mexido                                                            |
+| Risco                                                                          | Como pegar                                                                                            |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Ordem dos nomes mudar nas saídas (a regra é principal, secundário, indefinido) | teste de paridade da etapa 0                                                                          |
+| Backup antigo com só o espelho                                                 | fixture na etapa 4 e o backup real em navegador limpo                                                 |
+| Pacotes da biblioteca (10 JSON com o campo antigo)                             | não regenerar; `biblioteca-pacotes-curados` guarda o conteúdo; importar um pacote e conferir os Temas |
+| Comparação de nomes: sempre por `chaveTema` (sem caixa nem acento)             | manter nas funções novas; um caso de teste com acento                                                 |
+| `localizar-substituir.html` é uma página separada (importa `js/db.js`)         | abrir a página depois das etapas 3 e 5                                                                |
+| Vírgula no nome do Tema                                                        | Superado: a Etapa 7 liberou a vírgula (`;` na digitação, barra vertical nas saídas de máquina)        |
+| Testes que leem o source como texto quebrarem por renomeações                  | rodar a suíte inteira a cada etapa, não só o arquivo mexido                                           |
 
 ## Conferência no navegador (a cada etapa)
 

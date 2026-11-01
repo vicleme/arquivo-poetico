@@ -193,7 +193,7 @@ describe('editor: estado da exceção (excluir, restaurar, poda)', () => {
     });
 
     it('outro Tema do mesmo Assunto mantém a exceção ao remover um deles', () => {
-        E.adicionarTemaTexto('poemas', 'Retrato de caráter, Amor');
+        E.adicionarTemaTexto('poemas', 'Retrato de caráter; Amor');
         E.mudarPapelAssuntoTexto('poemas', '11', 'excluir');
         E.removerTemaTexto('poemas', 0); // sai "Retrato de caráter"; "Amor" ainda leva a 11
         assert.deepEqual(E.obterAssuntosExcluidosTexto('poemas'), ['11']);

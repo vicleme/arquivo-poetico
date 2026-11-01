@@ -30,17 +30,19 @@
 // equivalente no topo de render-listas.js e de celulas-tabela.js.
 // ============================================================
 
-import { db, save, deleteItemsEmMassa, obterOuCriarPessoaPorNome } from './db.js';
+import { db, save, deleteItemsEmMassa } from './db.js';
 import {
     abrirModalConfirmacao,
     escapeHtml,
     mostrarAviso,
+    mostrarAvisoComAcao,
     SINALIZACOES_CATEGORIAS,
     todosSelecionados,
     rotuloSelecaoEmLote,
 } from './utils.js';
 import {
     nomesDeTemasDigitados,
+    SEPARADOR_DIGITACAO_TEMAS,
     temasInexistentes,
     adicionarTemasAosTextos,
     removerTemasDosTextos,
@@ -51,6 +53,7 @@ import {
     limparEtiquetasMassa,
 } from './campo-etiquetas-massa.js';
 import { fraseValores } from './massa-valores.js';
+import { registroPapeisPessoa } from './papeis-pessoa.js';
 import {
     ETIQUETAS_CATEGORIAS,
     adicionarEtiquetasAosTextos,
@@ -79,6 +82,14 @@ import {
     planejarRemocaoPeriodo,
     aplicarRemocaoPeriodo,
 } from './periodos-massa.js';
+import {
+    planejarAplicacao,
+    aplicarPlanoPessoas,
+    resumirAplicacao,
+    planejarRemocao,
+    aplicarRemocaoPessoas,
+    resumirRemocao,
+} from './pessoas-papeis-massa.js';
 import {
     selecaoPoemas,
     selecaoProsas,
@@ -147,7 +158,7 @@ function rotuloSelecao(tabela, n) {
 }
 
 // ─── Campos de etiquetas (chips) da barra ─────────────
-// Pessoas, Sinalizações, Gênero, Temas e o Nome de Períodos e movimentos
+// Etiquetas (Sinalizações), Gênero, Temas e o Nome de Períodos e movimentos
 // usam o mesmo campo de etiquetas dos modais e das barras de Período
 // Biográfico, Período Histórico e Correntes (campo-etiquetas-massa.js):
 // Enter ou vírgula confirmam, o × tira, texto colado com vírgula vira várias
@@ -159,7 +170,14 @@ function rotuloSelecao(tabela, n) {
 // Sinalização, tipo de período), as etiquetas esvaziam, porque o que valia
 // para Tom não vale para Estilo.
 function ligarEtiquetas(inputId, chave, placeholder) {
-    prepararEtiquetasMassa({ inputId, chipsId: `${inputId}-chips`, chave, placeholder });
+    // Tema: a vírgula faz parte do nome, quem separa é o `;`.
+    prepararEtiquetasMassa({
+        inputId,
+        chipsId: `${inputId}-chips`,
+        chave,
+        placeholder,
+        soPontoEVirgula: chave === 'tema',
+    });
 }
 
 // Etiquetas atuais, já com o que estiver digitado e ainda não confirmado.
@@ -176,17 +194,17 @@ function categoriaSinalDaBarra(c) {
     );
 }
 
-// Liga os campos de etiquetas que ficam direto na barra (Temas vive num
-// painel, mas o campo é o mesmo e entra aqui também).
+// Liga os campos de etiquetas da barra. Etiquetas e Temas vivem em painéis
+// (▾), mas o campo é o mesmo e entra aqui também; só o Gênero (Prosas) ainda
+// fica solto na barra.
 function ligarCamposDaBarra(tabela) {
     const c = cfg(tabela);
-    ligarEtiquetas(`bulk-pessoa-input${c.sufixoDom}`, 'pessoa', 'Pessoa: Enter adiciona');
     ligarEtiquetas(
         `bulk-sinal-input${c.sufixoDom}`,
         categoriaSinalDaBarra(c),
         'Etiqueta: Enter adiciona',
     );
-    ligarEtiquetas(`bulk-tema-input${c.sufixoDom}`, 'tema', 'Tema: Enter adiciona');
+    ligarEtiquetas(`bulk-tema-input${c.sufixoDom}`, 'tema', 'Tema: Enter ou ; adiciona');
     if (tabela === 'prosas') {
         ligarEtiquetas('bulk-genero-input-prosa', 'genero', 'Gênero: Enter adiciona');
     }
@@ -358,104 +376,6 @@ function removerValorDeCampo(item, campo, valor) {
     item[campo] = atuais.filter((v) => v !== valor).join(', ');
 }
 
-// Pra Pessoas (array de objeto {pessoaId, papeis} desde a virada pro
-// cadastro central — as duas funções genéricas acima continuam
-// servindo Sinalizações e Gênero, que não mudaram de formato).
-// Adicionar via edição em massa sempre entra com papeis: [] (nenhum
-// marcado) — o bulk-edit só pede o nome, não os papéis; quem quiser
-// categorizar edita no modal do item, onde o chip já tem os checkboxes.
-function adicionarPessoaEmCampo(item, pessoaId) {
-    const atuais = Array.isArray(item.pessoas) ? item.pessoas : [];
-    if (!atuais.some((p) => p.pessoaId === pessoaId)) atuais.push({ pessoaId, papeis: [] });
-    item.pessoas = atuais;
-}
-
-function removerPessoaEmCampo(item, pessoaId) {
-    if (!Array.isArray(item.pessoas)) return;
-    item.pessoas = item.pessoas.filter((p) => p.pessoaId !== pessoaId);
-}
-
-export function aplicarPessoaEmMassa(tabela) {
-    const c = cfg(tabela);
-    const inputId = `bulk-pessoa-input${c.sufixoDom}`;
-    const nomes = lerEtiquetas(inputId, 'pessoa');
-    if (!nomes.length || c.selecao.size === 0) return;
-
-    const n = c.selecao.size;
-    abrirModalConfirmacao({
-        titulo:
-            nomes.length === 1 ? `Dedicar a "${nomes[0]}"` : `Dedicar a ${nomes.length} pessoas`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai adicionar ${fraseValores(nomes)} aos dedicados de ${n} ${rotuloSelecao(tabela, n)}.`,
-        textoConfirmar: 'Aplicar',
-        corConfirmar: '#e11d48',
-        // Ação puramente aditiva (nada é removido) — foca Confirmar pra
-        // Enter no campo de texto → Enter no modal encadear sem precisar
-        // de Tab/shift-Tab ou mouse (ver nota em abrirModalConfirmacao).
-        focarConfirmar: true,
-        onConfirmar: () => {
-            const pessoas = nomes.map((nome) => obterOuCriarPessoaPorNome(nome));
-            db[tabela].forEach((item) => {
-                if (!c.selecao.has(item.id)) return;
-                pessoas.forEach((pessoa) => adicionarPessoaEmCampo(item, pessoa.id));
-            });
-            limparEtiquetasMassa(inputId);
-            c.selecao.clear();
-            save(); // dispara re-render via evento db:saved
-        },
-    });
-}
-
-export function removerPessoaEmMassa(tabela) {
-    const c = cfg(tabela);
-    const inputId = `bulk-pessoa-input${c.sufixoDom}`;
-    const nomes = lerEtiquetas(inputId, 'pessoa');
-    if (!nomes.length || c.selecao.size === 0) return;
-
-    // Nome que não bate com nenhuma pessoa cadastrada não tem o que
-    // remover (diferente de "adicionar", aqui não faz sentido criar só pra
-    // desvincular em seguida): é ignorado e avisado.
-    const conhecidas = [];
-    const desconhecidas = [];
-    nomes.forEach((nome) => {
-        const pessoa = db.pessoas.find((p) => p.nome === nome);
-        if (pessoa) conhecidas.push(pessoa);
-        else desconhecidas.push(nome);
-    });
-    if (!conhecidas.length) {
-        limparEtiquetasMassa(inputId);
-        return mostrarAviso(
-            `${nomes.length === 1 ? 'Essa pessoa não está' : 'Essas pessoas não estão'} no cadastro.`,
-            'info',
-        );
-    }
-
-    const nomesConhecidos = conhecidas.map((p) => p.nome);
-    const aviso = desconhecidas.length
-        ? ` ${fraseValores(desconhecidas)} ${desconhecidas.length === 1 ? 'não está cadastrada e será ignorada' : 'não estão cadastradas e serão ignoradas'}.`
-        : '';
-    const n = c.selecao.size;
-    abrirModalConfirmacao({
-        titulo:
-            nomesConhecidos.length === 1
-                ? `Remover "${nomesConhecidos[0]}"`
-                : `Remover ${nomesConhecidos.length} pessoas`,
-        rotulo: 'Ação em massa',
-        mensagem: `Isso vai remover ${fraseValores(nomesConhecidos)} dos dedicados de ${n} ${rotuloSelecao(tabela, n)}.${aviso}`,
-        textoConfirmar: 'Remover',
-        corConfirmar: '#dc2626',
-        onConfirmar: () => {
-            db[tabela].forEach((item) => {
-                if (!c.selecao.has(item.id)) return;
-                conhecidas.forEach((pessoa) => removerPessoaEmCampo(item, pessoa.id));
-            });
-            limparEtiquetasMassa(inputId);
-            c.selecao.clear();
-            save();
-        },
-    });
-}
-
 // Mapa campo→slug de DOM, pra achar o datalist certo
 // (sugestoes-sinais-{slug}-bulk[-prosa]) quando a pessoa troca a
 // categoria no seletor da edição em massa — ver SINALIZACOES_CATEGORIAS
@@ -494,7 +414,7 @@ export function aplicarSinalEmMassa(tabela) {
         mensagem: `Isso vai adicionar ${rotuloEtiquetasMsg(tags, 'a etiqueta', 'as etiquetas')} a ${n} ${rotuloSelecao(tabela, n)}.`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#2563eb',
-        // Ação aditiva — ver nota em aplicarPessoaEmMassa/abrirModalConfirmacao.
+        // Ação aditiva — ver nota em abrirModalConfirmacao.
         focarConfirmar: true,
         onConfirmar: () => {
             db[tabela].forEach((item) => {
@@ -558,7 +478,7 @@ export function removerSinalEmMassa(tabela) {
 // escrita é por id, pelo cadastro (ver adicionarTemasAosTextos em
 // temas.js), então um tema novo é criado no cadastro e os papéis que o
 // texto já tinha ficam como estão. Tema NÃO é mais uma categoria das
-// Etiquetas aqui (ver o seletor de categoria da barra).
+// Etiquetas aqui (ver o seletor de categoria do painel Etiquetas).
 const idsTemas = (c) => ({
     input: `bulk-tema-input${c.sufixoDom}`,
     sugestoes: `sugestoes-temas-bulk${c.sufixoDom}`,
@@ -582,7 +502,7 @@ export function atualizarSugestoesTemasMassa(tabela) {
 // Chamado ao abrir o painel: o cadastro pode ter mudado desde a última vez.
 export function prepararPainelTemasMassa(tabela) {
     atualizarSugestoesTemasMassa(tabela);
-    ligarEtiquetas(idsTemas(cfg(tabela)).input, 'tema', 'Tema: Enter adiciona');
+    ligarEtiquetas(idsTemas(cfg(tabela)).input, 'tema', 'Tema: Enter ou ; adiciona');
 }
 
 function listaTemasParaMensagem(nomes) {
@@ -595,13 +515,17 @@ function lerTemasDigitados(tabela) {
     const inputId = idsTemas(cfg(tabela)).input;
     // As etiquetas passam por nomesDeTemasDigitados só para limpar os nomes e
     // tirar repetição por chave (sem caixa e sem acento), como no cadastro.
-    return { inputId, nomes: nomesDeTemasDigitados(lerEtiquetas(inputId, 'tema').join(',')) };
+    return {
+        inputId,
+        nomes: nomesDeTemasDigitados(lerEtiquetas(inputId, 'tema').join(SEPARADOR_DIGITACAO_TEMAS)),
+    };
 }
 
 export function aplicarTemaEmMassa(tabela) {
     const c = cfg(tabela);
     const { inputId, nomes } = lerTemasDigitados(tabela);
-    if (!nomes.length) return mostrarAviso('Digite ao menos um tema (Enter confirma cada um).');
+    if (!nomes.length)
+        return mostrarAviso('Digite ao menos um tema (Enter ou ; confirma cada um).');
     if (c.selecao.size === 0) return;
 
     const n = c.selecao.size;
@@ -639,7 +563,8 @@ export function aplicarTemaEmMassa(tabela) {
 export function removerTemaEmMassa(tabela) {
     const c = cfg(tabela);
     const { inputId, nomes } = lerTemasDigitados(tabela);
-    if (!nomes.length) return mostrarAviso('Digite ao menos um tema (Enter confirma cada um).');
+    if (!nomes.length)
+        return mostrarAviso('Digite ao menos um tema (Enter ou ; confirma cada um).');
     if (c.selecao.size === 0) return;
 
     const conhecidos = nomes.filter((nome) => !temasInexistentes(db, [nome]).length);
@@ -819,7 +744,7 @@ export function aplicarDataEmMassa(tabela) {
         mensagem: `Isso vai definir ${partes.join(', ')} na ${rotuloCampo} de ${n} ${rotuloSelecao(tabela, n)}, mantendo os demais campos da data (se já preenchidos em cada um).`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#2563eb',
-        // Ação aditiva — ver nota em aplicarPessoaEmMassa/abrirModalConfirmacao.
+        // Ação aditiva — ver nota em abrirModalConfirmacao.
         focarConfirmar: true,
         onConfirmar: () => {
             db[tabela].forEach((item) => {
@@ -1116,7 +1041,7 @@ export function aplicarGeneroEmMassaProsa() {
         mensagem: `Isso vai adicionar ${rotuloEtiquetasMsg(generos, 'o gênero', 'os gêneros')} a ${n} prosa${n !== 1 ? 's' : ''} selecionada${n !== 1 ? 's' : ''}.`,
         textoConfirmar: 'Aplicar',
         corConfirmar: '#d97706',
-        // Ação aditiva — ver nota em aplicarPessoaEmMassa/abrirModalConfirmacao.
+        // Ação aditiva — ver nota em abrirModalConfirmacao.
         focarConfirmar: true,
         onConfirmar: () => {
             db.prosas.forEach((pr) => {
@@ -1399,6 +1324,331 @@ export function removerPeriodoEmMassa(tabela) {
             limparNomesPeriodo(tabela);
             c.selecao.clear();
             save();
+        },
+    });
+}
+
+// ─── Pessoas e papéis em massa ────────────────────────
+// Painel "Pessoas e papéis" (Poemas e Prosas): uma linha por Pessoa, cada
+// uma com os seus papéis em caixas de marcar, para ligar ou desligar várias
+// Pessoas, com papéis diferentes, em vários textos de uma vez. A lógica mora
+// em pessoas-papeis-massa.js (sem DOM); aqui só o painel, as confirmações e o
+// Desfazer. O <div> vazio fica no index.html (id
+// painel-pessoas-papeis-massa[-prosa]) e o conteúdo é montado aqui. É a única
+// porta de Pessoas na barra: o antigo "+ Dedicar" e "− Remover" saíram, porque
+// uma linha sem papel marcado faz o mesmo (Pessoa com a lista de papéis vazia).
+const idsPessoasPapeis = (c) => ({
+    painel: `painel-pessoas-papeis-massa${c.sufixoDom}`,
+    linhas: `bulk-pp-linhas${c.sufixoDom}`,
+    eu: `bulk-pp-eu${c.sufixoDom}`,
+});
+
+function htmlLinhaPessoaPapeis(nome = '', papeis = []) {
+    const caixas = registroPapeisPessoa()
+        .map(
+            ({ nome: papel, descricao }) => `
+            <label title="${escapeHtml(descricao || '')}" class="flex items-center gap-1 text-[11px] whitespace-nowrap">
+                <input type="checkbox" class="bulk-pp-papel" value="${escapeHtml(papel)}"
+                    ${papeis.includes(papel) ? 'checked' : ''} />
+                ${escapeHtml(papel)}<sup class="bulk-pp-ordem text-rose-600 dark:text-rose-400 font-bold"></sup>
+            </label>`,
+        )
+        .join('');
+    return `
+        <div class="bulk-pp-linha flex flex-wrap items-center gap-x-3 gap-y-1 p-2 border border-rose-100 dark:border-rose-900 rounded"
+            data-ordem="${escapeHtml(JSON.stringify(papeis))}">
+            <input type="text" class="bulk-pp-nome text-xs p-2 min-w-[200px] mb-0"
+                list="sugestoes-pessoas" autocomplete="off" placeholder="Pessoa"
+                value="${escapeHtml(nome)}" />
+            ${caixas}
+            <button type="button" onclick="removerLinhaPessoasPapeisMassa(this)"
+                title="Tirar esta linha"
+                class="text-red-600 dark:text-red-400 text-sm font-bold px-1">×</button>
+        </div>`;
+}
+
+function pessoaEuDoCadastro() {
+    return (db.pessoas || []).find((p) => p.souEu) || null;
+}
+
+function linhasPessoasPapeis(tabela) {
+    const ids = idsPessoasPapeis(cfg(tabela));
+    return [...(document.getElementById(ids.linhas)?.querySelectorAll('.bulk-pp-linha') || [])];
+}
+
+// Papéis marcados de uma linha, na ordem em que foram marcados (a ordem é a
+// relevância do papel no texto). `data-ordem` guarda essa ordem; caixa marcada
+// sem ter passado pelo clique (valor posto por código) entra no fim, na ordem
+// da tela.
+function papeisMarcadosEmOrdem(linha) {
+    const marcados = [...linha.querySelectorAll('.bulk-pp-papel:checked')].map((x) => x.value);
+    let ordem = [];
+    try {
+        const lida = JSON.parse(linha.dataset.ordem || '[]');
+        if (Array.isArray(lida)) ordem = lida;
+    } catch {
+        ordem = [];
+    }
+    return [
+        ...ordem.filter((p) => marcados.includes(p)),
+        ...marcados.filter((p) => !ordem.includes(p)),
+    ].filter((p, i, todos) => todos.indexOf(p) === i);
+}
+
+// Mostra o número de cada papel marcado (1, 2, 3...) ao lado da caixa.
+function atualizarNumerosDaLinha(linha) {
+    const ordem = papeisMarcadosEmOrdem(linha);
+    linha.dataset.ordem = JSON.stringify(ordem);
+    linha.querySelectorAll('.bulk-pp-papel').forEach((caixa) => {
+        const num = caixa.closest('label')?.querySelector('.bulk-pp-ordem');
+        if (!num) return;
+        const pos = ordem.indexOf(caixa.value);
+        num.textContent = pos >= 0 && ordem.length > 1 ? ` ${pos + 1}º` : '';
+    });
+}
+
+// Ao marcar, o papel vai para o fim da ordem; ao desmarcar, sai dela.
+function aoMudarPapelDaLinha(evento) {
+    const caixa = evento.target;
+    if (!caixa?.classList?.contains('bulk-pp-papel')) return;
+    const linha = caixa.closest('.bulk-pp-linha');
+    if (!linha) return;
+    const marcados = [...linha.querySelectorAll('.bulk-pp-papel:checked')].map((x) => x.value);
+    const ordem = papeisMarcadosEmOrdem(linha).filter((p) => p !== caixa.value);
+    if (caixa.checked) ordem.push(caixa.value);
+    linha.dataset.ordem = JSON.stringify(ordem.filter((p) => marcados.includes(p)));
+    atualizarNumerosDaLinha(linha);
+}
+
+// Linhas com nome preenchido, no formato do módulo de lógica.
+function lerEntradasPessoasPapeis(tabela) {
+    return linhasPessoasPapeis(tabela)
+        .map((linha) => ({
+            nome: linha.querySelector('.bulk-pp-nome')?.value ?? '',
+            papeis: papeisMarcadosEmOrdem(linha),
+        }))
+        .filter((e) => e.nome.trim() !== '');
+}
+
+export function adicionarLinhaPessoasPapeisMassa(tabela, nome = '') {
+    const ids = idsPessoasPapeis(cfg(tabela));
+    const caixa = document.getElementById(ids.linhas);
+    if (!caixa) return;
+    // Uma linha ainda em branco serve de lugar para o nome novo.
+    const vazia = linhasPessoasPapeis(tabela).find(
+        (l) =>
+            !l.querySelector('.bulk-pp-nome').value.trim() &&
+            !l.querySelector('.bulk-pp-papel:checked'),
+    );
+    if (vazia) {
+        if (nome) vazia.querySelector('.bulk-pp-nome').value = nome;
+        vazia.querySelector('.bulk-pp-nome').focus?.();
+        return;
+    }
+    caixa.insertAdjacentHTML('beforeend', htmlLinhaPessoaPapeis(nome));
+    caixa.lastElementChild.querySelector('.bulk-pp-nome').focus?.();
+}
+
+// "+ Eu": linha com a Pessoa marcada "sou eu"; os papéis ficam por sua conta.
+export function adicionarEuPessoasPapeisMassa(tabela) {
+    const eu = pessoaEuDoCadastro();
+    if (!eu) return mostrarAviso('Nenhuma Pessoa está marcada como "sou eu".', 'info');
+    const jaTem = linhasPessoasPapeis(tabela).some(
+        (l) => l.querySelector('.bulk-pp-nome').value.trim() === eu.nome,
+    );
+    if (jaTem) return;
+    adicionarLinhaPessoasPapeisMassa(tabela, eu.nome);
+}
+
+export function removerLinhaPessoasPapeisMassa(botao) {
+    botao?.closest?.('.bulk-pp-linha')?.remove();
+}
+
+export function prepararPainelPessoasPapeisMassa(tabela) {
+    const c = cfg(tabela);
+    const ids = idsPessoasPapeis(c);
+    const painel = document.getElementById(ids.painel);
+    if (!painel) return;
+
+    if (!document.getElementById(ids.linhas)) {
+        painel.innerHTML = `
+            <div id="${ids.linhas}" class="flex flex-col gap-2 w-full"></div>
+            <button type="button" onclick="adicionarLinhaPessoasPapeisMassa('${tabela}')"
+                class="bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap">
+                + Pessoa
+            </button>
+            <button type="button" id="${ids.eu}" onclick="adicionarEuPessoasPapeisMassa('${tabela}')"
+                class="hidden bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 px-3 py-2 rounded text-xs font-bold whitespace-nowrap">
+                + Eu
+            </button>
+            <button type="button" onclick="aplicarPessoasPapeisEmMassa('${tabela}')"
+                class="bg-blue-600 text-white px-3 py-2 rounded text-xs font-bold whitespace-nowrap">
+                + Aplicar
+            </button>
+            <button type="button" onclick="removerPessoasPapeisEmMassa('${tabela}')"
+                class="bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 px-3 py-2 rounded text-xs font-bold whitespace-nowrap">
+                − Remover
+            </button>
+            <p class="text-[10px] text-gray-400 dark:text-slate-500 w-full">
+                Aditivo: quem já tem a Pessoa só ganha os papéis que faltam, e nenhum papel é
+                tirado. Pessoa que ainda não existe é criada no cadastro. "Remover" com papéis
+                marcados tira só esses papéis (a Pessoa continua no texto); sem nenhum papel
+                marcado, tira a Pessoa do texto. O cadastro de Pessoas nunca é apagado.
+            </p>`;
+        document.getElementById(ids.linhas)?.addEventListener('change', aoMudarPapelDaLinha);
+        adicionarLinhaPessoasPapeisMassa(tabela);
+    }
+    // O cadastro pode ter mudado desde a última abertura (o que foi
+    // digitado e marcado fica).
+    document.getElementById(ids.eu)?.classList.toggle('hidden', !pessoaEuDoCadastro());
+}
+
+const frasePapeisMassa = (papeis) => (papeis.length ? papeis.join(', ') : 'sem papel');
+
+function avisarComDesfazerPessoas(mensagem, desfazer) {
+    mostrarAvisoComAcao(
+        mensagem,
+        'Desfazer',
+        () => {
+            desfazer();
+            save();
+        },
+        8000,
+    );
+}
+
+export function aplicarPessoasPapeisEmMassa(tabela) {
+    const c = cfg(tabela);
+    if (c.selecao.size === 0) return;
+    const entradas = lerEntradasPessoasPapeis(tabela);
+    if (!entradas.length) return mostrarAviso('Digite o nome de uma Pessoa.');
+
+    const resumo = resumirAplicacao(planejarAplicacao(db, itensSelecionados(tabela), entradas));
+    const ambiguasMsg = resumo.ambiguas.length
+        ? `${fraseValores(resumo.ambiguas)} ${plural(resumo.ambiguas.length, 'casa com mais de uma Pessoa do cadastro e fica', 'casam com mais de uma Pessoa do cadastro e ficam')} de fora (escreva o nome exato).`
+        : '';
+
+    if (resumo.textos === 0) {
+        const motivos = [];
+        if (resumo.jaTinham) {
+            motivos.push(
+                `${resumo.jaTinham} ${plural(resumo.jaTinham, 'vínculo já estava', 'vínculos já estavam')} assim`,
+            );
+        }
+        return mostrarAviso(
+            `Nada a alterar${motivos.length ? ` (${motivos.join(', ')})` : ''}.${ambiguasMsg ? ` ${ambiguasMsg}` : ''}`,
+            'info',
+        );
+    }
+
+    const n = resumo.textos;
+    const partes = resumo.linhas
+        .filter((l) => l.entram || l.completam)
+        .map((l) => {
+            const acoes = [];
+            if (l.entram) acoes.push(`entra em ${l.entram}`);
+            if (l.completam) acoes.push(`ganha papéis em ${l.completam}`);
+            return `"${l.nome}" (${frasePapeisMassa(l.papeis)}) ${acoes.join(' e ')}`;
+        });
+    const avisos = [];
+    if (resumo.novas.length) {
+        avisos.push(
+            `${fraseValores(resumo.novas)} ${plural(resumo.novas.length, 'ainda não existe no cadastro e será criada', 'ainda não existem no cadastro e serão criadas')}.`,
+        );
+    }
+    if (ambiguasMsg) avisos.push(ambiguasMsg);
+    if (resumo.jaTinham) {
+        avisos.push(
+            `${resumo.jaTinham} ${plural(resumo.jaTinham, 'vínculo já estava', 'vínculos já estavam')} como pedido.`,
+        );
+    }
+
+    abrirModalConfirmacao({
+        titulo:
+            partes.length === 1
+                ? 'Pessoas e papéis: 1 pessoa'
+                : `Pessoas e papéis: ${partes.length} pessoas`,
+        rotulo: 'Ação em massa',
+        mensagem:
+            `Em ${n} ${c.singular}${n !== 1 ? 's' : ''}: ${partes.join('; ')}. ` +
+            `Nenhum papel é tirado.${avisos.length ? ` ${avisos.join(' ')}` : ''}`,
+        textoConfirmar: 'Aplicar',
+        corConfirmar: '#2563eb',
+        // Aditivo: dá para focar o Confirmar (e o Desfazer cobre o resto).
+        focarConfirmar: true,
+        onConfirmar: () => {
+            const feito = aplicarPlanoPessoas(
+                db,
+                planejarAplicacao(db, itensSelecionados(tabela), entradas),
+            );
+            c.selecao.clear();
+            save();
+            avisarComDesfazerPessoas(
+                `${feito.textos} ${c.singular}${feito.textos !== 1 ? 's' : ''} atualizad${c.genero}${feito.textos !== 1 ? 's' : ''}`,
+                feito.desfazer,
+            );
+        },
+    });
+}
+
+export function removerPessoasPapeisEmMassa(tabela) {
+    const c = cfg(tabela);
+    if (c.selecao.size === 0) return;
+    const entradas = lerEntradasPessoasPapeis(tabela);
+    if (!entradas.length) return mostrarAviso('Digite o nome de uma Pessoa a remover.');
+
+    const resumo = resumirRemocao(planejarRemocao(db, itensSelecionados(tabela), entradas));
+    const ressalvas = [];
+    if (resumo.desconhecidas.length) {
+        ressalvas.push(
+            `${fraseValores(resumo.desconhecidas)} ${plural(resumo.desconhecidas.length, 'não está no cadastro e será ignorada', 'não estão no cadastro e serão ignoradas')}.`,
+        );
+    }
+    if (resumo.ambiguas.length) {
+        ressalvas.push(
+            `${fraseValores(resumo.ambiguas)} ${plural(resumo.ambiguas.length, 'casa com mais de uma Pessoa e fica', 'casam com mais de uma Pessoa e ficam')} de fora (escreva o nome exato).`,
+        );
+    }
+    if (resumo.semEfeito.length) {
+        ressalvas.push(
+            `${fraseValores(resumo.semEfeito)} ${plural(resumo.semEfeito.length, 'não estava', 'não estavam')} em nenhum dos selecionados com esses papéis.`,
+        );
+    }
+
+    if (resumo.textos === 0) {
+        return mostrarAviso(
+            `Nada a remover.${ressalvas.length ? ` ${ressalvas.join(' ')}` : ''}`,
+            'info',
+        );
+    }
+
+    const n = resumo.textos;
+    const partes = resumo.linhas.map((l) =>
+        l.modo === 'pessoa'
+            ? `"${l.nome}" sai de ${l.alterar}`
+            : `"${l.nome}" perde ${l.papeis.join(', ')} em ${l.alterar}`,
+    );
+    const algumPorPapel = resumo.linhas.some((l) => l.modo === 'papeis');
+
+    abrirModalConfirmacao({
+        titulo: partes.length === 1 ? 'Remover: 1 pessoa' : `Remover: ${partes.length} pessoas`,
+        rotulo: 'Ação em massa',
+        mensagem:
+            `Em ${n} ${c.singular}${n !== 1 ? 's' : ''}: ${partes.join('; ')}. ` +
+            `${algumPorPapel ? 'Onde só papéis saem, a Pessoa continua no texto. ' : ''}` +
+            `O cadastro de Pessoas não é apagado.${ressalvas.length ? ` ${ressalvas.join(' ')}` : ''}`,
+        textoConfirmar: 'Remover',
+        corConfirmar: '#dc2626',
+        onConfirmar: () => {
+            const feito = aplicarRemocaoPessoas(
+                planejarRemocao(db, itensSelecionados(tabela), entradas),
+            );
+            c.selecao.clear();
+            save();
+            avisarComDesfazerPessoas(
+                `${feito.textos} ${c.singular}${feito.textos !== 1 ? 's' : ''} atualizad${c.genero}${feito.textos !== 1 ? 's' : ''}`,
+                feito.desfazer,
+            );
         },
     });
 }

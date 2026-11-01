@@ -15,16 +15,20 @@
 import { ecosParaExportar } from './ancora-eco.js';
 import { comAlvoTitulo } from './alvos-conceitos.js';
 import { db } from './db.js';
+import { caminhoDoDestino, livroIdsDoTexto, apareceEmDoTexto } from './aparicoes-do-texto.js';
+import { titulosDeColetaneasDoTexto } from './coletaneas-do-texto.js';
 import { locaisParaExportar } from './locais.js';
 import { etiquetasParaExportar } from './etiquetas.js';
+import { normalizarValenciaTema } from './temas.js';
 import { personagensParaExportar } from './personagens.js';
 import { fichaPessoaParaExportar, avisoDadosPessoaisOmitidos } from './pessoas-viagem.js';
+import { comLegendaPapeis } from './legenda-papeis-pessoa.js';
 import { exportarColetaneaResolvida } from './coletaneas.js';
 import {
     escapeHtml,
     mostrarAviso,
     estaPublicado,
-    sinalizacoesCombinadas,
+    listaSinalizacoes,
     nomesPessoas,
     idsAssuntosExcluidos,
     periodosHistoricosIdsDoItem,
@@ -35,13 +39,24 @@ import { baixarPdf } from './exportar-pdf.js';
 import { baixarDocx } from './exportar-docx.js';
 import { gerarCsvTextos, baixarCsv } from './exportar-csv.js';
 import { enriquecerItensComExtras } from './download-abrangente.js';
+import { downloadComMetadados, reduzirParaTituloETexto } from './metadados-download.js';
 import { incluirOcultosNaExportacao } from './ocultos-exportacao.js';
+import { ligacoesParaExportar } from './ligacoes-tema-pessoa.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
 import { caminhoDaCorrente } from './correntes-hierarquia.js';
 import { caminhoExibivelDoPeriodoBiografico } from './periodos-biograficos-hierarquia.js';
 
 // Exportada pra ser reaproveitada por exportar-frequentes.js (critérios
 // de template comparam contra essa mesma lista normalizada).
+// Lista digitada nos filtros de Tema: `;` separa (a vírgula faz parte do nome).
+export function listaDeTemasDigitados(valor) {
+    if (!valor) return [];
+    return valor
+        .split(';')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+}
+
 export function listaDeCampo(valor) {
     if (!valor) return [];
     return valor
@@ -107,8 +122,8 @@ function lerFiltrosDoFormulario() {
             ...(document.getElementById('exp-tipo-prosa')?.checked ? ['prosa'] : []),
         ],
         pessoasIncluir: listaDeCampo(document.getElementById('exp-pessoas-incluir')?.value),
-        temasIncluir: listaDeCampo(document.getElementById('exp-temas-incluir')?.value),
-        temasExcluir: listaDeCampo(document.getElementById('exp-temas-excluir')?.value),
+        temasIncluir: listaDeTemasDigitados(document.getElementById('exp-temas-incluir')?.value),
+        temasExcluir: listaDeTemasDigitados(document.getElementById('exp-temas-excluir')?.value),
         dataDe: lerDataFiltro('exp-data-de'),
         dataAte: lerDataFiltro('exp-data-ate'),
         status: document.getElementById('exp-status')?.value || 'todos',
@@ -199,10 +214,12 @@ export function dataEstaNoIntervalo(dataItem, dataDe, dataAte) {
     return itemNum >= deNum && itemNum <= ateNum;
 }
 
-export function correspondeFiltro(item, opcoes) {
+export function correspondeFiltro(item, opcoes, tipo) {
     if (opcoes.livrosIncluir.length) {
-        const livroId = livroIdDoItem(item, db);
-        if (!livroId || !opcoes.livrosIncluir.includes(String(livroId))) return false;
+        // Qualquer aparição do texto vale (Fase 21, 21-4a); sem `tipo`, as
+        // Coletâneas ficam de fora.
+        const ids = livroIdsDoTexto(db, tipo, item).map(String);
+        if (!ids.some((id) => opcoes.livrosIncluir.includes(id))) return false;
     }
     if (opcoes.pessoasIncluir.length) {
         const pessoasItem = nomesPessoas(item, db.pessoas).map((n) => n.toLowerCase());
@@ -213,11 +230,11 @@ export function correspondeFiltro(item, opcoes) {
         // Sinalizações inteiro (não só a categoria Tema) — mantido assim
         // com sinalizacoesCombinadas() pra não mudar o que a pessoa já
         // espera desse filtro (ver contarPorTema em estatisticas.js).
-        const temasItem = listaDeCampo(sinalizacoesCombinadas(item));
+        const temasItem = listaSinalizacoes(item, { temas: db.temas }).map((t) => t.toLowerCase());
         if (!opcoes.temasIncluir.some((t) => temasItem.includes(t))) return false;
     }
     if (opcoes.temasExcluir.length) {
-        const temasItem = listaDeCampo(sinalizacoesCombinadas(item));
+        const temasItem = listaSinalizacoes(item, { temas: db.temas }).map((t) => t.toLowerCase());
         if (opcoes.temasExcluir.some((t) => temasItem.includes(t))) return false;
     }
     if (!dataEstaNoIntervalo(item.dataEscrita, opcoes.dataDe, opcoes.dataAte)) return false;
@@ -232,53 +249,24 @@ export function correspondeFiltro(item, opcoes) {
     return true;
 }
 
-// Acha a qual Livro um Poema/Prosa pertence, em qualquer dos 3 níveis
-function livroIdDoItem(item, db) {
-    if (item.paiTipo === 'livro') return item.paiId;
-    if (item.paiTipo === 'parte') {
-        const p = db.partes.find((x) => x.id == item.paiId);
-        return p ? p.livroId : null;
-    }
-    if (item.paiTipo === 'secao') {
-        const s = db.secoes.find((x) => x.id == item.paiId);
-        if (!s) return null;
-        if (s.paiTipo === 'parte') {
-            const p = db.partes.find((x) => x.id == s.paiId);
-            return p ? p.livroId : null;
-        }
-        return s.paiId;
-    }
-    return null;
-}
-
 // Resolve o contexto (títulos de Livro/Parte/Seção) de um item,
 // pra que cada registro exportado seja autoexplicativo por si só.
-function resolverContexto(item) {
-    let livro = null,
-        parte = null,
-        secao = null;
-
-    if (item.paiTipo === 'livro') {
-        livro = db.livros.find((l) => l.id == item.paiId);
-    } else if (item.paiTipo === 'parte') {
-        parte = db.partes.find((p) => p.id == item.paiId);
-        if (parte) livro = db.livros.find((l) => l.id == parte.livroId);
-    } else if (item.paiTipo === 'secao') {
-        secao = db.secoes.find((s) => s.id == item.paiId);
-        if (secao) {
-            if (secao.paiTipo === 'parte') {
-                parte = db.partes.find((p) => p.id == secao.paiId);
-                if (parte) livro = db.livros.find((l) => l.id == parte.livroId);
-            } else {
-                livro = db.livros.find((l) => l.id == secao.paiId);
-            }
-        }
-    }
+function resolverContexto(item, tipo) {
+    const caminho = caminhoDoDestino(item, db);
+    const livro = caminho ? db.livros.find((l) => l.id == caminho.livroId) : null;
+    const parte = caminho?.parteId != null ? db.partes.find((p) => p.id == caminho.parteId) : null;
+    const secao = caminho?.secaoId != null ? db.secoes.find((s) => s.id == caminho.secaoId) : null;
 
     return {
         livro: livro?.titulo || null,
         parte: parte?.titulo || null,
         secao: secao?.titulo || null,
+        // Coletâneas que trazem o texto (títulos, na ordem do acervo). Derivado,
+        // como o resto do contexto: a Importação Aditiva descarta `contexto`.
+        coletaneas: titulosDeColetaneasDoTexto(db, tipo, item.id),
+        // Todas as aparições do texto (Fase 21, 21-4b), com a principal marcada.
+        // `livro`, `parte` e `secao` acima seguem sendo só o Destino.
+        aparece_em: apareceEmDoTexto(db, tipo, item),
     };
 }
 
@@ -338,6 +326,20 @@ function ecosExportaveis(ecos) {
 // duplicar a entidade. Só adiciona campos (nunca remove/renomeia os
 // existentes), então não muda nada pra quem já consome este formato.
 export function montarRegistro(tipo, item) {
+    const registro = montarRegistroBase(tipo, item);
+    // Análise Tema × Pessoa: os ids não valem em outro acervo, então viaja em
+    // nomes (sem Pessoa oculta). Sem análise, o campo some.
+    const ligacoes = ligacoesParaExportar(db, item, (id) => !pessoaExportavelOculta(id));
+    if (ligacoes) registro.ligacoesTemaPessoa = ligacoes;
+    else delete registro.ligacoesTemaPessoa;
+    return registro;
+}
+
+function pessoaExportavelOculta(pessoaId) {
+    return !incluirOcultosNaExportacao() && pessoaOcultaNoCadastro(pessoaId);
+}
+
+function montarRegistroBase(tipo, item) {
     // Spread garante que todos os campos do item chegam ao JSON
     // (notas, conceitos, livrosIds, etc.) sem precisar listá-los
     // manualmente. tipo e contexto são adicionados/sobrescritos depois.
@@ -348,7 +350,7 @@ export function montarRegistro(tipo, item) {
         // nomes; a Importação Aditiva casa/cria a etiqueta pelo nome.
         ...etiquetasParaExportar(db, item),
         tipo,
-        contexto: resolverContexto(item),
+        contexto: resolverContexto(item, tipo),
         // Pessoa: além do nome, leva a ficha (gênero, cis/trans, cor/raça) do
         // cadastro; a Importação Aditiva casa pelo nome e só preenche o vazio.
         pessoas: pessoasExportaveis(item).map((p) => {
@@ -361,10 +363,17 @@ export function montarRegistro(tipo, item) {
         }),
         // Tema por id (fase 2): o nome viaja junto, porque o id não vale em
         // outro acervo — a Importação Aditiva casa/cria o Tema pelo nome.
-        temas: (item.temas || []).map((t) => ({
-            ...t,
-            nome: db.temas.find((x) => x.id == t.temaId)?.nome || '',
-        })),
+        // A valência do cadastro também viaja (só quando existe); a importação
+        // só preenche o vazio.
+        temas: (item.temas || []).map((t) => {
+            const cadastro = db.temas.find((x) => x.id == t.temaId);
+            const valencia = normalizarValenciaTema(cadastro?.valencia);
+            return {
+                ...t,
+                nome: cadastro?.nome || '',
+                ...(valencia ? { valencia } : {}),
+            };
+        }),
         // Papel do Assunto fixado neste texto: o nome também viaja (o id do
         // Assunto não vale em outro acervo; a importação casa pelo nome).
         // Territorialidade e local de escrita: os ids não valem em outro
@@ -499,12 +508,12 @@ export function gerarExportacaoSeletiva(opcoes) {
     const itens = [];
     if (opcoes.tipos.includes('poema')) {
         db.poemas
-            .filter((p) => correspondeFiltro(p, opcoes))
+            .filter((p) => correspondeFiltro(p, opcoes, 'poema'))
             .forEach((p) => itens.push(montarRegistro('poema', p)));
     }
     if (opcoes.tipos.includes('prosa')) {
         db.prosas
-            .filter((p) => correspondeFiltro(p, opcoes))
+            .filter((p) => correspondeFiltro(p, opcoes, 'prosa'))
             .forEach((p) => itens.push(montarRegistro('prosa', p)));
     }
 
@@ -543,7 +552,10 @@ export function executarExportacaoSeletiva() {
         return;
     }
 
-    const saida = { export_format: 'exportacao_seletiva', itens, coletaneas };
+    const saida = comLegendaPapeis(
+        { export_format: 'exportacao_seletiva', itens, coletaneas },
+        itens,
+    );
     const blob = new Blob([JSON.stringify(saida, null, 4)], {
         type: 'application/json;charset=utf-8',
     });
@@ -614,14 +626,35 @@ export function itensDaSelecao(tipo, ids) {
     return enriquecerItensComExtras(itens);
 }
 
+// Itens para BAIXAR (botão da linha, modal "Ver" e barra em massa). Igual a
+// itensDaSelecao, mas, com a caixa "Metadados" desmarcada, cada registro vira
+// só título e texto (ver metadados-download.js); a Sonoridade e a Progressão
+// marcadas entram mesmo assim. A tela do Ver continua usando itensDaSelecao.
+export function itensParaDownload(tipo, ids) {
+    const idsSet = new Set(ids);
+    const colecao = tipo === 'prosa' ? db.prosas : db.poemas;
+    const registros = colecao
+        .filter((item) => idsSet.has(item.id))
+        .map((item) => montarRegistro(tipo, item));
+    // Enriquece antes de reduzir: a Sonoridade e a Progressão são buscadas pelo
+    // id do poema, que o registro reduzido não leva.
+    const enriquecidos = enriquecerItensComExtras(registros);
+    if (downloadComMetadados()) return enriquecidos;
+    return enriquecidos.map((r) => ({
+        ...reduzirParaTituloETexto(r),
+        ...(r.sonoridade ? { sonoridade: r.sonoridade } : {}),
+        ...(r.estruturaTextual ? { estruturaTextual: r.estruturaTextual } : {}),
+    }));
+}
+
 export function exportarSelecaoJson(tipo, ids) {
-    const itens = itensDaSelecao(tipo, ids);
+    const itens = itensParaDownload(tipo, ids);
     if (itens.length === 0) {
         mostrarAviso('Nenhum item selecionado.');
         return;
     }
 
-    const saida = { export_format: 'selecao', itens };
+    const saida = comLegendaPapeis({ export_format: 'selecao', itens }, itens);
     const blob = new Blob([JSON.stringify(saida, null, 4)], {
         type: 'application/json;charset=utf-8',
     });
@@ -655,11 +688,14 @@ export function exportarSelecaoCsv(tipo, ids) {
         return;
     }
 
-    baixarCsv(gerarCsvTextos(tipo, registros, db), `selecao_${tipo}s_${Date.now()}.csv`);
+    baixarCsv(
+        gerarCsvTextos(tipo, registros, db, { somenteTituloTexto: !downloadComMetadados() }),
+        `selecao_${tipo}s_${Date.now()}.csv`,
+    );
 }
 
 export function exportarSelecaoMarkdown(tipo, ids) {
-    const itens = itensDaSelecao(tipo, ids);
+    const itens = itensParaDownload(tipo, ids);
     if (itens.length === 0) {
         mostrarAviso('Nenhum item selecionado.');
         return;
@@ -673,7 +709,7 @@ export function exportarSelecaoMarkdown(tipo, ids) {
 // CDN (ver comentário em exportar-pdf.js) e pode não ter chegado a
 // tempo (conexão lenta/caiu bem na hora do clique).
 export function exportarSelecaoPdf(tipo, ids) {
-    const itens = itensDaSelecao(tipo, ids);
+    const itens = itensParaDownload(tipo, ids);
     if (itens.length === 0) {
         mostrarAviso('Nenhum item selecionado.');
         return;
@@ -692,7 +728,7 @@ export function exportarSelecaoPdf(tipo, ids) {
 // exportar-docx.js), daí o await: sem ele, um erro de geração vira uma
 // Promise rejeitada não tratada em vez de cair no catch abaixo.
 export async function exportarSelecaoDocx(tipo, ids) {
-    const itens = itensDaSelecao(tipo, ids);
+    const itens = itensParaDownload(tipo, ids);
     if (itens.length === 0) {
         mostrarAviso('Nenhum item selecionado.');
         return;
@@ -726,7 +762,7 @@ function nomeArquivoSeguro(texto) {
 // visíveis ali, ver visualizar.js). Reaproveita itensDaSelecao (mesmo
 // registro/contexto resolvido das demais exportações).
 export async function exportarItem(tipo, id, formato) {
-    const itens = itensDaSelecao(tipo, [id]);
+    const itens = itensParaDownload(tipo, [id]);
     if (itens.length === 0) {
         mostrarAviso('Item não encontrado.');
         return;
@@ -735,7 +771,9 @@ export async function exportarItem(tipo, id, formato) {
     const nomeBase = nomeArquivoSeguro(itens[0].titulo);
 
     if (formato === 'json') {
-        const saida = { export_format: 'selecao', itens };
+        const saida = comLegendaPapeis({ export_format: 'selecao', itens }, itens, undefined, {
+            escopo: 'individual',
+        });
         const blob = new Blob([JSON.stringify(saida, null, 4)], {
             type: 'application/json;charset=utf-8',
         });
@@ -762,7 +800,12 @@ export async function exportarItem(tipo, id, formato) {
             mostrarAviso('Item não encontrado.');
             return;
         }
-        baixarCsv(gerarCsvTextos(tipo, [montarRegistro(tipo, item)], db), `${nomeBase}.csv`);
+        baixarCsv(
+            gerarCsvTextos(tipo, [montarRegistro(tipo, item)], db, {
+                somenteTituloTexto: !downloadComMetadados(),
+            }),
+            `${nomeBase}.csv`,
+        );
         return;
     }
 
@@ -784,7 +827,7 @@ export async function exportarItem(tipo, id, formato) {
         return;
     }
 
-    baixarMarkdown(itens, `${nomeBase}.md`);
+    baixarMarkdown(itens, `${nomeBase}.md`, { escopo: 'individual' });
 }
 
 // ─── Exportar Vários Livros Completos (dados do livro + conteúdo aninhado) ──
@@ -896,7 +939,7 @@ export function exportarTudoFlatJson() {
         return;
     }
 
-    const saida = { export_format: 'tudo_flat', itens, coletaneas };
+    const saida = comLegendaPapeis({ export_format: 'tudo_flat', itens, coletaneas }, itens);
     const blob = new Blob([JSON.stringify(saida, null, 4)], {
         type: 'application/json;charset=utf-8',
     });

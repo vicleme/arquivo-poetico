@@ -184,7 +184,7 @@ describe('renderVisualizacaoHtml — Autoria (item 8/Autoria, faltava na Visuali
         assert.ok(!html.includes('Autoria:'));
     });
 
-    it('a linha "Autoria" tem margem acima (mt-4), pra não ficar colada no bloco de Texto/Notas', () => {
+    it('a linha "Autoria" fica dentro do grupo Identificação, antes do texto (o espaçamento vem do grupo)', () => {
         db.autores = [{ id: 1, nome: 'Victor Leme', sobre: '' }];
         const item = {
             id: 1,
@@ -194,9 +194,9 @@ describe('renderVisualizacaoHtml — Autoria (item 8/Autoria, faltava na Visuali
             autoria: [{ autorId: 1, papel: 'Autor' }],
         };
         const html = renderVisualizacaoHtml(item);
-        const match = html.match(/<p class="([^"]*)"><strong[^>]*>Autoria:/);
-        assert.ok(match, 'deveria existir a linha de Autoria com classe própria');
-        assert.match(match[1], /\bmt-4\b/);
+        const grupo = html.match(/<details data-grupo-ver="identificacao"[\s\S]*?<\/details>/);
+        assert.ok(grupo, 'deveria existir o grupo Identificação');
+        assert.match(grupo[0], /<p class="mb-1\.5"><strong[^>]*>Autoria:/);
     });
 });
 

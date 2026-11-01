@@ -31,18 +31,18 @@ Consulte o doc dedicado sempre que a tarefa realmente depender de acertar
 essa distinção.
 
 - **Etiquetas** (antes "Sinalizações"; chaves `sinalizacoesTradicao`, `sinalizacoesEstilo`,
-  `sinalizacoesTema`, `sinalizacoesTerritorialidade`,
+  `sinalizacoesTerritorialidade`,
   `sinalizacoesRelacao`, `sinalizacoesSensibilidade`,
   `sinalizacoesTom`, `sinalizacoesDominioImagetico`,
-  `sinalizacoesOutros`) — 9 campos de etiquetas, cada um uma categoria
-  diferente. Os 7 que são etiquetas de verdade guardam ids do cadastro
-  `db.etiquetas` (nos `.json` de textos saem como lista de nomes). Dois deles, `sinalizacoesTema` e
-  `sinalizacoesTerritorialidade`, são espelhos derivados e não se digitam
-  mais no grupo de etiquetas. Ver `etiquetas-sinalizacoes-for-ai.md`.
+  `sinalizacoesOutros`) — 8 campos de etiquetas, cada um uma categoria
+  diferente (o Tema não é mais um deles: vive em `temas`). Os 7 que são etiquetas de verdade guardam ids do cadastro
+  `db.etiquetas` (nos `.json` de textos saem como lista de nomes). Um deles,
+  `sinalizacoesTerritorialidade`, é espelho derivado e não se digita
+  mais no grupo de etiquetas. Ver `etiquetas-for-ai.md`.
 - **Temas** (`temas`: lista de `{ temaId, papel, nome }`, na exportação) —
   os temas do texto por id, com `papel` `principal`, `secundario` ou vazio
-  (sem papel definido). O campo `sinalizacoesTema` é um espelho derivado
-  (nomes separados por vírgula, principal primeiro); não o edite sozinho.
+  (sem papel definido). O campo antigo `sinalizacoesTema` não
+  existe mais: leia e escreva só `temas`.
 - **Papel do Assunto** (`assuntosPapel`: lista de `{ assuntoId, papel, nome }`,
   na exportação) — só as sobrescritas. O Assunto herda o papel dos Temas do
   texto; a entrada existe quando a pessoa fixou outro papel para aquele Assunto
@@ -144,7 +144,7 @@ Como ler:
 - **Local de escrita não é o que o texto cita.** Um poema escrito em
   Santos sobre Lisboa tem `localEscrita` Santos e `territorialidade` Lisboa.
 - **Territorialidade não é Tema.** Tema é o assunto amplo; um lugar citado
-  no texto vai em `territorialidade`. Ver `etiquetas-sinalizacoes-for-ai.md`.
+  no texto vai em `territorialidade`. Ver `etiquetas-for-ai.md`.
 - **`sinalizacoesTerritorialidade`** é um espelho derivado: só os nomes,
   sem tipo nem hierarquia. Não o edite nem o use para distinguir lugares
   de mesmo nome; use `territorialidade`.
@@ -152,14 +152,38 @@ Como ler:
 
 ## Onde o texto mora (hierarquia e coletâneas)
 
-- **`paiTipo` / `paiId`**: vínculo polimórfico de posição — em qual Livro,
-  Parte, Seção (ou direto sob outro Elemento) o texto está encaixado na
-  árvore do acervo. É posição estrutural (um lugar só).
-- **`sequencia`**: ordem manual do texto dentro do pai (quando a ordenação
-  não é só cronológica).
-- **`livrosIds`**: diferente de `paiTipo`/`paiId` — são os Livros/
-  Coletâneas onde esse texto aparece **listado** (pode estar listado em
-  mais de um), sem que isso mude onde ele vive estruturalmente na árvore.
+- **`aparicoes`**: a verdade sobre onde o texto aparece. Lista de
+  `{ livroId, parteId, secaoId, sequencia }`, uma por lugar (Livro, Parte ou
+  Seção, com a posição na fila daquele lugar). `sequencia` é `null` quando o
+  texto só "consta" no Livro, sem posição. O mesmo texto pode aparecer em
+  vários Livros, cada um com a sua posição. As Coletâneas não entram nessa
+  lista: ficam nos itens das Coletâneas. A lista viaja no `.json` de backup
+  completo; as exportações de texto (seletiva, flat, `.csv`, `.md`) levam o
+  espelho abaixo e o `contexto.aparece_em`.
+- **`paiTipo` / `paiId` / `sequencia` / `livrosIds`**: o formato antigo,
+  mantido como **espelho** de `aparicoes` para as telas mais velhas.
+  `paiTipo`/`paiId` apontam para a primeira aparição que tem lugar (Livro,
+  Parte ou Seção), `sequencia` é a posição dela e `livrosIds` lista os outros
+  Livros. O espelho não diz tudo o que a lista diz (por exemplo, uma segunda
+  aparição com posição): em caso de conflito, vale `aparicoes`.
+- **Aparição principal**: a do Livro de publicação mais antiga (empate, ou
+  sem data, fica a primeira da lista). Só serve para ordenar e rotular: as
+  tabelas de Poemas e Prosas ordenam por Livro, Parte, Seção e posição da
+  aparição principal, uma linha por texto, com as outras no tooltip.
+- **`contexto.coletaneas`** (só nas exportações, nunca editado): lista com os
+  títulos das Coletâneas que trazem o texto, na ordem do acervo, cada uma
+  uma vez só. Vem dos itens das Coletâneas, não de `livrosIds`. No `.csv` é a
+  coluna `coletaneas` (títulos separados por " | "); no `.md`, `.pdf` e `.docx`,
+  a linha "Coletâneas" logo depois de "Localização". A Importação Aditiva
+  ignora esse campo.
+- **`contexto.aparece_em`** (só nas exportações, nunca editado): uma entrada
+  por aparição, `{ livro, parte, secao, posicao, coletanea, principal }`
+  (títulos já resolvidos; `posicao` é `null` quando só consta; `principal`
+  marca a principal). `contexto.livro`, `parte` e `secao` seguem sendo só o
+  primeiro lugar (o espelho). No `.csv` é a coluna `aparece_em` (aparições
+  separadas por " | ", vazia com uma só); no `.md`, `.pdf` e `.docx` e no Ver,
+  a linha "Aparece em", só para texto em dois ou mais Livros. A Importação
+  Aditiva ignora esse campo.
 
 ## Datas, períodos, movimento e inspiração
 
@@ -270,6 +294,40 @@ Três campos parecidos, detalhados em `pessoas-papeis-for-ai.md`:
   o autor dá ao próprio texto, puramente afetivo, sem pretensão de nota
   técnica. `0`/ausente é o estado especial "não avaliado" (não é a nota
   mínima — a nota mínima de verdade é 0,5).
+- **`sorteavel`**: booleano, se o autor permite que este texto seja
+  escolhido no sorteio de leitura ("sobre o que você quer ler hoje?").
+  Desligado por padrão; ausente vale `false`. O autor marca à mão, então
+  nunca ponha `true` por conta própria: ofereça como sugestão para ele
+  revisar.
+- **`leituraAutonoma`**: texto, se o texto se lê sozinho. `""` ou ausente é o
+  padrão (lê-se sozinho); `"sequencia"` (só em sequência), `"conjunto"` (só
+  em conjunto) e `"inicio"` (só como início: o primeiro texto de uma
+  sequência ou conjunto). Não é ligação com Elos ou Ecos, e Incompleto,
+  Díptico e Resposta não o definem. No sorteio de leitura, `"sequencia"` e
+  `"conjunto"` nunca saem; `"inicio"` sai, com a marca "só o começo". Quem
+  decide é o autor: nunca ponha por conta própria, ofereça como sugestão para
+  ele revisar. Detalhes em `sorteio-for-ai-pt-br.md`.
+- **`valenciaAjuste`**: texto, o juízo do próprio autor sobre o peso do texto,
+  usado no lugar do valor derivado dos Temas. `""` ou ausente segue os Temas
+  (o padrão); `"leve"` (mais leve), `"neutro"` (neutro ou ambivalente) e
+  `"pesado"` (mais pesado). A valência do texto em si nunca é guardada: é
+  calculada a partir da valência dos Temas (o mesmo índice das Estatísticas),
+  a não ser que este campo esteja preenchido. Quem decide é o autor: nunca
+  ponha por conta própria, ofereça como sugestão para ele revisar, dizendo por
+  que o texto pesa diferente dos Temas.
+- **`autorEmSigilo`**: booleano, se o autor quer o nome dele fora das telas
+  públicas (hoje: a página do sorteio de leitura) neste texto. Desligado por
+  padrão; ausente vale `false`. Quem decide é o autor: nunca ponha `true` por
+  conta própria, ofereça como sugestão para ele revisar.
+- **`notasPublicas`**: booleano, se o autor marca as `notas` como publicáveis
+  (a caixa "Pública" sob as Notas). As Notas podem guardar coisa privada, então
+  só as marcadas podem aparecer para leitores (hoje: a página do sorteio de
+  leitura). Desligado por padrão; ausente vale `false`. Quem decide é o autor:
+  nunca ponha `true` por conta própria, ofereça como sugestão para ele revisar.
+- **`comentariosPublicos`** ("Comentários ao leitor" na interface): texto livre
+  escrito para quem lê a obra; aparece para o leitor sempre que preenchido. Ao
+  contrário de `notas`, escreva pensando em quem lê. Não é o comentário
+  `<!-- -->` do editor de texto, que segue invisível em todas as saídas.
 - **`status`**: lista fechada — `incompleto`, `completo`, `publicado`,
   `migrado`, `descartado`, `privado`. `privado` é diferente de
   `descartado`: nunca teve intenção de publicação (sempre restrito a
@@ -299,7 +357,7 @@ Três campos parecidos, detalhados em `pessoas-papeis-for-ai.md`:
   "Conteúdo sensível" na interface — não existe uma flag booleana salva à
   parte; é sempre derivado da string. Diferente de
   `sinalizacoesSensibilidade` (tags soltas e categorizáveis, ex.
-  "Linguagem obscena" — ver `etiquetas-sinalizacoes-for-ai.md`): este
+  "Linguagem obscena" — ver `etiquetas-for-ai.md`): este
   campo é o parágrafo descritivo, aquele é etiqueta curta.
 - **`vocabularioHiperacionante`**: texto livre — nota sobre vocabulário do
   texto que pode ser especialmente gatilho/acionador pra quem lê.
@@ -332,7 +390,13 @@ Trio usado quando um texto muda de lugar na estrutura editorial (é
 processo:
 
 - **`cortadoDe`** / **`lancadoEm`**: `{ livro, secao }` — de onde o texto
-  saiu / onde entrou.
+  saiu / onde entrou. O app acrescenta `livroId` (id do livro no cadastro,
+  quando o livro existe lá); **não preencha `livroId`**, ele é gravado pelo
+  app, e o `livro` deve ser o título do livro. `secao` é `"Parte / Seção"`,
+  e na tela vira `Livro › Parte › Seção`. `cortadoDe` aceita também `posicao` (o número que o
+  texto tinha lá na época, uma foto que nunca é recalculada) e vale para
+  `migrado` e `descartado`; no descartado é preenchido ao descartar, e a
+  `sequencia` vira `null`.
 - **`justificativaMigracao`**: texto livre justificando a migração.
 - **`descarte`**: texto livre — motivo do descarte, quando aplicável
   (`status: "descartado"`).
@@ -345,8 +409,9 @@ processo:
 2. Não confunda `conceitos.ecos` (vínculo entre textos, Intratextualidade)
    com `es.ecos` de Sonoridade (ecos sonoros) — nomes iguais, campos
    diferentes, docs diferentes.
-3. `paiTipo`/`paiId` é onde o texto **vive** na árvore; `livrosIds` é
-   onde ele **aparece listado** — não são a mesma coisa.
+3. `aparicoes` é onde o texto **aparece** (um ou mais Livros, cada um com a
+   sua posição); `paiTipo`/`paiId`/`livrosIds` são só o espelho dela. Nas
+   exportações, prefira `contexto.aparece_em`.
 4. `epocaRetratada` ausente (`null`) ≠ `epocaRetratada.na === true` — o
    primeiro é "não avaliado", o segundo é "avaliado como não aplicável".
 5. `descricaoVisual` só existe em Poema — não espere encontrá-lo (nem

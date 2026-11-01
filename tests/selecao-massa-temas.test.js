@@ -2,6 +2,7 @@ import './helpers/dom-real.js';
 
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { nomesDosTemas } from './helpers/temas-do-texto.js';
 
 // Painel "Temas" da barra de ações em massa (Poemas/Prosas), com DOM real.
 document.body.innerHTML = `
@@ -109,14 +110,14 @@ describe('Temas em massa: aplicar', () => {
     it('adiciona vários temas aos selecionados após confirmar, e limpa campo e seleção', () => {
         db.poemas.push(poema(1), poema(2), poema(3));
         selecionarPoemas(1, 2);
-        digitar('poemas', 'Amor, Exílio');
+        digitar('poemas', 'Amor; Exílio');
         aplicarTemaEmMassa('poemas');
         assert.ok(modalAberto());
         assert.equal(db.poemas[0].temas, undefined, 'nada muda antes de confirmar');
         confirmar();
         assert.deepEqual(nomes(db.poemas[0]), ['Amor', 'Exílio']);
         assert.deepEqual(nomes(db.poemas[1]), ['Amor', 'Exílio']);
-        assert.equal(db.poemas[0].sinalizacoesTema, 'Amor, Exílio');
+        assert.equal(nomesDosTemas(db.poemas[0], db), 'Amor, Exílio');
         assert.ok(!db.poemas[2].temas || db.poemas[2].temas.length === 0);
         assert.ok(db.temas.some((t) => t.nome === 'Exílio'));
         assert.equal(el('bulk-tema-input').value, '');
@@ -125,15 +126,34 @@ describe('Temas em massa: aplicar', () => {
     it('a confirmação avisa dos temas que serão criados', () => {
         db.poemas.push(poema(1));
         selecionarPoemas(1);
-        digitar('poemas', 'Amor, Exílio');
+        digitar('poemas', 'Amor; Exílio');
         aplicarTemaEmMassa('poemas');
         assert.match(document.body.textContent, /"Exílio" ainda não existe no cadastro/);
+    });
+
+    it('a vírgula faz parte do nome: "Amor, perda" é um tema só', () => {
+        db.poemas.push(poema(1));
+        selecionarPoemas(1);
+        digitar('poemas', 'Amor, perda');
+        aplicarTemaEmMassa('poemas');
+        confirmar();
+        assert.deepEqual(nomes(db.poemas[0]), ['Amor, perda']);
+        assert.ok(db.temas.some((t) => t.nome === 'Amor, perda'));
+    });
+
+    it('o ponto e vírgula separa os temas e a vírgula fica no nome', () => {
+        db.poemas.push(poema(1));
+        selecionarPoemas(1);
+        digitar('poemas', 'Amor, perda; Exílio');
+        aplicarTemaEmMassa('poemas');
+        confirmar();
+        assert.deepEqual(nomes(db.poemas[0]), ['Amor, perda', 'Exílio']);
     });
 
     it('campo vazio não abre confirmação', () => {
         db.poemas.push(poema(1));
         selecionarPoemas(1);
-        digitar('poemas', ' , ');
+        digitar('poemas', ' ; ');
         aplicarTemaEmMassa('poemas');
         assert.ok(!modalAberto());
     });

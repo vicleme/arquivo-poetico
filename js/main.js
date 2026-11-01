@@ -3,6 +3,15 @@
 //           funções globais que o HTML chama via onclick="..."
 // ============================================================
 
+import {
+    editarApelidoPapelPessoaUI,
+    editarDescricaoPapelPessoaUI,
+    adicionarPapelPessoaUI,
+    renomearPapelPessoaUI,
+    apagarPapelPessoaUI,
+    verTextosComPapelUI,
+    irParaPapeisPessoa,
+} from './papeis-pessoa-ui.js';
 import { abrirPorAtalho } from './faixa-origem.js';
 import {
     exportarJSON,
@@ -13,8 +22,10 @@ import {
     getUltimoBackup,
     getUsoStorage,
     migrarImagensLegadasParaIndexedDB,
+    migracaoDeAparicoesDoCarregamento,
 } from './db.js';
 import { mostrarAviso, avisarSalvo, debounce, aoEnterAplicar } from './utils.js';
+import { lerAvisoDeAparicoes, textoDoAvisoDeAparicoes } from './aviso-aparicoes.js';
 import { interpretarPaginaDigitada } from './celulas-tabela.js';
 import { listarSnapshots, baixarSnapshot } from './autobackup.js';
 import {
@@ -25,9 +36,6 @@ import {
     prepararNovoSubgrupo,
     toggleCamposIntroducao,
     toggleCamposFicha,
-    sugerirSequencia,
-    filtrarDestinoPoema,
-    filtrarDestinoProsa,
     autoPreencherDataPublicacao,
     togglePainel,
     toggleMenuMobile,
@@ -77,6 +85,8 @@ import {
     getFormatoBaixar,
 } from './acoes-coluna.js';
 import { exportarItem } from './exportar.js';
+import { abrirTextoDaLista } from './ver-texto-da-lista.js';
+import { abrirListaDaOrigem } from './abrir-lista-origem.js';
 import {
     abrirVisualizacao,
     baixarDoModalVisualizacao,
@@ -95,6 +105,7 @@ import {
     editarLivroDoVisualizador,
     verDoModalEdicaoLivro,
     excluirLivroDoVisualizador,
+    baixarDoModalVisualizacaoLivro,
     registrarListaNavegacaoLivros,
 } from './visualizar-livro.js';
 import {
@@ -158,8 +169,9 @@ import {
 } from './correntes-acoes.js';
 import { abrirVisualizacaoGrupo, editarGrupoDoVisualizador } from './visualizar-grupo.js';
 import {
-    toggleDownloadAbrangente,
-    sincronizarCheckboxesComEstadoSalvo,
+    toggleDownloadSonoridade,
+    toggleDownloadProgressao,
+    montarCaixasSonoridadeProgressao,
 } from './download-abrangente.js';
 import {
     toggleIncluirOcultos,
@@ -167,6 +179,8 @@ import {
     montarControlesIncluirOcultos,
 } from './ocultos-exportacao.js';
 import { toggleAgruparComuns, montarControlesAgruparComuns } from './agrupar-comuns.js';
+import { toggleDownloadMetadados, montarControlesMetadados } from './metadados-download.js';
+import { toggleInfosPapel, montarControlesInfosPapel } from './infos-papel.js';
 import { montarControlesPrevias } from './previas-imagem.js';
 import { exportarEscansao } from './exportar-sonoridade.js';
 import {
@@ -183,6 +197,9 @@ import {
     baixarDoModalVisualizacaoEstruturaTextual,
 } from './visualizar-estrutura-textual.js';
 import { initTema, setTema } from './theme.js';
+import { initSugestoesBuscaLivros } from './ui-sugestoes-busca-livros.js';
+import { initSugestoesBuscaTexto } from './ui-sugestoes-busca-texto.js';
+import { initContadorSinopseCurta } from './contador-sinopse-livro.js';
 import { initFusoHorario, setFusoHorario } from './fuso-horario.js';
 import { renderLists } from './render.js';
 import {
@@ -245,6 +262,8 @@ import {
     setFiltroFaseLivros,
     setFiltroSituacaoLivros,
     setFiltroPublicacaoLivros,
+    setFiltroUsoIaLivros,
+    setFiltroTemLivros,
     setFiltroDataLivros,
     limparFiltrosLivros,
     alternarPreviasImagem,
@@ -299,6 +318,14 @@ import {
     exportarSelecaoAutoresMarkdown,
 } from './autores-acoes.js';
 import {
+    alternarModoSelecaoLivros,
+    baixarLivrosDaAba,
+    limparSelecaoLivros,
+    marcarTodosLivros,
+    toggleSelecaoLivro,
+} from './selecao-livros-aba.js';
+import { baixarLivro } from './baixar-livros.js';
+import {
     setFiltroAutorPessoas,
     setFiltroGrupoPessoas,
     setFiltroNomePessoas,
@@ -334,8 +361,6 @@ import {
     exportarSelecaoAtualDocx,
     baixarSelecaoPorFormato,
     salvarFormatoSelecao,
-    aplicarPessoaEmMassa,
-    removerPessoaEmMassa,
     aplicarSinalEmMassa,
     removerSinalEmMassa,
     aplicarTemaEmMassa,
@@ -352,6 +377,12 @@ import {
     trocarTipoPeriodoMassa,
     aplicarPeriodoEmMassa,
     removerPeriodoEmMassa,
+    prepararPainelPessoasPapeisMassa,
+    adicionarLinhaPessoasPapeisMassa,
+    adicionarEuPessoasPapeisMassa,
+    removerLinhaPessoasPapeisMassa,
+    aplicarPessoasPapeisEmMassa,
+    removerPessoasPapeisEmMassa,
     aplicarGeneroEmMassaProsa,
     removerGeneroEmMassaProsa,
 } from './selecao-massa.js';
@@ -457,6 +488,7 @@ import {
     toggleIdentidadeFiltroPessoas,
     limparIdentidadesFiltroPessoas,
     definirModoTemasAssuntos,
+    definirEixoValencia,
     definirOrdemTemasAssuntos,
     definirModoTerceiros,
     toggleGrupoFiltroPessoas,
@@ -472,6 +504,7 @@ import {
     definirPapelAssuntoEstatisticas,
     definirFiltrosCompartilhados,
     limparFiltrosCompartilhados,
+    definirContarEuComoPessoa,
 } from './estatisticas.js';
 import {
     renderConexoes,
@@ -482,6 +515,16 @@ import {
     marcarTodosConexoes,
     limparSelecaoConexoes,
 } from './render-conexoes.js';
+import { setFiltroForaDoAcervo, setOrdemForaDoAcervo } from './render-fora-do-acervo.js';
+import { baixarForaDoAcervo, atualizarBaixarForaDoAcervo } from './baixar-fora-do-acervo.js';
+import { baixarCruzamentos } from './baixar-cruzamentos.js';
+import { alternarModoRevisao } from './revisao-fora-do-acervo-ui.js';
+import {
+    abrirCorrecaoObra,
+    abrirCorrecaoAutor,
+    abrirCorrecaoReferencia,
+    manterObraDoAviso,
+} from './corrigir-fora-do-acervo-ui.js';
 import {
     initEditor,
     initEditorProsa,
@@ -519,6 +562,7 @@ import {
     adicionarPessoa,
     removerPessoa,
     alternarPapelPessoa,
+    definirNotaPessoa,
     alternarDropdownPapelPessoa,
     adicionarGrupoDireto,
     removerGrupoDireto,
@@ -547,6 +591,9 @@ import {
     removerNomeLiterarioAutor,
     editarNomeLiterarioAutor,
     alterarTipoNomeLiterarioAutor,
+    alterarAnonimizarNomeLiterarioAutor,
+    atualizarLinhaSigiloTexto,
+    atualizarAvisoLeituraSorteio,
     adicionarOcupacaoAutor,
     removerOcupacaoAutor,
     editarOcupacaoAutor,
@@ -828,7 +875,40 @@ import {
     renderPersonagens,
     verTextosPersonagem,
 } from './ui-personagens.js';
+import {
+    editarColaborador,
+    initFormColaborador,
+    novoColaborador,
+    renderColaboradores,
+    verLivroDoColaborador,
+} from './colaboradores-aba.js';
 import { adicionarPersonagem } from './grupo-personagens.js';
+import {
+    aoMarcarTema,
+    aoMarcarTodosTemas,
+    aoAplicarValenciaEmMassa,
+    aoLimparSelecaoTemas,
+    aoAplicarValenciasSugeridas,
+    aoConferirListaValencia,
+    aoAplicarListaValencia,
+    aoLimparListaValencia,
+    aoMudarCampoLista,
+    definirValenciaDoCard,
+    adicionarTemaAVitrineDoCard,
+    aoAdicionarTemasAVitrine,
+    aoAdicionarTemasAoAssunto,
+} from './temas-massa-ui.js';
+import {
+    aoCriarUniversal,
+    aoRenomearUniversal,
+    aoMoverUniversal,
+    aoExcluirUniversal,
+    aoAdicionarTemaAoUniversal,
+    aoTirarTemaDoUniversal,
+    aoConferirVitrine,
+    aoAplicarVitrine,
+    aoBaixarVitrine,
+} from './temas-universais-ui.js';
 import { abrirSugestaoEcos, initSugestaoEcos } from './ui-sugestao-ecos.js';
 
 // ─── Registro dos modais (carregamento lazy via fetch) ───────
@@ -873,6 +953,7 @@ registrarModal('modal-elemento', 'modal-elemento.html', initFormElemento, rastre
 registrarModal('modal-pessoa', 'modal-pessoa.html', initFormPessoa);
 registrarModal('modal-grupo', 'modal-grupo.html', initFormGrupo);
 registrarModal('modal-autor', 'modal-autor.html', initFormAutor);
+registrarModal('modal-colaborador', 'modal-colaborador.html', initFormColaborador);
 registrarModal('modal-epoca', 'modal-epoca.html', initFormEpoca);
 registrarModal(
     'modal-opcoes-periodo-biografico',
@@ -1017,6 +1098,8 @@ const ACOES_LISTA = {
     'ver-autores-movimento-escola': (el) => verAutoresMovimentoEscola(Number(el.dataset.id)),
     'editar-pessoa': (el) => editarPessoa(Number(el.dataset.id)),
     'editar-personagem': (el) => editarPersonagem(Number(el.dataset.id)),
+    'editar-colaborador': (el) => editarColaborador(Number(el.dataset.id)),
+    'ver-livro-colaborador': (el) => verLivroDoColaborador(Number(el.dataset.id)),
     'ver-textos-personagem': (el) => verTextosPersonagem(Number(el.dataset.id)),
     'sugerir-ecos': (el) => abrirSugestaoEcos(el.dataset.especie, Number(el.dataset.id)),
     'editar-grupo': (el) => editarGrupo(Number(el.dataset.id)),
@@ -1049,6 +1132,25 @@ const ACOES_LISTA = {
     'editar-assunto': (el) => editarAssunto(Number(el.dataset.id)),
     'ver-textos-assunto': (el) => verTextosAssunto(Number(el.dataset.id)),
     'editar-tema': (el) => editarTema(Number(el.dataset.id)),
+    'toggle-tema': (el, e) => aoMarcarTema(el.dataset.id, el.checked, e?.shiftKey),
+    'toggle-todos-temas': (el) => aoMarcarTodosTemas(el.checked),
+    'aplicar-valencia-temas': () => aoAplicarValenciaEmMassa(),
+    'adicionar-temas-vitrine': () => aoAdicionarTemasAVitrine(),
+    'adicionar-temas-assunto': () => aoAdicionarTemasAoAssunto(),
+    'limpar-selecao-temas': () => aoLimparSelecaoTemas(),
+    'aplicar-valencias-sugeridas': () => aoAplicarValenciasSugeridas(),
+    'conferir-valencia-lista': () => aoConferirListaValencia(),
+    'aplicar-valencia-lista': () => aoAplicarListaValencia(),
+    'limpar-valencia-lista': () => aoLimparListaValencia(),
+    'criar-universal': () => aoCriarUniversal(),
+    'renomear-universal': (el) => aoRenomearUniversal(el.dataset.id),
+    'mover-universal': (el) => aoMoverUniversal(el.dataset.id, el.dataset.delta),
+    'excluir-universal': (el) => aoExcluirUniversal(el.dataset.id),
+    'adicionar-tema-universal': (el) => aoAdicionarTemaAoUniversal(el.dataset.id),
+    'tirar-tema-universal': (el) => aoTirarTemaDoUniversal(el.dataset.id, el.dataset.temaId),
+    'conferir-vitrine': () => aoConferirVitrine(),
+    'aplicar-vitrine': () => aoAplicarVitrine(),
+    'baixar-vitrine-md': () => aoBaixarVitrine(),
     'ver-textos-tema': (el) => verTextosTema(Number(el.dataset.id)),
     'excluir-tema': (el) => excluirTema(Number(el.dataset.id)),
     'alternar-categoria-etiquetas': (el) => alternarCategoriaEtiquetas(el.dataset.categoria),
@@ -1107,7 +1209,7 @@ const ACOES_LISTA = {
         abrirPorAtalho({
             destino: 'temas',
             descricao: 'Mostrando só temas sem assunto',
-            controles: ['busca-temas', 'filtro-temas-sem-assunto'],
+            controles: ['busca-temas', 'filtro-temas-sem-assunto', 'filtro-temas-sem-vitrine'],
             aplicar: () => filtrarTemasSemAssunto(),
             limpar: () => {
                 const semAssunto = document.getElementById('filtro-temas-sem-assunto');
@@ -1147,6 +1249,11 @@ const ACOES_LISTA = {
     // Idem para prosa (títulos da aba Estrutura).
     'editar-posicao-estrutura': (el, e) => editarPosicaoEstrutura(el, e),
     'ver-prosa': (el) => abrirVisualizacao('prosa', Number(el.dataset.id)),
+    // Ver um texto vindo de uma lista da aba Conexões (Obras, Autores, Referências):
+    // o Anterior/Próximo percorre os textos da mesma lista.
+    'ver-texto-da-lista': (el) => abrirTextoDaLista(el),
+    // Abre Poemas ou Prosas filtrado por `origem:` (seção Fora do acervo, bloco Origens).
+    'abrir-lista-origem': (el) => abrirListaDaOrigem(el),
     'baixar-item': (el) =>
         exportarItem(el.dataset.tipo, Number(el.dataset.id), getFormatoBaixar(el.dataset.tabela)),
     'mover-livro': (el) => moverLivro(Number(el.dataset.id), el.dataset.dir),
@@ -1199,6 +1306,25 @@ const ACOES_LISTA = {
     'toggle-selecao-conexao': (el) => toggleSelecaoConexao(el),
     'marcar-todos-conexoes': () => marcarTodosConexoes(),
     'limpar-selecao-conexoes': () => limparSelecaoConexoes(),
+    'alternar-modo-revisao-fora': () => alternarModoRevisao(),
+    'corrigir-obra-fora': (el) => abrirCorrecaoObra(el.dataset.chave),
+    'corrigir-autor-fora': (el) => abrirCorrecaoAutor(el.dataset.chave),
+    'corrigir-referencia-fora': (el) => abrirCorrecaoReferencia(el.dataset.chave),
+    'manter-obra-fora': (el) =>
+        manterObraDoAviso(Number(el.dataset.aviso), Number(el.dataset.item)),
+    'baixar-livros': () => baixarLivrosDaAba(),
+    'baixar-livro': (el) => baixarLivro(Number(el.dataset.id)),
+    // Aba Coletâneas: o formato vem do select do editor (e a caixa, da escolha lembrada).
+    'baixar-coletanea': (el) =>
+        baixarLivro(
+            Number(el.dataset.id),
+            document.getElementById('coletanea-baixar-formato')?.value,
+        ),
+    'filtro-tem-livros': (el) => setFiltroTemLivros(el.dataset.chave),
+    'alternar-modo-selecao-livros': () => alternarModoSelecaoLivros(),
+    'toggle-livro': (el, e) => toggleSelecaoLivro(Number(el.dataset.id), el.checked, e?.shiftKey),
+    'marcar-todos-livros': () => marcarTodosLivros(),
+    'limpar-selecao-livros': () => limparSelecaoLivros(),
 };
 
 // Os modais moram em #modais-container, fora de <main>: sem o segundo
@@ -1257,6 +1383,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     await migrarImagensLegadasParaIndexedDB();
 
     initTema();
+    initSugestoesBuscaLivros();
+    initSugestoesBuscaTexto();
+    initContadorSinopseCurta();
     initFusoHorario();
     initNav();
     renderColetaneas();
@@ -1267,15 +1396,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     atualizarIndicadorBackup();
     atualizarIndicadorStorage();
     renderListaSnapshots();
-    // Aplica o estado salvo de "Download abrangente" ao checkbox estático
-    // da barra de seleção em massa de Poemas (o do modal "Ver" e o do
-    // painel "⚙️ Ações ▾" já nascem com o estado certo, um por ser
-    // atualizado a cada abertura — visualizar.js — e o outro por ser
-    // remontado via innerHTML a cada render — celulas-tabela.js).
-    sincronizarCheckboxesComEstadoSalvo();
+    // Monta as caixas Sonoridade e Progressão da barra em massa de Poemas
+    // (o painel "⚙️ Ações ▾" nasce com o estado certo por ser remontado via
+    // innerHTML a cada render — celulas-tabela.js — e o modal "Ver" monta ao
+    // abrir — visualizar.js).
+    montarCaixasSonoridadeProgressao();
+    montarControlesMetadados();
     sincronizarChecksDadosPessoaisComEstadoSalvo();
     montarControlesIncluirOcultos();
     montarControlesAgruparComuns();
+    montarControlesInfosPapel();
     montarControlesPrevias();
 
     // Lembra a última escolha de "incluir capas" no backup (padrão: marcado,
@@ -1287,6 +1417,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Resultado do "Esvaziar o acervo" que acabou de recarregar a página.
     mostrarAvisoPosEsvaziar((texto) => mostrarAviso(texto, 'sucesso'));
+
+    // Fase 21 (21-1b-2): a lista nova de aparições dos textos acabou de ser
+    // criada (carregamento ou importação de backup). Avisa uma vez e grava.
+    {
+        const pendente = lerAvisoDeAparicoes();
+        if (pendente) mostrarAviso(textoDoAvisoDeAparicoes(pendente), 'info');
+        if (migracaoDeAparicoesDoCarregamento.faltavam > 0) {
+            save();
+            migracaoDeAparicoesDoCarregamento.copia.then((ok) =>
+                mostrarAviso(
+                    textoDoAvisoDeAparicoes({
+                        textos: migracaoDeAparicoesDoCarregamento.faltavam,
+                        copia: ok === true,
+                    }),
+                    'info',
+                ),
+            );
+        }
+    }
 
     // Por último: só abre sozinho se a pessoa nunca marcou "não exibir
     // novamente" — depois do resto da tela já estar montada, senão o
@@ -1495,7 +1644,6 @@ window.enviarTextoParaImportacao = function () {
     if (confirmarEnvioTextoBiblioteca()) abrirAba('importacao-aditiva');
 };
 window.limparFormTextoBiblioteca = limparFormTextoBiblioteca;
-window.sugerirSequencia = sugerirSequencia;
 window.abrirModoAprendizado = abrirModoAprendizado;
 window.avancarModoAprendizadoPerfil = avancarModoAprendizadoPerfil;
 window.voltarModoAprendizadoPerfil = voltarModoAprendizadoPerfil;
@@ -1505,8 +1653,6 @@ window.abrirApresentacaoDaAjuda = abrirApresentacaoDaAjuda;
 // O tour troca de aba pelo mesmo caminho da nav (abrirAba); injetado aqui
 // pra tour.js não importar ui.js.
 definirNavegacaoTour(abrirAba);
-window.filtrarDestinoPoema = filtrarDestinoPoema;
-window.filtrarDestinoProsa = filtrarDestinoProsa;
 window.autoPreencherDataPublicacao = autoPreencherDataPublicacao;
 
 // editarLivro/Parte/Secao/Poema/Prosa/Elemento e deleteItem não
@@ -1564,6 +1710,14 @@ window.adicionarPessoa = adicionarPessoa;
 window.adicionarPersonagem = (tabela) => adicionarPersonagem(tabela);
 window.removerPessoa = removerPessoa;
 window.alternarPapelPessoa = alternarPapelPessoa;
+window.definirNotaPessoa = definirNotaPessoa;
+window.editarApelidoPapelPessoaUI = editarApelidoPapelPessoaUI;
+window.editarDescricaoPapelPessoaUI = editarDescricaoPapelPessoaUI;
+window.adicionarPapelPessoaUI = adicionarPapelPessoaUI;
+window.renomearPapelPessoaUI = renomearPapelPessoaUI;
+window.apagarPapelPessoaUI = apagarPapelPessoaUI;
+window.verTextosComPapelUI = verTextosComPapelUI;
+window.irParaPapeisPessoa = irParaPapeisPessoa;
 window.alternarDropdownPapelPessoa = alternarDropdownPapelPessoa;
 window.adicionarGrupoDireto = adicionarGrupoDireto;
 window.removerGrupoDireto = removerGrupoDireto;
@@ -1595,6 +1749,9 @@ window.editarOcupacaoAutor = editarOcupacaoAutor;
 window.removerNomeLiterarioAutor = removerNomeLiterarioAutor;
 window.editarNomeLiterarioAutor = editarNomeLiterarioAutor;
 window.alterarTipoNomeLiterarioAutor = alterarTipoNomeLiterarioAutor;
+window.alterarAnonimizarNomeLiterarioAutor = alterarAnonimizarNomeLiterarioAutor;
+window.atualizarLinhaSigiloTexto = atualizarLinhaSigiloTexto;
+window.atualizarAvisoLeituraSorteio = atualizarAvisoLeituraSorteio;
 window.adicionarCondicaoClinicaAutor = adicionarCondicaoClinicaAutor;
 window.removerCondicaoClinicaAutor = removerCondicaoClinicaAutor;
 window.editarCondicaoClinicaAutor = editarCondicaoClinicaAutor;
@@ -1631,6 +1788,9 @@ window.adicionarTemaAssunto = adicionarTemaAssunto;
 window.removerTemaAssunto = removerTemaAssunto;
 window.editarTemaAssunto = editarTemaAssunto;
 window.atribuirTemaDoPainel = atribuirTemaDoPainel;
+window.definirValenciaDoCard = definirValenciaDoCard;
+window.adicionarTemaAVitrineDoCard = adicionarTemaAVitrineDoCard;
+window.mudarCampoListaTemas = aoMudarCampoLista;
 window.renderTemas = renderTemas;
 window.renderEtiquetas = renderEtiquetas;
 window.novaEtiqueta = novaEtiqueta;
@@ -1645,6 +1805,8 @@ window.atualizarListaSemAssunto = atualizarListaSemAssunto;
 window.renderLocais = renderLocais;
 window.renderPersonagens = renderPersonagens;
 window.novoPersonagem = novoPersonagem;
+window.novoColaborador = novoColaborador;
+window.renderColaboradores = renderColaboradores;
 window.novoLocal = novoLocal;
 window.baixarAssuntosMd = baixarAssuntosMd;
 window.baixarTemasMd = baixarTemasMd;
@@ -1852,11 +2014,14 @@ window.definirValorColunaContagem = definirValorColunaContagem;
 window.toggleAcaoColuna = toggleAcaoColuna;
 window.setFormatoBaixarColuna = setFormatoBaixarColuna;
 window.resetarAcoesColuna = resetarAcoesColuna;
-window.toggleDownloadAbrangente = toggleDownloadAbrangente;
+window.toggleDownloadSonoridade = toggleDownloadSonoridade;
+window.toggleDownloadProgressao = toggleDownloadProgressao;
+window.toggleDownloadMetadados = toggleDownloadMetadados;
 window.toggleIncluirDadosPessoais = toggleIncluirDadosPessoais;
 window.toggleIncluirOcultos = toggleIncluirOcultos;
 window.toggleLembrarIncluirOcultos = toggleLembrarIncluirOcultos;
 window.toggleAgruparComuns = toggleAgruparComuns;
+window.toggleInfosPapel = toggleInfosPapel;
 window.baixarDoModalVisualizacao = baixarDoModalVisualizacao;
 window.navegarVisualizacao = navegarVisualizacao;
 window.irParaPosicaoVisualizacao = irParaPosicaoVisualizacao;
@@ -1879,6 +2044,7 @@ window.editarElementoDoVisualizador = editarElementoDoVisualizador;
 window.excluirElementoDoVisualizador = excluirElementoDoVisualizador;
 window.verDoModalEdicaoElemento = verDoModalEdicaoElemento;
 window.excluirLivroDoVisualizador = excluirLivroDoVisualizador;
+window.baixarDoModalVisualizacaoLivro = baixarDoModalVisualizacaoLivro;
 window.editarMovimentoEscolaDoVisualizador = editarMovimentoEscolaDoVisualizador;
 window.editarPeriodoHistoricoDoVisualizador = editarPeriodoHistoricoDoVisualizador;
 window.editarPeriodoBiograficoDoVisualizador = editarPeriodoBiograficoDoVisualizador;
@@ -1924,8 +2090,6 @@ window.exportarSelecaoAtualDocx = exportarSelecaoAtualDocx;
 window.baixarSelecaoPorFormato = baixarSelecaoPorFormato;
 window.salvarFormatoSelecao = salvarFormatoSelecao;
 window.aoEnterAplicar = aoEnterAplicar;
-window.aplicarPessoaEmMassa = aplicarPessoaEmMassa;
-window.removerPessoaEmMassa = removerPessoaEmMassa;
 window.aplicarSinalEmMassa = aplicarSinalEmMassa;
 window.removerSinalEmMassa = removerSinalEmMassa;
 window.aplicarTemaEmMassa = aplicarTemaEmMassa;
@@ -1942,6 +2106,12 @@ window.prepararPainelPeriodosMassa = prepararPainelPeriodosMassa;
 window.trocarTipoPeriodoMassa = trocarTipoPeriodoMassa;
 window.aplicarPeriodoEmMassa = aplicarPeriodoEmMassa;
 window.removerPeriodoEmMassa = removerPeriodoEmMassa;
+window.prepararPainelPessoasPapeisMassa = prepararPainelPessoasPapeisMassa;
+window.adicionarLinhaPessoasPapeisMassa = adicionarLinhaPessoasPapeisMassa;
+window.adicionarEuPessoasPapeisMassa = adicionarEuPessoasPapeisMassa;
+window.removerLinhaPessoasPapeisMassa = removerLinhaPessoasPapeisMassa;
+window.aplicarPessoasPapeisEmMassa = aplicarPessoasPapeisEmMassa;
+window.removerPessoasPapeisEmMassa = removerPessoasPapeisEmMassa;
 window.aplicarGeneroEmMassaProsa = aplicarGeneroEmMassaProsa;
 window.removerGeneroEmMassaProsa = removerGeneroEmMassaProsa;
 window.setLivroEstrutura = setLivroEstrutura;
@@ -1957,6 +2127,7 @@ window.setFiltroTipoLivros = setFiltroTipoLivros;
 window.setFiltroFaseLivros = setFiltroFaseLivros;
 window.setFiltroSituacaoLivros = setFiltroSituacaoLivros;
 window.setFiltroPublicacaoLivros = setFiltroPublicacaoLivros;
+window.setFiltroUsoIaLivros = setFiltroUsoIaLivros;
 window.setFiltroDataLivros = setFiltroDataLivros;
 window.limparFiltrosLivros = limparFiltrosLivros;
 window.alternarPreviasImagem = alternarPreviasImagem;
@@ -1976,6 +2147,7 @@ window.limparGenerosFiltroPessoas = limparGenerosFiltroPessoas;
 window.toggleIdentidadeFiltroPessoas = toggleIdentidadeFiltroPessoas;
 window.limparIdentidadesFiltroPessoas = limparIdentidadesFiltroPessoas;
 window.definirModoTemasAssuntos = definirModoTemasAssuntos;
+window.definirEixoValencia = definirEixoValencia;
 window.definirOrdemTemasAssuntos = definirOrdemTemasAssuntos;
 window.definirModoTerceiros = definirModoTerceiros;
 window.toggleGrupoFiltroPessoas = toggleGrupoFiltroPessoas;
@@ -1991,7 +2163,13 @@ window.definirPapelTemaEstatisticas = definirPapelTemaEstatisticas;
 window.definirPapelAssuntoEstatisticas = definirPapelAssuntoEstatisticas;
 window.definirFiltrosCompartilhados = definirFiltrosCompartilhados;
 window.limparFiltrosCompartilhados = limparFiltrosCompartilhados;
+window.definirContarEuComoPessoa = definirContarEuComoPessoa;
 window.renderConexoes = renderConexoes;
+window.setFiltroForaDoAcervo = setFiltroForaDoAcervo;
+window.setOrdemForaDoAcervo = setOrdemForaDoAcervo;
+window.baixarForaDoAcervo = baixarForaDoAcervo;
+window.atualizarBaixarForaDoAcervo = atualizarBaixarForaDoAcervo;
+window.baixarCruzamentos = baixarCruzamentos;
 window.exportarTudoAninhado = exportarTudoAninhado;
 window.exportarLivroCompleto = exportarLivroCompleto;
 window.exportarLivrosCompletos = exportarLivrosCompletos;
@@ -2018,6 +2196,7 @@ window.toggleCamposIntroducao = toggleCamposIntroducao;
 window.toggleCamposFicha = toggleCamposFicha;
 
 window.selecionarColetanea = selecionarColetanea;
+window.verTextoDaColetanea = (tipo, id) => abrirVisualizacao(tipo, Number(id));
 window.prepararNovaParte = prepararNovaParte;
 window.editarParteColetanea = editarParteColetanea;
 window.deletarParteColetanea = deletarParteColetanea;

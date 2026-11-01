@@ -326,11 +326,50 @@ describe('links nas Conexões: Elos e Ecos abrem o Ver, Buracos abrem o Editar',
             );
         const buracos = acoes('conexoes-buracos');
         assert.ok(buracos.length > 0 && buracos.every((a) => a === 'editar-poema'));
-        const elos = acoes('conexoes-elos');
-        assert.ok(elos.length > 0 && elos.every((a) => a === 'ver-poema'));
-        const ecos = acoes('conexoes-ecos');
-        assert.ok(ecos.length > 0 && ecos.every((a) => a === 'ver-poema'));
+        // Elos e Ecos abrem o Ver com Anterior/Próximo pelos poemas do mesmo cartão.
+        const daLista = (id) =>
+            [
+                ...document.querySelectorAll(
+                    `#${id} [data-action="ver-texto-da-lista"][data-tipo="poema"]`,
+                ),
+            ].map((n) => n.dataset.action);
+        const elos = daLista('conexoes-elos');
+        assert.ok(elos.length > 0);
+        assert.equal(
+            document.querySelectorAll('#conexoes-elos [data-action="ver-poema"]').length,
+            0,
+        );
+        const ecos = daLista('conexoes-ecos');
+        assert.ok(ecos.length > 0);
+        assert.equal(
+            document.querySelectorAll('#conexoes-ecos [data-action="ver-poema"]').length,
+            0,
+        );
         // cadeia linear (E, F, G) e grafo que converge (H, I, J): os dois tipos
-        assert.ok(document.querySelector('#conexoes-ecos .grafo-no[data-action="ver-poema"]'));
+        assert.ok(
+            document.querySelector('#conexoes-ecos .grafo-no[data-action="ver-texto-da-lista"]'),
+        );
+
+        // Cada cartão é uma lista: o Anterior/Próximo não mistura cartões.
+        const { itensDaListaNoDom } = await import('../js/ver-texto-da-lista.js');
+        const ids = (el) => itensDaListaNoDom(el).itens.map((i) => i.id);
+        const cartoesElo = [...document.querySelectorAll('#conexoes-elos [data-lista-textos]')];
+        assert.deepEqual(
+            cartoesElo.map((c) => ids(c.querySelector('[data-id]')).sort()),
+            [
+                [1, 2],
+                [3, 4],
+            ],
+        );
+        assert.match(cartoesElo[0].dataset.rotulo, /^Elo: /);
+        const cartoesEco = [...document.querySelectorAll('#conexoes-ecos [data-lista-textos]')];
+        assert.deepEqual(
+            cartoesEco.map((c) => ids(c.querySelector('[data-id]')).sort((a, b) => a - b)),
+            [
+                [5, 6, 7],
+                [8, 9, 10],
+            ],
+        );
+        assert.ok(cartoesEco.every((c) => /^Ecos: /.test(c.dataset.rotulo)));
     });
 });

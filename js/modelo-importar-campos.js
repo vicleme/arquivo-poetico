@@ -17,12 +17,12 @@ import { FORMATO_CAMPOS, VERSAO_FORMATO_CAMPOS } from './importar-campos.js';
 import { ETIQUETAS_CATEGORIAS, ROTULOS_ETIQUETAS } from './etiquetas.js';
 import {
     nomesTemasDoAssunto,
-    PAPEIS_PESSOA,
     OPCOES_GRAFIA,
     JARGAO_GIRIA_SEMENTES,
     extrairJargaoGiriaUnicos,
 } from './utils.js';
 import { rotuloCaminhoLocal } from './locais.js';
+import { nomesPapeisPessoa } from './papeis-pessoa.js';
 
 const COMO_USAR = [
     'Cada item de "textos" aponta para UM Poema ou Prosa que já existe no acervo e soma campos a ele. A importação não cria texto e não apaga nada de um texto.',
@@ -129,7 +129,7 @@ export function gerarModeloCampos(dbRef, { comVocabulario = false } = {}) {
                 'indefinido',
                 'nao-se-aplica',
             ],
-            papeis_da_pessoa: PAPEIS_PESSOA,
+            papeis_da_pessoa: nomesPapeisPessoa(),
             grafia_da_fonte: OPCOES_GRAFIA.filter((o) => o.valor).map((o) => o.valor),
             sugestoes_jargao_giria: [...JARGAO_GIRIA_SEMENTES],
         },

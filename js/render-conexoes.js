@@ -38,6 +38,13 @@
 // ============================================================
 
 import { db } from './db.js';
+import { renderForaDoAcervo } from './render-fora-do-acervo.js';
+import {
+    BLOCOS_DENTRO_DO_ACERVO,
+    blocoEstaAberto,
+    definirBlocoAberto,
+    definirTodosBlocos,
+} from './blocos-recolhiveis.js';
 import { escapeHtml, rotuloElo } from './utils.js';
 import {
     baixarConexoesMarkdown,
@@ -333,15 +340,29 @@ function tituloClicavel(id, titulo, corClasse = '', acao = 'editar-poema') {
     return `<span class="cursor-pointer hover:underline ${corClasse}" data-action="${acao}" data-id="${id}">${escapeHtml(titulo)}</span>`;
 }
 
+// Título de poema dentro de um Elo ou Eco: abre o Ver com Anterior/Próximo
+// percorrendo os poemas do mesmo cartão (o cartão leva `data-lista-textos`).
+function tituloDaLista(id, titulo, corClasse = '') {
+    return `<span class="cursor-pointer hover:underline ${corClasse}" data-action="ver-texto-da-lista" data-tipo="poema" data-id="${id}">${escapeHtml(titulo)}</span>`;
+}
+
 function badge(rotulo, corClasse) {
     if (!rotulo) return '';
     return `<span class="inline-block px-1.5 py-0.5 rounded ${corClasse} text-[10px] font-bold uppercase align-middle">${escapeHtml(rotulo)}</span>`;
+}
+
+// Subtítulos recolhíveis de "Dentro do acervo" (Buracos, Elos e Ecos): a
+// contagem vai no título, para o tamanho aparecer mesmo com o bloco fechado.
+function contagemDoBloco(chave, total) {
+    const el = document.getElementById(`conexoes-${chave}-contagem`);
+    if (el) el.textContent = ` (${total})`;
 }
 
 function renderBuracos() {
     const container = document.getElementById('conexoes-buracos');
     if (!container) return;
     const buracos = calcularBuracos();
+    contagemDoBloco('buracos', buracos.length);
     if (!buracos.length) {
         container.innerHTML =
             '<p class="text-sm text-gray-400 dark:text-slate-500">Nenhum buraco encontrado — todo Elo bilateral registrado tem os dois lados.</p>';
@@ -367,17 +388,17 @@ function renderClusterElo(cluster) {
         .map(
             (a) => `
         <div class="flex flex-wrap items-center gap-1.5 text-xs">
-            ${tituloClicavel(a.aId, a.aTitulo, '', 'ver-poema')}
+            ${tituloDaLista(a.aId, a.aTitulo)}
             ${badge(a.rotulo, 'bg-cyan-100 dark:bg-cyan-900 text-cyan-700 dark:text-cyan-300')}
             <span class="text-gray-300 dark:text-slate-600">↔</span>
-            ${tituloClicavel(a.bId, a.bTitulo, '', 'ver-poema')}
+            ${tituloDaLista(a.bId, a.bTitulo)}
         </div>`,
         )
         .join('');
     const rotuloTamanho = cluster.tamanho === 2 ? 'Par' : `Cluster (${cluster.tamanho} poemas)`;
     const chave = chaveCluster(cluster);
     return `
-        <div data-card-selecao="${escapeHtml(chave)}" class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm${classeMarcado(chave)}">
+        <div data-lista-textos data-rotulo="${escapeHtml(`Elo: ${rotuloTamanho.toLowerCase()}`)}" data-card-selecao="${escapeHtml(chave)}" class="bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm${classeMarcado(chave)}">
             <div class="flex items-center justify-between gap-2 mb-2">
                 <span class="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">${rotuloTamanho}</span>
                 ${caixaSelecao(chave)}
@@ -390,6 +411,7 @@ function renderElos() {
     const container = document.getElementById('conexoes-elos');
     if (!container) return;
     const clusters = agruparElos();
+    contagemDoBloco('elos', clusters.length);
     if (!clusters.length) {
         container.innerHTML =
             '<p class="text-sm text-gray-400 dark:text-slate-500 col-span-full">Nenhum Elo cadastrado ainda.</p>';
@@ -407,7 +429,7 @@ function renderPassosLineares(grafo) {
     return passos
         .map((id, i) => {
             const no = grafo.nos.find((n) => n.id === id);
-            if (i === 0) return tituloClicavel(id, no.titulo, '', 'ver-poema');
+            if (i === 0) return tituloDaLista(id, no.titulo);
             const aresta = grafo.arestas.find((a) => a.deId === passos[i - 1] && a.paraId === id);
             const seta = '<span class="text-gray-300 dark:text-slate-600 mx-1">→</span>';
             const rotulo = aresta?.tipo
@@ -416,7 +438,7 @@ function renderPassosLineares(grafo) {
                       'bg-fuchsia-100 dark:bg-fuchsia-900 text-fuchsia-700 dark:text-fuchsia-300',
                   ) + seta
                 : '';
-            return `${seta}${rotulo}${tituloClicavel(id, no.titulo, '', 'ver-poema')}`;
+            return `${seta}${rotulo}${tituloDaLista(id, no.titulo)}`;
         })
         .join('');
 }
@@ -669,7 +691,7 @@ function renderDiagramaEcos(grafo, idSvg) {
                 )
                 .join('');
             return `
-        <g class="grafo-no" data-action="ver-poema" data-id="${no.id}" transform="translate(${p.x},${p.y})">
+        <g class="grafo-no" data-action="ver-texto-da-lista" data-tipo="poema" data-id="${no.id}" transform="translate(${p.x},${p.y})">
             <rect class="grafo-no-caixa" width="${DIAGRAMA_NO_LARGURA}" height="${p.altura}" rx="8"></rect>
             <text class="grafo-no-titulo" style="font: ${DIAGRAMA_FONTE_TITULO};" text-anchor="middle" y="${yTextoInicial}">${linhasSvg}</text>
         </g>`;
@@ -792,10 +814,13 @@ function renderCartaoEco(grafo, indice) {
     const idSvg = `conexoes-diagrama-${indice}`;
     const chave = chaveGrafo(grafo);
     const marcador = caixaSelecao(chave);
+    const rotuloLista = escapeHtml(
+        `Ecos: ${grafo.linear ? 'cadeia' : 'diagrama'} de ${grafo.nos.length} poemas`,
+    );
     const barra = marcador ? `<div class="mb-2">${marcador}</div>` : '';
     if (grafo.linear) {
         return `
-        <div data-card-selecao="${escapeHtml(chave)}" class="relative bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm text-xs${classeMarcado(chave)}">
+        <div data-lista-textos data-rotulo="${rotuloLista}" data-card-selecao="${escapeHtml(chave)}" class="relative bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm text-xs${classeMarcado(chave)}">
             <button
                 type="button"
                 data-action="baixar-diagrama-ecos"
@@ -811,7 +836,7 @@ function renderCartaoEco(grafo, indice) {
         </div>`;
     }
     return `
-        <div data-card-selecao="${escapeHtml(chave)}" class="relative bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm text-xs${classeMarcado(chave)}">
+        <div data-lista-textos data-rotulo="${rotuloLista}" data-card-selecao="${escapeHtml(chave)}" class="relative bg-white dark:bg-slate-900 p-4 rounded-lg border border-gray-200 dark:border-slate-700 shadow-sm text-xs${classeMarcado(chave)}">
             <button
                 type="button"
                 data-action="baixar-diagrama-ecos"
@@ -830,6 +855,7 @@ function renderEcos() {
     const container = document.getElementById('conexoes-ecos');
     if (!container) return;
     const grafos = montarGrafosEcos();
+    contagemDoBloco('ecos', grafos.length);
     if (!grafos.length) {
         container.innerHTML =
             '<p class="text-sm text-gray-400 dark:text-slate-500">Nenhum Eco cadastrado ainda.</p>';
@@ -927,11 +953,48 @@ export async function baixarDiagramaEcos(botao) {
     }
 }
 
+// Põe cada subtítulo de "Dentro do acervo" no estado guardado.
+function aplicarBlocosDentro() {
+    document.querySelectorAll('details[data-bloco-dentro]').forEach((d) => {
+        d.open = blocoEstaAberto(d.dataset.blocoDentro);
+    });
+}
+
+// Liga, uma vez só, o clique no título de cada subtítulo e nos botões
+// "Expandir tudo" e "Recolher tudo". O estado é lido logo DEPOIS de o navegador
+// trocar o `open` (por isso o `setTimeout`), como nos blocos de Fora do acervo.
+function ligarBlocosDentro() {
+    const secao = document.getElementById('conexoes-dentro');
+    if (!secao || secao.dataset.blocosLigados) return;
+    secao.dataset.blocosLigados = '1';
+    secao.addEventListener('click', (e) => {
+        const resumo = e.target.closest?.('summary[data-bloco-dentro-resumo]');
+        if (resumo) {
+            const bloco = resumo.closest('details[data-bloco-dentro]');
+            if (bloco) {
+                setTimeout(() => definirBlocoAberto(bloco.dataset.blocoDentro, bloco.open), 0);
+            }
+            return;
+        }
+        const botao = e.target.closest?.('button[data-bloco-dentro-acao]');
+        if (!botao) return;
+        definirTodosBlocos(
+            botao.dataset.blocoDentroAcao === 'expandir',
+            undefined,
+            BLOCOS_DENTRO_DO_ACERVO,
+        );
+        aplicarBlocosDentro();
+    });
+}
+
 export function renderConexoes() {
     podarSelecao();
     renderBuracos();
     renderElos();
     renderEcos();
+    ligarBlocosDentro();
+    aplicarBlocosDentro();
+    renderForaDoAcervo();
     atualizarBarraSelecao();
 }
 

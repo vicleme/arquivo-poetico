@@ -45,7 +45,7 @@ const aspas = escaparAspasBusca;
 export function consultaDoValorDaCorrente(campo, valor) {
     const { prefixo } = CONFIG_ATRIBUTO[campo];
     return valor === SEM_CLASSIFICACAO
-        ? `movimento:* -${prefixo}:*`
+        ? `corrente:* -${prefixo}:*`
         : `${prefixo}:"${aspas(valor)}"`;
 }
 
@@ -150,12 +150,12 @@ export function cruzarProgramaPostura(textos = textosDasEstatisticas()) {
 // contado à parte.
 export const MODOS_CORRENTES = ['agrupado', 'separado'];
 
-// O clique abre a lista pela busca por nome: `movimento:` é hierárquico (acha
-// também as divisões) e `movimentodireto:` só o que foi ligado direto. Como a
+// O clique abre a lista pela busca por nome: `corrente:` é hierárquico (acha
+// também as divisões) e `correntedireta:` só o que foi ligado direto. Como a
 // busca é por trecho do nome, um nome contido em outro ("Romantismo" em
 // "Romantismo no Brasil") pode trazer textos a mais na lista do que na barra.
 export function consultaDaCorrente(modo, nome) {
-    const prefixo = modo === 'separado' ? 'movimentodireto' : 'movimento';
+    const prefixo = modo === 'separado' ? 'correntedireta' : 'corrente';
     return `${prefixo}:"${escaparAspasBusca(nome)}"`;
 }
 

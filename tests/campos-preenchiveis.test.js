@@ -241,3 +241,57 @@ describe('campo "localEscrita" (Preencher campo em massa)', () => {
         assert.strictEqual(itens[0].localEscrita, null);
     });
 });
+
+describe('campos-preenchiveis: autoclassificação (corações)', () => {
+    const c = () => campo('autoclassificacao');
+
+    it('tem as 10 opções, de 0,5 a 5 corações', () => {
+        const op = c().opcoes;
+        assert.equal(op.length, 10);
+        assert.deepEqual(
+            op.map((o) => o.valor),
+            ['0.5', '1', '1.5', '2', '2.5', '3', '3.5', '4', '4.5', '5'],
+        );
+        assert.equal(op[0].rotulo, '0,5 corações');
+        assert.equal(op[1].rotulo, '1 coração');
+    });
+
+    it('ler trata 0, ausente e inválido como vazio', () => {
+        assert.equal(c().ler({ autoclassificacao: 0 }), '');
+        assert.equal(c().ler({}), '');
+        assert.equal(c().ler({ autoclassificacao: 7 }), '');
+        assert.equal(c().ler({ autoclassificacao: 3.5 }), '3.5');
+    });
+
+    it('preenche só os não avaliados, a menos que sobrescreva', () => {
+        const itens = [
+            { id: 1 },
+            { id: 2, autoclassificacao: 0 },
+            { id: 3, autoclassificacao: 2 },
+            { id: 4, autoclassificacao: 4 },
+        ];
+        const r = planejarPreenchimento(itens, c(), '4');
+        assert.deepEqual(
+            r.alterar.map((i) => i.id),
+            [1, 2],
+        );
+        assert.equal(r.jaPreenchidos, 1);
+        assert.equal(r.jaIguais, 1);
+        aplicarPreenchimento(r.alterar, c(), '4');
+        assert.strictEqual(itens[0].autoclassificacao, 4);
+        assert.strictEqual(itens[2].autoclassificacao, 2);
+        const r2 = planejarPreenchimento(itens, c(), '1.5', { sobrescrever: true });
+        assert.equal(r2.alterar.length, 4);
+        aplicarPreenchimento(r2.alterar, c(), '1.5');
+        assert.strictEqual(itens[3].autoclassificacao, 1.5);
+    });
+
+    it('limpar grava 0 e ignora quem já não está avaliado', () => {
+        const itens = [{ id: 1, autoclassificacao: 5 }, { id: 2 }, { id: 3, autoclassificacao: 0 }];
+        const r = planejarLimpeza(itens, c());
+        assert.equal(r.alterar.length, 1);
+        assert.equal(r.jaVazios, 2);
+        aplicarLimpeza(r.alterar, c());
+        assert.strictEqual(itens[0].autoclassificacao, 0);
+    });
+});

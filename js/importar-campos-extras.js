@@ -6,8 +6,14 @@
 //
 //   - territorialidade: lista de Locais citados no texto (nomes);
 //   - localEscrita: onde o texto foi redigido (um Local só);
-//   - pessoas: lista de { pessoa, papeis } (papéis de PAPEIS_PESSOA);
+//   - pessoas: lista de { pessoa, papeis } (papéis do registro, ver papeis-pessoa.js);
 //   - pendencia: texto livre;
+//   - notasPublicas: marca as Notas como públicas (só `true` conta);
+//   - leituraAutonoma: Lê-se sozinho, Só em sequência, Só em conjunto ou Só como
+//     início (aceita o valor, o rótulo ou uma forma solta; "sozinho" é ignorado);
+//   - autorEmSigilo: liga o sigilo do autor no texto (só `true` conta: um
+//     arquivo nunca tira o sigilo que o autor pôs);
+//   - comentariosPublicos: texto livre ("Comentários ao leitor");
 //   - fonte: { origem, edicao, link, conferido, grafia } (ou só um texto, que
 //     vale como origem);
 //   - jargaoGiria: lista de textos livres (campo "Jargão e gíria" do grupo
@@ -31,10 +37,10 @@
 //   - Papel de pessoa fora da lista, grafia desconhecida e valor de tipo errado
 //     vão para o relatório e deixam aquela entrada de fora.
 
+import { lerValenciaTexto } from './valencia-texto.js';
 import {
     chaveTema,
     gerarId,
-    PAPEIS_PESSOA,
     OPCOES_GRAFIA,
     formatarDataAcesso,
     jargaoGiriaDoItem,
@@ -50,6 +56,12 @@ import {
     territorialidadeDoTexto,
 } from './locais.js';
 import { obterCampoPreenchivel } from './campos-preenchiveis.js';
+import { lerLeituraAutonoma } from './leitura-autonoma.js';
+import {
+    registroPapeisPessoa,
+    nomesPapeisPessoa,
+    resolverConflitosMantendoOPrimeiro,
+} from './papeis-pessoa.js';
 
 // ─── Chaves de comparação ──────────────────────────────────────────────
 
@@ -78,11 +90,16 @@ function chaveDePapel(valor) {
     return chave === 'inspiracao' ? 'inspiracao para' : chave;
 }
 
-const PAPEL_POR_CHAVE = new Map();
-PAPEIS_PESSOA.forEach((p) => PAPEL_POR_CHAVE.set(chaveDePapel(p), p));
-
+// Lê o registro a cada chamada (a lista de papéis é do acervo e pode mudar).
+// Vale o nome do papel e, se não colidir com nenhum nome, o apelido ("Alo").
 export function papelDePessoaPorRotulo(rotulo) {
-    return PAPEL_POR_CHAVE.get(chaveDePapel(rotulo)) || null;
+    const registro = registroPapeisPessoa();
+    const chave = chaveDePapel(rotulo);
+    if (!chave) return null;
+    const porNome = registro.find((p) => chaveDePapel(p.nome) === chave);
+    if (porNome) return porNome.nome;
+    const porApelido = registro.find((p) => p.apelido && chaveDePapel(p.apelido) === chave);
+    return porApelido ? porApelido.nome : null;
 }
 
 function listaDeStrings(valor) {
@@ -202,6 +219,98 @@ function lerCamposSimples(bruta, problemas) {
     const saida = [];
     const pendencia = textoLimpo(bruta.pendencia ?? bruta['pendência'] ?? '');
     if (pendencia) saida.push({ chave: 'pendencia', valor: pendencia });
+
+    // Marca de leitura: só conta como `true` (nunca desmarca), como `conferido`.
+    if (bruta.sorteavel !== undefined && bruta.sorteavel !== null && bruta.sorteavel !== '') {
+        const b = lerBooleano(bruta.sorteavel);
+        if (!b.ok) {
+            problemas.push({
+                campo: 'sorteavel',
+                valor: String(bruta.sorteavel),
+                motivo: 'valor-invalido',
+            });
+        } else if (b.valor) {
+            saida.push({ chave: 'sorteavel', valor: true });
+        }
+    }
+
+    // Leitura autônoma: valor fechado. Só entra o que não é o padrão ("sozinho"
+    // e vazio são ignorados); valor desconhecido vai para o relatório.
+    if (
+        bruta.leituraAutonoma !== undefined &&
+        bruta.leituraAutonoma !== null &&
+        String(bruta.leituraAutonoma).trim() !== ''
+    ) {
+        const v = lerLeituraAutonoma(bruta.leituraAutonoma);
+        if (v === undefined) {
+            problemas.push({
+                campo: 'leituraAutonoma',
+                valor: String(bruta.leituraAutonoma),
+                motivo: 'valor-invalido',
+            });
+        } else if (v) {
+            saida.push({ chave: 'leituraAutonoma', valor: v });
+        }
+    }
+
+    // Valência do texto (ajuste do autor): valor fechado, como a Leitura autônoma.
+    // Vazio e "seguir os temas" são ignorados; valor desconhecido vai para o relatório.
+    if (
+        bruta.valenciaAjuste !== undefined &&
+        bruta.valenciaAjuste !== null &&
+        String(bruta.valenciaAjuste).trim() !== ''
+    ) {
+        const v = lerValenciaTexto(bruta.valenciaAjuste);
+        if (v === undefined) {
+            problemas.push({
+                campo: 'valenciaAjuste',
+                valor: String(bruta.valenciaAjuste),
+                motivo: 'valor-invalido',
+            });
+        } else if (v) {
+            saida.push({ chave: 'valenciaAjuste', valor: v });
+        }
+    }
+
+    // Autor em sigilo: como `sorteavel`, só `true` conta (nunca desmarca).
+    if (
+        bruta.autorEmSigilo !== undefined &&
+        bruta.autorEmSigilo !== null &&
+        bruta.autorEmSigilo !== ''
+    ) {
+        const b = lerBooleano(bruta.autorEmSigilo);
+        if (!b.ok) {
+            problemas.push({
+                campo: 'autorEmSigilo',
+                valor: String(bruta.autorEmSigilo),
+                motivo: 'valor-invalido',
+            });
+        } else if (b.valor) {
+            saida.push({ chave: 'autorEmSigilo', valor: true });
+        }
+    }
+
+    // Notas públicas: como `sorteavel`, só `true` conta (nunca desmarca).
+    if (
+        bruta.notasPublicas !== undefined &&
+        bruta.notasPublicas !== null &&
+        bruta.notasPublicas !== ''
+    ) {
+        const b = lerBooleano(bruta.notasPublicas);
+        if (!b.ok) {
+            problemas.push({
+                campo: 'notasPublicas',
+                valor: String(bruta.notasPublicas),
+                motivo: 'valor-invalido',
+            });
+        } else if (b.valor) {
+            saida.push({ chave: 'notasPublicas', valor: true });
+        }
+    }
+
+    // Comentários ao leitor: texto livre, ignora vazio.
+    const comentarios = textoLimpo(bruta.comentariosPublicos ?? bruta.comentariosAoLeitor ?? '');
+    if (comentarios) saida.push({ chave: 'comentariosPublicos', valor: comentarios });
 
     let fonte = bruta.fonte ?? bruta.fonteTexto;
     if (fonte == null || fonte === '') return saida;
@@ -363,7 +472,8 @@ export function aplicarLocalEscrita(dbRef, item, nome, rel, { substituir = false
 }
 
 function ordemDosPapeis(papeis) {
-    return [...papeis].sort((a, b) => PAPEIS_PESSOA.indexOf(a) - PAPEIS_PESSOA.indexOf(b));
+    const ordem = nomesPapeisPessoa();
+    return [...papeis].sort((a, b) => ordem.indexOf(a) - ordem.indexOf(b));
 }
 
 export function aplicarPessoas(dbRef, item, pessoas, rel) {
@@ -388,18 +498,30 @@ export function aplicarPessoas(dbRef, item, pessoas, rel) {
             dbRef.pessoas.push(cadastro);
             nova = true;
         }
+        // Regras de exclusão do registro: o que já estava marcado vence, e entre
+        // os pedidos vale o primeiro. Papel que sai por conflito vai ao relatório.
         const vinculo = item.pessoas.find((v) => String(v.pessoaId) === String(cadastro.id));
+        const atuais = Array.isArray(vinculo?.papeis) ? vinculo.papeis : [];
+        const juntos = [...atuais, ...papeis.filter((p) => !atuais.includes(p))];
+        const { papeis: mantidos, removidos } = resolverConflitosMantendoOPrimeiro(juntos);
+        removidos.forEach((papel) =>
+            rel.problemas.push({
+                campo: 'pessoas',
+                valor: cadastro.nome,
+                detalhe: papel,
+                motivo: 'papel-pessoa-conflito',
+            }),
+        );
         if (!vinculo) {
-            item.pessoas.push({ pessoaId: cadastro.id, papeis: ordemDosPapeis(papeis) });
+            item.pessoas.push({ pessoaId: cadastro.id, papeis: ordemDosPapeis(mantidos) });
             rel.adicionados.pessoas.push({
                 nome: cadastro.nome,
-                papeis: ordemDosPapeis(papeis),
+                papeis: ordemDosPapeis(mantidos),
                 nova,
             });
             return;
         }
-        const atuais = Array.isArray(vinculo.papeis) ? vinculo.papeis : [];
-        const faltam = papeis.filter((p) => !atuais.includes(p));
+        const faltam = mantidos.filter((p) => !atuais.includes(p));
         if (!faltam.length) {
             rel.jaTinha.pessoas.push({ nome: cadastro.nome });
             return;

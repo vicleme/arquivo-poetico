@@ -4,12 +4,9 @@
 // render-listas.js). A aba e o Anterior/Próximo do Ver do Livro usam o mesmo
 // resultado, para nunca divergirem.
 
-import {
-    filtroDataVazio,
-    itemBateFiltroData,
-    normalizarBusca,
-    situacaoEditorialDoLivro,
-} from './utils.js';
+import { filtroDataVazio, itemBateFiltroData, situacaoEditorialDoLivro } from './utils.js';
+import { livroCombinaComUsoIa } from './uso-ia-livro.js';
+import { livroCombinaComConsulta } from './busca-livros.js';
 
 // Valores especiais dos selects. Ficam fora do que o usuário pode digitar:
 // '' já quer dizer "todos" em cada seletor.
@@ -23,7 +20,71 @@ export const PROGRAMADO = 'programado';
 export const NAO_PUBLICADO = 'nao-publicado';
 
 export function filtrosLivrosVazios() {
-    return { busca: '', tipo: '', fase: '', situacao: '', publicacao: '', data: filtroDataVazio() };
+    return {
+        busca: '',
+        tipo: '',
+        fase: '',
+        situacao: '',
+        publicacao: '',
+        usoIa: '',
+        // Botões "tem ..." de 3 estados: '' = tanto faz (não filtra), 'com' = só
+        // livros que têm, 'sem' = só livros que não têm.
+        temCapa: '',
+        temIsbn: '',
+        temLoja: '',
+        data: filtroDataVazio(),
+    };
+}
+
+export const TEM_COM = 'com';
+export const TEM_SEM = 'sem';
+
+// Estado de um botão "tem ...": só 'com' e 'sem' valem; `true` (forma antiga, da
+// caixa de checagem) conta como 'com'; qualquer outra coisa é '' (tanto faz).
+export function estadoTem(valor) {
+    if (valor === true || valor === TEM_COM) return TEM_COM;
+    if (valor === TEM_SEM) return TEM_SEM;
+    return '';
+}
+
+// O clique gira: tanto faz, com, sem, e volta a tanto faz.
+export function proximoEstadoTem(valor) {
+    const atual = estadoTem(valor);
+    if (atual === '') return TEM_COM;
+    return atual === TEM_COM ? TEM_SEM : '';
+}
+
+// Rótulos de cada botão, por estado: [tanto faz, com, sem].
+export const ROTULOS_TEM_LIVROS = {
+    temCapa: ['Capa', 'Com capa', 'Sem capa'],
+    temIsbn: ['ISBN', 'Com ISBN', 'Sem ISBN'],
+    temLoja: ['Loja', 'Com loja', 'Sem loja'],
+};
+
+// Aplica um botão "tem ...": '' passa todos; 'com' só quem tem; 'sem' só quem não tem.
+function livroCombinaComTem(livro, estado, temEsse) {
+    const e = estadoTem(estado);
+    if (e === '') return true;
+    return e === TEM_COM ? temEsse(livro) : !temEsse(livro);
+}
+
+// Capa enviada (o id da imagem guardada). O link da imagem original não conta:
+// é só de acesso. Mesma regra do `tem_capa` do download.
+export function livroTemCapa(livro) {
+    return livro?.capa != null && livro.capa !== '';
+}
+
+// ISBN-13 ou ISBN-10 preenchido.
+export function livroTemIsbn(livro) {
+    return Boolean(String(livro?.isbn13 ?? '').trim() || String(livro?.isbn10 ?? '').trim());
+}
+
+// Pelo menos uma loja com nome ou link. Mesma regra da lista de lojas do download.
+export function livroTemLoja(livro) {
+    return (
+        Array.isArray(livro?.lojas) &&
+        livro.lojas.some((l) => String(l?.nome ?? '').trim() || String(l?.url ?? '').trim())
+    );
 }
 
 // Tem Data de Primeira Publicação = pelo menos dia, mês ou ano (hora sozinha não
@@ -93,30 +154,17 @@ function faseDoLivro(livro) {
     return typeof livro?.fase === 'string' ? livro.fase.trim() : '';
 }
 
-// ISBN se digita com ou sem hífen e espaço; a busca ignora os dois.
-function soDigitosDoIsbn(valor) {
-    return String(valor ?? '')
-        .replace(/[\s-]/g, '')
-        .toLowerCase();
-}
-
-// Busca em título, sigla e ISBN (13 e 10). Ignora caixa e acento, por trecho.
-// Termo vazio passa todos.
-export function livroCombinaComBusca(livro, termo) {
-    const alvo = normalizarBusca(String(termo ?? '').trim());
-    if (!alvo) return true;
-
-    if (normalizarBusca(livro?.titulo).includes(alvo)) return true;
-    if (normalizarBusca(livro?.siglaOficial).includes(alvo)) return true;
-
-    // ISBN: só compara se o termo, sem hífen e espaço, parece ISBN (dígitos e o X
-    // final do ISBN-10). Evita que a letra "x" digitada para o título case com ISBN.
-    const alvoIsbn = soDigitosDoIsbn(alvo);
-    if (alvoIsbn && /^[0-9]+x?$/.test(alvoIsbn)) {
-        if (soDigitosDoIsbn(livro?.isbn13).includes(alvoIsbn)) return true;
-        if (soDigitosDoIsbn(livro?.isbn10).includes(alvoIsbn)) return true;
-    }
-    return false;
+// Busca da aba (a mesma caixa aceita termos soltos e `campo:valor`): título, sigla,
+// ISBN, autoria e equipe, mais os prefixos `autor:`, `papel:`, `equipe:` e
+// `papelequipe:` (ver busca-livros.js). Termo vazio passa todos. `autoresCadastro` e
+// `colaboradoresCadastro` servem a autoria e à equipe.
+export function livroCombinaComBusca(
+    livro,
+    termo,
+    autoresCadastro = [],
+    colaboradoresCadastro = [],
+) {
+    return livroCombinaComConsulta(livro, termo, autoresCadastro, colaboradoresCadastro);
 }
 
 function livroCombinaComSituacao(livro, situacao) {
@@ -134,29 +182,66 @@ function livroCombinaComFase(livro, fase) {
 }
 
 // Aplica todos os filtros (E entre eles). `filtros` pode ter só alguns campos.
-// `hoje` ({ ano, mes, dia }) só importa para Programados.
-export function filtrarLivros(livros, filtros = {}, hoje = hojeLocal()) {
-    const { busca = '', tipo = '', fase = '', situacao = '', publicacao = '', data } = filtros;
+// `hoje` ({ ano, mes, dia }) só importa para Programados; `autoresCadastro`, para
+// a busca achar o livro pelo nome do Autor; `colaboradoresCadastro`, pelo da equipe.
+export function filtrarLivros(
+    livros,
+    filtros = {},
+    hoje = hojeLocal(),
+    autoresCadastro = [],
+    colaboradoresCadastro = [],
+) {
+    const {
+        busca = '',
+        tipo = '',
+        fase = '',
+        situacao = '',
+        publicacao = '',
+        usoIa = '',
+        temCapa = '',
+        temIsbn = '',
+        temLoja = '',
+        data,
+    } = filtros;
     return (livros || []).filter(
         (l) =>
-            livroCombinaComBusca(l, busca) &&
+            livroCombinaComBusca(l, busca, autoresCadastro, colaboradoresCadastro) &&
             (!tipo || tipoDoLivro(l) === tipo) &&
             livroCombinaComFase(l, fase) &&
             livroCombinaComSituacao(l, situacao) &&
             livroCombinaComPublicacao(l, publicacao, hoje) &&
+            livroCombinaComUsoIa(l, usoIa) &&
+            livroCombinaComTem(l, temCapa, livroTemCapa) &&
+            livroCombinaComTem(l, temIsbn, livroTemIsbn) &&
+            livroCombinaComTem(l, temLoja, livroTemLoja) &&
             livroCombinaComData(l, data),
     );
 }
 
 // Há algum filtro ligado? (decide o botão "Limpar filtros" e a mensagem de lista vazia)
 export function filtrosLivrosAtivos(filtros = {}) {
-    const { busca = '', tipo = '', fase = '', situacao = '', publicacao = '', data } = filtros;
+    const {
+        busca = '',
+        tipo = '',
+        fase = '',
+        situacao = '',
+        publicacao = '',
+        usoIa = '',
+        temCapa = '',
+        temIsbn = '',
+        temLoja = '',
+        data,
+    } = filtros;
     return Boolean(
         String(busca).trim() ||
         tipo ||
         fase ||
         situacao ||
         publicacao ||
+        usoIa ||
+        estadoTem(temCapa) ||
+        estadoTem(temIsbn) ||
+        estadoTem(temLoja) ||
         filtroDataLivrosAtivo(data),
     );
 }

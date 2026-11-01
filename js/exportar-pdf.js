@@ -43,7 +43,7 @@ function obterConstrutorJsPdf() {
 // vendorizar um arquivo de fonte à parte) só cobrem WinAnsi — na prática
 // Latin-1: letras acentuadas do português passam, mas emoji (🟢🟡🔵🔴⚪🔒,
 // usados nos rótulos de Status — ver INFO_STATUS em exportar-md.js),
-// a seta "→" (usada em Localização) e "⚠️" (Conteúdo Sensível/Vocabulário
+// a seta "→" (usada no Fora de escopo) e "⚠️" (Conteúdo Sensível/Vocabulário
 // Hiperacionante) não. Pior do que só "sumir": ao encontrar QUALQUER
 // caractere fora desse alcance numa string, o jsPDF muda o modo de
 // codificação da CHAMADA INTEIRA pra um fallback UTF-16 sem CMap de
@@ -75,8 +75,16 @@ export function saneParaPdf(texto) {
     // \u0000-\u00ff é Latin-1 de propósito (inclui os controles 0-31 e
     // 127-159, que fazem parte da tabela e nunca corrompem o PDF) — não
     // é um \x00 perdido por engano, daí o eslint-disable.
-    // eslint-disable-next-line no-control-regex
-    return t.replace(/[^\u0000-\u00ff]/g, '');
+    // As fontes padrão do jsPDF cobrem a WinAnsi (Windows-1252), que além do
+    // Latin-1 tem aspas curvas, travessão, meia-risca, reticências, ‹ ›, †, ‡, ‰,
+    // €, ™, Œ, œ, Š, š, Ž, ž, Ÿ, ƒ, ˆ e ˜. Esses passam (conferido no jsPDF 2.5.1:
+    // saem certos em regular e negrito, sem o efeito de letras esparramadas).
+    // Sem esta exceção, “aspas” e — sumiam em silêncio do PDF.
+    return t.replace(
+        // eslint-disable-next-line no-control-regex
+        /[^\u0000-\u00ff\u2013\u2014\u2018-\u201e\u2020\u2021\u2026\u2030\u2039\u203a\u20ac\u2122\u0152\u0153\u0160\u0161\u0178\u017d\u017e\u0192\u02c6\u02dc]/g,
+        '',
+    );
 }
 
 // Converte uma linha "crua" de markdown (sem o marcador de lista "- ",

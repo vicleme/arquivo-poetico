@@ -60,13 +60,9 @@
 
                 <div class="md:col-span-2 space-y-4">
                     <div class="grid grid-cols-4 gap-4">
-                        <div class="col-span-3">
+                        <div class="col-span-4">
                             <label class="form-label">Título</label>
                             <input type="text" id="pr-titulo" required />
-                        </div>
-                        <div>
-                            <label class="form-label">Sequência</label>
-                            <input type="number" id="pr-sequencia" placeholder="Ex: 1" />
                         </div>
                     </div>
 
@@ -169,7 +165,8 @@
                             </div>
                             <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-3">
                                 Preencha só o que souber. O ano de publicação é sugerido
-                                automaticamente se o Destino pertencer a um livro já publicado.
+                                automaticamente quando a primeira aparição em "Onde aparece" é de um
+                                livro já publicado.
                             </p>
                         </div>
                     </details>
@@ -682,6 +679,26 @@
 
                     <label class="form-label mt-3">Notas</label>
                     <textarea id="pr-notas" class="text-sm h-20"></textarea>
+                    <label
+                        class="mt-1 flex items-start gap-2 text-sm cursor-pointer"
+                        title="Marque quando o conteúdo das Notas não for comprometedor. Só as Notas marcadas podem aparecer no sorteio de leitura. Desligado por padrão."
+                    >
+                        <input type="checkbox" id="pr-notas-publicas" class="mt-1" />
+                        <span
+                            ><strong>Pública</strong>
+                            <span class="block text-xs text-gray-500 dark:text-slate-400"
+                                >As Notas podem aparecer para quem lê no sorteio. Sem a marca, ficam
+                                só no cadastro.</span
+                            ></span
+                        >
+                    </label>
+
+                    <label class="form-label mt-3">Comentários ao leitor</label>
+                    <textarea
+                        id="pr-comentarios-publicos"
+                        class="text-sm h-20"
+                        placeholder="Escrito para quem lê a obra. Aparece no sorteio de leitura."
+                    ></textarea>
 
                     <label class="form-label mt-3">Autoria</label>
                     <div class="flex gap-2 mb-2">
@@ -710,40 +727,31 @@
                 <div
                     class="space-y-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg border border-gray-300 dark:border-slate-600"
                 >
-                    <details class="campo-grupo">
-                        <summary>Livros e destino</summary>
+                    <details class="campo-grupo" id="pr-onde-grupo">
+                        <summary>Onde aparece</summary>
                         <div class="campo-grupo-corpo">
-                            <label class="form-label"
-                                >Livros
-                                <span
-                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                                    >(etiqueta editorial paralela — não confundir com Destino,
-                                    abaixo)</span
-                                ></label
+                            <p
+                                id="pr-onde-trava"
+                                class="hidden text-[11px] bg-red-50 dark:bg-red-950 border border-red-100 dark:border-red-900 text-red-700 dark:text-red-300 rounded-lg px-3 py-2 mb-3"
                             >
-                            <select id="pr-livros" multiple class="h-24 text-xs mb-2"></select>
-                            <label
-                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
-                                >Filtrar por Livro (opcional)</label
+                                Descartado: a origem do texto está em "Cortado de". Onde aparece
+                                fica guardado, mas travado e sem efeito enquanto o status for
+                                Descartado.
+                            </p>
+                            <p
+                                id="pr-onde-vazio"
+                                class="text-[11px] text-gray-400 dark:text-slate-500 mb-2"
                             >
-                            <select
-                                id="pr-destino-filtro"
-                                onchange="filtrarDestinoProsa(this.value)"
-                                class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs mb-2"
+                                Sem aparição: o texto fica avulso, sem livro e sem posição.
+                            </p>
+                            <div id="pr-onde-linhas" class="space-y-2 mb-2"></div>
+                            <button
+                                type="button"
+                                id="pr-onde-add"
+                                class="text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900 px-3 py-1.5 rounded"
                             >
-                                <option value="">-- Todos os livros --</option>
-                            </select>
-                            <label
-                                class="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase mb-1"
-                                >Destino (Vincular a:)</label
-                            >
-                            <select
-                                id="pr-destino"
-                                onchange="autoPreencherDataPublicacao(this.value, 'pr')"
-                                class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                            >
-                                <option value="">-- Sem vínculo (Avulso) --</option>
-                            </select>
+                                + Aparição
+                            </button>
                             <div id="pr-coletaneas-info"></div>
                         </div>
                     </details>
@@ -1193,43 +1201,128 @@
                                 >Intertextualidade
                                 <span
                                     class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                                    >(diálogo com algo externo ao arquivo — música, livro, série...
-                                    pode ter mais de uma referência, de tipos diferentes)</span
+                                    >(diálogo com algo externo ao arquivo, por trecho: música,
+                                    livro, série... pode ter mais de uma referência. Se o poema
+                                    inteiro deriva da obra, use Hipertextualidade)</span
                                 ></label
                             >
-                            <div class="flex gap-2 mb-2">
+                            <div class="grid grid-cols-2 gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-intertexto-relacao"
+                                    list="sugestoes-intertexto-relacao-prosa"
+                                    class="text-sm"
+                                    placeholder="Relação (Citação, Alusão...)"
+                                />
                                 <input
                                     type="text"
                                     id="pr-intertexto-tipo"
                                     list="sugestoes-intertexto-tipo-prosa"
-                                    class="text-xs w-28 flex-shrink-0"
-                                    placeholder="Tipo..."
+                                    class="text-sm"
+                                    placeholder="Tipo de obra (Livro, Música...)"
                                 />
                                 <input
                                     type="text"
-                                    id="pr-intertexto-texto"
+                                    id="pr-intertexto-obra"
                                     list="sugestoes-intertexto-prosa"
-                                    class="text-sm flex-1"
-                                    placeholder="Ex.: 'Águas de Março', Tom Jobim"
+                                    class="text-sm"
+                                    placeholder="Obra, ex.: Águas de Março"
                                 />
+                                <div class="min-w-0">
+                                    <input
+                                        type="text"
+                                        id="pr-intertexto-autor"
+                                        list="sugestoes-intertexto-autor-prosa"
+                                        class="text-sm w-full"
+                                        placeholder="Autor ou autores (Enter separa)"
+                                    />
+                                    <div
+                                        id="pr-intertexto-autor-chips"
+                                        class="flex flex-wrap gap-1 mt-1 empty:hidden"
+                                    ></div>
+                                </div>
+                                <div class="min-w-0">
+                                    <input
+                                        type="text"
+                                        id="pr-intertexto-origem"
+                                        list="sugestoes-intertexto-origem-prosa"
+                                        class="text-sm w-full"
+                                        placeholder="Origem: lugar ou cultura (Enter separa)"
+                                    />
+                                    <div
+                                        id="pr-intertexto-origem-chips"
+                                        class="flex flex-wrap gap-1 mt-1 empty:hidden"
+                                    ></div>
+                                </div>
+                                <div class="min-w-0">
+                                    <input
+                                        type="text"
+                                        id="pr-intertexto-personagem"
+                                        list="sugestoes-intertexto-personagem-prosa"
+                                        class="text-sm w-full"
+                                        placeholder="Personagem ou personagens (Enter separa)"
+                                    />
+                                    <div
+                                        id="pr-intertexto-personagem-chips"
+                                        class="flex flex-wrap gap-1 mt-1 empty:hidden"
+                                    ></div>
+                                </div>
                             </div>
-                            <div class="flex items-center justify-end gap-2 mb-2">
-                                <button
-                                    type="button"
-                                    id="pr-intertexto-btn-cancelar"
-                                    onclick="cancelarEdicaoIntertexto('prosas')"
-                                    class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="button"
-                                    id="pr-intertexto-btn-add"
-                                    onclick="adicionarIntertexto('prosas')"
-                                    class="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-3 py-1.5 rounded text-xs font-bold flex-shrink-0"
-                                >
-                                    +
-                                </button>
+                            <div class="mb-2">
+                                <textarea
+                                    id="pr-intertexto-descricao"
+                                    class="text-sm w-full h-16"
+                                    placeholder="Descrição: que obra é (opcional)"
+                                ></textarea>
+                                <div
+                                    id="sugestoes-intertexto-descricao-prosa"
+                                    class="flex flex-wrap gap-1 mt-1 empty:hidden"
+                                    data-sugestoes-descricao="pr-intertexto-descricao"
+                                ></div>
+                            </div>
+                            <div id="pr-intertexto-data" class="mb-2 space-y-1"></div>
+                            <div class="flex gap-2 mb-2">
+                                <textarea
+                                    id="pr-intertexto-trecho"
+                                    class="text-sm w-full h-16"
+                                    placeholder="Trecho da fonte: as palavras do original (opcional)"
+                                ></textarea>
+                            </div>
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                    <label
+                                        class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-300"
+                                        title="O poema traz o trecho traduzido do idioma da fonte."
+                                    >
+                                        <input type="checkbox" id="pr-intertexto-traduzido" />
+                                        Traduzido
+                                    </label>
+                                    <label
+                                        class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-300"
+                                        title="Faz parte da vida particular de quem escreve (um diário, uma carta, uma conversa), e não é uma obra reconhecida publicamente."
+                                    >
+                                        <input type="checkbox" id="pr-intertexto-obra-pessoal" />
+                                        Obra pessoal
+                                    </label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        id="pr-intertexto-btn-cancelar"
+                                        onclick="cancelarEdicaoIntertexto('prosas')"
+                                        class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="pr-intertexto-btn-add"
+                                        onclick="adicionarIntertexto('prosas')"
+                                        class="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-3 py-1.5 rounded text-xs font-bold flex-shrink-0"
+                                    >
+                                        +
+                                    </button>
+                                </div>
                             </div>
                             <div class="flex items-end gap-2 mb-2">
                                 <input
@@ -1265,6 +1358,10 @@
                             </div>
                             <datalist id="sugestoes-intertexto-prosa"></datalist>
                             <datalist id="sugestoes-intertexto-tipo-prosa"></datalist>
+                            <datalist id="sugestoes-intertexto-relacao-prosa"></datalist>
+                            <datalist id="sugestoes-intertexto-autor-prosa"></datalist>
+                            <datalist id="sugestoes-intertexto-origem-prosa"></datalist>
+                            <datalist id="sugestoes-intertexto-personagem-prosa"></datalist>
                             <div id="pr-intertexto-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
 
                             <label class="form-label"
@@ -1276,48 +1373,94 @@
                                     paródia...)</span
                                 ></label
                             >
-                            <div class="flex gap-2 mb-2">
-                                <input
-                                    type="text"
-                                    id="pr-hipertexto-tipo"
-                                    list="sugestoes-hipertexto-tipo-prosa"
-                                    class="text-xs w-28 flex-shrink-0"
-                                    placeholder="Tipo..."
-                                />
+                            <div class="grid grid-cols-2 gap-2 mb-2">
                                 <input
                                     type="text"
                                     id="pr-hipertexto-relacao"
                                     list="sugestoes-hipertexto-relacao-prosa"
-                                    class="text-sm flex-1"
-                                    placeholder="Relação (ex.: Releitura, Paródia...)"
+                                    class="text-sm"
+                                    placeholder="Relação (Releitura, Paródia...)"
                                 />
-                            </div>
-                            <div class="flex gap-2 mb-2">
+                                <input
+                                    type="text"
+                                    id="pr-hipertexto-tipo"
+                                    list="sugestoes-hipertexto-tipo-prosa"
+                                    class="text-sm"
+                                    placeholder="Tipo de obra (Livro, Música...)"
+                                />
                                 <input
                                     type="text"
                                     id="pr-hipertexto-hipotexto"
                                     list="sugestoes-hipertexto-hipotexto-prosa"
-                                    class="text-sm w-full"
+                                    class="text-sm"
                                     placeholder="Obra/hipotexto de origem..."
                                 />
+                                <div class="min-w-0">
+                                    <input
+                                        type="text"
+                                        id="pr-hipertexto-autor"
+                                        list="sugestoes-hipertexto-autor-prosa"
+                                        class="text-sm w-full"
+                                        placeholder="Autor ou autores (Enter separa)"
+                                    />
+                                    <div
+                                        id="pr-hipertexto-autor-chips"
+                                        class="flex flex-wrap gap-1 mt-1 empty:hidden"
+                                    ></div>
+                                </div>
+                                <div class="min-w-0">
+                                    <input
+                                        type="text"
+                                        id="pr-hipertexto-origem"
+                                        list="sugestoes-hipertexto-origem-prosa"
+                                        class="text-sm w-full"
+                                        placeholder="Origem: lugar ou cultura (Enter separa)"
+                                    />
+                                    <div
+                                        id="pr-hipertexto-origem-chips"
+                                        class="flex flex-wrap gap-1 mt-1 empty:hidden"
+                                    ></div>
+                                </div>
                             </div>
-                            <div class="flex items-center justify-end gap-2 mb-2">
-                                <button
-                                    type="button"
-                                    id="pr-hipertexto-btn-cancelar"
-                                    onclick="cancelarEdicaoHipertextualidade('prosas')"
-                                    class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
+                            <div class="mb-2">
+                                <textarea
+                                    id="pr-hipertexto-descricao"
+                                    class="text-sm w-full h-16"
+                                    placeholder="Descrição: que obra é (opcional)"
+                                ></textarea>
+                                <div
+                                    id="sugestoes-hipertexto-descricao-prosa"
+                                    class="flex flex-wrap gap-1 mt-1 empty:hidden"
+                                    data-sugestoes-descricao="pr-hipertexto-descricao"
+                                ></div>
+                            </div>
+                            <div id="pr-hipertexto-data" class="mb-2 space-y-1"></div>
+                            <div class="flex items-center justify-between gap-2 mb-2">
+                                <label
+                                    class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-300"
+                                    title="Faz parte da vida particular de quem escreve (um diário, uma carta, uma conversa), e não é uma obra reconhecida publicamente."
                                 >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="button"
-                                    id="pr-hipertexto-btn-add"
-                                    onclick="adicionarHipertextualidade('prosas')"
-                                    class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold flex-shrink-0"
-                                >
-                                    +
-                                </button>
+                                    <input type="checkbox" id="pr-hipertexto-obra-pessoal" />
+                                    Obra pessoal
+                                </label>
+                                <div class="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        id="pr-hipertexto-btn-cancelar"
+                                        onclick="cancelarEdicaoHipertextualidade('prosas')"
+                                        class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2 text-xs flex-shrink-0"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="pr-hipertexto-btn-add"
+                                        onclick="adicionarHipertextualidade('prosas')"
+                                        class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold flex-shrink-0"
+                                    >
+                                        +
+                                    </button>
+                                </div>
                             </div>
                             <div class="flex items-end gap-2 mb-2">
                                 <input
@@ -1354,6 +1497,8 @@
                             <datalist id="sugestoes-hipertexto-tipo-prosa"></datalist>
                             <datalist id="sugestoes-hipertexto-relacao-prosa"></datalist>
                             <datalist id="sugestoes-hipertexto-hipotexto-prosa"></datalist>
+                            <datalist id="sugestoes-hipertexto-autor-prosa"></datalist>
+                            <datalist id="sugestoes-hipertexto-origem-prosa"></datalist>
                             <div id="pr-hipertexto-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
 
                             <label class="form-label"
@@ -1380,6 +1525,56 @@
                                     placeholder="Ex.: Enchente de 2011"
                                 />
                             </div>
+                            <div id="pr-refext-conhecido-bloco" class="hidden mb-2">
+                                <div class="flex gap-2">
+                                    <input
+                                        type="text"
+                                        id="pr-refext-conhecido"
+                                        list="sugestoes-refext-conhecido-prosa"
+                                        class="text-sm flex-1 min-w-0"
+                                        placeholder="Conhecido(a) como... (Enter para adicionar)"
+                                    />
+                                    <button
+                                        type="button"
+                                        id="pr-refext-conhecido-btn"
+                                        class="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded text-xs font-bold flex-shrink-0"
+                                        title="Adicionar tag"
+                                    >
+                                        + tag
+                                    </button>
+                                </div>
+                                <div
+                                    id="pr-refext-conhecido-chips"
+                                    class="flex flex-wrap gap-1 mt-1 min-h-[12px]"
+                                ></div>
+                            </div>
+                            <div id="pr-refext-carac-bloco" class="hidden mb-2">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <div
+                                        id="pr-refext-genero"
+                                        role="group"
+                                        aria-label="Gênero"
+                                        title="Gênero (clique de novo para desmarcar; sem marca é não informado)"
+                                        class="inline-flex gap-1"
+                                    ></div>
+                                    <div
+                                        id="pr-refext-orientacao"
+                                        role="group"
+                                        aria-label="Orientação"
+                                        title="Orientação (clique de novo para desmarcar; sem marca é não informado, não hétero)"
+                                        class="inline-flex gap-1"
+                                    ></div>
+                                    <select
+                                        id="pr-refext-cor-raca"
+                                        class="text-xs"
+                                        aria-label="Cor/raça"
+                                        title="Cor/raça (vazio é não informado)"
+                                    >
+                                        <option value="">Cor/raça...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="pr-refext-data" class="mb-2 space-y-1"></div>
                             <div class="flex items-center justify-end gap-2 mb-2">
                                 <button
                                     type="button"
@@ -1432,6 +1627,7 @@
                             </div>
                             <datalist id="sugestoes-refext-prosa"></datalist>
                             <datalist id="sugestoes-refext-tipo-prosa"></datalist>
+                            <datalist id="sugestoes-refext-conhecido-prosa"></datalist>
                             <div id="pr-refext-lista" class="space-y-1 mb-2 min-h-[12px]"></div>
                         </div>
                     </details>
@@ -1634,76 +1830,218 @@
                                     <option value="descartado">🔴 Descartado</option>
                                     <option value="privado">🔒 Privado</option>
                                 </select>
+                                <label
+                                    class="mt-2 flex items-start gap-2 text-sm cursor-pointer"
+                                    title="Marque para o texto poder ser sorteado numa leitura. Desligado por padrão."
+                                >
+                                    <input
+                                        type="checkbox"
+                                        id="pr-sorteavel"
+                                        class="mt-1"
+                                        onchange="atualizarAvisoLeituraSorteio('prosas')"
+                                    />
+                                    <span
+                                        ><strong>Pode ser sorteado</strong> para leitura
+                                        <span
+                                            class="block text-xs text-gray-500 dark:text-slate-400"
+                                            >Só entra no sorteio o texto que você marcar aqui.</span
+                                        ></span
+                                    >
+                                </label>
+                                <div class="mt-2">
+                                    <label
+                                        class="text-sm font-bold block mb-1"
+                                        for="pr-leitura-autonoma"
+                                        >Leitura autônoma</label
+                                    >
+                                    <select
+                                        id="pr-leitura-autonoma"
+                                        title="Diz se o texto se lê sozinho ou só junto de outros. Padrão: Lê-se sozinho."
+                                        onchange="atualizarAvisoLeituraSorteio('prosas')"
+                                    >
+                                        <option value="">Lê-se sozinho</option>
+                                        <option value="sequencia">Só em sequência</option>
+                                        <option value="conjunto">Só em conjunto</option>
+                                        <option value="inicio">Só como início</option>
+                                    </select>
+                                    <span
+                                        class="block text-xs text-gray-500 dark:text-slate-400 mt-1"
+                                        >Só em sequência, em conjunto ou como início: o sorteio de
+                                        leitura não escolhe o texto sozinho.</span
+                                    >
+                                    <p
+                                        id="pr-leitura-sorteio-aviso"
+                                        class="hidden mt-1 text-xs text-amber-900 dark:text-amber-200"
+                                        role="status"
+                                    ></p>
+                                </div>
+                                <div class="mt-2">
+                                    <label
+                                        class="text-sm font-bold block mb-1"
+                                        for="pr-valencia-ajuste"
+                                        >Valência do texto</label
+                                    >
+                                    <select
+                                        id="pr-valencia-ajuste"
+                                        title="Por padrão a valência do texto vem dos temas dele. Escolha aqui só quando o seu juízo sobre o texto for outro."
+                                    >
+                                        <option value="">Seguir os temas (padrão)</option>
+                                        <option value="leve">Leve</option>
+                                        <option value="neutro">Neutro ou ambivalente</option>
+                                        <option value="pesado">Pesado</option>
+                                    </select>
+                                    <span
+                                        class="block text-xs text-gray-500 dark:text-slate-400 mt-1"
+                                        >Sem ajuste, a valência é calculada pelos temas (a mesma
+                                        conta das Estatísticas). Ajuste só quando o texto pesa
+                                        diferente do que os temas dizem.</span
+                                    >
+                                </div>
+                                <label
+                                    class="mt-2 flex items-start gap-2 text-sm cursor-pointer"
+                                    title="Marque para o nome civil do autor não aparecer junto deste texto nas telas públicas. Desligado por padrão."
+                                >
+                                    <input
+                                        type="checkbox"
+                                        id="pr-autor-em-sigilo"
+                                        class="mt-1"
+                                        onchange="atualizarLinhaSigiloTexto('prosas')"
+                                    />
+                                    <span
+                                        ><strong>Autor em sigilo</strong> neste texto
+                                        <span
+                                            class="block text-xs text-gray-500 dark:text-slate-400"
+                                            >Esconde o nome civil só aqui. Assinado com nome
+                                            literário, sai só ele; assinado com o nome civil, a
+                                            linha Autoria some.</span
+                                        ></span
+                                    >
+                                </label>
+                                <p
+                                    id="pr-autor-sigilo-linha"
+                                    class="hidden mt-1 ml-6 text-xs text-amber-900 dark:text-amber-200"
+                                    role="status"
+                                ></p>
                             </div>
 
                             <div
-                                class="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+                                id="pr-status-campos"
+                                class="hidden p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
                             >
                                 <label class="form-label mb-2"
-                                    >Migração entre livros
+                                    ><span data-status-visivel="migrado">Migração entre livros</span
+                                    ><span data-status-visivel="descartado">Descarte</span
+                                    ><span data-status-visivel="outro"
+                                        >Migração ou descarte de um status anterior</span
+                                    >
                                     <span
+                                        data-status-visivel="descartado"
                                         class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                                        >(preencha para textos 🔵 Migrados de um livro/seção para
-                                        outro)</span
+                                        >(o app guarda sozinho de onde o texto saiu; ajuste se
+                                        precisar)</span
                                     ></label
                                 >
-                                <span class="text-[10px] text-gray-400 dark:text-slate-500"
-                                    >Cortado de</span
+                                <p
+                                    data-status-visivel="outro"
+                                    class="text-[10px] text-amber-600 dark:text-amber-400 mb-2"
                                 >
-                                <div class="grid grid-cols-2 gap-2 mb-2">
-                                    <input
-                                        type="text"
-                                        id="pr-cortado-livro"
-                                        list="sugestoes-livros-migracao-prosa"
-                                        placeholder="Livro de origem"
-                                    />
-                                    <input
-                                        type="text"
-                                        id="pr-cortado-secao"
-                                        list="sugestoes-secoes-migracao-cortado-prosa"
-                                        placeholder="Parte/Seção de origem"
-                                    />
+                                    Estes campos só valem para os status Migrado e Descartado.
+                                    Esvazie o que não vale mais, ou volte o status.
+                                </p>
+
+                                <div data-status-visivel="migrado descartado" data-guarda-dado>
+                                    <span class="text-[10px] text-gray-400 dark:text-slate-500"
+                                        >Cortado de</span
+                                    >
+                                    <div class="grid grid-cols-[minmax(0,1fr)_7rem] gap-2 mb-2">
+                                        <input
+                                            type="text"
+                                            id="pr-cortado-livro"
+                                            class="col-span-2"
+                                            list="sugestoes-livros-migracao-prosa"
+                                            placeholder="Livro de origem"
+                                        />
+                                        <input
+                                            type="text"
+                                            id="pr-cortado-secao"
+                                            list="sugestoes-secoes-migracao-cortado-prosa"
+                                            placeholder="Parte/Seção de origem"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="pr-cortado-posicao"
+                                            min="1"
+                                            step="1"
+                                            placeholder="Posição"
+                                            title="Posição de origem: o número que o texto tinha na época (opcional)"
+                                            aria-label="Posição de origem: o número que o texto tinha na época (opcional)"
+                                        />
+                                    </div>
                                 </div>
-                                <span class="text-[10px] text-gray-400 dark:text-slate-500"
-                                    >Lançado em</span
+
+                                <div data-status-visivel="migrado" data-guarda-dado>
+                                    <span class="text-[10px] text-gray-400 dark:text-slate-500"
+                                        >Lançado em</span
+                                    >
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <input
+                                            type="text"
+                                            id="pr-lancado-livro"
+                                            list="sugestoes-livros-migracao-prosa"
+                                            placeholder="Livro de destino"
+                                        />
+                                        <input
+                                            type="text"
+                                            id="pr-lancado-secao"
+                                            list="sugestoes-secoes-migracao-lancado-prosa"
+                                            placeholder="Parte/Seção de destino"
+                                        />
+                                    </div>
+                                </div>
+
+                                <p
+                                    data-status-visivel="migrado descartado"
+                                    class="text-[10px] text-gray-400 dark:text-slate-500 mt-1"
                                 >
-                                <div class="grid grid-cols-2 gap-2">
-                                    <input
-                                        type="text"
-                                        id="pr-lancado-livro"
-                                        list="sugestoes-livros-migracao-prosa"
-                                        placeholder="Livro de destino"
-                                    />
-                                    <input
-                                        type="text"
-                                        id="pr-lancado-secao"
-                                        list="sugestoes-secoes-migracao-lancado-prosa"
-                                        placeholder="Parte/Seção de destino"
-                                    />
-                                </div>
-                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
-                                    Texto livre — aceita sugestões de livros/partes/seções já
+                                    Texto livre: aceita sugestões de livros e de Parte/Seção já
                                     cadastrados, mas também aceita algo que não exista no arquivo
-                                    (ex.: um livro de origem nunca cadastrado aqui). Escolher uma
-                                    Seção já cadastrada preenche o Livro sozinho; escolher o Livro
-                                    filtra as Seções sugeridas pra só as daquele livro.
+                                    (ex.: um livro de origem nunca cadastrado aqui). As sugestões
+                                    trazem o caminho completo (Parte / Seção). Escolher uma já
+                                    cadastrada preenche o Livro sozinho; escolher o Livro filtra as
+                                    sugestões pra só as daquele livro.
                                 </p>
                                 <datalist id="sugestoes-livros-migracao-prosa"></datalist>
                                 <datalist id="sugestoes-secoes-migracao-cortado-prosa"></datalist>
                                 <datalist id="sugestoes-secoes-migracao-lancado-prosa"></datalist>
 
-                                <label
-                                    class="text-[10px] text-gray-400 dark:text-slate-500 block mt-2"
-                                    >Justificativa
-                                    <span class="normal-case"
-                                        >(razão do arquivamento original, da migração/recuperação,
-                                        ou ambos)</span
-                                    ></label
-                                >
-                                <textarea
-                                    id="pr-migracao-justificativa"
-                                    class="text-sm h-20 border-blue-300 dark:border-blue-700"
-                                ></textarea>
+                                <div data-status-visivel="migrado" data-guarda-dado>
+                                    <label
+                                        class="text-[10px] text-gray-400 dark:text-slate-500 block mt-2"
+                                        >Justificativa da migração
+                                        <span class="normal-case"
+                                            >(razão do arquivamento original, da
+                                            migração/recuperação, ou ambos)</span
+                                        ></label
+                                    >
+                                    <textarea
+                                        id="pr-migracao-justificativa"
+                                        class="text-sm h-20 border-blue-300 dark:border-blue-700"
+                                    ></textarea>
+                                </div>
+
+                                <div data-status-visivel="descartado" data-guarda-dado>
+                                    <label
+                                        class="text-[10px] text-gray-400 dark:text-slate-500 block mt-2"
+                                        >Justificativa do descarte
+                                        <span class="normal-case"
+                                            >(por que o texto saiu do livro)</span
+                                        ></label
+                                    >
+                                    <textarea
+                                        id="pr-descarte"
+                                        class="text-sm h-20 border-amber-300 dark:border-amber-700"
+                                    ></textarea>
+                                </div>
                             </div>
 
                             <label class="form-label"
@@ -1717,18 +2055,6 @@
                             <textarea
                                 id="pr-pendencia"
                                 class="text-sm h-20 border-orange-300 dark:border-orange-700"
-                            ></textarea>
-
-                            <label class="form-label"
-                                >Descarte
-                                <span
-                                    class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                                    >(preencha a justificativa para textos 🔴 Descartados)</span
-                                ></label
-                            >
-                            <textarea
-                                id="pr-descarte"
-                                class="text-sm h-20 border-amber-300 dark:border-amber-700"
                             ></textarea>
                         </div>
                     </details>

@@ -4,16 +4,23 @@
 // ============================================================
 
 import { db, save } from './db.js';
+import { caminhoDoDestino } from './aparicoes-do-texto.js';
 import {
     abrirModalExclusao,
     gerarId,
     escapeHtml,
     textoSituacaoEditorial,
     mostrarAviso,
+    seqOuNull,
 } from './utils.js';
 import { salvarCapa, deletarCapa } from './capas.js';
 import { normalizarLinkImagem } from './imagem-link.js';
 import { toggleModal, garantirModal } from './ui.js';
+import {
+    getFormatoBaixarLivros,
+    salvarFormatoBaixarLivros,
+    sincronizarCaixaEstruturaLivros,
+} from './baixar-livros.js';
 
 // ─── Estado local ─────────────────────────────────────────────
 
@@ -63,26 +70,13 @@ function origemLabel(item) {
     const original = colecao?.find((x) => x.id == item.refId);
     if (!original) return 'referência não encontrada';
 
-    let contexto = '';
-    if (original.paiTipo === 'secao') {
-        const sec = db.secoes.find((s) => s.id == original.paiId);
-        const parte = sec?.paiTipo === 'parte' ? db.partes.find((p) => p.id == sec.paiId) : null;
-        const livro = parte
-            ? db.livros.find((l) => l.id == parte.livroId)
-            : db.livros.find((l) => l.id == sec?.paiId);
-        contexto = [livro?.siglaOficial || livro?.titulo, parte?.titulo, sec?.titulo]
-            .filter(Boolean)
-            .join(' · ');
-    } else if (original.paiTipo === 'parte') {
-        const parte = db.partes.find((p) => p.id == original.paiId);
-        const livro = db.livros.find((l) => l.id == parte?.livroId);
-        contexto = [livro?.siglaOficial || livro?.titulo, parte?.titulo]
-            .filter(Boolean)
-            .join(' · ');
-    } else if (original.paiTipo === 'livro') {
-        const livro = db.livros.find((l) => l.id == original.paiId);
-        contexto = livro?.siglaOficial || livro?.titulo || '';
-    }
+    const caminho = caminhoDoDestino(original, db);
+    const livro = caminho ? db.livros.find((l) => l.id == caminho.livroId) : null;
+    const parte = caminho?.parteId != null ? db.partes.find((p) => p.id == caminho.parteId) : null;
+    const sec = caminho?.secaoId != null ? db.secoes.find((s) => s.id == caminho.secaoId) : null;
+    const contexto = [livro?.siglaOficial || livro?.titulo, parte?.titulo, sec?.titulo]
+        .filter(Boolean)
+        .join(' · ');
 
     return escapeHtml(contexto) || 'origem desconhecida';
 }
@@ -163,16 +157,56 @@ function renderEditorColetanea(livroId) {
                 <div style="font-size:16px; font-weight:500; color:var(--color-text-primary);">${escapeHtml(col.titulo)}</div>
                 <div style="font-size:11px; color:var(--color-text-tertiary); margin-top:2px;">Coletânea · SEQ ${col.sequencia || '—'}${textoSituacaoEditorial(col) ? ` · ${escapeHtml(textoSituacaoEditorial(col))}` : ''}</div>
             </div>
-            <button onclick="prepararNovaParte(${livroId})"
-                    style="font-size:12px; padding:6px 14px; border:0.5px solid #185FA5;
-                           border-radius:var(--border-radius-md); background:#185FA5;
-                           color:#fff; cursor:pointer;">+ nova parte</button>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                <div id="coletanea-baixar-barra" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <select id="coletanea-baixar-formato" aria-label="Formato do download"
+                            title="Formato do arquivo baixado com as informações desta coletânea (o mesmo formato da aba Livros)"
+                            style="width:auto; margin:0; font-size:12px; padding:5px 8px;">
+                        <option value="json">.json</option>
+                        <option value="csv">.csv</option>
+                        <option value="md">.md (Markdown)</option>
+                        <option value="pdf">.pdf</option>
+                        <option value="docx">.docx (Word)</option>
+                    </select>
+                    <label style="display:inline-flex; align-items:center; gap:4px; font-size:11px;
+                                  color:var(--color-text-secondary); cursor:pointer;">
+                        <input type="checkbox" id="coletanea-baixar-estrutura" data-incluir-estrutura
+                               style="width:auto; margin:0;">
+                        Incluir estrutura
+                    </label>
+                    <button type="button" data-action="baixar-coletanea" data-id="${livroId}"
+                            title="Baixar as informações desta coletânea (sem o conteúdo dos textos) no formato ao lado"
+                            style="font-size:12px; padding:6px 14px; border:0.5px solid var(--color-border-tertiary);
+                                   border-radius:var(--border-radius-md); background:transparent;
+                                   color:var(--color-text-secondary); cursor:pointer;">⬇ Baixar</button>
+                </div>
+                <button onclick="prepararNovaParte(${livroId})"
+                        style="font-size:12px; padding:6px 14px; border:0.5px solid #185FA5;
+                               border-radius:var(--border-radius-md); background:#185FA5;
+                               color:#fff; cursor:pointer;">+ nova parte</button>
+            </div>
         </div>
         ${
             partes.length === 0
                 ? `<p style="font-size:13px; color:var(--color-text-tertiary);">Nenhuma parte ainda. Adicione a primeira.</p>`
                 : partes.map((p) => renderParteColetanea(p)).join('')
         }`;
+    prepararBaixarColetanea();
+}
+
+// Formato e caixa "Incluir estrutura" do Baixar: abrem na escolha lembrada (a
+// mesma da aba Livros) e guardam a escolha ao trocar. O editor é redesenhado a
+// cada salvamento, então isto roda a cada render.
+function prepararBaixarColetanea() {
+    const sel = document.getElementById('coletanea-baixar-formato');
+    const barra = document.getElementById('coletanea-baixar-barra');
+    if (!sel || !barra) return;
+    sel.value = getFormatoBaixarLivros();
+    sincronizarCaixaEstruturaLivros(barra, sel.value);
+    sel.onchange = () => {
+        salvarFormatoBaixarLivros(sel.value);
+        sincronizarCaixaEstruturaLivros(barra, sel.value);
+    };
 }
 
 function renderParteColetanea(parte) {
@@ -230,6 +264,21 @@ function renderParteColetanea(parte) {
     </div>`;
 }
 
+// Título do item. Poema ou prosa do acervo: link para o Ver do texto (fecha e
+// volta à mesma coletânea, o Ver é um modal por cima da aba). Inédito, ou
+// referência que não existe mais: texto simples. Com versão alternativa o Ver
+// mostra o texto do acervo, não o da coletânea, e o título avisa.
+function tituloDoItem(item, temOverride) {
+    const original = item.refId ? db[item.refTipo + 's']?.find((x) => x.id == item.refId) : null;
+    if (!original) return escapeHtml(item.titulo);
+    const dica = temOverride
+        ? 'Abrir o Ver do texto no acervo (esta coletânea usa uma versão alternativa)'
+        : 'Abrir o Ver do texto';
+    return `<button type="button" onclick="verTextoDaColetanea('${item.refTipo}',${item.refId})"
+        title="${dica}" style="background:none; border:0; padding:0; font:inherit; color:inherit;
+        cursor:pointer; text-decoration:underline; text-decoration-style:dotted;">${escapeHtml(item.titulo)}</button>`;
+}
+
 function renderItemLinha(item, idx, total) {
     const badges = {
         poema: 'background:#E6F1FB; color:#0C447C;',
@@ -249,7 +298,7 @@ function renderItemLinha(item, idx, total) {
                      text-transform:uppercase; flex-shrink:0; ${badgeStyle}">${tipoLabel}</span>
         <span style="font-size:12px; color:var(--color-text-primary); flex:1; min-width:0;
                      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-            ${escapeHtml(item.titulo)}
+            ${tituloDoItem(item, temOverride)}
             ${temOverride ? '<span style="font-size:9px; color:#BA7517; margin-left:4px;">[versão alternativa]</span>' : ''}
         </span>
         <span style="font-size:10px; color:var(--color-text-tertiary); flex-shrink:0;">${origem}</span>
@@ -404,7 +453,7 @@ export function initFormColParte() {
             id,
             livroId,
             titulo: document.getElementById('cp-titulo').value,
-            sequencia: parseInt(document.getElementById('cp-sequencia').value) || 0,
+            sequencia: seqOuNull(document.getElementById('cp-sequencia').value),
             capaDesc: document.getElementById('cp-capa-desc').value.trim() || null,
             capa: capaFinal,
             imagemUrl,

@@ -6,9 +6,11 @@ O app oferece dois formatos de exportação pensados para uso com IAs (ChatGPT, 
 
 ## Formato Aninhado
 
-Gerado pelo botão **"Exportar tudo aninhado (para IA)"** na aba Exportação.
+Gerado pelo botão **"Exportar Aninhado"** no cabeçalho da página, ao lado de "Baixar JSON". Ele não tem filtro: leva sempre o acervo inteiro.
 
 A estrutura do arquivo espelha a hierarquia real do acervo: cada Livro contém suas Partes, cada Parte contém suas Seções, cada Seção contém seus Poemas e Prosas — uns dentro dos outros. Coletâneas vêm resolvidas (com o conteúdo real de cada item inline, não só referências por ID).
+
+Um Poema ou uma Prosa que aparece em mais de um livro (ou em mais de um lugar) sai uma vez em cada lugar, com a posição que tem ali. Como a árvore já diz onde cada cópia está, essas cópias não trazem a lista `aparece_em`. O texto que só "consta" em um livro (está ligado ao livro, sem Parte, Seção nem posição) não está na árvore: ele sai à parte, nas chaves `conteudo_poemas_vinculados` e `conteudo_prosas_vinculadas` do livro. Por isso, para contar textos neste arquivo, conte por `id`, não pelas vezes que um título aparece.
 
 **Use quando a tarefa envolve o acervo como um todo ou as relações entre partes:**
 
@@ -26,9 +28,11 @@ A vantagem aqui é que a hierarquia está explícita na forma do dado — a IA n
 
 ## Formato Flat (filtrado)
 
-Gerado pelo botão **"Baixar JSON filtrado"** na aba Exportação, pela seleção da listagem de Poemas/Prosas ("⬇ JSON" na barra de ações em massa), ou pelo botão **"Exportar selecionados"** na aba Estrutura (esse último numa estrutura própria, sem contexto resolvido — ver seção específica abaixo).
+Gerado pelo botão **"Baixar JSON seletivo"** na aba Exportação, pela seleção da listagem de Poemas/Prosas ("⬇ JSON" na barra de ações em massa), ou pelo botão **"Exportar selecionados"** na aba Estrutura (esse último numa estrutura própria, sem contexto resolvido — ver seção específica abaixo).
 
 A estrutura é uma lista plana de itens. Cada registro é autossuficiente: traz o texto, o contexto já resolvido como texto legível (nome do Livro, da Parte, da Seção), etiquetas, pessoas, datas. Não há aninhamento — é um array de objetos independentes.
+
+O `contexto` de cada registro traz `livro`, `parte` e `secao` só do Destino do texto (a primeira aparição que tem lugar). Quando o texto aparece em mais de um lugar, `contexto.aparece_em` lista todos, cada um como `{ livro, parte, secao, posicao, coletanea, principal }`: `posicao` fica vazia quando o texto só "consta" no livro, `coletanea` é verdadeiro quando o lugar é uma Coletânea e `principal` marca a aparição principal (a do livro de publicação mais antiga), que nem sempre é o Destino. No `.csv` isso é a coluna `aparece_em`, com os lugares separados por `" | "` (vazia quando há um lugar só). No `.md`, no `.pdf` e no `.docx`, a linha "Aparece em" só aparece quando o texto tem duas ou mais aparições em livros comuns.
 
 **Use quando a tarefa é processar os itens individualmente:**
 
@@ -39,6 +43,8 @@ A estrutura é uma lista plana de itens. Cada registro é autossuficiente: traz 
 - Alimentar um pipeline externo que espera registros tabulares
 
 Nesse caso o aninhamento seria contraproducente: para chegar a um poema específico a IA precisaria "descer" vários níveis da árvore, consumindo contexto sem agregar nada. O flat entrega cada item já explicado por si mesmo.
+
+**Acervo inteiro, em flat:** a mesma aba tem os botões **"Baixar tudo - JSON flat"**, **"Baixar tudo - .md"**, **"Baixar tudo - .pdf"** e **"Baixar tudo - .docx"**, que levam o acervo todo nesse modelo flat, sem filtro nenhum para configurar.
 
 **Vantagem extra:** os filtros da aba Exportação (por pessoa, tema, ano, status, livro) permitem mandar só o recorte relevante — o que é especialmente útil quando o acervo inteiro não cabe no contexto do modelo.
 
@@ -64,7 +70,13 @@ Use quando os itens que você quer não formam um filtro fácil de descrever (ex
 
 Nos downloads em `.md`, `.pdf` e `.docx` com mais de um texto, uma linha de metadado (`- **Rótulo:** valor`) que todos os textos têm com exatamente o mesmo valor sai uma vez só, sob **"Comum a todos os textos"**, perto do topo, e deixa de aparecer em cada texto. Os rótulos considerados são Autoria, Fonte, Edição, Link da fonte, Grafia, Texto conferido, Domínio público, Corrente literária e Idioma. A regra é estrita, por rótulo: se um texto não tem a linha, ou tem outro valor, ela continua em cada texto. Assim, ao ler um texto, uma dessas linhas que não aparece nele está no bloco comum ou estava vazia.
 
-A caixa **"Agrupar no topo"** (em "Opções de download"; ligada por padrão, guardada no navegador) desliga isso. O `.json` e o `.csv` nunca mudam, e o download de um texto só sempre traz todas as linhas.
+A caixa **"Agrupar no topo"** (em "Opções de download", no painel Ações da coluna e no modal de Visualização; ligada por padrão, guardada no navegador) desliga isso. O `.json` e o `.csv` nunca mudam, e o download de um texto só sempre traz todas as linhas.
+
+---
+
+## Legenda dos papéis de Pessoa
+
+Os `.json` de seleção, exportação seletiva, tudo flat e templates, e o `.md` de vários textos, trazem a legenda dos papéis de Pessoa usados nos textos exportados (chave `legenda_papeis_pessoa` no `.json`, seção "Legenda dos papéis de Pessoa" no `.md`). Detalhes em `pessoas-papeis-for-ai-pt-br.md`. O `.csv` não leva a legenda. A caixa **"Infos de papel"** escolhe se o arquivo sai com ou sem ela. São duas escolhas independentes, ambas ligadas por padrão e guardadas no navegador: uma para baixar vários textos ("Opções de download" da barra de seleção e aba Exportação) e outra para o Baixar de um texto só (painel Ações da coluna e modal de Visualização).
 
 ---
 

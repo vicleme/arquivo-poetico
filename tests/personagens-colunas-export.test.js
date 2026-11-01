@@ -57,9 +57,9 @@ describe('coluna Personagens', () => {
         }
     });
 
-    it('chip com iniciais dos papéis e ★/☆ só onde a centralidade se aplica', () => {
+    it('chip com os apelidos dos papéis e ★/☆ só onde a centralidade se aplica', () => {
         const html = badgesPersonagens(db.poemas[0]);
-        assert.match(html, /Capitu <span[^>]*>Vo·Ap<\/span>.*★/s);
+        assert.match(html, /Capitu <span[^>]*>Voz·Apar<\/span>.*★/s);
         assert.match(html, /title="Capitu \(Voz, Aparição; protagonista\)"/);
         assert.match(html, /title="Bento \(Interlocutor\)"/);
         assert.doesNotMatch(html, /Bento[^]*?☆[^]*?Escobar/);

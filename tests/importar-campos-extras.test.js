@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { criarLocal } from '../js/locais.js';
-import { PAPEIS_PESSOA } from '../js/utils.js';
+import { nomesPapeisPessoa } from '../js/papeis-pessoa.js';
 import { papelDePessoaPorRotulo } from '../js/importar-campos-extras.js';
 import {
     lerArquivoDeCampos,
@@ -71,11 +71,12 @@ describe('papéis de pessoa', () => {
             papelDePessoaPorRotulo('associado retroativamente'),
             'Associado(a) retroativamente',
         );
+        assert.equal(papelDePessoaPorRotulo('voz'), 'Voz');
         assert.equal(papelDePessoaPorRotulo('Padrinho'), null);
     });
 
     it('todo papel da lista fechada se reconhece pelo próprio rótulo', () => {
-        PAPEIS_PESSOA.forEach((p) => assert.equal(papelDePessoaPorRotulo(p), p));
+        nomesPapeisPessoa().forEach((p) => assert.equal(papelDePessoaPorRotulo(p), p));
     });
 });
 
@@ -264,19 +265,19 @@ describe('pessoas com papéis', () => {
                 textos: [
                     {
                         id: 1,
-                        pessoas: [{ pessoa: 'Dani', papeis: ['Mencionado(a)', 'Aludido(a)'] }],
+                        pessoas: [{ pessoa: 'Dani', papeis: ['Mencionado(a)', 'Voz'] }],
                     },
                 ],
             }),
         );
-        assert.deepEqual(dbRef.poemas[0].pessoas[0].papeis, ['Mencionado(a)', 'Aludido(a)']);
-        assert.deepEqual(r.itens[0].papeisPessoa, [{ nome: 'Dani', papeis: ['Aludido(a)'] }]);
+        assert.deepEqual(dbRef.poemas[0].pessoas[0].papeis, ['Mencionado(a)', 'Voz']);
+        assert.deepEqual(r.itens[0].papeisPessoa, [{ nome: 'Dani', papeis: ['Voz'] }]);
         assert.equal(r.resumo.papeisPessoa, 1);
 
         const de_novo = executarImportacaoCampos(
             dbRef,
             entradas({
-                textos: [{ id: 1, pessoas: [{ pessoa: 'Dani', papeis: ['Aludido(a)'] }] }],
+                textos: [{ id: 1, pessoas: [{ pessoa: 'Dani', papeis: ['Voz'] }] }],
             }),
         );
         assert.equal(de_novo.itens[0].mudou, false);

@@ -885,9 +885,13 @@
             // ficam em nesting.js, a fonte única do formato dessa árvore.
             let flattenLivroAninhado = null;
             let pareceLivroAninhado = null;
+            let juntarTextosRepetidos = null;
+            let rotuloDosLugares = null;
             import('./js/nesting.js').then((m) => {
                 flattenLivroAninhado = m.flattenLivroAninhado;
                 pareceLivroAninhado = m.pareceLivroAninhado;
+                juntarTextosRepetidos = m.juntarTextosRepetidos;
+                rotuloDosLugares = m.rotuloDosLugares;
             });
 
             // ─── Estado ──────────────────────────────────────────────────────
@@ -1441,8 +1445,8 @@
                         );
 
                         db = {
-                            poemas: poemasOut,
-                            prosas: prosasOut,
+                            poemas: juntarTextosRepetidos(poemasOut),
+                            prosas: juntarTextosRepetidos(prosasOut),
                             livros: [],
                             partes: [],
                             secoes: [],
@@ -1466,8 +1470,8 @@
                         parsed.livros.forEach((l) => flattenLivroAninhado(l, poemasOut, prosasOut));
 
                         db = {
-                            poemas: poemasOut,
-                            prosas: prosasOut,
+                            poemas: juntarTextosRepetidos(poemasOut),
+                            prosas: juntarTextosRepetidos(prosasOut),
                             livros: [],
                             partes: [],
                             secoes: [],
@@ -1488,8 +1492,8 @@
                         flattenLivroAninhado(parsed, poemasOut, prosasOut);
 
                         db = {
-                            poemas: poemasOut,
-                            prosas: prosasOut,
+                            poemas: juntarTextosRepetidos(poemasOut),
+                            prosas: juntarTextosRepetidos(prosasOut),
                             livros: [],
                             partes: [],
                             secoes: [],
@@ -1595,9 +1599,8 @@
             function nomeLivro(item) {
                 // Exportação filtrada: o contexto já vem resolvido (sem precisar de db.livros/partes/secoes)
                 if (item.contexto) {
-                    return (
-                        item.contexto.livro || item.contexto.parte || item.contexto.secao || null
-                    );
+                    // Texto em mais de um livro: todos os lugares (ver juntarTextosRepetidos).
+                    return rotuloDosLugares(item);
                 }
                 if (!db || !item.paiTipo) return null;
                 if (item.paiTipo === 'livro') {

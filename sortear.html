@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-br">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Arquivo Poético - Sortear leitura</title>
+        <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg" />
+        <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png" />
+        <link rel="apple-touch-icon" href="assets/icons/favicon-180.png" />
+        <script>
+            // Aplica o tema ANTES do primeiro paint, igual ao index.html e ao
+            // filtrar.html (mesma chave de localStorage), para não piscar claro
+            // e depois escurecer.
+            (function () {
+                var pref = localStorage.getItem('arquivoPoetico_tema') || 'auto';
+                var escuro =
+                    pref === 'escuro' ||
+                    (pref === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (escuro) document.documentElement.classList.add('dark');
+            })();
+        </script>
+        <style>
+            /* Controles nativos (menu do select, caixa de seleção) seguem o tema. */
+            html.dark {
+                color-scheme: dark;
+            }
+        </style>
+        <script src="assets/js/purify.min.js"></script>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+            tailwind.config = { darkMode: 'class' };
+        </script>
+    </head>
+
+    <body class="bg-gray-50 dark:bg-slate-800 text-gray-800 dark:text-slate-100 font-sans pb-20">
+        <header
+            class="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 p-6 mb-8 shadow-sm"
+        >
+            <div class="max-w-3xl mx-auto flex flex-wrap justify-between items-center gap-4">
+                <h1 class="text-2xl font-light tracking-tight">
+                    Sortear
+                    <span class="font-bold text-blue-700 dark:text-blue-300">leitura</span>
+                </h1>
+                <div class="flex items-center gap-2">
+                    <div class="relative">
+                        <button
+                            id="btn-tema"
+                            type="button"
+                            class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 transition text-sm font-medium"
+                        >
+                            🌓 Tema
+                        </button>
+                        <div
+                            id="painel-tema"
+                            class="hidden absolute right-0 mt-1 w-36 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg p-1 z-20"
+                        ></div>
+                    </div>
+                    <a
+                        href="index.html"
+                        class="border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 px-3 py-2 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 transition text-sm font-medium"
+                        >← Voltar ao Arquivo</a
+                    >
+                </div>
+            </div>
+        </header>
+
+        <main id="sortear-raiz" class="max-w-3xl mx-auto px-4">
+            <noscript>Esta página precisa de JavaScript.</noscript>
+        </main>
+
+        <script type="module">
+            import { lerAcervoDoNavegador, montarSortear } from './js/sortear-pagina.js';
+            import { initTema, setTema } from './js/theme.js';
+
+            const raiz = document.getElementById('sortear-raiz');
+            const acervo = lerAcervoDoNavegador();
+            if (acervo) {
+                montarSortear(raiz, { db: acervo });
+            } else {
+                const aviso = document.createElement('p');
+                aviso.className =
+                    'bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg p-4 text-sm';
+                aviso.textContent =
+                    'Não há acervo neste navegador. Abra o Arquivo Poético por aqui primeiro, para o sorteio ter o que ler.';
+                raiz.append(aviso);
+            }
+            // Botão de tema, como nas outras páginas: o painel é montado por
+            // initTema() e seus botões chamam window.setTema.
+            window.setTema = setTema;
+            const botaoTema = document.getElementById('btn-tema');
+            const painelTema = document.getElementById('painel-tema');
+            botaoTema.addEventListener('click', () => painelTema.classList.toggle('hidden'));
+            document.addEventListener('click', (e) => {
+                if (!painelTema.contains(e.target) && e.target !== botaoTema) {
+                    painelTema.classList.add('hidden');
+                }
+            });
+            initTema();
+        </script>
+    </body>
+</html>

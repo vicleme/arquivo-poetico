@@ -29,18 +29,14 @@ import {
     normalizarPapelTema,
     ROTULOS_PAPEL_TEMA,
     chaveTema,
-    temasDoTexto,
+    nomesTemasDoTexto,
     extrairSinalizacoesUnicas,
     textoDeEtiquetas,
     extrairGenerosUnicos,
     extrairValoresUnicosDeAnotacoes,
-    extrairValoresUnicosDeIntertextualidade,
-    extrairTiposIntertextoUnicos,
     extrairValoresUnicosDeReferenciasExternas,
     extrairTiposReferenciaExternaUnicos,
-    extrairTiposHipertextualidadeUnicos,
     extrairRelacoesHipertextualidadeUnicas,
-    extrairHipotextosUnicos,
     corpoEntradaHipertextualidade,
     extrairIdiomasUnicos,
     extrairFontesUnicas,
@@ -53,7 +49,6 @@ import {
     abrirModalConfirmacao,
     rotuloElo,
     direcaoInversa,
-    PAPEIS_PESSOA,
     iniciaisPapeisPessoa,
     paresGrupoPessoa,
     agruparParesGrupoPessoa,
@@ -88,7 +83,60 @@ import {
     RECORTES_EPOCA,
     ROTULOS_RECORTE_EPOCA,
 } from './utils.js';
+import {
+    migrarEntradaIntertextualidade,
+    migrarEntradaHipertextualidade,
+    ehObraPessoal,
+    campoObraPessoal,
+    extrairDescricoesDaObra,
+    descricaoUnicaDaObra,
+    origemUnicaDaObra,
+    extrairHipotextosDoFormatoNovo,
+    extrairRelacoesIntertextualidadeUnicas,
+    extrairTiposObraUnicos,
+    extrairObrasUnicas,
+    extrairAutoresUnicos,
+    extrairPersonagensUnicos,
+    extrairOrigensUnicas,
+    extrairDatasDaObra,
+    dataUnicaDaObra,
+    extrairDatasDaReferencia,
+    dataUnicaDaReferencia,
+} from './intertextualidade.js';
+import { datasDaEntrada, formatarIntervaloDataObra } from './data-da-obra.js';
+import { criarCampoDataObra, rotulosDaData, camposDeData } from './campo-data-obra.js';
 import { lugaresUsados, normalizarRegiao } from './regiao.js';
+import {
+    camposConhecidoComo,
+    conhecidoComoDaEntrada,
+    ehPessoaPublica,
+    extrairConhecidoComoUnicos,
+    normalizarConhecidoComo,
+} from './conhecido-como.js';
+import {
+    autoresDaEntrada,
+    chaveDeAutor,
+    chavesDosAutores,
+    textoAutoresDaEntrada,
+} from './autores-da-obra.js';
+import { criarCampoTagsAutor } from './campo-tags-autor.js';
+import {
+    chaveDePersonagem,
+    personagensDaEntrada,
+    textoPersonagensDaEntrada,
+} from './personagens-da-obra.js';
+import { chaveDeOrigem, origensDaEntrada, rotuloDaOrigem } from './origem-da-obra.js';
+import {
+    GENEROS_PESSOA_PUBLICA,
+    ORIENTACOES_PESSOA_PUBLICA,
+    CORES_RACA_PESSOA_PUBLICA,
+    alternarEscolha,
+    camposCaracterizacao,
+    caracterizacaoDaEntrada,
+    caracterizacaoDaUltimaCitacao,
+    completarCaracterizacao,
+    rotulosCaracterizacao,
+} from './caracterizacao-pessoa-publica.js';
 import { periodosVisiveis } from './periodo-biografico-campos.js';
 import {
     criarComparadorDeEpocas,
@@ -98,11 +146,21 @@ import {
 } from './periodos-biograficos-hierarquia.js';
 import { opcoesOcultasDosPeriodos } from './ocultas-periodos.js';
 import {
+    registroPapeisPessoa,
+    papelPessoaPorNome,
+    normalizarNota,
+    vinculoComNota,
+    marcarPapel,
+    desmarcarPapel,
+    conflitosDoPapel,
+} from './papeis-pessoa.js';
+import {
     adicionarAssuntoPendente,
     podarAssuntosPendentes,
     sobreporAssuntosPendentes,
     assuntoEhNovo,
     contarTextosPorTema,
+    nomesDeTemasDigitados,
 } from './temas.js';
 import {
     opcoesDePaiDaCorrente,
@@ -120,6 +178,9 @@ import {
     repintarAncoras,
 } from './ancora-eco-ui.js';
 import { ancoraAtiva, normalizarAncorasEco, rotuloEco } from './ancora-eco.js';
+import { linhaSigiloDoTexto } from './autoria-publica.js';
+import { avisoSorteioLeituraCondicionada } from './leitura-autonoma.js';
+import { TEXTO_AVISO_SIGILO, deveAvisarSigilo, nomesLiterariosDoCampo } from './autor-sigiloso.js';
 import { lerPersonagens } from './grupo-personagens.js';
 import {
     opcoesDePaiEmArvore,
@@ -128,6 +189,13 @@ import {
     resolverPeriodoPorRotulo,
     opcoesDeEscolhaDosPeriodosHistoricos,
 } from './periodos-historicos-hierarquia.js';
+import {
+    opcoesDeOrigem,
+    livroCadastradoDigitado,
+    valoresSugeridos,
+    livroDaOrigemDigitada,
+    completarCaminhoDigitado,
+} from './opcoes-origem.js';
 
 // ─── Estado local ─────────────────────────────────────────────
 
@@ -610,10 +678,9 @@ export function carregarManifestosMovimento(v) {
     grupoManifestosMovimento.carregar(v);
 }
 // Temas de um Assunto (db.assuntos[].temas) — mesma fábrica de array de
-// nomes dos campos do Movimento/Escola acima. O Tema não tem cadastro
-// próprio (é a etiqueta de `sinalizacoesTema`), então aqui o chip é só
-// o nome; a sugestão do input vem dos temas já usados nos textos (ver
-// atualizarDatalistTemasAssunto).
+// nomes dos campos do Movimento/Escola acima. Aqui o chip é só o nome do
+// Tema (o cadastro `db.temas` guarda o resto); as sugestões do input vêm
+// de atualizarDatalistTemasAssunto.
 const grupoTemasAssunto = criarGrupoDeTagsArray({
     inputId: 'as-tema-input',
     containerId: 'as-temas-container',
@@ -678,8 +745,8 @@ const SINAL_CATEGORIAS = [
         chave: 'Tema',
         // Tema não é mais campo do bloco Sinalizações: virou o grupo
         // "Temas e Assuntos" (por id, com papel) — ver renderTemasPoema.
-        // A categoria continua aqui só pra manter as funções/módulos e o
-        // espelho `sinalizacoesTema` funcionando (busca, badges, cores).
+        // A categoria continua aqui só pra manter as funções/módulos
+        // funcionando (busca, badges, cores); é virtual, sem campo de dado.
         ocultoNoModal: true,
         cor: 'bg-orange-600',
         corBotao: 'bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300',
@@ -928,27 +995,53 @@ function criarGrupoDeTagsComTipo({
     nomeFuncaoEditar,
     nomeFuncaoAlterarTipo,
     tipos,
+    // Marca opcional por item (uma caixa dentro do chip), só para o grupo que a
+    // pede: `{ campo, rotulo, nomeFuncaoAlterar }`. Hoje só os Nomes Literários
+    // do Autor ("Anonimizar autor"). O campo só existe no item quando está
+    // ligado: desligada, a chave some.
+    marca = null,
 }) {
-    let itens = []; // [{ nome, tipo }]
+    let itens = []; // [{ nome, tipo, [marca.campo]: true }]
+    // Ao editar (✎) o chip sai da lista e o nome volta ao campo. Uma marca é de
+    // proteção, então não pode se perder nessa volta: ela vale só para o próximo
+    // adicionar, e qualquer outra operação a descarta.
+    let marcaPendente = false;
 
     function adicionar(valor = null) {
         const input = document.getElementById(inputId);
         const nome = (valor ?? input?.value ?? '').trim();
         if (input) input.value = '';
+        const restaurar = marcaPendente;
+        marcaPendente = false;
         if (!nome || itens.some((i) => i.nome === nome)) return;
-        itens.push({ nome, tipo: tipos[0] });
+        const novo = { nome, tipo: tipos[0] };
+        if (marca && restaurar) novo[marca.campo] = true;
+        itens.push(novo);
         renderizar();
     }
 
     function remover(nome) {
+        marcaPendente = false;
         itens = itens.filter((i) => i.nome !== nome);
         renderizar();
     }
 
     function alterarTipo(nome, tipo) {
+        marcaPendente = false;
         const item = itens.find((i) => i.nome === nome);
         if (!item || !tipos.includes(tipo)) return;
         item.tipo = tipo;
+        renderizar();
+    }
+
+    // Liga ou desliga a marca do item.
+    function alterarMarca(nome, ligada) {
+        marcaPendente = false;
+        if (!marca) return;
+        const item = itens.find((i) => i.nome === nome);
+        if (!item) return;
+        if (ligada) item[marca.campo] = true;
+        else delete item[marca.campo];
         renderizar();
     }
 
@@ -956,10 +1049,13 @@ function criarGrupoDeTagsComTipo({
     // lista e devolve o nome pro input, pronto pra corrigir. O tipo se
     // perde nessa volta (reaparece com o tipo padrão ao readicionar)
     // — custo aceito pela simplicidade, mesmo padrão do resto da
-    // fábrica.
+    // fábrica. A marca opcional, por ser de proteção, não se perde: volta
+    // sozinha no próximo adicionar (ver `marcaPendente`).
     function editar(nome) {
         const input = document.getElementById(inputId);
+        const tinhaMarca = !!(marca && itens.find((i) => i.nome === nome)?.[marca.campo]);
         remover(nome);
+        marcaPendente = tinhaMarca;
         if (input) {
             input.value = nome;
             input.focus();
@@ -970,6 +1066,15 @@ function criarGrupoDeTagsComTipo({
         const container = document.getElementById(containerId);
         const inputOculto = document.getElementById(hiddenInputId);
         if (!container) return;
+
+        const caixaMarca = (i) =>
+            marca
+                ? `<label class="inline-flex items-center gap-0.5 text-[9px] cursor-pointer ml-1" title="${escapeHtml(marca.dica || marca.rotulo)}">
+                    <input type="checkbox" data-nome="${escapeHtml(i.nome)}" ${i[marca.campo] ? 'checked' : ''}
+                        onchange="${marca.nomeFuncaoAlterar}(this.dataset.nome, this.checked)" />
+                    ${escapeHtml(marca.rotulo)}
+                </label>`
+                : '';
 
         const opcoesTipo = (i) =>
             tipos
@@ -986,6 +1091,7 @@ function criarGrupoDeTagsComTipo({
                     class="text-[9px] bg-white/20 rounded px-1 py-0 border-0 text-white select-chip-autoria">
                     ${opcoesTipo(i)}
                 </select>
+                ${caixaMarca(i)}
                 <button type="button" data-nome="${escapeHtml(i.nome)}" onclick="${nomeFuncaoEditar}(this.dataset.nome)" class="hover:text-blue-200 ml-1" title="Editar">✎</button>
                 <button type="button" data-nome="${escapeHtml(i.nome)}" onclick="${nomeFuncaoRemover}(this.dataset.nome)" class="hover:text-red-200 font-bold ml-1" title="Remover">×</button>
             </span>`,
@@ -996,20 +1102,24 @@ function criarGrupoDeTagsComTipo({
     }
 
     function reset() {
+        marcaPendente = false;
         itens = [];
         renderizar();
     }
 
     // Aceita o array já no formato {nome, tipo} e, por defesa, string
     // legada "a, b, c" (sem tipo) — cada nome legado ganha o tipo
-    // padrão (tipos[0]). Ver decisoes.md.
+    // padrão (tipos[0]). Ver decisoes.md. A marca opcional, quando o grupo a
+    // tem, só sobrevive se for `true` (qualquer outro valor vira desligada).
     function carregar(valor) {
+        marcaPendente = false;
         if (Array.isArray(valor)) {
-            itens = valor.map((i) =>
-                typeof i === 'string'
-                    ? { nome: i, tipo: tipos[0] }
-                    : { nome: i.nome, tipo: tipos.includes(i.tipo) ? i.tipo : tipos[0] },
-            );
+            itens = valor.map((i) => {
+                if (typeof i === 'string') return { nome: i, tipo: tipos[0] };
+                const item = { nome: i.nome, tipo: tipos.includes(i.tipo) ? i.tipo : tipos[0] };
+                if (marca && i[marca.campo] === true) item[marca.campo] = true;
+                return item;
+            });
         } else {
             itens = (valor || '')
                 .split(',')
@@ -1020,7 +1130,7 @@ function criarGrupoDeTagsComTipo({
         renderizar();
     }
 
-    return { adicionar, remover, editar, alterarTipo, renderizar, reset, carregar };
+    return { adicionar, remover, editar, alterarTipo, alterarMarca, renderizar, reset, carregar };
 }
 
 // Nomes Literários do Autor (modal-autor.html) — cadastro central de
@@ -1039,6 +1149,14 @@ const grupoNomesLiterariosAutor = criarGrupoDeTagsComTipo({
     nomeFuncaoEditar: 'editarNomeLiterarioAutor',
     nomeFuncaoAlterarTipo: 'alterarTipoNomeLiterarioAutor',
     tipos: TIPOS_NOME_LITERARIO,
+    // "Anonimizar autor": os textos assinados com este nome saem, nas telas
+    // públicas, só com ele, sem o nome real (ver autor-sigiloso.js).
+    marca: {
+        campo: 'anonimizar',
+        rotulo: 'Anonimizar autor',
+        dica: 'Textos assinados com este nome não mostram o nome real do autor nas telas públicas',
+        nomeFuncaoAlterar: 'alterarAnonimizarNomeLiterarioAutor',
+    },
 });
 
 // Condições Clínicas do Autor (modal-autor.html) — tags tipificadas
@@ -1102,7 +1220,8 @@ const grupoInstituicoesAutor = criarGrupoDeTags({
 // o cadastro central db.pessoas (ver migrarPessoasParaCadastro em
 // db.js), papeis é o vínculo específico daquele texto com a pessoa
 // (Retratado(a)/Inspiração para/Dedicatário(a)/Mencionado(a)/Aludido(a)/
-// Associado(a) retroativamente — ver PAPEIS_PESSOA em utils.js). Sem
+// Associado(a) retroativamente/Voz/Alocutário(a)/Relacionado(a), ver o registro
+// em papeis-pessoa.js). Sem
 // hiddenInputId: diferente dos grupos
 // de tags, que gravam a string combinada num input escondido (lido por
 // `.value` em forms.js), este expõe `obterItens()` — forms.js lê o
@@ -1186,18 +1305,54 @@ function criarGrupoDePessoas({
     }
 
     // Marcar acrescenta ao fim de `papeis` (= ordem de marcação vira
-    // ordem de exibição — não é uma hierarquia fixa por categoria, ver
+    // ordem de exibição, não é uma hierarquia fixa por categoria, ver
     // migrarPapeisPessoa em db.js); desmarcar remove do array, mantendo
-    // a ordem relativa dos que sobraram.
+    // a ordem relativa dos que sobraram. As regras de exclusão moram no
+    // registro (papeis-pessoa.js): marcar um papel tira os que conflitam
+    // com ele (Mencionado(a) × Aludido(a), Inspiração para × Associado(a)
+    // retroativamente, Relacionado(a) × todos). Só Relacionado(a) entrando
+    // sobre papéis já marcados pede confirmação, porque apaga mais de um.
     function alternarPapel(pessoaId, papel, marcado) {
         const item = itens.find((i) => i.pessoaId == pessoaId);
         if (!item) return;
-        if (marcado) {
-            if (!item.papeis.includes(papel)) item.papeis.push(papel);
-        } else {
-            item.papeis = item.papeis.filter((p) => p !== papel);
+        if (!marcado) {
+            item.papeis = desmarcarPapel(papel, item.papeis);
+            renderizar();
+            return;
         }
-        renderizar(); // precisa redesenhar: a ordem dos papéis já marcados pode mudar
+        const aplicar = () => {
+            const { papeis, removidos } = marcarPapel(papel, item.papeis);
+            item.papeis = papeis;
+            renderizar(); // precisa redesenhar: a ordem dos papéis já marcados pode mudar
+            if (removidos.length) {
+                mostrarAviso(
+                    `“${papel}” não convive com ${removidos.map((r) => `“${r}”`).join(', ')}, que saiu.`,
+                );
+            }
+        };
+        const conflitos = conflitosDoPapel(papel, item.papeis);
+        if (papelPessoaPorNome(papel)?.exclusivoComTodos && conflitos.length) {
+            abrirModalConfirmacao({
+                titulo: `Marcar ${papel}?`,
+                rotulo: 'Papel exclusivo',
+                mensagem: `${papel} não convive com outros papéis. Ao marcar, ${conflitos.join(', ')} ${conflitos.length > 1 ? 'saem' : 'sai'} desta pessoa neste texto.`,
+                textoConfirmar: 'Marcar',
+                corConfirmar: '#e11d48',
+                onConfirmar: aplicar,
+            });
+            renderizar(); // desfaz a caixa já marcada enquanto a confirmação está aberta
+            return;
+        }
+        aplicar();
+    }
+
+    // Nota do vínculo: explicação humana sobre os papéis escolhidos. Grava na
+    // hora, sem redesenhar (redesenhar tiraria o foco do campo a cada letra).
+    // Texto vazio apaga a chave `nota` do vínculo.
+    function definirNota(pessoaId, texto) {
+        const i = itens.findIndex((x) => x.pessoaId == pessoaId);
+        if (i < 0) return;
+        itens[i] = vinculoComNota(itens[i], texto);
     }
 
     function alternarDropdown(pessoaId) {
@@ -1269,16 +1424,35 @@ function criarGrupoDePessoas({
         if (!container) return;
 
         const checkboxesPapel = (i) =>
-            PAPEIS_PESSOA.map((p) => {
-                const marcado = i.papeis.includes(p);
-                return `
-                <label class="flex items-center gap-1 px-2 py-1 text-[10px] text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer whitespace-nowrap">
+            registroPapeisPessoa()
+                .map((papelReg) => {
+                    const p = papelReg.nome;
+                    const marcado = i.papeis.includes(p);
+                    return `
+                <label title="${escapeHtml(papelReg.descricao || '')}" class="flex items-center gap-1 px-2 py-1 text-[10px] text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700 cursor-pointer whitespace-nowrap">
                     <input type="checkbox" ${marcado ? 'checked' : ''}
                         onchange="${nomeFuncaoAlternarPapel}('${tabela}', ${JSON.stringify(i.pessoaId)}, '${escapeHtml(p).replace(/'/g, "\\'")}', this.checked)"
                         class="rounded border-gray-300 dark:border-slate-600 text-rose-500 focus:ring-rose-400" />
-                    ${escapeHtml(p)}
+                    ${escapeHtml(p)} <span class="opacity-50">(${escapeHtml(papelReg.apelido)})</span>
                 </label>`;
-            }).join('');
+                })
+                .join('');
+
+        const campoNota = (i) => {
+            const reservaRelacionado = i.papeis.some(
+                (p) => papelPessoaPorNome(p)?.exclusivoComTodos,
+            );
+            const dica = reservaRelacionado
+                ? 'Por que nenhum papel coube? (opcional)'
+                : 'Nota sobre os papéis escolhidos (opcional)';
+            return `
+                <div class="px-2 pt-1 pb-1 border-t border-gray-200 dark:border-slate-600 mt-1">
+                    <textarea rows="2" maxlength="500" placeholder="${escapeHtml(dica)}"
+                        data-id="${escapeHtml(String(i.pessoaId))}"
+                        oninput="definirNotaPessoa('${tabela}', this.dataset.id, this.value)"
+                        class="w-64 text-[10px] rounded border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 p-1">${escapeHtml(normalizarNota(i.nota))}</textarea>
+                </div>`;
+        };
 
         container.innerHTML = itens
             .map((i) => {
@@ -1291,13 +1465,14 @@ function criarGrupoDePessoas({
             <span class="relative ${corClasse} text-white text-[10px] pl-2 pr-1 py-1 rounded-full inline-flex items-center gap-1">
                 ${escapeHtml(nome)}
                 <button type="button" data-id="${escapeHtml(String(i.pessoaId))}" onclick="${nomeFuncaoAlternarDropdown}('${tabela}', this.dataset.id)"
+                    title="${escapeHtml([i.papeis.join(', '), normalizarNota(i.nota)].filter(Boolean).join(' | '))}"
                     class="text-[9px] bg-white/20 rounded px-1 py-0 hover:bg-white/30">
                     ${rotuloPapeis}
                 </button>
                 <button type="button" data-id="${escapeHtml(String(i.pessoaId))}" onclick="${nomeFuncaoRemover}('${tabela}', this.dataset.id)" class="hover:text-red-200 font-bold ml-1">×</button>
                 ${
                     aberto
-                        ? `<div class="absolute z-10 top-full left-0 mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded shadow-lg py-1 min-w-max">${checkboxesPapel(i)}</div>`
+                        ? `<div class="absolute z-10 top-full left-0 mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded shadow-lg py-1 min-w-max">${checkboxesPapel(i)}${campoNota(i)}</div>`
                         : ''
                 }
             </span>`;
@@ -1327,7 +1502,10 @@ function criarGrupoDePessoas({
                 if (typeof p === 'string')
                     return { pessoaId: obterOuCriarPessoaPorNome(p).id, papeis: [] };
                 if (p.pessoaId !== undefined)
-                    return { pessoaId: p.pessoaId, papeis: [...(p.papeis || [])] };
+                    return vinculoComNota(
+                        { pessoaId: p.pessoaId, papeis: [...(p.papeis || [])] },
+                        p.nota,
+                    );
                 if (Array.isArray(p.papeis))
                     return {
                         pessoaId: obterOuCriarPessoaPorNome(p.nome).id,
@@ -1358,6 +1536,7 @@ function criarGrupoDePessoas({
         remover,
         alternarPapel,
         alternarDropdown,
+        definirNota,
         renderizar,
         reset,
         carregar,
@@ -1795,6 +1974,7 @@ function criarGrupoDeAutoria({
             </span>`;
             })
             .join('');
+        atualizarLinhaSigiloTexto(tabela);
     }
 
     function reset() {
@@ -2098,14 +2278,34 @@ function htmlDataAcesso(it) {
 }
 
 function renderItemIntertexto(it) {
-    const badge = it.tipo
-        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(it.tipo)}</span>`
+    const e = migrarEntradaIntertextualidade(it);
+    const selo = (valor, cor) =>
+        valor
+            ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded ${cor} text-[10px] font-bold uppercase align-middle">${escapeHtml(valor)}</span>`
+            : '';
+    const badges =
+        selo(e.relacao, 'bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300') +
+        selo(e.tipoObra, 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300');
+    const pessoal = ehObraPessoal(e)
+        ? ' <span class="text-[10px] text-gray-400 dark:text-slate-500">(obra pessoal)</span>'
         : '';
-    const link = it.link
-        ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
+    const quem = [textoAutoresDaEntrada(e), rotuloDaOrigem(e), textoPersonagensDaEntrada(e)]
+        .filter(Boolean)
+        .join(', ');
+    const quemHtml = quem
+        ? ` <span class="text-gray-500 dark:text-slate-400">(${escapeHtml(quem)})</span>`
         : '';
-    const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
-    return `${badge}${escapeHtml(it.texto || '')}${link}${htmlDataAcesso(it)}${nota}`;
+    const descricao = e.descricao ? `, ${escapeHtml(e.descricao)}` : '';
+    const trecho = e.trecho
+        ? ` <span class="italic text-gray-600 dark:text-slate-300">“${escapeHtml(e.trecho)}”</span>${e.traduzido ? ' <span class="text-[10px] text-gray-400 dark:text-slate-500">(traduzido)</span>' : ''}`
+        : e.traduzido
+          ? ' <span class="text-[10px] text-gray-400 dark:text-slate-500">(traduzido)</span>'
+          : '';
+    const link = e.link
+        ? ` <a href="${escapeHtml(e.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(e.linkTexto || e.link)}</a>`
+        : '';
+    const nota = e.nota ? `, ${escapeHtml(e.nota)}` : '';
+    return `${badges}${escapeHtml(e.obra || '')}${pessoal}${quemHtml}${descricao}${htmlDataDaObra(e)}${trecho}${link}${htmlDataAcesso(e)}${nota}`;
 }
 
 const listaIntertextoPoema = criarListaDeEntradas({
@@ -2137,21 +2337,6 @@ function atualizarBotaoIntertexto(tabela) {
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
 
-// Lê o Tipo atual (`tipoElId`) e repopula o datalist de Texto
-// (`datalistTextoId`) só com as referências já tipadas com ele — chamada
-// tanto no carregamento do modal (lista geral) quanto a cada mudança no
-// campo Tipo (lista focada, ver wiring do 'input' em initEditor()/
-// initEditorProsa()). Sem Tipo ainda escolhido, cai no comportamento
-// anterior (todas as referências, de qualquer tipo).
-function atualizarDatalistTextoIntertexto(itens, tipoElId, datalistTextoId) {
-    const datalist = document.getElementById(datalistTextoId);
-    if (!datalist) return;
-    const tipoAtual = document.getElementById(tipoElId)?.value.trim() || null;
-    datalist.innerHTML = extrairValoresUnicosDeIntertextualidade(itens, tipoAtual)
-        .map((v) => `<option value="${escapeHtml(v)}">`)
-        .join('');
-}
-
 // Espelha atualizarDatalistTextoIntertexto acima, sobre `referenciasExternas`
 // em vez de `intertextualidade` — ver bloco de Referências mais abaixo.
 function atualizarDatalistTextoReferenciaExterna(itens, tipoElId, datalistTextoId) {
@@ -2163,92 +2348,496 @@ function atualizarDatalistTextoReferenciaExterna(itens, tipoElId, datalistTextoI
         .join('');
 }
 
-// Prosa não tem versão global do datalist de Tipo em index.html (só a
-// de Poema) — cada bloco de Prosa declara a sua própria <datalist>
-// inline (mesmo motivo de renderSinalizacoesProsa acima), daí o sufixo
-// '-prosa' nos ids abaixo quando tabela === 'prosas'.
-export function atualizarDatalistIntertexto(tabela) {
+// ─── Autores da obra (tags) ──────────────────────────────────
+// O autor de uma obra citada é uma lista de tags (`autores`), não um texto.
+// Um campo de tags por formulário (Intertextualidade e Hipertextualidade) e
+// por tabela, todos do mesmo componente (campo-tags-autor.js). As tags
+// confirmadas ficam em memória até a entrada ser salva; o que estiver
+// digitado e sem Enter entra junto ao salvar. Os ids no DOM seguem o padrão
+// `<p>-<campo>-autor` (o input) e `<p>-<campo>-autor-chips` (as tags).
+const camposDeAutor = {};
+
+function campoAutor(tabela, campo) {
+    const chave = `${tabela}:${campo}`;
+    if (!camposDeAutor[chave]) {
+        const p = prefixoDom(tabela);
+        camposDeAutor[chave] = criarCampoTagsAutor({
+            idInput: `${p}-${campo}-autor`,
+            idChips: `${p}-${campo}-autor-chips`,
+            aoMudar: () => {
+                // Mudou a lista: refiltra as sugestões e, se a Descrição está
+                // vazia e a obra tem uma só, preenche (mesmo gesto de sair de
+                // Tipo de obra ou Obra).
+                preencherDaObra(tabela, campo);
+                if (campo === 'intertexto') atualizarDatalistIntertexto(tabela);
+                else atualizarDatalistHipertextualidade(tabela);
+            },
+        });
+    }
+    return camposDeAutor[chave];
+}
+
+// ─── Origem da obra (tags) ───────────────────────────────────
+// Lugar ou cultura de onde a obra vem (`origemObra`), em lista de tags, na
+// Intertextualidade e na Hipertextualidade. Ids `<p>-<campo>-origem` (o input)
+// e `<p>-<campo>-origem-chips` (as tags). Texto livre, sem cadastro.
+const camposDeOrigem = {};
+
+function campoOrigem(tabela, campo) {
+    const chave = `${tabela}:${campo}`;
+    if (!camposDeOrigem[chave]) {
+        const p = prefixoDom(tabela);
+        camposDeOrigem[chave] = criarCampoTagsAutor({
+            idInput: `${p}-${campo}-origem`,
+            idChips: `${p}-${campo}-origem-chips`,
+            rotulo: 'origem',
+            aoMudar: () => {
+                if (campo === 'intertexto') atualizarDatalistIntertexto(tabela);
+                else atualizarDatalistHipertextualidade(tabela);
+            },
+        });
+    }
+    return camposDeOrigem[chave];
+}
+
+// As origens confirmadas no formulário, sem o texto ainda digitado.
+export function origensDoFormulario(tabela, campo) {
+    return campoOrigem(tabela, campo).obter();
+}
+
+// Grava `origemObra` só quando há origem (a chave não existe sem ela).
+function origemParaSalvar(lista) {
+    return lista.length ? { origemObra: lista } : {};
+}
+
+function semOrigensJaEscolhidas(sugestoes, escolhidas) {
+    const jaTem = new Set(escolhidas.map(chaveDeOrigem));
+    return sugestoes.filter((nome) => !jaTem.has(chaveDeOrigem(nome)));
+}
+
+// ─── Personagens da obra (tags) ──────────────────────────────
+// Como o autor, o personagem da obra citada é uma lista de tags (`personagens`):
+// o mito de Prometeu cita Prometeu e Zeus. Só a Intertextualidade tem o campo.
+// Mesmo componente do autor; ids `<p>-intertexto-personagem` (o input) e
+// `<p>-intertexto-personagem-chips` (as tags). Texto livre, sem relação com o
+// cadastro Personagens.
+const camposDePersonagem = {};
+
+function campoPersonagem(tabela) {
+    if (!camposDePersonagem[tabela]) {
+        const p = prefixoDom(tabela);
+        camposDePersonagem[tabela] = criarCampoTagsAutor({
+            idInput: `${p}-intertexto-personagem`,
+            idChips: `${p}-intertexto-personagem-chips`,
+            rotulo: 'personagem',
+            aoMudar: () => atualizarDatalistIntertexto(tabela),
+        });
+    }
+    return camposDePersonagem[tabela];
+}
+
+// Liga o campo de tags de Intertextualidade e o de Hipertextualidade de uma
+// tabela, mais o de Personagem (chamada junto dos outros listeners do modal).
+export function ligarCamposDeAutor(tabela) {
+    campoAutor(tabela, 'intertexto').ligar();
+    campoAutor(tabela, 'hipertexto').ligar();
+    campoPersonagem(tabela).ligar();
+    campoOrigem(tabela, 'intertexto').ligar();
+    campoOrigem(tabela, 'hipertexto').ligar();
+}
+
+// As tags de personagem confirmadas no formulário, sem o texto ainda digitado.
+export function personagensDoFormulario(tabela) {
+    return campoPersonagem(tabela).obter();
+}
+
+// As tags de autor confirmadas no formulário (campo: 'intertexto' ou
+// 'hipertexto'), sem o texto ainda digitado.
+export function autoresDoFormulario(tabela, campo) {
+    return campoAutor(tabela, campo).obter();
+}
+
+// ─── Data da obra ou do fato (T9, entrega 6) ─────────────────
+// Um campo de data por formulário e por tabela (Intertextualidade,
+// Hipertextualidade e Referências), todos do mesmo componente
+// (campo-data-obra.js). Cada ponta tem o seu nível, a sua marca a.C. e a sua
+// marca aprox.; o que está na tela vai para a entrada nas chaves `dataObra`
+// (começo) e `dataObraAte` (fim), e só existe chave quando há data. Como a
+// lista salva a entrada inteira do formulário, editar uma entrada precisa
+// devolver a data ao campo (`definir`), senão ela se perderia ao salvar.
+// Ids no DOM: `<p>-<campo>-data`, com campo `intertexto`, `hipertexto` ou
+// `refext`.
+const camposDeDataEmEdicao = {};
+
+function tipoDaReferencia(tabela) {
+    return document.getElementById(`${prefixoDom(tabela)}-refext-tipo`)?.value || '';
+}
+
+function campoData(tabela, campo) {
+    const chave = `${tabela}:${campo}`;
+    if (!camposDeDataEmEdicao[chave]) {
+        camposDeDataEmEdicao[chave] = criarCampoDataObra({
+            idContainer: `${prefixoDom(tabela)}-${campo}-data`,
+            rotulos: campo === 'refext' ? rotulosDaData(tipoDaReferencia(tabela)) : rotulosDaData(),
+            // Mexer na data muda o que já está na tela: as sugestões que
+            // repetem o que foi escolhido somem.
+            aoMudar: () => atualizarSugestoesDeData(tabela, campo),
+        });
+    }
+    return camposDeDataEmEdicao[chave];
+}
+
+// Os rótulos da Referência seguem o Tipo (Marco histórico: Início e Fim;
+// Pessoa pública: Nascimento e Óbito).
+function atualizarRotulosDaReferencia(tabela) {
+    campoData(tabela, 'refext').definirRotulos(rotulosDaData(tipoDaReferencia(tabela)));
+}
+
+function dadosDaTabela(tabela) {
+    return tabela === 'prosas' ? db.prosas || [] : db.poemas || [];
+}
+
+// Mesmo critério da Descrição: nome da obra, e tipo e autores só restringem
+// quando preenchidos. A Referência não tem autor: vale o tipo e o texto.
+function criterioDaData(tabela, campo) {
     const p = prefixoDom(tabela);
-    const dados = tabela === 'prosas' ? db.prosas || [] : db.poemas;
-    const sufixo = tabela === 'prosas' ? '-prosa' : '';
-    atualizarDatalistTextoIntertexto(
-        dados,
-        `${p}-intertexto-tipo`,
-        `sugestoes-intertexto${sufixo}`,
-    );
-    const datalistTipo = document.getElementById(`sugestoes-intertexto-tipo${sufixo}`);
-    if (datalistTipo) {
-        datalistTipo.innerHTML = extrairTiposIntertextoUnicos(dados)
-            .map((v) => `<option value="${escapeHtml(v)}">`)
-            .join('');
+    const lido = (sufixo) => document.getElementById(`${p}-${campo}-${sufixo}`)?.value.trim() || '';
+    if (campo === 'refext') return { tipo: lido('tipo'), texto: lido('texto') };
+    return {
+        tipoObra: lido('tipo'),
+        obra: lido(campo === 'intertexto' ? 'obra' : 'hipotexto'),
+        autores: campoAutor(tabela, campo).obterComPendente(),
+    };
+}
+
+// As datas já usadas para a mesma obra (ou referência) viram botões sob o
+// campo; quando só existe uma e o campo está vazio, `preencherDataDaObra` já a
+// pôs na tela e não sobra nada a sugerir.
+function atualizarSugestoesDeData(tabela, campo) {
+    const dados = dadosDaTabela(tabela);
+    const criterio = criterioDaData(tabela, campo);
+    const pares =
+        campo === 'refext'
+            ? extrairDatasDaReferencia(dados, criterio)
+            : extrairDatasDaObra(dados, criterio);
+    campoData(tabela, campo).mostrarSugestoes(pares);
+}
+
+// Preenche a data sozinha só quando as duas pontas estão vazias e a mesma obra
+// (ou referência) já tem uma única data no acervo. Nunca sobrescreve o que está
+// na tela.
+function preencherDataDaObra(tabela, campo) {
+    const dados = dadosDaTabela(tabela);
+    const criterio = criterioDaData(tabela, campo);
+    const cd = campoData(tabela, campo);
+    if (cd.estaVazio()) {
+        const unica =
+            campo === 'refext'
+                ? dataUnicaDaReferencia(dados, criterio)
+                : dataUnicaDaObra(dados, criterio);
+        if (unica) cd.definir(unica);
+    }
+    atualizarSugestoesDeData(tabela, campo);
+}
+
+// Liga os três campos de data de uma tabela (chamada junto dos outros
+// listeners do modal). A data de Intertextualidade e Hipertextualidade é
+// sugerida pelos mesmos gestos da Descrição (`preencherDaObra`); a da
+// Referência, ao sair de Tipo ou Texto.
+export function ligarCamposDeData(tabela) {
+    const p = prefixoDom(tabela);
+    ['intertexto', 'hipertexto', 'refext'].forEach((campo) => campoData(tabela, campo).ligar());
+    ['tipo', 'texto'].forEach((sufixo) => {
+        document.getElementById(`${p}-refext-${sufixo}`)?.addEventListener('change', () => {
+            atualizarRotulosDaReferencia(tabela);
+            preencherDataDaObra(tabela, 'refext');
+        });
+    });
+}
+
+// Lê a data do formulário para gravar na entrada. Devolve `null` (e já avisa o
+// usuário) quando a data não vale; senão as chaves da data, para espalhar na
+// entrada.
+function camposDeDataDoFormulario(tabela, campo) {
+    const datas = campoData(tabela, campo).obter();
+    if (datas.erro) {
+        mostrarAviso(datas.mensagem);
+        return null;
+    }
+    return camposDeData(datas);
+}
+
+// A data da entrada, em texto, para a lista do próprio formulário.
+function htmlDataDaObra(entrada) {
+    const { inicio, fim } = datasDaEntrada(entrada);
+    const texto = formatarIntervaloDataObra(inicio, fim);
+    return texto
+        ? ` <span class="text-[11px] text-gray-500 dark:text-slate-400">· ${escapeHtml(texto)}</span>`
+        : '';
+}
+
+// Campos de texto do formulário de Intertextualidade: chave da entrada e
+// sufixo do id no DOM (`p-intertexto-<sufixo>` / `pr-intertexto-<sufixo>`).
+// `dataAcesso`, `traduzido` e `personagens` (tags) têm tratamento próprio, abaixo.
+const CAMPOS_INTERTEXTO = [
+    ['relacao', 'relacao'],
+    ['tipoObra', 'tipo'],
+    ['obra', 'obra'],
+    ['descricao', 'descricao'],
+    ['trecho', 'trecho'],
+    ['link', 'link'],
+    ['linkTexto', 'link-texto'],
+    ['nota', 'nota'],
+];
+
+function elementosIntertexto(tabela) {
+    const p = prefixoDom(tabela);
+    const el = (sufixo) => document.getElementById(`${p}-intertexto-${sufixo}`);
+    return {
+        el,
+        dataAcessoEl: el('data-acesso'),
+        traduzidoEl: el('traduzido'),
+        obraPessoalEl: el('obra-pessoal'),
+    };
+}
+
+function limparCamposIntertexto(tabela) {
+    const { el, dataAcessoEl, traduzidoEl, obraPessoalEl } = elementosIntertexto(tabela);
+    CAMPOS_INTERTEXTO.forEach(([, sufixo]) => {
+        const campo = el(sufixo);
+        if (campo) campo.value = '';
+    });
+    if (dataAcessoEl) dataAcessoEl.value = '';
+    if (traduzidoEl) traduzidoEl.checked = false;
+    if (obraPessoalEl) obraPessoalEl.checked = false;
+    campoAutor(tabela, 'intertexto').limpar();
+    campoPersonagem(tabela).limpar();
+    campoOrigem(tabela, 'intertexto').limpar();
+    campoData(tabela, 'intertexto').limpar();
+}
+
+// Sugestão focada com plano B: filtra pelo que já foi escolhido no
+// formulário e, se não sobrar nada, volta à lista geral (o campo continua
+// livre, a sugestão só ajuda).
+function sugestoesComFallback(focada, geral) {
+    return focada.length ? focada : geral;
+}
+
+// O autocompletar de autor não oferece quem já virou tag neste formulário.
+function semAutoresJaEscolhidos(sugestoes, escolhidos) {
+    const jaTem = new Set(chavesDosAutores(escolhidos));
+    return sugestoes.filter((nome) => !jaTem.has(chaveDeAutor(nome)));
+}
+
+// O autocompletar de personagem não oferece quem já virou tag neste formulário.
+function semPersonagensJaEscolhidos(sugestoes, escolhidos) {
+    const jaTem = new Set(escolhidos.map(chaveDePersonagem));
+    return sugestoes.filter((nome) => !jaTem.has(chaveDePersonagem(nome)));
+}
+
+// Sugestões da Descrição (campo de texto longo, que não tem autocompletar
+// nativo): botões com as descrições já usadas para a mesma obra. Clicar põe o
+// texto no campo, mesmo que já haja algo (a pessoa vê e edita); o campo vazio
+// continua se preenchendo sozinho quando só há uma descrição.
+function preencherSugestoesDescricao(id, valores) {
+    const caixa = document.getElementById(id);
+    if (!caixa) return;
+    caixa.innerHTML = '';
+    const alvo = document.getElementById(caixa.dataset.sugestoesDescricao || '');
+    if (!alvo) return;
+    for (const v of valores) {
+        const botao = document.createElement('button');
+        botao.type = 'button';
+        botao.textContent = v;
+        botao.title = 'Usar esta descrição';
+        botao.className =
+            'max-w-full truncate text-[11px] px-2 py-0.5 rounded-full border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800';
+        botao.addEventListener('click', () => {
+            alvo.value = v;
+            alvo.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        caixa.appendChild(botao);
     }
 }
 
-export function adicionarIntertexto(tabela) {
+function preencherDatalist(id, valores) {
+    const datalist = document.getElementById(id);
+    if (!datalist) return;
+    datalist.innerHTML = valores.map((v) => `<option value="${escapeHtml(v)}">`).join('');
+}
+
+// Prosa não tem versão global dos datalists em index.html (só a de Poema):
+// cada bloco de Prosa declara os seus inline, daí o sufixo '-prosa' nos ids.
+export function atualizarDatalistIntertexto(tabela) {
+    const dados = tabela === 'prosas' ? db.prosas || [] : db.poemas;
+    const sufixo = tabela === 'prosas' ? '-prosa' : '';
+    const { el } = elementosIntertexto(tabela);
+    const tipoObra = el('tipo')?.value.trim() || null;
+    const obra = el('obra')?.value.trim() || null;
+    const autores = campoAutor(tabela, 'intertexto').obter();
+
+    preencherDatalist(
+        `sugestoes-intertexto-relacao${sufixo}`,
+        extrairRelacoesIntertextualidadeUnicas(dados),
+    );
+    preencherDatalist(`sugestoes-intertexto-tipo${sufixo}`, extrairTiposObraUnicos(dados));
+    preencherDatalist(
+        `sugestoes-intertexto${sufixo}`,
+        sugestoesComFallback(
+            extrairObrasUnicas(dados, { tipoObra, autores }),
+            extrairObrasUnicas(dados, { tipoObra }),
+        ),
+    );
+    preencherDatalist(
+        `sugestoes-intertexto-autor${sufixo}`,
+        semAutoresJaEscolhidos(
+            sugestoesComFallback(
+                extrairAutoresUnicos(dados, { tipoObra, obra }),
+                sugestoesComFallback(
+                    extrairAutoresUnicos(dados, { tipoObra }),
+                    extrairAutoresUnicos(dados),
+                ),
+            ),
+            autores,
+        ),
+    );
+    preencherSugestoesDescricao(
+        `sugestoes-intertexto-descricao${sufixo}`,
+        extrairDescricoesDaObra(dados, { tipoObra, obra, autores }),
+    );
+    preencherDatalist(
+        `sugestoes-intertexto-personagem${sufixo}`,
+        semPersonagensJaEscolhidos(
+            sugestoesComFallback(
+                extrairPersonagensUnicos(dados, { obra }),
+                extrairPersonagensUnicos(dados),
+            ),
+            campoPersonagem(tabela).obter(),
+        ),
+    );
+    preencherDatalist(
+        `sugestoes-intertexto-origem${sufixo}`,
+        semOrigensJaEscolhidas(
+            sugestoesComFallback(
+                extrairOrigensUnicas(dados, { tipoObra, obra }),
+                sugestoesComFallback(
+                    extrairOrigensUnicas(dados, { tipoObra }),
+                    extrairOrigensUnicas(dados),
+                ),
+            ),
+            campoOrigem(tabela, 'intertexto').obter(),
+        ),
+    );
+}
+
+// Preenche a Descrição sozinha quando o campo está vazio e a mesma obra (mesmo
+// tipo e mesmo autor, quando preenchidos) já tem uma única descrição no
+// acervo. Nunca sobrescreve o que está digitado. Chamada ao sair de Tipo de
+// obra, Obra ou Autor.
+function preencherDescricaoDaObra(tabela, campo) {
+    const dados = tabela === 'prosas' ? db.prosas || [] : db.poemas;
     const p = prefixoDom(tabela);
-    const tipoEl = document.getElementById(`${p}-intertexto-tipo`);
-    const textoEl = document.getElementById(`${p}-intertexto-texto`);
-    const linkEl = document.getElementById(`${p}-intertexto-link`);
-    const linkTextoEl = document.getElementById(`${p}-intertexto-link-texto`);
-    const dataAcessoEl = document.getElementById(`${p}-intertexto-data-acesso`);
-    const notaEl = document.getElementById(`${p}-intertexto-nota`);
-    const tipo = tipoEl?.value || '';
-    const texto = (textoEl?.value || '').trim();
-    const link = (linkEl?.value || '').trim();
-    const linkTexto = (linkTextoEl?.value || '').trim();
-    const dataAcesso = link ? dataAcessoEl?.value || '' : '';
-    const nota = (notaEl?.value || '').trim();
-    if (!tipo && !texto && !link && !linkTexto && !nota) return;
-    listaIntertexto(tabela).salvar({
-        tipo,
-        texto,
-        link,
-        linkTexto,
-        ...(dataAcesso ? { dataAcesso } : {}),
-        nota,
+    const lido = (sufixo) => document.getElementById(`${p}-${campo}-${sufixo}`)?.value.trim() || '';
+    const descricaoEl = document.getElementById(`${p}-${campo}-descricao`);
+    if (!descricaoEl || descricaoEl.value.trim()) return;
+    const unica = descricaoUnicaDaObra(dados, {
+        tipoObra: lido('tipo'),
+        obra: lido(campo === 'intertexto' ? 'obra' : 'hipotexto'),
+        autores: campoAutor(tabela, campo).obterComPendente(),
     });
-    if (tipoEl) tipoEl.value = '';
-    if (textoEl) textoEl.value = '';
-    if (linkEl) linkEl.value = '';
-    if (linkTextoEl) linkTextoEl.value = '';
-    if (dataAcessoEl) dataAcessoEl.value = '';
-    if (notaEl) notaEl.value = '';
+    if (unica) descricaoEl.value = unica;
+}
+
+// A Origem se preenche sozinha, como a Descrição: só com o campo todo vazio
+// (sem tag e sem texto digitado) e quando a mesma obra tem uma única lista de
+// origens no acervo. Nunca sobrescreve o que está no formulário.
+function preencherOrigemDaObra(tabela, campo) {
+    const dados = tabela === 'prosas' ? db.prosas || [] : db.poemas;
+    const p = prefixoDom(tabela);
+    const lido = (sufixo) => document.getElementById(`${p}-${campo}-${sufixo}`)?.value.trim() || '';
+    const origem = campoOrigem(tabela, campo);
+    if (origem.obterComPendente().length) return;
+    const unica = origemUnicaDaObra(dados, {
+        tipoObra: lido('tipo'),
+        obra: lido(campo === 'intertexto' ? 'obra' : 'hipotexto'),
+        autores: campoAutor(tabela, campo).obterComPendente(),
+    });
+    if (unica.length) origem.definir(unica);
+}
+
+// O gesto de "a obra mudou" (sair de Tipo de obra, Obra ou Autor, ou mudar as
+// tags de autor): a Descrição, a data e a origem da obra se sugerem, cada uma
+// só se estiver vazia.
+function preencherDaObra(tabela, campo) {
+    preencherDataDaObra(tabela, campo);
+    preencherDescricaoDaObra(tabela, campo);
+    preencherOrigemDaObra(tabela, campo);
+}
+
+export function adicionarIntertexto(tabela) {
+    const { el, dataAcessoEl, traduzidoEl, obraPessoalEl } = elementosIntertexto(tabela);
+    const valor = (sufixo) => (el(sufixo)?.value || '').trim();
+    const entrada = {};
+    CAMPOS_INTERTEXTO.forEach(([chave, sufixo]) => {
+        entrada[chave] = valor(sufixo);
+    });
+    // Autor ainda digitado no campo (sem Enter) entra junto das tags.
+    const autores = campoAutor(tabela, 'intertexto').obterComPendente();
+    // Personagem ainda digitado (sem Enter) também entra junto das tags.
+    const personagens = campoPersonagem(tabela).obterComPendente();
+    const origens = campoOrigem(tabela, 'intertexto').obterComPendente();
+    const preenchido =
+        autores.length > 0 ||
+        personagens.length > 0 ||
+        origens.length > 0 ||
+        CAMPOS_INTERTEXTO.some(([chave]) => entrada[chave]);
+    if (!preenchido) return;
+    const datas = camposDeDataDoFormulario(tabela, 'intertexto');
+    if (!datas) return;
+    const dataAcesso = entrada.link ? dataAcessoEl?.value || '' : '';
+    listaIntertexto(tabela).salvar({
+        relacao: entrada.relacao,
+        tipoObra: entrada.tipoObra,
+        obra: entrada.obra,
+        autores,
+        ...origemParaSalvar(origens),
+        personagens,
+        descricao: entrada.descricao,
+        trecho: entrada.trecho,
+        traduzido: !!traduzidoEl?.checked,
+        ...campoObraPessoal(!!obraPessoalEl?.checked),
+        ...datas,
+        link: entrada.link,
+        linkTexto: entrada.linkTexto,
+        ...(dataAcesso ? { dataAcesso } : {}),
+        nota: entrada.nota,
+    });
+    limparCamposIntertexto(tabela);
     atualizarBotaoIntertexto(tabela);
     atualizarDatalistIntertexto(tabela);
 }
 export function editarIntertexto(tabela, indice) {
-    const item = listaIntertexto(tabela).iniciarEdicao(indice);
-    const p = prefixoDom(tabela);
-    const tipoEl = document.getElementById(`${p}-intertexto-tipo`);
-    const textoEl = document.getElementById(`${p}-intertexto-texto`);
-    const linkEl = document.getElementById(`${p}-intertexto-link`);
-    const linkTextoEl = document.getElementById(`${p}-intertexto-link-texto`);
-    const dataAcessoEl = document.getElementById(`${p}-intertexto-data-acesso`);
-    const notaEl = document.getElementById(`${p}-intertexto-nota`);
-    if (tipoEl) tipoEl.value = item.tipo || '';
-    if (textoEl) textoEl.value = item.texto || '';
-    if (linkEl) linkEl.value = item.link || '';
-    if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
+    const item = migrarEntradaIntertextualidade(listaIntertexto(tabela).iniciarEdicao(indice));
+    const { el, dataAcessoEl, traduzidoEl, obraPessoalEl } = elementosIntertexto(tabela);
+    CAMPOS_INTERTEXTO.forEach(([chave, sufixo]) => {
+        const campo = el(sufixo);
+        if (campo) campo.value = item[chave] || '';
+    });
     if (dataAcessoEl) dataAcessoEl.value = item.dataAcesso || '';
-    if (notaEl) notaEl.value = item.nota || '';
-    textoEl?.focus();
+    if (traduzidoEl) traduzidoEl.checked = item.traduzido === true;
+    if (obraPessoalEl) obraPessoalEl.checked = ehObraPessoal(item);
+    campoAutor(tabela, 'intertexto').definir(autoresDaEntrada(item));
+    campoPersonagem(tabela).definir(personagensDaEntrada(item));
+    campoOrigem(tabela, 'intertexto').definir(origensDaEntrada(item));
+    campoData(tabela, 'intertexto').definir(datasDaEntrada(item));
+    el('obra')?.focus();
     atualizarBotaoIntertexto(tabela);
+    atualizarDatalistIntertexto(tabela);
+    atualizarSugestoesDeData(tabela, 'intertexto');
 }
 export function cancelarEdicaoIntertexto(tabela) {
     listaIntertexto(tabela).cancelarEdicao();
-    const p = prefixoDom(tabela);
-    const tipoEl = document.getElementById(`${p}-intertexto-tipo`);
-    const textoEl = document.getElementById(`${p}-intertexto-texto`);
-    const linkEl = document.getElementById(`${p}-intertexto-link`);
-    const linkTextoEl = document.getElementById(`${p}-intertexto-link-texto`);
-    const dataAcessoEl = document.getElementById(`${p}-intertexto-data-acesso`);
-    const notaEl = document.getElementById(`${p}-intertexto-nota`);
-    if (tipoEl) tipoEl.value = '';
-    if (textoEl) textoEl.value = '';
-    if (linkEl) linkEl.value = '';
-    if (linkTextoEl) linkTextoEl.value = '';
-    if (dataAcessoEl) dataAcessoEl.value = '';
-    if (notaEl) notaEl.value = '';
+    limparCamposIntertexto(tabela);
     atualizarBotaoIntertexto(tabela);
 }
 export function removerIntertexto(tabela, indice) {
@@ -2259,11 +2848,21 @@ export function obterIntertextualidade(tabela) {
     return listaIntertexto(tabela).obterItens();
 }
 export function carregarIntertextualidade(tabela, lista) {
-    listaIntertexto(tabela).carregar(lista);
+    // Entrada antiga (tipo e texto) abre já no formato novo; o que o Victor
+    // não mexer só é gravado no formato novo quando ele salvar o texto.
+    listaIntertexto(tabela).carregar(
+        Array.isArray(lista) ? lista.map(migrarEntradaIntertextualidade) : [],
+    );
+    campoAutor(tabela, 'intertexto').limpar();
+    campoPersonagem(tabela).limpar();
+    campoData(tabela, 'intertexto').limpar();
     atualizarBotaoIntertexto(tabela);
 }
 export function resetIntertextualidade(tabela) {
     listaIntertexto(tabela).reset();
+    campoAutor(tabela, 'intertexto').limpar();
+    campoPersonagem(tabela).limpar();
+    campoData(tabela, 'intertexto').limpar();
     atualizarBotaoIntertexto(tabela);
 }
 
@@ -2290,7 +2889,21 @@ function renderItemReferenciaExterna(it) {
         ? ` <a href="${escapeHtml(it.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(it.linkTexto || it.link)}</a>`
         : '';
     const nota = it.nota ? ` — ${escapeHtml(it.nota)}` : '';
-    return `${badge}${escapeHtml(it.texto || '')}${link}${htmlDataAcesso(it)}${nota}`;
+    const conhecidoComo = conhecidoComoDaEntrada(it)
+        .map(
+            (tag) =>
+                `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] align-middle">${escapeHtml(tag)}</span>`,
+        )
+        .join('');
+    const tags = conhecidoComo ? ` ${conhecidoComo}` : '';
+    const caracterizacao = rotulosCaracterizacao(it)
+        .map(
+            (r) =>
+                `<span title="${escapeHtml(r.titulo)}" class="inline-block px-1.5 py-0.5 mr-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] align-middle">${escapeHtml(r.texto)}</span>`,
+        )
+        .join('');
+    const carac = caracterizacao ? ` ${caracterizacao}` : '';
+    return `${badge}${escapeHtml(it.texto || '')}${tags}${carac}${htmlDataDaObra(it)}${link}${htmlDataAcesso(it)}${nota}`;
 }
 
 const listaReferenciaExternaPoema = criarListaDeEntradas({
@@ -2322,6 +2935,208 @@ function atualizarBotaoReferenciaExterna(tabela) {
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
 
+// ─── Conhecido(a) como (tags de Pessoa pública em Referências) ─────
+// Quando o Tipo da referência é "Pessoa pública", aparece um campo de
+// tags (a pessoa costuma ser mais de uma coisa: figura histórica,
+// cantor(a), escritor(a)...). As tags escolhidas ficam em memória até a
+// entrada ser salva (lógica pura em conhecido-como.js, que só grava a
+// chave `conhecidoComo` quando o Tipo é Pessoa pública). Sem handler
+// inline: o campo, o botão "+ tag" e o × dos chips são ligados por
+// ligarConhecidoComo.
+const conhecidoComoEmEdicao = { poemas: [], prosas: [] };
+
+function elementosConhecidoComo(tabela) {
+    const p = prefixoDom(tabela);
+    return {
+        bloco: document.getElementById(`${p}-refext-conhecido-bloco`),
+        input: document.getElementById(`${p}-refext-conhecido`),
+        chips: document.getElementById(`${p}-refext-conhecido-chips`),
+        tipo: document.getElementById(`${p}-refext-tipo`),
+    };
+}
+
+function renderChipsConhecidoComo(tabela) {
+    const { chips } = elementosConhecidoComo(tabela);
+    if (!chips) return;
+    chips.innerHTML = conhecidoComoEmEdicao[tabela]
+        .map(
+            (tag, i) =>
+                `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px]">${escapeHtml(tag)}<button type="button" data-conhecido-remover="${i}" class="text-red-400 hover:text-red-600 dark:hover:text-red-400 font-bold px-0.5" title="Remover tag">×</button></span>`,
+        )
+        .join('');
+}
+
+// ─── Gênero, orientação e cor/raça (Pessoa pública em Referências) ──
+// Três campos opcionais da mesma entrada (lógica pura em
+// caracterizacao-pessoa-publica.js). Gênero e orientação são botões de
+// escolha única (clicar no marcado desmarca); cor/raça é um select.
+// Vazio quer dizer "não informado", nunca "não é". Ficam em memória até
+// a entrada ser salva e só aparecem com o Tipo Pessoa pública. Sem
+// handler inline: a delegação de clique é ligada em ligarCaracterizacao.
+const caracterizacaoEmEdicao = {
+    poemas: { genero: '', orientacao: '', corRaca: '' },
+    prosas: { genero: '', orientacao: '', corRaca: '' },
+};
+
+const CLASSE_BOTAO_MARCADO =
+    'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 ring-1 ring-amber-400';
+const CLASSE_BOTAO_LIVRE =
+    'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600';
+
+function elementosCaracterizacao(tabela) {
+    const p = prefixoDom(tabela);
+    return {
+        bloco: document.getElementById(`${p}-refext-carac-bloco`),
+        genero: document.getElementById(`${p}-refext-genero`),
+        orientacao: document.getElementById(`${p}-refext-orientacao`),
+        corRaca: document.getElementById(`${p}-refext-cor-raca`),
+    };
+}
+
+function htmlBotoesEscolha(opcoes, atributo, marcado) {
+    return opcoes
+        .map((o) => {
+            const ativo = o.valor === marcado;
+            const titulo = o.titulo || o.valor;
+            return `<button type="button" data-${atributo}="${escapeHtml(o.valor)}" title="${escapeHtml(titulo)}" aria-label="${escapeHtml(titulo)}" aria-pressed="${ativo}" class="px-2 py-1 rounded text-sm leading-none ${ativo ? CLASSE_BOTAO_MARCADO : CLASSE_BOTAO_LIVRE}">${escapeHtml(o.simbolo)}</button>`;
+        })
+        .join('');
+}
+
+function renderCaracterizacao(tabela) {
+    const { genero, orientacao, corRaca } = elementosCaracterizacao(tabela);
+    const c = caracterizacaoEmEdicao[tabela];
+    if (genero) genero.innerHTML = htmlBotoesEscolha(GENEROS_PESSOA_PUBLICA, 'genero', c.genero);
+    if (orientacao) {
+        orientacao.innerHTML = htmlBotoesEscolha(
+            ORIENTACOES_PESSOA_PUBLICA,
+            'orientacao',
+            c.orientacao,
+        );
+    }
+    if (corRaca) {
+        // As opções vêm da lista única (CORES_RACA_AUTOR), não do HTML.
+        if (corRaca.options.length <= 1) {
+            CORES_RACA_PESSOA_PUBLICA.forEach((nome) => {
+                const opt = document.createElement('option');
+                opt.value = nome;
+                opt.textContent = nome;
+                corRaca.appendChild(opt);
+            });
+        }
+        corRaca.value = c.corRaca;
+    }
+}
+
+// Ao citar de novo uma pessoa já registrada (em outro texto ou nesta mesma
+// janela), propõe a última caracterização conhecida dela, só nos campos
+// ainda vazios. Não mexe em entrada que está sendo editada.
+function proporCaracterizacaoPorNome(tabela) {
+    if (listaReferenciaExterna(tabela).estaEditando()) return;
+    const p = prefixoDom(tabela);
+    const tipo = document.getElementById(`${p}-refext-tipo`)?.value || '';
+    const nome = document.getElementById(`${p}-refext-texto`)?.value || '';
+    if (!ehPessoaPublica(tipo) || !nome.trim()) return;
+    const dados = tabela === 'prosas' ? db.prosas || [] : db.poemas || [];
+    const textos = [...dados, { referenciasExternas: obterReferenciasExternas(tabela) }];
+    const sugestao = caracterizacaoDaUltimaCitacao(textos, nome);
+    caracterizacaoEmEdicao[tabela] = completarCaracterizacao(
+        caracterizacaoEmEdicao[tabela],
+        sugestao,
+    );
+    renderCaracterizacao(tabela);
+}
+
+function ligarCaracterizacao(tabela) {
+    const p = prefixoDom(tabela);
+    const { genero, orientacao, corRaca } = elementosCaracterizacao(tabela);
+    renderCaracterizacao(tabela);
+    genero?.addEventListener('click', (e) => {
+        const botao = e.target?.closest?.('[data-genero]');
+        if (!botao) return;
+        const c = caracterizacaoEmEdicao[tabela];
+        c.genero = alternarEscolha(c.genero, botao.dataset.genero);
+        renderCaracterizacao(tabela);
+    });
+    orientacao?.addEventListener('click', (e) => {
+        const botao = e.target?.closest?.('[data-orientacao]');
+        if (!botao) return;
+        const c = caracterizacaoEmEdicao[tabela];
+        c.orientacao = alternarEscolha(c.orientacao, botao.dataset.orientacao);
+        renderCaracterizacao(tabela);
+    });
+    corRaca?.addEventListener('change', () => {
+        caracterizacaoEmEdicao[tabela].corRaca = corRaca.value;
+    });
+    // 'change' (ao sair do campo ou escolher da lista) e não 'input', para
+    // não propor a cada letra.
+    document
+        .getElementById(`${p}-refext-texto`)
+        ?.addEventListener('change', () => proporCaracterizacaoPorNome(tabela));
+    document
+        .getElementById(`${p}-refext-tipo`)
+        ?.addEventListener('change', () => proporCaracterizacaoPorNome(tabela));
+}
+
+// Mostra os campos só com o Tipo Pessoa pública e redesenha os chips.
+export function atualizarBlocoConhecidoComo(tabela) {
+    const { bloco, tipo } = elementosConhecidoComo(tabela);
+    const { bloco: blocoCarac } = elementosCaracterizacao(tabela);
+    atualizarRotulosDaReferencia(tabela);
+    const visivel = ehPessoaPublica(tipo?.value || '');
+    blocoCarac?.classList.toggle('hidden', !visivel);
+    renderCaracterizacao(tabela);
+    if (!bloco) return;
+    bloco.classList.toggle('hidden', !visivel);
+    renderChipsConhecidoComo(tabela);
+}
+
+function limparConhecidoComoEmEdicao(tabela) {
+    conhecidoComoEmEdicao[tabela] = [];
+    caracterizacaoEmEdicao[tabela] = { genero: '', orientacao: '', corRaca: '' };
+    const { input } = elementosConhecidoComo(tabela);
+    if (input) input.value = '';
+    atualizarBlocoConhecidoComo(tabela);
+}
+
+function confirmarTagConhecidoComo(tabela) {
+    const { input } = elementosConhecidoComo(tabela);
+    const valor = input?.value || '';
+    if (input) input.value = '';
+    conhecidoComoEmEdicao[tabela] = normalizarConhecidoComo([
+        ...conhecidoComoEmEdicao[tabela],
+        valor,
+    ]);
+    renderChipsConhecidoComo(tabela);
+    input?.focus();
+}
+
+function removerTagConhecidoComo(tabela, indice) {
+    conhecidoComoEmEdicao[tabela] = conhecidoComoEmEdicao[tabela].filter((_, i) => i !== indice);
+    renderChipsConhecidoComo(tabela);
+}
+
+export function ligarConhecidoComo(tabela) {
+    const p = prefixoDom(tabela);
+    const { input, chips, tipo } = elementosConhecidoComo(tabela);
+    ligarCaracterizacao(tabela);
+    // O campo aparece e some conforme o Tipo é digitado ou escolhido.
+    tipo?.addEventListener('input', () => atualizarBlocoConhecidoComo(tabela));
+    input?.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        confirmarTagConhecidoComo(tabela);
+    });
+    document
+        .getElementById(`${p}-refext-conhecido-btn`)
+        ?.addEventListener('click', () => confirmarTagConhecidoComo(tabela));
+    chips?.addEventListener('click', (e) => {
+        const botao = e.target?.closest?.('[data-conhecido-remover]');
+        if (!botao) return;
+        removerTagConhecidoComo(tabela, Number(botao.dataset.conhecidoRemover));
+    });
+}
+
 // Prosa não tem versão global do datalist de Tipo em index.html (só a
 // de Poema) — mesmo motivo do sufixo '-prosa' em atualizarDatalistIntertexto.
 export function atualizarDatalistReferenciaExterna(tabela) {
@@ -2335,6 +3150,13 @@ export function atualizarDatalistReferenciaExterna(tabela) {
             .map((v) => `<option value="${escapeHtml(v)}">`)
             .join('');
     }
+    const datalistConhecido = document.getElementById(`sugestoes-refext-conhecido${sufixo}`);
+    if (datalistConhecido) {
+        datalistConhecido.innerHTML = extrairConhecidoComoUnicos(dados)
+            .map((v) => `<option value="${escapeHtml(v)}">`)
+            .join('');
+    }
+    atualizarBlocoConhecidoComo(tabela);
 }
 
 // ─── Hipertextualidade (lista de tipo+relação+hipotexto+link+linkTexto+nota) ─
@@ -2349,15 +3171,24 @@ export function atualizarDatalistReferenciaExterna(tabela) {
 // Paródia...); Hipotexto é o nome da obra de origem — ver
 // corpoEntradaHipertextualidade (utils.js) pra como os dois últimos
 // viram texto.
-function renderItemHipertextualidade(h) {
-    const badge = h.tipo
-        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(h.tipo)}</span>`
+function renderItemHipertextualidade(entrada) {
+    const h = migrarEntradaHipertextualidade(entrada);
+    const badge = h.tipoObra
+        ? `<span class="inline-block px-1.5 py-0.5 mr-1 rounded bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 text-[10px] font-bold uppercase align-middle">${escapeHtml(h.tipoObra)}</span>`
         : '';
+    const pessoal = ehObraPessoal(h)
+        ? ' <span class="text-[10px] text-gray-400 dark:text-slate-500">(obra pessoal)</span>'
+        : '';
+    const textoAutores = [textoAutoresDaEntrada(h), rotuloDaOrigem(h)].filter(Boolean).join(', ');
+    const autor = textoAutores
+        ? ` <span class="text-gray-500 dark:text-slate-400">(${escapeHtml(textoAutores)})</span>`
+        : '';
+    const descricao = h.descricao ? `, ${escapeHtml(h.descricao)}` : '';
     const link = h.link
         ? ` <a href="${escapeHtml(h.link)}" target="_blank" rel="noopener" class="text-blue-600 dark:text-blue-400 underline text-[11px] break-all">${escapeHtml(h.linkTexto || h.link)}</a>`
         : '';
     const nota = h.nota ? ` — ${escapeHtml(h.nota)}` : '';
-    return `${badge}${escapeHtml(corpoEntradaHipertextualidade(h))}${link}${htmlDataAcesso(h)}${nota}`;
+    return `${badge}${escapeHtml(corpoEntradaHipertextualidade(h))}${pessoal}${autor}${descricao}${htmlDataDaObra(h)}${link}${htmlDataAcesso(h)}${nota}`;
 }
 
 const listaHipertextualidadePoema = criarListaDeEntradas({
@@ -2389,115 +3220,148 @@ function atualizarBotaoHipertextualidade(tabela) {
     if (btnCancelar) btnCancelar.classList.toggle('hidden', !emEdicao);
 }
 
-// Espelha atualizarDatalistTextoIntertexto acima: refiltra as sugestões
-// de Hipotexto pelo Tipo de mídia já escolhido.
-function atualizarDatalistTextoHipertextualidade(itens, tipoElId, datalistHipotextoId) {
-    const datalist = document.getElementById(datalistHipotextoId);
-    if (!datalist) return;
-    const tipoAtual = document.getElementById(tipoElId)?.value.trim() || null;
-    datalist.innerHTML = extrairHipotextosUnicos(itens, tipoAtual)
-        .map((v) => `<option value="${escapeHtml(v)}">`)
-        .join('');
+// Campos de texto do formulário de Hipertextualidade: chave da entrada e
+// sufixo do id no DOM (`p-hipertexto-<sufixo>` / `pr-hipertexto-<sufixo>`).
+const CAMPOS_HIPERTEXTO = [
+    ['relacao', 'relacao'],
+    ['tipoObra', 'tipo'],
+    ['hipotexto', 'hipotexto'],
+    ['descricao', 'descricao'],
+    ['link', 'link'],
+    ['linkTexto', 'link-texto'],
+    ['nota', 'nota'],
+];
+
+function elementosHipertexto(tabela) {
+    const p = prefixoDom(tabela);
+    const el = (sufixo) => document.getElementById(`${p}-hipertexto-${sufixo}`);
+    return { el, dataAcessoEl: el('data-acesso'), obraPessoalEl: el('obra-pessoal') };
 }
 
-// Prosa não tem versão global do datalist de Tipo em index.html (só a
-// de Poema) — mesmo motivo do sufixo '-prosa' em atualizarDatalistIntertexto.
+function limparCamposHipertexto(tabela) {
+    const { el, dataAcessoEl, obraPessoalEl } = elementosHipertexto(tabela);
+    CAMPOS_HIPERTEXTO.forEach(([, sufixo]) => {
+        const campo = el(sufixo);
+        if (campo) campo.value = '';
+    });
+    if (dataAcessoEl) dataAcessoEl.value = '';
+    if (obraPessoalEl) obraPessoalEl.checked = false;
+    campoAutor(tabela, 'hipertexto').limpar();
+    campoOrigem(tabela, 'hipertexto').limpar();
+    campoData(tabela, 'hipertexto').limpar();
+}
+
+// Prosa não tem versão global dos datalists em index.html (só a de Poema):
+// mesmo motivo do sufixo '-prosa' em atualizarDatalistIntertexto.
 export function atualizarDatalistHipertextualidade(tabela) {
-    const p = prefixoDom(tabela);
     const dados = tabela === 'prosas' ? db.prosas || [] : db.poemas;
     const sufixo = tabela === 'prosas' ? '-prosa' : '';
-    atualizarDatalistTextoHipertextualidade(
-        dados,
-        `${p}-hipertexto-tipo`,
-        `sugestoes-hipertexto-hipotexto${sufixo}`,
+    const { el } = elementosHipertexto(tabela);
+    const tipoObra = el('tipo')?.value.trim() || null;
+    const hipotexto = el('hipotexto')?.value.trim() || null;
+    const autores = campoAutor(tabela, 'hipertexto').obter();
+
+    preencherDatalist(
+        `sugestoes-hipertexto-relacao${sufixo}`,
+        extrairRelacoesHipertextualidadeUnicas(dados),
     );
-    const datalistTipo = document.getElementById(`sugestoes-hipertexto-tipo${sufixo}`);
-    if (datalistTipo) {
-        datalistTipo.innerHTML = extrairTiposHipertextualidadeUnicos(dados)
-            .map((v) => `<option value="${escapeHtml(v)}">`)
-            .join('');
-    }
-    const datalistRelacao = document.getElementById(`sugestoes-hipertexto-relacao${sufixo}`);
-    if (datalistRelacao) {
-        datalistRelacao.innerHTML = extrairRelacoesHipertextualidadeUnicas(dados)
-            .map((v) => `<option value="${escapeHtml(v)}">`)
-            .join('');
-    }
+    preencherDatalist(`sugestoes-hipertexto-tipo${sufixo}`, extrairTiposObraUnicos(dados));
+    preencherDatalist(
+        `sugestoes-hipertexto-hipotexto${sufixo}`,
+        sugestoesComFallback(
+            extrairHipotextosDoFormatoNovo(dados, { tipoObra, autores }),
+            extrairHipotextosDoFormatoNovo(dados, { tipoObra }),
+        ),
+    );
+    preencherSugestoesDescricao(
+        `sugestoes-hipertexto-descricao${sufixo}`,
+        extrairDescricoesDaObra(dados, { tipoObra, obra: hipotexto, autores }),
+    );
+    preencherDatalist(
+        `sugestoes-hipertexto-autor${sufixo}`,
+        semAutoresJaEscolhidos(
+            sugestoesComFallback(
+                extrairAutoresUnicos(dados, { tipoObra, obra: hipotexto }),
+                sugestoesComFallback(
+                    extrairAutoresUnicos(dados, { tipoObra }),
+                    extrairAutoresUnicos(dados),
+                ),
+            ),
+            autores,
+        ),
+    );
+    preencherDatalist(
+        `sugestoes-hipertexto-origem${sufixo}`,
+        semOrigensJaEscolhidas(
+            sugestoesComFallback(
+                extrairOrigensUnicas(dados, { tipoObra, obra: hipotexto }),
+                sugestoesComFallback(
+                    extrairOrigensUnicas(dados, { tipoObra }),
+                    extrairOrigensUnicas(dados),
+                ),
+            ),
+            campoOrigem(tabela, 'hipertexto').obter(),
+        ),
+    );
 }
 
 export function adicionarHipertextualidade(tabela) {
-    const p = prefixoDom(tabela);
-    const tipoEl = document.getElementById(`${p}-hipertexto-tipo`);
-    const relacaoEl = document.getElementById(`${p}-hipertexto-relacao`);
-    const hipotextoEl = document.getElementById(`${p}-hipertexto-hipotexto`);
-    const linkEl = document.getElementById(`${p}-hipertexto-link`);
-    const linkTextoEl = document.getElementById(`${p}-hipertexto-link-texto`);
-    const dataAcessoEl = document.getElementById(`${p}-hipertexto-data-acesso`);
-    const notaEl = document.getElementById(`${p}-hipertexto-nota`);
-    const tipo = tipoEl?.value || '';
-    const relacao = (relacaoEl?.value || '').trim();
-    const hipotexto = (hipotextoEl?.value || '').trim();
-    const link = (linkEl?.value || '').trim();
-    const linkTexto = (linkTextoEl?.value || '').trim();
-    const dataAcesso = link ? dataAcessoEl?.value || '' : '';
-    const nota = (notaEl?.value || '').trim();
-    if (!tipo && !relacao && !hipotexto && !link && !linkTexto && !nota) return;
-    listaHipertextualidade(tabela).salvar({
-        tipo,
-        relacao,
-        hipotexto,
-        link,
-        linkTexto,
-        ...(dataAcesso ? { dataAcesso } : {}),
-        nota,
+    const { el, dataAcessoEl, obraPessoalEl } = elementosHipertexto(tabela);
+    const entrada = {};
+    CAMPOS_HIPERTEXTO.forEach(([chave, sufixo]) => {
+        entrada[chave] = (el(sufixo)?.value || '').trim();
     });
-    if (tipoEl) tipoEl.value = '';
-    if (relacaoEl) relacaoEl.value = '';
-    if (hipotextoEl) hipotextoEl.value = '';
-    if (linkEl) linkEl.value = '';
-    if (linkTextoEl) linkTextoEl.value = '';
-    if (dataAcessoEl) dataAcessoEl.value = '';
-    if (notaEl) notaEl.value = '';
+    const autores = campoAutor(tabela, 'hipertexto').obterComPendente();
+    const origens = campoOrigem(tabela, 'hipertexto').obterComPendente();
+    if (
+        autores.length === 0 &&
+        origens.length === 0 &&
+        !CAMPOS_HIPERTEXTO.some(([chave]) => entrada[chave])
+    )
+        return;
+    const datas = camposDeDataDoFormulario(tabela, 'hipertexto');
+    if (!datas) return;
+    const dataAcesso = entrada.link ? dataAcessoEl?.value || '' : '';
+    listaHipertextualidade(tabela).salvar({
+        relacao: entrada.relacao,
+        hipotexto: entrada.hipotexto,
+        tipoObra: entrada.tipoObra,
+        autores,
+        ...origemParaSalvar(origens),
+        descricao: entrada.descricao,
+        ...campoObraPessoal(!!obraPessoalEl?.checked),
+        ...datas,
+        link: entrada.link,
+        linkTexto: entrada.linkTexto,
+        ...(dataAcesso ? { dataAcesso } : {}),
+        nota: entrada.nota,
+    });
+    limparCamposHipertexto(tabela);
     atualizarBotaoHipertextualidade(tabela);
     atualizarDatalistHipertextualidade(tabela);
 }
 export function editarHipertextualidade(tabela, indice) {
-    const item = listaHipertextualidade(tabela).iniciarEdicao(indice);
-    const p = prefixoDom(tabela);
-    const tipoEl = document.getElementById(`${p}-hipertexto-tipo`);
-    const relacaoEl = document.getElementById(`${p}-hipertexto-relacao`);
-    const hipotextoEl = document.getElementById(`${p}-hipertexto-hipotexto`);
-    const linkEl = document.getElementById(`${p}-hipertexto-link`);
-    const linkTextoEl = document.getElementById(`${p}-hipertexto-link-texto`);
-    const dataAcessoEl = document.getElementById(`${p}-hipertexto-data-acesso`);
-    const notaEl = document.getElementById(`${p}-hipertexto-nota`);
-    if (tipoEl) tipoEl.value = item.tipo || '';
-    if (relacaoEl) relacaoEl.value = item.relacao || '';
-    if (hipotextoEl) hipotextoEl.value = item.hipotexto || '';
-    if (linkEl) linkEl.value = item.link || '';
-    if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
+    const item = migrarEntradaHipertextualidade(
+        listaHipertextualidade(tabela).iniciarEdicao(indice),
+    );
+    const { el, dataAcessoEl, obraPessoalEl } = elementosHipertexto(tabela);
+    CAMPOS_HIPERTEXTO.forEach(([chave, sufixo]) => {
+        const campo = el(sufixo);
+        if (campo) campo.value = item[chave] || '';
+    });
     if (dataAcessoEl) dataAcessoEl.value = item.dataAcesso || '';
-    if (notaEl) notaEl.value = item.nota || '';
-    relacaoEl?.focus();
+    if (obraPessoalEl) obraPessoalEl.checked = ehObraPessoal(item);
+    campoAutor(tabela, 'hipertexto').definir(autoresDaEntrada(item));
+    campoOrigem(tabela, 'hipertexto').definir(origensDaEntrada(item));
+    campoData(tabela, 'hipertexto').definir(datasDaEntrada(item));
+    el('relacao')?.focus();
     atualizarBotaoHipertextualidade(tabela);
+    atualizarDatalistHipertextualidade(tabela);
+    atualizarSugestoesDeData(tabela, 'hipertexto');
 }
 export function cancelarEdicaoHipertextualidade(tabela) {
     listaHipertextualidade(tabela).cancelarEdicao();
-    const p = prefixoDom(tabela);
-    const tipoEl = document.getElementById(`${p}-hipertexto-tipo`);
-    const relacaoEl = document.getElementById(`${p}-hipertexto-relacao`);
-    const hipotextoEl = document.getElementById(`${p}-hipertexto-hipotexto`);
-    const linkEl = document.getElementById(`${p}-hipertexto-link`);
-    const linkTextoEl = document.getElementById(`${p}-hipertexto-link-texto`);
-    const dataAcessoEl = document.getElementById(`${p}-hipertexto-data-acesso`);
-    const notaEl = document.getElementById(`${p}-hipertexto-nota`);
-    if (tipoEl) tipoEl.value = '';
-    if (relacaoEl) relacaoEl.value = '';
-    if (hipotextoEl) hipotextoEl.value = '';
-    if (linkEl) linkEl.value = '';
-    if (linkTextoEl) linkTextoEl.value = '';
-    if (dataAcessoEl) dataAcessoEl.value = '';
-    if (notaEl) notaEl.value = '';
+    limparCamposHipertexto(tabela);
     atualizarBotaoHipertextualidade(tabela);
 }
 export function removerHipertextualidade(tabela, indice) {
@@ -2508,11 +3372,18 @@ export function obterHipertextualidade(tabela) {
     return listaHipertextualidade(tabela).obterItens();
 }
 export function carregarHipertextualidade(tabela, lista) {
-    listaHipertextualidade(tabela).carregar(lista);
+    // Entrada antiga (tipo) abre já no formato novo (tipoObra).
+    listaHipertextualidade(tabela).carregar(
+        Array.isArray(lista) ? lista.map(migrarEntradaHipertextualidade) : [],
+    );
+    campoAutor(tabela, 'hipertexto').limpar();
+    campoData(tabela, 'hipertexto').limpar();
     atualizarBotaoHipertextualidade(tabela);
 }
 export function resetHipertextualidade(tabela) {
     listaHipertextualidade(tabela).reset();
+    campoAutor(tabela, 'hipertexto').limpar();
+    campoData(tabela, 'hipertexto').limpar();
     atualizarBotaoHipertextualidade(tabela);
 }
 
@@ -2531,9 +3402,16 @@ export function adicionarReferenciaExterna(tabela) {
     const dataAcesso = link ? dataAcessoEl?.value || '' : '';
     const nota = (notaEl?.value || '').trim();
     if (!tipo && !texto && !link && !linkTexto && !nota) return;
+    const datas = camposDeDataDoFormulario(tabela, 'refext');
+    if (!datas) return;
+    // Tag ainda digitada no campo (sem Enter) entra junto das já escolhidas.
+    const tagDigitada = elementosConhecidoComo(tabela).input?.value || '';
     listaReferenciaExterna(tabela).salvar({
         tipo,
         texto,
+        ...camposConhecidoComo(tipo, [...conhecidoComoEmEdicao[tabela], tagDigitada]),
+        ...camposCaracterizacao(tipo, caracterizacaoEmEdicao[tabela]),
+        ...datas,
         link,
         linkTexto,
         ...(dataAcesso ? { dataAcesso } : {}),
@@ -2545,6 +3423,8 @@ export function adicionarReferenciaExterna(tabela) {
     if (linkTextoEl) linkTextoEl.value = '';
     if (dataAcessoEl) dataAcessoEl.value = '';
     if (notaEl) notaEl.value = '';
+    limparConhecidoComoEmEdicao(tabela);
+    campoData(tabela, 'refext').limpar();
     atualizarBotaoReferenciaExterna(tabela);
     atualizarDatalistReferenciaExterna(tabela);
 }
@@ -2563,6 +3443,13 @@ export function editarReferenciaExterna(tabela, indice) {
     if (linkTextoEl) linkTextoEl.value = item.linkTexto || '';
     if (dataAcessoEl) dataAcessoEl.value = item.dataAcesso || '';
     if (notaEl) notaEl.value = item.nota || '';
+    conhecidoComoEmEdicao[tabela] = conhecidoComoDaEntrada(item);
+    caracterizacaoEmEdicao[tabela] = caracterizacaoDaEntrada(item);
+    const { input: conhecidoEl } = elementosConhecidoComo(tabela);
+    if (conhecidoEl) conhecidoEl.value = '';
+    atualizarBlocoConhecidoComo(tabela);
+    campoData(tabela, 'refext').definir(datasDaEntrada(item));
+    atualizarSugestoesDeData(tabela, 'refext');
     textoEl?.focus();
     atualizarBotaoReferenciaExterna(tabela);
 }
@@ -2581,6 +3468,8 @@ export function cancelarEdicaoReferenciaExterna(tabela) {
     if (linkTextoEl) linkTextoEl.value = '';
     if (dataAcessoEl) dataAcessoEl.value = '';
     if (notaEl) notaEl.value = '';
+    limparConhecidoComoEmEdicao(tabela);
+    campoData(tabela, 'refext').limpar();
     atualizarBotaoReferenciaExterna(tabela);
 }
 export function removerReferenciaExterna(tabela, indice) {
@@ -2592,10 +3481,14 @@ export function obterReferenciasExternas(tabela) {
 }
 export function carregarReferenciasExternas(tabela, lista) {
     listaReferenciaExterna(tabela).carregar(lista);
+    limparConhecidoComoEmEdicao(tabela);
+    campoData(tabela, 'refext').limpar();
     atualizarBotaoReferenciaExterna(tabela);
 }
 export function resetReferenciasExternas(tabela) {
     listaReferenciaExterna(tabela).reset();
+    limparConhecidoComoEmEdicao(tabela);
+    campoData(tabela, 'refext').limpar();
     atualizarBotaoReferenciaExterna(tabela);
 }
 
@@ -3632,7 +4525,10 @@ export function atualizarDatalist() {
         // nesta categoria (etiqueta criada na aba e ainda sem uso também aparece).
         const valores = [
             ...new Set([
-                ...extrairSinalizacoesUnicas(todos, campo),
+                // Tema: os nomes do cadastro (por id), não o espelho dos textos.
+                ...(chave === 'Tema'
+                    ? (db.temas || []).map((t) => t.nome)
+                    : extrairSinalizacoesUnicas(todos, campo)),
                 ...(db.etiquetas || []).filter((e) => e.categoria === slug).map((e) => e.nome),
             ]),
         ].sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -3879,68 +4775,43 @@ const PARES_MIGRACAO_PROSA = [
 
 const PARES_MIGRACAO = [...PARES_MIGRACAO_POEMA, ...PARES_MIGRACAO_PROSA];
 
-// Seção pode estar presa direto no Livro ou dentro de uma Parte.
-function livroIdDaSecao(secao) {
-    if (secao.paiTipo === 'livro') return secao.paiId;
-    if (secao.paiTipo === 'parte')
-        return db.partes.find((p) => p.id == secao.paiId)?.livroId ?? null;
-    return null;
-}
-
-// { titulo, livroId, livroTitulo } de cada Parte/Seção do acervo, com o
-// livro já resolvido — base tanto pro filtro quanto pro autopreenchimento.
-function mapaSecoesMigracao() {
-    const partes = db.partes.map((p) => ({ titulo: p.titulo, livroId: p.livroId }));
-    const secoes = db.secoes.map((s) => ({ titulo: s.titulo, livroId: livroIdDaSecao(s) }));
-    return [...partes, ...secoes]
-        .filter((x) => x.titulo && x.livroId != null)
-        .map((x) => ({
-            ...x,
-            livroTitulo: db.livros.find((l) => l.id == x.livroId)?.titulo || null,
-        }))
-        .filter((x) => x.livroTitulo);
-}
+// As opções vêm de `opcoes-origem.js` (lógica pura): cada uma é o caminho
+// completo, "Parte / Seção", do mesmo jeito que o app grava ao descartar um texto.
 
 // Preenche o datalist de Seção de um par com as opções do livro digitado
-// no campo `livroInputId` ao lado — ou a lista inteira, se esse texto não
+// no campo `livroInputId` ao lado, ou a lista inteira se esse texto não
 // bater com nenhum livro cadastrado.
 function preencherDatalistSecoesMigracao(datalistId, livroInputId) {
     const datalist = document.getElementById(datalistId);
     if (!datalist) return;
 
-    const mapa = mapaSecoesMigracao();
-    const livroDigitado = (document.getElementById(livroInputId)?.value || '').trim();
-    const livro = livroDigitado
-        ? db.livros.find(
-              (l) => (l.titulo || '').trim().toLowerCase() === livroDigitado.toLowerCase(),
-          )
-        : null;
-
-    const titulos = new Set(
-        (livro ? mapa.filter((x) => x.livroId == livro.id) : mapa).map((x) => x.titulo),
-    );
-    datalist.innerHTML = Array.from(titulos)
-        .sort((a, b) => a.localeCompare(b, 'pt-BR'))
-        .map((titulo) => `<option value="${escapeHtml(titulo)}">`)
+    const livro = livroCadastradoDigitado(db, document.getElementById(livroInputId)?.value);
+    datalist.innerHTML = valoresSugeridos(opcoesDeOrigem(db), livro)
+        .map((valor) => `<option value="${escapeHtml(valor)}">`)
         .join('');
 }
 
-// Ao digitar/escolher uma Seção, se o texto bater — sem ambiguidade — com
+// Ao digitar/escolher uma Seção, se o texto bater, sem ambiguidade, com
 // uma Parte/Seção já cadastrada no acervo, preenche sozinho o Livro
 // correspondente. Fica quieto se não achar nada ou se o mesmo nome existir
 // em mais de um livro (aí quem escolhe é a pessoa mesmo).
 function autopreencherLivroDaSecao(secaoInputId, livroInputId) {
-    const secaoDigitada = (document.getElementById(secaoInputId)?.value || '').trim();
-    if (!secaoDigitada) return;
-
-    const encontrados = mapaSecoesMigracao().filter(
-        (x) => x.titulo.trim().toLowerCase() === secaoDigitada.toLowerCase(),
+    const livroTitulo = livroDaOrigemDigitada(
+        opcoesDeOrigem(db),
+        document.getElementById(secaoInputId)?.value,
     );
-    const livrosUnicos = new Set(encontrados.map((x) => x.livroId));
-    if (livrosUnicos.size !== 1) return;
-
     const livroInput = document.getElementById(livroInputId);
-    if (livroInput) livroInput.value = encontrados[0].livroTitulo;
+    if (livroTitulo && livroInput) livroInput.value = livroTitulo;
+}
+
+// Ao sair do campo, se o nome digitado é o de UMA Seção que mora dentro de uma
+// Parte, completa para "Parte / Seção". Nome ambíguo ou já completo: não mexe.
+function completarCaminhoDaSecao(secaoInputId, livroInputId) {
+    const secaoInput = document.getElementById(secaoInputId);
+    if (!secaoInput) return;
+    const livro = livroCadastradoDigitado(db, document.getElementById(livroInputId)?.value);
+    const completo = completarCaminhoDigitado(opcoesDeOrigem(db), secaoInput.value, livro);
+    if (completo) secaoInput.value = completo;
 }
 
 export function atualizarDatalistMigracao() {
@@ -3984,6 +4855,11 @@ function ligarListenersMigracao(pares) {
             .getElementById(livro)
             ?.addEventListener('input', () => preencherDatalistSecoesMigracao(datalist, livro));
         document.getElementById(secao)?.addEventListener('input', () => {
+            autopreencherLivroDaSecao(secao, livro);
+            preencherDatalistSecoesMigracao(datalist, livro);
+        });
+        document.getElementById(secao)?.addEventListener('change', () => {
+            completarCaminhoDaSecao(secao, livro);
             autopreencherLivroDaSecao(secao, livro);
             preencherDatalistSecoesMigracao(datalist, livro);
         });
@@ -4223,7 +5099,7 @@ export function criarGrupoTemasHTML(prefixo, tabela) {
                                     id="${prefixo}-tema-input"
                                     list="${prefixo}-temas-sugestoes"
                                     class="text-sm w-full"
-                                    placeholder="Tema novo ou já cadastrado..."
+                                    placeholder="Tema novo ou já cadastrado (; separa vários)..."
                                 />
                             </div>
                             <div class="flex items-center gap-2 mb-2">
@@ -4435,23 +5311,18 @@ function renderizarTemasTexto(tabela) {
     }
 }
 
-// Aceita vários nomes separados por vírgula (vírgula não cabe num nome de
-// Tema: é o separador do espelho sinalizacoesTema). Tema que já está na
-// lista só troca de papel.
+// Aceita vários nomes separados por `;` (a vírgula pode fazer parte do nome
+// do Tema). Tema que já está na lista só troca de papel.
 export function adicionarTemaTexto(tabela, valor = null) {
     const prefixo = prefixoTemasTexto(tabela);
     const input = document.getElementById(`${prefixo}-tema-input`);
     const seletor = document.getElementById(`${prefixo}-tema-papel`);
     const papel = normalizarPapelTema(seletor?.value);
-    String(valor ?? input?.value ?? '')
-        .split(',')
-        .map((n) => n.replace(/\s+/g, ' ').trim())
-        .filter(Boolean)
-        .forEach((nome) => {
-            const existente = temasTexto[tabela].find((t) => chaveTema(t.nome) === chaveTema(nome));
-            if (existente) existente.papel = papel;
-            else temasTexto[tabela].push({ nome, papel });
-        });
+    nomesDeTemasDigitados(valor ?? input?.value ?? '').forEach((nome) => {
+        const existente = temasTexto[tabela].find((t) => chaveTema(t.nome) === chaveTema(nome));
+        if (existente) existente.papel = papel;
+        else temasTexto[tabela].push({ nome, papel });
+    });
     if (input) input.value = '';
     renderizarTemasTexto(tabela);
 }
@@ -4552,7 +5423,7 @@ export function carregarTemasTexto(tabela, item) {
                   papel: normalizarPapelTema(e?.papel),
               }))
               .filter((e) => e.nome)
-        : temasDoTexto(item).map((nome) => ({ nome, papel: '' }));
+        : nomesTemasDoTexto(item, db.temas).map((nome) => ({ nome, papel: '' }));
     assuntosPapelTexto[tabela] = (Array.isArray(item?.assuntosPapel) ? item.assuntosPapel : []).map(
         (e) => ({ assuntoId: String(e?.assuntoId), papel: normalizarPapelTema(e?.papel) }),
     );
@@ -5052,6 +5923,9 @@ export function removerPessoa(tabela, nome) {
 }
 export function alternarPapelPessoa(tabela, nome, papel, marcado) {
     grupoPessoas(tabela).alternarPapel(nome, papel, marcado);
+}
+export function definirNotaPessoa(tabela, id, texto) {
+    grupoPessoas(tabela).definirNota(id, texto);
 }
 export function alternarDropdownPapelPessoa(tabela, nome) {
     grupoPessoas(tabela).alternarDropdown(nome);
@@ -6117,6 +6991,36 @@ export function alterarPapelAutoria(tabela, autorId, papel) {
 export function alterarAssinaturaAutoria(tabela, autorId, assinatura) {
     grupoAutoria(tabela).alterarAssinatura(autorId, assinatura);
 }
+// Linha ao vivo do modal do texto: "No sorteio: ...", o que o leitor verá na
+// Autoria com o sigilo do Autor, do nome literário e do texto juntos. Só
+// aparece quando algum nível de sigilo muda a linha. Chamada pela caixa "Autor
+// em sigilo" e a cada mudança na Autoria do texto.
+export function atualizarLinhaSigiloTexto(tabela) {
+    const p = tabela === 'poemas' ? 'p' : 'pr';
+    const linha = document.getElementById(`${p}-autor-sigilo-linha`);
+    if (!linha) return;
+    const item = {
+        autoria: grupoAutoria(tabela).obterItens(),
+        autorEmSigilo: !!document.getElementById(`${p}-autor-em-sigilo`)?.checked,
+    };
+    const { aplica, texto } = linhaSigiloDoTexto(item, db.autores);
+    linha.textContent = aplica ? texto : '';
+    linha.classList.toggle('hidden', !aplica);
+}
+// Aviso ao vivo do modal do texto: "Pode ser sorteado" marcado junto de uma
+// Leitura autônoma que não é "Lê-se sozinho". Chamada pelas duas caixas e ao
+// abrir o texto (novo ou existente).
+export function atualizarAvisoLeituraSorteio(tabela) {
+    const p = tabela === 'poemas' ? 'p' : 'pr';
+    const aviso = document.getElementById(`${p}-leitura-sorteio-aviso`);
+    if (!aviso) return;
+    const texto = avisoSorteioLeituraCondicionada({
+        sorteavel: !!document.getElementById(`${p}-sorteavel`)?.checked,
+        leituraAutonoma: document.getElementById(`${p}-leitura-autonoma`)?.value || '',
+    });
+    aviso.textContent = texto;
+    aviso.classList.toggle('hidden', !texto);
+}
 export function alterarNomeLiterarioAutoria(tabela, autorId, nomeLiterario) {
     grupoAutoria(tabela).alterarNomeLiterario(autorId, nomeLiterario);
 }
@@ -6151,21 +7055,14 @@ export function atualizarDatalistProsa() {
             .join('');
     }
 
-    // Datalists sempre presentes no index.html, usados pela barra de
-    // edição em massa da aba Prosas (independem do modal ter sido aberto)
-    const datalistPessoasBulk = document.getElementById('sugestoes-pessoas-bulk-prosa');
-    if (datalistPessoasBulk) {
-        datalistPessoasBulk.innerHTML = pessoasUnicas
-            .map((nome) => `<option value="${escapeHtml(nome)}">`)
-            .join('');
-    }
-
     const datalistGenero = document.getElementById('sugestoes-genero-prosa');
     if (datalistGenero) {
         datalistGenero.innerHTML = generosUnicos
             .map((g) => `<option value="${escapeHtml(g)}">`)
             .join('');
     }
+    // Sempre presente no index.html, usado pela barra de edição em massa da
+    // aba Prosas (independe do modal ter sido aberto)
     const datalistGeneroBulk = document.getElementById('sugestoes-genero-bulk-prosa');
     if (datalistGeneroBulk) {
         datalistGeneroBulk.innerHTML = generosUnicos
@@ -6247,26 +7144,50 @@ export function carregarOcupacoesAutor(ocupacoesStr) {
     grupoOcupacoesAutor.carregar(ocupacoesStr);
 }
 
+// Aviso do modal do Autor: com nome literário cadastrado e a caixa "Autor
+// sigiloso" desligada, lembra que as telas públicas mostram o nome real.
+// Chamado pela própria caixa e por toda mudança na lista de nomes literários.
+export function atualizarAvisoSigiloAutor() {
+    const aviso = document.getElementById('au-sigiloso-aviso');
+    if (!aviso) return;
+    const nomes = nomesLiterariosDoCampo(document.getElementById('au-nomes-literarios')?.value);
+    const ligado = !!document.getElementById('au-sigiloso')?.checked;
+    const avisar = deveAvisarSigilo(nomes, ligado);
+    aviso.textContent = avisar ? TEXTO_AVISO_SIGILO : '';
+    aviso.classList.toggle('hidden', !avisar);
+}
+
 export function adicionarNomeLiterarioAutor(valor = null) {
     grupoNomesLiterariosAutor.adicionar(valor);
+    atualizarAvisoSigiloAutor();
 }
 export function removerNomeLiterarioAutor(nome) {
     grupoNomesLiterariosAutor.remover(nome);
+    atualizarAvisoSigiloAutor();
 }
 export function editarNomeLiterarioAutor(nome) {
     grupoNomesLiterariosAutor.editar(nome);
+    atualizarAvisoSigiloAutor();
 }
 export function alterarTipoNomeLiterarioAutor(nome, tipo) {
     grupoNomesLiterariosAutor.alterarTipo(nome, tipo);
+    atualizarAvisoSigiloAutor();
+}
+export function alterarAnonimizarNomeLiterarioAutor(nome, ligada) {
+    grupoNomesLiterariosAutor.alterarMarca(nome, !!ligada);
+    atualizarAvisoSigiloAutor();
 }
 export function renderizarNomesLiterariosAutor() {
     grupoNomesLiterariosAutor.renderizar();
+    atualizarAvisoSigiloAutor();
 }
 export function resetNomesLiterariosAutor() {
     grupoNomesLiterariosAutor.reset();
+    atualizarAvisoSigiloAutor();
 }
 export function carregarNomesLiterariosAutor(nomesLiterarios) {
     grupoNomesLiterariosAutor.carregar(nomesLiterarios);
+    atualizarAvisoSigiloAutor();
 }
 
 // ─── Condições Clínicas do Autor ───────────────────────────────
@@ -6527,7 +7448,7 @@ export function initEditor() {
     }
 
     // Enter nos inputs de texto/link/nota da Intertextualidade
-    ['p-intertexto-texto', 'p-intertexto-link'].forEach((id) => {
+    ['p-intertexto-obra', 'p-intertexto-link'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('keydown', (e) => {
@@ -6567,17 +7488,38 @@ export function initEditor() {
     // Sugestões de Texto mais focadas: refiltra pelo Tipo assim que ele
     // muda (digitado ou escolhido do datalist) — ver
     // atualizarDatalistTextoIntertexto acima.
-    document
-        .getElementById('p-intertexto-tipo')
-        ?.addEventListener('input', () => atualizarDatalistIntertexto('poemas'));
+    // O autor é um campo de tags (ligarCamposDeAutor): digitar nele não refiltra
+    // as sugestões, só confirmar ou remover uma tag.
+    ['tipo', 'obra'].forEach((sufixo) => {
+        document
+            .getElementById('p-intertexto-' + sufixo)
+            ?.addEventListener('input', () => atualizarDatalistIntertexto('poemas'));
+    });
+    ['tipo', 'obra', 'autor'].forEach((sufixo) => {
+        document.getElementById('p-intertexto-' + sufixo)?.addEventListener('change', () => {
+            preencherDaObra('poemas', 'intertexto');
+            atualizarDatalistIntertexto('poemas');
+        });
+    });
     document
         .getElementById('p-refext-tipo')
         ?.addEventListener('input', () => atualizarDatalistReferenciaExterna('poemas'));
+    ligarConhecidoComo('poemas');
+    ligarCamposDeAutor('poemas');
+    ligarCamposDeData('poemas');
     // Mesmo refiltro acima, mas pro Hipotexto (Hipertextualidade) —
     // ver atualizarDatalistTextoHipertextualidade acima.
-    document
-        .getElementById('p-hipertexto-tipo')
-        ?.addEventListener('input', () => atualizarDatalistHipertextualidade('poemas'));
+    ['tipo', 'hipotexto'].forEach((sufixo) => {
+        document
+            .getElementById('p-hipertexto-' + sufixo)
+            ?.addEventListener('input', () => atualizarDatalistHipertextualidade('poemas'));
+    });
+    ['tipo', 'hipotexto', 'autor'].forEach((sufixo) => {
+        document.getElementById('p-hipertexto-' + sufixo)?.addEventListener('change', () => {
+            preencherDaObra('poemas', 'hipertexto');
+            atualizarDatalistHipertextualidade('poemas');
+        });
+    });
     ligarDataAcessoAoLink('p');
 
     // Anexos usa textarea (texto longo) — Enter quebra linha na
@@ -6668,7 +7610,7 @@ export function initEditorProsa() {
 
     // Enter nos inputs de texto/link/nota da Intertextualidade (Prosa) —
     // mesmo padrão do Poema em initEditor().
-    ['pr-intertexto-texto', 'pr-intertexto-link'].forEach((id) => {
+    ['pr-intertexto-obra', 'pr-intertexto-link'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('keydown', (e) => {
@@ -6704,14 +7646,35 @@ export function initEditorProsa() {
         }
     });
     // Ver initEditor() — mesmo refiltro de sugestões de Texto pelo Tipo.
-    document
-        .getElementById('pr-intertexto-tipo')
-        ?.addEventListener('input', () => atualizarDatalistIntertexto('prosas'));
+    // O autor é um campo de tags (ligarCamposDeAutor): digitar nele não refiltra
+    // as sugestões, só confirmar ou remover uma tag.
+    ['tipo', 'obra'].forEach((sufixo) => {
+        document
+            .getElementById('pr-intertexto-' + sufixo)
+            ?.addEventListener('input', () => atualizarDatalistIntertexto('prosas'));
+    });
+    ['tipo', 'obra', 'autor'].forEach((sufixo) => {
+        document.getElementById('pr-intertexto-' + sufixo)?.addEventListener('change', () => {
+            preencherDaObra('prosas', 'intertexto');
+            atualizarDatalistIntertexto('prosas');
+        });
+    });
     document
         .getElementById('pr-refext-tipo')
         ?.addEventListener('input', () => atualizarDatalistReferenciaExterna('prosas'));
-    document
-        .getElementById('pr-hipertexto-tipo')
-        ?.addEventListener('input', () => atualizarDatalistHipertextualidade('prosas'));
+    ligarConhecidoComo('prosas');
+    ligarCamposDeAutor('prosas');
+    ligarCamposDeData('prosas');
+    ['tipo', 'hipotexto'].forEach((sufixo) => {
+        document
+            .getElementById('pr-hipertexto-' + sufixo)
+            ?.addEventListener('input', () => atualizarDatalistHipertextualidade('prosas'));
+    });
+    ['tipo', 'hipotexto', 'autor'].forEach((sufixo) => {
+        document.getElementById('pr-hipertexto-' + sufixo)?.addEventListener('change', () => {
+            preencherDaObra('prosas', 'hipertexto');
+            atualizarDatalistHipertextualidade('prosas');
+        });
+    });
     ligarDataAcessoAoLink('pr');
 }

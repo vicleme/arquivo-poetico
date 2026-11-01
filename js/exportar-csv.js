@@ -30,7 +30,20 @@
 // cadastro sem coluna (ou sem ser marcado como ignorado de propósito).
 // ============================================================
 
+import { faixaDeValencia, rotuloValenciaTexto, valenciaAjusteDe } from './valencia-texto.js';
+import { ehSorteavel } from './sorteavel.js';
+import { ehAutorEmSigilo } from './autor-em-sigilo.js';
+import {
+    leituraAutonomaDe,
+    rotuloLeituraAutonoma,
+    temLeituraCondicionada,
+} from './leitura-autonoma.js';
+import { ehNotaPublica } from './comentarios-publicos.js';
+import { textoDaDataDaEntrada, textosDasPontasDaEntrada } from './data-da-entrada-texto.js';
 import { rotuloEco } from './ancora-eco.js';
+import { autoresDaEntrada, textoAutoresDaEntrada } from './autores-da-obra.js';
+import { personagensDaEntrada } from './personagens-da-obra.js';
+import { origensDaEntrada, rotuloDaOrigem } from './origem-da-obra.js';
 import {
     nomesPersonagens,
     nomesPersonagensPorCentralidade,
@@ -38,7 +51,8 @@ import {
 } from './personagens.js';
 import {
     SINALIZACOES_CATEGORIAS,
-    textoDeEtiquetas,
+    categoriaEhVirtual,
+    valorDaCategoria,
     corpoParaLinhasRicas,
     nomesPessoas,
     paresAutoria,
@@ -51,23 +65,39 @@ import {
     assuntosDoTexto,
     nomesAssuntosPorPapel,
     nomesTemasPorPapel,
+    nomesTemasDoTexto,
     nomesIdiomasPorPapel,
     dialetosDoItem,
     jargaoGiriaDoItem,
     formatarDataAcesso,
     dataAcessoDoLink,
+    tipoObraDaEntrada,
+    obraDaEntrada,
+    partesEntradaIntertexto,
 } from './utils.js';
-import { territorialidadeDoTexto, caminhoCompletoLocal, caminhoDoLocal } from './locais.js';
+import {
+    territorialidadeDoTexto,
+    caminhoCompletoLocal,
+    caminhoDoLocal,
+    idLocalEscrita,
+} from './locais.js';
+import { textosApareceEm } from './aparicoes-do-texto.js';
 import { caminhoDoPeriodo } from './periodos-historicos-hierarquia.js';
 import { classificacaoDosPeriodosHistoricosDoTexto } from './periodos-historicos-campos.js';
 import { caminhosDasCorrentes, idsDeDivisoes, caminhoDaCorrente } from './correntes-hierarquia.js';
+import { conhecidoComoDaEntrada } from './conhecido-como.js';
+import {
+    caracterizacaoDaEntrada,
+    descricaoPessoaPublica,
+} from './caracterizacao-pessoa-publica.js';
 
 // Local onde o texto foi escrito, para as colunas do CSV ('' sem Local ou se
 // o Local não existe mais).
-const localEscritaNome = (banco, item) => caminhoDoLocal(banco, item.localEscrita)[0]?.nome || '';
+const localEscritaNome = (banco, item) =>
+    caminhoDoLocal(banco, idLocalEscrita(item))[0]?.nome || '';
 const localEscritaCaminho = (banco, item) =>
-    caminhoDoLocal(banco, item.localEscrita).length
-        ? caminhoCompletoLocal(banco, item.localEscrita)
+    caminhoDoLocal(banco, idLocalEscrita(item)).length
+        ? caminhoCompletoLocal(banco, idLocalEscrita(item))
         : '';
 
 export const SEPARADOR_LISTA = ' | ';
@@ -181,13 +211,92 @@ function comNota(base, nota) {
 // (`linkTexto`) é cosmético e não entra: a URL basta. Com `dataAcesso` válida
 // o colchete vira "[link, acesso aaaa-mm-dd]" (ISO, que serve a dataset); sem
 // link a data não entra.
-function entradaExterna({ tipo, texto, link, dataAcesso, nota }) {
-    const base = [tipo, texto]
+// " · 1972" depois da obra, ou '' sem data (a mesma forma do .md).
+function dataNoCsv(entrada) {
+    const texto = textoDaDataDaEntrada(entrada);
+    return texto ? ` · ${texto}` : '';
+}
+
+function entradaExterna(entrada) {
+    const { link, dataAcesso, nota } = entrada;
+    const base = [tipoObraDaEntrada(entrada), obraDaEntrada(entrada)]
         .map((v) => (v || '').trim())
         .filter(Boolean)
         .join(': ');
+    const pessoa = descricaoPessoaPublica(entrada);
+    const corpo = `${pessoa ? `${base} (${pessoa})` : base}${dataNoCsv(entrada)}`;
+    const acesso = formatarDataAcesso(dataAcesso) ? `, acesso ${String(dataAcesso).trim()}` : '';
+    return comNota(link ? `${corpo} [${link}${acesso}]` : corpo, nota);
+}
+
+// Intertextualidade: "Relação, Tipo de obra: Obra (Autor; personagem X),
+// descrição “trecho” (traduzido) (obra pessoal) [link] (nota)". Cada parte só entra se
+// preenchida; entrada antiga (sem relação nem os campos novos) sai igual a
+// entradaExterna.
+// Os autores de uma entrada numa célula só: separados por "; " (o " | " já
+// separa as entradas entre si).
+function autoresParaCsv(entrada) {
+    return autoresDaEntrada(entrada).join('; ');
+}
+
+// Idem para as origens (mesmo separador).
+function origensParaCsv(entrada) {
+    return origensDaEntrada(entrada).join('; ');
+}
+
+// Idem para os personagens (mesmo separador).
+function personagensParaCsv(entrada) {
+    return personagensDaEntrada(entrada).join('; ');
+}
+
+function entradaIntertexto(entrada) {
+    const p = partesEntradaIntertexto(entrada);
+    const { link, dataAcesso, nota } = entrada;
+    const rotulo = [(entrada.relacao || '').trim(), tipoObraDaEntrada(entrada).trim()]
+        .filter(Boolean)
+        .join(', ');
+    const corpo = [
+        p.corpo,
+        p.descricao ? `, ${p.descricao}` : '',
+        dataNoCsv(entrada),
+        p.trecho ? ` “${p.trecho}”` : '',
+        p.traduzido ? ' (traduzido)' : '',
+        p.obraPessoal ? ' (obra pessoal)' : '',
+    ].join('');
+    const base = [rotulo, corpo.trim()].filter(Boolean).join(': ');
     const acesso = formatarDataAcesso(dataAcesso) ? `, acesso ${String(dataAcesso).trim()}` : '';
     return comNota(link ? `${base} [${link}${acesso}]` : base, nota);
+}
+
+// Hipertextualidade: "Tipo de obra: Hipotexto (Relação; autor X; origem Y),
+// descrição [link] (nota)". Sem autor, origem nem descrição sai como antes.
+function entradaHipertexto(h) {
+    const relacao = (h.relacao || '').trim();
+    const autor = textoAutoresDaEntrada(h);
+    const dentro = [relacao, autor ? `autor ${autor}` : '', rotuloDaOrigem(h)]
+        .filter(Boolean)
+        .join('; ');
+    const hipotexto = (h.hipotexto || '').trim();
+    const descricao = (h.descricao || '').trim();
+    const texto = `${dentro ? (hipotexto ? `${hipotexto} (${dentro})` : `(${dentro})`) : hipotexto}${
+        descricao ? `, ${descricao}` : ''
+    }${dataNoCsv(h)}${h.obraPessoal === true ? ' (obra pessoal)' : ''}`;
+    return entradaExterna({
+        tipo: tipoObraDaEntrada(h),
+        texto,
+        link: h.link,
+        dataAcesso: h.dataAcesso,
+        nota: h.nota,
+    });
+}
+
+// Coluna paralela, uma por campo, para quem usa o CSV como dataset: um valor
+// por entrada, na mesma ordem da coluna de leitura, separados por " | ". Campo
+// vazio numa entrada deixa o lugar vazio (a posição segue valendo); lista toda
+// vazia vira célula vazia.
+function listaPosicional(lista, obter) {
+    const valores = (lista || []).map((e) => String(obter(e) ?? '').trim());
+    return valores.some(Boolean) ? valores.join(SEPARADOR_LISTA) : '';
 }
 
 // ─── Análise do texto ───────────────────────────────────────────
@@ -337,6 +446,12 @@ export function colunasTexto(tipo) {
         coluna('livros_vinculados', ['livrosIds'], (r) =>
             juntar((r.livrosResolvidos || []).map((l) => l.titulo)),
         ),
+        // Coletâneas que trazem o texto (derivado de `itensColetanea`).
+        coluna('coletaneas', [], (r) => juntar(r.contexto?.coletaneas || [])),
+        // Todas as aparições em livros comuns (Fase 21, 21-4b): caminho e posição
+        // de cada uma. Texto com uma só aparição fica com a célula vazia (as
+        // colunas livro, parte, secao e sequencia já dizem tudo).
+        coluna('aparece_em', [], (r) => juntar(textosApareceEm(r))),
 
         // Datas
         ...colunasData('escrita', ['dataEscrita', 'ano'], (r) => r.dataEscrita),
@@ -381,6 +496,20 @@ export function colunasTexto(tipo) {
                         (p.papeis || []).length
                             ? `${porId.get(p.pessoaId)}: ${p.papeis.join(', ')}`
                             : porId.get(p.pessoaId),
+                    ),
+            );
+        }),
+        // Nota do vínculo Pessoa × texto (só quem tem nota), "Nome: nota".
+        coluna('pessoas_notas', [], (r, ctx) => {
+            const porId = new Map((ctx.banco.pessoas || []).map((p) => [p.id, p.nome]));
+            return juntar(
+                (r.pessoas || [])
+                    .filter(
+                        (p) => porId.get(p.pessoaId) && typeof p.nota === 'string' && p.nota.trim(),
+                    )
+                    .map(
+                        (p) =>
+                            `${porId.get(p.pessoaId)}: ${p.nota.trim().replace(/\s*\n\s*/g, ' ')}`,
                     ),
             );
         }),
@@ -548,8 +677,14 @@ export function colunasTexto(tipo) {
         ),
 
         // Sinalizações: uma coluna por categoria
+        // Categoria virtual (Tema) não tem campo de dado: sem entrada em `campos`.
         ...Object.entries(SINALIZACOES_CATEGORIAS).map(([chave, campo]) =>
-            coluna(nomeSinal(chave), [campo], (r) => virgulasParaLista(textoDeEtiquetas(r[campo]))),
+            coluna(nomeSinal(chave), categoriaEhVirtual(chave) ? [] : [campo], (r, ctx) =>
+                // Tema: um nome por item (o nome pode ter vírgula); o resto quebra por vírgula.
+                chave === 'tema'
+                    ? juntar(nomesTemasDoTexto(r, ctx.banco.temas))
+                    : virgulasParaLista(valorDaCategoria(r, chave, { temas: ctx.banco.temas })),
+            ),
         ),
         // Territorialidade com o caminho de cada Local, do mais alto até ele
         // (`sinal_territorialidade` acima segue com só os nomes).
@@ -593,23 +728,61 @@ export function colunasTexto(tipo) {
             ),
         ),
         coluna('intertextualidade', ['intertextualidade'], (r) =>
-            juntar((r.intertextualidade || []).map(entradaExterna)),
+            juntar((r.intertextualidade || []).map(entradaIntertexto)),
+        ),
+        ...[
+            ['relacao', (e) => e.relacao],
+            ['tipo_obra', tipoObraDaEntrada],
+            ['obra', obraDaEntrada],
+            ['autor', autoresParaCsv],
+            ['origem', origensParaCsv],
+            ['personagem', personagensParaCsv],
+            ['descricao', (e) => e.descricao],
+            ['trecho', (e) => String(e.trecho ?? '').replace(/\s*\n\s*/g, ' / ')],
+            ['traduzido', (e) => (e.traduzido === true ? 'sim' : '')],
+            ['obra_pessoal', (e) => (e.obraPessoal === true ? 'sim' : '')],
+            ['data_obra', (e) => textosDasPontasDaEntrada(e).inicio],
+            ['data_obra_ate', (e) => textosDasPontasDaEntrada(e).fim],
+        ].map(([sufixo, obter]) =>
+            coluna(`intertextualidade_${sufixo}`, [], (r) =>
+                listaPosicional(r.intertextualidade, obter),
+            ),
         ),
         coluna('hipertextualidade', ['hipertextualidade'], (r) =>
-            juntar(
-                (r.hipertextualidade || []).map((h) =>
-                    entradaExterna({
-                        tipo: h.tipo,
-                        texto: h.relacao ? `${h.hipotexto || ''} (${h.relacao})` : h.hipotexto,
-                        link: h.link,
-                        dataAcesso: h.dataAcesso,
-                        nota: h.nota,
-                    }),
-                ),
+            juntar((r.hipertextualidade || []).map(entradaHipertexto)),
+        ),
+        ...[
+            ['relacao', (h) => h.relacao],
+            ['tipo_obra', tipoObraDaEntrada],
+            ['hipotexto', (h) => h.hipotexto],
+            ['autor', autoresParaCsv],
+            ['origem', origensParaCsv],
+            ['descricao', (h) => h.descricao],
+            ['obra_pessoal', (h) => (h.obraPessoal === true ? 'sim' : '')],
+            ['data_obra', (h) => textosDasPontasDaEntrada(h).inicio],
+            ['data_obra_ate', (h) => textosDasPontasDaEntrada(h).fim],
+        ].map(([sufixo, obter]) =>
+            coluna(`hipertextualidade_${sufixo}`, [], (r) =>
+                listaPosicional(r.hipertextualidade, obter),
             ),
         ),
         coluna('referencias_externas', ['referenciasExternas'], (r) =>
             juntar((r.referenciasExternas || []).map(entradaExterna)),
+        ),
+        // Pessoa pública: uma coluna por campo, por posição como as de
+        // Intertextualidade. Vazio numa entrada deixa o lugar vazio (não
+        // informado), e as tags de uma mesma pessoa vão separadas por "; ".
+        ...[
+            ['conhecido_como', (e) => conhecidoComoDaEntrada(e).join('; ')],
+            ['genero', (e) => caracterizacaoDaEntrada(e).genero],
+            ['orientacao', (e) => caracterizacaoDaEntrada(e).orientacao],
+            ['cor_raca', (e) => caracterizacaoDaEntrada(e).corRaca],
+            ['data', (e) => textosDasPontasDaEntrada(e).inicio],
+            ['data_ate', (e) => textosDasPontasDaEntrada(e).fim],
+        ].map(([sufixo, obter]) =>
+            coluna(`referencias_externas_${sufixo}`, [], (r) =>
+                listaPosicional(r.referenciasExternas, obter),
+            ),
         ),
         coluna('anexos', ['anexos'], (r) =>
             juntar((r.anexos || []).map((a) => entradaExterna({ ...a, nota: '' }))),
@@ -640,6 +813,10 @@ export function colunasTexto(tipo) {
 
         // Notas e contexto
         coluna('notas', ['notas'], (r) => r.notas),
+        // Notas marcadas como públicas ("sim" só para `true`) e o comentário
+        // escrito para o leitor (comentarios-publicos.js).
+        coluna('notas_publicas', ['notasPublicas'], (r) => (ehNotaPublica(r) ? 'sim' : '')),
+        coluna('comentarios_ao_leitor', ['comentariosPublicos'], (r) => r.comentariosPublicos),
         // Inspiração (campo interno: contextoHistorico)
         coluna('inspiracao', ['contextoHistorico'], (r) => r.contextoHistorico),
         coluna('ocultacao', ['ocultacao'], (r) => r.ocultacao),
@@ -654,6 +831,23 @@ export function colunasTexto(tipo) {
         // vazio, pra não puxar médias pra baixo.
         coluna('autoclassificacao', ['autoclassificacao'], (r) =>
             Number(r.autoclassificacao) > 0 ? r.autoclassificacao : '',
+        ),
+        // Marca de leitura: "sim" só para `true`; desligado e ausente saem vazios.
+        coluna('sorteavel', ['sorteavel'], (r) => (ehSorteavel(r) ? 'sim' : '')),
+        // Sigilo do autor no texto: "sim" só para `true` (autor-em-sigilo.js).
+        coluna('autor_em_sigilo', ['autorEmSigilo'], (r) => (ehAutorEmSigilo(r) ? 'sim' : '')),
+        // Valência do texto (valencia-texto.js): a faixa final (ajuste do autor, ou
+        // a derivada dos temas) e, à parte, só o ajuste, para separar o juízo do
+        // autor do que os temas dizem. Sem valência, ambas saem vazias.
+        coluna('valencia', ['valenciaAjuste'], (r, ctx) =>
+            rotuloValenciaTexto(faixaDeValencia(r, ctx.banco.temas)),
+        ),
+        coluna('valencia_ajuste', ['valenciaAjuste'], (r) =>
+            rotuloValenciaTexto(valenciaAjusteDe(r)),
+        ),
+        // Leitura autônoma: o rótulo (Só em sequência...); Lê-se sozinho, o padrão, sai vazio.
+        coluna('leitura_autonoma', ['leituraAutonoma'], (r) =>
+            temLeituraCondicionada(r) ? rotuloLeituraAutonoma(leituraAutonomaDe(r)) : '',
         ),
 
         // Circulação
@@ -685,6 +879,7 @@ export function colunasTexto(tipo) {
         // Migração, descarte, pendência
         coluna('cortado_de_livro', ['cortadoDe'], (r) => r.cortadoDe?.livro || ''),
         coluna('cortado_de_secao', [], (r) => r.cortadoDe?.secao || ''),
+        coluna('cortado_de_posicao', [], (r) => r.cortadoDe?.posicao ?? ''),
         coluna('lancado_em_livro', ['lancadoEm'], (r) => r.lancadoEm?.livro || ''),
         coluna('lancado_em_secao', [], (r) => r.lancadoEm?.secao || ''),
         coluna('justificativa_migracao', ['justificativaMigracao'], (r) => r.justificativaMigracao),
@@ -710,8 +905,13 @@ export function colunasTexto(tipo) {
 export const CAMPOS_TEXTO_IGNORADOS = [];
 
 // registros: saída de `montarRegistro` (exportar.js), um por texto.
-export function gerarCsvTextos(tipo, registros, banco) {
-    return gerarCsv(colunasTexto(tipo), registros, (r) => ({
+// `opcoes.somenteTituloTexto`: só as colunas titulo e texto (caixa "Metadados"
+// desmarcada, ver metadados-download.js).
+export function gerarCsvTextos(tipo, registros, banco, opcoes = {}) {
+    const colunas = opcoes.somenteTituloTexto
+        ? colunasTexto(tipo).filter((c) => c.cabecalho === 'titulo' || c.cabecalho === 'texto')
+        : colunasTexto(tipo);
+    return gerarCsv(colunas, registros, (r) => ({
         banco,
         texto: analisarTexto(r.texto),
     }));

@@ -2,6 +2,8 @@
 // forms.js — Submit handlers e funções de edição por entidade
 // ============================================================
 
+import { leituraAutonomaDe } from './leitura-autonoma.js';
+import { valenciaAjusteDe } from './valencia-texto.js';
 import {
     preencherCamposPeriodoBiografico,
     lerCamposPeriodoBiografico,
@@ -13,6 +15,7 @@ import {
 } from './periodo-historico-campos-ui.js';
 import { registrarValoresNovosPeriodoHistorico } from './periodos-historicos-campos.js';
 import { resolverTemasEditados, aplicarAssuntosPendentes } from './temas.js';
+import { preservarLigacoesTemaPessoa } from './ligacoes-tema-pessoa.js';
 import { renderEtiquetas, impactoDaEtiqueta } from './etiquetas-aba.js';
 import { mesclarEtiquetas } from './etiquetas.js';
 import {
@@ -61,6 +64,8 @@ import {
     calcularImpactoExclusaoMovimentoEscola,
     calcularImpactoExclusaoGrupo,
     mesclarPessoas,
+    definirPessoaSouEu,
+    obterPessoaSouEuId,
     mesclarEpocas,
     mesclarGrupos,
     mesclarPeriodosHistoricos,
@@ -132,6 +137,8 @@ import {
     periodosHistoricosIdsDoItem,
     formatarIntervaloPeriodoHistorico,
 } from './utils.js';
+import { origemParaDescarte } from './fora-de-escopo.js';
+import { origemComLivroId, sincronizarOrigemComLivros } from './origem-livro.js';
 import { normalizarRegiao } from './regiao.js';
 
 // Rastreadores de alterações não salvas dos formulários de texto longo
@@ -166,14 +173,46 @@ import {
     renderSumarioNoModal,
     limparSumarioDoModal,
 } from './ui-sumario.js';
-import { getColetaneasDeItem } from './coletaneas.js';
+import {
+    ligarAutoriaLivroNoModal,
+    renderAutoriaNoModal,
+    validarAutoriaDoModal,
+    autoriaParaGravar,
+} from './ui-autoria-livro.js';
+import { autoriaDoLivro, camposAutoriaLivro } from './autoria-livro.js';
+import {
+    ligarEquipeLivroNoModal,
+    renderEquipeNoModal,
+    validarEquipeDoModal,
+    equipeParaGravar,
+} from './ui-equipe-livro.js';
+import { equipeDoLivro, camposEquipeLivro } from './colaboradores-livro.js';
+import {
+    camposUsoIaDoModal,
+    ligarUsoIaLivroNoModal,
+    renderUsoIaNoModal,
+    validarUsoIaDoModal,
+} from './ui-uso-ia-livro.js';
+import { atualizarContadorSinopseCurta } from './contador-sinopse-livro.js';
+import { getColetaneasDeItem, selecionarColetanea } from './coletaneas.js';
+import { abrirPorAtalho } from './faixa-origem.js';
 import {
     toggleModal,
     garantirModal,
     renderDropdowns,
-    sincronizarFiltroDestino,
+    atualizarCamposDoStatus,
+    autoPreencherDataPublicacao,
     prepararNovo,
 } from './ui.js';
+import {
+    carregarOndeAparece,
+    destinoDoModal,
+    iniciarOndeAparece,
+    lerOndeAparece,
+    resetOndeAparece,
+} from './onde-aparece-ui.js';
+import { linhasParaSalvar, linhasRepetidas, linhasSemPosicao } from './onde-aparece-linhas.js';
+import { salvarAparicoesDoTexto } from './aparicoes-salvar.js';
 import {
     atualizarDatalist,
     atualizarDatalistRegiaoPeriodoHistorico,
@@ -207,6 +246,7 @@ import {
     obterGruposDiretos,
     resetGruposDiretos,
     carregarAutoria,
+    atualizarAvisoLeituraSorteio,
     obterAutoria,
     resetAutoria,
     carregarEnvios,
@@ -217,6 +257,7 @@ import {
     resetReconhecimentos,
     resetGeneroProsa,
     carregarGeneroProsa,
+    atualizarAvisoSigiloAutor,
     carregarNomesLiterariosAutor,
     adicionarNomeLiterarioAutor,
     carregarOcupacoesAutor,
@@ -326,22 +367,136 @@ import {
     excluirTemaDoCadastro,
     assuntosDoTema,
     garantirTema,
+    limparNomeTema,
     mesclarTemas,
     marcarTemasNaoIguais,
     impactoDoTema,
     resumoExclusaoTemasSemTexto,
     excluirTemasSemTexto,
     excluirTodosAssuntos,
+    definirValenciaDoTema,
+    normalizarValenciaTema,
 } from './temas.js';
 import { baixarMolde } from './ui-molde-json.js';
 
 // Lê o par Livro/Seção de texto livre dos campos de Migração (Cortado
 // de / Lançado em) — compartilhado por Poema e Prosa (item 4), por isso
 // vive no escopo do módulo em vez de dentro de um dos dois onsubmit.
-function lerLivroSecao(prefLivro, prefSecao) {
+// `prefPosicao` (opcional) é o campo "Posição de origem" do Cortado de: a
+// posição que o texto tinha no livro de onde saiu (foto do passado, nunca
+// recalculada). A chave `posicao` só existe quando preenchida, e sem o 0
+// (`seqOuNull`), como as demais posições do app.
+function lerLivroSecao(prefLivro, prefSecao, prefPosicao) {
     const livro = document.getElementById(prefLivro)?.value || '';
     const secao = document.getElementById(prefSecao)?.value || '';
-    return livro || secao ? { livro, secao } : null;
+    const posicao = prefPosicao ? seqOuNull(document.getElementById(prefPosicao)?.value) : null;
+    if (!livro && !secao && posicao === null) return null;
+    const saida = { livro, secao };
+    if (posicao !== null) saida.posicao = posicao;
+    return saida;
+}
+
+// Migração só faz sentido com o status certo. "Cortado de" vale para Migrado e
+// para Descartado (nos dois o texto saiu de um lugar do livro); "Lançado em" e a
+// justificativa são só do Migrado. Aviso não-bloqueante, igual nos dois modais.
+function migracaoForaDoStatus(dados) {
+    if (dados.status === 'migrado') return false;
+    const soMigrado = dados.lancadoEm || (dados.justificativaMigracao || '').trim();
+    const cortado = dados.cortadoDe && dados.status !== 'descartado';
+    return Boolean(soMigrado || cortado);
+}
+
+// Texto descartado guarda de onde saiu. A posição na fila é liberada pelo salvar
+// (todas as linhas de "Onde aparece" viram "sem posição": ver `linhasSemPosicao`).
+//   - "Cortado de" vazio: grava o lugar em que o texto estava ANTES do descarte
+//     (o do cadastro, se ele já existia e não era descartado; senão o da primeira
+//     linha do modal, `destinoDoForm`). Se o Victor preencheu, vale o que ele
+//     preencheu.
+function prepararDescarte(dados, anterior, destinoDoForm) {
+    if (dados.status !== 'descartado' || dados.cortadoDe) return;
+    const base =
+        anterior && anterior.status !== 'descartado' && anterior.paiTipo ? anterior : destinoDoForm;
+    let { paiTipo, paiId } = base;
+    // Prosa antiga: só `secaoId`, sem pai.
+    if (!paiTipo && base.secaoId != null) {
+        paiTipo = 'secao';
+        paiId = base.secaoId;
+    }
+    const origem = origemParaDescarte(db, paiTipo, paiId, base.sequencia);
+    if (origem) dados.cortadoDe = origem;
+}
+
+// O texto que vai para o banco parte do que o salvo tinha (Destino, livros e a
+// lista de aparições): `salvarAparicoesDoTexto` compara essa lista com as linhas
+// do modal e acerta as filas de posição.
+function aparicoesDoSalvo(anterior) {
+    return {
+        paiTipo: anterior?.paiTipo ?? null,
+        paiId: anterior?.paiId ?? null,
+        sequencia: anterior?.sequencia ?? null,
+        livrosIds: [...(anterior?.livrosIds || [])],
+        ...(Array.isArray(anterior?.aparicoes)
+            ? { aparicoes: anterior.aparicoes.map((a) => ({ ...a })) }
+            : {}),
+    };
+}
+
+const AVISO_LINHAS_REPETIDAS =
+    'Duas linhas de "Onde aparece" apontam para o mesmo lugar: só a primeira foi salva.';
+
+// Liga o "Cortado de" e o "Lançado em" ao livro cadastrado: quando o texto
+// digitado é um livro do cadastro (único), grava o `livroId` e o título de hoje
+// no `livro`. Livro que não está no cadastro fica como digitado, sem id. `anterior`
+// é o registro antes da edição (ou null): ele mantém um vínculo que já estava certo.
+function ligarOrigemAosLivros(dados, anterior) {
+    dados.cortadoDe = origemComLivroId(db, dados.cortadoDe, anterior?.cortadoDe);
+    dados.lancadoEm = origemComLivroId(db, dados.lancadoEm, anterior?.lancadoEm);
+}
+
+// No modal, ao escolher o status Descartado: propõe o "Cortado de" com o lugar de
+// hoje (se os campos estão vazios) e, ao desfazer a escolha sem mexer no que foi
+// proposto, tira a proposta. O grupo "Onde aparece" fica travado enquanto o status
+// for Descartado (ver atualizarTravaOndeAparece). `pref`: 'p' (Poema) ou 'pr' (Prosa).
+function ligarDescarteNoModal(pref, colecao) {
+    const status = document.getElementById(`${pref}-status`);
+    if (!status) return;
+    const campos = ['livro', 'secao', 'posicao'].map((c) =>
+        document.getElementById(`${pref}-cortado-${c}`),
+    );
+    if (campos.some((c) => !c)) return;
+    let proposta = null;
+
+    const igualAProposta = () =>
+        proposta &&
+        campos[0].value === (proposta.livro || '') &&
+        campos[1].value === (proposta.secao || '') &&
+        campos[2].value === String(proposta.posicao ?? '');
+
+    status.addEventListener('change', () => {
+        if (status.value === 'descartado') {
+            if (!campos.some((c) => c.value.trim())) {
+                const editId = document.getElementById(`${pref}-edit-id`)?.value;
+                const salvo = editId
+                    ? db[colecao].find((t) => String(t.id) === String(editId))
+                    : null;
+                const lugar =
+                    salvo && salvo.status !== 'descartado' && salvo.paiTipo
+                        ? salvo
+                        : destinoDoModal(pref);
+                const origem = origemParaDescarte(db, lugar.paiTipo, lugar.paiId, lugar.sequencia);
+                if (origem) {
+                    campos[0].value = origem.livro || '';
+                    campos[1].value = origem.secao || '';
+                    campos[2].value = origem.posicao ?? '';
+                    proposta = origem;
+                }
+            }
+        } else if (igualAProposta()) {
+            campos.forEach((c) => (c.value = ''));
+            proposta = null;
+        }
+        atualizarCamposDoStatus(pref);
+    });
 }
 
 // ─── Preenchimento declarativo de formulário de edição ──────────────
@@ -359,6 +514,18 @@ function lerLivroSecao(prefLivro, prefSecao) {
 // data parcial (preencherDataParcial), vínculo (paiTipo:paiId), select
 // múltiplo, tags — que já não se repetia entre os seis, então não
 // precisa dessa abstração.
+// Valor do select "Leitura autônoma" para o texto aberto: o que não é
+// reconhecido vira "Lê-se sozinho" (leitura-autonoma.js).
+function valorLeituraAutonoma(v) {
+    return leituraAutonomaDe({ leituraAutonoma: v });
+}
+
+// Valor do select "Valência do texto" para o texto aberto: o que não é
+// reconhecido vira "Seguir os temas" (valencia-texto.js).
+function valorValenciaAjuste(v) {
+    return valenciaAjusteDe({ valenciaAjuste: v });
+}
+
 function preencherCampos(objeto, mapa) {
     for (const [campo, spec] of Object.entries(mapa)) {
         const [inputId, padrao = '', transformar] = Array.isArray(spec) ? spec : [spec];
@@ -374,18 +541,53 @@ function preencherCampos(objeto, mapa) {
 }
 
 // ─── Indicador somente-leitura "Aparece em: Coletânea X › Parte Y" ──
-// Usado no modal de Poema e de Prosa. A edição em si (a qual coletânea,
-// qual parte, sequência, override) continua só pela aba Coletâneas —
-// isso aqui é só pra não esconder do usuário que o vínculo existe.
-function renderColetaneasInfo(containerId, refTipo, refId) {
+// Usado no modal de Poema e de Prosa (grupo "Onde aparece"). A edição em si
+// (a qual coletânea, qual parte, sequência, override) continua só pela aba
+// Coletâneas (F21-D3): isso aqui é só pra não esconder do usuário que o
+// vínculo existe. Cada coletânea é um botão que fecha o modal e abre a aba
+// Coletâneas já nela. Se o modal tem alterações não salvas, o fechar pede
+// confirmação (toggleModal) e o atalho só segue depois que o modal fechar:
+// o botão não navega por cima de um modal ainda aberto.
+async function irParaColetaneaDoModal(modalId, coletaneaId, rotuloDoTexto) {
+    const modal = document.getElementById(modalId);
+    const aberto = () => !!modal && !modal.classList.contains('hidden');
+    // Só fecha se estiver aberto: toggleModal num modal fechado o abriria.
+    if (aberto()) await toggleModal(modalId);
+    if (aberto()) return;
+    // Faixa "Voltar para <aba>" na aba Coletâneas: sem filtro a desfazer, e some
+    // quando a pessoa sai de lá.
+    abrirPorAtalho({
+        destino: 'coletaneas',
+        descricao: `Aberta a partir de ${rotuloDoTexto}`,
+        aplicar: () => selecionarColetanea(coletaneaId),
+        limpar: () => {},
+        semLimpar: true,
+        efemera: true,
+    });
+}
+
+function renderColetaneasInfo(containerId, refTipo, refId, modalId) {
     const el = document.getElementById(containerId);
     if (!el) return;
     const lista = getColetaneasDeItem(refTipo, refId);
     el.innerHTML = lista.length
         ? `<div class="text-[11px] bg-indigo-50 dark:bg-indigo-950 border border-indigo-100 dark:border-indigo-900 text-indigo-700 dark:text-indigo-300 rounded-lg px-3 py-2 mt-1">
-              📚 Aparece em: ${lista.map((c) => `<strong>${escapeHtml(c.coletaneaTitulo)}</strong> › ${escapeHtml(c.parteTitulo)}`).join(' &nbsp;·&nbsp; ')}
+              📚 Aparece em: ${lista
+                  .map(
+                      (c) =>
+                          `<button type="button" class="col-atalho underline decoration-dotted hover:decoration-solid" data-coletanea-id="${c.coletaneaId}" title="Abrir na aba Coletâneas"><strong>${escapeHtml(c.coletaneaTitulo)}</strong> › ${escapeHtml(c.parteTitulo)}</button>`,
+                  )
+                  .join(' &nbsp;·&nbsp; ')}
+              <span class="block mt-1 text-indigo-500 dark:text-indigo-400">Para mudar, use a aba Coletâneas (clique no nome para abrir).</span>
            </div>`
         : '';
+    const titulo = (db[refTipo + 's'] || []).find((t) => t.id == refId)?.titulo;
+    const rotuloDoTexto = `${refTipo === 'prosa' ? 'a prosa' : 'o poema'} “${titulo || 'sem título'}”`;
+    el.querySelectorAll('.col-atalho').forEach((botao) =>
+        botao.addEventListener('click', () =>
+            irParaColetaneaDoModal(modalId, parseInt(botao.dataset.coletaneaId), rotuloDoTexto),
+        ),
+    );
 }
 
 // ─── Livro ───────────────────────────────────────────────────
@@ -406,8 +608,9 @@ export function etiquetasParaSalvar(prefixo) {
 
 // Temas do texto (fase 2): resolve os nomes do grupo "Temas e Assuntos"
 // em ids (criando no cadastro o Tema que ainda não existe) e devolve os
-// dois campos a gravar — `temas` (fonte da verdade) e o espelho
-// `sinalizacoesTema` (ver temas.js).
+// campos a gravar: `temas` (fonte da verdade), `assuntosPapel` e
+// `assuntosExcluidos`. O campo antigo `sinalizacoesTema` não existe mais
+// (Fase 2, Etapa 5): os nomes saem sempre dos `temas`.
 //
 // Papel do Assunto: grava só as sobrescritas (`assuntosPapel`) que ainda se
 // aplicam aos Temas do texto; sem sobrescrita, lista vazia (o papel segue
@@ -416,7 +619,7 @@ export function etiquetasParaSalvar(prefixo) {
 // cadastro atualizado.
 export function temasParaSalvar(tabela) {
     const entradas = obterTemasTexto(tabela);
-    const { temas, espelho } = resolverTemasEditados(db, entradas);
+    const { temas } = resolverTemasEditados(db, entradas);
     // Ligações Tema → Assunto marcadas no modal: só agora entram no cadastro.
     const ligadas = aplicarAssuntosPendentes(db, entradas, obterAssuntosPendentesTexto(tabela));
     if (ligadas.vinculos) {
@@ -441,7 +644,7 @@ export function temasParaSalvar(tabela) {
         db.assuntos,
         db.temas,
     );
-    return { temas, sinalizacoesTema: espelho, assuntosPapel, assuntosExcluidos };
+    return { temas, assuntosPapel, assuntosExcluidos };
 }
 
 // Locais do texto, lidos do grupo "Região e Idioma" do modal: Territorialidade
@@ -482,11 +685,31 @@ export function zerarUltimoEnvioLivro() {
     envioLivroEmAndamento = null;
 }
 
+// O modal do Livro tem grupos recolhíveis. Quando uma recusa aponta para um
+// campo que está dentro de um grupo fechado, abre o grupo para a pessoa ver o problema.
+function abrirGrupoDoCampo(idDoCampo) {
+    const grupo = document.getElementById(idDoCampo)?.closest('details');
+    if (grupo) grupo.open = true;
+}
+
 export function initFormLivro() {
     const form = document.getElementById('form-livro');
     if (!form) return;
 
     rastreadorLivro.observar(form);
+    // Validação nativa (por exemplo, link inválido) em campo de grupo fechado:
+    // o navegador não consegue focar, então o grupo é aberto antes.
+    form.addEventListener(
+        'invalid',
+        (e) => {
+            const grupo = e.target?.closest?.('details');
+            if (grupo) grupo.open = true;
+        },
+        true,
+    );
+    ligarAutoriaLivroNoModal();
+    ligarEquipeLivroNoModal();
+    ligarUsoIaLivroNoModal();
 
     form.onsubmit = (e) => {
         e.preventDefault();
@@ -498,7 +721,29 @@ export function initFormLivro() {
 async function salvarLivroDoFormulario() {
     const id = document.getElementById('l-edit-id').value;
     const imagemUrl = lerLinkImagem('l-imagem-url');
-    if (imagemUrl === null) return false;
+    if (imagemUrl === null) {
+        abrirGrupoDoCampo('l-imagem-url');
+        return false;
+    }
+    // Autoria: valida antes de mexer na capa, para a recusa não deixar efeito nenhum.
+    const erroAutoria = validarAutoriaDoModal();
+    if (erroAutoria) {
+        abrirGrupoDoCampo('l-autoria-lista');
+        mostrarAviso(erroAutoria);
+        return false;
+    }
+    const erroEquipe = validarEquipeDoModal();
+    if (erroEquipe) {
+        abrirGrupoDoCampo('l-equipe-lista');
+        mostrarAviso(erroEquipe);
+        return false;
+    }
+    const erroUsoIa = validarUsoIaDoModal();
+    if (erroUsoIa) {
+        abrirGrupoDoCampo('l-uso-ia-estado');
+        mostrarAviso(erroUsoIa);
+        return false;
+    }
     const capaFile = document.getElementById('l-capa').files[0];
     const removerCapa = document.getElementById('l-remover-capa').checked;
     const capaAtual = id ? db.livros.find((x) => x.id == id)?.capa : null;
@@ -518,6 +763,7 @@ async function salvarLivroDoFormulario() {
     const dataPublicacao = lerDataParcial('l-data');
     const dataUltimaEdicao = lerDataParcial('l-ultima-edicao');
     if (violaOrdemDeDatas(dataPublicacao, dataUltimaEdicao)) {
+        abrirGrupoDoCampo('l-ultima-edicao-dia');
         mostrarAviso(
             'A Data da Última Edição não pode ser anterior à Data de Primeira Publicação.',
         );
@@ -526,6 +772,7 @@ async function salvarLivroDoFormulario() {
 
     const situacaoDesde = lerDataParcial('l-situacao-desde');
     if (violaOrdemDeDatas(dataPublicacao, situacaoDesde)) {
+        abrirGrupoDoCampo('l-situacao-desde-dia');
         mostrarAviso(
             'A data da situação editorial não pode ser anterior à Data de Primeira Publicação.',
         );
@@ -543,6 +790,7 @@ async function salvarLivroDoFormulario() {
         tipo: document.getElementById('l-tipo').value,
         fase: document.getElementById('l-fase').value,
         abertura: document.getElementById('l-abertura').value,
+        sinopseCurta: document.getElementById('l-sinopse-curta').value,
         sinopse: document.getElementById('l-sinopse').value,
         capaDesc: document.getElementById('l-capa-desc').value,
         fraseCapa: document.getElementById('l-frase-capa').value,
@@ -565,6 +813,12 @@ async function salvarLivroDoFormulario() {
         lojas: obterLojas(),
         capa: capaFinal,
         imagemUrl,
+        // O salvar troca o objeto inteiro: sem esta linha, a autoria some a cada edição.
+        ...camposAutoriaLivro(autoriaParaGravar()),
+        // Idem a Equipe e créditos.
+        ...camposEquipeLivro(equipeParaGravar()),
+        // Idem o Uso de IA: o objeto é trocado inteiro.
+        ...camposUsoIaDoModal(),
     };
 
     const livroAnterior = id ? db.livros.find((x) => x.id == id) : null;
@@ -578,6 +832,10 @@ async function salvarLivroDoFormulario() {
 
     // Link da ficha mudou no livro: as fichas ligadas a ele acompanham.
     sincronizarFichasComLivro(db, dados.id, fichaUrlAnterior, dados.fichaCatalograficaUrl);
+
+    // Título novo: os textos que citam este livro em "Cortado de" e "Lançado em"
+    // acompanham o nome (o vínculo é pelo id; o `livro` é o espelho do título).
+    sincronizarOrigemComLivros(db);
 
     save();
     rastreadorLivro.marcarLimpo();
@@ -596,6 +854,7 @@ const MAPA_LIVRO = {
     tipo: ['l-tipo', 'Inéditos'],
     fase: 'l-fase',
     abertura: 'l-abertura',
+    sinopseCurta: 'l-sinopse-curta',
     sinopse: 'l-sinopse',
     capaDesc: 'l-capa-desc',
     fraseCapa: 'l-frase-capa',
@@ -628,7 +887,11 @@ export async function editarLivro(id) {
     preencherDataParcial('l-data', l.data);
     preencherDataParcial('l-ultima-edicao', l.dataUltimaEdicao);
     preencherDataParcial('l-situacao-desde', l.situacaoDesde);
+    atualizarContadorSinopseCurta();
     carregarLojas(l.lojas || []);
+    renderAutoriaNoModal(autoriaDoLivro(l));
+    renderEquipeNoModal(equipeDoLivro(l));
+    renderUsoIaNoModal(l);
     document.getElementById('l-remover-capa').checked = false;
     document.getElementById('modal-livro-titulo').innerText = 'Editar Livro';
     // Preencher por código não dispara 'input': o que está no form agora é o estado
@@ -696,9 +959,13 @@ export function initFormPessoa() {
                 grupoIds,
                 autorIds,
                 oculto: existente?.oculto || false,
+                souEu: !!document.getElementById('ps-sou-eu')?.checked,
             };
             if (id) db.pessoas[db.pessoas.findIndex((x) => x.id == id)] = dados;
             else db.pessoas.push(dados);
+            // "Sou eu" é exclusivo: marcar aqui desmarca a outra Pessoa e liga o
+            // Autor "sou eu" a esta (definirPessoaSouEu, db.js).
+            if (dados.souEu) definirPessoaSouEu(db, dados.id);
             return dados.id;
         };
 
@@ -757,6 +1024,8 @@ export async function editarPessoa(id) {
     document.getElementById('ps-orientacao').value = p.orientacao || '';
     document.getElementById('ps-identidade-cis-trans').value = p.identidadeCisTrans || '';
     document.getElementById('ps-cor-raca').value = p.corRaca || '';
+    const souEuEl = document.getElementById('ps-sou-eu');
+    if (souEuEl) souEuEl.checked = !!p.souEu;
     document.querySelectorAll('#ps-grupos-container input[type="checkbox"]').forEach((el) => {
         el.checked = (p.grupoIds || []).includes(parseInt(el.value));
     });
@@ -1005,6 +1274,9 @@ export function initFormAutor() {
     const form = document.getElementById('form-autor');
     if (!form) return;
 
+    const caixaSigiloso = document.getElementById('au-sigiloso');
+    if (caixaSigiloso) caixaSigiloso.onchange = atualizarAvisoSigiloAutor;
+
     form.onsubmit = async (e) => {
         e.preventDefault();
         const id = document.getElementById('au-edit-id').value;
@@ -1044,6 +1316,7 @@ export function initFormAutor() {
                 document.getElementById('au-nomes-literarios').value || '[]',
             ),
             souEu: !!document.getElementById('au-sou-eu')?.checked,
+            sigiloso: !!document.getElementById('au-sigiloso')?.checked,
             nacionalidade: document.getElementById('au-nacionalidade').value.trim(),
             sexo: document.getElementById('au-sexo').value,
             corRaca: document.getElementById('au-cor-raca').value,
@@ -1072,6 +1345,13 @@ export function initFormAutor() {
 
         if (id) db.autores[db.autores.findIndex((x) => x.id == id)] = dados;
         else db.autores.push(dados);
+
+        // Ponte com a Pessoa "sou eu": marcar este Autor como "eu" depois de a Pessoa
+        // existir também liga os dois (definirPessoaSouEu é idempotente).
+        if (dados.souEu) {
+            const pessoaEuId = obterPessoaSouEuId(db);
+            if (pessoaEuId != null) definirPessoaSouEu(db, pessoaEuId);
+        }
 
         save();
         toggleModal('modal-autor');
@@ -1188,6 +1468,9 @@ export async function editarAutor(id) {
     carregarNomesLiterariosAutor(a.nomesLiterarios || []);
     const souEuEl = document.getElementById('au-sou-eu');
     if (souEuEl) souEuEl.checked = !!a.souEu;
+    const sigilosoEl = document.getElementById('au-sigiloso');
+    if (sigilosoEl) sigilosoEl.checked = a.sigiloso === true;
+    atualizarAvisoSigiloAutor();
     document.getElementById('au-nacionalidade').value = a.nacionalidade || '';
     document.getElementById('au-sexo').value = a.sexo || '';
     document.getElementById('au-cor-raca').value = a.corRaca || '';
@@ -1925,8 +2208,9 @@ export function initFormTema() {
     form.onsubmit = (e) => {
         e.preventDefault();
         const id = document.getElementById('te-edit-id').value;
-        const nome = document.getElementById('te-nome').value.trim();
+        const nome = limparNomeTema(document.getElementById('te-nome').value);
         const notas = document.getElementById('te-notas').value.trim();
+        const valencia = document.getElementById('te-valencia')?.value || '';
         if (!nome) return mostrarAviso('Dê um nome ao tema.');
 
         if (id) {
@@ -1941,6 +2225,7 @@ export function initFormTema() {
                 );
             }
             tema.notas = notas;
+            definirValenciaDoTema(tema, valencia);
             if (r.textos > 0) {
                 mostrarAviso(
                     `Tema renomeado em ${r.textos} texto${r.textos !== 1 ? 's' : ''}.`,
@@ -1950,7 +2235,9 @@ export function initFormTema() {
         } else {
             const duplicata = db.temas.find((t) => chaveTema(t.nome) === chaveTema(nome));
             if (duplicata) return mostrarAviso(`Já existe um Tema chamado "${duplicata.nome}".`);
-            db.temas.push({ id: gerarId(), nome, notas });
+            const novo = { id: gerarId(), nome, notas };
+            definirValenciaDoTema(novo, valencia);
+            db.temas.push(novo);
         }
         save();
         toggleModal('modal-tema');
@@ -1964,6 +2251,8 @@ export async function editarTema(id) {
     document.getElementById('te-edit-id').value = tema.id;
     document.getElementById('te-nome').value = tema.nome;
     document.getElementById('te-notas').value = tema.notas || '';
+    const campoValencia = document.getElementById('te-valencia');
+    if (campoValencia) campoValencia.value = normalizarValenciaTema(tema.valencia);
     document.getElementById('modal-tema-titulo').innerText = 'Editar Tema';
     toggleModal('modal-tema');
 }
@@ -4180,6 +4469,19 @@ export function initFormPoema() {
     if (!form) return;
 
     rastreadorPoema.observar(form);
+    form.addEventListener('reset', () =>
+        setTimeout(() => {
+            resetOndeAparece('p');
+            atualizarCamposDoStatus('p');
+        }, 0),
+    );
+    ligarDescarteNoModal('p', 'poemas');
+    iniciarOndeAparece('p', {
+        // A data de publicação é sugerida só pela primeira aparição (as outras são reedições).
+        aoEscolherLivro: (livroId, indice) => {
+            if (indice === 0) autoPreencherDataPublicacao(`livro:${livroId}`, 'p');
+        },
+    });
     iniciarGrupoPersonagens('poemas');
     iniciarAncoraEco();
 
@@ -4199,15 +4501,8 @@ export function initFormPoema() {
             )
         )
             return;
-        const destino = document.getElementById('p-destino').value;
-
-        let paiTipo = null,
-            paiId = null;
-        if (destino) {
-            const partes = destino.split(':');
-            paiTipo = partes[0];
-            paiId = parseInt(partes[1]);
-        }
+        const linhasOnde = lerOndeAparece('p');
+        const anterior = idInput ? db.poemas.find((x) => x.id == id) : null;
 
         const dataEscrita = lerDataParcial('p-data-esc');
         const dataPublicacao = lerDataParcial('p-data-pub');
@@ -4272,22 +4567,20 @@ export function initFormPoema() {
             id,
             titulo: document.getElementById('p-titulo').value,
             texto: document.getElementById('p-texto').value,
-            paiTipo,
-            paiId,
-            sequencia: seqOuNull(document.getElementById('p-sequencia').value),
+            ...aparicoesDoSalvo(anterior),
             ...idiomasParaSalvar('poemas'),
             ...jargaoGiriaParaSalvar('poemas'),
             dataEscrita,
             dataPublicacao,
             ano: dataEscrita?.ano || '', // mantido por compatibilidade (ordenação/estatísticas/exportação)
-            livrosIds: Array.from(document.getElementById('p-livros').selectedOptions).map((o) =>
-                parseInt(o.value),
-            ),
             conceitos: {
                 elos: obterElos('poemas'),
                 ecos: obterEcos('poemas'),
             },
             notas: document.getElementById('p-notas').value,
+            notasPublicas: document.getElementById('p-notas-publicas')?.checked === true,
+            comentariosPublicos:
+                document.getElementById('p-comentarios-publicos')?.value.trim() || '',
             ...etiquetasParaSalvar('p'),
             ...temasParaSalvar('poemas'),
             ...locaisParaSalvar('poemas'),
@@ -4299,6 +4592,10 @@ export function initFormPoema() {
             reconhecimentos: obterReconhecimentos('poemas'),
             autoavaliacao: document.getElementById('p-autoavaliacao').value,
             autoclassificacao: Number(document.getElementById('p-autoclassificacao').value) || 0,
+            sorteavel: document.getElementById('p-sorteavel')?.checked === true,
+            autorEmSigilo: document.getElementById('p-autor-em-sigilo')?.checked === true,
+            leituraAutonoma: document.getElementById('p-leitura-autonoma')?.value || '',
+            valenciaAjuste: document.getElementById('p-valencia-ajuste')?.value || '',
             status: document.getElementById('p-status').value,
             epocaRetratada,
             periodosHistoricosIds,
@@ -4314,7 +4611,7 @@ export function initFormPoema() {
             ocultacao: document.getElementById('p-ocultacao').value,
             conteudoSensivel: document.getElementById('p-sensivel').value,
             vocabularioHiperacionante: document.getElementById('p-hiperacionante').value,
-            cortadoDe: lerLivroSecao('p-cortado-livro', 'p-cortado-secao'),
+            cortadoDe: lerLivroSecao('p-cortado-livro', 'p-cortado-secao', 'p-cortado-posicao'),
             lancadoEm: lerLivroSecao('p-lancado-livro', 'p-lancado-secao'),
             justificativaMigracao: document.getElementById('p-migracao-justificativa').value,
             descarte: document.getElementById('p-descarte').value,
@@ -4326,10 +4623,7 @@ export function initFormPoema() {
         // sentido junto do status correspondente. Não impede salvar — só
         // avisa, pra não travar o fluxo caso o texto seja escrito antes de
         // trocar o status, ou o status mude sem que o campo seja limpo.
-        if (
-            (dados.cortadoDe || dados.lancadoEm || dados.justificativaMigracao.trim()) &&
-            dados.status !== 'migrado'
-        ) {
+        if (migracaoForaDoStatus(dados)) {
             mostrarAvisoComAcao(
                 'Migração entre livros preenchida, mas o status não é "Migrado".',
                 'Reabrir',
@@ -4344,12 +4638,14 @@ export function initFormPoema() {
             );
         }
 
-        const anterior = idInput ? db.poemas.find((x) => x.id == id) : null;
-        const mesmoEscopo =
-            anterior &&
-            anterior.paiTipo === dados.paiTipo &&
-            String(anterior.paiId) === String(dados.paiId);
-        const posicaoAntiga = mesmoEscopo ? (anterior.sequencia ?? null) : null;
+        prepararDescarte(dados, anterior, destinoDoModal('p'));
+        // Descartado não ocupa vaga: todas as linhas viram "sem posição".
+        const linhas = dados.status === 'descartado' ? linhasSemPosicao(linhasOnde) : linhasOnde;
+        ligarOrigemAosLivros(dados, anterior);
+
+        // Campo editado só na aba Cruzamentos: o salvar troca o objeto inteiro,
+        // então a análise Tema × Pessoa precisa ser levada junto.
+        preservarLigacoesTemaPessoa(anterior, dados);
 
         if (idInput) {
             const idx = db.poemas.findIndex((x) => x.id == id);
@@ -4362,21 +4658,10 @@ export function initFormPoema() {
         // ao tirar um personagem/pessoa) só valem agora, ao salvar.
         aplicarPendenciasAncora('poemas');
 
-        // Poema avulso (sem destino) não disputa posição com nada
-        if (anterior && !mesmoEscopo && anterior.paiTipo && anterior.paiId) {
-            fecharEspaco(
-                getIrmaosPorEscopo(db, anterior.paiTipo, anterior.paiId),
-                anterior.sequencia ?? null,
-            );
-        }
-        if (dados.paiTipo && dados.paiId) {
-            reordenarPosicao(
-                getIrmaosPorEscopo(db, dados.paiTipo, dados.paiId),
-                dados,
-                dados.sequencia,
-                posicaoAntiga,
-            );
-        }
+        // Grava a lista de aparições e acerta a fila de cada lugar (o que o texto
+        // deixa, o que ganha e o que muda de posição). Texto sem linha fica avulso.
+        salvarAparicoesDoTexto(db, dados, linhasParaSalvar(linhas));
+        if (linhasRepetidas(linhasOnde).length) mostrarAviso(AVISO_LINHAS_REPETIDAS);
 
         // Só quando este Poema é NOVO (nunca numa edição comum) — evita
         // que editar um Poema qualquer, com uma promoção pendente por
@@ -4406,10 +4691,15 @@ const MAPA_POEMA = {
     id: 'p-edit-id',
     titulo: 'p-titulo',
     texto: 'p-texto',
-    sequencia: 'p-sequencia',
     notas: 'p-notas',
+    notasPublicas: 'p-notas-publicas', // checkbox: preencherCampos usa .checked
+    comentariosPublicos: 'p-comentarios-publicos',
     autoavaliacao: 'p-autoavaliacao',
     autoclassificacao: ['p-autoclassificacao', 0],
+    sorteavel: 'p-sorteavel', // checkbox: preencherCampos usa .checked
+    autorEmSigilo: 'p-autor-em-sigilo', // checkbox
+    leituraAutonoma: ['p-leitura-autonoma', '', valorLeituraAutonoma], // select
+    valenciaAjuste: ['p-valencia-ajuste', '', valorValenciaAjuste], // select
     anexosNotaGeral: 'p-anexos-nota-geral',
     status: 'p-status', // select — preencherCampos seta .value por já não ser checkbox
     descricaoVisual: 'p-visual',
@@ -4449,12 +4739,24 @@ export async function editarPoema(id) {
     document.getElementById('p-periodo-historico-nome').value = '';
     carregarPeriodosHistoricosDoTexto('poemas', p.periodosHistoricosIds || []);
     carregarMovimentosEscolasDiretos('poemas', p.movimentosEscolasIds || []);
+    document.getElementById('p-intertexto-relacao').value = '';
     document.getElementById('p-intertexto-tipo').value = '';
-    document.getElementById('p-intertexto-texto').value = '';
+    document.getElementById('p-intertexto-obra').value = '';
+    document.getElementById('p-intertexto-autor').value = '';
+    document.getElementById('p-intertexto-personagem').value = '';
+    document.getElementById('p-intertexto-origem').value = '';
+    document.getElementById('p-intertexto-descricao').value = '';
+    document.getElementById('p-intertexto-trecho').value = '';
+    document.getElementById('p-intertexto-traduzido').checked = false;
+    document.getElementById('p-intertexto-obra-pessoal').checked = false;
+    document.getElementById('p-hipertexto-obra-pessoal').checked = false;
     carregarIntertextualidade('poemas', p.intertextualidade || []);
     document.getElementById('p-hipertexto-tipo').value = '';
     document.getElementById('p-hipertexto-relacao').value = '';
     document.getElementById('p-hipertexto-hipotexto').value = '';
+    document.getElementById('p-hipertexto-autor').value = '';
+    document.getElementById('p-hipertexto-origem').value = '';
+    document.getElementById('p-hipertexto-descricao').value = '';
     carregarHipertextualidade('poemas', p.hipertextualidade || []);
     document.getElementById('p-refext-tipo').value = '';
     document.getElementById('p-refext-texto').value = '';
@@ -4473,6 +4775,7 @@ export async function editarPoema(id) {
     carregarAnotacoes(p.anotacoesMarginais || []);
     document.getElementById('p-cortado-livro').value = p.cortadoDe?.livro || '';
     document.getElementById('p-cortado-secao').value = p.cortadoDe?.secao || '';
+    document.getElementById('p-cortado-posicao').value = p.cortadoDe?.posicao ?? '';
     document.getElementById('p-lancado-livro').value = p.lancadoEm?.livro || '';
     document.getElementById('p-lancado-secao').value = p.lancadoEm?.secao || '';
     document.getElementById('p-migracao-justificativa').value = p.justificativaMigracao || '';
@@ -4480,22 +4783,8 @@ export async function editarPoema(id) {
     // .value= direto não dispara 'input' — reaplica o filtro de Seção
     // manualmente pros 4 campos que acabaram de ser preenchidos.
     atualizarFiltroSecoesMigracao();
-    sincronizarFiltroDestino(
-        'p-destino-filtro',
-        'p-destino',
-        p.paiTipo && p.paiId ? `${p.paiTipo}:${p.paiId}` : '',
-    );
-
-    const setM = (elId, vals) => {
-        const el = document.getElementById(elId);
-        if (!el) return;
-        const arr = Array.isArray(vals) ? vals.map(String) : [];
-        Array.from(el.options).forEach((opt) => {
-            opt.selected = arr.includes(String(opt.value));
-        });
-    };
-
-    setM('p-livros', p.livrosIds || []);
+    carregarOndeAparece('p', p);
+    atualizarCamposDoStatus('p');
 
     carregarSinalizacoes('poemas', p);
     carregarTemasTexto('poemas', p);
@@ -4506,9 +4795,10 @@ export async function editarPoema(id) {
     carregarPessoas('poemas', p.pessoas);
     carregarGruposDiretos('poemas', p.gruposDiretos);
     carregarAutoria('poemas', p.autoria);
+    atualizarAvisoLeituraSorteio('poemas');
     carregarEnvios('poemas', p.envios);
     carregarReconhecimentos('poemas', p.reconhecimentos);
-    renderColetaneasInfo('p-coletaneas-info', 'poema', p.id);
+    renderColetaneasInfo('p-coletaneas-info', 'poema', p.id, 'modal-poema');
     document.getElementById('modal-poema-titulo').innerText = 'Editar Poema';
     // O olho (abrir o Ver) só existe para poema já salvo.
     document.getElementById('poema-ver')?.classList.remove('hidden');
@@ -4554,6 +4844,19 @@ export function initFormProsa() {
     if (!form) return;
 
     rastreadorProsa.observar(form);
+    form.addEventListener('reset', () =>
+        setTimeout(() => {
+            resetOndeAparece('pr');
+            atualizarCamposDoStatus('pr');
+        }, 0),
+    );
+    ligarDescarteNoModal('pr', 'prosas');
+    iniciarOndeAparece('pr', {
+        // A data de publicação é sugerida só pela primeira aparição (as outras são reedições).
+        aoEscolherLivro: (livroId, indice) => {
+            if (indice === 0) autoPreencherDataPublicacao(`livro:${livroId}`, 'pr');
+        },
+    });
     iniciarGrupoPersonagens('prosas');
     iniciarAncoraEco();
 
@@ -4573,15 +4876,8 @@ export function initFormProsa() {
             )
         )
             return;
-        const destino = document.getElementById('pr-destino').value;
-
-        let paiTipo = null,
-            paiId = null;
-        if (destino && destino.includes(':')) {
-            const partes = destino.split(':');
-            paiTipo = partes[0];
-            paiId = parseInt(partes[1]);
-        }
+        const linhasOnde = lerOndeAparece('pr');
+        const anterior = idInput ? db.prosas.find((x) => x.id == id) : null;
 
         const dataEscrita = lerDataParcial('pr-data-esc');
         const dataPublicacao = lerDataParcial('pr-data-pub');
@@ -4626,22 +4922,20 @@ export function initFormProsa() {
             id,
             titulo: document.getElementById('pr-titulo').value,
             texto: document.getElementById('pr-texto').value,
-            sequencia: seqOuNull(document.getElementById('pr-sequencia').value),
+            ...aparicoesDoSalvo(anterior),
             ...idiomasParaSalvar('prosas'),
             ...jargaoGiriaParaSalvar('prosas'),
             dataEscrita,
             dataPublicacao,
             ano: dataEscrita?.ano || '', // mantido por compatibilidade (ordenação/estatísticas/exportação)
-            paiTipo,
-            paiId,
-            livrosIds: Array.from(document.getElementById('pr-livros').selectedOptions).map((o) =>
-                parseInt(o.value),
-            ),
             conceitos: {
                 elos: obterElos('prosas'),
                 ecos: obterEcos('prosas'),
             },
             notas: document.getElementById('pr-notas').value,
+            notasPublicas: document.getElementById('pr-notas-publicas')?.checked === true,
+            comentariosPublicos:
+                document.getElementById('pr-comentarios-publicos')?.value.trim() || '',
             ...etiquetasParaSalvar('pr'),
             ...temasParaSalvar('prosas'),
             ...locaisParaSalvar('prosas'),
@@ -4653,6 +4947,10 @@ export function initFormProsa() {
             reconhecimentos: obterReconhecimentos('prosas'),
             autoavaliacao: document.getElementById('pr-autoavaliacao').value,
             autoclassificacao: Number(document.getElementById('pr-autoclassificacao').value) || 0,
+            sorteavel: document.getElementById('pr-sorteavel')?.checked === true,
+            autorEmSigilo: document.getElementById('pr-autor-em-sigilo')?.checked === true,
+            leituraAutonoma: document.getElementById('pr-leitura-autonoma')?.value || '',
+            valenciaAjuste: document.getElementById('pr-valencia-ajuste')?.value || '',
             genero: document.getElementById('pr-genero').value,
             publicado: document.getElementById('pr-pub').checked,
             status: document.getElementById('pr-status').value,
@@ -4668,7 +4966,7 @@ export function initFormProsa() {
             ocultacao: document.getElementById('pr-ocultacao').value,
             conteudoSensivel: document.getElementById('pr-sensivel').value,
             vocabularioHiperacionante: document.getElementById('pr-hiperacionante').value,
-            cortadoDe: lerLivroSecao('pr-cortado-livro', 'pr-cortado-secao'),
+            cortadoDe: lerLivroSecao('pr-cortado-livro', 'pr-cortado-secao', 'pr-cortado-posicao'),
             lancadoEm: lerLivroSecao('pr-lancado-livro', 'pr-lancado-secao'),
             justificativaMigracao: document.getElementById('pr-migracao-justificativa').value,
             descarte: document.getElementById('pr-descarte').value,
@@ -4677,10 +4975,7 @@ export function initFormProsa() {
         };
 
         // Avisos não-bloqueantes — mesmo critério de initFormPoema.
-        if (
-            (dados.cortadoDe || dados.lancadoEm || dados.justificativaMigracao.trim()) &&
-            dados.status !== 'migrado'
-        ) {
+        if (migracaoForaDoStatus(dados)) {
             mostrarAvisoComAcao(
                 'Migração entre livros preenchida, mas o status não é "Migrado".',
                 'Reabrir',
@@ -4695,12 +4990,13 @@ export function initFormProsa() {
             );
         }
 
-        const anterior = idInput ? db.prosas.find((x) => x.id == id) : null;
-        const mesmoEscopo =
-            anterior &&
-            anterior.paiTipo === dados.paiTipo &&
-            String(anterior.paiId) === String(dados.paiId);
-        const posicaoAntiga = mesmoEscopo ? (anterior.sequencia ?? null) : null;
+        prepararDescarte(dados, anterior, destinoDoModal('pr'));
+        // Descartado não ocupa vaga: todas as linhas viram "sem posição".
+        const linhas = dados.status === 'descartado' ? linhasSemPosicao(linhasOnde) : linhasOnde;
+        ligarOrigemAosLivros(dados, anterior);
+
+        // Idem Poema: leva a análise Tema × Pessoa para o objeto novo.
+        preservarLigacoesTemaPessoa(anterior, dados);
 
         if (idInput) {
             const idx = db.prosas.findIndex((x) => x.id == id);
@@ -4712,20 +5008,9 @@ export function initFormProsa() {
 
         aplicarPendenciasAncora('prosas');
 
-        if (anterior && !mesmoEscopo && anterior.paiTipo && anterior.paiId) {
-            fecharEspaco(
-                getIrmaosPorEscopo(db, anterior.paiTipo, anterior.paiId),
-                anterior.sequencia ?? null,
-            );
-        }
-        if (dados.paiTipo && dados.paiId) {
-            reordenarPosicao(
-                getIrmaosPorEscopo(db, dados.paiTipo, dados.paiId),
-                dados,
-                dados.sequencia,
-                posicaoAntiga,
-            );
-        }
+        // Idem Poema: grava a lista de aparições e acerta as filas.
+        salvarAparicoesDoTexto(db, dados, linhasParaSalvar(linhas));
+        if (linhasRepetidas(linhasOnde).length) mostrarAviso(AVISO_LINHAS_REPETIDAS);
 
         save();
         rastreadorProsa.marcarLimpo();
@@ -4756,10 +5041,15 @@ const MAPA_PROSA = {
     id: 'pr-edit-id',
     titulo: 'pr-titulo',
     texto: 'pr-texto',
-    sequencia: ['pr-sequencia', 0],
     notas: 'pr-notas',
+    notasPublicas: 'pr-notas-publicas', // checkbox: preencherCampos usa .checked
+    comentariosPublicos: 'pr-comentarios-publicos',
     autoavaliacao: 'pr-autoavaliacao',
     autoclassificacao: ['pr-autoclassificacao', 0],
+    sorteavel: 'pr-sorteavel', // checkbox: preencherCampos usa .checked
+    autorEmSigilo: 'pr-autor-em-sigilo', // checkbox
+    leituraAutonoma: ['pr-leitura-autonoma', '', valorLeituraAutonoma], // select
+    valenciaAjuste: ['pr-valencia-ajuste', '', valorValenciaAjuste], // select
     publicado: 'pr-pub',
     anexosNotaGeral: 'pr-anexos-nota-geral',
     contextoHistorico: 'pr-contexto',
@@ -4792,12 +5082,24 @@ export async function editarProsa(id) {
     document.getElementById('pr-periodo-historico-nome').value = '';
     carregarPeriodosHistoricosDoTexto('prosas', pr.periodosHistoricosIds || []);
     carregarMovimentosEscolasDiretos('prosas', pr.movimentosEscolasIds || []);
+    document.getElementById('pr-intertexto-relacao').value = '';
     document.getElementById('pr-intertexto-tipo').value = '';
-    document.getElementById('pr-intertexto-texto').value = '';
+    document.getElementById('pr-intertexto-obra').value = '';
+    document.getElementById('pr-intertexto-autor').value = '';
+    document.getElementById('pr-intertexto-personagem').value = '';
+    document.getElementById('pr-intertexto-origem').value = '';
+    document.getElementById('pr-intertexto-descricao').value = '';
+    document.getElementById('pr-intertexto-trecho').value = '';
+    document.getElementById('pr-intertexto-traduzido').checked = false;
+    document.getElementById('pr-intertexto-obra-pessoal').checked = false;
+    document.getElementById('pr-hipertexto-obra-pessoal').checked = false;
     carregarIntertextualidade('prosas', pr.intertextualidade || []);
     document.getElementById('pr-hipertexto-tipo').value = '';
     document.getElementById('pr-hipertexto-relacao').value = '';
     document.getElementById('pr-hipertexto-hipotexto').value = '';
+    document.getElementById('pr-hipertexto-autor').value = '';
+    document.getElementById('pr-hipertexto-origem').value = '';
+    document.getElementById('pr-hipertexto-descricao').value = '';
     carregarHipertextualidade('prosas', pr.hipertextualidade || []);
     document.getElementById('pr-refext-tipo').value = '';
     document.getElementById('pr-refext-texto').value = '';
@@ -4812,6 +5114,7 @@ export async function editarProsa(id) {
     carregarAnexos('prosas', pr.anexos || []);
     document.getElementById('pr-cortado-livro').value = pr.cortadoDe?.livro || '';
     document.getElementById('pr-cortado-secao').value = pr.cortadoDe?.secao || '';
+    document.getElementById('pr-cortado-posicao').value = pr.cortadoDe?.posicao ?? '';
     document.getElementById('pr-lancado-livro').value = pr.lancadoEm?.livro || '';
     document.getElementById('pr-lancado-secao').value = pr.lancadoEm?.secao || '';
     document.getElementById('pr-migracao-justificativa').value = pr.justificativaMigracao || '';
@@ -4830,23 +5133,8 @@ export async function editarProsa(id) {
     document.getElementById('pr-status').value =
         pr.status || (pr.publicado ? 'publicado' : 'completo');
 
-    const setM = (elId, vals) => {
-        const el = document.getElementById(elId);
-        if (!el) return;
-        const arr = Array.isArray(vals) ? vals.map(String) : [];
-        Array.from(el.options).forEach((opt) => {
-            opt.selected = arr.includes(String(opt.value));
-        });
-    };
-    setM('pr-livros', pr.livrosIds || []);
-
-    const destinoStr =
-        pr.paiTipo && pr.paiId
-            ? `${pr.paiTipo}:${pr.paiId}`
-            : pr.secaoId
-              ? `secao:${pr.secaoId}`
-              : ''; // compatibilidade: prosas salvas antes da remoção do campo legado
-    sincronizarFiltroDestino('pr-destino-filtro', 'pr-destino', destinoStr);
+    carregarOndeAparece('pr', pr);
+    atualizarCamposDoStatus('pr');
 
     carregarSinalizacoes('prosas', pr);
     carregarTemasTexto('prosas', pr);
@@ -4857,11 +5145,12 @@ export async function editarProsa(id) {
     carregarPessoas('prosas', pr.pessoas);
     carregarGruposDiretos('prosas', pr.gruposDiretos);
     carregarAutoria('prosas', pr.autoria);
+    atualizarAvisoLeituraSorteio('prosas');
     carregarEnvios('prosas', pr.envios);
     carregarReconhecimentos('prosas', pr.reconhecimentos);
     carregarGeneroProsa(pr.genero);
     atualizarDatalistProsa();
-    renderColetaneasInfo('pr-coletaneas-info', 'prosa', pr.id);
+    renderColetaneasInfo('pr-coletaneas-info', 'prosa', pr.id, 'modal-prosa');
     document.getElementById('modal-prosa-titulo').innerText = 'Editar Prosa';
     toggleModal('modal-prosa');
 }

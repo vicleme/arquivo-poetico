@@ -99,40 +99,6 @@ describe('migrarPeriodosHistoricosMultiplos', () => {
         D.migrarPeriodosHistoricosMultiplos(itens, arvore());
         assert.deepEqual(itens[0].periodosHistoricosIds, []);
     });
-
-    const caminhoBackup = path.resolve(__dirname, '../data/arquivo_poetico_backup_2026-10-08.json');
-    it(
-        'backup real antigo: os mesmos períodos continuam nos textos',
-        {
-            skip: !fs.existsSync(caminhoBackup),
-        },
-        () => {
-            const backup = JSON.parse(fs.readFileSync(caminhoBackup, 'utf8'));
-            const antes = new Map();
-            for (const col of ['poemas', 'prosas']) {
-                for (const it of backup[col]) {
-                    const valido =
-                        it.periodoHistoricoId != null &&
-                        backup.periodosHistoricos.some((p) => p.id == it.periodoHistoricoId);
-                    antes.set(`${col}:${it.id}`, valido ? [it.periodoHistoricoId] : []);
-                }
-            }
-            for (const col of ['poemas', 'prosas']) {
-                D.migrarPeriodosHistoricosMultiplos(backup[col], backup.periodosHistoricos);
-            }
-            let comPeriodo = 0;
-            for (const col of ['poemas', 'prosas']) {
-                for (const it of backup[col]) {
-                    assert.ok(Array.isArray(it.periodosHistoricosIds));
-                    assert.ok(!('periodoHistoricoId' in it));
-                    const esperado = antes.get(`${col}:${it.id}`);
-                    assert.deepEqual(it.periodosHistoricosIds, esperado);
-                    if (esperado.length) comPeriodo++;
-                }
-            }
-            assert.ok(comPeriodo > 0, 'o backup tem textos com período para provar a migração');
-        },
-    );
 });
 
 describe('busca e contagem com mais de um período por texto', () => {

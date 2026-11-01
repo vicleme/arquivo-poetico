@@ -51,7 +51,7 @@ describe('montarSvgRelatorio', () => {
         assert.match(r.svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
         assert.ok(r.svg.endsWith('</svg>'));
         for (const trecho of [
-            '>Conexões<',
+            '>Conexões dentro do acervo<',
             'Buracos (Elos com só um lado cadastrado)',
             'Elos (pares e clusters)',
             'Ecos (cadeias e grafos)',
@@ -80,7 +80,7 @@ describe('montarSvgRelatorio', () => {
     it('"elos" não leva Ecos e "ecos" não leva Elos nem Buracos', () => {
         const dados = { buracos: [buraco], clusters: [par('A', 'B')], grafos: [grafo] };
         const elos = montarSvgRelatorio({ dados, escopo: 'elos', medir, diagramasEcos: [] });
-        assert.ok(elos.svg.includes('>Conexões: Elos<'));
+        assert.ok(elos.svg.includes('>Conexões dentro do acervo: Elos<'));
         assert.ok(!elos.svg.includes('Ecos (cadeias e grafos)'));
         const ecos = montarSvgRelatorio({
             dados,
@@ -88,7 +88,7 @@ describe('montarSvgRelatorio', () => {
             medir,
             diagramasEcos: [diagrama()],
         });
-        assert.ok(ecos.svg.includes('>Conexões: Ecos<'));
+        assert.ok(ecos.svg.includes('>Conexões dentro do acervo: Ecos<'));
         assert.ok(!ecos.svg.includes('Elos (pares e clusters)'));
         assert.ok(!ecos.svg.includes('Buracos'));
     });

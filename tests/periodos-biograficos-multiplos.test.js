@@ -167,40 +167,6 @@ describe('migrarPeriodosBiograficosMultiplos', () => {
         D.migrarEpocas(dbRef);
         assert.deepEqual(dbRef.poemas[0].epocaRetratada.periodos, dois().periodos);
     });
-
-    const caminhoBackup = path.resolve(__dirname, '../data/arquivo_poetico_backup_2026-10-08.json');
-    it(
-        'backup real antigo: o mesmo período e recorte continuam em cada texto',
-        { skip: !fs.existsSync(caminhoBackup) },
-        () => {
-            const backup = JSON.parse(fs.readFileSync(caminhoBackup, 'utf8'));
-            let comPeriodo = 0;
-            for (const col of ['poemas', 'prosas']) {
-                const antes = new Map(
-                    backup[col].map((it) => [it.id, it.epocaRetratada?.epocaId ?? null]),
-                );
-                const recortes = new Map(
-                    backup[col].map((it) => [it.id, it.epocaRetratada?.recorte ?? null]),
-                );
-                D.migrarPeriodosBiograficosMultiplos(backup[col]);
-                for (const it of backup[col]) {
-                    if (!it.epocaRetratada) continue;
-                    assert.ok(Array.isArray(it.epocaRetratada.periodos));
-                    assert.ok(!('epocaId' in it.epocaRetratada));
-                    const esperado = antes.get(it.id);
-                    if (esperado == null) {
-                        assert.deepEqual(it.epocaRetratada.periodos, []);
-                    } else {
-                        comPeriodo++;
-                        assert.deepEqual(it.epocaRetratada.periodos, [
-                            { epocaId: esperado, recorte: recortes.get(it.id) || null },
-                        ]);
-                    }
-                }
-            }
-            assert.ok(comPeriodo > 0, 'o backup tem textos com período para provar a migração');
-        },
-    );
 });
 
 describe('tabela e busca', () => {

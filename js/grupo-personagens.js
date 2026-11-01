@@ -10,11 +10,11 @@
 
 import { db } from './db.js';
 import { confirmarRemocaoVinculo, repintarAncoras } from './ancora-eco-ui.js';
-import { abrirModalConfirmacao, chaveTema, escapeHtml } from './utils.js';
+import { abrirModalConfirmacao, chaveTema, escapeHtml, mostrarAviso } from './utils.js';
+import { registroPapeisPersonagem, conflitosDoPapelPersonagem } from './papeis-personagem.js';
 import {
     CAMPOS_RELACAO_PERSONAGEM,
     CENTRALIDADES_PERSONAGEM,
-    PAPEIS_PERSONAGEM,
     ROTULOS_CENTRALIDADE_PERSONAGEM,
     ROTULOS_RELACAO_PERSONAGEM,
     acharPersonagemPorNome,
@@ -62,13 +62,15 @@ function avisarAlteracao(container) {
 }
 
 function htmlPapeis(v) {
-    return PAPEIS_PERSONAGEM.map((papel) => {
-        const marcado = v.papeis.includes(papel);
-        return `<label class="inline-flex items-center gap-1 text-[10px] text-gray-700 dark:text-slate-200 cursor-pointer whitespace-nowrap">
-            <input type="checkbox" data-pers-papel="${escapeHtml(papel)}" ${marcado ? 'checked' : ''} class="rounded border-gray-300 dark:border-slate-600" />
-            ${escapeHtml(papel)}
+    return registroPapeisPersonagem()
+        .map((p) => {
+            const marcado = v.papeis.includes(p.nome);
+            return `<label title="${escapeHtml(p.descricao)}" class="inline-flex items-center gap-1 text-[10px] text-gray-700 dark:text-slate-200 cursor-pointer whitespace-nowrap">
+            <input type="checkbox" data-pers-papel="${escapeHtml(p.nome)}" ${marcado ? 'checked' : ''} class="rounded border-gray-300 dark:border-slate-600" />
+            ${escapeHtml(p.nome)}
         </label>`;
-    }).join('');
+        })
+        .join('');
 }
 
 function htmlCentralidade(v) {
@@ -273,14 +275,31 @@ export function iniciarGrupoPersonagens(tabela) {
         const v = vinculoDoEvento(alvo);
         if (!v) return;
         if (alvo.hasAttribute('data-pers-papel')) {
+            const papel = alvo.getAttribute('data-pers-papel');
             const caixas = alvo
                 .closest('[data-pers-vinculo]')
                 .querySelectorAll('[data-pers-papel]');
-            v.papeis = normalizarPapeisPersonagem(
-                [...caixas].filter((c) => c.checked).map((c) => c.getAttribute('data-pers-papel')),
-            );
+            let marcados = [...caixas]
+                .filter((c) => c.checked)
+                .map((c) => c.getAttribute('data-pers-papel'));
+            // Marcar um papel tira os que não convivem com ele (as regras moram no
+            // registro: Menção × Alusão). Desmarcar nunca mexe nos outros.
+            let removidos = [];
+            if (alvo.checked) {
+                removidos = conflitosDoPapelPersonagem(
+                    papel,
+                    marcados.filter((p) => p !== papel),
+                );
+                marcados = marcados.filter((p) => !removidos.includes(p));
+            }
+            v.papeis = normalizarPapeisPersonagem(marcados);
             if (!centralidadeAplicavel(v.papeis)) v.centralidade = '';
             renderizar(tabela);
+            if (removidos.length) {
+                mostrarAviso(
+                    `“${papel}” não convive com ${removidos.map((r) => `“${r}”`).join(', ')}, que saiu.`,
+                );
+            }
         } else if (alvo.hasAttribute('data-pers-centralidade')) {
             v.centralidade = alvo.value;
         }

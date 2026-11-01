@@ -32,7 +32,34 @@
 //   placeholder (opcional) dica do campo de texto
 // ============================================================
 
-import { extrairFontesUnicas, OPCOES_GRAFIA, formatarDataAcesso } from './utils.js';
+import {
+    OPCOES_VALENCIA_AJUSTE,
+    definirValenciaAjuste,
+    valenciaAjusteDe,
+} from './valencia-texto.js';
+import { ehSorteavel, definirSorteavel } from './sorteavel.js';
+import { ehNotaPublica, definirNotaPublica } from './comentarios-publicos.js';
+import { ehAutorEmSigilo, definirAutorEmSigilo } from './autor-em-sigilo.js';
+import {
+    OPCOES_LEITURA_AUTONOMA,
+    leituraAutonomaDe,
+    definirLeituraAutonoma,
+} from './leitura-autonoma.js';
+import {
+    extrairFontesUnicas,
+    OPCOES_GRAFIA,
+    formatarDataAcesso,
+    autoclassificacaoValida,
+    formatarAutoclassificacaoTexto,
+} from './utils.js';
+
+// Os 10 valores da Autoclassificação (0,5 a 5, passo 0,5) como opções do
+// painel. O valor é o número em texto ("0.5", "3.5", "5"), o mesmo que
+// `String(Number)` devolve, pra comparar com `ler` sem conversão extra.
+export const OPCOES_AUTOCLASSIFICACAO = Array.from({ length: 10 }, (_, i) => {
+    const n = (i + 1) / 2;
+    return { valor: String(n), rotulo: formatarAutoclassificacaoTexto(n) };
+});
 
 // `fonteTexto` é { origem, edicao, link, dataAcesso?, conferido, grafia } ou null
 // (ver lerFonteTexto em forms.js): grava um subcampo preservando os
@@ -134,6 +161,94 @@ export const CAMPOS_PREENCHIVEIS = [
             item.pendencia = valor;
         },
         placeholder: 'Ex.: revisar métrica',
+    },
+    // Marca de leitura (sorteavel.js). Booleano: "Sim" marca, "Não" e "Limpar
+    // campo" desmarcam (gravam `false`, não apagam o campo).
+    {
+        chave: 'sorteavel',
+        rotulo: 'Pode ser sorteado',
+        tipo: 'booleano',
+        ler: (item) => ehSorteavel(item),
+        gravar: (item, valor) => {
+            definirSorteavel(item, !!valor);
+        },
+    },
+    // Leitura autônoma (leitura-autonoma.js). Opções: Lê-se sozinho (o padrão,
+    // vazio), Só em sequência, Só em conjunto e Só como início. "Limpar campo"
+    // volta a Lê-se sozinho (grava '').
+    {
+        chave: 'leituraAutonoma',
+        rotulo: 'Leitura autônoma',
+        tipo: 'opcoes',
+        opcoes: OPCOES_LEITURA_AUTONOMA,
+        ler: (item) => leituraAutonomaDe(item),
+        gravar: (item, valor) => {
+            definirLeituraAutonoma(item, valor);
+        },
+    },
+    // Valência do texto (valencia-texto.js): o AJUSTE do autor. "Limpar campo"
+    // volta a seguir os temas (grava ''). A valência derivada não se grava.
+    {
+        chave: 'valenciaAjuste',
+        rotulo: 'Valência do texto (ajuste)',
+        tipo: 'opcoes',
+        opcoes: OPCOES_VALENCIA_AJUSTE,
+        ler: (item) => valenciaAjusteDe(item),
+        gravar: (item, valor) => {
+            definirValenciaAjuste(item, valor);
+        },
+    },
+    // Autor em sigilo (autor-em-sigilo.js). Booleano, como `sorteavel`: "Sim"
+    // liga o sigilo neste texto, "Não" e "Limpar campo" desligam (gravam `false`).
+    {
+        chave: 'autorEmSigilo',
+        rotulo: 'Autor em sigilo',
+        tipo: 'booleano',
+        ler: (item) => ehAutorEmSigilo(item),
+        gravar: (item, valor) => {
+            definirAutorEmSigilo(item, !!valor);
+        },
+    },
+    // Notas públicas (comentarios-publicos.js). Booleano, como `sorteavel`:
+    // "Sim" marca as Notas como públicas, "Não" e "Limpar campo" desmarcam
+    // (gravam `false`). Marcar não mexe no texto das Notas.
+    {
+        chave: 'notasPublicas',
+        rotulo: 'Notas públicas',
+        tipo: 'booleano',
+        ler: (item) => ehNotaPublica(item),
+        gravar: (item, valor) => {
+            definirNotaPublica(item, !!valor);
+        },
+    },
+    // Comentários ao leitor (comentarios-publicos.js): texto livre, o mesmo
+    // do campo "Comentários ao leitor" do modal.
+    {
+        chave: 'comentariosPublicos',
+        rotulo: 'Comentários ao leitor',
+        tipo: 'texto',
+        ler: (item) => item.comentariosPublicos || '',
+        gravar: (item, valor) => {
+            item.comentariosPublicos = String(valor ?? '').trim();
+        },
+        placeholder: 'Escrito para quem lê a obra',
+    },
+    // Autoclassificação (corações). No dado, "não avaliado" é `0`; aqui o
+    // vazio é '' (como nos outros campos de opção), e `gravar('')` volta a 0,
+    // o mesmo que o modal faz ao salvar sem corações.
+    {
+        chave: 'autoclassificacao',
+        rotulo: 'Autoclassificação',
+        tipo: 'opcoes',
+        opcoes: OPCOES_AUTOCLASSIFICACAO,
+        ler: (item) =>
+            autoclassificacaoValida(item.autoclassificacao)
+                ? String(Number(item.autoclassificacao))
+                : '',
+        gravar: (item, valor) => {
+            const n = Number(valor);
+            item.autoclassificacao = autoclassificacaoValida(n) ? n : 0;
+        },
     },
 ];
 

@@ -219,6 +219,29 @@ export function definirPapelTemaEstatisticas(papel) {
     notificarMudanca();
 }
 
+// ─── Valência dos temas: eixo da evolução ───────────────────────────
+// 'ano' (padrão), 'periodo' (Período Biográfico, pela época retratada) ou
+// 'livro'. Guardado entre sessões.
+export const EIXOS_VALENCIA = ['ano', 'periodo', 'livro'];
+export const ROTULOS_EIXO_VALENCIA = {
+    ano: 'Ano de escrita',
+    periodo: 'Período Biográfico',
+    livro: 'Livro',
+};
+
+export function getEixoValencia() {
+    const valor = localStorage.getItem(LS_PREFIX_EST + 'eixoValencia');
+    return EIXOS_VALENCIA.includes(valor) ? valor : 'ano';
+}
+
+export function definirEixoValencia(eixo) {
+    localStorage.setItem(
+        LS_PREFIX_EST + 'eixoValencia',
+        EIXOS_VALENCIA.includes(eixo) ? eixo : 'ano',
+    );
+    notificarMudanca();
+}
+
 // ─── Papel do Assunto (hoje sem controle na tela: o gráfico de Temas e Assuntos
 // mostra os três papéis empilhados; a função de dados ainda aceita o recorte) ─ ────────────────────────
 // Mesmo recorte do Tema, mas para o gráfico de Assuntos, com o papel
@@ -488,6 +511,104 @@ export function limparTemasColunas() {
     notificarMudanca();
 }
 
+// Pessoa escolhida na matriz Temas × pessoas ('' = todas). Só recorta a
+// visualização: a matriz passa a ter só a linha dessa pessoa e só as colunas
+// dos temas que se aplicam a ela. Não altera o corpus nem o N da análise.
+export function getPessoaCoocorrencia() {
+    return localStorage.getItem(LS_PREFIX_EST + 'pessoaCoocorrencia') || '';
+}
+
+export function definirPessoaCoocorrencia(nome) {
+    localStorage.setItem(LS_PREFIX_EST + 'pessoaCoocorrencia', String(nome ?? ''));
+    notificarMudanca();
+}
+
+// Inverte a matriz de Cruzamentos: por padrão as linhas são pessoas (ou grupos,
+// personagens) e as colunas são temas; invertida, as linhas são os temas.
+// Só muda a visualização.
+export function getInverterCoocorrencia() {
+    return localStorage.getItem(LS_PREFIX_EST + 'inverterCoocorrencia') === '1';
+}
+
+export function definirInverterCoocorrencia(ativo) {
+    localStorage.setItem(LS_PREFIX_EST + 'inverterCoocorrencia', ativo ? '1' : '0');
+    notificarMudanca();
+}
+
+// Ordem das linhas da matriz de Cruzamentos pela coluna em que o usuário
+// clicou: { campo, nome, direcao, invertida } ou null (ordem de sempre). Só
+// muda a visualização. O clique cicla: primeira direção, a oposta e, no
+// terceiro clique, volta à ordem de sempre. Rótulo começa em A–Z; as colunas
+// de número começam do maior para o menor.
+export function getOrdemTabelaCoocorrencia() {
+    const o = lerJSON('ordemTabelaCoocorrencia', null);
+    const campos = ['rotulo', 'total', 'textos', 'col'];
+    if (!o || !campos.includes(o.campo) || !['asc', 'desc'].includes(o.direcao)) return null;
+    return {
+        campo: o.campo,
+        nome: o.campo === 'col' ? String(o.nome ?? '') : '',
+        direcao: o.direcao,
+        invertida: Boolean(o.invertida),
+    };
+}
+
+export function proximaOrdemTabelaCoocorrencia(atual, campo, nome, invertida) {
+    const primeira = campo === 'rotulo' ? 'asc' : 'desc';
+    const nomeAlvo = campo === 'col' ? String(nome ?? '') : '';
+    const mesma =
+        atual &&
+        atual.campo === campo &&
+        atual.nome === nomeAlvo &&
+        (campo !== 'col' || atual.invertida === Boolean(invertida));
+    if (!mesma) {
+        return { campo, nome: nomeAlvo, direcao: primeira, invertida: Boolean(invertida) };
+    }
+    if (atual.direcao === primeira)
+        return { ...atual, direcao: primeira === 'asc' ? 'desc' : 'asc' };
+    return null;
+}
+
+export function alternarOrdemTabelaCoocorrencia(campo, nome, invertida) {
+    const proxima = proximaOrdemTabelaCoocorrencia(
+        getOrdemTabelaCoocorrencia(),
+        campo,
+        nome,
+        invertida,
+    );
+    if (proxima) salvarJSON('ordemTabelaCoocorrencia', proxima);
+    else localStorage.removeItem(LS_PREFIX_EST + 'ordemTabelaCoocorrencia');
+    notificarMudanca();
+}
+
+// Com uma pessoa escolhida, conta só os textos em que ela é a única pessoa
+// (some quem tem ela e mais alguém). Padrão desligado.
+export function getSoPessoaSozinhaCoocorrencia() {
+    return localStorage.getItem(LS_PREFIX_EST + 'soPessoaSozinhaCoocorrencia') === '1';
+}
+
+export function definirSoPessoaSozinhaCoocorrencia(ativo) {
+    localStorage.setItem(LS_PREFIX_EST + 'soPessoaSozinhaCoocorrencia', ativo ? '1' : '0');
+    notificarMudanca();
+}
+
+// T14 (ligações Tema × Pessoa): o que a matriz faz com os textos que têm
+// ambiguidade (2 ou mais pessoas e algum tema) e ainda não foram analisados.
+// 'contar' (padrão): o tema liga a todas as pessoas do texto, como antes da
+// análise. 'excluir': esses textos ficam fora da matriz.
+export function getNaoAnalisadosLigacoes() {
+    return localStorage.getItem(LS_PREFIX_EST + 'naoAnalisadosLigacoes') === 'excluir'
+        ? 'excluir'
+        : 'contar';
+}
+
+export function definirNaoAnalisadosLigacoes(valor) {
+    localStorage.setItem(
+        LS_PREFIX_EST + 'naoAnalisadosLigacoes',
+        valor === 'excluir' ? 'excluir' : 'contar',
+    );
+    notificarMudanca();
+}
+
 // Ordem da lista de colunas do painel "Relações" (Temas × Pessoas/Grupos)
 // — mesmos dois valores e mesma ideia de getOrdemOcultos/getOrdemTemporal,
 // numa chave própria (não compartilha estado com os outros painéis de
@@ -681,6 +802,24 @@ export function contarTerceiros() {
     const modo = getModoTerceiros();
     const excluidos = modo === 'incluir' ? 0 : modo === 'somente' ? todos.length - total : total;
     return { total, excluidos };
+}
+
+// ─── "Contar o próprio autor como pessoa" ─────────────────────────
+// Interruptor global (vale em todas as abas de Estatísticas e Cruzamentos).
+// Ligado (padrão), a Pessoa ligada ao Autor do texto conta como qualquer outra.
+// Desligado, ela some das contagens de Pessoas, Grupos, Gênero, Identidade e
+// Cruzamentos nos textos desse autor (útil para "para quem eu escrevo" ou "para
+// quem o autor escreve"). Só mexe em métricas: tabelas, busca, modais e
+// exportações continuam mostrando a Pessoa normalmente. A regra por texto mora
+// em `pessoaEhAutorDoTexto` (estatisticas-dados.js). O nome da chave salva
+// continua `contarEuComoPessoa`, para não perder a escolha já feita.
+export function getContarEuComoPessoa() {
+    return localStorage.getItem(LS_PREFIX_EST + 'contarEuComoPessoa') !== '0';
+}
+
+export function definirContarEuComoPessoa(ativo) {
+    localStorage.setItem(LS_PREFIX_EST + 'contarEuComoPessoa', ativo ? '1' : '0');
+    notificarMudanca();
 }
 
 // ─── Filtros compartilhados: corpus, tipo e período ─────────────

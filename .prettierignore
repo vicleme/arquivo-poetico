@@ -4,3 +4,4 @@ assets/js/
 assets/**/*.svg
 *.min.js
 biblioteca/*.json
+assets/mapa/

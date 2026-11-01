@@ -17,7 +17,10 @@ import {
     filhosDaSecao,
     posicoesRepetidas,
     renumerarIrmaos,
+    semDescartadosNaArvore,
 } from './estrutura-livro.js';
+import { dadosForaDeEscopoDaTela, textoDaEntradaForaDeEscopo } from './fora-de-escopo.js';
+import { lugaresOcupadosDoTexto, moverAparicaoDeLugar } from './mover-aparicao-na-fila.js';
 import {
     reordenarPosicao,
     seqOuNull,
@@ -157,9 +160,69 @@ export function exportarSelecaoEstrutura() {
 
 // A ordem e o pertencimento da árvore moram em estrutura-livro.js, que o Ver do
 // Livro também lê: as duas telas nunca divergem.
-const getTopoComTipos = (livroId) => filhosTopoDoLivro(db, livroId);
-const getDentroParteComTipos = (parteId) => filhosDaParte(db, parteId);
-const getDentroSecaoComTipos = (secaoId) => filhosDaSecao(db, secaoId);
+// Descartado sai da árvore e vive só no "Fora de escopo" do fim da aba.
+// Fase 21 (21-3c): os textos vêm pelas aparições, então o mesmo texto aparece em
+// cada lugar do livro onde está. Cada linha de texto leva o lugar dela
+// (`paiTipo`, `paiId`) nos botões e no número da posição, e ▲▼, posição e
+// "mover para outro nível" mexem só na aparição daquele lugar.
+const POR_APARICAO = { porAparicao: true };
+const getTopoComTipos = (livroId) =>
+    semDescartadosNaArvore(filhosTopoDoLivro(db, livroId, POR_APARICAO));
+const getDentroParteComTipos = (parteId) =>
+    semDescartadosNaArvore(filhosDaParte(db, parteId, POR_APARICAO));
+const getDentroSecaoComTipos = (secaoId) =>
+    semDescartadosNaArvore(filhosDaSecao(db, secaoId, POR_APARICAO));
+
+const ehTexto = (tipo) => tipo === 'poema' || tipo === 'prosa';
+
+// Os irmãos (o "andar") de um lugar, na ordem da tela.
+function irmaosDoLugar(paiTipo, paiId) {
+    if (paiTipo === 'parte') return getDentroParteComTipos(paiId);
+    if (paiTipo === 'secao') return getDentroSecaoComTipos(paiId);
+    if (paiTipo === 'livro') return getTopoComTipos(paiId);
+    return [];
+}
+
+// Selos "veio de ..." dos migrados do livro em exibição (de `renderEstrutura`) e
+// grupos do Fora de escopo que o usuário abriu (sobrevivem ao re-render).
+let selosMigracaoAtuais = new Map();
+const _foraAbertos = new Set();
+
+function seloMigracaoEstruturaHtml(tipo, dados) {
+    const selo = selosMigracaoAtuais.get(`${tipo}-${dados.id}`);
+    if (!selo) return '';
+    return `<span data-estrutura-selo class="text-[10px] text-blue-600 dark:text-blue-400">${escapeHtml(selo.texto)}</span>`;
+}
+
+function entradaForaEstruturaHtml(e) {
+    const acao = e.tipo === 'prosa' ? 'ver-prosa' : 'ver-poema';
+    return `<div data-fora-entrada data-tipo="${e.tipo}" style="margin-left:18px" class="py-1.5 flex flex-wrap items-baseline gap-x-2 text-sm border-b border-gray-50 dark:border-slate-800">
+        <span>${e.tipo === 'prosa' ? '📄' : '📝'}</span>
+        <span class="cursor-pointer hover:underline ${e.tipo === 'prosa' ? 'text-emerald-700' : 'text-gray-600'}" data-action="${acao}" data-id="${e.id}" title="Abrir o Ver deste texto">${escapeHtml(e.titulo)}</span>
+        <span class="text-[11px] text-gray-500 dark:text-slate-400">${escapeHtml(textoDaEntradaForaDeEscopo(e))}</span>
+    </div>`;
+}
+
+function foraEstruturaHtml(fora, aviso) {
+    const migrados = fora?.migrados || [];
+    const descartados = fora?.descartados || [];
+    if (!migrados.length && !descartados.length && !aviso) return '';
+    const grupo = (chave, rotulo, entradas) =>
+        entradas.length
+            ? `<details data-fora-chave="${chave}" ${_foraAbertos.has(chave) ? 'open' : ''} class="mt-1">
+                <summary class="py-1 flex items-center gap-2 text-sm cursor-pointer list-none"><span>${rotulo}</span><span class="text-[10px] text-gray-400 dark:text-slate-500 ml-auto">${entradas.length} ${entradas.length === 1 ? 'texto' : 'textos'}</span></summary>
+                <div>${entradas.map(entradaForaEstruturaHtml).join('')}</div>
+            </details>`
+            : '';
+    const avisoHtml = aviso
+        ? `<p data-fora-aviso class="text-[11px] text-amber-700 dark:text-amber-400 py-1">⚠️ ${escapeHtml(aviso)}</p>`
+        : '';
+    const total = migrados.length + descartados.length;
+    return `<details data-fora-chave="fora-de-escopo" ${_foraAbertos.has('fora-de-escopo') ? 'open' : ''} class="mt-4 border-t border-gray-100 dark:border-slate-700 pt-2">
+        <summary class="py-1.5 flex items-center gap-2 text-sm cursor-pointer list-none"><span class="font-semibold">Fora de escopo</span><span class="text-[10px] text-gray-400 dark:text-slate-500 ml-auto">${total} ${total === 1 ? 'texto' : 'textos'}</span></summary>
+        <div>${avisoHtml}${grupo('fora-migrados', '🔵 Migrados', migrados)}${grupo('fora-descartados', '🔴 Descartados', descartados)}</div>
+    </details>`;
+}
 
 const ICONE_TIPO = { parte: '📂', secao: '📁', poema: '📝', prosa: '📄', elemento: '🧩' };
 const COR_TIPO = {
@@ -172,11 +235,14 @@ const COR_TIPO = {
 
 // Número da posição. Se outro irmão do mesmo nível tem o mesmo número, a ordem entre
 // eles é ao acaso: o selo fica âmbar, e o ▲▼ passa a renumerar o nível.
-function seloPosicao(seq, repetida, tipo, id) {
+function seloPosicao(seq, repetida, tipo, id, lugar = null) {
     // Clicar no número edita a posição direto (ação `editar-posicao-estrutura`, em main.js).
+    // Texto leva o lugar da linha: a posição é a da aparição daquele lugar.
     const base =
         'text-[10px] font-mono px-1.5 py-0.5 rounded w-8 text-center inline-block cursor-text';
-    const alvo = `data-action="editar-posicao-estrutura" data-tipo="${tipo}" data-id="${id}"`;
+    const alvo = `data-action="editar-posicao-estrutura" data-tipo="${tipo}" data-id="${id}"${
+        lugar ? ` data-pai-tipo="${lugar.paiTipo}" data-pai-id="${lugar.paiId}"` : ''
+    }`;
     if (repetida) {
         return `<span ${alvo} class="${base} bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" title="Outro item deste nível tem a mesma posição, então a ordem entre eles não está definida. Clique para digitar a posição, ou use ▲▼.">${seq}</span>`;
     }
@@ -185,7 +251,10 @@ function seloPosicao(seq, repetida, tipo, id) {
 
 function renderNoEstrutura({ tipo, dados }, nivel, repetidas = new Set()) {
     const seq = dados.sequencia !== null && dados.sequencia !== undefined ? dados.sequencia : '—';
-    const selo = seloPosicao(seq, repetidas.has(parseInt(dados.sequencia)), tipo, dados.id);
+    // O lugar desta linha, só para texto (Seção, Elemento e Parte têm um Destino só).
+    const lugar = ehTexto(tipo) ? { paiTipo: dados.paiTipo, paiId: dados.paiId } : null;
+    const lugarArgs = lugar ? `, '${lugar.paiTipo}', '${lugar.paiId}'` : '';
+    const selo = seloPosicao(seq, repetidas.has(parseInt(dados.sequencia)), tipo, dados.id, lugar);
 
     // Elementos (Respiros etc) só têm "tipo" às vezes, sem título — mostra
     // "Tipo: Título" quando os dois existem, senão só o que tiver.
@@ -211,15 +280,15 @@ function renderNoEstrutura({ tipo, dados }, nivel, repetidas = new Set()) {
     // diretamente no Livro).
     const botaoMoverNivel =
         tipo !== 'parte'
-            ? `<button onclick="event.stopPropagation(); event.preventDefault(); abrirModalMoverNivel('${tipo}', ${dados.id})"
+            ? `<button onclick="event.stopPropagation(); event.preventDefault(); abrirModalMoverNivel('${tipo}', ${dados.id}${lugarArgs})"
                 class="text-gray-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 px-1 text-xs" title="Mover para outro nível">↪</button>`
             : '';
 
     const botoesMover = `
         <span class="ml-auto flex gap-1">
-            <button onclick="event.stopPropagation(); event.preventDefault(); moverItemEstrutura('${tipo}', ${dados.id}, 'up')"
+            <button onclick="event.stopPropagation(); event.preventDefault(); moverItemEstrutura('${tipo}', ${dados.id}, 'up'${lugarArgs})"
                 class="text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 px-1 text-xs" title="Subir">▲</button>
-            <button onclick="event.stopPropagation(); event.preventDefault(); moverItemEstrutura('${tipo}', ${dados.id}, 'down')"
+            <button onclick="event.stopPropagation(); event.preventDefault(); moverItemEstrutura('${tipo}', ${dados.id}, 'down'${lugarArgs})"
                 class="text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 px-1 text-xs" title="Descer">▼</button>
             ${botaoMoverNivel}
         </span>`;
@@ -272,6 +341,7 @@ function renderNoEstrutura({ tipo, dados }, nivel, repetidas = new Set()) {
         <span>${ICONE_TIPO[tipo] || '•'}</span>
         ${tituloHtml}
         <span class="text-[9px] uppercase text-gray-300 dark:text-slate-600 ml-2">${tipo}</span>
+        ${seloMigracaoEstruturaHtml(tipo, dados)}
         ${botoesMover}`;
 
     return `
@@ -290,11 +360,18 @@ function obterEscopoDoItem(tipo, dados) {
     return [];
 }
 
-export function moverItemEstrutura(tipo, id, direcao) {
-    const dados = colecoesMoviveis()[tipo]?.find((x) => x.id == id);
-    if (!dados) return;
-
-    const irmaos = obterEscopoDoItem(tipo, dados);
+// `paiTipo` e `paiId` (só para Poema e Prosa) dizem em qual lugar a linha está:
+// o texto pode aparecer em vários, e o ▲▼ troca a posição dele só ali. Sem eles
+// (chamada antiga), vale o Destino do texto.
+export function moverItemEstrutura(tipo, id, direcao, paiTipo = null, paiId = null) {
+    let irmaos;
+    if (ehTexto(tipo) && paiTipo) {
+        irmaos = irmaosDoLugar(paiTipo, paiId);
+    } else {
+        const dados = colecoesMoviveis()[tipo]?.find((x) => x.id == id);
+        if (!dados) return;
+        irmaos = obterEscopoDoItem(tipo, dados);
+    }
     const idx = irmaos.findIndex((f) => f.tipo === tipo && String(f.dados.id) === String(id));
     if (idx === -1) return;
 
@@ -305,9 +382,12 @@ export function moverItemEstrutura(tipo, id, direcao) {
     // no-op e a ordem ao acaso: antes de trocar, fixa 1..N na ordem que a tela mostra.
     if (posicoesRepetidas(irmaos).size) renumerarIrmaos(irmaos);
 
+    // Os nós da lista, não os objetos do `db`: num texto cuja aparição daqui não é o
+    // Destino, o nó grava a posição da aparição, não a do espelho.
+    const atual = irmaos[idx].dados;
     const alvo = irmaos[alvoIdx].dados;
-    const seqAtual = dados.sequencia;
-    dados.sequencia = alvo.sequencia;
+    const seqAtual = atual.sequencia;
+    atual.sequencia = alvo.sequencia;
     alvo.sequencia = seqAtual;
 
     save();
@@ -321,12 +401,18 @@ function colecaoDoTipo(tipo) {
 // vizinhos: assim dá para pôr um número alto e ir arrumando um a um. Se outro irmão
 // ficar com a mesma posição, o selo continua âmbar. Valor inválido não muda nada.
 // Devolve true quando gravou.
-export function definirPosicaoEstrutura(tipo, id, valor) {
+export function definirPosicaoEstrutura(tipo, id, valor, paiTipo = null, paiId = null) {
     const texto = String(valor ?? '').trim();
     if (!/^\d+$/.test(texto)) return false;
     const n = parseInt(texto, 10);
     if (n < 1) return false;
-    const dados = colecaoDoTipo(tipo)?.find((x) => String(x.id) === String(id));
+    // Texto com lugar: o nó daquele lugar (a posição é a da aparição ali).
+    const dados =
+        ehTexto(tipo) && paiTipo
+            ? irmaosDoLugar(paiTipo, paiId).find(
+                  (f) => f.tipo === tipo && String(f.dados.id) === String(id),
+              )?.dados
+            : colecaoDoTipo(tipo)?.find((x) => String(x.id) === String(id));
     if (!dados) return false;
     if (parseInt(dados.sequencia, 10) !== n) {
         dados.sequencia = n;
@@ -341,7 +427,7 @@ export function editarPosicaoEstrutura(selo, evento) {
     // O selo de Parte e Seção fica dentro do <summary>: sem isto o clique recolheria.
     evento?.preventDefault?.();
     evento?.stopPropagation?.();
-    const { tipo, id } = selo.dataset;
+    const { tipo, id, paiTipo, paiId } = selo.dataset;
     const atual = selo.textContent.trim();
     const campo = document.createElement('input');
     campo.type = 'text';
@@ -355,7 +441,11 @@ export function editarPosicaoEstrutura(selo, evento) {
     const encerrar = (gravar) => {
         if (encerrado) return;
         encerrado = true;
-        if (gravar && !definirPosicaoEstrutura(tipo, id, campo.value) && campo.value.trim()) {
+        if (
+            gravar &&
+            !definirPosicaoEstrutura(tipo, id, campo.value, paiTipo, paiId) &&
+            campo.value.trim()
+        ) {
             mostrarAviso('Digite um número inteiro de 1 em diante.');
         }
         renderEstrutura();
@@ -387,12 +477,16 @@ function colecoesMoviveis() {
     };
 }
 
-function construirOpcoesDestinoMover(tipoOrigem, paiTipoAtual, paiIdAtual, livroId) {
+function construirOpcoesDestinoMover(tipoOrigem, paiTipoAtual, paiIdAtual, livroId, ocupados = []) {
     const aceitaSecaoComoDestino = tipoOrigem !== 'secao';
     const livro = db.livros.find((l) => l.id == livroId);
 
+    // Fora das opções: o lugar de onde sai e, para texto, os lugares do livro onde
+    // ele já aparece (mover para lá faria duas aparições virarem uma).
     const ehDestinoAtual = (tipo, id) =>
-        tipoOrigem !== '' && tipo === paiTipoAtual && String(id) === String(paiIdAtual);
+        tipoOrigem !== '' &&
+        ((tipo === paiTipoAtual && String(id) === String(paiIdAtual)) ||
+            ocupados.some(([t, i]) => t === tipo && String(i) === String(id)));
 
     let html = '';
     if (!ehDestinoAtual('livro', livroId)) {
@@ -502,7 +596,7 @@ function _fecharModalMoverNivel() {
 
 const ROTULO_TIPO_MOVER = { secao: 'Seção', poema: 'Poema', prosa: 'Prosa', elemento: 'Elemento' };
 
-export function abrirModalMoverNivel(tipo, id) {
+export function abrirModalMoverNivel(tipo, id, paiTipo = null, paiId = null) {
     const dados = colecoesMoviveis()[tipo]?.find((x) => x.id == id);
     if (!dados || !livroEstruturaAtual) return;
 
@@ -511,12 +605,18 @@ export function abrirModalMoverNivel(tipo, id) {
     document.getElementById('mov-rotulo').textContent = ROTULO_TIPO_MOVER[tipo] || tipo;
     document.getElementById('mov-titulo').textContent = dados.titulo || '(sem título)';
 
+    // Texto: de onde sai é o lugar da linha clicada, não o Destino do espelho.
+    const deTipo = ehTexto(tipo) && paiTipo ? paiTipo : dados.paiTipo;
+    const deId = ehTexto(tipo) && paiTipo ? paiId : dados.paiId;
+    const ocupados = ehTexto(tipo) ? lugaresOcupadosDoTexto(db, dados, livroEstruturaAtual) : [];
+
     const selDestino = document.getElementById('mov-destino');
     selDestino.innerHTML = construirOpcoesDestinoMover(
         tipo,
-        dados.paiTipo,
-        dados.paiId,
+        deTipo,
+        deId,
         livroEstruturaAtual,
+        ocupados,
     );
 
     const inputPosicao = document.getElementById('mov-posicao');
@@ -529,19 +629,37 @@ export function abrirModalMoverNivel(tipo, id) {
             _fecharModalMoverNivel();
             return;
         }
-        executarMoverNivel(tipo, id, destino, inputPosicao.value);
+        executarMoverNivel(tipo, id, destino, inputPosicao.value, deTipo, deId);
         _fecharModalMoverNivel();
     };
 
     overlay.style.display = 'flex';
 }
 
-export function executarMoverNivel(tipo, id, destinoStr, posicaoStr) {
+// Poema e Prosa: move só a aparição do lugar `deTipo`/`deId` (sem eles, a do
+// Destino do texto), sem tocar nas outras. Seção e Elemento seguem pelo Destino.
+export function executarMoverNivel(tipo, id, destinoStr, posicaoStr, deTipo = null, deId = null) {
     const dados = colecoesMoviveis()[tipo]?.find((x) => x.id == id);
     if (!dados) return;
 
     const [novoPaiTipo, novoPaiIdStr] = destinoStr.split(':');
     const novoPaiId = novoPaiIdStr;
+
+    if (ehTexto(tipo)) {
+        const de = deTipo
+            ? { paiTipo: deTipo, paiId: deId }
+            : { paiTipo: dados.paiTipo, paiId: dados.paiId };
+        const r = moverAparicaoDeLugar(
+            db,
+            dados,
+            de,
+            { paiTipo: novoPaiTipo, paiId: novoPaiId },
+            seqOuNull(posicaoStr),
+        );
+        if (r.ok) save();
+        else if (r.motivo === 'ja-aparece') mostrarAviso('Este texto já aparece nesse lugar.');
+        return;
+    }
 
     // Nada a fazer se o destino escolhido é igual ao pai atual
     if (dados.paiTipo === novoPaiTipo && String(dados.paiId) === String(novoPaiId)) return;
@@ -607,14 +725,25 @@ export function renderEstrutura() {
     }
 
     const topo = getTopoComTipos(livroEstruturaAtual);
-    if (topo.length === 0) {
+    const { fora, selos, aviso } = dadosForaDeEscopoDaTela(db, livroEstruturaAtual);
+    selosMigracaoAtuais = selos;
+    const foraHtml = foraEstruturaHtml(fora, aviso);
+    if (topo.length === 0 && !foraHtml) {
         container.innerHTML =
             '<p class="text-gray-400 dark:text-slate-500 text-sm">Esse livro ainda não tem conteúdo vinculado.</p>';
         return;
     }
 
     const repetidasTopo = posicoesRepetidas(topo);
-    container.innerHTML = topo.map((no) => renderNoEstrutura(no, 0, repetidasTopo)).join('');
+    container.innerHTML =
+        topo.map((no) => renderNoEstrutura(no, 0, repetidasTopo)).join('') + foraHtml;
+
+    container.querySelectorAll('details[data-fora-chave]').forEach((det) => {
+        det.addEventListener('toggle', () => {
+            if (det.open) _foraAbertos.add(det.dataset.foraChave);
+            else _foraAbertos.delete(det.dataset.foraChave);
+        });
+    });
 
     // Re-renderizar reconstrói o HTML do zero (innerHTML), então todo
     // <details> nasce aberto de novo. Aqui reaplicamos o estado de

@@ -5,6 +5,13 @@
 // ============================================================
 
 import { caminhoExibivelDoPeriodoBiografico } from './periodos-biograficos-hierarquia.js';
+import { textoAutoresDaEntrada } from './autores-da-obra.js';
+import { personagensDaEntrada, textoDosPersonagens } from './personagens-da-obra.js';
+import { origensDaEntrada, rotuloDaOrigem } from './origem-da-obra.js';
+import { apelidoDoPapel } from './papeis-pessoa.js';
+import { separarNomeEPapel, juntarVinculosComAspas, papelComVariantes } from './vinculo-busca.js';
+import { entradasDeFilaPorAparicao } from './aparicoes-dado.js';
+import { COMPARACAO_NUMERICA_POR_CAMPO, numerosBatemComConsulta } from './busca-data-obra.js';
 
 // ─── Geração de ID único ────────────────────────────────────────
 // Antes, cada módulo gerava IDs com `Date.now()` de forma independente.
@@ -348,6 +355,33 @@ const ESTILO_BASE = {
     raio: null,
 };
 
+// item.texto guarda conteúdo HÍBRIDO, não HTML puro: quebras de linha
+// são \n de verdade (uma por verso — por isso o container abaixo leva
+// white-space: pre-wrap, não <br>), negrito/itálico são inseridos pela
+// toolbar como markdown puro (**negrito**/_itálico_ — ver wrapText/
+// applyStyle em editor.js), e só sublinhado/cor/fonte/tamanho/
+// alinhamento são HTML de verdade (<u>, <div style="...">, já cobertos
+// por sanitizarTextoRico). Roda DEPOIS da sanitização, sobre HTML já
+// seguro — os asteriscos/underscores de markdown nunca formam tag
+// nenhuma, então não há risco de reabrir brecha de HTML malicioso.
+//
+// Usa [\s\S]+? em vez de .+? porque "." não bate com quebra de linha
+// em JS — um trecho como "_(frase um\nfrase dois)_" (itálico quebrado
+// em duas linhas, comum em versos) não fechava o par e ficava sem
+// formatar, com os underscores/asteriscos aparecendo literais na tela.
+// [\s\S] casa qualquer caractere, incluindo \n, sem depender da flag
+// "s" (dotAll), então também funciona em engines mais antigas.
+//
+// Também usada por blocoTextoHtml() abaixo — não só no campo Texto —
+// pra que a mesma convenção **negrito**/_itálico_ funcione em Notas,
+// Descrição Visual e demais campos de texto longo.
+export function realcarEnfaseMarkdown(html) {
+    return html
+        .replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/~~([\s\S]+?)~~/g, '<s>$1</s>')
+        .replace(/(^|[^\w])_([\s\S]+?)_(?!\w)/g, '$1<em>$2</em>');
+}
+
 // String bruta do campo `texto` → array de linhas, cada linha um array
 // de "runs" ({ texto, negrito, italico, sublinhado, cor, fundo, fonte,
 // tamanho, alinhamento }) com estilo já resolvido (cascata de tags
@@ -520,12 +554,12 @@ export function blocosDeFundoContinuos(linhas) {
 
 // ─── Enter como atalho pra ação positiva ───────────────────────
 // Usado nos campos de texto/número da barra de ação em massa
-// (Pessoa, Sinalização, Data — em Poemas e Prosas): sem isso, Enter
+// (Sinalização, Data — em Poemas e Prosas): sem isso, Enter
 // nesses inputs não faz nada, já que a página não tem <form> nenhum.
-// Só a ação POSITIVA (Dedicar/Marcar/Aplicar) fica no Enter — nunca
+// Só a ação POSITIVA (Marcar/Aplicar) fica no Enter — nunca
 // Remover/Excluir/Limpar, que continuam exigindo o clique explícito
 // no botão certo. `acao` já abre o modal de confirmação de sempre
-// (ver abrirModalConfirmacao em aplicarPessoaEmMassa e afins), então
+// (ver abrirModalConfirmacao em aplicarSinalEmMassa e afins), então
 // Enter aqui só agiliza chegar até a confirmação, não pula ela.
 export function aoEnterAplicar(event, acao) {
     if (event.key !== 'Enter') return;
@@ -572,11 +606,12 @@ export async function toBase64(file) {
 // a posição antiga e a nova, na direção certa.
 // Converte o valor de sequência de um campo de formulário:
 // string vazia / NaN / null → null (sem posição definida)
-// qualquer inteiro válido → esse inteiro
+// inteiro de 1 em diante → esse inteiro
+// 0 e negativos → null (posição começa em 1; "sem posição" é sempre null)
 export function seqOuNull(valor) {
     if (valor === null || valor === undefined || valor === '') return null;
     const n = parseInt(valor);
-    return isNaN(n) ? null : n;
+    return isNaN(n) || n < 1 ? null : n;
 }
 
 export function reordenarPosicao(irmaos, itemAtual, posicaoDesejada, posicaoAntiga = null) {
@@ -637,6 +672,10 @@ export function abrirEspaco(irmaos, posicaoAlvo) {
 // Um item ligado direto ao Livro (sem Parte) compete com as Partes,
 // não tem uma numeração isolada própria — por isso entra no mesmo grupo.
 
+// Fase 21 (21-2, entrega 1): cada fila também traz uma entrada para cada
+// aparição de Poema ou Prosa naquele lugar que o Destino (espelho) do texto não
+// mostra (ver `entradasDeFilaPorAparicao`). A entrada lê e grava a posição da
+// própria aparição, então quem renumera a fila não precisa saber a diferença.
 export function getIrmaosTopoLivro(db, livroId) {
     return [
         ...db.partes.filter((p) => p.livroId == livroId),
@@ -644,6 +683,7 @@ export function getIrmaosTopoLivro(db, livroId) {
         ...db.elementos.filter((e) => e.paiTipo === 'livro' && e.paiId == livroId),
         ...db.poemas.filter((p) => p.paiTipo === 'livro' && p.paiId == livroId),
         ...db.prosas.filter((p) => p.paiTipo === 'livro' && p.paiId == livroId),
+        ...entradasDeFilaPorAparicao(db, 'livro', livroId),
     ];
 }
 
@@ -653,6 +693,7 @@ export function getIrmaosDentroParte(db, parteId) {
         ...db.elementos.filter((e) => e.paiTipo === 'parte' && e.paiId == parteId),
         ...db.poemas.filter((p) => p.paiTipo === 'parte' && p.paiId == parteId),
         ...db.prosas.filter((p) => p.paiTipo === 'parte' && p.paiId == parteId),
+        ...entradasDeFilaPorAparicao(db, 'parte', parteId),
     ];
 }
 
@@ -663,6 +704,7 @@ export function getIrmaosDentroSecao(db, secaoId) {
         ...db.prosas.filter(
             (p) => (p.paiTipo === 'secao' && p.paiId == secaoId) || p.secaoId == secaoId,
         ),
+        ...entradasDeFilaPorAparicao(db, 'secao', secaoId),
     ];
 }
 
@@ -671,6 +713,92 @@ export function getIrmaosPorEscopo(db, paiTipo, paiId) {
     if (paiTipo === 'secao') return getIrmaosDentroSecao(db, paiId);
     if (paiTipo === 'livro') return getIrmaosTopoLivro(db, paiId);
     return [];
+}
+
+// Próxima posição livre no fim da fila de um lugar (Livro, Parte ou Seção).
+// A fila mistura Seções, Elementos, Poemas e Prosas (ver getIrmaosPorEscopo),
+// então a sugestão olha todos, e não só os textos. Itens sem posição (null ou
+// 0 legado) não contam. `ignorar` é o item em edição, para não competir
+// consigo mesmo. Texto descartado também não conta: ele sai da árvore do livro
+// e vive só no "Fora de escopo" (fora-de-escopo.js), então não deve empurrar a
+// próxima posição e deixar um buraco. Lugar vazio ou sem destino: 1.
+export function proximaPosicaoDoLugar(db, paiTipo, paiId, ignorar = null) {
+    if (!paiTipo || !paiId) return 1;
+    const maior = getIrmaosPorEscopo(db, paiTipo, paiId)
+        .filter((it) => it !== ignorar && it._texto !== ignorar && it.status !== 'descartado')
+        .reduce((m, it) => Math.max(m, parseInt(it.sequencia) || 0), 0);
+    return maior + 1;
+}
+
+// Posição para o modo "No fim da fila" na hora de salvar. Texto novo ou vindo
+// de outro lugar: a próxima livre (n+1). Texto que já está neste lugar com
+// posição: se já é o último, fica onde está; senão vai para o fim, e o
+// reordenarPosicao fecha o buraco que ele deixa (por isso o maior dos OUTROS,
+// e não n+1, que deixaria um vazio no fim).
+export function posicaoNoFimDaFila(db, paiTipo, paiId, emEdicao = null) {
+    const proxima = proximaPosicaoDoLugar(db, paiTipo, paiId, emEdicao);
+    const mesmoLugar =
+        emEdicao && emEdicao.paiTipo === paiTipo && String(emEdicao.paiId) === String(paiId);
+    const antiga = mesmoLugar ? seqOuNull(emEdicao.sequencia) : null;
+    if (antiga === null) return proxima;
+    const maiorDosOutros = proxima - 1;
+    return Math.max(antiga > maiorDosOutros ? antiga : maiorDosOutros, 1);
+}
+
+// Valor de `sequencia` a salvar a partir do seletor de posição do modal.
+// modo: 'fim' | 'especifica' | 'nenhuma'. Sem destino não há fila: null.
+// Modo ausente (DOM antigo) vale como 'especifica', o comportamento de antes.
+export function sequenciaDoModal(modo, valorDigitado, db, paiTipo, paiId, emEdicao = null) {
+    if (!paiTipo || !paiId) return null;
+    if (modo === 'nenhuma') return null;
+    if (modo === 'fim') return posicaoNoFimDaFila(db, paiTipo, paiId, emEdicao);
+    return seqOuNull(valorDigitado);
+}
+
+// "Livro › Parte › Seção · era a nº N na época": o lugar de onde um texto saiu
+// ("Cortado de") ou para onde foi ("Lançado em"), guardado como { livro, secao,
+// posicao }. Mesmo desenho da Localização: "›" entre os níveis (o separador de
+// caminho do app, como em Locais e Correntes) e "·" antes da posição. A posição é
+// a de antigamente, não um lugar na fila de hoje. Só a exibição usa o "›": o dado
+// segue gravado com " / " (Parte / Seção em `secao`, que o Fora de escopo separa
+// assim), então aqui a barra vira "›".
+export function livroSecaoStr(ls) {
+    if (!ls) return null;
+    const niveis = [
+        ls.livro,
+        ...String(ls.secao || '')
+            .split(' / ')
+            .map((peca) => peca.trim()),
+    ].filter(Boolean);
+    const base = niveis.join(' › ');
+    const pos = parseInt(ls.posicao) > 0 ? parseInt(ls.posicao) : null;
+    if (base && pos) return `${base} · era a nº ${pos} na época`;
+    if (base) return base;
+    return pos ? `era a nº ${pos} na época` : null;
+}
+
+// Rótulo da linha de lugar do Ver e das exportações. Texto descartado já saiu do
+// livro: o que importa é de onde saiu, então a linha vira "Cortado de".
+export function rotuloLocalizacaoDoTexto(item) {
+    return item.status === 'descartado' ? 'Cortado de' : 'Localização';
+}
+
+// Texto da linha de lugar do Ver e das exportações. Texto comum: caminho e
+// posição. Há caminho sem posição: "· sem posição" (explícito, para quem não
+// conhece o sistema não achar que faltou preencher). Sem caminho (avulso): null.
+// Texto descartado: o "Cortado de" gravado; sem ele (descartado antigo), o caminho
+// do vínculo atual, sem posição, porque a posição dele já não vale.
+export function textoLocalizacaoDoTexto(item) {
+    const ctx = item.contexto || {};
+    if (item.status === 'descartado') {
+        const gravado = livroSecaoStr(item.cortadoDe);
+        if (gravado) return gravado;
+        return [ctx.livro, ctx.parte, ctx.secao].filter(Boolean).join(' › ') || null;
+    }
+    const caminho = [ctx.livro, ctx.parte, ctx.secao].filter(Boolean).join(' › ');
+    if (!caminho) return null;
+    const pos = seqOuNull(item.sequencia);
+    return `${caminho} · ${pos === null ? 'sem posição' : `posição ${pos}`}`;
 }
 
 // Calcula a posição "comparável" de um Elemento dentro do livro, em até
@@ -720,7 +848,7 @@ export function getPosicaoElemento(el, db) {
 // ─── Modal de confirmação genérico ────────────────────────────
 // Base de qualquer ação que precise de "tem certeza?" antes de rodar:
 // exclusões (abrirModalExclusao abaixo) e ações em massa que afetam
-// vários itens de uma vez (ver aplicarPessoaEmMassa etc. em
+// vários itens de uma vez (ver aplicarSinalEmMassa etc. em
 // render-listas.js). Vive aqui por ser uma utilidade genérica de UI
 // sem dependência de estado interno — qualquer módulo pode importar.
 //
@@ -735,11 +863,11 @@ export function getPosicaoElemento(el, db) {
 // o que um Enter em seguida dispara). Default `false` (foca Cancelar) —
 // a escolha serve pra ação destrutiva/irreversível, onde um Enter
 // acidental não deve bastar pra confirmar (ver excluirSelecao,
-// removerPessoaEmMassa etc.). Passe `true` só quando a ação é puramente
+// removerPessoasPapeisEmMassa etc.). Passe `true` só quando a ação é puramente
 // aditiva (nada é removido/apagado) e a pessoa comumente chega ao modal
 // já querendo confirmar — ex.: dar Enter no campo de texto da barra de
 // seleção pra abrir o modal e Enter de novo pra confirmar, sem precisar
-// de Tab/shift-Tab ou mouse (ver aplicarPessoaEmMassa/aplicarSinalEmMassa
+// de Tab/shift-Tab ou mouse (ver aplicarTemaEmMassa/aplicarSinalEmMassa
 // em selecao-massa.js).
 //
 // Uso:
@@ -1839,6 +1967,13 @@ export function formatarDataParcial(dataObj) {
 // Extrai o ano (número) de uma data parcial, se houver.
 export function anoDeDataParcial(dataObj) {
     return dataObj && dataObj.ano ? dataObj.ano : null;
+}
+
+// O ano de escrita do texto (`dataEscrita.ano`, com o espelho legado `ano`), ou
+// null. Base da distância entre a obra e o texto (Estatísticas e busca).
+export function anoDeEscritaDoTexto(texto) {
+    const ano = Number(anoDeDataParcial(texto?.dataEscrita) ?? texto?.ano);
+    return Number.isInteger(ano) && ano !== 0 ? ano : null;
 }
 
 // Ano a partir do qual uma obra entra em domínio público no Brasil: 70
@@ -3078,13 +3213,13 @@ export function valorBateTermo(valorNormalizado, termoNormalizado, palavraInteir
 // lookup (ver parseConsultaBusca), não precisa mais duplicar cada chave
 // com/sem acento (título/titulo, relação/relacao, etc.) — um único nome
 // sem acento já casa com as duas formas digitadas.
-const CAMPOS_ATRIBUTO = {
+export const CAMPOS_ATRIBUTO = {
     titulo: 'titulo',
     texto: 'texto',
     etiqueta: '_buscaSinalizacoes',
     tradicao: 'sinalizacoesTradicao',
     estilo: 'sinalizacoesEstilo',
-    tema: 'sinalizacoesTema',
+    tema: '_buscaTema',
     // Tema por papel (item.temas[].papel — ver temasComPapel): `tema:` segue
     // achando o Tema em qualquer papel; estes três restringem a um papel.
     temaprincipal: '_buscaTemaPrincipal',
@@ -3151,6 +3286,37 @@ const CAMPOS_ATRIBUTO = {
     // tem e quem não tem a data; `dataescrita:2020` acha pelo texto da data.
     dataescrita: '_buscaDataEscrita',
     datapublicacao: '_buscaDataPublicacao',
+    // Data da obra das entradas de Intertextualidade, Hipertextualidade e
+    // Referências (T9) e a distância em anos até o texto. Comparam o ANO de
+    // referência da entrada, não o texto da data (ver busca-data-obra.js):
+    // `dataobra:1920..1935`, `dataobra:"séc. XX"`, `distanciaobra:500..`.
+    // `dataobra:` olha Inter e Hiper; `datareferencia:`, as Referências.
+    dataobra: '_buscaDataObra',
+    // Obra pessoal (Inter/Hiper): `obrapessoal:*` acha os textos com alguma
+    // entrada marcada, `-obrapessoal:*` os que não têm nenhuma.
+    obrapessoal: '_buscaObraPessoal',
+    // Marca de leitura (sorteavel.js): `sorteavel:*` e `-sorteavel:*`.
+    sorteavel: '_buscaSorteavel',
+    // Autor em sigilo no texto (autor-em-sigilo.js): `autoremsigilo:*` e `-autoremsigilo:*`.
+    autoremsigilo: '_buscaAutorEmSigilo',
+    // Leitura autônoma (leitura-autonoma.js): `leitura:sequência`, `leitura:*`.
+    leitura: '_buscaLeituraAutonoma',
+    // Valência do texto (valencia-texto.js): `valencia:leve`, `valencia:*`.
+    valencia: '_buscaValencia',
+    // Notas públicas e Comentários ao leitor (comentarios-publicos.js):
+    // `notapublica:*` e `-notapublica:*`; `comentarioleitor:` busca no texto do comentário.
+    notapublica: '_buscaNotaPublica',
+    comentarioleitor: 'comentariosPublicos',
+    datareferencia: '_buscaDataReferencia',
+    distanciaobra: '_buscaDistanciaObra',
+    distanciareferencia: '_buscaDistanciaReferencia',
+    // As mesmas datas e distâncias das Obras, separadas pela marca "Obra
+    // pessoal" da ENTRADA (o filtro de Estatísticas › Obras citadas abre a
+    // lista da barra com estes quatro).
+    dataobrapublica: '_buscaDataObraPublica',
+    dataobrapessoal: '_buscaDataObraPessoal',
+    distanciaobrapublica: '_buscaDistanciaObraPublica',
+    distanciaobrapessoal: '_buscaDistanciaObraPessoal',
     epoca: '_buscaEpoca',
     // Eventos (F14-D3): o período marcado como evento no cadastro. `epoca:` e
     // `periodohistorico:` seguem achando períodos e eventos juntos (a lista do
@@ -3181,13 +3347,18 @@ const CAMPOS_ATRIBUTO = {
     // do período biográfico, que são outro vocabulário.
     esferahistorica: '_buscaEsferasHistoricas',
     categoriahistorica: '_buscaCategoriasHistoricas',
-    // Hierárquicos (ver nomesDeBuscaDasCorrentes): `movimento:Romantismo` acha
-    // também o que está em uma geração ou vertente dele. `...direto:`
-    // restringe ao que foi ligado diretamente àquela corrente.
-    movimento: '_buscaMovimentosEscolas',
-    escola: '_buscaMovimentosEscolas',
-    movimentodireto: '_buscaMovimentosEscolasDireto',
-    escoladireta: '_buscaMovimentosEscolasDireto',
+    // Hierárquicos (ver nomesDeBuscaDasCorrentes): `corrente:Romantismo` acha
+    // também o que está em uma geração ou vertente dele. `correntedireta:`
+    // restringe ao que foi ligado diretamente àquela corrente. `corrente:` não
+    // olha o Programa; `movimento:` e `escola:` só acham correntes cujo Programa
+    // (com a herança do pai) é Movimento ou Escola, e `...direto:`/`...direta:`
+    // fazem o mesmo só para a corrente exata.
+    corrente: '_buscaMovimentosEscolas',
+    correntedireta: '_buscaMovimentosEscolasDireto',
+    movimento: '_buscaCorrentesMovimento',
+    movimentodireto: '_buscaCorrentesMovimentoDireto',
+    escola: '_buscaCorrentesEscola',
+    escoladireta: '_buscaCorrentesEscolaDireta',
     // Postura estética e Programa das correntes ligadas ao texto, com a
     // herança do pai (`postura:inovadora`, `programa:"não se aplica"`).
     // Ficam fora da busca sem prefixo: "Movimento" ou "Escola" soltos
@@ -3206,14 +3377,24 @@ const CAMPOS_ATRIBUTO = {
     assuntoindefinido: '_buscaAssuntoIndefinido',
     assuntosempapel: '_buscaAssuntoIndefinido',
     autor: '_buscaAutoria',
+    origem: '_buscaOrigemObra',
+    // A mesma origem, separada pela marca "Obra pessoal" da ENTRADA (o filtro de
+    // Estatísticas › Obras citadas abre a lista da barra com estes dois).
+    origempublica: '_buscaOrigemObraPublica',
+    origempessoal: '_buscaOrigemObraPessoal',
     envio: '_buscaEnvios',
     nota: 'notas',
     livro: '_buscaLivro',
     parte: '_buscaParte',
     secao: '_buscaSecao',
+    coletanea: '_buscaColetanea',
     visual: 'descricaoVisual',
     contexto: 'contextoHistorico',
     autoavaliacao: 'autoavaliacao',
+    // Autoclassificação (corações): `autoclassificacao:*` (avaliados), `-autoclassificacao:*`
+    // (não avaliados), `autoclassificacao:3,5`, `4..`, `..2`, `3..4,5` (ver busca-data-obra.js).
+    autoclassificacao: '_buscaAutoclassificacao',
+    coracoes: '_buscaAutoclassificacao',
     intertexto: '_buscaIntertexto',
     hipertexto: '_buscaHipertexto',
     hipertextualidade: '_buscaHipertexto',
@@ -3260,7 +3441,7 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaSinalizacoes: 'etiqueta',
     sinalizacoesTradicao: 'tradicao',
     sinalizacoesEstilo: 'estilo',
-    sinalizacoesTema: 'tema',
+    _buscaTema: 'tema',
     _buscaTemaPrincipal: 'temaprincipal',
     _buscaTemaSecundario: 'temasecundario',
     _buscaTemaSemPapel: 'temasempapel',
@@ -3293,6 +3474,21 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaJargaoGiria: 'jargao',
     _buscaDataEscrita: 'dataescrita',
     _buscaDataPublicacao: 'datapublicacao',
+    _buscaDataObra: 'dataobra',
+    _buscaObraPessoal: 'obrapessoal',
+    _buscaSorteavel: 'sorteavel',
+    _buscaAutorEmSigilo: 'autoremsigilo',
+    _buscaLeituraAutonoma: 'leitura',
+    _buscaValencia: 'valencia',
+    _buscaNotaPublica: 'notapublica',
+    comentariosPublicos: 'comentarioleitor',
+    _buscaDataReferencia: 'datareferencia',
+    _buscaDistanciaObra: 'distanciaobra',
+    _buscaDistanciaReferencia: 'distanciareferencia',
+    _buscaDataObraPublica: 'dataobrapublica',
+    _buscaDataObraPessoal: 'dataobrapessoal',
+    _buscaDistanciaObraPublica: 'distanciaobrapublica',
+    _buscaDistanciaObraPessoal: 'distanciaobrapessoal',
     _buscaEpoca: 'epoca',
     _buscaEventoBiografico: 'eventobiografico',
     _buscaEventoHistorico: 'eventohistorico',
@@ -3305,8 +3501,12 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaPeriodoHistoricoDireto: 'periodohistoricodireto',
     _buscaEsferasHistoricas: 'esferahistorica',
     _buscaCategoriasHistoricas: 'categoriahistorica',
-    _buscaMovimentosEscolas: 'movimento',
-    _buscaMovimentosEscolasDireto: 'movimentodireto',
+    _buscaMovimentosEscolas: 'corrente',
+    _buscaMovimentosEscolasDireto: 'correntedireta',
+    _buscaCorrentesMovimento: 'movimento',
+    _buscaCorrentesMovimentoDireto: 'movimentodireto',
+    _buscaCorrentesEscola: 'escola',
+    _buscaCorrentesEscolaDireta: 'escoladireta',
     _buscaPosturas: 'postura',
     _buscaProgramas: 'programa',
     _buscaAssuntos: 'assunto',
@@ -3314,14 +3514,19 @@ export const PREFIXOS_CANONICOS_POR_CAMPO = {
     _buscaAssuntoSecundario: 'assuntosecundario',
     _buscaAssuntoIndefinido: 'assuntoindefinido',
     _buscaAutoria: 'autor',
+    _buscaOrigemObra: 'origem',
+    _buscaOrigemObraPublica: 'origempublica',
+    _buscaOrigemObraPessoal: 'origempessoal',
     _buscaEnvios: 'envio',
     notas: 'nota',
     _buscaLivro: 'livro',
     _buscaParte: 'parte',
     _buscaSecao: 'secao',
+    _buscaColetanea: 'coletanea',
     descricaoVisual: 'visual',
     contextoHistorico: 'contexto',
     autoavaliacao: 'autoavaliacao',
+    _buscaAutoclassificacao: 'autoclassificacao',
     _buscaIntertexto: 'intertexto',
     _buscaHipertexto: 'hipertexto',
     _buscaAnexos: 'anexo',
@@ -3513,6 +3718,30 @@ export function numeroEntraNaConsulta(n, { numeros, intervalos }) {
     return numeros.has(n) || intervalos.some(([min, max]) => n >= min && n <= max);
 }
 
+// `pessoa:Nome@Papel` (T6): algum vínculo texto-pessoa tem o nome E o papel
+// ao mesmo tempo? `vinculos` é item._vinculosPessoas, [{ nome, papeis }]
+// (ver decorarCamposBusca em render-listas.js). O nome casa por trecho (ou
+// palavra inteira, com o interruptor ligado); o papel casa sempre por
+// palavra inteira, para "Voz" não achar "Vozes" e "Dedicatário" achar
+// "Dedicatário(a)". A forma feminina também vale: "Dedicatária" acha o papel
+// gravado como "Dedicatário(a)" (ver papelComVariantes em vinculo-busca.js). Dos dois lados, vazio quer dizer "qualquer": `Maria@`
+// vale como `Maria` e `@Voz` acha qualquer pessoa com esse papel.
+function vinculoPessoaBate(vinculos, termo, opts) {
+    if (!Array.isArray(vinculos)) return false;
+    const { nome, papel } = separarNomeEPapel(termo);
+    const alvoNome = normalizarBusca(nome, opts);
+    const alvoPapel = normalizarBusca(papel, opts);
+    return vinculos.some(
+        (v) =>
+            (!alvoNome ||
+                valorBateTermo(normalizarBusca(v.nome, opts), alvoNome, opts.palavraInteira)) &&
+            (!alvoPapel ||
+                (v.papeis || [])
+                    .flatMap(papelComVariantes)
+                    .some((p) => valorBateTermo(normalizarBusca(p, opts), alvoPapel, true))),
+    );
+}
+
 // Filtra uma lista de textos (poemas/prosas) por uma busca livre que
 // procura em título, ano, sinalizações, pessoas, autoria, grupos,
 // papéis, época retratada, livros, descrição visual, contexto
@@ -3525,7 +3754,9 @@ export function numeroEntraNaConsulta(n, { numeros, intervalos }) {
 // comportamento é o de sempre (os 3 desligados).
 export function filtrarTextos(lista, query, opts = opcoesBuscaPadrao()) {
     if (!query || !query.trim()) return lista;
-    const { gruposIncluir, termosExcluir } = parseConsultaBusca(query);
+    // `pessoa:"Maria Silva"@Voz` volta a ser um termo só antes de interpretar
+    // (ver juntarVinculosComAspas em vinculo-busca.js).
+    const { gruposIncluir, termosExcluir } = parseConsultaBusca(juntarVinculosComAspas(query));
 
     return lista.filter((item) => {
         const camposGerais = normalizarBusca(
@@ -3573,14 +3804,34 @@ export function filtrarTextos(lista, query, opts = opcoesBuscaPadrao()) {
         // "campo:*" checa presença (valor não-vazio), ignorando o texto
         // do campo — o resto continua sendo substring (ou palavra
         // inteira, se o interruptor estiver ligado) normal.
-        const bateTermo = (t) =>
-            t.presenca
+        //
+        // `pessoa:Nome@Papel` (T6) é exceção: confere o PAR, exigindo nome e
+        // papel no mesmo vínculo (ver vinculoPessoaBate).
+        const bateTermo = (t) => {
+            if (t.campo === '_buscaPessoas' && !t.presenca && t.termo.includes('@')) {
+                return vinculoPessoaBate(item._vinculosPessoas, t.termo, opts);
+            }
+            // Data da obra e distância (T9): comparam números (anos), não texto.
+            const numerica = !t.presenca && COMPARACAO_NUMERICA_POR_CAMPO[t.campo];
+            if (numerica) {
+                const bate = numerosBatemComConsulta(
+                    item[numerica.lista],
+                    t.termo,
+                    numerica.opcoes,
+                );
+                // Termo que não é ano, intervalo nem data: `dataobra:` volta a
+                // procurar no texto da data; `distanciaobra:` não acha nada.
+                if (bate !== null) return bate;
+                if (!numerica.cairNoTexto) return false;
+            }
+            return t.presenca
                 ? valorDoTermo(t) !== ''
                 : valorBateTermo(
                       valorDoTermo(t),
                       normalizarBusca(t.termo, opts),
                       opts.palavraInteira,
                   );
+        };
 
         const combinaInclusao =
             gruposIncluir.length === 0 || gruposIncluir.some((grupo) => grupo.every(bateTermo));
@@ -3665,7 +3916,7 @@ export function textoDeEtiquetas(valor) {
 // aceita qualquer um desses nomes de campo — a função é genérica, não
 // hardcoded pra sinalizacoesEstilo especificamente — pra poder ser
 // reaproveitada por cada datalist de categoria em editor.js.
-export function extrairSinalizacoesUnicas(itens, campo = 'sinalizacoesTema') {
+export function extrairSinalizacoesUnicas(itens, campo) {
     const sinais = new Set();
     itens.forEach((p) => {
         const valor = textoDeEtiquetas(p[campo]);
@@ -3688,6 +3939,15 @@ export function extrairSinalizacoesUnicas(itens, campo = 'sinalizacoesTema') {
 // Análise de estrutura e metadados poéticos); não é uma 6ª categoria
 // definitiva, é onde elas ficam visíveis até virar Reconhecimentos e
 // Elos tipados de Derivação.
+//
+// Categoria VIRTUAL (Fase 2, Etapa 5): a chave existe aqui (ordem, cor,
+// prefixo de busca, colunas de exportação), mas o texto não tem campo de dado
+// com esse nome. O valor vem de outro cadastro, por `valorDaCategoria`, e o
+// string do mapa serve só de identificador estável (por exemplo no critério
+// dos templates de Exportações Frequentes, salvos no navegador). Quem percorre
+// `SINALIZACOES_CATEGORIAS` e lê `item[campo]` tem de passar por
+// `categoriaEhVirtual` ou por `valorDaCategoria`. Hoje só `tema` é virtual; a
+// `territorialidade` entra aqui na Fase 2b.
 export const SINALIZACOES_CATEGORIAS = {
     tradicao: 'sinalizacoesTradicao',
     estilo: 'sinalizacoesEstilo',
@@ -3705,6 +3965,12 @@ export const SINALIZACOES_CATEGORIAS = {
     outros: 'sinalizacoesOutros',
 };
 
+// Categorias de SINALIZACOES_CATEGORIAS sem campo de dado no texto.
+const SINALIZACOES_CATEGORIAS_VIRTUAIS = new Set(['tema']);
+export function categoriaEhVirtual(categoria) {
+    return SINALIZACOES_CATEGORIAS_VIRTUAIS.has(categoria);
+}
+
 // Uma única string combinando as categorias acima — pra busca geral, filtro
 // de exportação por tema (correspondeFiltro em exportar.js) e estatísticas,
 // que não precisam saber de categoria, só "quais tags esse item tem". Cada
@@ -3712,9 +3978,11 @@ export const SINALIZACOES_CATEGORIAS = {
 // prefixo estilo:/tema:/etc., badgesEtiquetasPorCategoria em
 // celulas-tabela.js, sinalizacoesAgrupadas abaixo) usa os campos
 // individuais direto.
-export function sinalizacoesCombinadas(item) {
-    return Object.values(SINALIZACOES_CATEGORIAS)
-        .map((campo) => textoDeEtiquetas(item[campo]))
+// `cadastros = { temas }` (db.temas) é o que faz o Tema vir de
+// `nomesTemasDoTexto` (por id): sem ele a categoria virtual `tema` sai vazia.
+export function sinalizacoesCombinadas(item, cadastros = {}) {
+    return Object.keys(SINALIZACOES_CATEGORIAS)
+        .map((categoria) => valorDaCategoria(item, categoria, cadastros))
         .filter(Boolean)
         .join(', ');
 }
@@ -3743,27 +4011,26 @@ const ROTULOS_SINALIZACOES = {
 // sinalizacoesCombinadas(). Categorias vazias não entram na lista.
 export function sinalizacoesAgrupadas(item, temasCadastro, textosProntos = {}) {
     // Com o cadastro de Temas à mão, o Tema sai com o papel entre parênteses
-    // ("Amor (secundário), Brasil"); sem ele (ou em texto antigo, sem
-    // `temas`), sai como sempre, a lista de nomes do espelho.
+    // ("Amor (secundário), Brasil"); sem ele a categoria `tema` sai vazia.
     const temaComPapel = temasCadastro ? textoTemasComPapel(item, temasCadastro) : '';
-    return Object.entries(SINALIZACOES_CATEGORIAS)
-        .map(([categoria, campo]) => ({
+    return Object.keys(SINALIZACOES_CATEGORIAS)
+        .map((categoria) => ({
             rotulo: ROTULOS_SINALIZACOES[categoria],
             valor:
                 categoria === 'tema' && temaComPapel
                     ? temaComPapel
-                    : textosProntos[categoria] || textoDeEtiquetas(item[campo]),
+                    : textosProntos[categoria] ||
+                      valorDaCategoria(item, categoria, { temas: temasCadastro }),
         }))
         .filter((bloco) => bloco.valor);
 }
 
 // ─── Assuntos (agrupam Temas) ──────────────────────────────────────────
-// Cadastro `db.assuntos` ({ id, nome, notas, temas: [nome, ...] }): um
+// Cadastro `db.assuntos` ({ id, nome, notas, temaIds: [id, ...] }): um
 // Assunto agrupa Temas, e um Tema pode pertencer a mais de um Assunto
-// (relação N:N, decisão do Victor). O Tema NÃO é entidade com id — é a
-// etiqueta de texto livre de `sinalizacoesTema` — então a ligação é por
-// NOME, comparado sem diferenciar caixa nem acento (mesma normalização
-// da busca). O Assunto de um texto nunca é gravado nele: é derivado dos
+// (relação N:N, decisão do Victor). O Tema é uma entidade com id (`db.temas`);
+// os nomes se comparam por `chaveTema`, sem diferenciar caixa nem acento
+// (mesma normalização da busca). O Assunto de um texto nunca é gravado nele: é derivado dos
 // Temas do texto (assuntosDoTexto), no mesmo espírito do domínio
 // público, que é derivado do óbito do Autor. Assim, reorganizar um
 // Assunto reflete em todos os textos sem migração.
@@ -3773,8 +4040,11 @@ export function chaveTema(nome) {
     return normalizarBusca(String(nome ?? '').trim());
 }
 
-// Temas de um texto como lista de nomes, na ordem digitada. Aceita a
-// forma real (string "a, b, c") e array, como extrairSinalizacoesUnicas.
+// Leitura do FORMATO ANTIGO (Fase 2, Etapa 5): o campo `sinalizacoesTema` não
+// é mais gravado nem existe depois de `sincronizarTemas`; esta função só
+// serve a quem recebe dado de fora ainda não migrado (backup velho, JSON de
+// outro acervo) e à própria migração. Lista de nomes, na ordem digitada;
+// aceita string "a, b, c" e array.
 export function temasDoTexto(item) {
     const valor = item?.sinalizacoesTema;
     if (!valor) return [];
@@ -3795,10 +4065,9 @@ export function temasDoTexto(item) {
 // ─── Tema do texto por id, com papel (fase 2) ──────────────────────────
 // O texto passa a guardar `temas: [{ temaId, papel }]` (fonte da verdade;
 // ver temas.js). `papel` é 'principal', 'secundario' ou '' (sem papel
-// definido, o que a migração dos textos antigos grava). `sinalizacoesTema`
-// segue existindo como ESPELHO derivado (nomes separados por vírgula,
-// principal → secundário → sem papel), pra busca, badges, exportações e
-// estatísticas continuarem lendo o mesmo campo de sempre.
+// definido, o que a migração dos textos antigos grava). O espelho antigo
+// `sinalizacoesTema` foi apagado na Etapa 5: os nomes, na ordem principal →
+// secundário → sem papel, saem sempre de `nomesTemasDoTexto`.
 export const PAPEIS_TEMA = ['principal', 'secundario'];
 export const ROTULOS_PAPEL_TEMA = {
     '': 'Indefinido',
@@ -3809,23 +4078,10 @@ export function normalizarPapelTema(papel) {
     return PAPEIS_TEMA.includes(papel) ? papel : '';
 }
 const ORDEM_PAPEL_TEMA = { principal: 0, secundario: 1, '': 2 };
-// entradas: [{ nome, papel }] → "nome, nome, ..." (estável dentro do papel)
-export function espelhoDeTemas(entradas) {
-    return (entradas || [])
-        .map((e, i) => ({ e, i }))
-        .sort(
-            (a, b) =>
-                ORDEM_PAPEL_TEMA[normalizarPapelTema(a.e.papel)] -
-                    ORDEM_PAPEL_TEMA[normalizarPapelTema(b.e.papel)] || a.i - b.i,
-        )
-        .map((x) => x.e.nome)
-        .join(', ');
-}
-
-// Temas do texto como [{ temaId, nome, papel }] na ordem do espelho
-// (principal → secundário → sem papel). Precisa do cadastro (`db.temas`)
-// pra resolver o nome do id. Texto sem `temas` (dado antigo, ainda não
-// reconciliado) devolve os nomes do espelho, todos "sem papel definido".
+// Temas do texto como [{ temaId, nome, papel }] na ordem principal →
+// secundário → sem papel. Precisa do cadastro (`db.temas`)
+// pra resolver o nome do id. Texto sem `temas` (dado de fora ainda não
+// migrado) devolve os nomes do campo antigo, todos "sem papel definido".
 export function temasComPapel(item, temasCadastro) {
     if (!Array.isArray(item?.temas)) {
         return temasDoTexto(item).map((nome) => ({ temaId: null, nome, papel: '' }));
@@ -3846,12 +4102,23 @@ export function temasComPapel(item, temasCadastro) {
 // Rótulo curto do papel, em minúsculas, pra ir entre parênteses.
 export const ROTULOS_PAPEL_TEMA_CURTO = { principal: 'principal', secundario: 'secundário' };
 
+// Separador dos Temas nos textos que a máquina lê (CSV, busca): o nome do
+// Tema pode ter vírgula (Fase 2, Etapa 7), então a vírgula não serve.
+// `limparNomeTema` (temas.js) tira `|` do nome. Mora aqui porque temas.js
+// importa utils.js e não o contrário. Os textos de leitura (Ver, `.md`) usam
+// `textoTemasComPapel`, que prefere a vírgula.
+export const SEPARADOR_SAIDA_TEMAS = ' | ';
+
 // "Amor (secundário), Machismo (principal), Brasil": o papel só aparece
 // quando definido. Vazio se o texto não tem Tema.
 export function textoTemasComPapel(item, temasCadastro) {
-    return temasComPapel(item, temasCadastro)
+    const lista = temasComPapel(item, temasCadastro);
+    // Texto de leitura (Ver e `.md`): vírgula, como sempre; só se algum nome
+    // tem vírgula a linha inteira passa a `;`, para não ficar ambígua.
+    const separador = lista.some((e) => e.nome.includes(',')) ? '; ' : ', ';
+    return lista
         .map((e) => (e.papel ? `${e.nome} (${ROTULOS_PAPEL_TEMA_CURTO[e.papel]})` : e.nome))
-        .join(', ');
+        .join(separador);
 }
 
 // Nomes dos Temas do texto num papel ('principal' | 'secundario' | '').
@@ -3860,6 +4127,50 @@ export function nomesTemasPorPapel(item, temasCadastro, papel) {
     return temasComPapel(item, temasCadastro)
         .filter((e) => e.papel === alvo)
         .map((e) => e.nome);
+}
+
+// Fase 2 (aposentar o espelho), Etapa 1: porta única de leitura dos Temas de
+// um texto, em qualquer papel. Com `temas` (por id) resolve os nomes pelo
+// cadastro, na ordem principal, secundário, indefinido; sem `temas` (dado de
+// fora ainda não migrado) cai no campo antigo `sinalizacoesTema`. Quem precisa
+// só dos nomes chama esta, e não lê o campo direto. `temasCadastro` é
+// `db.temas` (utils.js não importa `db`).
+//
+// `temas` vazio com o campo antigo preenchido também cai nele (JSON antigo
+// ainda não migrado). Num texto já reconciliado o campo não existe, então
+// `temas` vazio quer dizer sem Tema e nada muda.
+export function nomesTemasDoTexto(item, temasCadastro) {
+    const nomes = temasComPapel(item, temasCadastro).map((e) => e.nome);
+    if (nomes.length || !Array.isArray(item?.temas) || item.temas.length) return nomes;
+    return temasDoTexto(item);
+}
+
+// Todas as etiquetas de Sinalizações do texto como lista (sem juntar em texto
+// e sem quebrar por vírgula o que já é um nome só): cada Tema é um item, mesmo
+// com vírgula no nome; as outras categorias separam por vírgula como sempre.
+export function listaSinalizacoes(item, cadastros = {}) {
+    return Object.keys(SINALIZACOES_CATEGORIAS).flatMap((categoria) => {
+        if (categoria === 'tema') return nomesTemasDoTexto(item, cadastros.temas);
+        return valorDaCategoria(item, categoria, cadastros)
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+    });
+}
+
+// Valor de uma categoria de Sinalizações como texto "a, b, c" (o Tema, "a | b"). O Tema vem de
+// `nomesTemasDoTexto`; as outras categorias leem o campo próprio, como
+// `sinalizacoesCombinadas`. `cadastros` é um objeto (`{ temas }`, depois
+// `{ temas, locais }`) para a Fase 2b acrescentar cadastros sem mexer nos
+// chamadores. Categoria desconhecida devolve vazio.
+export function valorDaCategoria(item, categoria, cadastros = {}) {
+    // Categoria virtual (sem campo de dado no texto): cada uma lê do seu cadastro.
+    if (categoria === 'tema') {
+        return nomesTemasDoTexto(item, cadastros.temas).join(SEPARADOR_SAIDA_TEMAS);
+    }
+    if (categoriaEhVirtual(categoria)) return '';
+    const campo = SINALIZACOES_CATEGORIAS[categoria];
+    return campo ? textoDeEtiquetas(item?.[campo]) : '';
 }
 
 // ─── Assunto por id (fase 3) ────────────────────────────────────────────
@@ -3883,7 +4194,7 @@ export function nomesTemasDoAssunto(assunto, temasCadastro) {
 // Ordem = ordem do cadastro, sem repetir Assunto, mesmo que vários temas
 // do texto caiam nele.
 export function assuntosDoTexto(item, assuntos, temasCadastro) {
-    const chaves = new Set(temasDoTexto(item).map(chaveTema));
+    const chaves = new Set(nomesTemasDoTexto(item, temasCadastro).map(chaveTema));
     if (chaves.size === 0) return [];
     const excluidos = idsAssuntosExcluidos(item?.assuntosExcluidos);
     return (assuntos || []).filter(
@@ -4096,7 +4407,7 @@ export function podarSobrescritasAssunto(entradas, sobrescritas, assuntos, temas
 export function resumoTemas(textos, assuntos, temasCadastro) {
     const porChave = new Map();
     (textos || []).forEach((t) => {
-        temasDoTexto(t).forEach((nome) => {
+        nomesTemasDoTexto(t, temasCadastro).forEach((nome) => {
             const chave = chaveTema(nome);
             let reg = porChave.get(chave);
             if (!reg) {
@@ -4193,11 +4504,7 @@ export const CAMPOS_CONTAVEIS = {
     },
     etiquetas: {
         label: 'Etiquetas',
-        contar: (item) =>
-            (sinalizacoesCombinadas(item) || '')
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean).length,
+        contar: (item, banco) => listaSinalizacoes(item, { temas: banco?.temas }).length,
     },
 };
 
@@ -4206,41 +4513,22 @@ export const CAMPOS_CONTAVEIS = {
 // natureza diferente — e, desde o redesenho Relação+Direção, Elos usa
 // um schema à parte de Ecos (ver mais abaixo).
 //
-// PAPEIS_PESSOA: papel de cada pessoa vinculada a um texto (item 2 do
-// plano de schema — "Pedro, Dani" comma-string vira array de objeto
-// { nome, papel }). Fechado (não texto livre) pra dar consistência de
-// filtro/estatística; "" (vazio) é o valor de "não especificado" — todo
-// nome migrado da string antiga cai aqui (ver migrarPessoas em db.js),
-// e continua sendo uma opção válida pra quem não quiser categorizar.
-export const PAPEIS_PESSOA = [
-    'Retratado(a)',
-    'Inspiração para',
-    'Dedicatário(a)',
-    'Mencionado(a)',
-    'Aludido(a)',
-    'Associado(a) retroativamente',
-];
-
-// Iniciais de PAPEIS_PESSOA pra exibição compacta (modal e coluna da
-// tabela — ver badgesPessoas em render-listas.js e o chip de papéis em
-// editor.js). Duas letras por valor (Re/In/De/Me/Al/As) desde que
-// "Associado(a) retroativamente" entrou como 6º valor: colidia com
-// "Aludido(a)" na inicial única (A/A), e em vez de desambiguar só esse
-// par, padronizou-se 2 letras pros 6 valores por consistência visual.
-// Mantém a ordem em que os papéis foram marcados (não é hierarquia fixa
-// por categoria — ver alternarPapel em editor.js), só troca o nome por
-// extenso pelas duas letras; "·" (ponto médio) como separador entre
-// elas, escolhido por ser mais leve que "-" ou espaço sozinho sem ficar
-// ambíguo tipo "RIDM" grudado. Espaço fino (" · ", não colado) dos dois
-// lados do separador — colado (Re·De·In) ficava ilegível em fontes
-// pequenas (chip do editor e coluna da tabela costumam usar texto
-// bem pequeno). Exportação pra MD mantém os papéis por extenso (ver
-// exportar-md.js) — a abreviação é só pra UI, onde passar o mouse por
-// cima do chip já mostra o papel por extenso via `title` (ver
-// badgesPessoas em render-listas.js).
+// Papéis de Pessoa: o papel de cada pessoa vinculada a um texto é uma lista
+// de NOMES (`item.pessoas[].papeis`, na ordem de marcação). A lista de papéis
+// possíveis, com apelido, descrição e regras de exclusão, mora no registro
+// `db.papeisPessoa` (ver papeis-pessoa.js e a migração em db.js). `papeis: []`
+// é "não categorizado"; "Relacionado(a)" é a declaração de que nenhum papel
+// coube.
+//
+// Abreviação de papéis para exibição compacta (modal e coluna da tabela, ver
+// badgesPessoas em render-listas.js e o chip de papéis em editor.js): o apelido
+// de cada papel no registro (3 letras por padrão, editável), com " · " entre
+// eles. Mantém a ordem em que os papéis foram marcados. A exportação para MD
+// mantém os papéis por extenso (ver exportar-md.js); a abreviação é só da UI,
+// onde o `title` do chip mostra o papel por extenso.
 export function iniciaisPapeisPessoa(papeis) {
     if (!Array.isArray(papeis) || !papeis.length) return '';
-    return papeis.map((p) => p.slice(0, 2)).join(' · ');
+    return papeis.map((p) => apelidoDoPapel(p)).join(' · ');
 }
 
 // ─── Autoria ─────────────────────────────────────────────────────
@@ -4302,6 +4590,35 @@ export function paresAutoria(item, autoresCadastro = []) {
     });
     return pares;
 }
+
+// Autoria como texto: "Nome (Autor)", "Nome (Autor, heterônimo de X)", separados
+// por vírgula; `null` sem autoria. Fonte única do `.md`, do Ver e da tela do
+// sorteio. Recebe o cadastro de Autores (`db.autores`) em vez de fechar sobre
+// o `db`, para funcionar com o acervo lido direto do navegador.
+export function textoAutoriaDe(item, autoresCadastro = []) {
+    const pares = paresAutoria(item, autoresCadastro);
+    if (!pares.length) return null;
+    return pares
+        .map(({ autor, papel, assinatura, nomeLiterario }) => {
+            const nome = nomeAutoriaExibido({ autor, assinatura, nomeLiterario });
+            const nota =
+                assinatura && assinatura !== 'Ortônimo' && nomeLiterario
+                    ? `, ${assinatura.toLowerCase()} de ${autor.nome}`
+                    : '';
+            return `${nome} (${papel}${nota})`;
+        })
+        .join(', ');
+}
+
+// Status do texto: emoji e título de cada valor (Ver, `.md`, sorteio).
+export const INFO_STATUS = {
+    publicado: { emoji: '🟢', titulo: 'Publicado' },
+    incompleto: { emoji: '🟡', titulo: 'Incompleto' },
+    migrado: { emoji: '🔵', titulo: 'Migrado' },
+    descartado: { emoji: '🔴', titulo: 'Descartado' },
+    privado: { emoji: '🔒', titulo: 'Privado' },
+    completo: { emoji: '⚪', titulo: 'Completo' },
+};
 
 // Nome a exibir pra um par de Autoria: o nome literário escolhido pra
 // ESTE texto quando a Assinatura é Heterônimo/Pseudônimo
@@ -4788,33 +5105,21 @@ export function direcaoInversa(direcao) {
     return direcao;
 }
 
-// Sugestões de autocompletar pra Intertextualidade (campo Texto):
-// várias entradas de intertexto — de poemas diferentes, às vezes tipos
-// diferentes — costumam repetir a mesma referência (a mesma conversa, o
-// mesmo livro), daí o autocompletar evitar redigitar/variar a grafia.
-// Mesma lógica de extração de extrairValoresUnicosDeAnotacoes, só que
-// sobre `intertextualidade` em vez de `anotacoesMarginais`. `tipoFiltro`
-// opcional restringe às referências já tipadas com aquele Tipo exato
-// (ver atualizarDatalistIntertexto/Prosa em editor.js) — sugestão mais
-// focada uma vez que o Tipo já foi escolhido, em vez de misturar textos
-// de tipos diferentes (ex.: não sugerir nomes de livro ao digitar o
-// texto de uma referência já tipada como Música).
-export function extrairValoresUnicosDeIntertextualidade(poemas, tipoFiltro = null) {
-    const valores = new Set();
-    poemas.forEach((p) => {
-        if (Array.isArray(p.intertextualidade)) {
-            p.intertextualidade.forEach((it) => {
-                if (it && it.texto && (!tipoFiltro || it.tipo === tipoFiltro))
-                    valores.add(it.texto);
-            });
-        }
-    });
-    return Array.from(valores).sort();
+// Leitura de compatibilidade das entradas de Intertextualidade: o formato
+// novo guarda `tipoObra` e `obra`, o antigo `tipo` e `texto` (ver
+// intertextualidade.js). Referências externas seguem com `tipo` e `texto`.
+// Listagem, busca, Ver e exportações leem pelos dois nomes: entrada antiga (de
+// backup ou pacote ainda não migrado) segue legível.
+export function tipoObraDaEntrada(it) {
+    return (it && (it.tipoObra || it.tipo)) || '';
+}
+export function obraDaEntrada(it) {
+    return (it && (it.obra || it.texto)) || '';
 }
 
-// Espelha extrairValoresUnicosDeIntertextualidade acima, sobre o campo
-// `referenciasExternas` — mesma lógica de "lembrar" só do que já foi
-// preenchido pro Tipo escolhido (tipoFiltro).
+// Sugestões de autocompletar pra Referências (campo Texto), sobre o campo
+// `referenciasExternas`: "lembra" só do que já foi preenchido pro Tipo
+// escolhido (tipoFiltro).
 export function extrairValoresUnicosDeReferenciasExternas(poemas, tipoFiltro = null) {
     const valores = new Set();
     poemas.forEach((p) => {
@@ -4856,24 +5161,11 @@ export const TIPOS_INTERTEXTO_SUGERIDOS = [
 // opção coringa/genérica, não um tipo de verdade a comparar com os
 // demais, então não deve se intrometer no meio da lista alfabética
 // só por acaso de ortografia (ex.: cair antes de "Pessoa pública").
-// Usado pelos dois autocompletares de Tipo abaixo (Intertextualidade
-// e Referências).
+// Usado pelos autocompletares de Tipo e de Relação abaixo.
 function ordenarComOutroPorUltimo(valores) {
     const outros = valores.filter((v) => v !== 'Outro');
     outros.sort((a, b) => a.localeCompare(b, 'pt-BR'));
     return valores.includes('Outro') ? [...outros, 'Outro'] : outros;
-}
-
-export function extrairTiposIntertextoUnicos(poemas) {
-    const tipos = new Set(TIPOS_INTERTEXTO_SUGERIDOS);
-    poemas.forEach((p) => {
-        if (Array.isArray(p.intertextualidade)) {
-            p.intertextualidade.forEach((it) => {
-                if (it && it.tipo) tipos.add(it.tipo);
-            });
-        }
-    });
-    return ordenarComOutroPorUltimo(Array.from(tipos));
 }
 
 // Sugestões de autocompletar pra Referências (campo Tipo): mesmo papel
@@ -4906,8 +5198,8 @@ export function extrairTiposReferenciaExternaUnicos(poemas) {
 }
 
 // Sugestões de autocompletar pra Hipertextualidade (campo Relação) —
-// diferente do Tipo (mídia do hipotexto — ver extrairTiposHipertextualidadeUnicos
-// abaixo, que reaproveita TIPOS_INTERTEXTO_SUGERIDOS), Relação é a
+// diferente do Tipo (mídia do hipotexto, que reaproveita
+// TIPOS_INTERTEXTO_SUGERIDOS), Relação é a
 // natureza do diálogo em si (Releitura, Paródia...), independente de o
 // hipotexto ser um livro, uma música etc. Mesmo papel de
 // TIPOS_INTERTEXTO_SUGERIDOS: semeia com os 8 rótulos padrão pedidos
@@ -4924,25 +5216,6 @@ export const TIPOS_HIPERTEXTUALIDADE_RELACAO_SUGERIDOS = [
     'Transposição',
 ];
 
-// Hipertextualidade é uma lista de entradas { tipo, relacao, hipotexto,
-// link, linkTexto, nota } — um texto pode ser hipertexto de mais de um
-// hipotexto (mesmo motivo de Intertextualidade/Referências serem listas,
-// não um valor único). Tipo reaproveita as mesmas sugestões de mídia de
-// Intertextualidade (TIPOS_INTERTEXTO_SUGERIDOS) — é o mesmo tipo de
-// artefato (livro, música, série...), só que aqui apontando pro
-// hipotexto de origem específico, não uma referência qualquer.
-export function extrairTiposHipertextualidadeUnicos(itens) {
-    const tipos = new Set(TIPOS_INTERTEXTO_SUGERIDOS);
-    itens.forEach((it) => {
-        if (Array.isArray(it.hipertextualidade)) {
-            it.hipertextualidade.forEach((h) => {
-                if (h && h.tipo) tipos.add(h.tipo);
-            });
-        }
-    });
-    return ordenarComOutroPorUltimo(Array.from(tipos));
-}
-
 export function extrairRelacoesHipertextualidadeUnicas(itens) {
     const tipos = new Set(TIPOS_HIPERTEXTUALIDADE_RELACAO_SUGERIDOS);
     itens.forEach((it) => {
@@ -4953,26 +5226,6 @@ export function extrairRelacoesHipertextualidadeUnicas(itens) {
         }
     });
     return ordenarComOutroPorUltimo(Array.from(tipos));
-}
-
-// Sugestões de autocompletar pro Hipotexto (nome da obra de origem) —
-// mesma lógica de extrairValoresUnicosDeIntertextualidade acima
-// (inclusive o filtro opcional por Tipo, pra focar as sugestões assim
-// que o Tipo de mídia já foi escolhido), mas sobre o campo `hipotexto`
-// da lista `hipertextualidade`. Sem sugestão padrão fixa: o nome da
-// obra de origem não tem uma lista fechada de valores comuns como
-// Tipo/Relação têm.
-export function extrairHipotextosUnicos(itens, tipoFiltro = null) {
-    const valores = new Set();
-    itens.forEach((it) => {
-        if (Array.isArray(it.hipertextualidade)) {
-            it.hipertextualidade.forEach((h) => {
-                if (h && h.hipotexto && (!tipoFiltro || h.tipo === tipoFiltro))
-                    valores.add(h.hipotexto);
-            });
-        }
-    });
-    return Array.from(valores).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
 // Monta o corpo textual de uma entrada de Hipertextualidade — usado por
@@ -5005,7 +5258,7 @@ export function agruparIntertextualidadePorTipo(lista) {
     const grupos = [];
     const porTipo = new Map();
     lista.forEach((it) => {
-        const tipo = it.tipo || '';
+        const tipo = tipoObraDaEntrada(it);
         if (!porTipo.has(tipo)) {
             const grupo = { tipo, entradas: [] };
             porTipo.set(tipo, grupo);
@@ -5017,8 +5270,82 @@ export function agruparIntertextualidadePorTipo(lista) {
         ...grupo,
         subBullet:
             grupo.entradas.length > 1 &&
-            grupo.entradas.some((it) => it.link || it.nota || (it.texto || '').includes(',')),
+            grupo.entradas.some(
+                (it) =>
+                    it.link ||
+                    it.nota ||
+                    it.descricao ||
+                    it.trecho ||
+                    [
+                        obraDaEntrada(it),
+                        textoAutoresDaEntrada(it),
+                        ...origensDaEntrada(it),
+                        ...personagensDaEntrada(it),
+                    ].some((v) => String(v || '').includes(',')),
+            ),
     }));
+}
+
+// Agrupamento em dois níveis da Intertextualidade (Ver e .md): primeiro pela
+// relação (Citação, Menção, Alusão...), depois, dentro de cada relação, pelo
+// tipo de obra (Livro, Música...). Cada nível evita repetir o rótulo em toda
+// entrada. Dentro da relação vale a mesma regra de agruparIntertextualidadePorTipo
+// (vírgula ou sub-lista, entrada sem tipo de obra solta). Ordem dos dois níveis
+// = ordem de primeira aparição. A relação compara sem caixa nem espaços das pontas.
+// Entrada sem relação (as antigas, "nunca definido") não ganha grupo
+// "Sem relação": vai para `semRelacao`, agrupada só por tipo de obra, como
+// era antes, para a tela exibir num bloco no fim.
+export function agruparIntertextualidadePorRelacao(lista) {
+    if (!Array.isArray(lista) || !lista.length) return { relacoes: [], semRelacao: [] };
+    const porRelacao = new Map();
+    const relacoes = [];
+    const semRelacao = [];
+    lista.forEach((it) => {
+        const relacao = String((it && it.relacao) || '').trim();
+        if (!relacao) {
+            semRelacao.push(it);
+            return;
+        }
+        const chave = relacao.toLowerCase();
+        if (!porRelacao.has(chave)) {
+            const grupo = { relacao, entradas: [] };
+            porRelacao.set(chave, grupo);
+            relacoes.push(grupo);
+        }
+        porRelacao.get(chave).entradas.push(it);
+    });
+    return {
+        relacoes: relacoes.map(({ relacao, entradas }) => ({
+            relacao,
+            tipos: agruparIntertextualidadePorTipo(entradas),
+        })),
+        semRelacao: agruparIntertextualidadePorTipo(semRelacao),
+    };
+}
+
+// Pedaços de texto puro de uma entrada de Intertextualidade, para Ver, .md e
+// .csv montarem a linha cada um do seu jeito (HTML escapa, Markdown não).
+// `corpo` é a obra com autor, origem e personagem entre parênteses ("Dom Casmurro
+// (Machado de Assis; personagem Capitu)"); sem nenhum deles é só a
+// obra, igual ao que sempre saiu. O trecho é quebrado em uma linha só.
+export function partesEntradaIntertexto(it) {
+    const aparar = (v) => String(v || '').trim();
+    const obra = obraDaEntrada(it).trim();
+    const personagens = personagensDaEntrada(it);
+    const rotuloPersonagens =
+        personagens.length > 1 ? `personagens ${textoDosPersonagens(personagens)}` : '';
+    const personagem =
+        personagens.length === 1 ? `personagem ${personagens[0]}` : rotuloPersonagens;
+    const quem = [textoAutoresDaEntrada(it), rotuloDaOrigem(it), personagem]
+        .filter(Boolean)
+        .join('; ');
+    return {
+        corpo: quem ? (obra ? `${obra} (${quem})` : `(${quem})`) : obra,
+        descricao: aparar(it && it.descricao),
+        trecho: aparar(it && it.trecho).replace(/\s*\n\s*/g, ' / '),
+        traduzido: !!(it && it.traduzido === true),
+        obraPessoal: !!(it && it.obraPessoal === true),
+    };
 }
 
 // Sugestões de autocompletar pras Anotações Marginais (Posição e Fonte):
@@ -5819,7 +6146,7 @@ export function calcularTamanhoVersoForcadoPorPe(peMetrico) {
     return pe && pe.tipo === 'fixo' ? pe.tamanhoVersoExigido : null;
 }
 
-function limparTexto(texto) {
+export function limparTexto(texto) {
     if (!texto) return '';
     return texto
         .replace(/<[^>]+>/g, ' ') // remove tags HTML (divs/spans de formatação do editor)

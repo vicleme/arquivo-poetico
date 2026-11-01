@@ -8,7 +8,17 @@
 //
 // Os dados vêm por parâmetro (`dbRef`), como em
 // `contarConteudoDoLivro`, para testar sem o `db` real.
+//
+// Fase 21 (21-3b e 21-3c): a árvore do livro, da Parte e da Seção lê os textos
+// pela lista de aparições, não pelo Destino do espelho. O mesmo texto aparece na
+// árvore de cada livro onde está (e em cada Parte ou Seção em que tem uma
+// aparição), com a posição daquela aparição; o "só consta" (aparição sem lugar
+// nem posição) vira a lista de vinculados. `filhosTopoDoLivro`, `filhosDaParte`
+// e `filhosDaSecao` leem por aparição com `{ porAparicao: true }` (o que a aba
+// Estrutura e as montagens de árvore usam); sem a opção leem só pelo Destino.
 // ============================================================
+
+import { escopoDoLugar, temLugar } from './aparicoes-dado.js';
 
 // Itens vêm embrulhados como { tipo, dados }: a sequência real está em
 // item.dados.sequencia. Sem sequência (ou 0), o item vai para o fim.
@@ -22,7 +32,52 @@ export function ordenarPorSeq(lista) {
 
 const lista = (dbRef, nome) => dbRef[nome] || [];
 
-export function filhosTopoDoLivro(dbRef, livroId) {
+const mesmoId = (a, b) => a != null && b != null && String(a) === String(b);
+
+// O nó de um texto numa aparição que NÃO é o Destino do espelho: uma cópia do
+// texto cujo `sequencia` lê e grava a posição da própria aparição (assim quem
+// ordena ou renumera os irmãos não precisa saber a diferença), com o Destino
+// (`paiTipo`, `paiId`) do lugar onde ela está. `_texto` e `_aparicao` dão o
+// texto real e a aparição (não enumeráveis: não saem em cópia nem em JSON).
+function dadosDaAparicao(texto, aparicao, paiTipo, paiId) {
+    const copia = { ...texto, paiTipo, paiId };
+    Object.defineProperty(copia, 'sequencia', {
+        enumerable: true,
+        get: () => aparicao.sequencia ?? null,
+        set: (v) => {
+            aparicao.sequencia = v;
+        },
+    });
+    Object.defineProperty(copia, '_texto', { value: texto });
+    Object.defineProperty(copia, '_aparicao', { value: aparicao });
+    return copia;
+}
+
+// Os Poemas ou Prosas (`tipo`) de um lugar (`paiTipo`, `paiId`) como nós.
+// Com `porAparicao`, um nó por texto que tem aparição com lugar ali; o texto
+// cujo Destino é aquele lugar entra como ele mesmo, os outros como cópia (ver
+// `dadosDaAparicao`). Texto sem lista (dado só do formato antigo) entra pelo
+// Destino, como sempre. Sem `porAparicao`, é só o Destino.
+function nosDeTexto(dbRef, tipo, paiTipo, paiId, porAparicao) {
+    return lista(dbRef, `${tipo}s`).flatMap((t) => {
+        const pelaDestino =
+            (t.paiTipo === paiTipo && mesmoId(t.paiId, paiId)) ||
+            (tipo === 'prosa' && paiTipo === 'secao' && mesmoId(t.secaoId, paiId));
+        if (!porAparicao || !Array.isArray(t.aparicoes)) {
+            return pelaDestino ? [{ tipo, dados: t }] : [];
+        }
+        const a = t.aparicoes.find((x) => {
+            if (!temLugar(x)) return false;
+            const [pt, pi] = escopoDoLugar(x);
+            return pt === paiTipo && mesmoId(pi, paiId);
+        });
+        if (!a) return [];
+        const eEspelho = t.paiTipo === paiTipo && mesmoId(t.paiId, paiId);
+        return [{ tipo, dados: eEspelho ? t : dadosDaAparicao(t, a, paiTipo, paiId) }];
+    });
+}
+
+export function filhosTopoDoLivro(dbRef, livroId, { porAparicao = false } = {}) {
     return ordenarPorSeq([
         ...lista(dbRef, 'partes')
             .filter((p) => p.livroId == livroId)
@@ -33,16 +88,12 @@ export function filhosTopoDoLivro(dbRef, livroId) {
         ...lista(dbRef, 'elementos')
             .filter((e) => e.paiTipo === 'livro' && e.paiId == livroId)
             .map((e) => ({ tipo: 'elemento', dados: e })),
-        ...lista(dbRef, 'poemas')
-            .filter((p) => p.paiTipo === 'livro' && p.paiId == livroId)
-            .map((p) => ({ tipo: 'poema', dados: p })),
-        ...lista(dbRef, 'prosas')
-            .filter((p) => p.paiTipo === 'livro' && p.paiId == livroId)
-            .map((p) => ({ tipo: 'prosa', dados: p })),
+        ...nosDeTexto(dbRef, 'poema', 'livro', livroId, porAparicao),
+        ...nosDeTexto(dbRef, 'prosa', 'livro', livroId, porAparicao),
     ]);
 }
 
-export function filhosDaParte(dbRef, parteId) {
+export function filhosDaParte(dbRef, parteId, { porAparicao = false } = {}) {
     return ordenarPorSeq([
         ...lista(dbRef, 'secoes')
             .filter((s) => s.paiTipo === 'parte' && s.paiId == parteId)
@@ -50,46 +101,58 @@ export function filhosDaParte(dbRef, parteId) {
         ...lista(dbRef, 'elementos')
             .filter((e) => e.paiTipo === 'parte' && e.paiId == parteId)
             .map((e) => ({ tipo: 'elemento', dados: e })),
-        ...lista(dbRef, 'poemas')
-            .filter((p) => p.paiTipo === 'parte' && p.paiId == parteId)
-            .map((p) => ({ tipo: 'poema', dados: p })),
-        ...lista(dbRef, 'prosas')
-            .filter((p) => p.paiTipo === 'parte' && p.paiId == parteId)
-            .map((p) => ({ tipo: 'prosa', dados: p })),
+        ...nosDeTexto(dbRef, 'poema', 'parte', parteId, porAparicao),
+        ...nosDeTexto(dbRef, 'prosa', 'parte', parteId, porAparicao),
     ]);
 }
 
-export function filhosDaSecao(dbRef, secaoId) {
+export function filhosDaSecao(dbRef, secaoId, { porAparicao = false } = {}) {
     return ordenarPorSeq([
         ...lista(dbRef, 'elementos')
             .filter((e) => e.paiTipo === 'secao' && e.paiId == secaoId)
             .map((e) => ({ tipo: 'elemento', dados: e })),
-        ...lista(dbRef, 'poemas')
-            .filter((p) => p.paiTipo === 'secao' && p.paiId == secaoId)
-            .map((p) => ({ tipo: 'poema', dados: p })),
-        ...lista(dbRef, 'prosas')
-            .filter((p) => (p.paiTipo === 'secao' && p.paiId == secaoId) || p.secaoId == secaoId)
-            .map((p) => ({ tipo: 'prosa', dados: p })),
+        ...nosDeTexto(dbRef, 'poema', 'secao', secaoId, porAparicao),
+        ...nosDeTexto(dbRef, 'prosa', 'secao', secaoId, porAparicao),
     ]);
 }
 
-function comFilhos(dbRef, no) {
+function comFilhos(dbRef, no, porAparicao = false) {
+    const opcoes = { porAparicao };
     if (no.tipo === 'parte') {
-        return { ...no, filhos: filhosDaParte(dbRef, no.dados.id).map((f) => comFilhos(dbRef, f)) };
+        const filhos = filhosDaParte(dbRef, no.dados.id, opcoes);
+        return { ...no, filhos: filhos.map((f) => comFilhos(dbRef, f, porAparicao)) };
     }
     if (no.tipo === 'secao') {
-        return { ...no, filhos: filhosDaSecao(dbRef, no.dados.id).map((f) => comFilhos(dbRef, f)) };
+        const filhos = filhosDaSecao(dbRef, no.dados.id, opcoes);
+        return { ...no, filhos: filhos.map((f) => comFilhos(dbRef, f, porAparicao)) };
     }
     return no;
+}
+
+// Texto descartado: sai da estrutura e vai para o "Fora de escopo" do livro
+// (fora-de-escopo.js), para não aparecer em dois lugares.
+const ehDescartado = (no) =>
+    (no.tipo === 'poema' || no.tipo === 'prosa') && no.dados?.status === 'descartado';
+
+export function semDescartadosNaArvore(nos) {
+    return nos
+        .filter((n) => !ehDescartado(n))
+        .map((n) => (n.filhos ? { ...n, filhos: semDescartadosNaArvore(n.filhos) } : n));
 }
 
 // Árvore do livro para leitura: { arvore, vinculados }.
 // - Livro comum: Partes, Seções, Elementos, Poemas e Prosas na ordem da aba Estrutura.
 // - Coletânea: Partes (por sequência) e os itens de cada uma (`itensColetanea`).
-// - `vinculados`: poemas e prosas ligados ao livro só por `livrosIds`, sem
-//   posição na árvore (não fingem uma posição que não existe). Fora da árvore
-//   por definição; ordenados por título. Coletânea não tem vinculados.
-export function montarArvoreDoLivro(dbRef, livroId) {
+// - `vinculados`: poemas e prosas que só constam no livro (aparição sem Parte,
+//   Seção nem posição; no formato antigo, ligados por `livrosIds`), sem posição
+//   na árvore (não fingem uma posição que não existe). Fora da árvore por
+//   definição; ordenados por título. Coletânea não tem vinculados.
+// - Os textos vêm pelas aparições: o mesmo texto aparece na árvore de cada livro
+//   onde está, com a posição daquela aparição.
+// - `opcoes.semDescartados` (padrão false): tira da árvore e dos vinculados os
+//   textos com status "descartado", que passam a viver só no Fora de escopo.
+//   Não vale para Coletânea (os itens dela só apontam para os textos).
+export function montarArvoreDoLivro(dbRef, livroId, opcoes = {}) {
     const livro = lista(dbRef, 'livros').find((l) => String(l.id) === String(livroId));
     if (!livro) return { arvore: [], vinculados: [] };
 
@@ -110,7 +173,9 @@ export function montarArvoreDoLivro(dbRef, livroId) {
         return { arvore, vinculados: [] };
     }
 
-    const arvore = filhosTopoDoLivro(dbRef, livroId).map((n) => comFilhos(dbRef, n));
+    const arvore = filhosTopoDoLivro(dbRef, livroId, { porAparicao: true }).map((n) =>
+        comFilhos(dbRef, n, true),
+    );
 
     const naArvore = new Set();
     const coletar = (nos) =>
@@ -120,8 +185,12 @@ export function montarArvoreDoLivro(dbRef, livroId) {
         });
     coletar(arvore);
 
+    // Com a lista, só consta quem tem aparição neste livro sem lugar; sem ela
+    // (formato antigo), quem tem o livro em `livrosIds`.
     const liga = (t) =>
-        Array.isArray(t.livrosIds) && t.livrosIds.some((x) => String(x) === String(livroId));
+        Array.isArray(t.aparicoes)
+            ? t.aparicoes.some((a) => mesmoId(a.livroId, livroId) && !temLugar(a))
+            : Array.isArray(t.livrosIds) && t.livrosIds.some((x) => String(x) === String(livroId));
     const vinculados = ['poema', 'prosa']
         .flatMap((tipo) =>
             lista(dbRef, tipo + 's')
@@ -132,6 +201,12 @@ export function montarArvoreDoLivro(dbRef, livroId) {
             String(a.dados.titulo || '').localeCompare(String(b.dados.titulo || ''), 'pt-BR'),
         );
 
+    if (opcoes.semDescartados) {
+        return {
+            arvore: semDescartadosNaArvore(arvore),
+            vinculados: vinculados.filter((n) => !ehDescartado(n)),
+        };
+    }
     return { arvore, vinculados };
 }
 
@@ -140,21 +215,45 @@ export function montarArvoreDoLivro(dbRef, livroId) {
 // `montarArvoreDoLivro` ({ arvore, vinculados }), para o Ver de Parte e de Seção
 // reaproveitarem o desenho da Estrutura. Sem `vinculados`: o vínculo por
 // `livrosIds` é do Livro, não de uma Parte nem de uma Seção.
-export function montarArvoreDaParte(dbRef, parteId) {
+export function montarArvoreDaParte(dbRef, parteId, opcoes = {}) {
+    const arvore = filhosDaParte(dbRef, parteId, { porAparicao: true }).map((n) =>
+        comFilhos(dbRef, n, true),
+    );
     return {
-        arvore: filhosDaParte(dbRef, parteId).map((n) => comFilhos(dbRef, n)),
+        arvore: opcoes.semDescartados ? semDescartadosNaArvore(arvore) : arvore,
         vinculados: [],
     };
 }
 
-export function montarArvoreDaSecao(dbRef, secaoId) {
+export function montarArvoreDaSecao(dbRef, secaoId, opcoes = {}) {
+    const arvore = filhosDaSecao(dbRef, secaoId, { porAparicao: true }).map((n) =>
+        comFilhos(dbRef, n, true),
+    );
     return {
-        arvore: filhosDaSecao(dbRef, secaoId).map((n) => comFilhos(dbRef, n)),
+        arvore: opcoes.semDescartados ? semDescartadosNaArvore(arvore) : arvore,
         vinculados: [],
     };
 }
 
-// Contagem por tipo em toda a árvore mais os vinculados (um texto conta uma vez).
+// Título e rótulo de tipo de um nó, como o Ver do livro os mostra. Fonte única:
+// o Ver (visualizar-livro.js) e as saídas com estrutura (estrutura-livro-saida.js)
+// leem daqui, para nunca divergirem.
+export function tituloDoNo(no) {
+    const d = no.dados || {};
+    if (no.tipo === 'elemento') {
+        const rotulo = d.tipo || 'Elemento';
+        return d.titulo ? `${rotulo}: ${d.titulo}` : rotulo;
+    }
+    return d.titulo || '(sem título)';
+}
+
+export function rotuloTipoDoNo(no) {
+    if (no.tipo === 'item') return no.dados.refId ? no.dados.refTipo || '?' : 'inédito';
+    return no.tipo;
+}
+
+// Contagem por tipo em toda a árvore mais os vinculados (um texto conta uma vez,
+// mesmo com duas aparições no mesmo livro).
 export function contarNosDaArvore({ arvore, vinculados = [] }) {
     const c = { partes: 0, secoes: 0, poemas: 0, prosas: 0, elementos: 0, itens: 0 };
     const chave = {
@@ -165,8 +264,14 @@ export function contarNosDaArvore({ arvore, vinculados = [] }) {
         elemento: 'elementos',
         item: 'itens',
     };
+    const textosVistos = new Set();
     const visitar = (nos) =>
         nos.forEach((n) => {
+            if (n.tipo === 'poema' || n.tipo === 'prosa') {
+                const id = `${n.tipo}-${n.dados.id}`;
+                if (textosVistos.has(id)) return;
+                textosVistos.add(id);
+            }
             c[chave[n.tipo]]++;
             if (n.filhos) visitar(n.filhos);
         });

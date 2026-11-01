@@ -120,7 +120,7 @@ npm run format:check   # prettier --check .
 │   │                          → Mapa de todos os campos de um registro de
 │   │                            Poema/Prosa, pra quem for ler dados exportados
 │   │                            sem abrir o código
-│   ├── etiquetas-sinalizacoes-for-ai.md / etiquetas-sinalizacoes-for-ai-pt-br.md
+│   ├── etiquetas-for-ai.md / etiquetas-for-ai-pt-br.md
 │   │                          → Lógica das etiquetas do acervo ("Etiquetas"
 │   │                            na interface; antes "Sinalizações") — que categoria cada uma
 │   │                            representa, e como são guardadas (cadastro com ids) e
@@ -142,6 +142,9 @@ npm run format:check   # prettier --check .
 │   │                          → Campos do registro de Morfofuncionalidade
 │   │                            (Unidades/Eventos, posição no texto,
 │   │                            Templates) — aba "Morfofuncionalidade"
+│   ├── livro-for-ai.md / livro-for-ai-pt-br.md
+│   │                          → Campos do Livro: Autoria x Equipe e créditos, uso de IA,
+│   │                            o que a exportação do livro leva e como buscar livros
 │   ├── pessoas-papeis-for-ai.md / pessoas-papeis-for-ai-pt-br.md
 │   │                          → Lógica do campo `pessoas` de Poemas/Prosas —
 │   │                            papéis atribuídos a cada pessoa citada
@@ -159,6 +162,10 @@ npm run format:check   # prettier --check .
 │   │                          → Campos do registro de Sonoridade
 │   │                            (classificação geral, grade silábica, rimas e
 │   │                            ecos) — complementar a scansion-for-ai.md
+│   ├── sorteio-for-ai.md / sorteio-for-ai-pt-br.md
+│   │                          → O sorteio de leitura ("Sortear leitura"): quem
+│   │                            pode sair, leitura autônoma, os três níveis
+│   │                            de sigilo do autor e o que quem lê vê
 │   ├── temas-assuntos-for-ai.md / temas-assuntos-for-ai-pt-br.md
 │   │                          → Temas e Assuntos: como se ligam, papéis,
 │   │                            nomes e critérios de escolha (o critério por
@@ -236,6 +243,13 @@ npm run format:check   # prettier --check .
 │   │                           pares de rima e a grade somente-leitura
 │   │                           reaproveitada pelo modal "Ver"
 │   ├── visualizar-livro.js     → Modal "Ver" do Livro (somente leitura, com anterior/próximo)
+│   ├── Aba Livros (Fase 19): filtro-livros.js, busca-livros.js,
+│   │   vinculo-busca.js (`nome@papel` comum), sugestoes-busca-livros.js, autoria-livro.js, colaboradores-livro.js,
+│   │   uso-ia-livro.js, estrutura-livro.js, fora-de-escopo.js, origem-livro.js, opcoes-origem.js (lógica pura); ui-autoria-livro.js,
+│   │   ui-equipe-livro.js, ui-uso-ia-livro.js, colaboradores-aba.js,
+│   │   selecao-livros.js, selecao-livros-aba.js, baixar-livros.js (telas);
+│   │   exportar-livros.js (.json/.csv/.md), exportar-livros-pdf.js,
+│   │   exportar-livros-docx.js, capas-para-exportar.js (capas nos .pdf/.docx)
 │   ├── visualizar-sonoridade.js → Modal "Ver" de uma escansão (somente
 │   │                           leitura, mesma grade de editor-sonoridade.js)
 │   ├── exportar-sonoridade.js → Exportação de uma escansão em .md/.pdf/.docx/
@@ -297,6 +311,12 @@ npm run format:check   # prettier --check .
 │   │     *-acoes.js (uma dupla por aba)
 │   │   · Âncora e sugestão de Ecos: alvos-conceitos.js, ancora-eco*.js,
 │   │     sugestao-ecos.js, ui-sugestao-ecos.js, grupo-personagens.js
+│   │   · Fora do acervo (aba Conexões): fora-do-acervo.js (lógica),
+│   │     render-fora-do-acervo.js, corrigir-fora-do-acervo*.js,
+│   │     revisao-fora-do-acervo*.js (Modo revisão), exportar-fora-do-acervo*.js
+│   │     (relatório .md, .csv e .pdf), baixar-fora-do-acervo.js
+│   │   · Obra citada (autores e data): autores-da-obra.js, campo-tags-autor.js,
+│   │     data-da-obra.js, campo-data-obra.js, data-da-entrada-texto.js
 │   │   · Estatísticas: estatisticas-dados*.js (agregações),
 │   │     estatisticas-tela-*.js (uma tela por aba), estatisticas-filtros.js
 │   │   · Exportação, importação e backup: exportar-csv.js, exportar-assuntos.js, exportar-tag-clusters.js, exportar-tag-clusters-png.js (o desenho do .png e do .pdf), selecao-tag-clusters.js, rasterizar-svg.js, importar-tag-clusters.js,
@@ -310,7 +330,33 @@ npm run format:check   # prettier --check .
 │   │   · Criação e Morfofuncionalidade: editor-molde.js, molde-json.js,
 │   │     ui-molde-json.js, estrutura-textual.js
 │   │   · Ajuda: modo-aprendizado.js, tour*.js, central-ajuda.js,
-│   │     faq-conteudo.js, como-faco-passos.js
+│   │     busca-ajuda.js, faq-conteudo.js, como-faco-passos.js
+│   │   · Onde o texto aparece (Fase 21): aparicoes-dado.js (a lista
+│   │     `aparicoes`, lógica pura), aparicoes-do-texto.js, aparicoes-salvar.js,
+│   │     aviso-aparicoes.js, onde-aparece-linhas.js e onde-aparece-ui.js (o
+│   │     grupo "Onde aparece" dos modais de Poema/Prosa),
+│   │     mover-aparicao-na-fila.js, subir-nivel-ao-excluir.js,
+│   │     textos-do-lugar-excluido.js, coletaneas-do-texto.js
+│   │   · Abas Etiquetas e Temas: etiquetas-aba.js, exportar-etiquetas.js,
+│   │     localizar-etiquetas.js (Localizar e Substituir das 7 categorias de
+│   │     etiqueta), exportar-temas.js, ligacoes-tema-pessoa.js
+│   │   · Pessoas, papéis e figuras públicas: papeis-pessoa.js,
+│   │     papeis-pessoa-ui.js, gestao-papeis-pessoa.js, papeis-personagem.js,
+│   │     legenda-papeis-pessoa.js, infos-papel.js, conhecido-como.js,
+│   │     caracterizacao-pessoa-publica.js, intertextualidade.js,
+│   │     ui-locais.js, ui-personagens.js
+│   │   · Livros, Elementos e imagens: estrutura-livro-saida.js,
+│   │     contador-sinopse-livro.js, ficha-catalografica.js, sumario.js,
+│   │     ui-sumario.js, imagem-link.js, previas-imagem.js
+│   │   · Sugestões de busca: sugestoes-busca-texto.js,
+│   │     ui-sugestoes-busca-texto.js, fontes-sugestoes-busca-texto.js
+│   │     (Poemas/Prosas), ui-sugestoes-busca-livros.js (Livros),
+│   │     busca-autores.js (Autores)
+│   │   · Opções de download: agrupar-comuns.js e exportar-comuns.js (linhas
+│   │     comuns a todos os textos), metadados-download.js,
+│   │     relatorio-periodos.js, relatorio-pdf.js, ui-relatorio-periodos.js
+│   │     (relatório de Períodos e Correntes), padroes-colunas-fabrica.js
+│   │     (padrões de colunas de fábrica)
 │   │   · Outros: fuso-horario.js, ocultas-periodos.js
 │   └── utils.js              → Funções puras sem dependências internas;
 │                               inclui modal de confirmação de exclusão,
@@ -377,6 +423,32 @@ npm run format:check   # prettier --check .
   referenciam poemas/prosas já existentes (`refId`/`refTipo`) ou são textos
   exclusivos da coletânea (`textoOverride`). Excluir uma coletânea remove em
   cascata suas partes e itens, sem afetar os textos originais.
+- **Ficha do livro (Fase 19)**: além dos campos básicos, o Livro ou a Coletânea
+  tem **Autoria** (vínculos com Autores, cada um com um ou mais papéis: Autor,
+  Coautor, Organizador, Tradutor, Prefaciador, Posfaciador ou texto livre),
+  **Equipe e créditos** (vínculos com a aba **Colaboradores**, um cadastro
+  separado de Autores e de Pessoas: capista, ilustrador, diagramador, revisor,
+  preparador de texto, editor, fotógrafo, cada papel com escopo opcional em
+  texto livre, como Capa ou Miolo) e **Uso de IA** (um estado cujo padrão é
+  "Não informado", nunca "Não usou", mais uma lista de usos com onde,
+  ferramenta, modelo e versão, descrição, data aproximada e como foi usada; um
+  item pode apontar para um poema ou uma prosa específicos). A regra que separa
+  os dois primeiros: quem produz o conteúdo está em Autoria, quem produz o
+  livro como objeto está em Equipe e créditos. Veja `docs/livro-for-ai-pt-br.md`.
+- **Ver do livro e aba**: o Ver termina com uma seção recolhível **Estrutura**
+  (Partes, Seções e textos; o título de cada poema ou prosa abre o Ver do texto
+  e volta ao livro). A aba Livros tem busca com prefixos (`autor:`, `papel:`,
+  `equipe:`, `papelequipe:`, `-` para excluir, `*` para "tem", `@` para amarrar
+  uma pessoa a um papel no mesmo livro, com sugestões ao digitar e painel de
+  ajuda no `?`) e botões de três estados para Capa, ISBN e Loja. Anterior e
+  Próximo no Ver seguem a lista filtrada.
+- **Download das informações do livro**: só as informações do livro, nunca o
+  conteúdo dos textos, pelo card (aquele livro), pelo rodapé do Ver (aquele
+  livro) e pela barra da aba (escopo Filtrados, Todos ou Só selecionados, com um
+  modo Selecionar que põe uma caixinha em cada card). Formatos: `.json`, `.csv`,
+  `.md`, `.pdf` e `.docx`; o formato escolhido vale para os três lugares. No
+  `.pdf` e no `.docx` a capa vai embutida ao lado dos campos curtos, o resto na
+  largura toda e os links ficam clicáveis.
 - **Capas**: Livros, Partes e Seções aceitam uma imagem de capa. As imagens
   são armazenadas em `IndexedDB` e nunca entram no JSON de backup. O lightbox
   de visualização suporta navegação entre capas com ◀ ▶ e teclas ← →.
@@ -388,7 +460,7 @@ npm run format:check   # prettier --check .
   próprios reutilizáveis em vez de texto solto. Em cada Poema/Prosa, uma
   Pessoa pode ter um ou mais papéis (`PAPEIS_PESSOA`: Retratado(a),
   Inspiração para, Dedicatário(a), Mencionado(a), Aludido(a), Associado(a)
-  retroativamente) e um Grupo
+  retroativamente, Voz) e um Grupo
   pode ser referenciado diretamente (sem citar uma Pessoa específica dele) ou
   via uma Pessoa vinculada a ele. Autoria usa um papel único por texto
   (Autor/Coautor). Renomear uma Pessoa ou Época para um nome já existente
@@ -398,7 +470,7 @@ npm run format:check   # prettier --check .
   para a lógica completa dos papéis atribuídos a cada Pessoa.
 - **Tags e pessoas**: etiquetas (por categoria) e "dedicado a / sobre quem" como
   etiquetas reutilizáveis, com sugestão por `<datalist>`. Veja
-  `docs/etiquetas-sinalizacoes-for-ai-pt-br.md` para a lógica completa de
+  `docs/etiquetas-for-ai-pt-br.md` para a lógica completa de
   cada categoria de etiqueta.
 - **Períodos Biográficos** (antes "Épocas"): cadastro próprio (`db.epocas`) com
   início/fim (datas parciais, "em andamento"), Esfera, Categoria, pessoas
@@ -428,8 +500,12 @@ npm run format:check   # prettier --check .
   (Acrescentar, Remover, Definir ou Limpar, conforme o campo), sempre com
   **Desfazer**. Campos de lista usam etiquetas, como nos modais.
 - **Estatísticas**: várias abas, entre elas Cruzamentos (matriz de Temas por
-  Pessoas ou Grupos), Local e idioma, Correntes literárias e Personagens;
-  clicar numa barra abre a lista de textos correspondente.
+  Pessoas ou Grupos que só conta os pares Tema × Pessoa ligados, com tela de
+  análise por texto e a escolha do que fazer com os textos ainda não analisados), Local e idioma, Correntes literárias, Personagens e
+  **Obras citadas** (textos por século e década das obras que citam, a
+  distância entre a obra e o texto e as origens delas; fonte: Obras,
+  Referências ou Todas); clicar numa barra abre a lista de textos
+  correspondente.
 - **Dados**: aba Biblioteca (pacotes de textos em domínio público para
   importar), Importação Aditiva (soma ao acervo sem apagar nada) e Backup e
   recuperação (retratos automáticos, arquivo de extras e **Esvaziar o acervo**,
@@ -442,13 +518,36 @@ npm run format:check   # prettier --check .
 - **Status do Poema**: 🟡 Incompleto, ⚪ Completo, 🟢 Publicado, 🔵 Migrado
   (texto movido de um livro/seção para outro), 🔴 Descartado e 🔒 Privado
   (nunca teve intenção de publicação, diferente de Descartado).
-- **Migração entre livros** (Poema): campos "Cortado de" e "Lançado em"
-  (Livro + Parte/Seção), texto livre com sugestão por `<datalist>` dos
-  livros/partes/seções já cadastrados — pensados para poemas com status
-  Migrado, mas preenchíveis a qualquer momento (o livro de origem pode nem
-  existir mais como registro no arquivo). Escolher uma Seção já cadastrada
-  preenche o Livro correspondente sozinho; digitar/escolher o Livro filtra
-  as sugestões de Seção só às daquele livro.
+- **Migração entre livros** (Poema e Prosa): campos "Cortado de" (Livro +
+  Parte/Seção + posição de origem) e "Lançado em" (Livro + Parte/Seção), texto
+  livre com sugestão por `<datalist>` dos livros/partes/seções já cadastrados
+  (o livro de origem pode nem existir mais como registro no arquivo). Quando o
+  livro digitado está no cadastro, o app guarda também o seu id: renomear o
+  livro atualiza o nome nesses textos e o Fora de escopo não os perde. O
+  caminho aparece sempre como `Livro › Parte › Seção · posição N`. Os campos
+  só aparecem conforme o status: **Migrado** mostra Cortado de, Lançado em e a
+  justificativa da migração; **Descartado** mostra só Cortado de (o app já
+  propõe de onde o texto saiu) e a justificativa do descarte; nos demais status
+  a caixa fica escondida e a Pendência continua sempre à vista. Texto que já
+  tem esses dados fora do status certo continua mostrando o que tem, com um
+  aviso. Escolher uma Seção já cadastrada preenche o Livro correspondente
+  sozinho; digitar/escolher o Livro filtra as sugestões de Seção só às daquele
+  livro. Com o status **Descartado**, o grupo "Onde aparece" fica travado
+  (os dados continuam guardados e voltam ao trocar o status), porque a origem
+  do texto está em "Cortado de".
+- **Onde aparece** (Poema e Prosa): o grupo que diz em que livros o texto está
+  e em que lugar. Cada aparição é uma linha com Livro, Parte ou Seção e
+  posição ("Posição específica", "No fim da fila" ou "Sem posição"); "+ Aparição"
+  acrescenta outra e o ✕ tira. O mesmo texto pode ter posição em mais de um
+  livro, e salvar renumera a fila de cada lugar. Sem lugar, o texto só consta
+  no livro. Duas linhas no mesmo lugar: vale a primeira, com aviso. As
+  Coletâneas em que o texto entra aparecem logo abaixo, só para leitura: cada
+  nome é um atalho que fecha o modal e abre a aba Coletâneas já nela, com uma
+  faixa "Voltar para Poemas" (ou a aba de onde você veio) que some quando você
+  sai da aba (com alterações não salvas, o modal pede confirmação antes). Na
+  aba Coletâneas, o título de cada poema ou prosa do acervo abre o Ver do
+  texto, e ao fechá-lo você volta à mesma coletânea; o inédito não tem Ver.
+  Quem põe ou tira um texto de uma Coletânea continua sendo a aba Coletâneas.
 - **Elos e Referências** (Poema e Prosa): dois jeitos de ligar um texto a
   outro do próprio acervo (Prosa pode apontar para Poema ou Prosa; Poema só
   para outro Poema). **Elos** são bilaterais — uma `relacao` (Reescrita,
@@ -461,7 +560,7 @@ npm run format:check   # prettier --check .
   Referências — convergências e ramificações viram nós únicos com várias
   arestas, não nós duplicados) e um painel de "buracos" (elo cadastrado só
   de um lado); cada diagrama pode ser baixado como PNG. A aba também baixa
-  um **relatório** (todas as conexões, só Elos ou só Referências, que na tela se chamam Elos e Ecos) em `.md`
+  um **relatório** da metade "Dentro do acervo" (tudo, só Elos ou só Referências, que na tela se chamam Elos e Ecos) em `.md`
   (texto simples, bom para colar numa IA), `.png` ou `.pdf` (os dois com os
   desenhos; o PDF é imagem, então o texto dele não é pesquisável). Um modo
   **Selecionar** põe uma caixinha em cada buraco, Elo e Referência para
@@ -469,6 +568,21 @@ npm run format:check   # prettier --check .
   Referências abrem o modal **Ver**, e os buracos abrem o editor; no editor
   de Poema, um botão de olho no cabeçalho passa para o Ver do mesmo poema
   (perguntando "Salvar antes de ver?" quando há alteração não salva).
+  A aba tem uma segunda metade, **Fora do acervo**, que lê Intertextualidade,
+  Hipertextualidade e Referências de todos os textos: as **obras** e os
+  **autores** citados, com os textos que usam cada um e a relação; **de qual
+  obra cada texto deriva**; as referências que aparecem em mais de um texto; e
+  **avisos** de grafias que talvez sejam a mesma obra. A obra é identificada
+  pelo nome mais os autores, sem acento, caixa, pontuação nem ordem. A seção
+  corrige os dados em todos os textos de uma vez (**Corrigir obra**,
+  **Corrigir autor**, **Corrigir referência** e **Manter esta**, cada um com
+  backup obrigatório,
+  confirmação com a contagem e **Desfazer**), tem um **Modo revisão** (uma
+  tabela com uma linha por entrada, todas as colunas editáveis, com o mesmo
+  seletor de colunas das abas de textos e uma busca `campo:valor` com 🔍 em cada cabeçalho e uma barra de edição em massa que aplica um valor,
+  como a origem, às linhas marcadas ou a todas as do filtro) e um **relatório** próprio em `.md`,
+  `.csv` (uma tabela por vez) ou `.pdf` (texto de verdade, pesquisável), que
+  respeita o filtro e a ordem da tela.
 - **Envios e Reações** (Poema e Prosa): registro de quando e para quem um
   texto foi enviado (pessoa, data, meio, reação, notas) — `pessoa` e `meio`
   são texto livre com sugestão por `<datalist>`, sem exigir cadastro central.
@@ -477,19 +591,28 @@ npm run format:check   # prettier --check .
 - **Status editorial de Livros/Coletâneas**: Inédito, Esgotado, Domínio
   público ou Reeditado — conceito de publicação do livro como um todo,
   separado do Status do Poema/Prosa individual.
-- **Intertextualidade** (Poema e Prosa): lista de referências externas
-  (música, livro, filme/série, vídeo, citação...), cada uma com tipo +
-  texto — um texto pode dialogar com várias referências de tipos
-  diferentes ao mesmo tempo. Cada item pode ser editado in-place (clique
-  em ✎ pra reabrir um item já salvo antes de excluí-lo).
+- **Intertextualidade** (Poema e Prosa): lista de obras externas com as
+  quais o texto convive em copresença (o texto não deixa de existir sem
+  elas). Cada entrada tem a Relação (Citação, Menção, Alusão, Paráfrase,
+  Bricolagem), o Tipo de obra (música, livro, filme/série, conversa...), a
+  Obra, os Autores (lista de etiquetas, uma por autor, para caber uma música
+  com participação ou um livro de várias pessoas), o Personagem, uma
+  Descrição que explica que obra é (a mesma obra repete a descrição, e o app
+  a sugere e preenche), a Data da obra (opcional, com começo e "até"; veja
+  abaixo), o Trecho da fonte e o check Traduzido. Um texto pode ter várias entradas ao mesmo
+  tempo. Cada item pode ser editado in-place (clique em ✎ pra reabrir um
+  item já salvo antes de excluí-lo). No Ver e no `.md`, as entradas saem
+  agrupadas por Relação e, dentro dela, por Tipo de obra.
 - **Hipertextualidade** (Poema e Prosa): lista de transformações diretas
-  de uma obra de origem específica — tipo (mesmas sugestões de
-  Intertextualidade) + relação (Releitura, Tradução Adaptada, Paródia,
-  Pastiche, Expansão, Reescala, Homenagem, Transposição) + hipotexto (o
-  nome da obra de origem). Uma relação mais forte e estrutural que
-  Intertextualidade: o texto do acervo não só dialoga com a fonte ou a
-  cita, ele deriva dela/a transforma. Editável in-place como
-  Intertextualidade.
+  de uma obra de origem específica, aquela sem a qual o texto não existiria
+  como é. Cada entrada tem o Tipo de obra (mesmas sugestões de
+  Intertextualidade), a Relação (Releitura, Tradução Adaptada, Paródia,
+  Pastiche, Expansão, Reescala, Homenagem, Transposição), o Hipotexto (o
+  nome da obra de origem), os Autores (lista de etiquetas), a Descrição e a
+  Data da obra. O texto do acervo não só
+  dialoga com a fonte ou a cita, ele deriva dela e a transforma. Editável
+  in-place como Intertextualidade. Veja
+  `docs/transtextualidade-referencias-for-ai-pt-br.md` para o critério.
 - **Referências (Externas)** (Poema e Prosa): lista de âncoras do mundo
   real — um marco histórico, uma notícia ou uma figura pública — sem
   nenhuma obra ou autoria envolvida, o que a diferencia de
@@ -497,8 +620,19 @@ npm run format:check   # prettier --check .
   texto livre, sem vínculo com o cadastro central de Pessoas; se a pessoa
   tem um papel na origem do texto (retratada, dedicatária etc.) e já é
   uma Pessoa cadastrada, o campo certo é `pessoas`, não uma entrada aqui.
+  Uma entrada de qualquer tipo também pode levar uma data, opcional, com
+  começo e "até": marco histórico tem início e fim, notícia tem a data,
+  pessoa pública tem nascimento e óbito (vazio para quem está viva).
   Veja `docs/transtextualidade-referencias-for-ai-pt-br.md` para o
   critério completo que diferencia esses três campos.
+- **Data da obra ou do fato** (Intertextualidade, Hipertextualidade e
+  Referências): cada entrada pode levar um começo e um "até", os dois
+  opcionais. Cada ponta escolhe um nível por vez (século, década, ano, mês ou
+  dia), com as marcas "aprox." e "a.C.", então "séc. XIX" se escreve assim
+  quando é só o que se sabe. Por baixo, o app guarda o intervalo de anos que o
+  nível cobre. Como a Descrição, a data é da obra: o app a sugere quando a obra
+  se repete e só a preenche sozinho se o campo estiver vazio e houver uma data
+  só para aquela obra.
 - **Anexos** (Poema): lista de itens que acompanham o texto — Ilustração,
   Foto, Lettering, Declamação em vídeo, Comentários em vídeo ou Outro —,
   cada um com tipo + descrição, e um link (obrigatório para os tipos de
@@ -579,8 +713,9 @@ npm run format:check   # prettier --check .
   pendente, botão "Aplicar" só habilita sem nenhuma pendência; (3) snapshot
   de segurança forçado (ignora o throttle normal de 6h) antes de qualquer
   escrita — se falhar, aborta; (4) remapeamento de ids em memória e escrita
-  atômica (um único push + save no final). Livro casado ou criado só linka
-  em `livrosIds` — nunca posiciona automaticamente em Partes/Seções.
+  atômica (um único push + save no final). Livro casado ou criado só acrescenta
+  uma aparição sem posição (o texto só "consta" no Livro) — nunca posiciona
+  automaticamente em Partes/Seções.
   Sonoridade e Estrutura Textual do Poema (só presentes se o arquivo veio do
   "download abrangente") acompanham automaticamente, sem exigir decisão —
   não são referência, só registros dependurados no id do Poema, remapeados
@@ -721,16 +856,17 @@ npm run format:check   # prettier --check .
 
 ## Formatos de JSON exportados
 
-O app gera cinco tipos distintos de JSON, cada um com um campo `export_format`
+O app gera seis tipos distintos de JSON, cada um com um campo `export_format`
 que identifica o formato:
 
-| `export_format`       | Gerado por                                     | Estrutura                                                                                                                      |
-| --------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| _(ausente)_           | "Baixar JSON" no header                        | Backup completo: `{ livros, partes, secoes, poemas, prosas, ... }`                                                             |
-| `exportacao_seletiva` | Aba Exportação → "Baixar JSON seletivo"        | Flat enriquecido: `{ export_format, itens: [...], coletaneas: [...] }` — cada item já tem `contexto` resolvido                 |
-| `selecao`             | Listagem de Poemas/Prosas → seleção → "⬇ JSON" | Flat: `{ export_format, itens: [...] }` — mesmo item da Exportação seletiva (contexto resolvido), só com os marcados na tabela |
-| `deep_nesting`        | "Exportar tudo aninhado"                       | Árvore completa: `{ export_format, data: [livros aninhados], avulsos, coletaneas }`                                            |
-| _(livro individual)_  | "Baixar este livro completo"                   | Objeto único de livro com toda a árvore aninhada                                                                               |
+| `export_format`       | Gerado por                                     | Estrutura                                                                                                                                                                                                                                                       |
+| --------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _(ausente)_           | "Baixar JSON" no header                        | Backup completo: `{ livros, partes, secoes, poemas, prosas, ... }`                                                                                                                                                                                              |
+| `exportacao_seletiva` | Aba Exportação → "Baixar JSON seletivo"        | Flat enriquecido: `{ export_format, itens: [...], coletaneas: [...] }` — cada item já tem `contexto` resolvido                                                                                                                                                  |
+| `selecao`             | Listagem de Poemas/Prosas → seleção → "⬇ JSON" | Flat: `{ export_format, itens: [...] }` — mesmo item da Exportação seletiva (contexto resolvido), só com os marcados na tabela                                                                                                                                  |
+| `deep_nesting`        | "Exportar tudo aninhado"                       | Árvore completa: `{ export_format, data: [livros aninhados], avulsos, coletaneas }`                                                                                                                                                                             |
+| _(livro individual)_  | "Baixar este livro completo"                   | Objeto único de livro com toda a árvore aninhada                                                                                                                                                                                                                |
+| `selecao_livros`      | Aba Livros / Ver / card → Baixar               | Só informações do livro, sem os textos: `{ export_format, itens: [...] }` com `tem_capa`, `autoria_livro`, `equipe_livro`, `uso_ia`, `estrutura` (e `estrutura_arvore` com "Incluir estrutura", mais `fora_de_escopo` dentro dela com "Incluir Fora de escopo") |
 
 ---
 
@@ -740,26 +876,29 @@ Os dados vivem em dois lugares distintos no navegador:
 
 ### localStorage (`arquivoPoetico_v3`)
 
-| Campo            | Descrição                                                                                                                 |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `livros`         | Livros e Coletâneas (distinguidos por `tipo`). O campo `capa` é um ID de referência ao IndexedDB, não base64.             |
-| `partes`         | Partes de Livros e de Coletâneas (distinguidas por `livroId`).                                                            |
-| `secoes`         | Seções vinculadas a um Livro ou Parte (`paiTipo`/`paiId`).                                                                |
-| `poemas`         | Poemas, com vínculo opcional a Livro/Parte/Seção (`paiTipo`/`paiId`).                                                     |
-| `prosas`         | Prosas, mesma estrutura dos Poemas.                                                                                       |
-| `elementos`      | Elementos Textuais (introdução, multimídia, respiro, posfácio…).                                                          |
-| `itensColetanea` | Itens de Coletânea: referenciam um Poema/Prosa existente (`refId`/`refTipo`) ou trazem texto exclusivo (`textoOverride`). |
-| `coletaneas`     | **Legado** — não é preenchido pela aba atual; mantido só para compatibilidade ao importar backups antigos.                |
+| Campo            | Descrição                                                                                                                                                                   |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `livros`         | Livros e Coletâneas (distinguidos por `tipo`). O campo `capa` é um ID de referência ao IndexedDB, não base64.                                                               |
+| `partes`         | Partes de Livros e de Coletâneas (distinguidas por `livroId`).                                                                                                              |
+| `secoes`         | Seções vinculadas a um Livro ou Parte (`paiTipo`/`paiId`).                                                                                                                  |
+| `poemas`         | Poemas. Onde cada um aparece é a lista `aparicoes` (Livro, Parte ou Seção e posição, uma linha por lugar); `paiTipo`/`paiId`/`sequencia`/`livrosIds` são só o espelho dela. |
+| `prosas`         | Prosas, mesma estrutura dos Poemas (inclusive `aparicoes`).                                                                                                                 |
+| `elementos`      | Elementos Textuais (introdução, multimídia, respiro, posfácio…).                                                                                                            |
+| `itensColetanea` | Itens de Coletânea: referenciam um Poema/Prosa existente (`refId`/`refTipo`) ou trazem texto exclusivo (`textoOverride`).                                                   |
+| `colaboradores`  | Colaboradores (capistas, ilustradores, revisores...): `{ id, nome, papeisHabituais, contato, autorId? }`. O `equipeLivro` do livro aponta para cá.                          |
+| `coletaneas`     | **Legado** — não é preenchido pela aba atual; mantido só para compatibilidade ao importar backups antigos.                                                                  |
 
-O `db` tem hoje 30 chaves de primeiro nível (a lista oficial, com a categoria
+O `db` tem hoje 37 chaves de primeiro nível (a lista oficial, com a categoria
 de cada uma, está em `js/inventario-armazenamento.js`). Além das da tabela
 acima: `pessoas`, `grupos`, `autores`, `epocas` (Períodos Biográficos),
-`opcoesPeriodoBiografico`, `opcoesPeriodoHistorico`, `assuntos`, `temas`,
-`locais`, `personagens`, `ecosIgnorados`, `escansoes`, `estruturasTextuais`,
-`moldes`, `padroesColunas` e os cadastros de fábrica `periodosHistoricos`,
-`movimentosEscolas` (Correntes literárias) e `templatesEstrutura`, cada um com
-seu registro de excluídos (`*Ocultos`), mais `programaDeFabricaAplicado`. Campo
-a campo: `manutencao/schema.md`.
+`opcoesPeriodoBiografico`, `opcoesPeriodoHistorico`, `papeisPessoa` e
+`papeisPersonagem` (registros de papéis), `assuntos`, `temas`, `etiquetas`,
+`tagClusters`, `locais`, `personagens`, `ecosIgnorados`, `escansoes`,
+`estruturasTextuais`, `moldes`, `padroesColunas` e os cadastros de fábrica
+`periodosHistoricos`, `movimentosEscolas` (Correntes literárias) e
+`templatesEstrutura`, cada um com seu registro de excluídos (`*Ocultos`), mais
+as marcas `programaDeFabricaAplicado`, `eventoDeFabricaAplicado` e
+`padroesColunasFabricaVersao`. Campo a campo: `manutencao/schema.md`.
 
 ### IndexedDB (`arquivoPoetico_capas`)
 
@@ -820,7 +959,8 @@ O app usa dois mecanismos diferentes que poderiam ser confundidos:
 
 1. **Backup completo** (`exportarJSON()`, botão "Baixar JSON" no header) —
    `{ livros, partes, secoes, poemas, prosas, ... }`. Os textos vêm com
-   `paiTipo`/`paiId`, e o nome do livro/parte/seção é resolvido consultando
+   `paiTipo`/`paiId` (o espelho da primeira aparição, ver
+   `campos-poema-prosa-for-ai-pt-br.md`), e o nome do livro/parte/seção é resolvido consultando
    `db.livros`/`db.partes`/`db.secoes` dentro do próprio `filtrar.html`.
 2. **Exportação seletiva** (aba Exportação → "Baixar JSON seletivo") —
    `{ export_format: 'exportacao_seletiva', itens: [...], coletaneas: [...] }`.

@@ -53,8 +53,8 @@ The 7 fields:
 
 A "flat" export combines everything into a single string
 (`sinalizacoesCombinadas`) for general search and simple statistics — but
-that combined version **loses each tag's category** (and may still carry the
-mirrors of Tema and Territorialidade, which are not tags; see below).
+that combined version **loses each tag's category** (and may still carry Tema
+and Territorialidade, which are not tags; see below).
 Whenever a task depends on knowing which category a tag belongs to (e.g.,
 "what are the most common tones" vs. "what are the most common style
 devices"), use the 7 separate fields, not the combined string.
@@ -93,11 +93,12 @@ tags, and don't propose tags of those kinds:
   Domínio Imagético, which is vocabulary borrowed from a knowledge domain,
   not a place.
 
-`sinalizacoesTema` and `sinalizacoesTerritorialidade` may still show up in
-exported data, but only as **derived mirrors** of those fields
-(comma-separated names, with no role, type or hierarchy). They are not tags,
-are not edited, and shouldn't be read as tags: use `temas` and
-`territorialidade`. An older export, from before the dedicated fields, may
+`sinalizacoesTerritorialidade` may still show up in exported data, but only
+as a **derived mirror** of that field (comma-separated names, with no type or
+hierarchy). It is not a tag, is not edited, and shouldn't be read as one: use
+`territorialidade`. Theme no longer has a mirror: `sinalizacoesTema` was
+retired and only `temas` counts (an old JSON that still carries it is
+converted on import). An older export, from before the dedicated fields, may
 have only the mirror.
 
 ## How tags appear in exported data

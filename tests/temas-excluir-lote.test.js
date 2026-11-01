@@ -185,7 +185,7 @@ describe('excluirTemasSemTextoComConfirmacao', () => {
     });
 
     it('sem tema sem texto, avisa e não abre confirmação', () => {
-        db.poemas[0].sinalizacoesTema = 'Amor, Fantasma, Silêncio';
+        db.poemas[0].temas = [101, 102, 104].map((temaId) => ({ temaId, papel: '' }));
         sincronizarTemas(db);
         excluirTemasSemTextoComConfirmacao();
         assert.equal(modalAberto(), false);

@@ -56,7 +56,19 @@ const BOTAO =
 // - `controles`: ids dos elementos do filtro; mexer em qualquer um à mão
 //   encerra a faixa (o filtro deixou de ser o do atalho).
 // - `descricao`: texto da faixa ("Filtrando por tema “Amor”").
-export function abrirPorAtalho({ destino, descricao, aplicar, limpar, controles = [] }) {
+// - `semLimpar`: atalho que não põe filtro (só leva a um lugar da aba): sem o
+//   botão "Limpar filtro".
+// - `efemera`: a faixa some sozinha quando a pessoa sai da aba de destino (sem
+//   filtro preso, não há por que ela esperar a volta dias depois).
+export function abrirPorAtalho({
+    destino,
+    descricao,
+    aplicar,
+    limpar,
+    controles = [],
+    semLimpar = false,
+    efemera = false,
+}) {
     const origem = abaAtiva();
     const secao = document.getElementById(destino);
     // Sem a seção no DOM não há onde pôr a faixa; ainda assim o atalho
@@ -76,15 +88,18 @@ export function abrirPorAtalho({ destino, descricao, aplicar, limpar, controles 
         <span class="text-gray-700 dark:text-slate-200">${escapar(descricao)}</span>
         <span class="flex flex-wrap gap-2">
             ${voltarPara ? `<button type="button" data-faixa="voltar" class="${BOTAO}">← Voltar para ${escapar(rotuloDaAba(voltarPara))}</button>` : ''}
-            <button type="button" data-faixa="limpar" class="${BOTAO}">Limpar filtro</button>
+            ${semLimpar ? '' : `<button type="button" data-faixa="limpar" class="${BOTAO}">Limpar filtro</button>`}
         </span>`;
     secao.insertBefore(faixa, secao.firstChild);
 
     const encerrar = () => removerFaixaDeOrigem(destino);
-    faixa.querySelector('[data-faixa="limpar"]').onclick = () => {
-        encerrar();
-        limpar();
-    };
+    const botaoLimpar = faixa.querySelector('[data-faixa="limpar"]');
+    if (botaoLimpar) {
+        botaoLimpar.onclick = () => {
+            encerrar();
+            limpar();
+        };
+    }
     const botaoVoltar = faixa.querySelector('[data-faixa="voltar"]');
     if (botaoVoltar) {
         botaoVoltar.onclick = () => {
@@ -105,8 +120,18 @@ export function abrirPorAtalho({ destino, descricao, aplicar, limpar, controles 
             ouvintes.push([el, tipo]);
         });
     });
+    let observador = null;
+    if (efemera && typeof window.MutationObserver === 'function') {
+        observador = new window.MutationObserver(() => {
+            if (!secao.classList.contains('active')) encerrar();
+        });
+        observador.observe(secao, { attributes: true, attributeFilter: ['class'] });
+    }
     ativas.set(destino, {
         faixa,
-        desligar: () => ouvintes.forEach(([el, tipo]) => el.removeEventListener(tipo, encerrar)),
+        desligar: () => {
+            ouvintes.forEach(([el, tipo]) => el.removeEventListener(tipo, encerrar));
+            observador?.disconnect();
+        },
     });
 }

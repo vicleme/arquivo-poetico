@@ -87,6 +87,38 @@ describe('grupo Personagens nos modais', () => {
         assert.equal(v.centralidade, '');
     });
 
+    it('as caixas de papel vêm do registro, na ordem de presença, com a definição no tooltip', () => {
+        G.carregarPersonagens('poemas', [{ personagemId: 1 }]);
+        const caixas = [...container().querySelectorAll('[data-pers-papel]')];
+        assert.deepEqual(
+            caixas.map((c) => c.getAttribute('data-pers-papel')),
+            ['Voz', 'Interlocutor', 'Aparição', 'Menção', 'Alusão'],
+        );
+        const rotulo = caixas[3].closest('label');
+        assert.match(rotulo.getAttribute('title'), /designado no texto/);
+    });
+
+    it('marcar Alusão com Menção já marcada tira a Menção (não convivem)', () => {
+        G.carregarPersonagens('poemas', [{ personagemId: 1, papeis: ['Aparição', 'Menção'] }]);
+        const alusao = container().querySelector('[data-pers-papel="Alusão"]');
+        alusao.checked = true;
+        alusao.dispatchEvent(new Event('change', { bubbles: true }));
+
+        const [v] = G.obterPersonagens('poemas');
+        assert.deepEqual(v.papeis, ['Aparição', 'Alusão']);
+        assert.equal(container().querySelector('[data-pers-papel="Menção"]').checked, false);
+        assert.equal(container().querySelector('[data-pers-papel="Alusão"]').checked, true);
+    });
+
+    it('Menção e Alusão continuam convivendo com Voz, Interlocutor e Aparição', () => {
+        G.carregarPersonagens('poemas', [{ personagemId: 1, papeis: ['Voz', 'Aparição'] }]);
+        const mencao = container().querySelector('[data-pers-papel="Menção"]');
+        mencao.checked = true;
+        mencao.dispatchEvent(new Event('change', { bubbles: true }));
+        const [v] = G.obterPersonagens('poemas');
+        assert.deepEqual(v.papeis, ['Voz', 'Aparição', 'Menção']);
+    });
+
     it('Enter adiciona a tag; o texto digitado e não confirmado entra ao salvar', () => {
         G.carregarPersonagens('poemas', [{ personagemId: 2 }]);
         const campo = container().querySelector('[data-pers-tag-input="arco"]');
@@ -166,5 +198,47 @@ describe('ligação nos modais e no formulário', () => {
 
     it('window.adicionarPersonagem está registrado em main.js', () => {
         assert.ok(lerArquivo('js/main.js').includes('window.adicionarPersonagem'));
+    });
+});
+
+describe('registro de papéis de Personagem no db', () => {
+    it('nasce com os 5 papéis de fábrica e o getter lê o db a cada chamada', async () => {
+        const { nomesPapeisPersonagem } = await import('../js/papeis-personagem.js');
+        assert.deepEqual(
+            db.papeisPersonagem.map((p) => p.nome),
+            ['Voz', 'Interlocutor', 'Aparição', 'Menção', 'Alusão'],
+        );
+        const guardado = db.papeisPersonagem;
+        db.papeisPersonagem = [
+            ...guardado,
+            { ...guardado[0], nome: 'Confidente', apelido: 'Conf' },
+        ];
+        assert.equal(nomesPapeisPersonagem().at(-1), 'Confidente');
+        db.papeisPersonagem = guardado;
+        assert.equal(nomesPapeisPersonagem().length, 5);
+    });
+
+    // Por último no arquivo: importarDB troca o conteúdo do db inteiro.
+    it('importarDB semeia backup antigo e preserva papel acrescentado e apelido editado', async () => {
+        const { importarDB } = await import('../js/db.js');
+        const { apelidoDoPapelPersonagem, nomesPapeisPersonagem } =
+            await import('../js/papeis-personagem.js');
+
+        await importarDB({ poemas: [], prosas: [] });
+        assert.deepEqual(
+            db.papeisPersonagem.map((p) => p.nome),
+            ['Voz', 'Interlocutor', 'Aparição', 'Menção', 'Alusão'],
+        );
+
+        await importarDB({
+            poemas: [],
+            prosas: [],
+            papeisPersonagem: [
+                { nome: 'Confidente', apelido: 'Conf' },
+                { nome: 'Voz', apelido: 'Falante' },
+            ],
+        });
+        assert.equal(nomesPapeisPersonagem().at(-1), 'Confidente');
+        assert.equal(apelidoDoPapelPersonagem('Voz'), 'Falante');
     });
 });

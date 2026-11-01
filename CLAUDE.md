@@ -7,6 +7,7 @@ Leia este arquivo inteiro antes de qualquer outra coisa. Depois leia **só** a s
 **Testes**
 
 - Não rodar `npm test` (a suíte completa). O Victor roda na máquina dele (cerca de 40 s) e manda o resumo (`# pass` e `# fail`) ou o nome do teste que falhou.
+- Quando o Victor avisar que rodou o `npm test`, atualizar `manutencao/ultima-suite.md` (data, horário, resultado) na mesma entrega, e acrescentar nele toda entrega de código ou testes que venha depois. Não escrever "falta rodar o `npm test`" em outros arquivos: apontar para esse.
 - Rodar só testes direcionados (os arquivos criados ou alterados e os vizinhos óbvios), e só se levarem segundos. Se algum demorar, parar e avisar.
 - eslint e prettier nos arquivos tocados podem rodar.
 - Nunca esperar com `sleep` um processo em segundo plano sem checar se ele existe e se o log avança.
@@ -35,7 +36,7 @@ O limite de uso pode acabar no meio da sessão, e o que não virou zip se perde.
 - **Primeiro, o plano:** antes de escrever código, dizer ao Victor em poucas linhas as entregas e o que cada uma contém. Só depois começar a primeira.
 - **Cada entrega fecha sozinha:** o app continua funcionando sem as próximas, os testes direcionados passam e sai um zip só com o que mudou. Ordem preferida: lógica pura e testes, depois tela e ligação, depois extras (PDF e semelhantes), por último a documentação completa.
 - **Zip cedo:** gerar o zip assim que a entrega passar nos testes e no lint. Não gastar chamadas em verificações a mais antes de entregar. Verificação extra vem na entrega seguinte.
-- **Documentação em duas camadas:** em toda entrega, só reescrever o "Estado atual" do `status.md`, dizendo o que falta. `decisoes.md`, planos e `plano-central.md` ficam para a última entrega da tarefa.
+- **Documentação em duas camadas:** em toda entrega, só reescrever o "Estado atual" do `status.md`, dizendo o que falta. O "Estado atual" guarda no máximo 4 entradas: ao reescrevê-lo, as mais antigas descem, inteiras, para o começo de "Fechado". `decisoes.md`, planos e `plano-central.md` ficam para a última entrega da tarefa.
 - **Sinal de alerta:** se a sessão já fez muitas chamadas sem entregar nada, ou se o Victor avisar que o limite está perto, parar o que estiver fazendo, zipar o que já funciona e listar o que falta.
 - **Retomada:** a entrega seguinte começa lendo o "Estado atual" e conferindo o código do zip contra ele, sem refazer o que já foi entregue.
 
@@ -46,9 +47,11 @@ Cada fato mora em um lugar só. Ao fechar uma etapa, o detalhe vai para um deste
 - `manutencao/status.md`: o que foi feito, o que falta conferir no navegador e o próximo passo. O topo é o "Estado atual".
 - `manutencao/decisoes.md`: porquês das decisões e escolhas do Claude a confirmar.
 - `manutencao/schema.md`: forma atual dos dados.
+- `manutencao/ultima-suite.md`: data e horário da última rodada do `npm test` e as entregas feitas depois dela. É a única fonte para saber se a suíte está em dia.
 - `manutencao/licoes-de-sessao.md`: erros de coordenação entre sessões. Ler antes de mexer em schema, migração ou na cadeia de um campo.
 - `manutencao/criacao-molde.md` e `manutencao/progressao-morfofuncional.md`: desenho dessas duas funções. Ler só ao mexer nelas.
 - `planejamento/plano-central.md`: o índice, com uma linha por fase ainda por fazer, a sequência recomendada, os pontos que cruzam fases, o "Do lado do Victor" e o Registro. Sem limite de fases. Resumo, etapas e decisões em aberto de cada fase moram no arquivo dela em `planejamento/` (por exemplo `fase-19-livros.md`); fase ainda sem detalhe fica só com a linha na tabela.
+- `planejamento/tarefas-fora-de-fase.md`: as tarefas combinadas que não são fase (T1, T2...), com ordem, decisões do Victor e o que falta. A ordem geral está na seção "Fila de trabalho" do `plano-central.md`. Ler no começo da sessão quando o Victor falar em continuar.
 - `planejamento/plano-concluido.md`: uma linha por fase concluída, com o detalhe antigo preservado. Ao terminar uma fase, na última entrega dela, a fase sai do painel e vira linha aqui (o passo a passo está no próprio arquivo). Não ler no começo da sessão.
 - `docs/`: guias para IAs externas (do uso do app, não do desenvolvimento).
 

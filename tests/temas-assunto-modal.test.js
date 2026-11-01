@@ -17,6 +17,7 @@ import {
     obterAssuntosPendentesTexto,
 } from '../js/editor.js';
 import { temasParaSalvar } from '../js/forms.js';
+import { nomesDosTemas } from './helpers/temas-do-texto.js';
 
 // "+ Assunto" no grupo Temas e Assuntos do modal: liga o Tema a um Assunto do
 // cadastro (existente ou novo), só gravando ao salvar o texto.
@@ -51,7 +52,7 @@ describe('"+ Assunto" no modal (editor.js, DOM real)', () => {
     });
 
     it('mostra os assuntos do tema e avisa quando não há nenhum', () => {
-        adicionarTemaTexto('poemas', 'Amor, Machismo');
+        adicionarTemaTexto('poemas', 'Amor; Machismo');
         assert.match(blocoTemas(), /Sem assunto ainda/);
         assert.match(blocoTemas(), /Assuntos: Sociedade/);
         assert.equal(
@@ -61,7 +62,7 @@ describe('"+ Assunto" no modal (editor.js, DOM real)', () => {
     });
 
     it('abre um mini-formulário só para o tema escolhido, com o aviso de efeito geral', () => {
-        adicionarTemaTexto('poemas', 'Amor, Machismo');
+        adicionarTemaTexto('poemas', 'Amor; Machismo');
         abrirAssuntoTemaTexto('poemas', 0);
         assert.ok($('p-assunto-input'));
         assert.equal(document.querySelectorAll('#p-temas-container input').length, 1);
@@ -179,7 +180,7 @@ describe('salvar o texto grava as ligações no cadastro (forms.js)', () => {
     });
 
     it('liga ao existente, cria o novo e cria o tema que ainda não existia', () => {
-        adicionarTemaTexto('poemas', 'Amor, Exílio');
+        adicionarTemaTexto('poemas', 'Amor; Exílio');
         abrirAssuntoTemaTexto('poemas', 0);
         digitarAssunto('Afetos');
         adicionarAssuntoTemaTexto('poemas', 0);
@@ -197,7 +198,9 @@ describe('salvar o texto grava as ligações no cadastro (forms.js)', () => {
         assert.deepEqual(corpo.temaIds, [1, exilio.id]);
         assert.equal(db.assuntos.filter((a) => a.nome === 'Corpo').length, 1);
         assert.equal(dados.temas.length, 2);
-        assert.equal(dados.sinalizacoesTema, 'Amor, Exílio');
+        // O campo antigo não existe mais: os nomes saem dos `temas` devolvidos.
+        assert.equal('sinalizacoesTema' in dados, false);
+        assert.equal(nomesDosTemas(dados, db), 'Amor, Exílio');
     });
 
     it('sem salvar (modal cancelado) o cadastro fica como estava', () => {

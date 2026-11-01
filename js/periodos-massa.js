@@ -32,7 +32,7 @@
 //                      períodos do texto são preservados.
 //
 // Cadastro citado por nome que ainda não existe é criado ao APLICAR
-// (mesmo caminho de aplicarPessoaEmMassa); ao REMOVER nunca cria.
+// (mesmo caminho de aplicarPessoasPapeisEmMassa); ao REMOVER nunca cria.
 // Ids órfãos (cadastro excluído) contam como campo vazio.
 // ============================================================
 

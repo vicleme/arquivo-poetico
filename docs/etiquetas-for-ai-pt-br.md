@@ -54,8 +54,8 @@ Os 7 campos:
 
 Uma exportação "flat" combina tudo numa string única (`sinalizacoesCombinadas`)
 para busca geral e estatísticas simples — mas essa versão combinada **perde
-a categoria** de cada tag (e ainda pode arrastar os espelhos de Tema e
-Territorialidade, que não são etiquetas; ver abaixo). Sempre que a tarefa
+a categoria** de cada tag (e ainda pode arrastar Tema e Territorialidade,
+que não são etiquetas; ver abaixo). Sempre que a tarefa
 depender de saber a que categoria uma etiqueta pertence (ex.: "quais são os
 tons mais comuns" vs. "quais são os recursos de estilo mais comuns"), use os
 7 campos separados, não a string combinada.
@@ -89,11 +89,12 @@ Não os procure entre as etiquetas e não proponha etiquetas desse tipo:
   específico). Também não é Domínio Imagético, que é vocabulário tomado de um
   campo de conhecimento, não um lugar.
 
-`sinalizacoesTema` e `sinalizacoesTerritorialidade` ainda podem aparecer nos
-dados exportados, mas só como **espelhos derivados** desses campos (nomes
-separados por vírgula, sem papel, sem tipo e sem hierarquia). Não são
-etiquetas, não se editam e não devem ser lidos como tal: use `temas` e
-`territorialidade`. Uma exportação antiga, anterior aos campos próprios, pode
+`sinalizacoesTerritorialidade` ainda pode aparecer nos dados exportados, mas
+só como **espelho derivado** desse campo (nomes separados por vírgula, sem
+tipo e sem hierarquia). Não é etiqueta, não se edita e não deve ser lido como
+tal: use `territorialidade`. O Tema não tem mais espelho: `sinalizacoesTema`
+foi aposentado, e só `temas` vale (um JSON antigo que ainda o traga é
+convertido na importação). Uma exportação antiga, anterior aos campos próprios, pode
 ter só o espelho.
 
 ## Como as etiquetas aparecem nos dados exportados

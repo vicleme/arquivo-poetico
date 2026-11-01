@@ -48,6 +48,26 @@ export const CHAVES_LOCALSTORAGE = Object.freeze([
         nota: 'Data do último backup baixado (ver F13-D5)',
     },
     {
+        chave: 'arquivoPoetico_sorteioRecentes',
+        categoria: 'estado',
+        nota: 'Chaves dos últimos textos sorteados em sortear.html (ex.: "poema:12"), para o sorteio evitar repetição entre aberturas da página',
+    },
+    {
+        chave: 'arquivoPoetico_sorteioFicha',
+        categoria: 'preferencia',
+        nota: 'Onde a ficha do texto aparece em sortear.html: "depois" do texto (padrão) ou "antes"',
+    },
+    {
+        chave: 'arquivoPoetico_sorteioSensiveis',
+        categoria: 'preferencia',
+        nota: 'Se sortear.html inclui textos com conteúdo sensível: incluir (padrão) ou excluir',
+    },
+    {
+        chave: 'arquivoPoetico_sorteioIdioma',
+        categoria: 'preferencia',
+        nota: 'Idioma de preferência em sortear.html, para escolher a versão de uma obra com Elo de tradução (vazio = sem preferência)',
+    },
+    {
         chave: 'arquivoPoetico_tema',
         categoria: 'preferencia',
         nota: 'Modo claro, escuro ou automático',
@@ -88,14 +108,49 @@ export const CHAVES_LOCALSTORAGE = Object.freeze([
         nota: 'Agrupar no topo o que for igual em todos os textos exportados, ligado ou desligado',
     },
     {
+        chave: 'arquivoPoetico_infosPapel',
+        categoria: 'preferencia',
+        nota: 'Levar a legenda dos papéis de Pessoa ao baixar vários textos (.json e .md), ligado ou desligado',
+    },
+    {
+        chave: 'arquivoPoetico_infosPapelIndividual',
+        categoria: 'preferencia',
+        nota: 'Levar a legenda dos papéis de Pessoa no Baixar de um texto só (.json e .md), ligado ou desligado',
+    },
+    {
         chave: 'arquivoPoetico_previasImagem',
         categoria: 'preferencia',
         nota: 'Exibir prévias de imagem nos cards de Livros, Partes, Seções, Elementos e Autores, por aba',
     },
     {
+        chave: 'arquivoPoetico_gruposVerAbertos',
+        categoria: 'preferencia',
+        nota: 'Quais grupos recolhíveis do modal Ver (Poema e Prosa) ficam abertos, lembrado entre textos',
+    },
+    {
+        chave: 'arquivoPoetico_blocosConexoesFechados',
+        categoria: 'preferencia',
+        nota: 'Quais blocos da seção Fora do acervo (aba Conexões) ficam fechados, lembrado entre sessões',
+    },
+    {
         chave: 'arquivoPoetico_downloadAbrangente',
         categoria: 'preferencia',
-        nota: 'Download abrangente ligado ou desligado',
+        nota: 'Antigo "Download abrangente" (hoje vale só como ponto de partida das duas caixas abaixo)',
+    },
+    {
+        chave: 'arquivoPoetico_downloadSonoridade',
+        categoria: 'preferencia',
+        nota: 'Download de Poemas com a Sonoridade, ligado ou desligado',
+    },
+    {
+        chave: 'arquivoPoetico_downloadMetadados',
+        categoria: 'preferencia',
+        nota: 'Download de Poemas e Prosas com Metadados (desligado leva só título e texto)',
+    },
+    {
+        chave: 'arquivoPoetico_downloadProgressao',
+        categoria: 'preferencia',
+        nota: 'Download de Poemas com a Progressão Morfofuncional, ligado ou desligado',
     },
     {
         chave: 'arquivoPoetico_nomesFrequentes_v1',
@@ -134,7 +189,17 @@ export const PREFIXOS_LOCALSTORAGE = Object.freeze([
     {
         prefixo: 'arquivoPoetico_formatoSelecao_',
         categoria: 'preferencia',
-        nota: 'Formato do download da seleção (barra de edição em massa), por tabela',
+        nota: 'Formato do download da seleção (barra de edição em massa), por tabela; em Livros vale também para o Baixar do Ver',
+    },
+    {
+        prefixo: 'arquivoPoetico_incluirEstrutura_',
+        categoria: 'preferencia',
+        nota: 'Caixa "Incluir estrutura" do Baixar de Livros (Ver, card, aba Livros e aba Coletâneas)',
+    },
+    {
+        prefixo: 'arquivoPoetico_incluirForaDeEscopo_',
+        categoria: 'preferencia',
+        nota: 'Caixa "Incluir Fora de escopo" do Baixar de Livros (Ver, card e aba Livros; só vale com a estrutura)',
     },
     {
         prefixo: 'arquivoPoetico_est_',
@@ -173,11 +238,15 @@ export const CHAVES_DB = Object.freeze([
         'pessoas',
         'grupos',
         'autores',
+        'colaboradores',
         'epocas',
         'opcoesPeriodoBiografico',
         'opcoesPeriodoHistorico',
+        'papeisPessoa',
+        'papeisPersonagem',
         'assuntos',
         'temas',
+        'temasUniversais',
         'etiquetas',
         'tagClusters',
         'locais',

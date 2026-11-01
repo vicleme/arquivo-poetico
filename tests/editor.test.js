@@ -21,15 +21,41 @@ document.body.innerHTML = `
     <input id="pr-grupo-direto-input" />
     <div id="pr-grupos-diretos-container"></div>
     <input id="p-intertexto-tipo" />
-    <input id="p-intertexto-texto" />
+    <input id="p-intertexto-obra" />
+    <input id="p-intertexto-relacao" />
+    <input id="p-intertexto-autor" />
+    <input id="p-intertexto-personagem" />
+    <div id="p-intertexto-personagem-chips"></div>
+    <input id="p-intertexto-descricao" />
+    <textarea id="p-intertexto-trecho"></textarea>
+    <input type="checkbox" id="p-intertexto-traduzido" />
     <input id="p-intertexto-link" />
     <input id="p-intertexto-link-texto" />
     <input id="p-intertexto-nota" />
     <button id="p-intertexto-btn-add"></button>
     <button id="p-intertexto-btn-cancelar" class="hidden"></button>
     <div id="p-intertexto-lista"></div>
+    <input id="p-hipertexto-relacao" />
+    <input id="p-hipertexto-tipo" />
+    <input id="p-hipertexto-hipotexto" />
+    <input id="p-hipertexto-autor" />
+    <input id="p-hipertexto-descricao" />
+    <input id="p-hipertexto-link" />
+    <input id="p-hipertexto-link-texto" />
+    <input id="p-hipertexto-data-acesso" />
+    <textarea id="p-hipertexto-nota"></textarea>
+    <button id="p-hipertexto-btn-add"></button>
+    <button id="p-hipertexto-btn-cancelar" class="hidden"></button>
+    <div id="p-hipertexto-lista"></div>
     <input id="pr-intertexto-tipo" />
-    <input id="pr-intertexto-texto" />
+    <input id="pr-intertexto-obra" />
+    <input id="pr-intertexto-relacao" />
+    <input id="pr-intertexto-autor" />
+    <input id="pr-intertexto-personagem" />
+    <div id="pr-intertexto-personagem-chips"></div>
+    <input id="pr-intertexto-descricao" />
+    <textarea id="pr-intertexto-trecho"></textarea>
+    <input type="checkbox" id="pr-intertexto-traduzido" />
     <input id="pr-intertexto-link" />
     <input id="pr-intertexto-link-texto" />
     <input id="pr-intertexto-nota" />
@@ -70,11 +96,21 @@ const {
     editarIntertexto,
     cancelarEdicaoIntertexto,
     obterIntertextualidade,
+    carregarIntertextualidade,
     resetIntertextualidade,
 } = await import('../js/editor.js');
 const { renderSinalizacoesProsa, initEditorProsa, editarSinalRelacao } =
     await import('../js/editor.js');
 const { adicionarAutoria, resetAutoria } = await import('../js/editor.js');
+const {
+    adicionarHipertextualidade,
+    editarHipertextualidade,
+    cancelarEdicaoHipertextualidade,
+    obterHipertextualidade,
+    carregarHipertextualidade,
+    resetHipertextualidade,
+    autoresDoFormulario: campoAutores,
+} = await import('../js/editor.js');
 
 function limparDb() {
     db.pessoas.length = 0;
@@ -346,10 +382,11 @@ describe('Grupos referenciados diretamente via chip (editor.js, DOM real)', () =
 
 function limparIntertextoPoema() {
     document.getElementById('p-intertexto-tipo').value = '';
-    document.getElementById('p-intertexto-texto').value = '';
+    document.getElementById('p-intertexto-obra').value = '';
     document.getElementById('p-intertexto-link').value = '';
     document.getElementById('p-intertexto-link-texto').value = '';
     document.getElementById('p-intertexto-nota').value = '';
+    document.getElementById('p-intertexto-traduzido').checked = false;
     resetIntertextualidade('poemas');
 }
 
@@ -358,7 +395,7 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
 
     it('adicionarIntertexto salva tipo, texto, link, linkTexto e nota juntos', () => {
         document.getElementById('p-intertexto-tipo').value = 'Citação';
-        document.getElementById('p-intertexto-texto').value = 'Trecho citado';
+        document.getElementById('p-intertexto-obra').value = 'Trecho citado';
         document.getElementById('p-intertexto-link').value = 'https://exemplo.com/obra';
         document.getElementById('p-intertexto-link-texto').value = 'Site da obra';
         document.getElementById('p-intertexto-nota').value = 'Nota livre sobre a referência';
@@ -367,8 +404,14 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
 
         assert.deepEqual(obterIntertextualidade('poemas'), [
             {
-                tipo: 'Citação',
-                texto: 'Trecho citado',
+                relacao: '',
+                tipoObra: 'Citação',
+                obra: 'Trecho citado',
+                autores: [],
+                personagens: [],
+                descricao: '',
+                trecho: '',
+                traduzido: false,
                 link: 'https://exemplo.com/obra',
                 linkTexto: 'Site da obra',
                 nota: 'Nota livre sobre a referência',
@@ -377,7 +420,7 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
     });
 
     it('limpa os 5 campos depois de adicionar', () => {
-        document.getElementById('p-intertexto-texto').value = 'Algo';
+        document.getElementById('p-intertexto-obra').value = 'Algo';
         document.getElementById('p-intertexto-link').value = 'https://exemplo.com';
         document.getElementById('p-intertexto-link-texto').value = 'Rótulo';
         document.getElementById('p-intertexto-nota').value = 'Nota';
@@ -385,7 +428,7 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
         adicionarIntertexto('poemas');
 
         assert.equal(document.getElementById('p-intertexto-tipo').value, '');
-        assert.equal(document.getElementById('p-intertexto-texto').value, '');
+        assert.equal(document.getElementById('p-intertexto-obra').value, '');
         assert.equal(document.getElementById('p-intertexto-link').value, '');
         assert.equal(document.getElementById('p-intertexto-link-texto').value, '');
         assert.equal(document.getElementById('p-intertexto-nota').value, '');
@@ -405,7 +448,7 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
     });
 
     it('editarIntertexto repopula tipo, texto, link, linkTexto e nota do item selecionado', () => {
-        document.getElementById('p-intertexto-texto').value = 'Original';
+        document.getElementById('p-intertexto-obra').value = 'Original';
         document.getElementById('p-intertexto-link').value = 'https://original.com';
         document.getElementById('p-intertexto-link-texto').value = 'Rótulo original';
         document.getElementById('p-intertexto-nota').value = 'Nota original';
@@ -413,14 +456,14 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
 
         editarIntertexto('poemas', 0);
 
-        assert.equal(document.getElementById('p-intertexto-texto').value, 'Original');
+        assert.equal(document.getElementById('p-intertexto-obra').value, 'Original');
         assert.equal(document.getElementById('p-intertexto-link').value, 'https://original.com');
         assert.equal(document.getElementById('p-intertexto-link-texto').value, 'Rótulo original');
         assert.equal(document.getElementById('p-intertexto-nota').value, 'Nota original');
     });
 
     it('cancelarEdicaoIntertexto limpa os 5 campos sem alterar a lista', () => {
-        document.getElementById('p-intertexto-texto').value = 'Original';
+        document.getElementById('p-intertexto-obra').value = 'Original';
         adicionarIntertexto('poemas');
         editarIntertexto('poemas', 0);
 
@@ -429,11 +472,11 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
 
         assert.equal(document.getElementById('p-intertexto-nota').value, '');
         assert.equal(obterIntertextualidade('poemas').length, 1);
-        assert.equal(obterIntertextualidade('poemas')[0].texto, 'Original');
+        assert.equal(obterIntertextualidade('poemas')[0].obra, 'Original');
     });
 
     it('sem linkTexto, a lista renderizada mostra a URL crua como texto do <a>', () => {
-        document.getElementById('p-intertexto-texto').value = 'Trecho';
+        document.getElementById('p-intertexto-obra').value = 'Trecho';
         document.getElementById('p-intertexto-link').value = 'https://exemplo.com/pagina';
         document.getElementById('p-intertexto-nota').value = 'Comentário à parte';
 
@@ -479,7 +522,7 @@ describe('Intertextualidade — link, linkTexto e nota (Poema, editor.js, DOM re
 
 function limparIntertextoProsa() {
     document.getElementById('pr-intertexto-tipo').value = '';
-    document.getElementById('pr-intertexto-texto').value = '';
+    document.getElementById('pr-intertexto-obra').value = '';
     document.getElementById('pr-intertexto-link').value = '';
     document.getElementById('pr-intertexto-link-texto').value = '';
     document.getElementById('pr-intertexto-nota').value = '';
@@ -491,7 +534,7 @@ describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM re
 
     it('adicionarIntertexto(prosas) salva tipo, texto, link, linkTexto e nota juntos', () => {
         document.getElementById('pr-intertexto-tipo').value = 'Alusão';
-        document.getElementById('pr-intertexto-texto').value = 'Trecho aludido';
+        document.getElementById('pr-intertexto-obra').value = 'Trecho aludido';
         document.getElementById('pr-intertexto-link').value = 'https://exemplo.com/prosa';
         document.getElementById('pr-intertexto-link-texto').value = 'Rótulo prosa';
         document.getElementById('pr-intertexto-nota').value = 'Nota sobre a prosa';
@@ -500,8 +543,14 @@ describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM re
 
         assert.deepEqual(obterIntertextualidade('prosas'), [
             {
-                tipo: 'Alusão',
-                texto: 'Trecho aludido',
+                relacao: '',
+                tipoObra: 'Alusão',
+                obra: 'Trecho aludido',
+                autores: [],
+                personagens: [],
+                descricao: '',
+                trecho: '',
+                traduzido: false,
                 link: 'https://exemplo.com/prosa',
                 linkTexto: 'Rótulo prosa',
                 nota: 'Nota sobre a prosa',
@@ -510,7 +559,7 @@ describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM re
     });
 
     it('editarIntertexto(prosas) repopula tipo, texto, link, linkTexto e nota do item selecionado', () => {
-        document.getElementById('pr-intertexto-texto').value = 'Original';
+        document.getElementById('pr-intertexto-obra').value = 'Original';
         document.getElementById('pr-intertexto-link').value = 'https://original.com';
         document.getElementById('pr-intertexto-link-texto').value = 'Rótulo original';
         document.getElementById('pr-intertexto-nota').value = 'Nota original';
@@ -518,14 +567,14 @@ describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM re
 
         editarIntertexto('prosas', 0);
 
-        assert.equal(document.getElementById('pr-intertexto-texto').value, 'Original');
+        assert.equal(document.getElementById('pr-intertexto-obra').value, 'Original');
         assert.equal(document.getElementById('pr-intertexto-link').value, 'https://original.com');
         assert.equal(document.getElementById('pr-intertexto-link-texto').value, 'Rótulo original');
         assert.equal(document.getElementById('pr-intertexto-nota').value, 'Nota original');
     });
 
     it('cancelarEdicaoIntertexto(prosas) limpa os 5 campos sem alterar a lista', () => {
-        document.getElementById('pr-intertexto-texto').value = 'Original';
+        document.getElementById('pr-intertexto-obra').value = 'Original';
         adicionarIntertexto('prosas');
         editarIntertexto('prosas', 0);
 
@@ -537,7 +586,7 @@ describe('Intertextualidade — link, linkTexto e nota (Prosa, editor.js, DOM re
     });
 
     it('sem linkTexto, a lista renderizada mostra a URL crua como texto do <a>', () => {
-        document.getElementById('pr-intertexto-texto').value = 'Trecho';
+        document.getElementById('pr-intertexto-obra').value = 'Trecho';
         document.getElementById('pr-intertexto-link').value = 'https://exemplo.com/pagina-prosa';
         document.getElementById('pr-intertexto-nota').value = 'Comentário de prosa';
 
@@ -656,5 +705,210 @@ describe('editar etiqueta de Sinalizações (editor.js, DOM real)', () => {
             />\s*Sonto\s*</,
         );
         assert.equal(input.value, '', 'input deveria limpar após salvar a correção');
+    });
+});
+
+describe('Intertextualidade: campos novos (relação, autor, personagem, descrição, trecho, traduzido)', () => {
+    beforeEach(limparIntertextoPoema);
+
+    it('adicionarIntertexto salva os campos novos e limpa o formulário', () => {
+        const v = (id, valor) => {
+            document.getElementById(id).value = valor;
+        };
+        v('p-intertexto-relacao', 'Citação');
+        v('p-intertexto-tipo', 'Livro');
+        v('p-intertexto-obra', 'Dom Casmurro');
+        v('p-intertexto-autor', 'Machado de Assis');
+        v('p-intertexto-personagem', 'Capitu');
+        v('p-intertexto-descricao', 'romance de 1899');
+        v('p-intertexto-trecho', 'Capitu era Capitu');
+        document.getElementById('p-intertexto-traduzido').checked = true;
+
+        adicionarIntertexto('poemas');
+
+        const [e] = obterIntertextualidade('poemas');
+        assert.equal(e.relacao, 'Citação');
+        assert.equal(e.tipoObra, 'Livro');
+        assert.equal(e.obra, 'Dom Casmurro');
+        assert.deepEqual(e.autores, ['Machado de Assis']);
+        assert.ok(!('autor' in e));
+        assert.deepEqual(e.personagens, ['Capitu']);
+        assert.ok(!('personagem' in e));
+        assert.equal(e.descricao, 'romance de 1899');
+        assert.equal(e.trecho, 'Capitu era Capitu');
+        assert.equal(e.traduzido, true);
+        assert.equal(document.getElementById('p-intertexto-autor').value, '');
+        assert.equal(document.getElementById('p-intertexto-traduzido').checked, false);
+        assert.ok(!('tipo' in e) && !('texto' in e));
+    });
+
+    it('só marcar Traduzido não basta para adicionar uma entrada', () => {
+        document.getElementById('p-intertexto-traduzido').checked = true;
+        adicionarIntertexto('poemas');
+        assert.deepEqual(obterIntertextualidade('poemas'), []);
+    });
+
+    it('editarIntertexto repopula os campos novos', () => {
+        document.getElementById('p-intertexto-obra').value = 'Medusa';
+        document.getElementById('p-intertexto-relacao').value = 'Alusão';
+        document.getElementById('p-intertexto-personagem').value = 'Medusa';
+        document.getElementById('p-intertexto-traduzido').checked = true;
+        adicionarIntertexto('poemas');
+
+        editarIntertexto('poemas', 0);
+
+        assert.equal(document.getElementById('p-intertexto-relacao').value, 'Alusão');
+        assert.equal(document.getElementById('p-intertexto-personagem').value, '');
+        assert.match(
+            document.getElementById('p-intertexto-personagem-chips').textContent,
+            /Medusa/,
+        );
+        assert.equal(document.getElementById('p-intertexto-traduzido').checked, true);
+    });
+
+    it('entrada no formato antigo (tipo e texto) abre no formato novo ao ser carregada', () => {
+        carregarIntertextualidade('poemas', [{ tipo: 'Música', texto: 'Construção' }]);
+        const [e] = obterIntertextualidade('poemas');
+        assert.equal(e.tipoObra, 'Música');
+        assert.equal(e.obra, 'Construção');
+        assert.equal(e.relacao, '');
+        assert.match(document.getElementById('p-intertexto-lista').innerHTML, /Construção/);
+    });
+});
+
+describe('Hipertextualidade: tipo de obra, autor e descrição (Poema, editor.js, DOM real)', () => {
+    const v = (id, valor) => {
+        document.getElementById(`p-hipertexto-${id}`).value = valor;
+    };
+    beforeEach(() => {
+        [
+            'relacao',
+            'tipo',
+            'hipotexto',
+            'autor',
+            'descricao',
+            'link',
+            'link-texto',
+            'nota',
+        ].forEach((id) => v(id, ''));
+        resetHipertextualidade('poemas');
+    });
+
+    it('adicionarHipertextualidade salva no formato novo e limpa o formulário', () => {
+        v('relacao', 'Paródia');
+        v('tipo', 'Poema');
+        v('hipotexto', 'Canção do Exílio');
+        v('autor', 'Gonçalves Dias');
+        v('descricao', 'poema de 1843');
+        v('nota', 'inverte o tom');
+
+        adicionarHipertextualidade('poemas');
+
+        assert.deepEqual(obterHipertextualidade('poemas'), [
+            {
+                relacao: 'Paródia',
+                hipotexto: 'Canção do Exílio',
+                tipoObra: 'Poema',
+                autores: ['Gonçalves Dias'],
+                descricao: 'poema de 1843',
+                link: '',
+                linkTexto: '',
+                nota: 'inverte o tom',
+            },
+        ]);
+        assert.equal(document.getElementById('p-hipertexto-autor').value, '');
+        assert.equal(document.getElementById('p-hipertexto-tipo').value, '');
+    });
+
+    it('não adiciona nada com o formulário vazio', () => {
+        adicionarHipertextualidade('poemas');
+        assert.deepEqual(obterHipertextualidade('poemas'), []);
+    });
+
+    it('editarHipertextualidade repopula autor, descrição e tipo de obra; cancelar limpa', () => {
+        v('hipotexto', 'X');
+        v('autor', 'Fulano');
+        v('descricao', 'desc');
+        v('tipo', 'Livro');
+        adicionarHipertextualidade('poemas');
+
+        editarHipertextualidade('poemas', 0);
+        assert.deepEqual(campoAutores('poemas', 'hipertexto'), ['Fulano']);
+        assert.equal(document.getElementById('p-hipertexto-descricao').value, 'desc');
+        assert.equal(document.getElementById('p-hipertexto-tipo').value, 'Livro');
+
+        cancelarEdicaoHipertextualidade('poemas');
+        assert.equal(document.getElementById('p-hipertexto-autor').value, '');
+        assert.equal(obterHipertextualidade('poemas').length, 1);
+    });
+
+    it('entrada antiga (tipo) abre no formato novo ao ser carregada', () => {
+        carregarHipertextualidade('poemas', [
+            { tipo: 'Filme', relacao: 'Homenagem', hipotexto: 'Y' },
+        ]);
+        const [e] = obterHipertextualidade('poemas');
+        assert.equal(e.tipoObra, 'Filme');
+        assert.deepEqual(e.autores, []);
+        assert.ok(!('autor' in e) && !('tipo' in e));
+        assert.match(document.getElementById('p-hipertexto-lista').innerHTML, /Filme/);
+    });
+});
+
+describe('Descrição repetida para a mesma obra (Intertextualidade, Prosa, editor.js, DOM real)', () => {
+    initEditorProsa();
+    const v = (id, valor) => {
+        document.getElementById(`pr-intertexto-${id}`).value = valor;
+    };
+    const mudou = (id) =>
+        document
+            .getElementById(`pr-intertexto-${id}`)
+            .dispatchEvent(new window.Event('change', { bubbles: true }));
+    beforeEach(() => {
+        limparIntertextoProsa();
+        v('descricao', '');
+        db.prosas.length = 0;
+    });
+
+    it('preenche a descrição vazia quando a obra e o autor já têm uma só', () => {
+        db.prosas.push({
+            id: 1,
+            intertextualidade: [
+                {
+                    tipoObra: 'Livro',
+                    obra: 'Dom Casmurro',
+                    autor: 'Machado',
+                    descricao: 'romance de 1899',
+                },
+            ],
+        });
+        v('tipo', 'Livro');
+        v('obra', 'Dom Casmurro');
+        v('autor', 'Machado');
+        mudou('autor');
+        assert.equal(document.getElementById('pr-intertexto-descricao').value, 'romance de 1899');
+    });
+
+    it('não sobrescreve uma descrição já digitada', () => {
+        db.prosas.push({
+            id: 1,
+            intertextualidade: [{ tipoObra: 'Livro', obra: 'Dom Casmurro', descricao: 'romance' }],
+        });
+        v('obra', 'Dom Casmurro');
+        v('descricao', 'minha versão');
+        mudou('obra');
+        assert.equal(document.getElementById('pr-intertexto-descricao').value, 'minha versão');
+    });
+
+    it('com duas descrições diferentes, não preenche sozinho', () => {
+        db.prosas.push({
+            id: 1,
+            intertextualidade: [
+                { tipoObra: 'Livro', obra: 'X', descricao: 'a' },
+                { tipoObra: 'Livro', obra: 'X', descricao: 'b' },
+            ],
+        });
+        v('obra', 'X');
+        mudou('obra');
+        assert.equal(document.getElementById('pr-intertexto-descricao').value, '');
     });
 });

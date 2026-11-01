@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TAREFAS_COMO_FACO, tarefaComoFaco } from '../js/como-faco-passos.js';
+import {
+    GRUPOS_COMO_FACO,
+    TAREFAS_COMO_FACO,
+    tarefaComoFaco,
+    tarefasPorGrupo,
+} from '../js/como-faco-passos.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RAIZ = path.resolve(__dirname, '..');
@@ -20,6 +25,37 @@ describe('Como eu faço para...: tarefas', () => {
     it('ids de tarefa são únicos', () => {
         const ids = TAREFAS_COMO_FACO.map((t) => t.id);
         assert.equal(new Set(ids).size, ids.length);
+    });
+
+    it('toda tarefa aponta para um grupo que existe', () => {
+        const grupos = new Set(GRUPOS_COMO_FACO.map((g) => g.id));
+        for (const t of TAREFAS_COMO_FACO) {
+            assert.ok(grupos.has(t.grupo), `tarefa sem grupo válido: ${t.id}`);
+        }
+    });
+
+    it('ids de grupo são únicos, com rótulo, e nenhum fica vazio', () => {
+        const ids = GRUPOS_COMO_FACO.map((g) => g.id);
+        assert.equal(new Set(ids).size, ids.length);
+        for (const g of GRUPOS_COMO_FACO) {
+            assert.ok(g.rotulo && g.rotulo.trim(), `grupo sem rótulo: ${g.id}`);
+            assert.ok(!/[—–]/.test(g.rotulo), `travessão no grupo ${g.id}`);
+            assert.ok(
+                TAREFAS_COMO_FACO.some((t) => t.grupo === g.id),
+                `grupo sem tarefa: ${g.id}`,
+            );
+        }
+    });
+
+    it('tarefasPorGrupo segue a ordem dos grupos e não perde nenhuma tarefa', () => {
+        const porGrupo = tarefasPorGrupo();
+        assert.deepEqual(
+            porGrupo.map((g) => g.id),
+            GRUPOS_COMO_FACO.map((g) => g.id),
+        );
+        const ids = porGrupo.flatMap((g) => g.tarefas.map((t) => t.id));
+        assert.equal(ids.length, TAREFAS_COMO_FACO.length);
+        assert.deepEqual([...ids].sort(), TAREFAS_COMO_FACO.map((t) => t.id).sort());
     });
 
     it('toda tarefa tem descrição (frase mostrada acima do botão)', () => {

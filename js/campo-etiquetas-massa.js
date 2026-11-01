@@ -4,6 +4,10 @@
 // vira uma etiqueta; sair do campo com texto também; o × tira. Texto colado
 // com vírgulas ou ponto e vírgula vira várias etiquetas.
 //
+// Exceção: com `soPontoEVirgula` (campo de Tema) a vírgula faz parte do nome;
+// só Enter, `;` e a quebra de linha confirmam, e o texto colado se divide só
+// por `;` e quebra de linha.
+//
 // O estado fica em memória, por campo de texto, e a barra o lê ao aplicar.
 // Só lógica de tela: o que fazer com os valores mora em massa-valores.js.
 // ============================================================
@@ -47,7 +51,7 @@ function confirmar(inputId) {
     const input = document.getElementById(inputId);
     const estado = estados.get(inputId);
     if (!input || !estado) return;
-    const novas = etiquetasDoTexto(input.value);
+    const novas = etiquetasDoTexto(input.value, estado.soPontoEVirgula);
     input.value = '';
     if (novas.length === 0) return;
     estado.lista = valoresDaOperacao({ valores: [...estado.lista, ...novas] });
@@ -56,15 +60,22 @@ function confirmar(inputId) {
 
 // Liga o campo (uma vez só) e, se `chave` mudou desde a última chamada,
 // esvazia as etiquetas: o que valia para Esfera não vale para Categoria.
-export function prepararEtiquetasMassa({ inputId, chipsId, chave, placeholder }) {
+export function prepararEtiquetasMassa({
+    inputId,
+    chipsId,
+    chave,
+    placeholder,
+    soPontoEVirgula = false,
+}) {
     const input = document.getElementById(inputId);
     if (!input) return;
     let estado = estados.get(inputId);
     if (!estado || estado.input !== input) {
-        estado = { input, chipsId, lista: [], chave };
+        estado = { input, chipsId, lista: [], chave, soPontoEVirgula };
         estados.set(inputId, estado);
         input.onkeydown = (e) => {
-            if (e.key === 'Enter' || e.key === ',') {
+            const teclaSepara = soPontoEVirgula ? ';' : ',';
+            if (e.key === 'Enter' || e.key === teclaSepara) {
                 e.preventDefault();
                 e.stopPropagation();
                 confirmar(inputId);
@@ -81,7 +92,7 @@ export function prepararEtiquetasMassa({ inputId, chipsId, chave, placeholder })
         input.onblur = () => confirmar(inputId);
         input.addEventListener('paste', () =>
             setTimeout(() => {
-                if (/[,;\n]/.test(input.value)) confirmar(inputId);
+                if ((soPontoEVirgula ? /[;\n]/ : /[,;\n]/).test(input.value)) confirmar(inputId);
             }, 0),
         );
     } else if (estado.chave !== chave) {

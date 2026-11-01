@@ -79,295 +79,515 @@
         <div class="overflow-y-auto flex-1 px-8 py-6">
             <form id="form-livro" class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <input type="hidden" id="l-edit-id" />
-                <div class="md:col-span-2">
-                    <label class="form-label">Título do Livro</label>
-                    <input type="text" id="l-titulo" required />
-                </div>
-                <div>
-                    <label class="form-label">Sequência</label>
-                    <input type="number" id="l-sequencia" placeholder="Ex: 1" />
-                </div>
-                <div>
-                    <label class="form-label">Sigla Oficial</label>
-                    <input type="text" id="l-sigla-oficial" />
-                </div>
-                <div>
-                    <label class="form-label">Sigla Pessoal</label>
-                    <input type="text" id="l-sigla-pessoal" />
-                </div>
-                <div class="md:col-span-2">
-                    <label class="form-label">Data de Primeira Publicação</label>
-                    <div class="grid grid-cols-3 gap-1">
-                        <input
-                            type="number"
-                            id="l-data-dia"
-                            placeholder="Dia"
-                            min="1"
-                            max="31"
-                            title="Dia"
-                        />
-                        <input
-                            type="number"
-                            id="l-data-mes"
-                            placeholder="Mês"
-                            min="1"
-                            max="12"
-                            title="Mês"
-                        />
-                        <input
-                            type="number"
-                            id="l-data-ano"
-                            placeholder="Ano"
-                            min="1"
-                            max="2100"
-                            title="Ano"
-                        />
-                    </div>
-                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
-                        Preencha só o que souber.
-                    </p>
-                </div>
-                <div class="md:col-span-2">
-                    <label class="form-label">Data da Última Edição</label>
-                    <div class="grid grid-cols-3 gap-1">
-                        <input
-                            type="number"
-                            id="l-ultima-edicao-dia"
-                            placeholder="Dia"
-                            min="1"
-                            max="31"
-                            title="Dia"
-                        />
-                        <input
-                            type="number"
-                            id="l-ultima-edicao-mes"
-                            placeholder="Mês"
-                            min="1"
-                            max="12"
-                            title="Mês"
-                        />
-                        <input
-                            type="number"
-                            id="l-ultima-edicao-ano"
-                            placeholder="Ano"
-                            min="1"
-                            max="2100"
-                            title="Ano"
-                        />
-                    </div>
-                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
-                        Se você revisou o texto após a publicação (comum na impressão sob demanda).
-                        Deixe em branco se nunca editou.
-                    </p>
-                </div>
-                <div>
-                    <label class="form-label">Tipo</label>
-                    <select id="l-tipo">
-                        <option value="Inéditos">Inéditos</option>
-                        <option value="Coletânea">Coletânea</option>
-                    </select>
-                </div>
-                <div class="md:col-span-2">
-                    <label class="form-label">Fase de Vida</label>
-                    <input
-                        type="text"
-                        id="l-fase"
-                        list="sugestoes-fases"
-                        placeholder="Digite uma nova ou escolha uma já usada..."
-                    />
-                    <datalist id="sugestoes-fases"></datalist>
-                </div>
-                <div class="md:col-span-4">
-                    <label class="form-label">Versos de Abertura</label>
-                    <textarea id="l-abertura" class="h-16 font-serif"></textarea>
-                </div>
-                <div class="md:col-span-2">
-                    <label class="form-label">Sinopse</label>
-                    <textarea id="l-sinopse" class="h-24"></textarea>
-                </div>
-                <div class="md:col-span-2">
-                    <label class="form-label">Descrição da Capa</label>
-                    <textarea id="l-capa-desc" class="h-24"></textarea>
-                </div>
-                <div>
-                    <label class="form-label">ISBN-13</label>
-                    <input type="text" id="l-isbn-13" placeholder="Ex: 978-65-00-00000-0" />
-                </div>
-                <div>
-                    <label class="form-label">ISBN-10</label>
-                    <input type="text" id="l-isbn-10" placeholder="Ex: 65-00-00000-0" />
-                </div>
-                <div
-                    class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4"
-                >
-                    <div class="md:col-span-2">
-                        <label class="form-label">Situação editorial</label>
-                        <select id="l-situacao-editorial">
-                            <option value="em-circulacao" selected>Em circulação</option>
-                            <option value="esgotado">Esgotado</option>
-                            <option value="fora-de-catalogo">Fora de catálogo</option>
-                            <option value="reeditado">Reeditado</option>
-                            <option value="">Não especificado</option>
-                        </select>
-                        <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
-                            Esgotado = acabou no mercado. Fora de catálogo = você retirou de venda.
-                        </p>
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="form-label">Desde quando</label>
-                        <div class="grid grid-cols-3 gap-1">
-                            <input
-                                type="number"
-                                id="l-situacao-desde-dia"
-                                placeholder="Dia"
-                                min="1"
-                                max="31"
-                                title="Dia"
-                            />
-                            <input
-                                type="number"
-                                id="l-situacao-desde-mes"
-                                placeholder="Mês"
-                                min="1"
-                                max="12"
-                                title="Mês"
-                            />
-                            <input
-                                type="number"
-                                id="l-situacao-desde-ano"
-                                placeholder="Ano"
-                                min="1"
-                                max="2100"
-                                title="Ano"
-                            />
+                <details class="campo-grupo md:col-span-4" open>
+                    <summary>
+                        Identificação
+                        <span class="campo-grupo-dica"
+                            >(título, sequência, tipo, fase, siglas)</span
+                        >
+                    </summary>
+                    <div class="campo-grupo-corpo">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="form-label">Título do Livro</label>
+                                <input type="text" id="l-titulo" required />
+                            </div>
+                            <div>
+                                <label class="form-label">Sequência</label>
+                                <input type="number" id="l-sequencia" min="1" placeholder="Ex: 1" />
+                            </div>
+                            <div>
+                                <label class="form-label">Tipo</label>
+                                <select id="l-tipo">
+                                    <option value="Inéditos">Inéditos</option>
+                                    <option value="Coletânea">Coletânea</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="form-label">Fase de Vida</label>
+                                <input
+                                    type="text"
+                                    id="l-fase"
+                                    list="sugestoes-fases"
+                                    placeholder="Digite uma nova ou escolha uma já usada..."
+                                />
+                                <datalist id="sugestoes-fases"></datalist>
+                            </div>
+                            <div>
+                                <label class="form-label">Sigla Oficial</label>
+                                <input type="text" id="l-sigla-oficial" />
+                            </div>
+                            <div>
+                                <label class="form-label">Sigla Pessoal</label>
+                                <input type="text" id="l-sigla-pessoal" />
+                            </div>
                         </div>
-                        <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
-                            Opcional. Preencha só o que souber.
-                        </p>
                     </div>
-                    <div class="md:col-span-4">
-                        <label class="form-label">Nota sobre a situação</label>
-                        <input
-                            type="text"
-                            id="l-situacao-nota"
-                            placeholder="Motivo ou o que aconteceu (reedição, mudança de editora, retirada...)"
-                        />
-                    </div>
-                </div>
-                <div class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
-                    <label class="form-label"
-                        >Onde comprar
-                        <span class="font-normal normal-case text-gray-400 dark:text-slate-500"
-                            >(loja/editora + link de venda — pode haver mais de uma)</span
-                        ></label
-                    >
-                    <div class="flex gap-2 mb-2">
-                        <input
-                            type="text"
-                            id="l-loja-nome"
-                            class="text-sm flex-1"
-                            placeholder="Loja/Editora (ex.: Amazon)"
-                            list="sugestoes-loja-nome"
-                        />
-                        <datalist id="sugestoes-loja-nome"></datalist>
-                        <input
-                            type="url"
-                            id="l-loja-url"
-                            class="text-sm flex-1"
-                            placeholder="Link"
-                        />
-                    </div>
-                    <div class="flex items-center gap-2 justify-end mb-2">
-                        <button
-                            type="button"
-                            id="l-loja-btn-cancelar"
-                            onclick="cancelarEdicaoLoja()"
-                            class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs px-1"
-                        >
-                            Cancelar edição
-                        </button>
-                        <button
-                            type="button"
-                            id="l-loja-btn-add"
-                            onclick="adicionarLoja()"
-                            class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold"
-                        >
-                            + Adicionar loja
-                        </button>
-                    </div>
-                    <div id="l-lojas-lista" class="space-y-1 min-h-[12px]"></div>
-                </div>
-                <div
-                    class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4"
-                >
-                    <div>
-                        <label class="form-label">PDF</label>
-                        <input type="url" id="l-pdf" placeholder="Link" />
-                    </div>
-                    <div>
-                        <label class="form-label">Epub</label>
-                        <input type="url" id="l-epub" placeholder="Link" />
-                    </div>
-                </div>
-                <div
-                    class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4"
-                >
-                    <div>
-                        <label class="form-label">Código de Barras</label>
-                        <input type="url" id="l-codigo-barras" placeholder="Link para a imagem" />
-                    </div>
-                    <div>
-                        <label class="form-label">Ficha Catalográfica</label>
-                        <input type="url" id="l-ficha-catalografica" placeholder="Link" />
-                    </div>
-                    <div>
-                        <label class="form-label">Certificado de Registro de Direito Autoral</label>
-                        <input type="url" id="l-certificado-direito-autoral" placeholder="Link" />
-                    </div>
-                    <div>
-                        <label class="form-label">Carta de Exclusividade</label>
-                        <input type="url" id="l-carta-exclusividade" placeholder="Link" />
-                    </div>
-                </div>
-                <div
-                    class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4"
-                >
-                    <div>
-                        <label class="form-label text-blue-700 dark:text-blue-300"
-                            >Capa (Upload)</label
-                        >
-                        <input type="file" id="l-capa" accept="image/*" class="mb-2" />
-                        <div class="flex items-center gap-2 mb-2">
-                            <input type="checkbox" id="l-remover-capa" />
-                            <label class="text-sm">Remover capa atual</label>
+                </details>
+                <details class="campo-grupo md:col-span-4" open>
+                    <summary>
+                        Autoria e créditos
+                        <span class="campo-grupo-dica">(autoria, equipe, uso de IA)</span>
+                    </summary>
+                    <div class="campo-grupo-corpo">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="form-label mb-0"
+                                        >Autoria
+                                        <span
+                                            class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                            >(quem assina o livro, com o papel de cada um)</span
+                                        ></label
+                                    >
+                                    <span
+                                        id="l-autoria-contagem"
+                                        class="text-xs text-gray-500 dark:text-slate-400"
+                                        >Nenhum autor</span
+                                    >
+                                </div>
+                                <div id="l-autoria-lista" class="space-y-2 min-h-[12px]"></div>
+                                <datalist id="sugestoes-papel-autoria-livro"></datalist>
+                                <div class="mt-2 flex items-center justify-between gap-2">
+                                    <p class="text-[11px] text-gray-400 dark:text-slate-500">
+                                        Os papéis ficam na ordem em que você os marca. Quem escreveu
+                                        os textos de dentro aparece no Ver, sem precisar entrar
+                                        aqui.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        id="l-autoria-adicionar"
+                                        class="flex-shrink-0 bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold"
+                                    >
+                                        + Adicionar autor
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="form-label mb-0"
+                                        >Equipe e créditos
+                                        <span
+                                            class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                            >(quem fez o livro como objeto, com o papel e o escopo
+                                            de cada um)</span
+                                        ></label
+                                    >
+                                    <span
+                                        id="l-equipe-contagem"
+                                        class="text-xs text-gray-500 dark:text-slate-400"
+                                        >Ninguém</span
+                                    >
+                                </div>
+                                <div id="l-equipe-lista" class="space-y-2 min-h-[12px]"></div>
+                                <datalist id="sugestoes-papel-equipe-livro"></datalist>
+                                <datalist id="sugestoes-escopo-equipe-livro"></datalist>
+                                <div class="mt-2 flex items-center justify-between gap-2">
+                                    <p class="text-[11px] text-gray-400 dark:text-slate-500">
+                                        Capista, ilustrador, diagramador, revisor e semelhantes. O
+                                        escopo diz o que o papel cobre (capa, miolo...). Quem
+                                        escreve o conteúdo fica em Autoria. As pessoas vêm da aba
+                                        Colaboradores.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        id="l-equipe-adicionar"
+                                        class="flex-shrink-0 bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold"
+                                    >
+                                        + Adicionar colaborador
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                                <div class="flex items-center justify-between mb-2">
+                                    <label class="form-label mb-0" for="l-uso-ia-estado"
+                                        >Uso de IA
+                                        <span
+                                            class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                            >(se e onde a IA entrou na produção do livro)</span
+                                        ></label
+                                    >
+                                    <span
+                                        id="l-uso-ia-contagem"
+                                        class="text-xs text-gray-500 dark:text-slate-400"
+                                    ></span>
+                                </div>
+                                <select id="l-uso-ia-estado" class="w-full md:w-60">
+                                    <option value="">Não informado</option>
+                                    <option value="nao-usou">Não usou</option>
+                                    <option value="usou">Usou</option>
+                                </select>
+                                <div id="l-uso-ia-bloco" class="hidden mt-3">
+                                    <div id="l-uso-ia-lista" class="space-y-2 min-h-[12px]"></div>
+                                    <datalist id="sugestoes-uso-ia-onde"></datalist>
+                                    <datalist id="sugestoes-uso-ia-ferramenta"></datalist>
+                                    <datalist id="sugestoes-uso-ia-modelo"></datalist>
+                                    <div class="mt-2 flex justify-end">
+                                        <button
+                                            type="button"
+                                            id="l-uso-ia-adicionar"
+                                            class="flex-shrink-0 bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold"
+                                        >
+                                            + Adicionar uso
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <label class="form-label" for="l-uso-ia-nota">Nota geral</label>
+                                    <textarea
+                                        id="l-uso-ia-nota"
+                                        class="h-16"
+                                        placeholder="Algo que valha dizer sobre o uso de IA neste livro como um todo."
+                                    ></textarea>
+                                </div>
+                                <p class="text-[11px] text-gray-400 dark:text-slate-500 mt-1">
+                                    "Não informado" é o padrão: livro antigo não afirma que não usou
+                                    IA sem você ter dito.
+                                </p>
+                            </div>
                         </div>
-                        <label class="form-label">Link da imagem da capa</label>
-                        <input
-                            type="url"
-                            id="l-imagem-url"
-                            class="mb-2"
-                            placeholder="Link (opcional, só para acesso)"
-                        />
-                        <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
-                            Só para abrir a imagem original em outra aba; o app não baixa nem exibe
-                            o que está no link.
-                        </p>
-                        <label class="form-label">Frase da Capa</label>
-                        <input type="text" id="l-frase-capa" />
                     </div>
-                    <div>
-                        <label class="form-label">Texto da Contracapa</label>
-                        <textarea id="l-contracapa" class="h-24"></textarea>
+                </details>
+                <details class="campo-grupo md:col-span-4">
+                    <summary>
+                        Apresentação do livro
+                        <span class="campo-grupo-dica"
+                            >(sinopses, versos de abertura, contracapa, orelhas)</span
+                        >
+                    </summary>
+                    <div class="campo-grupo-corpo">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="md:col-span-4">
+                                <label class="form-label" for="l-sinopse-curta"
+                                    >Sinopse curta</label
+                                >
+                                <textarea id="l-sinopse-curta" class="h-16"></textarea>
+                                <p
+                                    id="l-sinopse-curta-contador"
+                                    class="text-xs text-gray-500 dark:text-slate-400 mt-1"
+                                    aria-live="polite"
+                                >
+                                    0 caracteres
+                                </p>
+                            </div>
+                            <div class="md:col-span-4">
+                                <label class="form-label">Sinopse</label>
+                                <textarea id="l-sinopse" class="h-24"></textarea>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="form-label">Versos de Abertura</label>
+                                <textarea id="l-abertura" class="h-24 font-serif"></textarea>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="form-label">Texto da Contracapa</label>
+                                <textarea id="l-contracapa" class="h-24"></textarea>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="form-label">Orelha 1</label>
+                                <textarea id="l-orelha-1" class="h-24"></textarea>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="form-label">Orelha 2</label>
+                                <textarea id="l-orelha-2" class="h-24"></textarea>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="form-label">Orelha 1</label>
-                        <textarea id="l-orelha-1" class="h-24"></textarea>
+                </details>
+                <details class="campo-grupo md:col-span-4">
+                    <summary>
+                        Capa
+                        <span class="campo-grupo-dica">(imagem, link, descrição, frase)</span>
+                    </summary>
+                    <div class="campo-grupo-corpo">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="form-label text-blue-700 dark:text-blue-300"
+                                    >Capa (Upload)</label
+                                >
+                                <input type="file" id="l-capa" accept="image/*" class="mb-2" />
+                                <div class="flex items-center gap-2 mb-2">
+                                    <input type="checkbox" id="l-remover-capa" />
+                                    <label class="text-sm">Remover capa atual</label>
+                                </div>
+                                <label class="form-label">Link da imagem da capa</label>
+                                <input
+                                    type="url"
+                                    id="l-imagem-url"
+                                    class="mb-2"
+                                    placeholder="Link (opcional, só para acesso)"
+                                />
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mb-2">
+                                    Só para abrir a imagem original em outra aba; o app não baixa
+                                    nem exibe o que está no link.
+                                </p>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="form-label">Descrição da Capa</label>
+                                <textarea id="l-capa-desc" class="h-24"></textarea>
+                            </div>
+                            <div class="md:col-span-4">
+                                <label class="form-label">Frase da Capa</label>
+                                <input type="text" id="l-frase-capa" />
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="form-label">Orelha 2</label>
-                        <textarea id="l-orelha-2" class="h-24"></textarea>
+                </details>
+                <details class="campo-grupo md:col-span-4">
+                    <summary>
+                        Publicação
+                        <span class="campo-grupo-dica"
+                            >(datas, situação editorial, ISBN, lojas)</span
+                        >
+                    </summary>
+                    <div class="campo-grupo-corpo">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="form-label">Data de Primeira Publicação</label>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <input
+                                        type="number"
+                                        id="l-data-dia"
+                                        placeholder="Dia"
+                                        min="1"
+                                        max="31"
+                                        title="Dia"
+                                    />
+                                    <input
+                                        type="number"
+                                        id="l-data-mes"
+                                        placeholder="Mês"
+                                        min="1"
+                                        max="12"
+                                        title="Mês"
+                                    />
+                                    <input
+                                        type="number"
+                                        id="l-data-ano"
+                                        placeholder="Ano"
+                                        min="1"
+                                        max="2100"
+                                        title="Ano"
+                                    />
+                                </div>
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                                    Preencha só o que souber.
+                                </p>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="form-label">Data da Última Edição</label>
+                                <div class="grid grid-cols-3 gap-1">
+                                    <input
+                                        type="number"
+                                        id="l-ultima-edicao-dia"
+                                        placeholder="Dia"
+                                        min="1"
+                                        max="31"
+                                        title="Dia"
+                                    />
+                                    <input
+                                        type="number"
+                                        id="l-ultima-edicao-mes"
+                                        placeholder="Mês"
+                                        min="1"
+                                        max="12"
+                                        title="Mês"
+                                    />
+                                    <input
+                                        type="number"
+                                        id="l-ultima-edicao-ano"
+                                        placeholder="Ano"
+                                        min="1"
+                                        max="2100"
+                                        title="Ano"
+                                    />
+                                </div>
+                                <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                                    Se você revisou o texto após a publicação (comum na impressão
+                                    sob demanda). Deixe em branco se nunca editou.
+                                </p>
+                            </div>
+                            <div
+                                class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4"
+                            >
+                                <div class="md:col-span-2">
+                                    <label class="form-label">Situação editorial</label>
+                                    <select id="l-situacao-editorial">
+                                        <option value="em-circulacao" selected>
+                                            Em circulação
+                                        </option>
+                                        <option value="esgotado">Esgotado</option>
+                                        <option value="fora-de-catalogo">Fora de catálogo</option>
+                                        <option value="reeditado">Reeditado</option>
+                                        <option value="">Não especificado</option>
+                                    </select>
+                                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                                        Esgotado = acabou no mercado. Fora de catálogo = você
+                                        retirou de venda.
+                                    </p>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="form-label">Desde quando</label>
+                                    <div class="grid grid-cols-3 gap-1">
+                                        <input
+                                            type="number"
+                                            id="l-situacao-desde-dia"
+                                            placeholder="Dia"
+                                            min="1"
+                                            max="31"
+                                            title="Dia"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="l-situacao-desde-mes"
+                                            placeholder="Mês"
+                                            min="1"
+                                            max="12"
+                                            title="Mês"
+                                        />
+                                        <input
+                                            type="number"
+                                            id="l-situacao-desde-ano"
+                                            placeholder="Ano"
+                                            min="1"
+                                            max="2100"
+                                            title="Ano"
+                                        />
+                                    </div>
+                                    <p class="text-[10px] text-gray-400 dark:text-slate-500 mt-1">
+                                        Opcional. Preencha só o que souber.
+                                    </p>
+                                </div>
+                                <div class="md:col-span-4">
+                                    <label class="form-label">Nota sobre a situação</label>
+                                    <input
+                                        type="text"
+                                        id="l-situacao-nota"
+                                        placeholder="Motivo ou o que aconteceu (reedição, mudança de editora, retirada...)"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label">ISBN-13</label>
+                                <input
+                                    type="text"
+                                    id="l-isbn-13"
+                                    placeholder="Ex: 978-65-00-00000-0"
+                                />
+                            </div>
+                            <div>
+                                <label class="form-label">ISBN-10</label>
+                                <input type="text" id="l-isbn-10" placeholder="Ex: 65-00-00000-0" />
+                            </div>
+                            <div class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                                <label class="form-label"
+                                    >Onde comprar
+                                    <span
+                                        class="font-normal normal-case text-gray-400 dark:text-slate-500"
+                                        >(loja/editora + link de venda — pode haver mais de
+                                        uma)</span
+                                    ></label
+                                >
+                                <div class="flex gap-2 mb-2">
+                                    <input
+                                        type="text"
+                                        id="l-loja-nome"
+                                        class="text-sm flex-1"
+                                        placeholder="Loja/Editora (ex.: Amazon)"
+                                        list="sugestoes-loja-nome"
+                                    />
+                                    <datalist id="sugestoes-loja-nome"></datalist>
+                                    <input
+                                        type="url"
+                                        id="l-loja-url"
+                                        class="text-sm flex-1"
+                                        placeholder="Link"
+                                    />
+                                </div>
+                                <div class="flex items-center gap-2 justify-end mb-2">
+                                    <button
+                                        type="button"
+                                        id="l-loja-btn-cancelar"
+                                        onclick="cancelarEdicaoLoja()"
+                                        class="hidden text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 text-xs px-1"
+                                    >
+                                        Cancelar edição
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="l-loja-btn-add"
+                                        onclick="adicionarLoja()"
+                                        class="bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-3 py-1.5 rounded text-xs font-bold"
+                                    >
+                                        + Adicionar loja
+                                    </button>
+                                </div>
+                                <div id="l-lojas-lista" class="space-y-1 min-h-[12px]"></div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </details>
+                <details class="campo-grupo md:col-span-4">
+                    <summary>
+                        Arquivos e registros
+                        <span class="campo-grupo-dica"
+                            >(PDF, Epub, código de barras, ficha, certificado, carta)</span
+                        >
+                    </summary>
+                    <div class="campo-grupo-corpo">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div
+                                class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4"
+                            >
+                                <div>
+                                    <label class="form-label">PDF</label>
+                                    <input type="url" id="l-pdf" placeholder="Link" />
+                                </div>
+                                <div>
+                                    <label class="form-label">Epub</label>
+                                    <input type="url" id="l-epub" placeholder="Link" />
+                                </div>
+                            </div>
+                            <div
+                                class="md:col-span-4 bg-gray-50 dark:bg-slate-800 p-4 rounded-lg grid grid-cols-1 md:grid-cols-4 gap-4"
+                            >
+                                <div>
+                                    <label class="form-label">Código de Barras</label>
+                                    <input
+                                        type="url"
+                                        id="l-codigo-barras"
+                                        placeholder="Link para a imagem"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="form-label">Ficha Catalográfica</label>
+                                    <input
+                                        type="url"
+                                        id="l-ficha-catalografica"
+                                        placeholder="Link"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="form-label"
+                                        >Certificado de Registro de Direito Autoral</label
+                                    >
+                                    <input
+                                        type="url"
+                                        id="l-certificado-direito-autoral"
+                                        placeholder="Link"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="form-label">Carta de Exclusividade</label>
+                                    <input
+                                        type="url"
+                                        id="l-carta-exclusividade"
+                                        placeholder="Link"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </details>
                 <div
                     class="md:col-span-4 flex justify-end gap-2 border-t pt-6 border-gray-200 dark:border-slate-700"
                 >

@@ -1,9 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { nomesDosTemas } from './helpers/temas-do-texto.js';
 
 // Lógica pura do botão "Temas" da edição em massa (temas.js): adicionar e
 // remover vários temas pela fonte da verdade (`item.temas`, por id), com o
-// espelho `sinalizacoesTema` sempre coerente.
+// espelho `sinalizacoesTema` nunca recriado.
 const {
     nomesDeTemasDigitados,
     temasInexistentes,
@@ -33,26 +34,30 @@ const nomesDoTexto = (banco, item) =>
     item.temas.map((e) => banco.temas.find((t) => t.id === e.temaId).nome);
 
 describe('nomesDeTemasDigitados', () => {
-    it('separa por vírgula, limpa espaços e ignora vazios', () => {
-        assert.deepEqual(nomesDeTemasDigitados(' amor ,, saudade  , '), ['amor', 'saudade']);
+    it('separa por ponto e vírgula, limpa espaços e ignora vazios', () => {
+        assert.deepEqual(nomesDeTemasDigitados(' amor ;; saudade  ; '), ['amor', 'saudade']);
     });
 
     it('não repete (sem caixa nem acento) e mantém a primeira grafia', () => {
-        assert.deepEqual(nomesDeTemasDigitados('Saudade, saudade, SAÚDADE, Amor'), [
+        assert.deepEqual(nomesDeTemasDigitados('Saudade; saudade; SAÚDADE; Amor'), [
             'Saudade',
             'Amor',
         ]);
     });
 
-    it('vazio, null e só vírgulas dão lista vazia', () => {
+    it('vírgula faz parte do nome e não separa', () => {
+        assert.deepEqual(nomesDeTemasDigitados('Amor, perda; Luto'), ['Amor, perda', 'Luto']);
+    });
+
+    it('vazio, null e só separadores dão lista vazia', () => {
         assert.deepEqual(nomesDeTemasDigitados(''), []);
         assert.deepEqual(nomesDeTemasDigitados(null), []);
-        assert.deepEqual(nomesDeTemasDigitados(' , , '), []);
+        assert.deepEqual(nomesDeTemasDigitados(' ; ; '), []);
     });
 });
 
 describe('adicionarTemasAosTextos', () => {
-    it('adiciona vários temas, sem papel, e regrava o espelho', () => {
+    it('adiciona vários temas, sem papel, e sem recriar o campo antigo', () => {
         const banco = novoBanco();
         const r = adicionarTemasAosTextos(banco, [banco.poemas[1]], ['Amor', 'Saudade']);
         assert.deepEqual(r, { textos: 1, vinculos: 2, criados: 0 });
@@ -60,7 +65,7 @@ describe('adicionarTemasAosTextos', () => {
             { temaId: 101, papel: '' },
             { temaId: 102, papel: '' },
         ]);
-        assert.equal(banco.poemas[1].sinalizacoesTema, 'Amor, Saudade');
+        assert.equal(nomesDosTemas(banco.poemas[1], banco), 'Amor, Saudade');
     });
 
     it('cria no cadastro o tema que não existe (uma vez só, mesmo em vários textos)', () => {
@@ -91,10 +96,12 @@ describe('adicionarTemasAosTextos', () => {
 
     it('texto de dado antigo (só o espelho) é reconciliado antes de receber o tema', () => {
         const banco = novoBanco();
+        // Formato antigo: só o espelho (o `sincronizarTemas` do banco já o apagou).
+        banco.prosas[0].sinalizacoesTema = 'Saudade';
         delete banco.prosas[0].temas;
         adicionarTemasAosTextos(banco, [banco.prosas[0]], ['Amor']);
         assert.deepEqual(nomesDoTexto(banco, banco.prosas[0]), ['Saudade', 'Amor']);
-        assert.equal(banco.prosas[0].sinalizacoesTema, 'Saudade, Amor');
+        assert.equal(nomesDosTemas(banco.prosas[0], banco), 'Saudade, Amor');
     });
 
     it('o resultado sobrevive a um novo sincronizarTemas (espelho e temas coerentes)', () => {
@@ -107,13 +114,13 @@ describe('adicionarTemasAosTextos', () => {
 });
 
 describe('removerTemasDosTextos', () => {
-    it('tira só os vínculos pedidos, regrava o espelho e mantém o cadastro', () => {
+    it('tira só os vínculos pedidos, sem recriar o campo antigo e mantém o cadastro', () => {
         const banco = novoBanco();
         adicionarTemasAosTextos(banco, [banco.poemas[0]], ['Saudade']);
         const r = removerTemasDosTextos(banco, [banco.poemas[0]], ['saudade']);
         assert.deepEqual(r, { textos: 1, vinculos: 1, desconhecidos: [] });
         assert.deepEqual(nomesDoTexto(banco, banco.poemas[0]), ['Amor']);
-        assert.equal(banco.poemas[0].sinalizacoesTema, 'Amor');
+        assert.equal(nomesDosTemas(banco.poemas[0], banco), 'Amor');
         assert.equal(banco.temas.length, 2);
     });
 
@@ -121,7 +128,7 @@ describe('removerTemasDosTextos', () => {
         const banco = novoBanco();
         removerTemasDosTextos(banco, [banco.poemas[0]], ['Amor']);
         assert.deepEqual(banco.poemas[0].temas, []);
-        assert.equal(banco.poemas[0].sinalizacoesTema, '');
+        assert.equal(nomesDosTemas(banco.poemas[0], banco), '');
     });
 
     it('tema que o texto não tem: nenhum texto alterado', () => {
